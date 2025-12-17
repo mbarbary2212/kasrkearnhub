@@ -7,8 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
-import DepartmentPage from "./pages/DepartmentPage";
-import TopicPage from "./pages/TopicPage";
+import ModulePage from "./pages/ModulePage";
 import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
@@ -26,8 +25,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/year/:yearId" element={<YearPage />} />
-            <Route path="/department/:departmentId" element={<DepartmentPage />} />
-            <Route path="/topic/:topicId" element={<TopicPage />} />
+            <Route path="/module/:moduleId" element={<ModulePage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="*" element={<NotFound />} />

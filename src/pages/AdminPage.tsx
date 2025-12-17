@@ -6,22 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
+import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 
 interface UserWithRole extends Profile {
   role: AppRole;
   departmentAssignments?: DepartmentAdmin[];
+  moduleAssignments?: ModuleAdmin[];
 }
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
   teacher: 'Teacher',
   admin: 'Admin (Legacy)',
-  department_admin: 'Department Admin',
+  department_admin: 'Module Admin',
   platform_admin: 'Platform Admin',
   super_admin: 'Super Admin',
 };
@@ -40,9 +46,23 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [years, setYears] = useState<Year[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [selectedModule, setSelectedModule] = useState<string>('');
+
+  // Module form state
+  const [showModuleDialog, setShowModuleDialog] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [moduleForm, setModuleForm] = useState({
+    year_id: '',
+    name: '',
+    name_ar: '',
+    slug: '',
+    description: '',
+    is_published: false,
+  });
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
@@ -69,27 +89,48 @@ export default function AdminPage() {
 
         if (rolesError) throw rolesError;
 
-        // Fetch department assignments
-        const { data: assignments } = await supabase
+        // Fetch department assignments (legacy)
+        const { data: deptAssignments } = await supabase
           .from('department_admins')
           .select('*');
 
-        // Fetch departments
+        // Fetch module assignments
+        const { data: moduleAssignments } = await supabase
+          .from('module_admins')
+          .select('*');
+
+        // Fetch departments (for reference)
         const { data: depts } = await supabase
           .from('departments')
           .select('*')
           .order('display_order');
 
+        // Fetch years
+        const { data: yearsData } = await supabase
+          .from('years')
+          .select('*')
+          .order('display_order');
+
+        // Fetch modules
+        const { data: modulesData } = await supabase
+          .from('modules')
+          .select('*')
+          .order('display_order');
+
         setDepartments((depts as Department[]) || []);
+        setYears((yearsData as Year[]) || []);
+        setModules((modulesData as Module[]) || []);
 
         // Combine profiles with roles and assignments
         const usersWithRoles = (profiles || []).map((profile) => {
           const userRole = roles?.find(r => r.user_id === profile.id);
-          const userAssignments = assignments?.filter(a => a.user_id === profile.id) || [];
+          const userDeptAssignments = deptAssignments?.filter(a => a.user_id === profile.id) || [];
+          const userModuleAssignments = moduleAssignments?.filter(a => a.user_id === profile.id) || [];
           return {
             ...profile,
             role: (userRole?.role as AppRole) || 'student',
-            departmentAssignments: userAssignments as DepartmentAdmin[],
+            departmentAssignments: userDeptAssignments as DepartmentAdmin[],
+            moduleAssignments: userModuleAssignments as ModuleAdmin[],
           };
         });
 
@@ -106,33 +147,27 @@ export default function AdminPage() {
   }, [isAdmin]);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
-    // Only super admin can assign platform_admin or super_admin roles
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
       toast.error('Only Super Admins can assign this role');
       return;
     }
 
     try {
-      // Delete existing role
       await supabase.from('user_roles').delete().eq('user_id', userId);
-
-      // Insert new role
       const { error } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role: newRole });
 
       if (error) throw error;
 
-      // If changing away from department_admin, remove assignments
       if (newRole !== 'department_admin') {
-        await supabase.from('department_admins').delete().eq('user_id', userId);
+        await supabase.from('module_admins').delete().eq('user_id', userId);
       }
 
-      // Update local state
       setUsers(prev =>
         prev.map(u => 
           u.id === userId 
-            ? { ...u, role: newRole, departmentAssignments: newRole === 'department_admin' ? u.departmentAssignments : [] } 
+            ? { ...u, role: newRole, moduleAssignments: newRole === 'department_admin' ? u.moduleAssignments : [] } 
             : u
         )
       );
@@ -144,94 +179,96 @@ export default function AdminPage() {
     }
   };
 
-  const handleAssignDepartment = async (userId: string, departmentId: string) => {
+  const handleAssignModule = async (userId: string, moduleId: string) => {
     if (!isSuperAdmin) {
-      toast.error('Only Super Admins can assign departments');
+      toast.error('Only Super Admins can assign modules');
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('department_admins')
+        .from('module_admins')
         .insert({ 
           user_id: userId, 
-          department_id: departmentId,
+          module_id: moduleId,
           assigned_by: user?.id 
         });
 
       if (error) {
         if (error.code === '23505') {
-          toast.error('User is already assigned to this department');
+          toast.error('User is already assigned to this module');
           return;
         }
         throw error;
       }
 
-      // Update local state
       setUsers(prev =>
         prev.map(u => {
           if (u.id === userId) {
-            const newAssignment: DepartmentAdmin = {
+            const newAssignment: ModuleAdmin = {
               id: crypto.randomUUID(),
               user_id: userId,
-              department_id: departmentId,
+              module_id: moduleId,
               assigned_by: user?.id || null,
               created_at: new Date().toISOString(),
             };
             return {
               ...u,
-              departmentAssignments: [...(u.departmentAssignments || []), newAssignment],
+              moduleAssignments: [...(u.moduleAssignments || []), newAssignment],
             };
           }
           return u;
         })
       );
 
-      setSelectedDepartment('');
-      toast.success('Department assigned successfully');
+      setSelectedModule('');
+      toast.success('Module assigned successfully');
     } catch (error) {
-      console.error('Error assigning department:', error);
-      toast.error('Failed to assign department');
+      console.error('Error assigning module:', error);
+      toast.error('Failed to assign module');
     }
   };
 
-  const handleRemoveDepartmentAssignment = async (userId: string, departmentId: string) => {
+  const handleRemoveModuleAssignment = async (userId: string, moduleId: string) => {
     if (!isSuperAdmin) {
-      toast.error('Only Super Admins can remove department assignments');
+      toast.error('Only Super Admins can remove module assignments');
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('department_admins')
+        .from('module_admins')
         .delete()
         .eq('user_id', userId)
-        .eq('department_id', departmentId);
+        .eq('module_id', moduleId);
 
       if (error) throw error;
 
-      // Update local state
       setUsers(prev =>
         prev.map(u => {
           if (u.id === userId) {
             return {
               ...u,
-              departmentAssignments: u.departmentAssignments?.filter(a => a.department_id !== departmentId) || [],
+              moduleAssignments: u.moduleAssignments?.filter(a => a.module_id !== moduleId) || [],
             };
           }
           return u;
         })
       );
 
-      toast.success('Department assignment removed');
+      toast.success('Module assignment removed');
     } catch (error) {
       console.error('Error removing assignment:', error);
       toast.error('Failed to remove assignment');
     }
   };
 
-  const getDepartmentName = (id: string) => {
-    return departments.find(d => d.id === id)?.name || 'Unknown';
+  const getModuleName = (id: string) => {
+    return modules.find(m => m.id === id)?.name || 'Unknown';
+  };
+
+  const getYearName = (id: string) => {
+    return years.find(y => y.id === id)?.name || 'Unknown';
   };
 
   const getAvailableRoles = (): AppRole[] => {
@@ -242,6 +279,115 @@ export default function AdminPage() {
       return ['student', 'teacher', 'department_admin'];
     }
     return ['student', 'teacher'];
+  };
+
+  // Module CRUD operations
+  const handleCreateModule = async () => {
+    if (!moduleForm.year_id || !moduleForm.name || !moduleForm.slug) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('modules')
+        .insert({
+          year_id: moduleForm.year_id,
+          name: moduleForm.name,
+          name_ar: moduleForm.name_ar || null,
+          slug: moduleForm.slug,
+          description: moduleForm.description || null,
+          is_published: moduleForm.is_published,
+          display_order: modules.filter(m => m.year_id === moduleForm.year_id).length,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setModules(prev => [...prev, data as Module]);
+      setShowModuleDialog(false);
+      resetModuleForm();
+      toast.success('Module created successfully');
+    } catch (error) {
+      console.error('Error creating module:', error);
+      toast.error('Failed to create module');
+    }
+  };
+
+  const handleUpdateModule = async () => {
+    if (!editingModule) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('modules')
+        .update({
+          name: moduleForm.name,
+          name_ar: moduleForm.name_ar || null,
+          slug: moduleForm.slug,
+          description: moduleForm.description || null,
+          is_published: moduleForm.is_published,
+        })
+        .eq('id', editingModule.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setModules(prev => prev.map(m => m.id === editingModule.id ? data as Module : m));
+      setShowModuleDialog(false);
+      setEditingModule(null);
+      resetModuleForm();
+      toast.success('Module updated successfully');
+    } catch (error) {
+      console.error('Error updating module:', error);
+      toast.error('Failed to update module');
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: string) => {
+    if (!confirm('Are you sure you want to delete this module? This will also delete all content within it.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', moduleId);
+
+      if (error) throw error;
+
+      setModules(prev => prev.filter(m => m.id !== moduleId));
+      toast.success('Module deleted successfully');
+    } catch (error) {
+      console.error('Error deleting module:', error);
+      toast.error('Failed to delete module');
+    }
+  };
+
+  const resetModuleForm = () => {
+    setModuleForm({
+      year_id: '',
+      name: '',
+      name_ar: '',
+      slug: '',
+      description: '',
+      is_published: false,
+    });
+  };
+
+  const openEditModule = (module: Module) => {
+    setEditingModule(module);
+    setModuleForm({
+      year_id: module.year_id,
+      name: module.name,
+      name_ar: module.name_ar || '',
+      slug: module.slug,
+      description: module.description || '',
+      is_published: module.is_published || false,
+    });
+    setShowModuleDialog(true);
   };
 
   if (authLoading || isLoading) {
@@ -267,22 +413,28 @@ export default function AdminPage() {
             <h1 className="text-3xl font-heading font-bold">Admin Panel</h1>
             <p className="text-muted-foreground">
               {isSuperAdmin ? 'Super Admin Access - Full System Control' : 
-               isPlatformAdmin ? 'Platform Admin Access - All Departments' : 
+               isPlatformAdmin ? 'Platform Admin Access - All Modules' : 
                'Admin Access'}
             </p>
           </div>
         </div>
 
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="users" className="gap-2">
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="hierarchy" className="gap-2">
+              <TabsTrigger value="curriculum" className="gap-2">
+                <Layers className="w-4 h-4" />
+                Curriculum
+              </TabsTrigger>
+            )}
+            {isSuperAdmin && (
+              <TabsTrigger value="admins" className="gap-2">
                 <Building2 className="w-4 h-4" />
-                Department Admins
+                Module Admins
               </TabsTrigger>
             )}
             <TabsTrigger value="feedback" className="gap-2">
@@ -291,6 +443,7 @@ export default function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Users Tab */}
           <TabsContent value="users">
             <Card>
               <CardHeader>
@@ -299,7 +452,7 @@ export default function AdminPage() {
                   User Management
                 </CardTitle>
                 <CardDescription>
-                  View and manage user roles. {isSuperAdmin ? 'You can assign any role.' : 'Role changes are restricted based on your access level.'}
+                  View and manage user roles.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -308,10 +461,7 @@ export default function AdminPage() {
                 ) : (
                   <div className="space-y-4">
                     {users.map((u) => (
-                      <div
-                        key={u.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
+                      <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
                             <span className="font-semibold text-secondary-foreground">
@@ -321,11 +471,11 @@ export default function AdminPage() {
                           <div>
                             <p className="font-medium">{u.full_name || 'No name'}</p>
                             <p className="text-sm text-muted-foreground">{u.email}</p>
-                            {u.role === 'department_admin' && u.departmentAssignments && u.departmentAssignments.length > 0 && (
+                            {u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {u.departmentAssignments.map(a => (
+                                {u.moduleAssignments.map(a => (
                                   <Badge key={a.id} variant="outline" className="text-xs">
-                                    {getDepartmentName(a.department_id)}
+                                    {getModuleName(a.module_id)}
                                   </Badge>
                                 ))}
                               </div>
@@ -364,23 +514,216 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
+          {/* Curriculum Tab - Super Admin Only */}
           {isSuperAdmin && (
-            <TabsContent value="hierarchy">
+            <TabsContent value="curriculum">
+              <div className="grid gap-6">
+                {/* Years Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Academic Years
+                    </CardTitle>
+                    <CardDescription>
+                      Years are pre-configured. Manage modules within each year below.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                      {years.map((year) => (
+                        <div key={year.id} className={`p-4 rounded-lg border-2 ${year.is_active ? 'border-primary' : 'border-muted'}`}>
+                          <div className={`w-10 h-10 ${year.color || 'bg-primary'} rounded-lg flex items-center justify-center mb-2`}>
+                            <span className="text-lg font-bold text-primary-foreground">{year.number}</span>
+                          </div>
+                          <p className="font-medium">{year.name}</p>
+                          <p className="text-sm text-muted-foreground">{year.subtitle}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {modules.filter(m => m.year_id === year.id).length} modules
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Modules Section */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <BookOpen className="w-5 h-5" />
+                          Modules
+                        </CardTitle>
+                        <CardDescription>
+                          Create and manage modules for each academic year.
+                        </CardDescription>
+                      </div>
+                      <Dialog open={showModuleDialog} onOpenChange={(open) => {
+                        setShowModuleDialog(open);
+                        if (!open) {
+                          setEditingModule(null);
+                          resetModuleForm();
+                        }
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Module
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>{editingModule ? 'Edit Module' : 'Create New Module'}</DialogTitle>
+                            <DialogDescription>
+                              {editingModule ? 'Update module details.' : 'Add a new module to the curriculum.'}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            {!editingModule && (
+                              <div className="space-y-2">
+                                <Label>Year *</Label>
+                                <Select
+                                  value={moduleForm.year_id}
+                                  onValueChange={(value) => setModuleForm(prev => ({ ...prev, year_id: value }))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select year" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {years.map(year => (
+                                      <SelectItem key={year.id} value={year.id}>
+                                        {year.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              <Label>Name *</Label>
+                              <Input
+                                value={moduleForm.name}
+                                onChange={(e) => setModuleForm(prev => ({ 
+                                  ...prev, 
+                                  name: e.target.value,
+                                  slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+                                }))}
+                                placeholder="e.g., Cardiovascular System"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Arabic Name</Label>
+                              <Input
+                                value={moduleForm.name_ar}
+                                onChange={(e) => setModuleForm(prev => ({ ...prev, name_ar: e.target.value }))}
+                                placeholder="الاسم بالعربية"
+                                dir="rtl"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Slug *</Label>
+                              <Input
+                                value={moduleForm.slug}
+                                onChange={(e) => setModuleForm(prev => ({ ...prev, slug: e.target.value }))}
+                                placeholder="cardiovascular-system"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Description</Label>
+                              <Input
+                                value={moduleForm.description}
+                                onChange={(e) => setModuleForm(prev => ({ ...prev, description: e.target.value }))}
+                                placeholder="Module description"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={moduleForm.is_published}
+                                onCheckedChange={(checked) => setModuleForm(prev => ({ ...prev, is_published: checked }))}
+                              />
+                              <Label>Published (visible to students)</Label>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowModuleDialog(false)}>Cancel</Button>
+                            <Button onClick={editingModule ? handleUpdateModule : handleCreateModule}>
+                              {editingModule ? 'Update' : 'Create'}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {years.map((year) => {
+                      const yearModules = modules.filter(m => m.year_id === year.id);
+                      if (yearModules.length === 0) return null;
+                      
+                      return (
+                        <div key={year.id} className="mb-6 last:mb-0">
+                          <h3 className="font-medium text-sm text-muted-foreground mb-3">{year.name}</h3>
+                          <div className="space-y-2">
+                            {yearModules.map((module) => (
+                              <div key={module.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 ${year.color || 'bg-primary'} rounded flex items-center justify-center`}>
+                                    <BookOpen className="w-4 h-4 text-primary-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{module.name}</p>
+                                    {module.description && (
+                                      <p className="text-sm text-muted-foreground">{module.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={module.is_published ? 'default' : 'secondary'}>
+                                    {module.is_published ? 'Published' : 'Draft'}
+                                  </Badge>
+                                  <Button variant="ghost" size="icon" onClick={() => openEditModule(module)}>
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteModule(module.id)}>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {modules.length === 0 && (
+                      <p className="text-muted-foreground text-center py-8">
+                        No modules created yet. Click "Add Module" to create one.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Module Admins Tab */}
+          {isSuperAdmin && (
+            <TabsContent value="admins">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Building2 className="w-5 h-5" />
-                    Department Admin Assignments
+                    Module Admin Assignments
                   </CardTitle>
                   <CardDescription>
-                    Assign department admins to specific departments. Each department admin can only manage content within their assigned departments.
+                    Assign module admins to specific modules. Each admin can only manage content within their assigned modules.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     {users.filter(u => u.role === 'department_admin').length === 0 ? (
                       <p className="text-muted-foreground text-center py-8">
-                        No department admins assigned. Change a user's role to "Department Admin" first.
+                        No module admins assigned. Change a user's role to "Module Admin" first.
                       </p>
                     ) : (
                       users
@@ -393,19 +736,19 @@ export default function AdminPage() {
                                 <p className="text-sm text-muted-foreground">{u.email}</p>
                               </div>
                               <Badge className={ROLE_COLORS.department_admin}>
-                                Department Admin
+                                Module Admin
                               </Badge>
                             </div>
                             
                             <div className="space-y-2">
-                              <p className="text-sm font-medium">Assigned Departments:</p>
-                              {u.departmentAssignments && u.departmentAssignments.length > 0 ? (
+                              <p className="text-sm font-medium">Assigned Modules:</p>
+                              {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                  {u.departmentAssignments.map(a => (
+                                  {u.moduleAssignments.map(a => (
                                     <Badge key={a.id} variant="secondary" className="gap-1">
-                                      {getDepartmentName(a.department_id)}
+                                      {getModuleName(a.module_id)}
                                       <button
-                                        onClick={() => handleRemoveDepartmentAssignment(u.id, a.department_id)}
+                                        onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
                                         className="ml-1 hover:text-destructive"
                                       >
                                         <Trash2 className="w-3 h-3" />
@@ -414,38 +757,38 @@ export default function AdminPage() {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-sm text-muted-foreground">No departments assigned</p>
+                                <p className="text-sm text-muted-foreground">No modules assigned</p>
                               )}
                             </div>
 
                             <div className="flex gap-2">
                               <Select
-                                value={selectedUser === u.id ? selectedDepartment : ''}
+                                value={selectedUser === u.id ? selectedModule : ''}
                                 onValueChange={(value) => {
                                   setSelectedUser(u.id);
-                                  setSelectedDepartment(value);
+                                  setSelectedModule(value);
                                 }}
                               >
                                 <SelectTrigger className="w-60">
-                                  <SelectValue placeholder="Select department to assign" />
+                                  <SelectValue placeholder="Select module to assign" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {departments
-                                    .filter(d => !u.departmentAssignments?.some(a => a.department_id === d.id))
-                                    .map(d => (
-                                      <SelectItem key={d.id} value={d.id}>
-                                        {d.name}
+                                  {modules
+                                    .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
+                                    .map(m => (
+                                      <SelectItem key={m.id} value={m.id}>
+                                        {getYearName(m.year_id)} - {m.name}
                                       </SelectItem>
                                     ))}
                                 </SelectContent>
                               </Select>
                               <Button
                                 onClick={() => {
-                                  if (selectedUser === u.id && selectedDepartment) {
-                                    handleAssignDepartment(u.id, selectedDepartment);
+                                  if (selectedUser === u.id && selectedModule) {
+                                    handleAssignModule(u.id, selectedModule);
                                   }
                                 }}
-                                disabled={selectedUser !== u.id || !selectedDepartment}
+                                disabled={selectedUser !== u.id || !selectedModule}
                               >
                                 Assign
                               </Button>
@@ -459,6 +802,7 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
+          {/* Feedback Tab */}
           <TabsContent value="feedback">
             <Card>
               <CardHeader>
