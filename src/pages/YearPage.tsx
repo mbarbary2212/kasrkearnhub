@@ -59,29 +59,29 @@ export default function YearPage() {
           {isLoading ? (
             <div className="flex flex-col gap-2">
               {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-[68px] w-full" />
               ))}
             </div>
           ) : modules && modules.length > 0 ? (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
               {modules.map((module, index) => (
                 <div
                   key={module.id}
-                  className="flex items-center gap-3 py-3 px-4 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 group border border-transparent hover:border-border"
+                  className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
                   onClick={() => navigate(`/module/${module.id}`)}
                 >
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground text-sm flex items-center justify-center">
+                  <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
                     {index + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">
+                    <p className="text-base font-medium text-foreground truncate">
                       {module.slug?.toUpperCase()} — {module.name}
                     </p>
                     {module.description && (
                       <p className="text-sm text-muted-foreground truncate">{module.description}</p>
                     )}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </div>
               ))}
             </div>

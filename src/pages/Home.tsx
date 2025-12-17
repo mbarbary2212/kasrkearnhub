@@ -3,7 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GraduationCap, Users, BookOpen, Stethoscope, Settings } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, Stethoscope, Settings, ChevronRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 
@@ -167,34 +167,36 @@ function LoggedInHome() {
           </section>
 
           {/* Year Selection */}
-          <section>
+          <section className="max-w-3xl mx-auto">
+            <h2 className="text-xl font-heading font-semibold mb-4">Academic Years</h2>
+            
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="flex flex-col gap-2">
                 {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-40" />
+                  <Skeleton key={i} className="h-[72px] w-full" />
                 ))}
               </div>
             ) : years && years.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
                 {years.map((year) => (
-                  <Card
+                  <div
                     key={year.id}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 group border-0 shadow-md"
+                    className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
                     onClick={() => navigate(`/year/${year.number}`)}
                   >
-                    <CardHeader className="pb-2">
-                      <div className={`w-14 h-14 ${getYearColor(year.color)} rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                        <span className="text-2xl font-bold text-primary-foreground">{year.number}</span>
-                      </div>
-                      <CardTitle className="font-heading">{year.name}</CardTitle>
-                      <CardDescription>{year.subtitle}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        Explore modules and topics
+                    <div className={`flex-shrink-0 w-11 h-11 ${getYearColor(year.color)} rounded-lg flex items-center justify-center`}>
+                      <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-medium text-foreground">
+                        {year.name}
                       </p>
-                    </CardContent>
-                  </Card>
+                      {year.subtitle && (
+                        <p className="text-sm text-muted-foreground truncate">{year.subtitle}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                  </div>
                 ))}
               </div>
             ) : (
