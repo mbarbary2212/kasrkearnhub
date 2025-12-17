@@ -10,18 +10,15 @@ import {
   useModuleResources, 
   useModuleMcqSets, 
   useModuleEssays, 
-  useModulePracticals,
-  useModuleClinicalCases 
+  useModulePracticals
 } from '@/hooks/useModuleContent';
 import { 
   ArrowLeft, 
-  BookOpen, 
   Video, 
   FileText, 
   HelpCircle, 
   PenTool, 
   FlaskConical,
-  Stethoscope,
   Clock,
   ExternalLink
 } from 'lucide-react';
@@ -36,7 +33,6 @@ export default function ModulePage() {
   const { data: mcqSets, isLoading: mcqsLoading } = useModuleMcqSets(moduleId);
   const { data: essays, isLoading: essaysLoading } = useModuleEssays(moduleId);
   const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(moduleId);
-  const { data: clinicalCases, isLoading: casesLoading } = useModuleClinicalCases(moduleId);
 
   if (!moduleLoading && !module) {
     return (
@@ -85,12 +81,12 @@ export default function ModulePage() {
           </div>
         </div>
 
-        {/* Content Tabs */}
-        <Tabs defaultValue="lectures" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto">
-            <TabsTrigger value="lectures" className="flex flex-col gap-1 py-3">
+        {/* Content Tabs - 5 tabs as requested */}
+        <Tabs defaultValue="videos" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="videos" className="flex flex-col gap-1 py-3">
               <Video className="w-4 h-4" />
-              <span className="text-xs">Lectures</span>
+              <span className="text-xs">Videos</span>
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex flex-col gap-1 py-3">
               <FileText className="w-4 h-4" />
@@ -100,32 +96,28 @@ export default function ModulePage() {
               <HelpCircle className="w-4 h-4" />
               <span className="text-xs">MCQs</span>
             </TabsTrigger>
-            <TabsTrigger value="essays" className="flex flex-col gap-1 py-3">
-              <PenTool className="w-4 h-4" />
-              <span className="text-xs">Essays</span>
-            </TabsTrigger>
-            <TabsTrigger value="practicals" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="practical" className="flex flex-col gap-1 py-3">
               <FlaskConical className="w-4 h-4" />
-              <span className="text-xs">Practicals</span>
+              <span className="text-xs">Practical</span>
             </TabsTrigger>
-            <TabsTrigger value="cases" className="flex flex-col gap-1 py-3">
-              <Stethoscope className="w-4 h-4" />
-              <span className="text-xs">Cases</span>
+            <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
+              <PenTool className="w-4 h-4" />
+              <span className="text-xs">Short Questions</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Lectures Tab */}
-          <TabsContent value="lectures" className="mt-6">
+          {/* Videos Tab (Lectures) */}
+          <TabsContent value="videos" className="mt-6">
             {lecturesLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
               </div>
             ) : lectures && lectures.length > 0 ? (
               <div className="space-y-3">
-                {lectures.map((lecture, index) => (
+                {lectures.map((lecture) => (
                   <Card key={lecture.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="flex items-center gap-4 p-4">
-                      <div className="w-12 h-12 bg-medical-blue rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
                         <Video className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -153,7 +145,7 @@ export default function ModulePage() {
                 ))}
               </div>
             ) : (
-              renderEmptyState(<Video className="w-6 h-6 text-muted-foreground" />, "No lectures available yet.")
+              renderEmptyState(<Video className="w-6 h-6 text-muted-foreground" />, "No videos available yet.")
             )}
           </TabsContent>
 
@@ -168,8 +160,8 @@ export default function ModulePage() {
                 {resources.map((resource) => (
                   <Card key={resource.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="flex items-center gap-4 p-4">
-                      <div className="w-12 h-12 bg-medical-teal rounded-lg flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-6 h-6 text-primary-foreground" />
+                      <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-6 h-6 text-secondary-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">{resource.title}</h3>
@@ -232,39 +224,8 @@ export default function ModulePage() {
             )}
           </TabsContent>
 
-          {/* Essays Tab */}
-          <TabsContent value="essays" className="mt-6">
-            {essaysLoading ? (
-              <div className="space-y-3">
-                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-              </div>
-            ) : essays && essays.length > 0 ? (
-              <div className="space-y-3">
-                {essays.map((essay) => (
-                  <Card key={essay.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <h3 className="font-medium mb-2">{essay.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
-                      {essay.keywords && essay.keywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {(essay.keywords as string[]).slice(0, 3).map((keyword, i) => (
-                            <span key={i} className="text-xs bg-secondary px-2 py-1 rounded-full">
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              renderEmptyState(<PenTool className="w-6 h-6 text-muted-foreground" />, "No essays available yet.")
-            )}
-          </TabsContent>
-
-          {/* Practicals Tab */}
-          <TabsContent value="practicals" className="mt-6">
+          {/* Practical Tab */}
+          <TabsContent value="practical" className="mt-6">
             {practicalsLoading ? (
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -275,8 +236,8 @@ export default function ModulePage() {
                   <Card key={practical.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-medical-green rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FlaskConical className="w-6 h-6 text-primary-foreground" />
+                        <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FlaskConical className="w-6 h-6 text-accent-foreground" />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-medium">{practical.title}</h3>
@@ -304,43 +265,34 @@ export default function ModulePage() {
             )}
           </TabsContent>
 
-          {/* Clinical Cases Tab */}
-          <TabsContent value="cases" className="mt-6">
-            {casesLoading ? (
+          {/* Short Questions (SAQs/Essays) Tab */}
+          <TabsContent value="saqs" className="mt-6">
+            {essaysLoading ? (
               <div className="space-y-3">
-                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
               </div>
-            ) : clinicalCases && clinicalCases.length > 0 ? (
+            ) : essays && essays.length > 0 ? (
               <div className="space-y-3">
-                {clinicalCases.map((clinicalCase) => (
-                  <Card key={clinicalCase.id} className="hover:shadow-md transition-shadow">
+                {essays.map((essay) => (
+                  <Card key={essay.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-medical-orange rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Stethoscope className="w-6 h-6 text-primary-foreground" />
+                      <h3 className="font-medium mb-2">{essay.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
+                      {essay.keywords && essay.keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(essay.keywords as string[]).slice(0, 3).map((keyword, i) => (
+                            <span key={i} className="text-xs bg-secondary px-2 py-1 rounded-full">
+                              {keyword}
+                            </span>
+                          ))}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{clinicalCase.title}</h3>
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {clinicalCase.presentation}
-                          </p>
-                          {clinicalCase.differential_diagnosis && (clinicalCase.differential_diagnosis as string[]).length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {(clinicalCase.differential_diagnosis as string[]).slice(0, 3).map((dx, i) => (
-                                <span key={i} className="text-xs bg-secondary px-2 py-1 rounded-full">
-                                  {dx}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : (
-              renderEmptyState(<Stethoscope className="w-6 h-6 text-muted-foreground" />, "No clinical cases available yet.")
+              renderEmptyState(<PenTool className="w-6 h-6 text-muted-foreground" />, "No short questions available yet.")
             )}
           </TabsContent>
         </Tabs>
