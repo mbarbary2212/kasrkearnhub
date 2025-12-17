@@ -1,23 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GraduationCap, Mail, Lock, User } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup, user } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
-  if (user) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,8 +27,11 @@ export default function Auth() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    const success = await login(email, password);
-    if (success) {
+    const { error } = await signIn(email, password);
+    if (error) {
+      toast.error(error.message || 'Failed to sign in');
+    } else {
+      toast.success('Welcome back!');
       navigate('/');
     }
     setIsLoading(false);
@@ -41,12 +45,22 @@ export default function Auth() {
     const password = formData.get('password') as string;
     const name = formData.get('name') as string;
 
-    const success = await signup(email, password, name);
-    if (success) {
-      navigate('/');
+    const { error } = await signUp(email, password, name);
+    if (error) {
+      toast.error(error.message || 'Failed to sign up');
+    } else {
+      toast.success('Account created! Please check your email to confirm.');
     }
     setIsLoading(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -101,15 +115,16 @@ export default function Auth() {
                 </div>
                 
                 <Button type="submit" className="w-full gradient-medical" disabled={isLoading}>
-                  {isLoading ? 'Logging in...' : 'Login'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    'Login'
+                  )}
                 </Button>
               </form>
-              
-              <div className="mt-4 p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Demo Admin:</strong> admin@kasrlearn.com
-                </p>
-              </div>
             </TabsContent>
             
             <TabsContent value="signup">
@@ -161,7 +176,14 @@ export default function Auth() {
                 </div>
                 
                 <Button type="submit" className="w-full gradient-medical" disabled={isLoading}>
-                  {isLoading ? 'Creating account...' : 'Create Account'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
                 </Button>
               </form>
             </TabsContent>

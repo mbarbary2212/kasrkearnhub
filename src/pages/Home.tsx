@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useDepartments } from '@/hooks/useDepartments';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,11 @@ const years = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const navigate = useNavigate();
+  const { data: departments } = useDepartments();
+
+  const totalDepartments = departments?.length || 0;
 
   return (
     <MainLayout>
@@ -79,7 +83,7 @@ export default function Home() {
                     <BookOpen className="w-6 h-6 text-secondary-foreground" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">10</p>
+                    <p className="text-2xl font-bold">{totalDepartments}</p>
                     <p className="text-sm text-muted-foreground">Departments</p>
                   </div>
                 </div>
@@ -92,7 +96,7 @@ export default function Home() {
                     <FlaskConical className="w-6 h-6 text-secondary-foreground" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">35</p>
+                    <p className="text-2xl font-bold">100+</p>
                     <p className="text-sm text-muted-foreground">Topics</p>
                   </div>
                 </div>
