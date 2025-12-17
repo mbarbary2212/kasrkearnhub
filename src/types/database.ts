@@ -1,5 +1,5 @@
 // Database types matching Supabase schema
-export type AppRole = 'student' | 'teacher' | 'admin';
+export type AppRole = 'student' | 'teacher' | 'admin' | 'department_admin' | 'platform_admin' | 'super_admin';
 export type DepartmentCategory = 'basic' | 'clinical';
 export type ContentType = 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
 
@@ -17,6 +17,52 @@ export interface UserRole {
   user_id: string;
   role: AppRole;
   created_at: string;
+}
+
+export interface DepartmentAdmin {
+  id: string;
+  user_id: string;
+  department_id: string;
+  assigned_by: string | null;
+  created_at: string;
+}
+
+export interface FeedbackTopic {
+  id: string;
+  name: string;
+  name_ar: string | null;
+  description: string | null;
+  department_id: string | null;
+  topic_id: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface StudentFeedback {
+  id: string;
+  feedback_topic_id: string;
+  department_id: string;
+  topic_id: string | null;
+  content_quality: number | null;
+  teaching_effectiveness: number | null;
+  resource_availability: number | null;
+  overall_satisfaction: number | null;
+  comments: string | null;
+  suggestions: string | null;
+  academic_year: number | null;
+  created_at: string;
+}
+
+export interface FeedbackAggregate {
+  department_id: string;
+  topic_id: string | null;
+  feedback_topic_id: string;
+  response_count: number;
+  avg_content_quality: number | null;
+  avg_teaching_effectiveness: number | null;
+  avg_resource_availability: number | null;
+  avg_overall_satisfaction: number | null;
+  period: string;
 }
 
 export interface Department {

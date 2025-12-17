@@ -73,6 +73,38 @@ export type Database = {
           },
         ]
       }
+      department_admins: {
+        Row: {
+          assigned_by: string | null
+          created_at: string | null
+          department_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string | null
+          department_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string | null
+          department_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_admins_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           category: Database["public"]["Enums"]["department_category"]
@@ -158,6 +190,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "essays_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_topics: {
+        Row: {
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_ar: string | null
+          topic_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_ar?: string | null
+          topic_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_ar?: string | null
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_topics_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_topics_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
@@ -477,6 +557,73 @@ export type Database = {
           },
         ]
       }
+      student_feedback: {
+        Row: {
+          academic_year: number | null
+          comments: string | null
+          content_quality: number | null
+          created_at: string | null
+          department_id: string
+          feedback_topic_id: string
+          id: string
+          overall_satisfaction: number | null
+          resource_availability: number | null
+          suggestions: string | null
+          teaching_effectiveness: number | null
+          topic_id: string | null
+        }
+        Insert: {
+          academic_year?: number | null
+          comments?: string | null
+          content_quality?: number | null
+          created_at?: string | null
+          department_id: string
+          feedback_topic_id: string
+          id?: string
+          overall_satisfaction?: number | null
+          resource_availability?: number | null
+          suggestions?: string | null
+          teaching_effectiveness?: number | null
+          topic_id?: string | null
+        }
+        Update: {
+          academic_year?: number | null
+          comments?: string | null
+          content_quality?: number | null
+          created_at?: string | null
+          department_id?: string
+          feedback_topic_id?: string
+          id?: string
+          overall_satisfaction?: number | null
+          resource_availability?: number | null
+          suggestions?: string | null
+          teaching_effectiveness?: number | null
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_feedback_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_feedback_topic_id_fkey"
+            columns: ["feedback_topic_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_items: {
         Row: {
           created_at: string
@@ -595,6 +742,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_level: { Args: { _user_id: string }; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -606,6 +754,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_department_admin: {
+        Args: { _department_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_platform_admin_or_higher: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:

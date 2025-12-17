@@ -10,6 +10,7 @@ import YearPage from "./pages/YearPage";
 import DepartmentPage from "./pages/DepartmentPage";
 import TopicPage from "./pages/TopicPage";
 import AdminPage from "./pages/AdminPage";
+import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/department/:departmentId" element={<DepartmentPage />} />
             <Route path="/topic/:topicId" element={<TopicPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

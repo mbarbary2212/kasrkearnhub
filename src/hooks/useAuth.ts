@@ -1,15 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AppRole, Profile } from '@/types/database';
+import { AppRole, Profile, DepartmentAdmin } from '@/types/database';
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  departmentAssignments: DepartmentAdmin[];
   isLoading: boolean;
 }
+
+// Role hierarchy levels
+const ROLE_LEVELS: Record<AppRole, number> = {
+  student: 10,
+  teacher: 25,
+  admin: 50,
+  department_admin: 50,
+  platform_admin: 75,
+  super_admin: 100,
+};
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
@@ -17,6 +28,7 @@ export function useAuth() {
     session: null,
     profile: null,
     role: null,
+    departmentAssignments: [],
     isLoading: true,
   });
 
@@ -36,10 +48,21 @@ export function useAuth() {
         .eq('user_id', userId)
         .maybeSingle();
 
+      // Fetch department assignments for department admins
+      let departmentAssignments: DepartmentAdmin[] = [];
+      if (roleData?.role === 'department_admin') {
+        const { data: assignments } = await supabase
+          .from('department_admins')
+          .select('*')
+          .eq('user_id', userId);
+        departmentAssignments = (assignments as DepartmentAdmin[]) || [];
+      }
+
       setState(prev => ({
         ...prev,
         profile: profile as Profile | null,
         role: (roleData?.role as AppRole) || 'student',
+        departmentAssignments,
         isLoading: false,
       }));
     } catch (error) {
@@ -68,6 +91,7 @@ export function useAuth() {
             ...prev,
             profile: null,
             role: null,
+            departmentAssignments: [],
             isLoading: false,
           }));
         }
@@ -136,16 +160,32 @@ export function useAuth() {
     return { error };
   };
 
+  // Check if user has at least the required role level
   const hasRole = (requiredRole: AppRole): boolean => {
     if (!state.role) return false;
-    
-    const roleHierarchy: Record<AppRole, number> = {
-      student: 1,
-      teacher: 2,
-      admin: 3,
-    };
+    return ROLE_LEVELS[state.role] >= ROLE_LEVELS[requiredRole];
+  };
 
-    return roleHierarchy[state.role] >= roleHierarchy[requiredRole];
+  // Check if user can manage a specific department
+  const canManageDepartment = (departmentId: string): boolean => {
+    if (!state.role) return false;
+    
+    // Platform admin and super admin can manage all departments
+    if (state.role === 'platform_admin' || state.role === 'super_admin') {
+      return true;
+    }
+    
+    // Department admin can only manage assigned departments
+    if (state.role === 'department_admin') {
+      return state.departmentAssignments.some(a => a.department_id === departmentId);
+    }
+    
+    // Legacy admin and teacher can manage content
+    if (state.role === 'admin' || state.role === 'teacher') {
+      return true;
+    }
+    
+    return false;
   };
 
   return {
@@ -156,8 +196,13 @@ export function useAuth() {
     resetPassword,
     updatePassword,
     hasRole,
-    isAdmin: state.role === 'admin',
-    isTeacher: state.role === 'teacher' || state.role === 'admin',
+    canManageDepartment,
+    // Role checks
+    isSuperAdmin: state.role === 'super_admin',
+    isPlatformAdmin: state.role === 'platform_admin' || state.role === 'super_admin',
+    isDepartmentAdmin: state.role === 'department_admin',
+    isAdmin: state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
+    isTeacher: state.role === 'teacher' || state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
     isStudent: !!state.role,
   };
 }
