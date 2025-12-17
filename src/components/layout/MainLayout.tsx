@@ -11,20 +11,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GraduationCap, Home, LogOut, Shield } from 'lucide-react';
+import { GraduationCap, Home, LogOut, Shield, User } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, profile, role, signOut, isAdmin } = useAuthContext();
+  const { user, profile, role, signOut, isAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -44,7 +44,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       case 'teacher':
         return 'bg-medical-teal text-primary-foreground';
       default:
-        return 'bg-secondary text-secondary-foreground';
+        return 'bg-medical-blue text-primary-foreground';
     }
   };
 
@@ -89,7 +89,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="gradient-medical text-primary-foreground">
+                    <AvatarFallback className="gradient-medical text-primary-foreground font-semibold">
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
@@ -112,6 +112,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/auth')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Account
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
                     <Shield className="mr-2 h-4 w-4" />
@@ -121,13 +125,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button onClick={() => navigate('/auth')} className="gradient-medical">
-              Login
+              Sign In
             </Button>
           )}
         </div>
