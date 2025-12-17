@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/year/:yearId" element={<YearPage />} />
             <Route path="/department/:departmentId" element={<DepartmentPage />} />
             <Route path="/topic/:topicId" element={<TopicPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
