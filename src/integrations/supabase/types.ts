@@ -32,7 +32,7 @@ export type Database = {
           presentation: string
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -51,7 +51,7 @@ export type Database = {
           presentation: string
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -70,7 +70,7 @@ export type Database = {
           presentation?: string
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
         }
         Relationships: [
           {
@@ -190,7 +190,7 @@ export type Database = {
           question_ar: string | null
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -207,7 +207,7 @@ export type Database = {
           question_ar?: string | null
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -224,7 +224,7 @@ export type Database = {
           question_ar?: string | null
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
         }
         Relationships: [
           {
@@ -328,7 +328,7 @@ export type Database = {
           module_id: string | null
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
           updated_at: string | null
           video_url: string | null
         }
@@ -344,7 +344,7 @@ export type Database = {
           module_id?: string | null
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
           updated_at?: string | null
           video_url?: string | null
         }
@@ -360,7 +360,7 @@ export type Database = {
           module_id?: string | null
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
           updated_at?: string | null
           video_url?: string | null
         }
@@ -493,7 +493,7 @@ export type Database = {
           time_limit_minutes: number | null
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -507,7 +507,7 @@ export type Database = {
           time_limit_minutes?: number | null
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -521,7 +521,7 @@ export type Database = {
           time_limit_minutes?: number | null
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
         }
         Relationships: [
           {
@@ -723,7 +723,7 @@ export type Database = {
           procedure_ar: string | null
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
           video_url: string | null
         }
         Insert: {
@@ -741,7 +741,7 @@ export type Database = {
           procedure_ar?: string | null
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
           video_url?: string | null
         }
         Update: {
@@ -759,7 +759,7 @@ export type Database = {
           procedure_ar?: string | null
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
           video_url?: string | null
         }
         Relationships: [
@@ -835,7 +835,7 @@ export type Database = {
           resource_type: string | null
           title: string
           title_ar: string | null
-          topic_id: string
+          topic_id: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -851,7 +851,7 @@ export type Database = {
           resource_type?: string | null
           title: string
           title_ar?: string | null
-          topic_id: string
+          topic_id?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -867,7 +867,7 @@ export type Database = {
           resource_type?: string | null
           title?: string
           title_ar?: string | null
-          topic_id?: string
+          topic_id?: string | null
         }
         Relationships: [
           {

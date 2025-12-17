@@ -16,9 +16,9 @@ import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
 
 interface AdminContentActionsProps {
-  chapterId: string;
+  chapterId?: string;
   moduleId: string;
-  topicId?: string; // Required for DB but we'll use a placeholder
+  topicId?: string;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
 }
 
@@ -41,13 +41,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         description: description || null,
         video_url: videoUrl || null,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000', // placeholder
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-lectures', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-lectures', moduleId] });
       toast.success('Video added successfully');
       setOpen(false);
       resetForm();
@@ -62,13 +63,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         description: description || null,
         external_url: fileUrl || null,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000',
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-resources', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-resources', moduleId] });
       toast.success('Resource added successfully');
       setOpen(false);
       resetForm();
@@ -82,13 +84,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         title,
         description: description || null,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000',
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-mcq-sets', moduleId] });
       toast.success('MCQ Set added successfully');
       setOpen(false);
       resetForm();
@@ -102,13 +105,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         title,
         question: description,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000',
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
       toast.success('Essay added successfully');
       setOpen(false);
       resetForm();
@@ -123,13 +127,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         description: description || null,
         video_url: videoUrl || null,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000',
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-practicals', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-practicals', moduleId] });
       toast.success('Practical added successfully');
       setOpen(false);
       resetForm();
@@ -144,8 +149,8 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         title: title || 'Bulk MCQ Set',
         description: description || null,
         module_id: moduleId,
-        chapter_id: chapterId,
-        topic_id: topicId || '00000000-0000-0000-0000-000000000000',
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
       }).select().single();
       
       if (setError) throw setError;
