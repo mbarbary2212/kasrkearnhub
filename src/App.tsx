@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
 import ModulePage from "./pages/ModulePage";
+import ChapterPage from "./pages/ChapterPage";
 import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/year/:yearId" element={<YearPage />} />
             <Route path="/module/:moduleId" element={<ModulePage />} />
+            <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="*" element={<NotFound />} />
