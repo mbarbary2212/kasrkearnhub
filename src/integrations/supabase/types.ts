@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clinical_cases: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -34,6 +35,7 @@ export type Database = {
           topic_id: string
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           topic_id: string
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -70,6 +73,13 @@ export type Database = {
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clinical_cases_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clinical_cases_contributing_department_id_fkey"
             columns: ["contributing_department_id"]
@@ -166,6 +176,7 @@ export type Database = {
       }
       essays: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -182,6 +193,7 @@ export type Database = {
           topic_id: string
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -198,6 +210,7 @@ export type Database = {
           topic_id: string
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -214,6 +227,13 @@ export type Database = {
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "essays_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "essays_contributing_department_id_fkey"
             columns: ["contributing_department_id"]
@@ -297,6 +317,7 @@ export type Database = {
       }
       lectures: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -312,6 +333,7 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -327,6 +349,7 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -342,6 +365,13 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lectures_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lectures_contributing_department_id_fkey"
             columns: ["contributing_department_id"]
@@ -452,6 +482,7 @@ export type Database = {
       }
       mcq_sets: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -465,6 +496,7 @@ export type Database = {
           topic_id: string
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -478,6 +510,7 @@ export type Database = {
           topic_id: string
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -491,6 +524,13 @@ export type Database = {
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mcq_sets_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mcq_sets_contributing_department_id_fkey"
             columns: ["contributing_department_id"]
@@ -539,6 +579,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "module_admins_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_chapters: {
+        Row: {
+          chapter_number: number
+          created_at: string | null
+          id: string
+          module_id: string
+          order_index: number
+          title: string
+        }
+        Insert: {
+          chapter_number: number
+          created_at?: string | null
+          id?: string
+          module_id: string
+          order_index: number
+          title: string
+        }
+        Update: {
+          chapter_number?: number
+          created_at?: string | null
+          id?: string
+          module_id?: string
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_chapters_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
@@ -634,6 +709,7 @@ export type Database = {
       }
       practicals: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -651,6 +727,7 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -668,6 +745,7 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -685,6 +763,13 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "practicals_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "practicals_contributing_department_id_fkey"
             columns: ["contributing_department_id"]
@@ -737,6 +822,7 @@ export type Database = {
       }
       resources: {
         Row: {
+          chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -752,6 +838,7 @@ export type Database = {
           topic_id: string
         }
         Insert: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -767,6 +854,7 @@ export type Database = {
           topic_id: string
         }
         Update: {
+          chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -782,6 +870,13 @@ export type Database = {
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "resources_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "resources_contributing_department_id_fkey"
             columns: ["contributing_department_id"]

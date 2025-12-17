@@ -5,14 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
-import { useModuleChapters } from '@/hooks/useChapters';
+import { useChapter } from '@/hooks/useChapters';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { 
-  useModuleLectures, 
-  useModuleResources, 
-  useModuleMcqSets, 
-  useModuleEssays, 
-  useModulePracticals
-} from '@/hooks/useModuleContent';
+  useChapterLectures, 
+  useChapterResources, 
+  useChapterMcqSets, 
+  useChapterEssays, 
+  useChapterPracticals
+} from '@/hooks/useChapterContent';
 import { 
   ArrowLeft, 
   Video, 
@@ -21,32 +23,31 @@ import {
   PenTool, 
   FlaskConical,
   Clock,
-  ExternalLink,
-  ChevronRight,
-  BookOpen
+  ExternalLink
 } from 'lucide-react';
 
-export default function ModulePage() {
-  const { moduleId } = useParams();
+export default function ChapterPage() {
+  const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
+  const { isAdmin, isTeacher } = useAuthContext();
+
+  const canManageContent = isAdmin || isTeacher;
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
-  const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(moduleId);
-  const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(moduleId);
-  const { data: resources, isLoading: resourcesLoading } = useModuleResources(moduleId);
-  const { data: mcqSets, isLoading: mcqsLoading } = useModuleMcqSets(moduleId);
-  const { data: essays, isLoading: essaysLoading } = useModuleEssays(moduleId);
-  const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(moduleId);
+  const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
+  const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
+  const { data: resources, isLoading: resourcesLoading } = useChapterResources(chapterId);
+  const { data: mcqSets, isLoading: mcqsLoading } = useChapterMcqSets(chapterId);
+  const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
+  const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
 
-  const hasChapters = chapters && chapters.length > 0;
-
-  if (!moduleLoading && !module) {
+  if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Module not found.</p>
-          <Button onClick={() => navigate('/')} className="mt-4">
-            Go Home
+          <p className="text-muted-foreground">Chapter not found.</p>
+          <Button onClick={() => navigate(`/module/${moduleId}`)} className="mt-4">
+            Back to Module
           </Button>
         </div>
       </MainLayout>
@@ -62,98 +63,32 @@ export default function ModulePage() {
     </div>
   );
 
-  // Render chapters list if module has chapters
-  if (hasChapters) {
-    return (
-      <MainLayout>
-        <div className="space-y-6 animate-fade-in">
-          {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              {moduleLoading ? (
-                <>
-                  <Skeleton className="h-9 w-64 mb-2" />
-                  <Skeleton className="h-5 w-96" />
-                </>
-              ) : (
-                <>
-                  <h1 className="text-2xl font-heading font-semibold">{module?.name}</h1>
-                  {module?.description && (
-                    <p className="text-muted-foreground text-sm">{module.description}</p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Chapters Section */}
-          <div>
-            <h2 className="text-lg font-medium mb-3 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-muted-foreground" />
-              Chapters
-            </h2>
-            
-            {chaptersLoading ? (
-              <div className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="border rounded-lg divide-y">
-                {chapters.map((chapter) => (
-                  <button
-                    key={chapter.id}
-                    onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                    className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
-                  >
-                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
-                      Ch {chapter.chapter_number}
-                    </span>
-                    <span className="flex-1 text-[15px] font-medium truncate">
-                      {chapter.title}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Default view without chapters (original tabs)
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
-            {moduleLoading ? (
+            {(moduleLoading || chapterLoading) ? (
               <>
-                <Skeleton className="h-9 w-64 mb-2" />
-                <Skeleton className="h-5 w-96" />
+                <Skeleton className="h-5 w-48 mb-2" />
+                <Skeleton className="h-8 w-96" />
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-heading font-semibold">{module?.name}</h1>
-                {module?.description && (
-                  <p className="text-muted-foreground text-sm">{module.description}</p>
-                )}
+                <p className="text-sm text-muted-foreground">{module?.name}</p>
+                <h1 className="text-2xl font-heading font-semibold">
+                  Chapter {chapter?.chapter_number}: {chapter?.title}
+                </h1>
               </>
             )}
           </div>
         </div>
 
-        {/* Content Tabs - 5 tabs as requested */}
+        {/* Content Tabs */}
         <Tabs defaultValue="videos" className="w-full">
           <TabsList className="grid w-full grid-cols-5 h-auto">
             <TabsTrigger value="videos" className="flex flex-col gap-1 py-3">
@@ -174,12 +109,17 @@ export default function ModulePage() {
             </TabsTrigger>
             <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
               <PenTool className="w-4 h-4" />
-              <span className="text-xs">Short Questions</span>
+              <span className="text-xs">Short Qs</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Videos Tab (Lectures) */}
+          {/* Videos Tab */}
           <TabsContent value="videos" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="lecture" />
+              </div>
+            )}
             {lecturesLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -223,6 +163,11 @@ export default function ModulePage() {
 
           {/* Resources Tab */}
           <TabsContent value="resources" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+              </div>
+            )}
             {resourcesLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
@@ -261,6 +206,11 @@ export default function ModulePage() {
 
           {/* MCQs Tab */}
           <TabsContent value="mcqs" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="mcq" />
+              </div>
+            )}
             {mcqsLoading ? (
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -298,6 +248,11 @@ export default function ModulePage() {
 
           {/* Practical Tab */}
           <TabsContent value="practical" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
+              </div>
+            )}
             {practicalsLoading ? (
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -337,8 +292,13 @@ export default function ModulePage() {
             )}
           </TabsContent>
 
-          {/* Short Questions (SAQs/Essays) Tab */}
+          {/* Short Questions Tab */}
           <TabsContent value="saqs" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="essay" />
+              </div>
+            )}
             {essaysLoading ? (
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
