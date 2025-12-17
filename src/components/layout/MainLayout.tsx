@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, User } from 'lucide-react';
+import { Home, LogOut, Shield, User, MessageSquare } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 interface MainLayoutProps {
@@ -19,7 +19,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, profile, role, signOut, isAdmin, isTeacher } = useAuthContext();
+  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,12 +40,31 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const getRoleBadgeColor = (userRole: string | null) => {
     switch (userRole) {
+      case 'super_admin':
+        return 'bg-red-500 text-white';
+      case 'platform_admin':
+        return 'bg-indigo-500 text-white';
+      case 'department_admin':
+        return 'bg-purple-500 text-white';
       case 'admin':
         return 'bg-medical-purple text-primary-foreground';
       case 'teacher':
         return 'bg-medical-teal text-primary-foreground';
       default:
         return 'bg-medical-blue text-primary-foreground';
+    }
+  };
+
+  const getRoleLabel = (userRole: string | null) => {
+    switch (userRole) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'platform_admin':
+        return 'Platform Admin';
+      case 'department_admin':
+        return 'Dept Admin';
+      default:
+        return userRole;
     }
   };
 
@@ -71,6 +90,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
             >
               Home
             </Link>
+            {user && (
+              <Link
+                to="/feedback"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location.pathname === '/feedback' ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Feedback
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 to="/admin"
@@ -101,7 +130,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <p className="text-xs text-muted-foreground">{displayEmail}</p>
                     {role && (
                       <span className={`text-xs px-2 py-0.5 rounded-full w-fit capitalize ${getRoleBadgeColor(role)}`}>
-                        {role}
+                        {getRoleLabel(role)}
                       </span>
                     )}
                   </div>
@@ -110,6 +139,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuItem onClick={() => navigate('/')}>
                   <Home className="mr-2 h-4 w-4" />
                   Home
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/feedback')}>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Feedback
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/auth')}>
                   <User className="mr-2 h-4 w-4" />
