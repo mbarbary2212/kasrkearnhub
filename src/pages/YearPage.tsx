@@ -2,54 +2,33 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useDepartmentsByYear } from '@/hooks/useDepartments';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  ArrowLeft, Bone, Heart, FlaskConical, Microscope, Pill, Bug, Stethoscope, 
-  Scissors, Baby, Eye, Ear, Brain, Shield, Users, Scale, Home, Syringe,
-  Ambulance, Activity, Droplet, Wind, Layers, BookOpen
-} from 'lucide-react';
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Bone,
-  Heart,
-  FlaskConical,
-  Microscope,
-  Pill,
-  Bug,
-  Stethoscope,
-  Scissors,
-  Baby,
-  Eye,
-  Ear,
-  Brain,
-  Shield,
-  Users,
-  Scale,
-  Home,
-  Syringe,
-  Ambulance,
-  Activity,
-  Droplet,
-  Wind,
-  Layers,
-  Scan: Activity,
-  BookOpen,
-};
-
-const categoryColors = {
-  basic: 'border-l-medical-blue',
-  clinical: 'border-l-medical-teal',
-};
+import { useYear } from '@/hooks/useYears';
+import { useModulesByYearNumber } from '@/hooks/useModules';
+import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
 export default function YearPage() {
   const { yearId } = useParams();
   const navigate = useNavigate();
-  const year = parseInt(yearId || '1');
-  const { data: departments, isLoading } = useDepartmentsByYear(year);
+  const yearNumber = parseInt(yearId || '1', 10);
 
-  const basicSciences = departments?.filter(d => d.category === 'basic') || [];
-  const clinicalDepts = departments?.filter(d => d.category === 'clinical') || [];
+  const { data: year, isLoading: yearLoading } = useYear(yearNumber);
+  const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
+
+  const isLoading = yearLoading || modulesLoading;
+
+  if (!yearLoading && !year) {
+    return (
+      <MainLayout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Year not found.</p>
+          <Button onClick={() => navigate('/')} className="mt-4">
+            Go Home
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -60,96 +39,63 @@ export default function YearPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-heading font-bold">Year {year}</h1>
-            <p className="text-muted-foreground">Select a department to explore topics</p>
+            {yearLoading ? (
+              <>
+                <Skeleton className="h-9 w-48 mb-2" />
+                <Skeleton className="h-5 w-72" />
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-heading font-bold">{year?.name}</h1>
+                <p className="text-muted-foreground">{year?.subtitle}</p>
+              </>
+            )}
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Basic Sciences */}
-            {basicSciences.length > 0 && (
-              <section>
-                <h2 className="text-xl font-heading font-semibold mb-4 text-medical-blue">
-                  Basic Sciences
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {basicSciences.map((dept) => {
-                    const Icon = iconMap[dept.icon] || FlaskConical;
-                    return (
-                      <Card
-                        key={dept.id}
-                        className={`cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border-l-4 ${categoryColors.basic}`}
-                        onClick={() => navigate(`/department/${dept.slug}`)}
-                      >
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                              <Icon className="w-5 h-5 text-secondary-foreground" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg font-heading">{dept.name}</CardTitle>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <CardDescription>{dept.description}</CardDescription>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+        {/* Modules List */}
+        <section>
+          <h2 className="text-xl font-heading font-semibold mb-4">Modules</h2>
 
-            {/* Clinical Departments */}
-            {clinicalDepts.length > 0 && (
-              <section>
-                <h2 className="text-xl font-heading font-semibold mb-4 text-medical-teal">
-                  Clinical Departments
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {clinicalDepts.map((dept) => {
-                    const Icon = iconMap[dept.icon] || Stethoscope;
-                    return (
-                      <Card
-                        key={dept.id}
-                        className={`cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border-l-4 ${categoryColors.clinical}`}
-                        onClick={() => navigate(`/department/${dept.slug}`)}
-                      >
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                              <Icon className="w-5 h-5 text-secondary-foreground" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg font-heading">{dept.name}</CardTitle>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <CardDescription>{dept.description}</CardDescription>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {departments?.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No departments available for this year.</p>
-              </div>
-            )}
-          </>
-        )}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          ) : modules && modules.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {modules.map((module, index) => (
+                <Card
+                  key={module.id}
+                  className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 group border-0 shadow-md"
+                  onClick={() => navigate(`/module/${module.id}`)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className={`w-12 h-12 ${year?.color || 'bg-primary'} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <span className="text-lg font-bold text-primary-foreground">{index + 1}</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                    <CardTitle className="font-heading mt-3">{module.name}</CardTitle>
+                    {module.description && (
+                      <CardDescription className="line-clamp-2">{module.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No modules available for this year yet.</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Check back later or contact your administrator.
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </MainLayout>
   );

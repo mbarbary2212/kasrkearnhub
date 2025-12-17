@@ -2,7 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, Users, BookOpen, Stethoscope } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { GraduationCap, Users, BookOpen, Stethoscope, Settings } from 'lucide-react';
+import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 
 export default function Home() {
@@ -120,14 +122,14 @@ export default function Home() {
 function LoggedInHome() {
   const navigate = useNavigate();
   const { profile, role } = useAuthContext();
+  const { data: years, isLoading } = useYears();
 
-  const years = [
-    { year: 1, title: 'Year 1', subtitle: 'Foundation', color: 'bg-medical-blue' },
-    { year: 2, title: 'Year 2', subtitle: 'Pre-Clinical', color: 'bg-medical-teal' },
-    { year: 3, title: 'Year 3', subtitle: 'Clinical I', color: 'bg-medical-green' },
-    { year: 4, title: 'Year 4', subtitle: 'Clinical II', color: 'bg-medical-orange' },
-    { year: 5, title: 'Year 5', subtitle: 'Final Year', color: 'bg-medical-purple' },
-  ];
+  const isAdmin = role === 'admin' || role === 'department_admin' || role === 'platform_admin' || role === 'super_admin';
+
+  // Color mapping for years
+  const getYearColor = (color: string | null) => {
+    return color || 'bg-primary';
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,8 +141,9 @@ function LoggedInHome() {
             <span className="font-heading font-bold text-xl">KasrLearn</span>
           </div>
           <div className="flex items-center gap-4">
-            {role === 'admin' && (
+            {isAdmin && (
               <Button variant="ghost" onClick={() => navigate('/admin')}>
+                <Settings className="w-4 h-4 mr-2" />
                 Admin
               </Button>
             )}
@@ -165,28 +168,41 @@ function LoggedInHome() {
 
           {/* Year Selection */}
           <section>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              {years.map(({ year, title, subtitle, color }) => (
-                <Card
-                  key={year}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 group border-0 shadow-md"
-                  onClick={() => navigate(`/year/${year}`)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                      <span className="text-2xl font-bold text-primary-foreground">{year}</span>
-                    </div>
-                    <CardTitle className="font-heading">{title}</CardTitle>
-                    <CardDescription>{subtitle}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Explore departments and topics
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-40" />
+                ))}
+              </div>
+            ) : years && years.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {years.map((year) => (
+                  <Card
+                    key={year.id}
+                    className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 group border-0 shadow-md"
+                    onClick={() => navigate(`/year/${year.number}`)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className={`w-14 h-14 ${getYearColor(year.color)} rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                        <span className="text-2xl font-bold text-primary-foreground">{year.number}</span>
+                      </div>
+                      <CardTitle className="font-heading">{year.name}</CardTitle>
+                      <CardDescription>{year.subtitle}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        Explore modules and topics
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No years available yet.</p>
+              </div>
+            )}
           </section>
         </div>
       </main>

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clinical_cases: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           differential_diagnosis: string[] | null
@@ -26,12 +27,14 @@ export type Database = {
           id: string
           investigations: string | null
           management: string | null
+          module_id: string | null
           presentation: string
           title: string
           title_ar: string | null
           topic_id: string
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           differential_diagnosis?: string[] | null
@@ -42,12 +45,14 @@ export type Database = {
           id?: string
           investigations?: string | null
           management?: string | null
+          module_id?: string | null
           presentation: string
           title: string
           title_ar?: string | null
           topic_id: string
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           differential_diagnosis?: string[] | null
@@ -58,12 +63,27 @@ export type Database = {
           id?: string
           investigations?: string | null
           management?: string | null
+          module_id?: string | null
           presentation?: string
           title?: string
           title_ar?: string | null
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clinical_cases_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_cases_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clinical_cases_topic_id_fkey"
             columns: ["topic_id"]
@@ -146,6 +166,7 @@ export type Database = {
       }
       essays: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           display_order: number | null
@@ -153,6 +174,7 @@ export type Database = {
           keywords: string[] | null
           model_answer: string | null
           model_answer_ar: string | null
+          module_id: string | null
           question: string
           question_ar: string | null
           title: string
@@ -160,6 +182,7 @@ export type Database = {
           topic_id: string
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -167,6 +190,7 @@ export type Database = {
           keywords?: string[] | null
           model_answer?: string | null
           model_answer_ar?: string | null
+          module_id?: string | null
           question: string
           question_ar?: string | null
           title: string
@@ -174,6 +198,7 @@ export type Database = {
           topic_id: string
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -181,6 +206,7 @@ export type Database = {
           keywords?: string[] | null
           model_answer?: string | null
           model_answer_ar?: string | null
+          module_id?: string | null
           question?: string
           question_ar?: string | null
           title?: string
@@ -188,6 +214,20 @@ export type Database = {
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "essays_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "essays_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "essays_topic_id_fkey"
             columns: ["topic_id"]
@@ -204,6 +244,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          module_id: string | null
           name: string
           name_ar: string | null
           topic_id: string | null
@@ -214,6 +255,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          module_id?: string | null
           name: string
           name_ar?: string | null
           topic_id?: string | null
@@ -224,6 +266,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          module_id?: string | null
           name?: string
           name_ar?: string | null
           topic_id?: string | null
@@ -237,6 +280,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "feedback_topics_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "feedback_topics_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -247,12 +297,14 @@ export type Database = {
       }
       lectures: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           display_order: number | null
           duration: string | null
           id: string
+          module_id: string | null
           title: string
           title_ar: string | null
           topic_id: string
@@ -260,12 +312,14 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           duration?: string | null
           id?: string
+          module_id?: string | null
           title: string
           title_ar?: string | null
           topic_id: string
@@ -273,12 +327,14 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           duration?: string | null
           id?: string
+          module_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string
@@ -286,6 +342,20 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lectures_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lectures_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lectures_topic_id_fkey"
             columns: ["topic_id"]
@@ -382,39 +452,59 @@ export type Database = {
       }
       mcq_sets: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           display_order: number | null
           id: string
+          module_id: string | null
           time_limit_minutes: number | null
           title: string
           title_ar: string | null
           topic_id: string
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           id?: string
+          module_id?: string | null
           time_limit_minutes?: number | null
           title: string
           title_ar?: string | null
           topic_id: string
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           id?: string
+          module_id?: string | null
           time_limit_minutes?: number | null
           title?: string
           title_ar?: string | null
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mcq_sets_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcq_sets_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mcq_sets_topic_id_fkey"
             columns: ["topic_id"]
@@ -424,14 +514,134 @@ export type Database = {
           },
         ]
       }
+      module_admins: {
+        Row: {
+          assigned_by: string | null
+          created_at: string | null
+          id: string
+          module_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          module_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          module_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_admins_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_departments: {
+        Row: {
+          created_at: string | null
+          department_id: string
+          id: string
+          is_primary: boolean | null
+          module_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id: string
+          id?: string
+          is_primary?: boolean | null
+          module_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string
+          id?: string
+          is_primary?: boolean | null
+          module_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_departments_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_published: boolean | null
+          name: string
+          name_ar: string | null
+          slug: string
+          updated_at: string | null
+          year_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          name: string
+          name_ar?: string | null
+          slug: string
+          updated_at?: string | null
+          year_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          name?: string
+          name_ar?: string | null
+          slug?: string
+          updated_at?: string | null
+          year_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practicals: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           display_order: number | null
           equipment: string[] | null
           id: string
+          module_id: string | null
           objectives: string[] | null
           procedure: string | null
           procedure_ar: string | null
@@ -441,12 +651,14 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           equipment?: string[] | null
           id?: string
+          module_id?: string | null
           objectives?: string[] | null
           procedure?: string | null
           procedure_ar?: string | null
@@ -456,12 +668,14 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
           equipment?: string[] | null
           id?: string
+          module_id?: string | null
           objectives?: string[] | null
           procedure?: string | null
           procedure_ar?: string | null
@@ -471,6 +685,20 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "practicals_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicals_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "practicals_topic_id_fkey"
             columns: ["topic_id"]
@@ -509,6 +737,7 @@ export type Database = {
       }
       resources: {
         Row: {
+          contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -516,12 +745,14 @@ export type Database = {
           external_url: string | null
           file_url: string | null
           id: string
+          module_id: string | null
           resource_type: string | null
           title: string
           title_ar: string | null
           topic_id: string
         }
         Insert: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -529,12 +760,14 @@ export type Database = {
           external_url?: string | null
           file_url?: string | null
           id?: string
+          module_id?: string | null
           resource_type?: string | null
           title: string
           title_ar?: string | null
           topic_id: string
         }
         Update: {
+          contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -542,12 +775,27 @@ export type Database = {
           external_url?: string | null
           file_url?: string | null
           id?: string
+          module_id?: string | null
           resource_type?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "resources_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "resources_topic_id_fkey"
             columns: ["topic_id"]
@@ -566,6 +814,7 @@ export type Database = {
           department_id: string
           feedback_topic_id: string
           id: string
+          module_id: string | null
           overall_satisfaction: number | null
           resource_availability: number | null
           suggestions: string | null
@@ -580,6 +829,7 @@ export type Database = {
           department_id: string
           feedback_topic_id: string
           id?: string
+          module_id?: string | null
           overall_satisfaction?: number | null
           resource_availability?: number | null
           suggestions?: string | null
@@ -594,6 +844,7 @@ export type Database = {
           department_id?: string
           feedback_topic_id?: string
           id?: string
+          module_id?: string | null
           overall_satisfaction?: number | null
           resource_availability?: number | null
           suggestions?: string | null
@@ -613,6 +864,13 @@ export type Database = {
             columns: ["feedback_topic_id"]
             isOneToOne: false
             referencedRelation: "feedback_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {
@@ -737,11 +995,54 @@ export type Database = {
         }
         Relationships: []
       }
+      years: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_ar: string | null
+          number: number
+          subtitle: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_ar?: string | null
+          number: number
+          subtitle?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_ar?: string | null
+          number?: number
+          subtitle?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_manage_module_content: {
+        Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
@@ -756,6 +1057,10 @@ export type Database = {
       }
       is_department_admin: {
         Args: { _department_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_module_admin: {
+        Args: { _module_id: string; _user_id: string }
         Returns: boolean
       }
       is_platform_admin_or_higher: {
