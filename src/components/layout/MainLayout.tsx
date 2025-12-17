@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -11,23 +11,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GraduationCap, Home, Settings, LogOut, Shield, User } from 'lucide-react';
+import { GraduationCap, Home, LogOut, Shield } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, profile, role, signOut, isAdmin } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/auth');
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(n => n[0])
@@ -36,8 +37,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
       .slice(0, 2);
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
+  const getRoleBadgeColor = (userRole: string | null) => {
+    switch (userRole) {
       case 'admin':
         return 'bg-medical-purple text-primary-foreground';
       case 'teacher':
@@ -46,6 +47,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return 'bg-secondary text-secondary-foreground';
     }
   };
+
+  const displayName = profile?.full_name || user?.email || 'User';
+  const displayEmail = user?.email || '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,7 +72,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             >
               Home
             </Link>
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <Link
                 to="/admin"
                 className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -86,7 +90,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="gradient-medical text-primary-foreground">
-                      {getInitials(user.name)}
+                      {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -94,11 +98,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <DropdownMenuContent className="w-56" align="end">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full w-fit capitalize ${getRoleBadgeColor(user.role)}`}>
-                      {user.role}
-                    </span>
+                    <p className="text-sm font-medium">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">{displayEmail}</p>
+                    {role && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full w-fit capitalize ${getRoleBadgeColor(role)}`}>
+                        {role}
+                      </span>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -106,7 +112,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                {user.role === 'admin' && (
+                {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
                     <Shield className="mr-2 h-4 w-4" />
                     Admin Panel
