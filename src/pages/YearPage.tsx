@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
@@ -58,32 +57,32 @@ export default function YearPage() {
           <h2 className="text-xl font-heading font-semibold mb-4">Modules</h2>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-2">
               {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
           ) : modules && modules.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1">
               {modules.map((module, index) => (
-                <Card
+                <div
                   key={module.id}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 group border-0 shadow-md"
+                  className="flex items-center gap-3 py-3 px-4 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 group border border-transparent hover:border-border"
                   onClick={() => navigate(`/module/${module.id}`)}
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className={`w-12 h-12 ${year?.color || 'bg-primary'} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                        <span className="text-lg font-bold text-primary-foreground">{index + 1}</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <CardTitle className="font-heading mt-3">{module.name}</CardTitle>
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground text-sm flex items-center justify-center">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">
+                      {module.slug?.toUpperCase()} — {module.name}
+                    </p>
                     {module.description && (
-                      <CardDescription className="line-clamp-2">{module.description}</CardDescription>
+                      <p className="text-sm text-muted-foreground truncate">{module.description}</p>
                     )}
-                  </CardHeader>
-                </Card>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                </div>
               ))}
             </div>
           ) : (
