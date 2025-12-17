@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GraduationCap, Mail, Lock, User, Loader2, ArrowLeft, BookOpen, Users, KeyRound } from 'lucide-react';
+import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 type AuthView = 'login' | 'forgot' | 'reset';
 
@@ -140,9 +141,7 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <div className="mx-auto w-16 h-16 bg-medical-blue rounded-2xl flex items-center justify-center mb-4">
-                <KeyRound className="w-8 h-8 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
               <CardTitle className="text-2xl font-heading font-bold">Set New Password</CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
@@ -221,9 +220,7 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <div className="mx-auto w-16 h-16 bg-medical-blue rounded-2xl flex items-center justify-center mb-4">
-                <Mail className="w-8 h-8 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
               <CardTitle className="text-2xl font-heading font-bold">Forgot Password?</CardTitle>
               <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
             </CardHeader>
@@ -273,9 +270,7 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 gradient-medical rounded-2xl flex items-center justify-center mb-4">
-              <GraduationCap className="w-8 h-8 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
             <CardTitle>You're signed in</CardTitle>
             <CardDescription>What would you like to do?</CardDescription>
           </CardHeader>
@@ -293,8 +288,6 @@ export default function Auth() {
   }
 
   const isStudent = loginType === 'student';
-  const icon = isStudent ? <BookOpen className="w-8 h-8 text-primary-foreground" /> : <Users className="w-8 h-8 text-primary-foreground" />;
-  const bgColor = isStudent ? 'bg-medical-blue' : 'bg-medical-teal';
   const title = isStudent ? 'Student Portal' : 'Faculty & Staff Portal';
 
   return (
@@ -314,9 +307,7 @@ export default function Auth() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
-            <div className={`mx-auto w-16 h-16 ${bgColor} rounded-2xl flex items-center justify-center mb-4`}>
-              {icon}
-            </div>
+            <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
             <CardTitle className="text-2xl font-heading font-bold">{title}</CardTitle>
             <CardDescription>Sign in to access KasrLearn</CardDescription>
           </CardHeader>

@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GraduationCap, Home, LogOut, Shield, User } from 'lucide-react';
+import { Home, LogOut, Shield, User } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -57,9 +58,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 gradient-medical rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
             <span className="font-heading font-bold text-xl">KasrLearn</span>
           </Link>
 

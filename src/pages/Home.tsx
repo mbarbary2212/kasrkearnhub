@@ -3,6 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, Users, BookOpen, Stethoscope } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 export default function Home() {
   const { user } = useAuthContext();
@@ -24,9 +25,7 @@ export default function Home() {
           {/* Logo and Title */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center gap-3 mb-6">
-              <div className="w-16 h-16 gradient-medical rounded-2xl flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-8 h-8 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="KasrLearn Logo" className="w-20 h-20 object-contain" />
             </div>
             <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">
               <span className="text-gradient-medical">KasrLearn</span>
@@ -136,9 +135,7 @@ function LoggedInHome() {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 gradient-medical rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
             <span className="font-heading font-bold text-xl">KasrLearn</span>
           </div>
           <div className="flex items-center gap-4">
