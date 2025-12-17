@@ -6,20 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GraduationCap, Mail, Lock, User, Loader2, ArrowLeft, BookOpen, Users } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, Loader2, ArrowLeft, BookOpen, Users, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+
+type AuthView = 'login' | 'forgot' | 'reset';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const loginType = searchParams.get('type') || 'student';
+  const mode = searchParams.get('mode');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user, isLoading: authLoading, signOut } = useAuthContext();
+  const [authView, setAuthView] = useState<AuthView>('login');
+  const { signIn, signUp, signOut, resetPassword, updatePassword, user, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Don't auto-redirect if user is on this page intentionally
-    // They might want to sign out or switch accounts
-  }, [user, navigate]);
+    // Check if this is a password reset callback
+    if (mode === 'reset') {
+      setAuthView('reset');
+    }
+  }, [mode]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,6 +61,51 @@ export default function Auth() {
     setIsLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+
+    const { error } = await resetPassword(email);
+    if (error) {
+      toast.error(error.message || 'Failed to send reset email');
+    } else {
+      toast.success('Password reset email sent! Check your inbox.');
+      setAuthView('login');
+    }
+    setIsLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await updatePassword(password);
+    if (error) {
+      toast.error(error.message || 'Failed to reset password');
+    } else {
+      toast.success('Password updated successfully!');
+      navigate('/');
+    }
+    setIsLoading(false);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     toast.success('Signed out successfully');
@@ -64,6 +115,154 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Show password reset form if in reset mode
+  if (authView === 'reset') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="absolute inset-0 gradient-medical opacity-5" />
+        
+        <div className="w-full max-w-md relative z-10">
+          <Button 
+            variant="ghost" 
+            className="mb-4"
+            onClick={() => {
+              setAuthView('login');
+              navigate('/auth');
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Login
+          </Button>
+
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-16 h-16 bg-medical-blue rounded-2xl flex items-center justify-center mb-4">
+                <KeyRound className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-2xl font-heading font-bold">Set New Password</CardTitle>
+              <CardDescription>Enter your new password below</CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="new-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="confirm-password"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-medical"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating password...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show forgot password form
+  if (authView === 'forgot') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="absolute inset-0 gradient-medical opacity-5" />
+        
+        <div className="w-full max-w-md relative z-10">
+          <Button 
+            variant="ghost" 
+            className="mb-4"
+            onClick={() => setAuthView('login')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Login
+          </Button>
+
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-16 h-16 bg-medical-blue rounded-2xl flex items-center justify-center mb-4">
+                <Mail className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-2xl font-heading font-bold">Forgot Password?</CardTitle>
+              <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reset-email"
+                      name="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-medical"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending reset link...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -147,7 +346,17 @@ export default function Auth() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                        onClick={() => setAuthView('forgot')}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input

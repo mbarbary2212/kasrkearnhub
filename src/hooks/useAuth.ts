@@ -121,6 +121,21 @@ export function useAuth() {
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth?mode=reset`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { error };
+  };
+
   const hasRole = (requiredRole: AppRole): boolean => {
     if (!state.role) return false;
     
@@ -138,6 +153,8 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    resetPassword,
+    updatePassword,
     hasRole,
     isAdmin: state.role === 'admin',
     isTeacher: state.role === 'teacher' || state.role === 'admin',
