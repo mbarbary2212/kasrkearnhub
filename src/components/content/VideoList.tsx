@@ -1,9 +1,17 @@
-import { VideoLesson } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlayCircle, Clock } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
+import VideoCard from './VideoCard';
+
+interface Video {
+  id: string;
+  title: string;
+  description?: string | null;
+  video_url?: string | null;
+  videoUrl?: string | null;
+  duration?: string | null;
+}
 
 interface VideoListProps {
-  videos: VideoLesson[];
+  videos: Video[];
 }
 
 export default function VideoList({ videos }: VideoListProps) {
@@ -17,28 +25,16 @@ export default function VideoList({ videos }: VideoListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {videos.map((video) => (
-        <Card key={video.id} className="overflow-hidden">
-          <div className="aspect-video bg-muted">
-            <iframe
-              src={video.videoUrl}
-              title={video.title}
-              className="w-full h-full"
-              allowFullScreen
-            />
-          </div>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">{video.title}</CardTitle>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span>{video.duration}</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>{video.description}</CardDescription>
-          </CardContent>
-        </Card>
+        <VideoCard
+          key={video.id}
+          id={video.id}
+          title={video.title}
+          description={video.description}
+          videoUrl={video.video_url || video.videoUrl || null}
+          duration={video.duration}
+        />
       ))}
     </div>
   );
