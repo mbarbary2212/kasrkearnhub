@@ -1,9 +1,18 @@
-import { useState, useRef } from 'react';
-import { Layers, Plus, Upload, Printer, Pencil, Trash2, AlertTriangle, Settings } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Layers, Plus, Upload, Printer, Pencil, Trash2, AlertTriangle, Settings, RotateCcw, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,25 +48,95 @@ interface FlashcardListProps {
   isSuperAdmin?: boolean;
 }
 
-// Single flashcard component with 3D flip
+interface FlashcardItemProps {
+  flashcard: Flashcard;
+  canManage: boolean;
+  onEdit: (flashcard: Flashcard) => void;
+  onDelete: (flashcard: Flashcard) => void;
+  autoReturnEnabled: boolean;
+  autoReturnDelay: number;
+}
+
+// Single flashcard component with 3D flip and auto-return
 function FlashcardItem({
   flashcard,
   canManage,
   onEdit,
   onDelete,
-}: {
-  flashcard: Flashcard;
-  canManage: boolean;
-  onEdit: (flashcard: Flashcard) => void;
-  onDelete: (flashcard: Flashcard) => void;
-}) {
+  autoReturnEnabled,
+  autoReturnDelay,
+}: FlashcardItemProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      isScrollingRef.current = true;
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 150);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
+
+  // Auto-return countdown
+  useEffect(() => {
+    if (isFlipped && autoReturnEnabled && !isScrollingRef.current) {
+      setCountdown(autoReturnDelay);
+      
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            if (countdownRef.current) clearInterval(countdownRef.current);
+            if (!isScrollingRef.current) {
+              setIsFlipped(false);
+            }
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setCountdown(null);
+    }
+
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, [isFlipped, autoReturnEnabled, autoReturnDelay]);
+
+  const handleClick = useCallback(() => {
+    // If clicking while flipped, cancel countdown and keep it open
+    if (isFlipped) {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+      setCountdown(null);
+      setIsFlipped(false);
+    } else {
+      setIsFlipped(true);
+    }
+  }, [isFlipped]);
 
   return (
     <div
-      className="relative w-full h-48 cursor-pointer group"
+      className="relative w-full max-w-[520px] mx-auto h-36 sm:h-40 cursor-pointer group"
       style={{ perspective: '1000px' }}
-      onClick={() => setIsFlipped(!isFlipped)}
+      onClick={handleClick}
     >
       <div
         className="relative w-full h-full transition-transform duration-500"
@@ -68,43 +147,53 @@ function FlashcardItem({
       >
         {/* Front */}
         <Card
-          className="absolute inset-0 p-6 flex flex-col justify-center items-center text-center"
+          className="absolute inset-0 p-4 flex flex-col justify-center items-center text-center"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Question</p>
-          <p className="text-lg font-medium">{flashcard.front}</p>
-          <p className="text-xs text-muted-foreground mt-4">Click to reveal answer</p>
+          <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">Question</p>
+          <p className="text-sm sm:text-base font-medium leading-snug line-clamp-4">{flashcard.front}</p>
+          <p className="text-[10px] text-muted-foreground mt-2">Click to reveal answer</p>
         </Card>
 
         {/* Back */}
         <Card
-          className="absolute inset-0 p-6 flex flex-col justify-center items-center text-center bg-primary/5"
+          className="absolute inset-0 p-4 flex flex-col justify-center items-center text-center bg-primary/5"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
         >
-          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Answer</p>
-          <p className="text-lg">{flashcard.back}</p>
+          <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">Answer</p>
+          <p className="text-sm sm:text-base leading-snug line-clamp-4">{flashcard.back}</p>
+          
+          {/* Countdown indicator */}
+          {countdown !== null && (
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <RotateCcw className="h-3 w-3" />
+                Returning in {countdown}s
+              </span>
+            </div>
+          )}
         </Card>
       </div>
 
       {/* Admin actions */}
       {canManage && (
         <div
-          className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => onEdit(flashcard)}>
-            <Pencil className="h-4 w-4" />
+          <Button size="icon" variant="secondary" className="h-7 w-7" onClick={() => onEdit(flashcard)}>
+            <Pencil className="h-3 w-3" />
           </Button>
           <Button
             size="icon"
             variant="destructive"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => onDelete(flashcard)}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       )}
@@ -129,6 +218,10 @@ export default function FlashcardList({
   const [deleteConfirm, setDeleteConfirm] = useState<Flashcard | null>(null);
   const [disclaimerEditOpen, setDisclaimerEditOpen] = useState(false);
   const [editedDisclaimer, setEditedDisclaimer] = useState('');
+
+  // Auto-return settings
+  const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
+  const [autoReturnDelay, setAutoReturnDelay] = useState(5);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -269,9 +362,44 @@ export default function FlashcardList({
         </div>
       )}
 
+      {/* Auto-return controls */}
+      {flashcards && flashcards.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="auto-return"
+              checked={autoReturnEnabled}
+              onCheckedChange={setAutoReturnEnabled}
+            />
+            <Label htmlFor="auto-return" className="text-sm cursor-pointer flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5" />
+              Auto-return
+            </Label>
+          </div>
+          {autoReturnEnabled && (
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground">Delay:</Label>
+              <Select
+                value={String(autoReturnDelay)}
+                onValueChange={(val) => setAutoReturnDelay(Number(val))}
+              >
+                <SelectTrigger className="w-20 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3s</SelectItem>
+                  <SelectItem value="5">5s</SelectItem>
+                  <SelectItem value="8">8s</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Flashcards grid */}
       {flashcards && flashcards.length > 0 ? (
-        <div ref={printRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {flashcards.map((flashcard) => (
             <FlashcardItem
               key={flashcard.id}
@@ -279,6 +407,8 @@ export default function FlashcardList({
               canManage={canManage}
               onEdit={handleEdit}
               onDelete={setDeleteConfirm}
+              autoReturnEnabled={autoReturnEnabled}
+              autoReturnDelay={autoReturnDelay}
             />
           ))}
         </div>
