@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, User, MessageSquare, Inbox } from 'lucide-react';
+import { Home, LogOut, Shield, User, MessageSquare, Inbox, HelpCircle } from 'lucide-react';
 import logo from '@/assets/logo.png';
+import InquiryModal from '@/components/feedback/InquiryModal';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [inquiryOpen, setInquiryOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -176,9 +178,23 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-24">
         {children}
       </main>
+
+      {/* Floating Contact Us Button */}
+      {user && (
+        <Button
+          onClick={() => setInquiryOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-40"
+          size="icon"
+        >
+          <HelpCircle className="h-6 w-6" />
+        </Button>
+      )}
+
+      {/* Inquiry Modal */}
+      <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
     </div>
   );
 }
