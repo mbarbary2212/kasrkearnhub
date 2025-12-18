@@ -5,6 +5,21 @@ import { toast } from "sonner";
 
 type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases';
 
+type QueryKeyMap = {
+  topic: string;
+  chapter: string;
+  module: string;
+};
+
+const QUERY_KEYS: Record<ContentTable, QueryKeyMap> = {
+  lectures: { topic: 'lectures', chapter: 'chapter-lectures', module: 'module-lectures' },
+  resources: { topic: 'resources', chapter: 'chapter-resources', module: 'module-resources' },
+  mcq_sets: { topic: 'mcq_sets', chapter: 'chapter-mcq-sets', module: 'module-mcq-sets' },
+  essays: { topic: 'essays', chapter: 'chapter-essays', module: 'module-essays' },
+  practicals: { topic: 'practicals', chapter: 'chapter-practicals', module: 'module-practicals' },
+  clinical_cases: { topic: 'clinical_cases', chapter: 'chapter-clinical-cases', module: 'module-clinical-cases' },
+};
+
 const TABLE_LABELS: Record<ContentTable, string> = {
   lectures: 'Video',
   resources: 'Resource',
@@ -21,8 +36,8 @@ interface DeleteState {
 
 export function useContentDelete(
   table: ContentTable,
-  moduleId: string, 
-  chapterId?: string
+  moduleId: string,
+  chapterId?: string,
 ) {
   const qc = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -30,6 +45,7 @@ export function useContentDelete(
   const [isDeleting, setIsDeleting] = useState(false);
 
   const label = TABLE_LABELS[table];
+  const keys = QUERY_KEYS[table];
 
   const askDelete = (id: string, title: string) => {
     setPendingItem({ id, title });
@@ -43,37 +59,51 @@ export function useContentDelete(
 
   const doDelete = async () => {
     if (!pendingItem) return;
-    
+
+    const deletingId = pendingItem.id;
+    const deletingTitle = pendingItem.title;
+
     setIsDeleting(true);
 
+    // Optimistically remove from any cached lists (instant UI update)
+    const removeFromList = (old: unknown) => {
+      if (!Array.isArray(old)) return old;
+      return old.filter((item: any) => item?.id !== deletingId);
+    };
+
+    if (chapterId) {
+      qc.setQueryData([keys.chapter, chapterId], removeFromList);
+    }
+    if (moduleId) {
+      qc.setQueryData([keys.module, moduleId], removeFromList);
+    }
+    qc.setQueriesData({ queryKey: [keys.topic] }, removeFromList);
+
     try {
-      // Soft delete - set is_deleted to true
       const { error } = await supabase
         .from(table)
         .update({ is_deleted: true })
-        .eq("id", pendingItem.id);
+        .eq('id', deletingId);
 
       if (error) throw error;
 
-      // Invalidate all relevant queries to refetch
-      const queryKey = table === 'mcq_sets' ? 'mcq-sets' : table;
-      
       await Promise.all([
-        qc.invalidateQueries({ queryKey: [table] }),
-        qc.invalidateQueries({ queryKey: [`chapter-${queryKey}`, chapterId] }),
-        qc.invalidateQueries({ queryKey: [`module-${queryKey}`, moduleId] }),
-        // Also invalidate with generic patterns
-        qc.invalidateQueries({ queryKey: ['chapter-lectures', chapterId] }),
-        qc.invalidateQueries({ queryKey: ['chapter-resources', chapterId] }),
-        qc.invalidateQueries({ queryKey: ['chapter-mcq-sets', chapterId] }),
-        qc.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
-        qc.invalidateQueries({ queryKey: ['chapter-practicals', chapterId] }),
+        qc.invalidateQueries({ queryKey: [keys.chapter, chapterId] }),
+        qc.invalidateQueries({ queryKey: [keys.module, moduleId] }),
+        qc.invalidateQueries({ queryKey: [keys.topic] }),
       ]);
 
-      toast.success(`"${pendingItem.title}" deleted successfully`);
+      toast.success(`"${deletingTitle}" deleted successfully`);
     } catch (error) {
       console.error(`Failed to delete ${table}:`, error);
       toast.error(`Failed to delete ${label.toLowerCase()}`);
+
+      // Roll back by refetching
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [keys.chapter, chapterId] }),
+        qc.invalidateQueries({ queryKey: [keys.module, moduleId] }),
+        qc.invalidateQueries({ queryKey: [keys.topic] }),
+      ]);
     } finally {
       setIsDeleting(false);
       setConfirmOpen(false);
@@ -81,11 +111,11 @@ export function useContentDelete(
     }
   };
 
-  return { 
-    askDelete, 
-    doDelete, 
-    cancelDelete, 
-    confirmOpen, 
+  return {
+    askDelete,
+    doDelete,
+    cancelDelete,
+    confirmOpen,
     isDeleting,
     pendingItem,
     label,
