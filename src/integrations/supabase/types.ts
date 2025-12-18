@@ -1456,6 +1456,90 @@ export type Database = {
           },
         ]
       }
+      study_resources: {
+        Row: {
+          chapter_id: string
+          content: Json
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          id: string
+          is_deleted: boolean | null
+          module_id: string
+          resource_type: Database["public"]["Enums"]["study_resource_type"]
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id: string
+          content?: Json
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean | null
+          module_id: string
+          resource_type: Database["public"]["Enums"]["study_resource_type"]
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string
+          content?: Json
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean | null
+          module_id?: string
+          resource_type?: Database["public"]["Enums"]["study_resource_type"]
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_resources_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_resources_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       test_items: {
         Row: {
           created_at: string
@@ -1759,6 +1843,12 @@ export type Database = {
       feedback_severity: "normal" | "urgent" | "extreme"
       feedback_status: "new" | "in_review" | "closed"
       mcq_difficulty: "easy" | "medium" | "hard"
+      study_resource_type:
+        | "flashcard"
+        | "table"
+        | "algorithm"
+        | "exam_tip"
+        | "key_image"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1907,6 +1997,13 @@ export const Constants = {
       feedback_severity: ["normal", "urgent", "extreme"],
       feedback_status: ["new", "in_review", "closed"],
       mcq_difficulty: ["easy", "medium", "hard"],
+      study_resource_type: [
+        "flashcard",
+        "table",
+        "algorithm",
+        "exam_tip",
+        "key_image",
+      ],
     },
   },
 } as const
