@@ -7,6 +7,7 @@ import { useTopic } from '@/hooks/useTopics';
 import { useLectures, useResources, useMcqSets, useEssays, usePracticals, useClinicalCases } from '@/hooks/useContent';
 import { ArrowLeft, PlayCircle, FileText, ClipboardList, PenTool, Beaker, Stethoscope, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import VideoList from '@/components/content/VideoList';
 
 export default function TopicPage() {
   const { topicId } = useParams();
@@ -100,35 +101,7 @@ export default function TopicPage() {
 
           {/* Lectures Tab */}
           <TabsContent value="lectures">
-            {lectures && lectures.length > 0 ? (
-              <div className="grid gap-4">
-                {lectures.map((lecture) => (
-                  <Card key={lecture.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <PlayCircle className="w-8 h-8 text-primary" />
-                        <div>
-                          <CardTitle className="text-lg">{lecture.title}</CardTitle>
-                          {lecture.duration && (
-                            <CardDescription>{lecture.duration}</CardDescription>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    {lecture.description && (
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{lecture.description}</p>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              renderEmptyState(
-                <PlayCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />,
-                "No lectures available yet."
-              )
-            )}
+            <VideoList videos={lectures || []} />
           </TabsContent>
 
           {/* Resources Tab */}
