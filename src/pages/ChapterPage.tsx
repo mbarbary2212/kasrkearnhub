@@ -8,6 +8,7 @@ import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
+import ContentItemActions from '@/components/admin/ContentItemActions';
 import VideoList from '@/components/content/VideoList';
 import { 
   useChapterLectures, 
@@ -126,7 +127,14 @@ export default function ChapterPage() {
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="aspect-video" />)}
               </div>
             ) : (
-              <VideoList videos={lectures || []} />
+              <VideoList 
+                videos={lectures || []} 
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
             )}
           </TabsContent>
 
@@ -156,14 +164,29 @@ export default function ChapterPage() {
                         )}
                         <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
                       </div>
-                      {(resource.file_url || resource.external_url) && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            Open
-                          </a>
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {(resource.file_url || resource.external_url) && (
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              Open
+                            </a>
+                          </Button>
+                        )}
+                        {moduleId && (
+                          <ContentItemActions
+                            id={resource.id}
+                            title={resource.title}
+                            description={resource.description}
+                            fileUrl={resource.file_url || resource.external_url}
+                            contentType="resource"
+                            moduleId={moduleId}
+                            chapterId={chapterId}
+                            canEdit={canManageContent}
+                            canDelete={canManageContent}
+                          />
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -189,7 +212,21 @@ export default function ChapterPage() {
                 {mcqSets.map((mcqSet) => (
                   <Card key={mcqSet.id} className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{mcqSet.title}</CardTitle>
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg flex-1">{mcqSet.title}</CardTitle>
+                        {moduleId && (
+                          <ContentItemActions
+                            id={mcqSet.id}
+                            title={mcqSet.title}
+                            description={mcqSet.description}
+                            contentType="mcq"
+                            moduleId={moduleId}
+                            chapterId={chapterId}
+                            canEdit={canManageContent}
+                            canDelete={canManageContent}
+                          />
+                        )}
+                      </div>
                       {mcqSet.description && (
                         <CardDescription>{mcqSet.description}</CardDescription>
                       )}
@@ -236,19 +273,24 @@ export default function ChapterPage() {
                           <FlaskConical className="w-6 h-6 text-accent-foreground" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium">{practical.title}</h3>
+                          <div className="flex items-start justify-between">
+                            <h3 className="font-medium">{practical.title}</h3>
+                            {moduleId && (
+                              <ContentItemActions
+                                id={practical.id}
+                                title={practical.title}
+                                description={practical.description}
+                                videoUrl={practical.video_url}
+                                contentType="practical"
+                                moduleId={moduleId}
+                                chapterId={chapterId}
+                                canEdit={canManageContent}
+                                canDelete={canManageContent}
+                              />
+                            )}
+                          </div>
                           {practical.description && (
                             <p className="text-sm text-muted-foreground mt-1">{practical.description}</p>
-                          )}
-                          {practical.objectives && (practical.objectives as string[]).length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-muted-foreground">Objectives:</p>
-                              <ul className="text-sm text-muted-foreground list-disc list-inside">
-                                {(practical.objectives as string[]).slice(0, 2).map((obj, i) => (
-                                  <li key={i} className="truncate">{obj}</li>
-                                ))}
-                              </ul>
-                            </div>
                           )}
                         </div>
                       </div>
@@ -277,17 +319,22 @@ export default function ChapterPage() {
                 {essays.map((essay) => (
                   <Card key={essay.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <h3 className="font-medium mb-2">{essay.title}</h3>
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-medium mb-2">{essay.title}</h3>
+                        {moduleId && (
+                          <ContentItemActions
+                            id={essay.id}
+                            title={essay.title}
+                            description={essay.question}
+                            contentType="essay"
+                            moduleId={moduleId}
+                            chapterId={chapterId}
+                            canEdit={canManageContent}
+                            canDelete={canManageContent}
+                          />
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
-                      {essay.keywords && essay.keywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {(essay.keywords as string[]).slice(0, 3).map((keyword, i) => (
-                            <span key={i} className="text-xs bg-secondary px-2 py-1 rounded-full">
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}

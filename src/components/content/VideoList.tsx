@@ -12,9 +12,21 @@ interface Video {
 
 interface VideoListProps {
   videos: Video[];
+  moduleId?: string;
+  chapterId?: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  showFeedback?: boolean;
 }
 
-export default function VideoList({ videos }: VideoListProps) {
+export default function VideoList({ 
+  videos, 
+  moduleId, 
+  chapterId,
+  canEdit = false,
+  canDelete = false,
+  showFeedback = true,
+}: VideoListProps) {
   if (videos.length === 0) {
     return (
       <div className="text-center py-12">
@@ -34,6 +46,11 @@ export default function VideoList({ videos }: VideoListProps) {
           description={video.description}
           videoUrl={video.video_url || video.videoUrl || null}
           duration={video.duration}
+          moduleId={moduleId}
+          chapterId={chapterId}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          showFeedback={showFeedback}
         />
       ))}
     </div>

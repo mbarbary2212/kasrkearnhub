@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, User, MessageSquare } from 'lucide-react';
+import { Home, LogOut, Shield, User, MessageSquare, Inbox } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 interface MainLayoutProps {
@@ -149,10 +149,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   Account
                 </DropdownMenuItem>
                 {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate('/admin')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Admin Panel
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
+                      <Inbox className="mr-2 h-4 w-4" />
+                      Admin Inbox
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">

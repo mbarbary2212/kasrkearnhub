@@ -57,12 +57,14 @@ export type Database = {
           history: string | null
           id: string
           investigations: string | null
+          is_deleted: boolean
           management: string | null
           module_id: string | null
           presentation: string
           title: string
           title_ar: string | null
           topic_id: string | null
+          updated_by: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -76,12 +78,14 @@ export type Database = {
           history?: string | null
           id?: string
           investigations?: string | null
+          is_deleted?: boolean
           management?: string | null
           module_id?: string | null
           presentation: string
           title: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -95,12 +99,14 @@ export type Database = {
           history?: string | null
           id?: string
           investigations?: string | null
+          is_deleted?: boolean
           management?: string | null
           module_id?: string | null
           presentation?: string
           title?: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -212,6 +218,7 @@ export type Database = {
           created_by: string | null
           display_order: number | null
           id: string
+          is_deleted: boolean
           keywords: string[] | null
           model_answer: string | null
           model_answer_ar: string | null
@@ -221,6 +228,7 @@ export type Database = {
           title: string
           title_ar: string | null
           topic_id: string | null
+          updated_by: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -229,6 +237,7 @@ export type Database = {
           created_by?: string | null
           display_order?: number | null
           id?: string
+          is_deleted?: boolean
           keywords?: string[] | null
           model_answer?: string | null
           model_answer_ar?: string | null
@@ -238,6 +247,7 @@ export type Database = {
           title: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -246,6 +256,7 @@ export type Database = {
           created_by?: string | null
           display_order?: number | null
           id?: string
+          is_deleted?: boolean
           keywords?: string[] | null
           model_answer?: string | null
           model_answer_ar?: string | null
@@ -255,6 +266,7 @@ export type Database = {
           title?: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -479,6 +491,141 @@ export type Database = {
           },
         ]
       }
+      inquiries: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          chapter_id: string | null
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          message: string
+          module_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          category: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          message: string
+          module_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          message?: string
+          module_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiries_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_feedback: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          chapter_id: string | null
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          is_flagged: boolean
+          item_id: string | null
+          item_type: string
+          message: string
+          module_id: string | null
+          rating: number | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          category: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          is_flagged?: boolean
+          item_id?: string | null
+          item_type: string
+          message: string
+          module_id?: string | null
+          rating?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          is_flagged?: boolean
+          item_id?: string | null
+          item_type?: string
+          message?: string
+          module_id?: string | null
+          rating?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_feedback_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_feedback_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lectures: {
         Row: {
           chapter_id: string | null
@@ -489,11 +636,13 @@ export type Database = {
           display_order: number | null
           duration: string | null
           id: string
+          is_deleted: boolean
           module_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
           updated_at: string | null
+          updated_by: string | null
           video_url: string | null
         }
         Insert: {
@@ -505,11 +654,13 @@ export type Database = {
           display_order?: number | null
           duration?: string | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_url?: string | null
         }
         Update: {
@@ -521,11 +672,13 @@ export type Database = {
           display_order?: number | null
           duration?: string | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           video_url?: string | null
         }
         Relationships: [
@@ -653,11 +806,13 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
+          is_deleted: boolean
           module_id: string | null
           time_limit_minutes: number | null
           title: string
           title_ar: string | null
           topic_id: string | null
+          updated_by: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -667,11 +822,13 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           time_limit_minutes?: number | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -681,11 +838,13 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           time_limit_minutes?: number | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -884,6 +1043,7 @@ export type Database = {
           display_order: number | null
           equipment: string[] | null
           id: string
+          is_deleted: boolean
           module_id: string | null
           objectives: string[] | null
           procedure: string | null
@@ -891,6 +1051,7 @@ export type Database = {
           title: string
           title_ar: string | null
           topic_id: string | null
+          updated_by: string | null
           video_url: string | null
         }
         Insert: {
@@ -902,6 +1063,7 @@ export type Database = {
           display_order?: number | null
           equipment?: string[] | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           objectives?: string[] | null
           procedure?: string | null
@@ -909,6 +1071,7 @@ export type Database = {
           title: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
           video_url?: string | null
         }
         Update: {
@@ -920,6 +1083,7 @@ export type Database = {
           display_order?: number | null
           equipment?: string[] | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           objectives?: string[] | null
           procedure?: string | null
@@ -927,6 +1091,7 @@ export type Database = {
           title?: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
           video_url?: string | null
         }
         Relationships: [
@@ -998,11 +1163,13 @@ export type Database = {
           external_url: string | null
           file_url: string | null
           id: string
+          is_deleted: boolean
           module_id: string | null
           resource_type: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
+          updated_by: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -1014,11 +1181,13 @@ export type Database = {
           external_url?: string | null
           file_url?: string | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           resource_type?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -1030,11 +1199,13 @@ export type Database = {
           external_url?: string | null
           file_url?: string | null
           id?: string
+          is_deleted?: boolean
           module_id?: string | null
           resource_type?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
