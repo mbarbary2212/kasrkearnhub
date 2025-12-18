@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Layers, Plus, Upload, Printer, Pencil, Trash2, AlertTriangle, Settings, RotateCcw, Timer } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Layers, Plus, Upload, Printer, Pencil, Trash2, AlertTriangle, Settings, RotateCcw, Timer, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -223,6 +223,28 @@ export default function FlashcardList({
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
   const [autoReturnDelay, setAutoReturnDelay] = useState(5);
 
+  // Shuffle mode
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [shuffleKey, setShuffleKey] = useState(0);
+
+  // Shuffled flashcards
+  const displayedFlashcards = useMemo(() => {
+    if (!flashcards) return [];
+    if (!shuffleEnabled) return flashcards;
+    
+    // Fisher-Yates shuffle with a key to trigger re-shuffle
+    const shuffled = [...flashcards];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [flashcards, shuffleEnabled, shuffleKey]);
+
+  const handleReshuffle = () => {
+    setShuffleKey((prev) => prev + 1);
+  };
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const handleEdit = (flashcard: Flashcard) => {
@@ -362,9 +384,30 @@ export default function FlashcardList({
         </div>
       )}
 
-      {/* Auto-return controls */}
+      {/* Study controls */}
       {flashcards && flashcards.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg">
+          {/* Shuffle toggle */}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="shuffle-mode"
+              checked={shuffleEnabled}
+              onCheckedChange={setShuffleEnabled}
+            />
+            <Label htmlFor="shuffle-mode" className="text-sm cursor-pointer flex items-center gap-1.5">
+              <Shuffle className="h-3.5 w-3.5" />
+              Shuffle
+            </Label>
+            {shuffleEnabled && (
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={handleReshuffle}>
+                <RotateCcw className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-border hidden sm:block" />
+
+          {/* Auto-return toggle */}
           <div className="flex items-center gap-2">
             <Switch
               id="auto-return"
@@ -398,9 +441,9 @@ export default function FlashcardList({
       )}
 
       {/* Flashcards grid */}
-      {flashcards && flashcards.length > 0 ? (
+      {displayedFlashcards && displayedFlashcards.length > 0 ? (
         <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {flashcards.map((flashcard) => (
+          {displayedFlashcards.map((flashcard) => (
             <FlashcardItem
               key={flashcard.id}
               flashcard={flashcard}
