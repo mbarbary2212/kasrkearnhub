@@ -3,6 +3,7 @@ import { Play, Clock, AlertCircle, Video } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 import VideoPlayerModal from './VideoPlayerModal';
+import ContentItemActions from '@/components/admin/ContentItemActions';
 
 interface VideoCardProps {
   id: string;
@@ -10,9 +11,25 @@ interface VideoCardProps {
   description?: string | null;
   videoUrl: string | null;
   duration?: string | null;
+  moduleId?: string;
+  chapterId?: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  showFeedback?: boolean;
 }
 
-export default function VideoCard({ id, title, description, videoUrl, duration }: VideoCardProps) {
+export default function VideoCard({ 
+  id, 
+  title, 
+  description, 
+  videoUrl, 
+  duration,
+  moduleId,
+  chapterId,
+  canEdit = false,
+  canDelete = false,
+  showFeedback = true,
+}: VideoCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   
@@ -31,6 +48,8 @@ export default function VideoCard({ id, title, description, videoUrl, duration }
 
   // Show thumbnail if available and no error, otherwise show placeholder
   const showThumbnail = videoInfo.thumbnailUrl && !thumbnailError;
+
+  const showActions = moduleId && (canEdit || canDelete || showFeedback);
 
   return (
     <>
@@ -78,7 +97,23 @@ export default function VideoCard({ id, title, description, videoUrl, duration }
         </div>
 
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium line-clamp-2">{title}</CardTitle>
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-base font-medium line-clamp-2 flex-1">{title}</CardTitle>
+            {showActions && (
+              <ContentItemActions
+                id={id}
+                title={title}
+                description={description}
+                videoUrl={videoUrl}
+                contentType="lecture"
+                moduleId={moduleId!}
+                chapterId={chapterId}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                showFeedback={showFeedback}
+              />
+            )}
+          </div>
           {duration && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />

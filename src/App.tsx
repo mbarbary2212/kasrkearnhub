@@ -11,6 +11,7 @@ import ModulePage from "./pages/ModulePage";
 import ChapterPage from "./pages/ChapterPage";
 import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
+import AdminInboxPage from "./pages/AdminInboxPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/module/:moduleId" element={<ModulePage />} />
             <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/inbox" element={<AdminInboxPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
