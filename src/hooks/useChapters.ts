@@ -7,6 +7,7 @@ export interface ModuleChapter {
   chapter_number: number;
   title: string;
   order_index: number;
+  book_label: string | null;
   created_at: string | null;
 }
 

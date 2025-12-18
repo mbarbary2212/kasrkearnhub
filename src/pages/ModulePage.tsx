@@ -32,12 +32,13 @@ export default function ModulePage() {
   const navigate = useNavigate();
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
-  const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(moduleId);
-  const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(moduleId);
-  const { data: resources, isLoading: resourcesLoading } = useModuleResources(moduleId);
-  const { data: mcqSets, isLoading: mcqsLoading } = useModuleMcqSets(moduleId);
-  const { data: essays, isLoading: essaysLoading } = useModuleEssays(moduleId);
-  const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(moduleId);
+  const actualModuleId = module?.id;
+  const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
+  const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(actualModuleId);
+  const { data: resources, isLoading: resourcesLoading } = useModuleResources(actualModuleId);
+  const { data: mcqSets, isLoading: mcqsLoading } = useModuleMcqSets(actualModuleId);
+  const { data: essays, isLoading: essaysLoading } = useModuleEssays(actualModuleId);
+  const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(actualModuleId);
 
   const hasChapters = chapters && chapters.length > 0;
 
@@ -62,6 +63,22 @@ export default function ModulePage() {
       <p className="text-muted-foreground">{message}</p>
     </div>
   );
+
+  // Group chapters by book_label
+  const groupedChapters = hasChapters ? chapters.reduce((acc, chapter) => {
+    const label = chapter.book_label || 'Chapters';
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(chapter);
+    return acc;
+  }, {} as Record<string, typeof chapters>) : {};
+
+  const bookLabels = Object.keys(groupedChapters);
+  const hasBookGroups = bookLabels.length > 1 || (bookLabels.length === 1 && bookLabels[0] !== 'Chapters');
+
+  const bookDescriptions: Record<string, string> = {
+    'Book 2': 'Gastrointestinal & Abdominal Surgery',
+    'Book 3': 'Surgical Specialties',
+  };
 
   // Render chapters list if module has chapters
   if (hasChapters) {
@@ -91,35 +108,69 @@ export default function ModulePage() {
           </div>
 
           {/* Chapters Section */}
-          <div>
-            <h2 className="text-lg font-medium mb-3 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-muted-foreground" />
-              Chapters
-            </h2>
-            
+          <div className="space-y-6">
             {chaptersLoading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full" />
                 ))}
               </div>
+            ) : hasBookGroups ? (
+              // Grouped by book labels
+              Object.entries(groupedChapters).map(([bookLabel, bookChapters]) => (
+                <div key={bookLabel}>
+                  <div className="mb-3">
+                    <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      {bookLabel}
+                    </h2>
+                    {bookDescriptions[bookLabel] && (
+                      <p className="text-sm text-muted-foreground ml-7">{bookDescriptions[bookLabel]}</p>
+                    )}
+                  </div>
+                  <div className="border rounded-lg divide-y">
+                    {bookChapters.map((chapter) => (
+                      <button
+                        key={chapter.id}
+                        onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
+                        className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
+                          Ch {chapter.chapter_number}
+                        </span>
+                        <span className="flex-1 text-[15px] font-medium truncate">
+                          {chapter.title}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
             ) : (
-              <div className="border rounded-lg divide-y">
-                {chapters.map((chapter) => (
-                  <button
-                    key={chapter.id}
-                    onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                    className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
-                  >
-                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
-                      Ch {chapter.chapter_number}
-                    </span>
-                    <span className="flex-1 text-[15px] font-medium truncate">
-                      {chapter.title}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                ))}
+              // Simple chapter list without book grouping
+              <div>
+                <h2 className="text-lg font-medium mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-muted-foreground" />
+                  Chapters
+                </h2>
+                <div className="border rounded-lg divide-y">
+                  {chapters.map((chapter) => (
+                    <button
+                      key={chapter.id}
+                      onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
+                      className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
+                        Ch {chapter.chapter_number}
+                      </span>
+                      <span className="flex-1 text-[15px] font-medium truncate">
+                        {chapter.title}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

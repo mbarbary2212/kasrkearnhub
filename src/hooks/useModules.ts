@@ -52,20 +52,23 @@ export function useModulesByYearNumber(yearNumber: number) {
   });
 }
 
-export function useModule(moduleId: string) {
+export function useModule(moduleIdOrSlug: string) {
   return useQuery({
-    queryKey: ['module', moduleId],
+    queryKey: ['module', moduleIdOrSlug],
     queryFn: async () => {
+      // Try to fetch by ID first (UUID format check)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleIdOrSlug);
+      
       const { data, error } = await supabase
         .from('modules')
         .select('*')
-        .eq('id', moduleId)
+        .eq(isUUID ? 'id' : 'slug', moduleIdOrSlug)
         .maybeSingle();
 
       if (error) throw error;
       return data as Module | null;
     },
-    enabled: !!moduleId,
+    enabled: !!moduleIdOrSlug,
   });
 }
 
