@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Play, Clock, AlertCircle } from 'lucide-react';
+import { Play, Clock, AlertCircle, Video } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { extractYouTubeId, getYouTubeThumbnail, isValidYouTubeUrl } from '@/lib/youtube';
+import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 import VideoPlayerModal from './VideoPlayerModal';
 
 interface VideoCardProps {
@@ -14,16 +14,23 @@ interface VideoCardProps {
 
 export default function VideoCard({ id, title, description, videoUrl, duration }: VideoCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState(false);
   
-  const videoId = extractYouTubeId(videoUrl);
-  const thumbnailUrl = videoId ? getYouTubeThumbnail(videoId, 'hq') : null;
-  const isValid = isValidYouTubeUrl(videoUrl);
+  const videoInfo = getVideoInfo(videoUrl);
+  const isValid = isValidVideoUrl(videoUrl);
 
   const handleClick = () => {
     if (isValid) {
       setIsModalOpen(true);
     }
   };
+
+  const handleThumbnailError = () => {
+    setThumbnailError(true);
+  };
+
+  // Show thumbnail if available and no error, otherwise show placeholder
+  const showThumbnail = videoInfo.thumbnailUrl && !thumbnailError;
 
   return (
     <>
@@ -33,14 +40,21 @@ export default function VideoCard({ id, title, description, videoUrl, duration }
       >
         {/* Thumbnail with play overlay */}
         <div className="relative aspect-video bg-muted">
-          {thumbnailUrl ? (
+          {isValid ? (
             <>
-              <img
-                src={thumbnailUrl}
-                alt={title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              {showThumbnail ? (
+                <img
+                  src={videoInfo.thumbnailUrl!}
+                  alt={title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={handleThumbnailError}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <Video className="w-16 h-16 text-muted-foreground/50" />
+                </div>
+              )}
               {/* Dark overlay on hover */}
               <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center group">
                 {/* Play button overlay */}
@@ -48,6 +62,12 @@ export default function VideoCard({ id, title, description, videoUrl, duration }
                   <Play className="w-7 h-7 text-primary-foreground ml-1" fill="currentColor" />
                 </div>
               </div>
+              {/* Source badge */}
+              {videoInfo.source === 'googledrive' && (
+                <div className="absolute top-2 left-2 px-2 py-0.5 bg-background/80 rounded text-xs text-muted-foreground">
+                  Google Drive
+                </div>
+              )}
             </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">

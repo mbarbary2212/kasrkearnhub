@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
+import { isValidVideoUrl, detectVideoSource } from '@/lib/video';
 
 interface AdminContentActionsProps {
   chapterId?: string;
@@ -36,6 +37,10 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const addLecture = useMutation({
     mutationFn: async () => {
+      // Validate video URL if provided
+      if (videoUrl && !isValidVideoUrl(videoUrl)) {
+        throw new Error('Invalid video URL. Please use a YouTube or Google Drive link.');
+      }
       const { error } = await supabase.from('lectures').insert({
         title,
         description: description || null,
@@ -122,6 +127,10 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const addPractical = useMutation({
     mutationFn: async () => {
+      // Validate video URL if provided
+      if (videoUrl && !isValidVideoUrl(videoUrl)) {
+        throw new Error('Invalid video URL. Please use a YouTube or Google Drive link.');
+      }
       const { error } = await supabase.from('practicals').insert({
         title,
         description: description || null,
@@ -244,7 +253,10 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
             {(contentType === 'lecture' || contentType === 'practical') && (
               <div>
                 <Label>Video URL</Label>
-                <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="https://..." />
+                <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
+                </p>
               </div>
             )}
             {contentType === 'resource' && (
