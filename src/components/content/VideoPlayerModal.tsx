@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X } from 'lucide-react';
-import { extractYouTubeId, getYouTubeEmbedUrl } from '@/lib/youtube';
+import { getVideoInfo } from '@/lib/video';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -11,8 +11,7 @@ interface VideoPlayerModalProps {
 }
 
 export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: VideoPlayerModalProps) {
-  const videoId = extractYouTubeId(videoUrl);
-  const embedUrl = videoId ? getYouTubeEmbedUrl(videoId) : null;
+  const videoInfo = getVideoInfo(videoUrl);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -33,9 +32,9 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
 
           {/* Video container with 16:9 aspect ratio */}
           <div className="aspect-video w-full bg-muted">
-            {embedUrl ? (
+            {videoInfo.embedUrl ? (
               <iframe
-                src={embedUrl}
+                src={videoInfo.embedUrl}
                 title={title || 'Video'}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
