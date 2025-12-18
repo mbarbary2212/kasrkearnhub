@@ -38,7 +38,7 @@ export default function VideoList({
   canDelete = false,
   showFeedback = true,
 }: VideoListProps) {
-  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting } = useVideoDelete(
+  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
     moduleId || '', 
     chapterId
   );
@@ -68,17 +68,17 @@ export default function VideoList({
             canEdit={canEdit}
             canDelete={canDelete}
             showFeedback={showFeedback}
-            onDelete={() => askDelete(video.id)}
+            onDelete={() => askDelete(video.id, video.title)}
           />
         ))}
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <AlertDialogContent className="z-[9999]">
+        <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this video?</AlertDialogTitle>
+            <AlertDialogTitle>Delete video?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the video from this section.
+              Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -45,7 +45,7 @@ export default function PracticalList({
   canDelete = false,
   showFeedback = true,
 }: PracticalListProps) {
-  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting } = useContentDelete(
+  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
     'practicals',
     moduleId || '',
     chapterId
@@ -84,7 +84,7 @@ export default function PracticalList({
                             Manage
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[180px]">
+                        <DropdownMenuContent align="end" className="min-w-[180px] z-[50]">
                           {canEdit && (
                             <DropdownMenuItem className="gap-2">
                               <Pencil className="h-4 w-4" />
@@ -93,7 +93,7 @@ export default function PracticalList({
                           )}
                           {canDelete && (
                             <DropdownMenuItem
-                              onClick={() => askDelete(practical.id)}
+                              onClick={() => askDelete(practical.id, practical.title)}
                               className="gap-2 text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -124,11 +124,11 @@ export default function PracticalList({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <AlertDialogContent className="z-[9999]">
+        <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this practical?</AlertDialogTitle>
+            <AlertDialogTitle>Delete practical?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the practical from this section.
+              Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
