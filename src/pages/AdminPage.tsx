@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
+import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -804,34 +805,7 @@ export default function AdminPage() {
 
           {/* Feedback Tab */}
           <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
-                  Student Feedback Analytics
-                </CardTitle>
-                <CardDescription>
-                  View aggregated anonymous feedback from students. Individual responses are never visible to protect student privacy.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No Feedback Data Yet</p>
-                  <p className="text-sm mt-2">
-                    Feedback will appear here once students submit responses and the minimum threshold (5 responses) is met.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => navigate('/feedback')}
-                  >
-                    View Feedback Portal
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminFeedbackPanel />
           </TabsContent>
         </Tabs>
       </div>
