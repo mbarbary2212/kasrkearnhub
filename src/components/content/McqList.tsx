@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react';
-import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +24,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
-import { useDeleteMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq } from '@/hooks/useMcqs';
+import { useDeleteMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -37,19 +47,54 @@ const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,e
 "What is the capital of France?",Paris,London,Berlin,Madrid,Rome,A,"Paris is the capital and largest city of France.",easy
 "Which organ produces insulin?",Heart,Liver,Pancreas,Kidney,Spleen,C,"The pancreas contains islet cells that produce insulin.",medium`;
 
+const SIMILARITY_THRESHOLD = 0.85;
+
 export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [csvText, setCsvText] = useState('');
-  const [previewData, setPreviewData] = useState<ReturnType<typeof parseMcqCsv> | null>(null);
+  const [previewData, setPreviewData] = useState<DuplicateResult<McqFormData>[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useDeleteMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+
+  // Find duplicates in existing MCQs
+  const duplicateMcqs = useMemo(() => {
+    if (!isAdmin) return [];
+    
+    const duplicates: { mcq: Mcq; matchedWith: Mcq; similarity: number }[] = [];
+    
+    for (let i = 0; i < mcqs.length; i++) {
+      for (let j = i + 1; j < mcqs.length; j++) {
+        const result = isMcqDuplicate(mcqs[i], mcqs[j]);
+        if (result.isExact || result.similarity >= SIMILARITY_THRESHOLD) {
+          duplicates.push({
+            mcq: mcqs[j],
+            matchedWith: mcqs[i],
+            similarity: result.similarity,
+          });
+        }
+      }
+    }
+    
+    return duplicates;
+  }, [mcqs, isAdmin]);
+
+  const duplicateIds = useMemo(() => 
+    new Set(duplicateMcqs.map(d => d.mcq.id)),
+    [duplicateMcqs]
+  );
+
+  const filteredMcqs = useMemo(() => {
+    if (!showDuplicatesOnly) return mcqs;
+    return mcqs.filter(mcq => duplicateIds.has(mcq.id));
+  }, [mcqs, showDuplicatesOnly, duplicateIds]);
 
   const handleDelete = () => {
     if (!deletingMcq) return;
@@ -60,10 +105,34 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     );
   };
 
+  const processWithDuplicateDetection = (parsed: McqFormData[]) => {
+    // Compare with existing MCQs
+    const existingForComparison = mcqs.map(mcq => ({
+      id: mcq.id,
+      stem: mcq.stem,
+      choices: mcq.choices as { key: string; text: string }[],
+    }));
+
+    const results = findDuplicates(
+      parsed.map(p => ({ stem: p.stem, choices: p.choices })),
+      existingForComparison,
+      (a, b) => isMcqDuplicate(a, b),
+      SIMILARITY_THRESHOLD
+    );
+
+    // Map back to McqFormData with duplicate info
+    return results.map((result, index) => ({
+      ...result,
+      item: parsed[index],
+      status: (result.isExactDuplicate ? 'skip' : 'pending') as 'pending' | 'import' | 'skip',
+    }));
+  };
+
   const handlePreviewCsv = () => {
     if (!csvText.trim()) return;
     const parsed = parseMcqCsv(csvText);
-    setPreviewData(parsed);
+    const withDuplicates = processWithDuplicateDetection(parsed);
+    setPreviewData(withDuplicates);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +159,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
           return;
         }
         
-        setPreviewData(parsed);
+        const withDuplicates = processWithDuplicateDetection(parsed);
+        setPreviewData(withDuplicates);
         setCsvText(text);
       } catch (err) {
         setFileError('Failed to parse CSV file');
@@ -114,16 +184,32 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     }
   };
 
+  const toggleItemStatus = (index: number) => {
+    if (!previewData) return;
+    setPreviewData(prev => prev!.map((item, i) => 
+      i === index 
+        ? { ...item, status: item.status === 'skip' ? 'import' : 'skip' }
+        : item
+    ));
+  };
+
   const handleBulkImport = () => {
-    if (!previewData || previewData.length === 0) return;
+    if (!previewData) return;
+    
+    const itemsToImport = previewData
+      .filter(item => item.status !== 'skip')
+      .map(item => item.item);
+
+    if (itemsToImport.length === 0) {
+      return;
+    }
     
     bulkCreateMutation.mutate(
-      { mcqs: previewData, moduleId, chapterId },
+      { mcqs: itemsToImport, moduleId, chapterId },
       {
         onSuccess: () => {
           setShowBulkModal(false);
-          setCsvText('');
-          setPreviewData(null);
+          resetBulkModal();
         },
       }
     );
@@ -139,6 +225,10 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     URL.revokeObjectURL(url);
   };
 
+  const exactDuplicates = previewData?.filter(p => p.isExactDuplicate).length || 0;
+  const possibleDuplicates = previewData?.filter(p => p.isPossibleDuplicate).length || 0;
+  const itemsToImport = previewData?.filter(p => p.status !== 'skip').length || 0;
+
   if (mcqs.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -151,35 +241,84 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     <div className="space-y-4">
       {/* Admin Actions */}
       {isAdmin && (
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setShowBulkModal(true)} className="gap-2">
-            <Upload className="h-4 w-4" />
-            Bulk Import
-          </Button>
-          <Button onClick={() => setShowAddModal(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Question
-          </Button>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {duplicateMcqs.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Filter className="h-3 w-3" />
+                    Filters
+                    {showDuplicatesOnly && (
+                      <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    checked={showDuplicatesOnly}
+                    onCheckedChange={setShowDuplicatesOnly}
+                  >
+                    <Copy className="h-3 w-3 mr-2" />
+                    Show duplicates only ({duplicateMcqs.length})
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowBulkModal(true)} className="gap-2">
+              <Upload className="h-4 w-4" />
+              Bulk Import
+            </Button>
+            <Button onClick={() => setShowAddModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Question
+            </Button>
+          </div>
         </div>
       )}
 
+      {/* Duplicate Alert */}
+      {isAdmin && showDuplicatesOnly && duplicateMcqs.length > 0 && (
+        <Alert>
+          <Copy className="h-4 w-4" />
+          <AlertDescription>
+            Showing {duplicateMcqs.length} potential duplicate(s). Review and delete as needed.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* MCQ Cards */}
-      {mcqs.length === 0 ? (
+      {filteredMcqs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No MCQs yet. Click "Add Question" to create one.</p>
+          <p>{showDuplicatesOnly ? 'No duplicates found.' : 'No MCQs yet. Click "Add Question" to create one.'}</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {mcqs.map((mcq, index) => (
-            <McqCard
-              key={mcq.id}
-              mcq={mcq}
-              index={index}
-              isAdmin={isAdmin}
-              onEdit={() => setEditingMcq(mcq)}
-              onDelete={() => setDeletingMcq(mcq)}
-            />
-          ))}
+          {filteredMcqs.map((mcq, index) => {
+            const duplicateInfo = duplicateMcqs.find(d => d.mcq.id === mcq.id);
+            return (
+              <div key={mcq.id} className="relative">
+                {duplicateInfo && (
+                  <Badge 
+                    variant="outline" 
+                    className="absolute -top-2 right-2 z-10 bg-amber-50 text-amber-700 border-amber-300"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    {Math.round(duplicateInfo.similarity * 100)}% similar
+                  </Badge>
+                )}
+                <McqCard
+                  mcq={mcq}
+                  index={index}
+                  isAdmin={isAdmin}
+                  onEdit={() => setEditingMcq(mcq)}
+                  onDelete={() => setDeletingMcq(mcq)}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -204,14 +343,14 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
         />
       )}
 
-      {/* Bulk Import Modal */}
+      {/* Bulk Import Modal with Duplicate Detection */}
       <Dialog open={showBulkModal} onOpenChange={(open) => {
         setShowBulkModal(open);
         if (!open) {
           resetBulkModal();
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Bulk Import MCQs</DialogTitle>
             <DialogDescription>
@@ -219,7 +358,7 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 pt-2">
+          <div className="flex-1 overflow-y-auto space-y-4 pt-2">
             {/* Download template button */}
             <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">
@@ -301,35 +440,90 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                 </TabsContent>
               </Tabs>
             ) : (
-              /* Preview Section */
+              /* Preview Section with Duplicate Detection */
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <Label>Preview ({previewData.length} questions ready)</Label>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <Label>{previewData.length} questions parsed</Label>
                   </div>
                   <Button variant="ghost" size="sm" onClick={resetBulkModal}>
                     Start Over
                   </Button>
                 </div>
+
+                {/* Duplicate Summary */}
+                {(exactDuplicates > 0 || possibleDuplicates > 0) && (
+                  <Alert className="border-amber-500/50 bg-amber-50/50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Duplicate Detection:</strong>
+                      {exactDuplicates > 0 && (
+                        <span className="ml-2">
+                          {exactDuplicates} exact duplicate(s) found (auto-skipped)
+                        </span>
+                      )}
+                      {possibleDuplicates > 0 && (
+                        <span className="ml-2">
+                          {possibleDuplicates} possible duplicate(s) detected
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
                 
-                <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-3 bg-muted/30">
-                  {previewData.map((mcq, i) => (
-                    <div key={i} className="text-sm p-2 bg-background rounded border">
-                      <p className="font-medium">{i + 1}. {mcq.stem}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Answer: {mcq.correct_key} | Difficulty: {mcq.difficulty || 'not set'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <ScrollArea className="h-64 border rounded-md">
+                  <div className="p-3 space-y-2">
+                    {previewData.map((item, i) => (
+                      <div 
+                        key={i} 
+                        className={`text-sm p-3 rounded border ${
+                          item.isExactDuplicate 
+                            ? 'bg-red-50 border-red-200' 
+                            : item.isPossibleDuplicate 
+                              ? 'bg-amber-50 border-amber-200' 
+                              : 'bg-background'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={item.status !== 'skip'}
+                            onCheckedChange={() => toggleItemStatus(i)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{i + 1}. {item.item.stem}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Answer: {item.item.correct_key} | Difficulty: {item.item.difficulty || 'not set'}
+                            </p>
+                            {item.isExactDuplicate && (
+                              <Badge variant="destructive" className="mt-1 text-xs">
+                                <Copy className="h-3 w-3 mr-1" />
+                                Exact duplicate - will skip
+                              </Badge>
+                            )}
+                            {item.isPossibleDuplicate && !item.isExactDuplicate && (
+                              <Badge variant="outline" className="mt-1 text-xs bg-amber-100 text-amber-800 border-amber-300">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                {Math.round(item.similarity * 100)}% similar - review
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
 
                 <Button 
                   onClick={handleBulkImport} 
                   className="w-full"
-                  disabled={bulkCreateMutation.isPending}
+                  disabled={bulkCreateMutation.isPending || itemsToImport === 0}
                 >
-                  {bulkCreateMutation.isPending ? 'Importing...' : `Import ${previewData.length} Questions`}
+                  {bulkCreateMutation.isPending 
+                    ? 'Importing...' 
+                    : `Import ${itemsToImport} Question${itemsToImport !== 1 ? 's' : ''}`
+                  }
                 </Button>
               </div>
             )}

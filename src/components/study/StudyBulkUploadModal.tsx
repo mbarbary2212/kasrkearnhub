@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, Check } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Upload, FileText, AlertCircle, Check, AlertTriangle, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   StudyResourceType,
   StudyResourceInsert,
@@ -17,7 +19,9 @@ import {
   AlgorithmContent,
   ExamTipContent,
   useBulkCreateStudyResources,
+  useChapterStudyResourcesByType,
 } from '@/hooks/useStudyResources';
+import { isFlashcardDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { toast } from 'sonner';
 
 interface StudyBulkUploadModalProps {
@@ -55,6 +59,8 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
   key_image: 'Not supported for bulk upload',
 };
 
+const SIMILARITY_THRESHOLD = 0.85;
+
 export function StudyBulkUploadModal({
   open,
   onOpenChange,
@@ -63,8 +69,9 @@ export function StudyBulkUploadModal({
   resourceType,
 }: StudyBulkUploadModalProps) {
   const bulkCreate = useBulkCreateStudyResources();
+  const { data: existingResources } = useChapterStudyResourcesByType(chapterId, resourceType);
 
-  const [parsedData, setParsedData] = useState<ParsedItem[]>([]);
+  const [parsedData, setParsedData] = useState<DuplicateResult<ParsedItem>[]>([]);
   const [errors, setErrors] = useState<ParseError[]>([]);
   const [fileName, setFileName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
@@ -74,6 +81,45 @@ export function StudyBulkUploadModal({
     setErrors([]);
     setFileName('');
   };
+
+  const detectDuplicates = useCallback((parsed: ParsedItem[]): DuplicateResult<ParsedItem>[] => {
+    if (resourceType !== 'flashcard' || !existingResources) {
+      // For non-flashcard types, just return without duplicate detection
+      return parsed.map((item, index) => ({
+        item,
+        rowIndex: index + 1,
+        isExactDuplicate: false,
+        isPossibleDuplicate: false,
+        similarity: 0,
+        status: 'pending' as const,
+      }));
+    }
+
+    // For flashcards, do duplicate detection
+    const existingForComparison = existingResources.map(r => ({
+      id: r.id,
+      front: (r.content as FlashcardContent).front || '',
+      back: (r.content as FlashcardContent).back || '',
+    }));
+
+    const parsedForComparison = parsed.map(p => ({
+      front: (p.content as FlashcardContent).front || '',
+      back: (p.content as FlashcardContent).back || '',
+    }));
+
+    const results = findDuplicates(
+      parsedForComparison,
+      existingForComparison,
+      (a, b) => isFlashcardDuplicate(a, b),
+      SIMILARITY_THRESHOLD
+    );
+
+    return results.map((result, index) => ({
+      ...result,
+      item: parsed[index],
+      status: (result.isExactDuplicate ? 'skip' : 'pending') as 'pending' | 'import' | 'skip',
+    }));
+  }, [resourceType, existingResources]);
 
   const processCSV = useCallback(
     (text: string) => {
@@ -104,10 +150,11 @@ export function StudyBulkUploadModal({
         }
       }
 
-      setParsedData(parsed);
+      const withDuplicates = detectDuplicates(parsed);
+      setParsedData(withDuplicates);
       setErrors(parseErrors);
     },
-    [resourceType]
+    [resourceType, detectDuplicates]
   );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,19 +205,44 @@ export function StudyBulkUploadModal({
     reader.readAsText(file);
   };
 
+  const toggleItemStatus = (index: number) => {
+    setParsedData(prev => prev.map((item, i) => 
+      i === index 
+        ? { ...item, status: item.status === 'skip' ? 'import' : 'skip' }
+        : item
+    ));
+  };
+
+  const itemsToImport = useMemo(() => 
+    parsedData.filter(p => p.status !== 'skip').length,
+    [parsedData]
+  );
+
+  const exactDuplicates = useMemo(() => 
+    parsedData.filter(p => p.isExactDuplicate).length,
+    [parsedData]
+  );
+
+  const possibleDuplicates = useMemo(() => 
+    parsedData.filter(p => p.isPossibleDuplicate).length,
+    [parsedData]
+  );
+
   const handleImport = async () => {
-    if (parsedData.length === 0) {
-      toast.error('No valid data to import');
+    const toImport = parsedData.filter(p => p.status !== 'skip');
+    
+    if (toImport.length === 0) {
+      toast.error('No items to import');
       return;
     }
 
     try {
-      const resources: StudyResourceInsert[] = parsedData.map((item) => ({
+      const resources: StudyResourceInsert[] = toImport.map((item) => ({
         module_id: moduleId,
         chapter_id: chapterId,
         resource_type: resourceType,
-        title: item.title,
-        content: item.content,
+        title: item.item.title,
+        content: item.item.content,
       }));
 
       await bulkCreate.mutateAsync(resources);
@@ -258,13 +330,33 @@ export function StudyBulkUploadModal({
             </Alert>
           )}
 
+          {/* Duplicate Summary */}
+          {parsedData.length > 0 && (exactDuplicates > 0 || possibleDuplicates > 0) && (
+            <Alert className="border-amber-500/50 bg-amber-50/50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <strong>Duplicate Detection:</strong>
+                {exactDuplicates > 0 && (
+                  <span className="ml-2">
+                    {exactDuplicates} exact duplicate(s) found (auto-skipped)
+                  </span>
+                )}
+                {possibleDuplicates > 0 && (
+                  <span className="ml-2">
+                    {possibleDuplicates} possible duplicate(s) detected
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Preview */}
           {parsedData.length > 0 && (
             <div className="border rounded-lg">
               <div className="px-4 py-2 bg-muted border-b flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium">
-                  {parsedData.length} items ready to import
+                  {parsedData.length} items parsed, {itemsToImport} will be imported
                 </span>
               </div>
               <ScrollArea className="h-48">
@@ -272,12 +364,38 @@ export function StudyBulkUploadModal({
                   {parsedData.map((item, index) => (
                     <div
                       key={index}
-                      className="text-sm px-2 py-1 bg-accent/30 rounded flex items-center gap-2"
+                      className={`text-sm px-3 py-2 rounded flex items-center gap-3 ${
+                        item.isExactDuplicate 
+                          ? 'bg-red-50 border border-red-200' 
+                          : item.isPossibleDuplicate 
+                            ? 'bg-amber-50 border border-amber-200' 
+                            : 'bg-accent/30'
+                      }`}
                     >
-                      <span className="text-muted-foreground text-xs">
-                        {index + 1}.
-                      </span>
-                      <span className="font-medium">{item.title}</span>
+                      <Checkbox
+                        checked={item.status !== 'skip'}
+                        onCheckedChange={() => toggleItemStatus(index)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">
+                            {index + 1}.
+                          </span>
+                          <span className="font-medium truncate">{item.item.title}</span>
+                        </div>
+                        {item.isExactDuplicate && (
+                          <Badge variant="destructive" className="mt-1 text-xs">
+                            <Copy className="h-3 w-3 mr-1" />
+                            Exact duplicate
+                          </Badge>
+                        )}
+                        {item.isPossibleDuplicate && !item.isExactDuplicate && (
+                          <Badge variant="outline" className="mt-1 text-xs bg-amber-100 text-amber-800 border-amber-300">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            {Math.round(item.similarity * 100)}% similar
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -292,9 +410,9 @@ export function StudyBulkUploadModal({
           </Button>
           <Button
             onClick={handleImport}
-            disabled={parsedData.length === 0 || bulkCreate.isPending}
+            disabled={itemsToImport === 0 || bulkCreate.isPending}
           >
-            {bulkCreate.isPending ? 'Importing...' : `Import ${parsedData.length} Items`}
+            {bulkCreate.isPending ? 'Importing...' : `Import ${itemsToImport} Items`}
           </Button>
         </div>
       </DialogContent>
