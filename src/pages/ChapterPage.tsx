@@ -9,16 +9,16 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import VideoList from '@/components/content/VideoList';
 import ResourceList from '@/components/content/ResourceList';
-import McqSetList from '@/components/content/McqSetList';
+import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
 import EssayList from '@/components/content/EssayList';
 import { 
   useChapterLectures, 
   useChapterResources, 
-  useChapterMcqSets, 
   useChapterEssays, 
   useChapterPracticals
 } from '@/hooks/useChapterContent';
+import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
   ArrowLeft, 
   Video, 
@@ -39,7 +39,7 @@ export default function ChapterPage() {
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
   const { data: resources, isLoading: resourcesLoading } = useChapterResources(chapterId);
-  const { data: mcqSets, isLoading: mcqsLoading } = useChapterMcqSets(chapterId);
+  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
 
@@ -154,23 +154,16 @@ export default function ChapterPage() {
 
           {/* MCQs Tab */}
           <TabsContent value="mcqs" className="mt-6">
-            {canManageContent && chapterId && moduleId && (
-              <div className="mb-4">
-                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="mcq" />
-              </div>
-            )}
             {mcqsLoading ? (
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
               </div>
             ) : (
-              <McqSetList
-                mcqSets={mcqSets || []}
-                moduleId={moduleId}
+              <McqList
+                mcqs={mcqs || []}
+                moduleId={moduleId || ''}
                 chapterId={chapterId}
-                canEdit={canManageContent}
-                canDelete={canManageContent}
-                showFeedback={true}
+                isAdmin={canManageContent}
               />
             )}
           </TabsContent>

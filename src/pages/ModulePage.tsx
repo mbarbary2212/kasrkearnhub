@@ -6,14 +6,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { useAuthContext } from '@/contexts/AuthContext';
 import VideoList from '@/components/content/VideoList';
+import { McqList } from '@/components/content/McqList';
 import { 
   useModuleLectures, 
   useModuleResources, 
-  useModuleMcqSets, 
   useModuleEssays, 
   useModulePracticals
 } from '@/hooks/useModuleContent';
+import { useModuleMcqs } from '@/hooks/useMcqs';
 import { 
   ArrowLeft, 
   Video, 
@@ -30,13 +32,16 @@ import {
 export default function ModulePage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
+  const { isAdmin, isTeacher } = useAuthContext();
+
+  const canManageContent = isAdmin || isTeacher;
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
   const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(actualModuleId);
   const { data: resources, isLoading: resourcesLoading } = useModuleResources(actualModuleId);
-  const { data: mcqSets, isLoading: mcqsLoading } = useModuleMcqSets(actualModuleId);
+  const { data: mcqs, isLoading: mcqsLoading } = useModuleMcqs(actualModuleId);
   const { data: essays, isLoading: essaysLoading } = useModuleEssays(actualModuleId);
   const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(actualModuleId);
 
@@ -285,34 +290,12 @@ export default function ModulePage() {
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
               </div>
-            ) : mcqSets && mcqSets.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {mcqSets.map((mcqSet) => (
-                  <Card key={mcqSet.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{mcqSet.title}</CardTitle>
-                      {mcqSet.description && (
-                        <CardDescription>{mcqSet.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {mcqSet.time_limit_minutes && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{mcqSet.time_limit_minutes} min</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button className="w-full mt-3" size="sm">
-                        Start Quiz
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             ) : (
-              renderEmptyState(<HelpCircle className="w-6 h-6 text-muted-foreground" />, "No MCQs available yet.")
+              <McqList
+                mcqs={mcqs || []}
+                moduleId={actualModuleId || ''}
+                isAdmin={canManageContent}
+              />
             )}
           </TabsContent>
 

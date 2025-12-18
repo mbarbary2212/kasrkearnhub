@@ -877,6 +877,69 @@ export type Database = {
           },
         ]
       }
+      mcqs: {
+        Row: {
+          chapter_id: string | null
+          choices: Json
+          correct_key: string
+          created_at: string
+          created_by: string | null
+          difficulty: Database["public"]["Enums"]["mcq_difficulty"] | null
+          display_order: number | null
+          explanation: string | null
+          id: string
+          is_deleted: boolean
+          module_id: string
+          stem: string
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          choices?: Json
+          correct_key: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["mcq_difficulty"] | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          is_deleted?: boolean
+          module_id: string
+          stem: string
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          choices?: Json
+          correct_key?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["mcq_difficulty"] | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          is_deleted?: boolean
+          module_id?: string
+          stem?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcqs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcqs_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_admins: {
         Row: {
           assigned_by: string | null
@@ -1617,6 +1680,7 @@ export type Database = {
         | "other"
       feedback_severity: "normal" | "urgent" | "extreme"
       feedback_status: "new" | "in_review" | "closed"
+      mcq_difficulty: "easy" | "medium" | "hard"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1764,6 +1828,7 @@ export const Constants = {
       ],
       feedback_severity: ["normal", "urgent", "extreme"],
       feedback_status: ["new", "in_review", "closed"],
+      mcq_difficulty: ["easy", "medium", "hard"],
     },
   },
 } as const
