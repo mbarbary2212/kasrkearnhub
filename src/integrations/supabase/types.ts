@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       clinical_cases: {
         Row: {
           chapter_id: string | null
@@ -257,6 +287,89 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          admin_notes: string | null
+          category: Database["public"]["Enums"]["feedback_category"]
+          chapter_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          module_id: string | null
+          role: string
+          screenshot_url: string | null
+          severity: Database["public"]["Enums"]["feedback_severity"]
+          status: Database["public"]["Enums"]["feedback_status"]
+          tab: string | null
+          topic_id: string | null
+          year_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category: Database["public"]["Enums"]["feedback_category"]
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+          module_id?: string | null
+          role: string
+          screenshot_url?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"]
+          status?: Database["public"]["Enums"]["feedback_status"]
+          tab?: string | null
+          topic_id?: string | null
+          year_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: Database["public"]["Enums"]["feedback_category"]
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          module_id?: string | null
+          role?: string
+          screenshot_url?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"]
+          status?: Database["public"]["Enums"]["feedback_status"]
+          tab?: string | null
+          topic_id?: string | null
+          year_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_topics: {
         Row: {
           created_at: string | null
@@ -311,6 +424,57 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_unmask_requests: {
+        Row: {
+          approved: boolean
+          approved_at: string | null
+          approved_by: string | null
+          feedback_id: string
+          id: string
+          reason: string
+          requested_at: string
+          requested_by: string
+          revealed_user_id: string | null
+        }
+        Insert: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          feedback_id: string
+          id?: string
+          reason: string
+          requested_at?: string
+          requested_by: string
+          revealed_user_id?: string | null
+        }
+        Update: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          feedback_id?: string
+          id?: string
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          revealed_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_unmask_requests_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_unmask_requests_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_admin_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1131,7 +1295,86 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      feedback_admin_view: {
+        Row: {
+          admin_notes: string | null
+          category: Database["public"]["Enums"]["feedback_category"] | null
+          chapter_id: string | null
+          created_at: string | null
+          id: string | null
+          message: string | null
+          module_id: string | null
+          role: string | null
+          screenshot_url: string | null
+          severity: Database["public"]["Enums"]["feedback_severity"] | null
+          status: Database["public"]["Enums"]["feedback_status"] | null
+          tab: string | null
+          topic_id: string | null
+          year_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: Database["public"]["Enums"]["feedback_category"] | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+          module_id?: string | null
+          role?: string | null
+          screenshot_url?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"] | null
+          status?: Database["public"]["Enums"]["feedback_status"] | null
+          tab?: string | null
+          topic_id?: string | null
+          year_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: Database["public"]["Enums"]["feedback_category"] | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+          module_id?: string | null
+          role?: string | null
+          screenshot_url?: string | null
+          severity?: Database["public"]["Enums"]["feedback_severity"] | null
+          status?: Database["public"]["Enums"]["feedback_status"] | null
+          tab?: string | null
+          topic_id?: string | null
+          year_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_module_content: {
@@ -1139,6 +1382,10 @@ export type Database = {
         Returns: boolean
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
+      get_user_feedback_count_today: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1163,6 +1410,19 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_audit_event: {
+        Args: {
+          _action: string
+          _entity_id: string
+          _entity_type: string
+          _metadata?: Json
+        }
+        Returns: string
+      }
+      reveal_feedback_identity: {
+        Args: { _feedback_id: string; _reason: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role:
@@ -1174,6 +1434,15 @@ export type Database = {
         | "super_admin"
       content_type: "lecture" | "resource" | "mcq" | "essay" | "practical"
       department_category: "basic" | "clinical"
+      feedback_category:
+        | "bug"
+        | "content_error"
+        | "suggestion"
+        | "complaint"
+        | "academic_integrity"
+        | "other"
+      feedback_severity: "normal" | "urgent" | "extreme"
+      feedback_status: "new" | "in_review" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1311,6 +1580,16 @@ export const Constants = {
       ],
       content_type: ["lecture", "resource", "mcq", "essay", "practical"],
       department_category: ["basic", "clinical"],
+      feedback_category: [
+        "bug",
+        "content_error",
+        "suggestion",
+        "complaint",
+        "academic_integrity",
+        "other",
+      ],
+      feedback_severity: ["normal", "urgent", "extreme"],
+      feedback_status: ["new", "in_review", "closed"],
     },
   },
 } as const
