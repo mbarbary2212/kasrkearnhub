@@ -10,6 +10,7 @@ export function useChapterLectures(chapterId?: string) {
         .from('lectures')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -28,6 +29,7 @@ export function useChapterResources(chapterId?: string) {
         .from('resources')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -46,6 +48,7 @@ export function useChapterMcqSets(chapterId?: string) {
         .from('mcq_sets')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -64,6 +67,7 @@ export function useChapterEssays(chapterId?: string) {
         .from('essays')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -82,6 +86,7 @@ export function useChapterPracticals(chapterId?: string) {
         .from('practicals')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -100,6 +105,7 @@ export function useChapterClinicalCases(chapterId?: string) {
         .from('clinical_cases')
         .select('*')
         .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;

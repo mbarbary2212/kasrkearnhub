@@ -7,11 +7,12 @@ export function useLectures(topicId: string | undefined) {
     queryKey: ['lectures', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('lectures')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
@@ -26,11 +27,12 @@ export function useResources(topicId: string | undefined) {
     queryKey: ['resources', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('resources')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
@@ -45,11 +47,12 @@ export function useMcqSets(topicId: string | undefined) {
     queryKey: ['mcq_sets', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('mcq_sets')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
@@ -64,7 +67,7 @@ export function useMcqQuestions(mcqSetId: string | undefined) {
     queryKey: ['mcq_questions', mcqSetId],
     queryFn: async () => {
       if (!mcqSetId) return [];
-      
+
       const { data, error } = await supabase
         .from('mcq_questions')
         .select('*')
@@ -83,11 +86,12 @@ export function useEssays(topicId: string | undefined) {
     queryKey: ['essays', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('essays')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
@@ -102,11 +106,12 @@ export function usePracticals(topicId: string | undefined) {
     queryKey: ['practicals', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('practicals')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
@@ -121,11 +126,12 @@ export function useClinicalCases(topicId: string | undefined) {
     queryKey: ['clinical_cases', topicId],
     queryFn: async () => {
       if (!topicId) return [];
-      
+
       const { data, error } = await supabase
         .from('clinical_cases')
         .select('*')
         .eq('topic_id', topicId)
+        .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;

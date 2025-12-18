@@ -10,6 +10,7 @@ export function useModuleLectures(moduleId?: string) {
         .from('lectures')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -28,6 +29,7 @@ export function useModuleResources(moduleId?: string) {
         .from('resources')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -46,6 +48,7 @@ export function useModuleMcqSets(moduleId?: string) {
         .from('mcq_sets')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -64,6 +67,7 @@ export function useModuleEssays(moduleId?: string) {
         .from('essays')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -82,6 +86,7 @@ export function useModulePracticals(moduleId?: string) {
         .from('practicals')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -100,6 +105,7 @@ export function useModuleClinicalCases(moduleId?: string) {
         .from('clinical_cases')
         .select('*')
         .eq('module_id', moduleId!)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
       if (error) throw error;

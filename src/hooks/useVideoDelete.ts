@@ -26,29 +26,53 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
 
   const doDelete = async () => {
     if (!pendingItem) return;
-    
+
+    const deletingId = pendingItem.id;
+    const deletingTitle = pendingItem.title;
+
     setIsDeleting(true);
+
+    // Optimistically remove from any cached lists (instant UI update)
+    const removeFromList = (old: unknown) => {
+      if (!Array.isArray(old)) return old;
+      return old.filter((item: any) => item?.id !== deletingId);
+    };
+
+    if (chapterId) {
+      qc.setQueryData(["chapter-lectures", chapterId], removeFromList);
+    }
+    if (moduleId) {
+      qc.setQueryData(["module-lectures", moduleId], removeFromList);
+    }
+    qc.setQueriesData({ queryKey: ["lectures"] }, removeFromList);
 
     try {
       // Soft delete - set is_deleted to true
       const { error } = await supabase
         .from("lectures")
         .update({ is_deleted: true })
-        .eq("id", pendingItem.id);
+        .eq("id", deletingId);
 
       if (error) throw error;
 
-      // Invalidate all relevant queries to refetch
+      // Refetch to ensure cache matches DB filters (is_deleted=false)
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["lectures"] }),
         qc.invalidateQueries({ queryKey: ["chapter-lectures", chapterId] }),
         qc.invalidateQueries({ queryKey: ["module-lectures", moduleId] }),
+        qc.invalidateQueries({ queryKey: ["lectures"] }),
       ]);
 
-      toast.success(`"${pendingItem.title}" deleted successfully`);
+      toast.success(`"${deletingTitle}" deleted successfully`);
     } catch (error) {
       console.error("Failed to delete video:", error);
       toast.error("Failed to delete video");
+
+      // Roll back by refetching
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chapter-lectures", chapterId] }),
+        qc.invalidateQueries({ queryKey: ["module-lectures", moduleId] }),
+        qc.invalidateQueries({ queryKey: ["lectures"] }),
+      ]);
     } finally {
       setIsDeleting(false);
       setConfirmOpen(false);
