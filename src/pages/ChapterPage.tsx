@@ -1,15 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
-import ContentItemActions from '@/components/admin/ContentItemActions';
 import VideoList from '@/components/content/VideoList';
+import ResourceList from '@/components/content/ResourceList';
+import McqSetList from '@/components/content/McqSetList';
+import PracticalList from '@/components/content/PracticalList';
+import EssayList from '@/components/content/EssayList';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -24,8 +26,6 @@ import {
   HelpCircle, 
   PenTool, 
   FlaskConical,
-  Clock,
-  ExternalLink
 } from 'lucide-react';
 
 export default function ChapterPage() {
@@ -55,15 +55,6 @@ export default function ChapterPage() {
       </MainLayout>
     );
   }
-
-  const renderEmptyState = (icon: React.ReactNode, message: string) => (
-    <div className="text-center py-12">
-      <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-        {icon}
-      </div>
-      <p className="text-muted-foreground">{message}</p>
-    </div>
-  );
 
   return (
     <MainLayout>
@@ -149,50 +140,15 @@ export default function ChapterPage() {
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
               </div>
-            ) : resources && resources.length > 0 ? (
-              <div className="space-y-3">
-                {resources.map((resource) => (
-                  <Card key={resource.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="flex items-center gap-4 p-4">
-                      <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-6 h-6 text-secondary-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{resource.title}</h3>
-                        {resource.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-1">{resource.description}</p>
-                        )}
-                        <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {(resource.file_url || resource.external_url) && (
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              Open
-                            </a>
-                          </Button>
-                        )}
-                        {moduleId && (
-                          <ContentItemActions
-                            id={resource.id}
-                            title={resource.title}
-                            description={resource.description}
-                            fileUrl={resource.file_url || resource.external_url}
-                            contentType="resource"
-                            moduleId={moduleId}
-                            chapterId={chapterId}
-                            canEdit={canManageContent}
-                            canDelete={canManageContent}
-                          />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             ) : (
-              renderEmptyState(<FileText className="w-6 h-6 text-muted-foreground" />, "No resources available yet.")
+              <ResourceList
+                resources={resources || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
             )}
           </TabsContent>
 
@@ -207,48 +163,15 @@ export default function ChapterPage() {
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
               </div>
-            ) : mcqSets && mcqSets.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {mcqSets.map((mcqSet) => (
-                  <Card key={mcqSet.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-lg flex-1">{mcqSet.title}</CardTitle>
-                        {moduleId && (
-                          <ContentItemActions
-                            id={mcqSet.id}
-                            title={mcqSet.title}
-                            description={mcqSet.description}
-                            contentType="mcq"
-                            moduleId={moduleId}
-                            chapterId={chapterId}
-                            canEdit={canManageContent}
-                            canDelete={canManageContent}
-                          />
-                        )}
-                      </div>
-                      {mcqSet.description && (
-                        <CardDescription>{mcqSet.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {mcqSet.time_limit_minutes && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{mcqSet.time_limit_minutes} min</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button className="w-full mt-3" size="sm">
-                        Start Quiz
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             ) : (
-              renderEmptyState(<HelpCircle className="w-6 h-6 text-muted-foreground" />, "No MCQs available yet.")
+              <McqSetList
+                mcqSets={mcqSets || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
             )}
           </TabsContent>
 
@@ -263,43 +186,15 @@ export default function ChapterPage() {
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
               </div>
-            ) : practicals && practicals.length > 0 ? (
-              <div className="space-y-3">
-                {practicals.map((practical) => (
-                  <Card key={practical.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FlaskConical className="w-6 h-6 text-accent-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-medium">{practical.title}</h3>
-                            {moduleId && (
-                              <ContentItemActions
-                                id={practical.id}
-                                title={practical.title}
-                                description={practical.description}
-                                videoUrl={practical.video_url}
-                                contentType="practical"
-                                moduleId={moduleId}
-                                chapterId={chapterId}
-                                canEdit={canManageContent}
-                                canDelete={canManageContent}
-                              />
-                            )}
-                          </div>
-                          {practical.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{practical.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             ) : (
-              renderEmptyState(<FlaskConical className="w-6 h-6 text-muted-foreground" />, "No practicals available yet.")
+              <PracticalList
+                practicals={practicals || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
             )}
           </TabsContent>
 
@@ -314,33 +209,15 @@ export default function ChapterPage() {
               <div className="space-y-3">
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
               </div>
-            ) : essays && essays.length > 0 ? (
-              <div className="space-y-3">
-                {essays.map((essay) => (
-                  <Card key={essay.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-medium mb-2">{essay.title}</h3>
-                        {moduleId && (
-                          <ContentItemActions
-                            id={essay.id}
-                            title={essay.title}
-                            description={essay.question}
-                            contentType="essay"
-                            moduleId={moduleId}
-                            chapterId={chapterId}
-                            canEdit={canManageContent}
-                            canDelete={canManageContent}
-                          />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             ) : (
-              renderEmptyState(<PenTool className="w-6 h-6 text-muted-foreground" />, "No short questions available yet.")
+              <EssayList
+                essays={essays || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
             )}
           </TabsContent>
         </Tabs>
