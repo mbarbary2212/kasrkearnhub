@@ -194,3 +194,93 @@ export function useDeleteMcq() {
     },
   });
 }
+
+// Bulk create MCQs from CSV
+export function useBulkCreateMcqs() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async ({ 
+      mcqs, 
+      moduleId, 
+      chapterId 
+    }: { 
+      mcqs: McqFormData[]; 
+      moduleId: string; 
+      chapterId?: string | null;
+    }) => {
+      const records = mcqs.map((mcq, index) => ({
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        stem: mcq.stem,
+        choices: mcq.choices as unknown as Json,
+        correct_key: mcq.correct_key,
+        explanation: mcq.explanation,
+        difficulty: mcq.difficulty,
+        display_order: index,
+        created_by: user?.id,
+      }));
+
+      const { error } = await supabase.from('mcqs').insert(records);
+      if (error) throw error;
+      return { moduleId, chapterId, count: mcqs.length };
+    },
+    onSuccess: (result) => {
+      toast({ title: `${result.count} MCQs imported successfully` });
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error importing MCQs', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+// Parse CSV text into MCQ data
+export function parseMcqCsv(csvText: string): McqFormData[] {
+  const lines = csvText.trim().split('\n').filter(line => line.trim());
+  
+  // Skip header row if it looks like a header
+  const startIndex = lines[0]?.toLowerCase().includes('stem') ? 1 : 0;
+  
+  return lines.slice(startIndex).map(line => {
+    // Handle quoted CSV values
+    const parts: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        parts.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    parts.push(current.trim());
+
+    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty] = parts;
+
+    return {
+      stem: stem || '',
+      choices: [
+        { key: 'A' as const, text: choiceA || '' },
+        { key: 'B' as const, text: choiceB || '' },
+        { key: 'C' as const, text: choiceC || '' },
+        { key: 'D' as const, text: choiceD || '' },
+        { key: 'E' as const, text: choiceE || '' },
+      ],
+      correct_key: (correctKey || 'A').toUpperCase(),
+      explanation: explanation || null,
+      difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
+        ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
+        : null),
+    };
+  });
+}
