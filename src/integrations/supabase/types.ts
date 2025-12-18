@@ -491,6 +491,84 @@ export type Database = {
           },
         ]
       }
+      flashcard_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      flashcards: {
+        Row: {
+          back: string
+          chapter_id: string
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          front: string
+          id: string
+          is_deleted: boolean
+          module_id: string
+          updated_by: string | null
+        }
+        Insert: {
+          back: string
+          chapter_id: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          front: string
+          id?: string
+          is_deleted?: boolean
+          module_id: string
+          updated_by?: string | null
+        }
+        Update: {
+          back?: string
+          chapter_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          front?: string
+          id?: string
+          is_deleted?: boolean
+          module_id?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inquiries: {
         Row: {
           admin_notes: string | null

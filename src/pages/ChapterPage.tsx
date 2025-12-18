@@ -3,12 +3,19 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import VideoList from '@/components/content/VideoList';
 import ResourceList from '@/components/content/ResourceList';
+import FlashcardList from '@/components/content/FlashcardList';
 import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
 import EssayList from '@/components/content/EssayList';
@@ -26,12 +33,13 @@ import {
   HelpCircle, 
   PenTool, 
   FlaskConical,
+  Layers,
 } from 'lucide-react';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isTeacher } = useAuthContext();
+  const { isAdmin, isTeacher, isSuperAdmin } = useAuthContext();
 
   const canManageContent = isAdmin || isTeacher;
 
@@ -131,25 +139,58 @@ export default function ChapterPage() {
 
           {/* Resources Tab */}
           <TabsContent value="resources" className="mt-6">
-            {canManageContent && chapterId && moduleId && (
-              <div className="mb-4">
-                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
-              </div>
-            )}
-            {resourcesLoading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-              </div>
-            ) : (
-              <ResourceList
-                resources={resources || []}
-                moduleId={moduleId}
-                chapterId={chapterId}
-                canEdit={canManageContent}
-                canDelete={canManageContent}
-                showFeedback={true}
-              />
-            )}
+            <Accordion type="multiple" defaultValue={['resources', 'flashcards']} className="space-y-4">
+              {/* Resources Section */}
+              <AccordionItem value="resources" className="border rounded-lg px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span>Documents & Files</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  {canManageContent && chapterId && moduleId && (
+                    <div className="mb-4">
+                      <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+                    </div>
+                  )}
+                  {resourcesLoading ? (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+                    </div>
+                  ) : (
+                    <ResourceList
+                      resources={resources || []}
+                      moduleId={moduleId}
+                      chapterId={chapterId}
+                      canEdit={canManageContent}
+                      canDelete={canManageContent}
+                      showFeedback={true}
+                    />
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Flashcards Section */}
+              <AccordionItem value="flashcards" className="border rounded-lg px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4" />
+                    <span>Flashcards</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  {chapterId && moduleId && (
+                    <FlashcardList
+                      chapterId={chapterId}
+                      moduleId={moduleId}
+                      canManage={canManageContent}
+                      isSuperAdmin={isSuperAdmin}
+                    />
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
           {/* MCQs Tab */}
