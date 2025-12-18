@@ -36,7 +36,69 @@ export default function FlashcardBulkUpload({
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+
   const bulkCreateMutation = useBulkCreateFlashcards();
+
+  const processCSV = (text: string) => {
+    try {
+      const lines = text.split('\n').filter((line) => line.trim());
+
+      if (lines.length === 0) {
+        setError('The file is empty');
+        setParsedData([]);
+        return;
+      }
+
+      // Check if first line is header
+      const firstLine = lines[0].toLowerCase();
+      const hasHeader = firstLine.includes('front') && firstLine.includes('back');
+      const dataLines = hasHeader ? lines.slice(1) : lines;
+
+      const parsed: ParsedFlashcard[] = [];
+      const errors: string[] = [];
+
+      dataLines.forEach((line, index) => {
+        // Handle CSV with possible quoted values
+        const matches = line.match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g);
+        if (!matches || matches.length < 2) {
+          errors.push(`Line ${index + (hasHeader ? 2 : 1)}: Invalid format`);
+          return;
+        }
+
+        const cleanValue = (val: string) => {
+          return val
+            .replace(/^,/, '')
+            .replace(/^"|"$/g, '')
+            .replace(/""/g, '"')
+            .trim();
+        };
+
+        const front = cleanValue(matches[0]);
+        const back = cleanValue(matches[1]);
+
+        if (!front || !back) {
+          errors.push(`Line ${index + (hasHeader ? 2 : 1)}: Missing front or back value`);
+          return;
+        }
+
+        parsed.push({ front, back });
+      });
+
+      if (errors.length > 0 && parsed.length === 0) {
+        setError(errors.join('\n'));
+        setParsedData([]);
+      } else {
+        setParsedData(parsed);
+        if (errors.length > 0) {
+          setError(`Warning: ${errors.length} line(s) skipped due to invalid format`);
+        }
+      }
+    } catch (err) {
+      setError('Failed to parse CSV file');
+      setParsedData([]);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,66 +109,46 @@ export default function FlashcardBulkUpload({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split('\n').filter((line) => line.trim());
-
-        if (lines.length === 0) {
-          setError('The file is empty');
-          setParsedData([]);
-          return;
-        }
-
-        // Check if first line is header
-        const firstLine = lines[0].toLowerCase();
-        const hasHeader = firstLine.includes('front') && firstLine.includes('back');
-        const dataLines = hasHeader ? lines.slice(1) : lines;
-
-        const parsed: ParsedFlashcard[] = [];
-        const errors: string[] = [];
-
-        dataLines.forEach((line, index) => {
-          // Handle CSV with possible quoted values
-          const matches = line.match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g);
-          if (!matches || matches.length < 2) {
-            errors.push(`Line ${index + (hasHeader ? 2 : 1)}: Invalid format`);
-            return;
-          }
-
-          const cleanValue = (val: string) => {
-            return val
-              .replace(/^,/, '')
-              .replace(/^"|"$/g, '')
-              .replace(/""/g, '"')
-              .trim();
-          };
-
-          const front = cleanValue(matches[0]);
-          const back = cleanValue(matches[1]);
-
-          if (!front || !back) {
-            errors.push(`Line ${index + (hasHeader ? 2 : 1)}: Missing front or back value`);
-            return;
-          }
-
-          parsed.push({ front, back });
-        });
-
-        if (errors.length > 0 && parsed.length === 0) {
-          setError(errors.join('\n'));
-          setParsedData([]);
-        } else {
-          setParsedData(parsed);
-          if (errors.length > 0) {
-            setError(`Warning: ${errors.length} line(s) skipped due to invalid format`);
-          }
-        }
-      } catch (err) {
-        setError('Failed to parse CSV file');
-        setParsedData([]);
-      }
+      const text = event.target?.result as string;
+      processCSV(text);
     };
+    reader.readAsText(file);
+  };
 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (!file.name.endsWith('.csv')) {
+      setError('Please upload a CSV file only');
+      return;
+    }
+
+    setFileName(file.name);
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      processCSV(text);
+    };
     reader.readAsText(file);
   };
 
@@ -145,8 +187,15 @@ export default function FlashcardBulkUpload({
         <div className="space-y-4">
           {/* Upload area */}
           <div
-            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragging 
+                ? 'border-primary bg-primary/5' 
+                : 'border-muted-foreground/25 hover:border-primary/50'
+            }`}
             onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
             <input
               ref={fileInputRef}
@@ -160,7 +209,9 @@ export default function FlashcardBulkUpload({
               <p className="text-sm font-medium">{fileName}</p>
             ) : (
               <div>
-                <p className="text-sm font-medium">Click to upload CSV file</p>
+                <p className="text-sm font-medium">
+                  {isDragging ? 'Drop your CSV file here' : 'Click or drag CSV file here'}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Format: front,back (with optional header row)
                 </p>
