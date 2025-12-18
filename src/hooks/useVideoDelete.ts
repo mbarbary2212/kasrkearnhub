@@ -3,24 +3,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+interface DeleteState {
+  id: string;
+  title: string;
+}
+
 export function useVideoDelete(moduleId: string, chapterId?: string) {
   const qc = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingItem, setPendingItem] = useState<DeleteState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const askDelete = (videoId: string) => {
-    setPendingId(videoId);
+  const askDelete = (id: string, title: string) => {
+    setPendingItem({ id, title });
     setConfirmOpen(true);
   };
 
   const cancelDelete = () => {
     setConfirmOpen(false);
-    setPendingId(null);
+    setPendingItem(null);
   };
 
   const doDelete = async () => {
-    if (!pendingId) return;
+    if (!pendingItem) return;
     
     setIsDeleting(true);
 
@@ -29,23 +34,25 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
       const { error } = await supabase
         .from("lectures")
         .update({ is_deleted: true })
-        .eq("id", pendingId);
+        .eq("id", pendingItem.id);
 
       if (error) throw error;
 
-      // Invalidate queries to refetch
-      await qc.invalidateQueries({ queryKey: ["lectures"] });
-      await qc.invalidateQueries({ queryKey: ["chapter-lectures", chapterId] });
-      await qc.invalidateQueries({ queryKey: ["module-lectures", moduleId] });
+      // Invalidate all relevant queries to refetch
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["lectures"] }),
+        qc.invalidateQueries({ queryKey: ["chapter-lectures", chapterId] }),
+        qc.invalidateQueries({ queryKey: ["module-lectures", moduleId] }),
+      ]);
 
-      toast.success("Video deleted successfully");
+      toast.success(`"${pendingItem.title}" deleted successfully`);
     } catch (error) {
       console.error("Failed to delete video:", error);
       toast.error("Failed to delete video");
     } finally {
       setIsDeleting(false);
       setConfirmOpen(false);
-      setPendingId(null);
+      setPendingItem(null);
     }
   };
 
@@ -55,6 +62,6 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
     cancelDelete, 
     confirmOpen, 
     isDeleting,
-    pendingId 
+    pendingItem,
   };
 }

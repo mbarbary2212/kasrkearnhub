@@ -45,7 +45,7 @@ export default function McqSetList({
   canDelete = false,
   showFeedback = true,
 }: McqSetListProps) {
-  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting } = useContentDelete(
+  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
     'mcq_sets',
     moduleId || '',
     chapterId
@@ -79,7 +79,7 @@ export default function McqSetList({
                         Manage
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[180px]">
+                    <DropdownMenuContent align="end" className="min-w-[180px] z-[50]">
                       {canEdit && (
                         <DropdownMenuItem onClick={(e) => e.stopPropagation()} className="gap-2">
                           <Pencil className="h-4 w-4" />
@@ -88,7 +88,7 @@ export default function McqSetList({
                       )}
                       {canDelete && (
                         <DropdownMenuItem
-                          onClick={(e) => { e.stopPropagation(); askDelete(mcqSet.id); }}
+                          onClick={(e) => { e.stopPropagation(); askDelete(mcqSet.id, mcqSet.title); }}
                           className="gap-2 text-destructive focus:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -130,11 +130,11 @@ export default function McqSetList({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <AlertDialogContent className="z-[9999]">
+        <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this MCQ set?</AlertDialogTitle>
+            <AlertDialogTitle>Delete MCQ set?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the MCQ set and all its questions from this section.
+              Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This will also delete all questions in this set. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

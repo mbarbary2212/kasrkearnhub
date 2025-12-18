@@ -5,6 +5,20 @@ import { toast } from "sonner";
 
 type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases';
 
+const TABLE_LABELS: Record<ContentTable, string> = {
+  lectures: 'Video',
+  resources: 'Resource',
+  mcq_sets: 'MCQ set',
+  essays: 'Short question',
+  practicals: 'Practical',
+  clinical_cases: 'Clinical case',
+};
+
+interface DeleteState {
+  id: string;
+  title: string;
+}
+
 export function useContentDelete(
   table: ContentTable,
   moduleId: string, 
@@ -12,21 +26,23 @@ export function useContentDelete(
 ) {
   const qc = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingItem, setPendingItem] = useState<DeleteState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const askDelete = (id: string) => {
-    setPendingId(id);
+  const label = TABLE_LABELS[table];
+
+  const askDelete = (id: string, title: string) => {
+    setPendingItem({ id, title });
     setConfirmOpen(true);
   };
 
   const cancelDelete = () => {
     setConfirmOpen(false);
-    setPendingId(null);
+    setPendingItem(null);
   };
 
   const doDelete = async () => {
-    if (!pendingId) return;
+    if (!pendingItem) return;
     
     setIsDeleting(true);
 
@@ -35,29 +51,33 @@ export function useContentDelete(
       const { error } = await supabase
         .from(table)
         .update({ is_deleted: true })
-        .eq("id", pendingId);
+        .eq("id", pendingItem.id);
 
       if (error) throw error;
 
-      // Invalidate relevant queries
-      await qc.invalidateQueries({ queryKey: [table] });
-      await qc.invalidateQueries({ queryKey: [`chapter-${table}`, chapterId] });
-      await qc.invalidateQueries({ queryKey: [`module-${table}`, moduleId] });
-      // Also invalidate the specific query patterns used in hooks
-      await qc.invalidateQueries({ queryKey: ['chapter-lectures', chapterId] });
-      await qc.invalidateQueries({ queryKey: ['chapter-resources', chapterId] });
-      await qc.invalidateQueries({ queryKey: ['chapter-mcq-sets', chapterId] });
-      await qc.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
-      await qc.invalidateQueries({ queryKey: ['chapter-practicals', chapterId] });
+      // Invalidate all relevant queries to refetch
+      const queryKey = table === 'mcq_sets' ? 'mcq-sets' : table;
+      
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [table] }),
+        qc.invalidateQueries({ queryKey: [`chapter-${queryKey}`, chapterId] }),
+        qc.invalidateQueries({ queryKey: [`module-${queryKey}`, moduleId] }),
+        // Also invalidate with generic patterns
+        qc.invalidateQueries({ queryKey: ['chapter-lectures', chapterId] }),
+        qc.invalidateQueries({ queryKey: ['chapter-resources', chapterId] }),
+        qc.invalidateQueries({ queryKey: ['chapter-mcq-sets', chapterId] }),
+        qc.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
+        qc.invalidateQueries({ queryKey: ['chapter-practicals', chapterId] }),
+      ]);
 
-      toast.success("Item deleted successfully");
+      toast.success(`"${pendingItem.title}" deleted successfully`);
     } catch (error) {
       console.error(`Failed to delete ${table}:`, error);
-      toast.error("Failed to delete item");
+      toast.error(`Failed to delete ${label.toLowerCase()}`);
     } finally {
       setIsDeleting(false);
       setConfirmOpen(false);
-      setPendingId(null);
+      setPendingItem(null);
     }
   };
 
@@ -67,6 +87,7 @@ export function useContentDelete(
     cancelDelete, 
     confirmOpen, 
     isDeleting,
-    pendingId 
+    pendingItem,
+    label,
   };
 }

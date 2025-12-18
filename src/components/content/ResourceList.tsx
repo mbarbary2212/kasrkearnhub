@@ -47,7 +47,7 @@ export default function ResourceList({
   canDelete = false,
   showFeedback = true,
 }: ResourceListProps) {
-  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting } = useContentDelete(
+  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
     'resources',
     moduleId || '',
     chapterId
@@ -98,7 +98,7 @@ export default function ResourceList({
                         Manage
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[180px]">
+                    <DropdownMenuContent align="end" className="min-w-[180px] z-[50]">
                       {canEdit && (
                         <DropdownMenuItem className="gap-2">
                           <Pencil className="h-4 w-4" />
@@ -107,7 +107,7 @@ export default function ResourceList({
                       )}
                       {canDelete && (
                         <DropdownMenuItem
-                          onClick={() => askDelete(resource.id)}
+                          onClick={() => askDelete(resource.id, resource.title)}
                           className="gap-2 text-destructive focus:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -133,11 +133,11 @@ export default function ResourceList({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <AlertDialogContent className="z-[9999]">
+        <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this resource?</AlertDialogTitle>
+            <AlertDialogTitle>Delete resource?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the resource from this section.
+              Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
