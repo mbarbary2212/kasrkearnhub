@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
+import VideoList from '@/components/content/VideoList';
 import { 
   useModuleLectures, 
   useModuleResources, 
@@ -181,43 +182,11 @@ export default function ModulePage() {
           {/* Videos Tab (Lectures) */}
           <TabsContent value="videos" className="mt-6">
             {lecturesLoading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-              </div>
-            ) : lectures && lectures.length > 0 ? (
-              <div className="space-y-3">
-                {lectures.map((lecture) => (
-                  <Card key={lecture.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="flex items-center gap-4 p-4">
-                      <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Video className="w-6 h-6 text-primary-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{lecture.title}</h3>
-                        {lecture.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-1">{lecture.description}</p>
-                        )}
-                        {lecture.duration && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{lecture.duration}</span>
-                          </div>
-                        )}
-                      </div>
-                      {lecture.video_url && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={lecture.video_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            Watch
-                          </a>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="aspect-video" />)}
               </div>
             ) : (
-              renderEmptyState(<Video className="w-6 h-6 text-muted-foreground" />, "No videos available yet.")
+              <VideoList videos={lectures || []} />
             )}
           </TabsContent>
 
