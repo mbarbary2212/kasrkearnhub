@@ -246,59 +246,62 @@ function SortableResourceItem({
     <div ref={setNodeRef} style={style}>
       <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
         <Card className={`overflow-hidden ${isDragging ? 'shadow-lg ring-2 ring-primary' : ''}`}>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="py-3 px-4 cursor-pointer hover:bg-accent/50 transition-colors">
-              <div className="flex items-center gap-3">
-                {canManage && (
-                  <div
-                    className="cursor-grab active:cursor-grabbing touch-none"
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <GripVertical className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                )}
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                )}
-                <CardTitle className="text-sm font-medium flex-1">
-                  {resource.title}
-                </CardTitle>
-                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={onPrint}
-                  >
-                    <Printer className="w-3 h-3" />
-                  </Button>
-                  {canManage && (
-                    <>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={onEdit}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={onDelete}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </>
-                  )}
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center gap-3">
+              {canManage && (
+                <div
+                  className="cursor-grab active:cursor-grabbing touch-none p-1 -m-1 hover:bg-accent rounded"
+                  {...attributes}
+                  {...listeners}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className="w-4 h-4 text-muted-foreground" />
                 </div>
+              )}
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-3 flex-1 cursor-pointer hover:bg-accent/50 -my-3 -mr-4 py-3 pr-4 rounded-r transition-colors">
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <CardTitle className="text-sm font-medium flex-1">
+                    {resource.title}
+                  </CardTitle>
+                </div>
+              </CollapsibleTrigger>
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={onPrint}
+                >
+                  <Printer className="w-3 h-3" />
+                </Button>
+                {canManage && (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={onEdit}
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={onDelete}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
               </div>
-            </CardHeader>
-          </CollapsibleTrigger>
+            </div>
+          </CardHeader>
           <CollapsibleContent>
             <CardContent className="pt-0 pb-4 px-4">
               <ResourceContentRenderer
