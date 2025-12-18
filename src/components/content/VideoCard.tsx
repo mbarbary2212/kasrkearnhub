@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Play, Clock, AlertCircle, Video } from 'lucide-react';
+import { Play, Clock, AlertCircle, Video, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 import VideoPlayerModal from './VideoPlayerModal';
-import ContentItemActions from '@/components/admin/ContentItemActions';
+import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 
 interface VideoCardProps {
   id: string;
@@ -32,6 +39,7 @@ export default function VideoCard({
 }: VideoCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   
   const videoInfo = getVideoInfo(videoUrl);
   const isValid = isValidVideoUrl(videoUrl);
@@ -49,7 +57,7 @@ export default function VideoCard({
   // Show thumbnail if available and no error, otherwise show placeholder
   const showThumbnail = videoInfo.thumbnailUrl && !thumbnailError;
 
-  const showActions = moduleId && (canEdit || canDelete || showFeedback);
+  const canManage = canEdit || canDelete;
 
   return (
     <>
@@ -99,19 +107,41 @@ export default function VideoCard({
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-base font-medium line-clamp-2 flex-1">{title}</CardTitle>
-            {showActions && (
-              <ContentItemActions
-                id={id}
-                title={title}
-                description={description}
-                videoUrl={videoUrl}
-                contentType="lecture"
-                moduleId={moduleId!}
-                chapterId={chapterId}
-                canEdit={canEdit}
-                canDelete={canDelete}
-                showFeedback={showFeedback}
-              />
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Manage
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[180px]">
+                  {canEdit && (
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }} className="gap-2">
+                      <Pencil className="h-4 w-4" />
+                      Edit video
+                    </DropdownMenuItem>
+                  )}
+                  {canDelete && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="gap-2 text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete video
+                    </DropdownMenuItem>
+                  )}
+                  {showFeedback && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); setFeedbackOpen(true); }}
+                      className="gap-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Give feedback
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           {duration && (
@@ -135,6 +165,18 @@ export default function VideoCard({
         videoUrl={videoUrl}
         title={title}
       />
+
+      {moduleId && (
+        <ItemFeedbackModal
+          isOpen={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          itemType="video"
+          itemId={id}
+          itemTitle={title}
+          moduleId={moduleId}
+          chapterId={chapterId}
+        />
+      )}
     </>
   );
 }
