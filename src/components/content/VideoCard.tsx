@@ -23,6 +23,8 @@ interface VideoCardProps {
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export default function VideoCard({ 
@@ -36,6 +38,8 @@ export default function VideoCard({
   canEdit = false,
   canDelete = false,
   showFeedback = true,
+  onEdit,
+  onDelete,
 }: VideoCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -117,14 +121,14 @@ export default function VideoCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[180px]">
                   {canEdit && (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }} className="gap-2">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(); }} className="gap-2">
                       <Pencil className="h-4 w-4" />
                       Edit video
                     </DropdownMenuItem>
                   )}
                   {canDelete && (
                     <DropdownMenuItem
-                      onClick={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
                       className="gap-2 text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />

@@ -1,5 +1,16 @@
 import { PlayCircle } from 'lucide-react';
 import VideoCard from './VideoCard';
+import { useVideoDelete } from '@/hooks/useVideoDelete';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Video {
   id: string;
@@ -27,6 +38,11 @@ export default function VideoList({
   canDelete = false,
   showFeedback = true,
 }: VideoListProps) {
+  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting } = useVideoDelete(
+    moduleId || '', 
+    chapterId
+  );
+
   if (videos.length === 0) {
     return (
       <div className="text-center py-12">
@@ -37,22 +53,49 @@ export default function VideoList({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {videos.map((video) => (
-        <VideoCard
-          key={video.id}
-          id={video.id}
-          title={video.title}
-          description={video.description}
-          videoUrl={video.video_url || video.videoUrl || null}
-          duration={video.duration}
-          moduleId={moduleId}
-          chapterId={chapterId}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          showFeedback={showFeedback}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {videos.map((video) => (
+          <VideoCard
+            key={video.id}
+            id={video.id}
+            title={video.title}
+            description={video.description}
+            videoUrl={video.video_url || video.videoUrl || null}
+            duration={video.duration}
+            moduleId={moduleId}
+            chapterId={chapterId}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            showFeedback={showFeedback}
+            onDelete={() => askDelete(video.id)}
+          />
+        ))}
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
+        <AlertDialogContent className="z-[9999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this video?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the video from this section.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                doDelete();
+              }}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
