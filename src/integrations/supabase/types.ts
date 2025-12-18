@@ -752,6 +752,7 @@ export type Database = {
       }
       module_chapters: {
         Row: {
+          book_label: string | null
           chapter_number: number
           created_at: string | null
           id: string
@@ -760,6 +761,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          book_label?: string | null
           chapter_number: number
           created_at?: string | null
           id?: string
@@ -768,6 +770,7 @@ export type Database = {
           title: string
         }
         Update: {
+          book_label?: string | null
           chapter_number?: number
           created_at?: string | null
           id?: string
