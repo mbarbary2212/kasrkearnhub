@@ -15,7 +15,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import VideoList from '@/components/content/VideoList';
 import ResourceList from '@/components/content/ResourceList';
-import FlashcardList from '@/components/content/FlashcardList';
+import { StudyResourcesSection } from '@/components/study/StudyResourcesSection';
 import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
 import EssayList from '@/components/content/EssayList';
@@ -139,9 +139,9 @@ export default function ChapterPage() {
 
           {/* Resources Tab */}
           <TabsContent value="resources" className="mt-6">
-            <Accordion type="multiple" defaultValue={['resources', 'flashcards']} className="space-y-4">
-              {/* Resources Section */}
-              <AccordionItem value="resources" className="border rounded-lg px-4">
+            <Accordion type="multiple" defaultValue={['documents', 'study-resources']} className="space-y-4">
+              {/* Documents Section */}
+              <AccordionItem value="documents" className="border rounded-lg px-4">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
@@ -171,17 +171,17 @@ export default function ChapterPage() {
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Flashcards Section */}
-              <AccordionItem value="flashcards" className="border rounded-lg px-4">
+              {/* Study Resources Section */}
+              <AccordionItem value="study-resources" className="border rounded-lg px-4">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
-                    <span>Flashcards</span>
+                    <span>Study Resources</span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 pb-4">
                   {chapterId && moduleId && (
-                    <FlashcardList
+                    <StudyResourcesSection
                       chapterId={chapterId}
                       moduleId={moduleId}
                       canManage={canManageContent}
