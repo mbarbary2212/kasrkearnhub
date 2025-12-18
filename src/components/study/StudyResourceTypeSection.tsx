@@ -1,5 +1,22 @@
 import { useState } from 'react';
 import { Trash2, Edit2, GripVertical, ChevronDown, ChevronRight, Printer } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,6 +43,7 @@ import {
   ExamTipContent,
   KeyImageContent,
   useDeleteStudyResource,
+  useReorderStudyResources,
 } from '@/hooks/useStudyResources';
 import { toast } from 'sonner';
 
@@ -46,7 +64,25 @@ export function StudyResourceTypeSection({
 }: StudyResourceTypeSectionProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
   const deleteResource = useDeleteStudyResource();
+  const reorderResources = useReorderStudyResources();
+
+  // Sync local state when props change
+  if (JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
+    setLocalResources(resources);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const toggleExpanded = (id: string) => {
     setExpandedItems((prev) => {
@@ -81,6 +117,33 @@ export function StudyResourceTypeSection({
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localResources.findIndex((r) => r.id === active.id);
+      const newIndex = localResources.findIndex((r) => r.id === over.id);
+
+      const newOrder = arrayMove(localResources, oldIndex, newIndex);
+      setLocalResources(newOrder);
+
+      // Save new order to database
+      const reorderData = newOrder.map((r, index) => ({
+        id: r.id,
+        display_order: index,
+      }));
+
+      try {
+        await reorderResources.mutateAsync({ resources: reorderData, chapterId });
+        toast.success('Order updated');
+      } catch (error) {
+        // Revert on error
+        setLocalResources(resources);
+        toast.error('Failed to update order');
+      }
+    }
+  };
+
   if (resources.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4 text-center">
@@ -91,73 +154,33 @@ export function StudyResourceTypeSection({
 
   return (
     <>
-      <div className="space-y-2">
-        {resources.map((resource) => (
-          <Collapsible
-            key={resource.id}
-            open={expandedItems.has(resource.id)}
-            onOpenChange={() => toggleExpanded(resource.id)}
-          >
-            <Card className="overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="py-3 px-4 cursor-pointer hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    {canManage && (
-                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                    )}
-                    {expandedItems.has(resource.id) ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    )}
-                    <CardTitle className="text-sm font-medium flex-1">
-                      {resource.title}
-                    </CardTitle>
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => handlePrint(resource)}
-                      >
-                        <Printer className="w-3 h-3" />
-                      </Button>
-                      {canManage && (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={() => onEdit?.(resource)}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteId(resource.id)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0 pb-4 px-4">
-                  <ResourceContentRenderer
-                    resource={resource}
-                    resourceType={resourceType}
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={localResources.map((r) => r.id)}
+          strategy={verticalListSortingStrategy}
+          disabled={!canManage}
+        >
+          <div className="space-y-2">
+            {localResources.map((resource) => (
+              <SortableResourceItem
+                key={resource.id}
+                resource={resource}
+                resourceType={resourceType}
+                canManage={canManage}
+                isExpanded={expandedItems.has(resource.id)}
+                onToggleExpand={() => toggleExpanded(resource.id)}
+                onEdit={() => onEdit?.(resource)}
+                onDelete={() => setDeleteId(resource.id)}
+                onPrint={() => handlePrint(resource)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
@@ -179,6 +202,114 @@ export function StudyResourceTypeSection({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+interface SortableResourceItemProps {
+  resource: StudyResource;
+  resourceType: StudyResourceType;
+  canManage: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPrint: () => void;
+}
+
+function SortableResourceItem({
+  resource,
+  resourceType,
+  canManage,
+  isExpanded,
+  onToggleExpand,
+  onEdit,
+  onDelete,
+  onPrint,
+}: SortableResourceItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: resource.id, disabled: !canManage });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
+        <Card className={`overflow-hidden ${isDragging ? 'shadow-lg ring-2 ring-primary' : ''}`}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 px-4 cursor-pointer hover:bg-accent/50 transition-colors">
+              <div className="flex items-center gap-3">
+                {canManage && (
+                  <div
+                    className="cursor-grab active:cursor-grabbing touch-none"
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <GripVertical className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                )}
+                <CardTitle className="text-sm font-medium flex-1">
+                  {resource.title}
+                </CardTitle>
+                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={onPrint}
+                  >
+                    <Printer className="w-3 h-3" />
+                  </Button>
+                  {canManage && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={onEdit}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={onDelete}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-4 px-4">
+              <ResourceContentRenderer
+                resource={resource}
+                resourceType={resourceType}
+              />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    </div>
   );
 }
 
