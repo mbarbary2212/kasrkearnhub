@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Plus, Upload, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
 import { useDeleteMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq } from '@/hooks/useMcqs';
@@ -42,6 +44,9 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [previewData, setPreviewData] = useState<ReturnType<typeof parseMcqCsv> | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useDeleteMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
@@ -59,6 +64,54 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     if (!csvText.trim()) return;
     const parsed = parseMcqCsv(csvText);
     setPreviewData(parsed);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setFileError(null);
+    setPreviewData(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text.trim()) {
+          setFileError('The file is empty');
+          return;
+        }
+        
+        const parsed = parseMcqCsv(text);
+        
+        if (parsed.length === 0) {
+          setFileError('No valid MCQs found in the file. Check the format.');
+          return;
+        }
+        
+        setPreviewData(parsed);
+        setCsvText(text);
+      } catch (err) {
+        setFileError('Failed to parse CSV file');
+      }
+    };
+
+    reader.onerror = () => {
+      setFileError('Failed to read file');
+    };
+
+    reader.readAsText(file);
+  };
+
+  const resetBulkModal = () => {
+    setCsvText('');
+    setPreviewData(null);
+    setFileName(null);
+    setFileError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleBulkImport = () => {
@@ -155,56 +208,108 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
       <Dialog open={showBulkModal} onOpenChange={(open) => {
         setShowBulkModal(open);
         if (!open) {
-          setCsvText('');
-          setPreviewData(null);
+          resetBulkModal();
         }
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Import MCQs</DialogTitle>
             <DialogDescription>
-              Upload multiple MCQs at once using CSV format
+              Upload a CSV file or paste CSV content to import multiple MCQs
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 pt-2">
-            <div className="flex justify-between items-center">
-              <Label>CSV Data</Label>
+            {/* Download template button */}
+            <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">
                 <Download className="h-3 w-3" />
                 Download Template
               </Button>
             </div>
-            
-            <Textarea
-              value={csvText}
-              onChange={(e) => {
-                setCsvText(e.target.value);
-                setPreviewData(null);
-              }}
-              rows={8}
-              placeholder="stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty"
-              className="font-mono text-sm"
-            />
-            
-            <p className="text-xs text-muted-foreground">
-              Format: stem, choiceA, choiceB, choiceC, choiceD, choiceE, correct_key (A-E), explanation, difficulty (easy/medium/hard)
-              <br />
-              Use quotes around values containing commas.
-            </p>
 
-            {!previewData && (
-              <Button onClick={handlePreviewCsv} variant="secondary" className="w-full">
-                Preview Import
-              </Button>
-            )}
+            {!previewData ? (
+              <Tabs defaultValue="upload" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload">Upload CSV File</TabsTrigger>
+                  <TabsTrigger value="paste">Paste CSV Content</TabsTrigger>
+                </TabsList>
+                
+                {/* File Upload Tab */}
+                <TabsContent value="upload" className="space-y-4 mt-4">
+                  <div
+                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    {fileName ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <p className="text-sm font-medium">{fileName}</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-medium">Click to upload CSV file</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Or drag and drop your file here
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-            {previewData && (
+                  {fileError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{fileError}</AlertDescription>
+                    </Alert>
+                  )}
+                </TabsContent>
+
+                {/* Paste CSV Tab */}
+                <TabsContent value="paste" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>Paste CSV content here</Label>
+                    <Textarea
+                      value={csvText}
+                      onChange={(e) => {
+                        setCsvText(e.target.value);
+                        setPreviewData(null);
+                        setFileName(null);
+                        setFileError(null);
+                      }}
+                      rows={8}
+                      placeholder="stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handlePreviewCsv} 
+                    variant="secondary" 
+                    className="w-full"
+                    disabled={!csvText.trim()}
+                  >
+                    Preview Import
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              /* Preview Section */
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Preview ({previewData.length} questions)</Label>
-                  <Button variant="ghost" size="sm" onClick={() => setPreviewData(null)}>
-                    Edit CSV
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <Label>Preview ({previewData.length} questions ready)</Label>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={resetBulkModal}>
+                    Start Over
                   </Button>
                 </div>
                 
@@ -228,6 +333,12 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                 </Button>
               </div>
             )}
+
+            <p className="text-xs text-muted-foreground">
+              Format: stem, choiceA, choiceB, choiceC, choiceD, choiceE, correct_key (A-E), explanation, difficulty (easy/medium/hard)
+              <br />
+              Use quotes around values containing commas.
+            </p>
           </div>
         </DialogContent>
       </Dialog>
