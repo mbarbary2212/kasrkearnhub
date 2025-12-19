@@ -15,9 +15,11 @@ import { FlashcardDeck } from '@/components/study/FlashcardDeck';
 import { TableResourceView } from '@/components/study/TableResourceView';
 import {
   useChapterStudyResources,
+  useDeleteStudyResource,
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
+import { toast } from 'sonner';
 
 interface Resource {
   id: string;
@@ -54,6 +56,7 @@ export function ResourcesTabContent({
   isSuperAdmin,
 }: ResourcesTabContentProps) {
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
+  const deleteStudyResource = useDeleteStudyResource();
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -131,6 +134,15 @@ export function ResourcesTabContent({
     setSelectedType(resource.resource_type);
     setEditingResource(resource);
     setFormModalOpen(true);
+  };
+
+  const handleDelete = async (resource: StudyResource) => {
+    try {
+      await deleteStudyResource.mutateAsync({ id: resource.id, chapterId });
+      toast.success('Resource deleted');
+    } catch {
+      toast.error('Failed to delete resource');
+    }
   };
 
   const isLoading = resourcesLoading || studyResourcesLoading;
@@ -235,9 +247,19 @@ export function ResourcesTabContent({
 
             {/* Use special renderers for flashcards and tables, standard for others */}
             {type === 'flashcard' ? (
-              <FlashcardDeck resources={filteredResourcesByType[type]} />
+              <FlashcardDeck
+                resources={filteredResourcesByType[type]}
+                canManage={canManageContent}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ) : type === 'table' ? (
-              <TableResourceView resources={filteredResourcesByType[type]} />
+              <TableResourceView
+                resources={filteredResourcesByType[type]}
+                canManage={canManageContent}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ) : (
               <StudyResourceTypeSection
                 resources={filteredResourcesByType[type]}
