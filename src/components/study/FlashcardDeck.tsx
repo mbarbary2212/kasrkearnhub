@@ -14,6 +14,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// Force cleanup of stuck Radix overlays
+function forceCleanupOverlay() {
+  document.body.style.pointerEvents = '';
+  document.body.style.overflow = '';
+  document.body.removeAttribute('data-scroll-locked');
+}
+
 interface FlashcardDeckProps {
   resources: StudyResource[];
   canManage?: boolean;
@@ -51,9 +58,13 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
     setIsDeleting(true);
     try {
       await onDelete(deleteTarget);
+    } catch (error) {
+      console.error('Delete failed:', error);
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
+      // Force cleanup any stuck overlays
+      setTimeout(forceCleanupOverlay, 50);
     }
   };
 
