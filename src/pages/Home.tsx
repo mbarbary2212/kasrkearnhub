@@ -126,9 +126,22 @@ function LoggedInHome() {
 
   const isAdmin = role === 'admin' || role === 'department_admin' || role === 'platform_admin' || role === 'super_admin';
 
-  // Color mapping for years
-  const getYearColor = (color: string | null) => {
-    return color || 'bg-primary';
+  // Color mapping for years - using inline styles since dynamic Tailwind classes are purged
+  const getYearStyle = (color: string | null): React.CSSProperties => {
+    const colorMap: Record<string, string> = {
+      'bg-blue-500': '#3b82f6',
+      'bg-green-500': '#22c55e',
+      'bg-yellow-500': '#eab308',
+      'bg-orange-500': '#f97316',
+      'bg-red-500': '#ef4444',
+      'bg-purple-500': '#a855f7',
+      'bg-pink-500': '#ec4899',
+      'bg-teal-500': '#14b8a6',
+      'bg-indigo-500': '#6366f1',
+      'bg-primary': 'hsl(var(--primary))',
+    };
+    const bgColor = color && colorMap[color] ? colorMap[color] : 'hsl(var(--primary))';
+    return { backgroundColor: bgColor };
   };
 
   return (
@@ -184,7 +197,10 @@ function LoggedInHome() {
                     className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
                     onClick={() => navigate(`/year/${year.number}`)}
                   >
-                    <div className={`flex-shrink-0 w-11 h-11 ${getYearColor(year.color)} rounded-lg flex items-center justify-center`}>
+                    <div 
+                      className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
+                      style={getYearStyle(year.color)}
+                    >
                       <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
                     </div>
                     <div className="flex-1 min-w-0">
