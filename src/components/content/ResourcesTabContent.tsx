@@ -161,17 +161,8 @@ export function ResourcesTabContent({
       </div>
 
       {/* Horizontal Sub-tabs */}
-      <Tabs defaultValue="documents" className="w-full">
+      <Tabs defaultValue="flashcard" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
-          {/* Documents Tab */}
-          <TabsTrigger value="documents" className="flex items-center gap-2 px-3 py-2 whitespace-nowrap">
-            <FileText className="w-4 h-4" />
-            <span className="text-xs sm:text-sm">Documents</span>
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-              {filteredDocuments.length}
-            </Badge>
-          </TabsTrigger>
-
           {/* Study Resource Type Tabs */}
           {STUDY_RESOURCE_TYPES.map(({ type, label, icon }) => (
             <TabsTrigger
@@ -186,6 +177,15 @@ export function ResourcesTabContent({
               </Badge>
             </TabsTrigger>
           ))}
+
+          {/* Documents Tab - at the end */}
+          <TabsTrigger value="documents" className="flex items-center gap-2 px-3 py-2 whitespace-nowrap">
+            <FileText className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Documents</span>
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              {filteredDocuments.length}
+            </Badge>
+          </TabsTrigger>
         </TabsList>
 
         {/* Documents Content */}
