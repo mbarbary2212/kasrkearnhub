@@ -1,28 +1,43 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface FlashcardDeckProps {
   resources: StudyResource[];
+  canManage?: boolean;
+  onEdit?: (resource: StudyResource) => void;
+  onDelete?: (resource: StudyResource) => void;
 }
 
 interface GroupedDeck {
   title: string;
-  cards: { front: string; back: string }[];
+  cards: { front: string; back: string; resource: StudyResource }[];
 }
 
-export function FlashcardDeck({ resources }: FlashcardDeckProps) {
+export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: FlashcardDeckProps) {
+  const [deleteTarget, setDeleteTarget] = useState<StudyResource | null>(null);
+
   // Group flashcards by title
   const groups = useMemo(() => {
-    const map = new Map<string, { front: string; back: string }[]>();
+    const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
     for (const resource of resources) {
       const content = resource.content as FlashcardContent;
       const title = resource.title;
       if (!map.has(title)) map.set(title, []);
-      map.get(title)!.push({ front: content.front, back: content.back });
+      map.get(title)!.push({ front: content.front, back: content.back, resource });
     }
     return Array.from(map.entries()).map(([title, cards]) => ({
       title,
@@ -39,21 +54,54 @@ export function FlashcardDeck({ resources }: FlashcardDeckProps) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {groups.map((group) => (
-        <FlashcardDeckGroup
-          key={group.title}
-          deckTitle={group.title}
-          cards={group.cards}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <FlashcardDeckGroup
+            key={group.title}
+            deckTitle={group.title}
+            cards={group.cards}
+            canManage={canManage}
+            onEdit={onEdit}
+            onDelete={(resource) => setDeleteTarget(resource)}
+          />
+        ))}
+      </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete flashcard?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget && onDelete) {
+                  onDelete(deleteTarget);
+                }
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
 interface FlashcardDeckGroupProps {
   deckTitle: string;
-  cards: { front: string; back: string }[];
+  cards: { front: string; back: string; resource: StudyResource }[];
+  canManage?: boolean;
+  onEdit?: (resource: StudyResource) => void;
+  onDelete?: (resource: StudyResource) => void;
 }
 
 const TIMING_OPTIONS = [
@@ -62,7 +110,7 @@ const TIMING_OPTIONS = [
   { value: '7000', label: '7s' },
 ];
 
-function FlashcardDeckGroup({ deckTitle, cards }: FlashcardDeckGroupProps) {
+function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, onDelete }: FlashcardDeckGroupProps) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [autoReturn, setAutoReturn] = useState(true);
@@ -93,8 +141,30 @@ function FlashcardDeckGroup({ deckTitle, cards }: FlashcardDeckGroupProps) {
     <div className="rounded-xl border bg-card p-3 max-w-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
-        <div className="text-xs text-muted-foreground shrink-0">
-          {index + 1}/{cards.length}
+        <div className="flex items-center gap-1">
+          {canManage && (
+            <>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => onEdit?.(current.resource)}
+              >
+                <Edit2 className="w-3 h-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-destructive hover:text-destructive"
+                onClick={() => onDelete?.(current.resource)}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+          <span className="text-xs text-muted-foreground shrink-0 ml-1">
+            {index + 1}/{cards.length}
+          </span>
         </div>
       </div>
 

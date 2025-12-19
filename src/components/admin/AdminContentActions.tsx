@@ -16,6 +16,32 @@ import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource } from '@/lib/video';
 
+// Parse CSV line handling quoted values
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 interface AdminContentActionsProps {
   chapterId?: string;
   moduleId: string;
@@ -167,7 +193,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       // Parse CSV: question,option1,option2,option3,option4,correct_answer,explanation
       const lines = csvText.trim().split('\n').filter(line => line.trim());
       const questions = lines.map((line, index) => {
-        const parts = line.split(',').map(p => p.trim());
+        const parts = parseCSVLine(line);
         return {
           mcq_set_id: mcqSet.id,
           question: parts[0] || '',
@@ -184,6 +210,78 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets', chapterId] });
       toast.success('MCQs uploaded successfully');
+      setBulkOpen(false);
+      resetForm();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const bulkUploadPracticals = useMutation({
+    mutationFn: async () => {
+      const lines = csvText.trim().split('\n').filter(line => line.trim());
+      // Skip header row if it looks like a header
+      const startIndex = lines[0]?.toLowerCase().includes('title') ? 1 : 0;
+      
+      const practicals = [];
+      for (let i = startIndex; i < lines.length; i++) {
+        const parts = parseCSVLine(lines[i]);
+        if (parts[0]) {
+          practicals.push({
+            title: parts[0],
+            description: parts[1] || null,
+            video_url: parts[2] || null,
+            module_id: moduleId,
+            chapter_id: chapterId || null,
+            topic_id: topicId || null,
+          });
+        }
+      }
+
+      if (practicals.length === 0) throw new Error('No valid rows found');
+
+      const { error } = await supabase.from('practicals').insert(practicals);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chapter-practicals', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-practicals', moduleId] });
+      toast.success('Practicals uploaded successfully');
+      setBulkOpen(false);
+      resetForm();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const bulkUploadEssays = useMutation({
+    mutationFn: async () => {
+      const lines = csvText.trim().split('\n').filter(line => line.trim());
+      // Skip header row if it looks like a header
+      const startIndex = lines[0]?.toLowerCase().includes('title') ? 1 : 0;
+      
+      const essays = [];
+      for (let i = startIndex; i < lines.length; i++) {
+        const parts = parseCSVLine(lines[i]);
+        if (parts[0] && parts[1]) {
+          essays.push({
+            title: parts[0],
+            question: parts[1],
+            model_answer: parts[2] || null,
+            module_id: moduleId,
+            chapter_id: chapterId || null,
+            topic_id: topicId || null,
+          });
+        }
+      }
+
+      if (essays.length === 0) throw new Error('No valid rows found');
+
+      const { error } = await supabase.from('essays').insert(essays);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
+      toast.success('Short questions uploaded successfully');
       setBulkOpen(false);
       resetForm();
     },
@@ -272,7 +370,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         </DialogContent>
       </Dialog>
 
-      {contentType === 'mcq' && (
+      {(contentType === 'mcq' || contentType === 'practical' || contentType === 'essay') && (
         <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
@@ -282,25 +380,115 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Bulk Upload MCQs</DialogTitle>
+              <DialogTitle>
+                {contentType === 'mcq' && 'Bulk Upload MCQs'}
+                {contentType === 'practical' && 'Bulk Upload Practicals'}
+                {contentType === 'essay' && 'Bulk Upload Short Questions'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
-              <div>
-                <Label>Set Title</Label>
-                <Input value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-              <div>
-                <Label>CSV Format: question,option1,option2,option3,option4,correct_answer(0-3),explanation</Label>
-                <Textarea 
-                  value={csvText} 
-                  onChange={e => setCsvText(e.target.value)} 
-                  rows={10}
-                  placeholder="What is X?,Option A,Option B,Option C,Option D,0,Explanation here"
-                />
-              </div>
-              <Button onClick={() => bulkUploadMcqs.mutate()} className="w-full">
-                Upload MCQs
-              </Button>
+              {contentType === 'mcq' && (
+                <>
+                  <div>
+                    <Label>Set Title</Label>
+                    <Input value={title} onChange={e => setTitle(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>CSV Format: question,option1,option2,option3,option4,correct_answer(0-3),explanation</Label>
+                    <Textarea 
+                      value={csvText} 
+                      onChange={e => setCsvText(e.target.value)} 
+                      rows={10}
+                      placeholder="What is X?,Option A,Option B,Option C,Option D,0,Explanation here"
+                    />
+                  </div>
+                  <Button onClick={() => bulkUploadMcqs.mutate()} className="w-full">
+                    Upload MCQs
+                  </Button>
+                </>
+              )}
+              {contentType === 'practical' && (
+                <>
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm font-medium mb-2">CSV Format:</p>
+                    <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
+                      title,description,video_url{"\n"}"Practical Title","Description text","https://youtube.com/..."
+                    </pre>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground mb-3">Upload a CSV file</p>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setCsvText(String(reader.result ?? ''));
+                          reader.readAsText(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="practical-csv-upload"
+                    />
+                    <Button size="sm" variant="outline" asChild>
+                      <label htmlFor="practical-csv-upload" className="cursor-pointer">
+                        Choose File
+                      </label>
+                    </Button>
+                  </div>
+                  {csvText && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">CSV loaded. Ready to upload.</p>
+                    </div>
+                  )}
+                  <Button onClick={() => bulkUploadPracticals.mutate()} disabled={!csvText} className="w-full">
+                    Upload Practicals
+                  </Button>
+                </>
+              )}
+              {contentType === 'essay' && (
+                <>
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm font-medium mb-2">CSV Format:</p>
+                    <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
+                      title,question,model_answer{"\n"}"Question Title","Question text","Model answer text"
+                    </pre>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground mb-3">Upload a CSV file</p>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setCsvText(String(reader.result ?? ''));
+                          reader.readAsText(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="essay-csv-upload"
+                    />
+                    <Button size="sm" variant="outline" asChild>
+                      <label htmlFor="essay-csv-upload" className="cursor-pointer">
+                        Choose File
+                      </label>
+                    </Button>
+                  </div>
+                  {csvText && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">CSV loaded. Ready to upload.</p>
+                    </div>
+                  )}
+                  <Button onClick={() => bulkUploadEssays.mutate()} disabled={!csvText} className="w-full">
+                    Upload Short Questions
+                  </Button>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>

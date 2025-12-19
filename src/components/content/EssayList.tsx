@@ -1,25 +1,6 @@
-import { useState } from 'react';
-import { PenTool, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { PenTool } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useContentDelete } from '@/hooks/useContentDelete';
-import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
+import ContentItemActions from '@/components/admin/ContentItemActions';
 
 interface Essay {
   id: string;
@@ -44,15 +25,6 @@ export default function EssayList({
   canDelete = false,
   showFeedback = true,
 }: EssayListProps) {
-  const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
-    'essays',
-    moduleId || '',
-    chapterId
-  );
-  const [feedbackItem, setFeedbackItem] = useState<Essay | null>(null);
-
-  const canManage = canEdit || canDelete;
-
   if (essays.length === 0) {
     return (
       <div className="text-center py-12">
@@ -63,91 +35,30 @@ export default function EssayList({
   }
 
   return (
-    <>
-      <div className="space-y-3">
-        {essays.map((essay) => (
-          <Card key={essay.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <h3 className="font-medium mb-2">{essay.title}</h3>
-                {canManage && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="gap-2">
-                        <Settings2 className="h-4 w-4" />
-                        Manage
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[180px] z-[50]">
-                      {canEdit && (
-                        <DropdownMenuItem className="gap-2">
-                          <Pencil className="h-4 w-4" />
-                          Edit question
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem
-                          onClick={() => askDelete(essay.id, essay.title)}
-                          className="gap-2 text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete question
-                        </DropdownMenuItem>
-                      )}
-                      {showFeedback && (
-                        <DropdownMenuItem
-                          onClick={() => setFeedbackItem(essay)}
-                          className="gap-2"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Give feedback
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <AlertDialogContent className="z-[99999]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete short question?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-              onClick={(e) => {
-                e.preventDefault();
-                doDelete();
-              }}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {moduleId && feedbackItem && (
-        <ItemFeedbackModal
-          isOpen={!!feedbackItem}
-          onClose={() => setFeedbackItem(null)}
-          itemType="shortq"
-          itemId={feedbackItem.id}
-          itemTitle={feedbackItem.title}
-          moduleId={moduleId}
-          chapterId={chapterId}
-        />
-      )}
-    </>
+    <div className="space-y-3">
+      {essays.map((essay) => (
+        <Card key={essay.id} className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <h3 className="font-medium mb-2">{essay.title}</h3>
+              {moduleId && (
+                <ContentItemActions
+                  id={essay.id}
+                  title={essay.title}
+                  description={essay.question}
+                  contentType="essay"
+                  moduleId={moduleId}
+                  chapterId={chapterId}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  showFeedback={showFeedback}
+                />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
