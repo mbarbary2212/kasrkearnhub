@@ -57,12 +57,7 @@ export default function ResourceList({
   const canManage = canEdit || canDelete;
 
   if (resources.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">No resources available yet.</p>
-      </div>
-    );
+    return null;
   }
 
   return (

@@ -145,11 +145,7 @@ export function StudyResourceTypeSection({
   };
 
   if (resources.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-4 text-center">
-        No items yet. {canManage && 'Add your first item above.'}
-      </p>
-    );
+    return null;
   }
 
   return (
