@@ -74,7 +74,6 @@ export function StudyBulkUploadModal({
   const [parsedData, setParsedData] = useState<DuplicateResult<ParsedItem>[]>([]);
   const [errors, setErrors] = useState<ParseError[]>([]);
   const [fileName, setFileName] = useState<string>('');
-  const [isDragging, setIsDragging] = useState(false);
 
   const resetState = () => {
     setParsedData([]);
@@ -175,35 +174,6 @@ export function StudyBulkUploadModal({
     reader.readAsText(file);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file');
-      return;
-    }
-
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      processCSV(text);
-    };
-    reader.readAsText(file);
-  };
 
   const toggleItemStatus = (index: number) => {
     setParsedData(prev => prev.map((item, i) => 
@@ -275,24 +245,17 @@ export function StudyBulkUploadModal({
             </pre>
           </div>
 
-          {/* File Upload Area */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
+          {/* File Upload Area - Simple file input only, no drag & drop */}
+          <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
             <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-2">
+            <p className="text-sm text-muted-foreground mb-3">
               {fileName ? (
                 <span className="flex items-center justify-center gap-2">
                   <FileText className="w-4 h-4" />
                   {fileName}
                 </span>
               ) : (
-                'Drag and drop a CSV file or click to browse'
+                'Upload a CSV file using the button below.'
               )}
             </p>
             <input

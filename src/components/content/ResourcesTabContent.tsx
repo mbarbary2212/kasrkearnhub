@@ -11,6 +11,8 @@ import { StudyDisclaimer } from '@/components/study/StudyDisclaimer';
 import { StudyResourceTypeSection } from '@/components/study/StudyResourceTypeSection';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
+import { FlashcardDeck } from '@/components/study/FlashcardDeck';
+import { TableResourceView } from '@/components/study/TableResourceView';
 import {
   useChapterStudyResources,
   StudyResourceType,
@@ -231,13 +233,20 @@ export function ResourcesTabContent({
               </div>
             )}
 
-            <StudyResourceTypeSection
-              resources={filteredResourcesByType[type]}
-              resourceType={type}
-              canManage={canManageContent}
-              onEdit={handleEdit}
-              chapterId={chapterId}
-            />
+            {/* Use special renderers for flashcards and tables, standard for others */}
+            {type === 'flashcard' ? (
+              <FlashcardDeck resources={filteredResourcesByType[type]} />
+            ) : type === 'table' ? (
+              <TableResourceView resources={filteredResourcesByType[type]} />
+            ) : (
+              <StudyResourceTypeSection
+                resources={filteredResourcesByType[type]}
+                resourceType={type}
+                canManage={canManageContent}
+                onEdit={handleEdit}
+                chapterId={chapterId}
+              />
+            )}
           </TabsContent>
         ))}
       </Tabs>
