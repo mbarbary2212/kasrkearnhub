@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
@@ -391,7 +391,21 @@ export default function AdminPage() {
     setShowModuleDialog(true);
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      toast.error('Failed to send password reset email');
+    }
+  };
+
   if (authLoading || isLoading) {
+
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-12">
@@ -483,28 +497,40 @@ export default function AdminPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <Badge className={ROLE_COLORS[u.role]}>
                             {ROLE_LABELS[u.role]}
                           </Badge>
                           {u.id === user?.id ? (
                             <Badge variant="outline">You</Badge>
                           ) : (
-                            <Select
-                              value={u.role}
-                              onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}
-                            >
-                              <SelectTrigger className="w-44">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getAvailableRoles().map(role => (
-                                  <SelectItem key={role} value={role}>
-                                    {ROLE_LABELS[role]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <>
+                              <Select
+                                value={u.role}
+                                onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}
+                              >
+                                <SelectTrigger className="w-44">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableRoles().map(role => (
+                                    <SelectItem key={role} value={role}>
+                                      {ROLE_LABELS[role]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {isSuperAdmin && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSendPasswordReset(u.email)}
+                                  title="Send password reset email"
+                                >
+                                  <Mail className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
