@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -19,7 +18,7 @@ interface FlashcardDeckProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  onDelete?: (resource: StudyResource) => void;
+  onDelete?: (resource: StudyResource) => Promise<void> | void;
 }
 
 interface GroupedDeck {
@@ -29,6 +28,7 @@ interface GroupedDeck {
 
 export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: FlashcardDeckProps) {
   const [deleteTarget, setDeleteTarget] = useState<StudyResource | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Group flashcards by title
   const groups = useMemo(() => {
@@ -44,6 +44,18 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
       cards,
     }));
   }, [resources]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(deleteTarget);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
 
   if (groups.length === 0) {
     return (
@@ -68,7 +80,7 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
         ))}
       </div>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete flashcard?</AlertDialogTitle>
@@ -77,18 +89,14 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deleteTarget && onDelete) {
-                  onDelete(deleteTarget);
-                }
-                setDeleteTarget(null);
-              }}
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
             >
-              Delete
-            </AlertDialogAction>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
