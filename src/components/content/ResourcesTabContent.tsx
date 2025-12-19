@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Search, Plus, BookOpen, Table2, GitBranch, Lightbulb, Image, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import ResourceList from '@/components/content/ResourceList';
+import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { StudyDisclaimer } from '@/components/study/StudyDisclaimer';
 import { StudyResourceTypeSection } from '@/components/study/StudyResourceTypeSection';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
@@ -20,6 +21,7 @@ import {
   StudyResource,
 } from '@/hooks/useStudyResources';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Resource {
   id: string;
@@ -55,6 +57,7 @@ export function ResourcesTabContent({
   canManageContent,
   isSuperAdmin,
 }: ResourcesTabContentProps) {
+  const queryClient = useQueryClient();
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const deleteStudyResource = useDeleteStudyResource();
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,14 +139,16 @@ export function ResourcesTabContent({
     setFormModalOpen(true);
   };
 
-  const handleDelete = async (resource: StudyResource) => {
-    try {
-      await deleteStudyResource.mutateAsync({ id: resource.id, chapterId });
-      toast.success('Resource deleted');
-    } catch {
-      toast.error('Failed to delete resource');
-    }
-  };
+  // Centralized delete handler for the ResourcesDeleteManager
+  const handleDeleteResource = useCallback(async (kind: ResourceKind, id: string) => {
+    await deleteStudyResource.mutateAsync({ id, chapterId });
+    toast.success('Resource deleted');
+  }, [deleteStudyResource, chapterId]);
+
+  // Refetch all resources
+  const refetchResources = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
+  }, [queryClient, chapterId]);
 
   const isLoading = resourcesLoading || studyResourcesLoading;
 
@@ -251,14 +256,12 @@ export function ResourcesTabContent({
                 resources={filteredResourcesByType[type]}
                 canManage={canManageContent}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
               />
             ) : type === 'table' ? (
               <TableResourceView
                 resources={filteredResourcesByType[type]}
                 canManage={canManageContent}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
               />
             ) : (
               <StudyResourceTypeSection
@@ -272,6 +275,14 @@ export function ResourcesTabContent({
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Centralized Delete Manager - lives at page level */}
+      {canManageContent && (
+        <ResourcesDeleteManager
+          deleteResource={handleDeleteResource}
+          refetchResources={refetchResources}
+        />
+      )}
 
       {/* Form Modal */}
       <StudyResourceFormModal
