@@ -3,19 +3,12 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import VideoList from '@/components/content/VideoList';
-import ResourceList from '@/components/content/ResourceList';
-import { StudyResourcesSection } from '@/components/study/StudyResourcesSection';
+import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
 import EssayList from '@/components/content/EssayList';
@@ -33,7 +26,6 @@ import {
   HelpCircle, 
   PenTool, 
   FlaskConical,
-  Layers,
 } from 'lucide-react';
 
 export default function ChapterPage() {
@@ -138,36 +130,14 @@ export default function ChapterPage() {
           </TabsContent>
 
           {/* Resources Tab */}
-          <TabsContent value="resources" className="mt-6 space-y-6">
-            {/* Documents Section - no accordion header */}
-            <div>
-              {canManageContent && chapterId && moduleId && (
-                <div className="mb-4">
-                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
-                </div>
-              )}
-              {resourcesLoading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-                </div>
-              ) : (
-                <ResourceList
-                  resources={resources || []}
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  canEdit={canManageContent}
-                  canDelete={canManageContent}
-                  showFeedback={true}
-                />
-              )}
-            </div>
-
-            {/* Study Resources Section */}
+          <TabsContent value="resources" className="mt-6">
             {chapterId && moduleId && (
-              <StudyResourcesSection
+              <ResourcesTabContent
                 chapterId={chapterId}
                 moduleId={moduleId}
-                canManage={canManageContent}
+                resources={resources || []}
+                resourcesLoading={resourcesLoading}
+                canManageContent={canManageContent}
                 isSuperAdmin={isSuperAdmin}
               />
             )}
