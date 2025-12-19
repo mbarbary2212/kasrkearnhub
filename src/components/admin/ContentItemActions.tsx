@@ -64,6 +64,15 @@ export default function ContentItemActions({
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
 
+  // Sync edit state with props when dialog opens
+  const handleOpenEdit = () => {
+    setEditTitle(title);
+    setEditDescription(description || '');
+    setEditVideoUrl(videoUrl || '');
+    setEditFileUrl(fileUrl || '');
+    setEditOpen(true);
+  };
+
   const table = TABLE_MAP[contentType];
   const updateContent = useUpdateContent(table);
   const softDeleteContent = useSoftDeleteContent(table);
@@ -141,7 +150,7 @@ export default function ContentItemActions({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {canEdit && (
-                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <DropdownMenuItem onClick={handleOpenEdit}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
