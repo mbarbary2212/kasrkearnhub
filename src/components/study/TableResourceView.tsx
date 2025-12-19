@@ -1,51 +1,15 @@
-import { useState } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StudyResource, TableContent } from '@/hooks/useStudyResources';
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
-// Force cleanup of stuck Radix overlays
-function forceCleanupOverlay() {
-  document.body.style.pointerEvents = '';
-  document.body.style.overflow = '';
-  document.body.removeAttribute('data-scroll-locked');
-}
+import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 
 interface TableResourceViewProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  onDelete?: (resource: StudyResource) => Promise<void> | void;
 }
 
-export function TableResourceView({ resources, canManage, onEdit, onDelete }: TableResourceViewProps) {
-  const [deleteTarget, setDeleteTarget] = useState<StudyResource | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget || !onDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await onDelete(deleteTarget);
-    } catch (error) {
-      console.error('Delete failed:', error);
-    } finally {
-      setIsDeleting(false);
-      setDeleteTarget(null);
-      // Force cleanup any stuck overlays
-      setTimeout(forceCleanupOverlay, 50);
-    }
-  };
-
+export function TableResourceView({ resources, canManage, onEdit }: TableResourceViewProps) {
   if (resources.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -55,40 +19,16 @@ export function TableResourceView({ resources, canManage, onEdit, onDelete }: Ta
   }
 
   return (
-    <>
-      <div className="space-y-4">
-        {resources.map((resource) => (
-          <TableCard
-            key={resource.id}
-            resource={resource}
-            canManage={canManage}
-            onEdit={onEdit}
-            onDelete={(r) => setDeleteTarget(r)}
-          />
-        ))}
-      </div>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete table?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <div className="space-y-4">
+      {resources.map((resource) => (
+        <TableCard
+          key={resource.id}
+          resource={resource}
+          canManage={canManage}
+          onEdit={onEdit}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -96,11 +36,16 @@ interface TableCardProps {
   resource: StudyResource;
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  onDelete?: (resource: StudyResource) => void;
 }
 
-function TableCard({ resource, canManage, onEdit, onDelete }: TableCardProps) {
+function TableCard({ resource, canManage, onEdit }: TableCardProps) {
   const content = resource.content as TableContent;
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    requestResourceDelete('table', resource.id, resource.title);
+  };
 
   if (!content.headers || !content.rows) {
     return (
@@ -121,7 +66,10 @@ function TableCard({ resource, canManage, onEdit, onDelete }: TableCardProps) {
               size="icon"
               variant="ghost"
               className="h-7 w-7"
-              onClick={() => onEdit?.(resource)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(resource);
+              }}
             >
               <Edit2 className="w-3 h-3" />
             </Button>
@@ -129,7 +77,7 @@ function TableCard({ resource, canManage, onEdit, onDelete }: TableCardProps) {
               size="icon"
               variant="ghost"
               className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => onDelete?.(resource)}
+              onClick={handleDelete}
             >
               <Trash2 className="w-3 h-3" />
             </Button>

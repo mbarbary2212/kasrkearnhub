@@ -20,16 +20,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -42,9 +32,9 @@ import {
   AlgorithmContent,
   ExamTipContent,
   KeyImageContent,
-  useDeleteStudyResource,
   useReorderStudyResources,
 } from '@/hooks/useStudyResources';
+import { requestResourceDelete, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { toast } from 'sonner';
 
 interface StudyResourceTypeSectionProps {
@@ -55,6 +45,15 @@ interface StudyResourceTypeSectionProps {
   chapterId: string;
 }
 
+// Map study resource type to delete manager resource kind
+const typeToKind: Record<StudyResourceType, ResourceKind> = {
+  flashcard: 'flashcard',
+  table: 'table',
+  algorithm: 'algorithm',
+  exam_tip: 'exam_tip',
+  key_image: 'key_image',
+};
+
 export function StudyResourceTypeSection({
   resources,
   resourceType,
@@ -62,10 +61,8 @@ export function StudyResourceTypeSection({
   onEdit,
   chapterId,
 }: StudyResourceTypeSectionProps) {
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
-  const deleteResource = useDeleteStudyResource();
   const reorderResources = useReorderStudyResources();
 
   // Sync local state when props change
@@ -96,15 +93,8 @@ export function StudyResourceTypeSection({
     });
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      await deleteResource.mutateAsync({ id: deleteId, chapterId });
-      toast.success('Resource deleted');
-      setDeleteId(null);
-    } catch (error) {
-      toast.error('Failed to delete resource');
-    }
+  const handleDelete = (resource: StudyResource) => {
+    requestResourceDelete(typeToKind[resourceType], resource.id, resource.title);
   };
 
   const handlePrint = (resource: StudyResource) => {
@@ -149,55 +139,33 @@ export function StudyResourceTypeSection({
   }
 
   return (
-    <>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={localResources.map((r) => r.id)}
+        strategy={verticalListSortingStrategy}
+        disabled={!canManage}
       >
-        <SortableContext
-          items={localResources.map((r) => r.id)}
-          strategy={verticalListSortingStrategy}
-          disabled={!canManage}
-        >
-          <div className="space-y-2">
-            {localResources.map((resource) => (
-              <SortableResourceItem
-                key={resource.id}
-                resource={resource}
-                resourceType={resourceType}
-                canManage={canManage}
-                isExpanded={expandedItems.has(resource.id)}
-                onToggleExpand={() => toggleExpanded(resource.id)}
-                onEdit={() => onEdit?.(resource)}
-                onDelete={() => setDeleteId(resource.id)}
-                onPrint={() => handlePrint(resource)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Resource</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this resource? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        <div className="space-y-2">
+          {localResources.map((resource) => (
+            <SortableResourceItem
+              key={resource.id}
+              resource={resource}
+              resourceType={resourceType}
+              canManage={canManage}
+              isExpanded={expandedItems.has(resource.id)}
+              onToggleExpand={() => toggleExpanded(resource.id)}
+              onEdit={() => onEdit?.(resource)}
+              onDelete={() => handleDelete(resource)}
+              onPrint={() => handlePrint(resource)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }
 

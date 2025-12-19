@@ -4,28 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
-// Force cleanup of stuck Radix overlays
-function forceCleanupOverlay() {
-  document.body.style.pointerEvents = '';
-  document.body.style.overflow = '';
-  document.body.removeAttribute('data-scroll-locked');
-}
+import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 
 interface FlashcardDeckProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  onDelete?: (resource: StudyResource) => Promise<void> | void;
 }
 
 interface GroupedDeck {
@@ -33,10 +17,7 @@ interface GroupedDeck {
   cards: { front: string; back: string; resource: StudyResource }[];
 }
 
-export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: FlashcardDeckProps) {
-  const [deleteTarget, setDeleteTarget] = useState<StudyResource | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
+export function FlashcardDeck({ resources, canManage, onEdit }: FlashcardDeckProps) {
   // Group flashcards by title
   const groups = useMemo(() => {
     const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
@@ -52,22 +33,6 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
     }));
   }, [resources]);
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget || !onDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await onDelete(deleteTarget);
-    } catch (error) {
-      console.error('Delete failed:', error);
-    } finally {
-      setIsDeleting(false);
-      setDeleteTarget(null);
-      // Force cleanup any stuck overlays
-      setTimeout(forceCleanupOverlay, 50);
-    }
-  };
-
   if (groups.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -77,41 +42,17 @@ export function FlashcardDeck({ resources, canManage, onEdit, onDelete }: Flashc
   }
 
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {groups.map((group) => (
-          <FlashcardDeckGroup
-            key={group.title}
-            deckTitle={group.title}
-            cards={group.cards}
-            canManage={canManage}
-            onEdit={onEdit}
-            onDelete={(resource) => setDeleteTarget(resource)}
-          />
-        ))}
-      </div>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete flashcard?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {groups.map((group) => (
+        <FlashcardDeckGroup
+          key={group.title}
+          deckTitle={group.title}
+          cards={group.cards}
+          canManage={canManage}
+          onEdit={onEdit}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -120,7 +61,6 @@ interface FlashcardDeckGroupProps {
   cards: { front: string; back: string; resource: StudyResource }[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  onDelete?: (resource: StudyResource) => void;
 }
 
 const TIMING_OPTIONS = [
@@ -129,7 +69,7 @@ const TIMING_OPTIONS = [
   { value: '7000', label: '7s' },
 ];
 
-function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, onDelete }: FlashcardDeckGroupProps) {
+function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit }: FlashcardDeckGroupProps) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [autoReturn, setAutoReturn] = useState(true);
@@ -156,6 +96,12 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, onDelete }: F
     setIndex((v) => (v + 1) % cards.length);
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    requestResourceDelete('flashcard', current.resource.id, current.resource.title);
+  };
+
   return (
     <div className="rounded-xl border bg-card p-3 max-w-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -167,7 +113,10 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, onDelete }: F
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6"
-                onClick={() => onEdit?.(current.resource)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(current.resource);
+                }}
               >
                 <Edit2 className="w-3 h-3" />
               </Button>
@@ -175,7 +124,7 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, onDelete }: F
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => onDelete?.(current.resource)}
+                onClick={handleDelete}
               >
                 <Trash2 className="w-3 h-3" />
               </Button>
