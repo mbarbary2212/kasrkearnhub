@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 
 interface FlashcardDeckProps {
   resources: StudyResource[];
-  autoFlipBackMs?: number;
 }
 
 interface GroupedDeck {
@@ -14,7 +14,7 @@ interface GroupedDeck {
   cards: { front: string; back: string }[];
 }
 
-export function FlashcardDeck({ resources, autoFlipBackMs = 5000 }: FlashcardDeckProps) {
+export function FlashcardDeck({ resources }: FlashcardDeckProps) {
   // Group flashcards by title
   const groups = useMemo(() => {
     const map = new Map<string, { front: string; back: string }[]>();
@@ -39,13 +39,12 @@ export function FlashcardDeck({ resources, autoFlipBackMs = 5000 }: FlashcardDec
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {groups.map((group) => (
         <FlashcardDeckGroup
           key={group.title}
           deckTitle={group.title}
           cards={group.cards}
-          autoFlipBackMs={autoFlipBackMs}
         />
       ))}
     </div>
@@ -55,22 +54,28 @@ export function FlashcardDeck({ resources, autoFlipBackMs = 5000 }: FlashcardDec
 interface FlashcardDeckGroupProps {
   deckTitle: string;
   cards: { front: string; back: string }[];
-  autoFlipBackMs: number;
 }
 
-function FlashcardDeckGroup({ deckTitle, cards, autoFlipBackMs }: FlashcardDeckGroupProps) {
+const TIMING_OPTIONS = [
+  { value: '3000', label: '3s' },
+  { value: '5000', label: '5s' },
+  { value: '7000', label: '7s' },
+];
+
+function FlashcardDeckGroup({ deckTitle, cards }: FlashcardDeckGroupProps) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [autoReturn, setAutoReturn] = useState(true);
+  const [autoFlipMs, setAutoFlipMs] = useState(5000);
 
   const current = cards[index];
 
   // Auto-return after showing answer
   useEffect(() => {
     if (!flipped || !autoReturn) return;
-    const t = setTimeout(() => setFlipped(false), autoFlipBackMs);
+    const t = setTimeout(() => setFlipped(false), autoFlipMs);
     return () => clearTimeout(t);
-  }, [flipped, autoReturn, autoFlipBackMs]);
+  }, [flipped, autoReturn, autoFlipMs]);
 
   if (!cards.length) return null;
 
@@ -85,52 +90,84 @@ function FlashcardDeckGroup({ deckTitle, cards, autoFlipBackMs }: FlashcardDeckG
   };
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="font-semibold text-foreground">{deckTitle}</div>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-          <Checkbox
-            checked={autoReturn}
-            onCheckedChange={(checked) => setAutoReturn(checked === true)}
-          />
-          Auto-return
-        </label>
+    <div className="rounded-xl border bg-card p-3 max-w-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
+        <div className="text-xs text-muted-foreground shrink-0">
+          {index + 1}/{cards.length}
+        </div>
       </div>
 
-      <div
-        className="cursor-pointer select-none rounded-xl border bg-primary/5 p-6 text-center transition-all hover:bg-primary/10"
+      {/* Flip Card Container */}
+      <div 
+        className="perspective-1000 cursor-pointer mb-3"
         onClick={() => setFlipped((v) => !v)}
       >
-        <div className="text-xs uppercase text-muted-foreground tracking-wide">
-          {flipped ? 'Answer' : 'Question'}
+        <div 
+          className={`relative w-full h-36 transition-transform duration-500 transform-style-3d ${
+            flipped ? 'rotate-y-180' : ''
+          }`}
+        >
+          {/* Front */}
+          <div className="absolute inset-0 backface-hidden rounded-lg border bg-primary/5 p-4 flex flex-col items-center justify-center text-center">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Question</div>
+            <div className="text-sm font-medium text-foreground line-clamp-4">{current.front}</div>
+          </div>
+          {/* Back */}
+          <div className="absolute inset-0 backface-hidden rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col items-center justify-center text-center rotate-y-180">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Answer</div>
+            <div className="text-sm font-medium text-foreground line-clamp-4">{current.back}</div>
+          </div>
         </div>
-        <div className="mt-3 text-lg font-medium text-foreground min-h-[60px] flex items-center justify-center">
-          {flipped ? current.back : current.front}
-        </div>
-        <div className="mt-3 text-sm text-muted-foreground">Click to flip</div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      {/* Controls */}
+      <div className="flex items-center justify-between gap-2">
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
           onClick={handlePrev}
           disabled={cards.length <= 1}
         >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Prev
+          <ChevronLeft className="w-4 h-4" />
         </Button>
-        <div className="text-sm text-muted-foreground">
-          {index + 1} / {cards.length}
+
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <Checkbox
+              checked={autoReturn}
+              onCheckedChange={(checked) => setAutoReturn(checked === true)}
+              className="h-3.5 w-3.5"
+            />
+            Auto
+          </label>
+          <Select
+            value={String(autoFlipMs)}
+            onValueChange={(v) => setAutoFlipMs(Number(v))}
+            disabled={!autoReturn}
+          >
+            <SelectTrigger className="h-6 w-14 text-xs px-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIMING_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
           onClick={handleNext}
           disabled={cards.length <= 1}
         >
-          Next
-          <ChevronRight className="w-4 h-4 ml-1" />
+          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div>
