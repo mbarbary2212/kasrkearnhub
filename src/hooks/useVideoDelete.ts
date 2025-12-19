@@ -32,6 +32,9 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
 
     setIsDeleting(true);
 
+    // Close modal immediately to prevent grey overlay freeze
+    setConfirmOpen(false);
+
     // Optimistically remove from any cached lists (instant UI update)
     const removeFromList = (old: unknown) => {
       if (!Array.isArray(old)) return old;
@@ -75,7 +78,6 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
       ]);
     } finally {
       setIsDeleting(false);
-      setConfirmOpen(false);
       setPendingItem(null);
     }
   };
