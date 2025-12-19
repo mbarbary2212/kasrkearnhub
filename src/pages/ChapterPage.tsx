@@ -138,59 +138,39 @@ export default function ChapterPage() {
           </TabsContent>
 
           {/* Resources Tab */}
-          <TabsContent value="resources" className="mt-6">
-            <Accordion type="multiple" defaultValue={['documents', 'study-resources']} className="space-y-4">
-              {/* Documents Section */}
-              <AccordionItem value="documents" className="border rounded-lg px-4">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    <span>Documents & Files</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4">
-                  {canManageContent && chapterId && moduleId && (
-                    <div className="mb-4">
-                      <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
-                    </div>
-                  )}
-                  {resourcesLoading ? (
-                    <div className="space-y-3">
-                      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-                    </div>
-                  ) : (
-                    <ResourceList
-                      resources={resources || []}
-                      moduleId={moduleId}
-                      chapterId={chapterId}
-                      canEdit={canManageContent}
-                      canDelete={canManageContent}
-                      showFeedback={true}
-                    />
-                  )}
-                </AccordionContent>
-              </AccordionItem>
+          <TabsContent value="resources" className="mt-6 space-y-6">
+            {/* Documents Section - no accordion header */}
+            <div>
+              {canManageContent && chapterId && moduleId && (
+                <div className="mb-4">
+                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+                </div>
+              )}
+              {resourcesLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+                </div>
+              ) : (
+                <ResourceList
+                  resources={resources || []}
+                  moduleId={moduleId}
+                  chapterId={chapterId}
+                  canEdit={canManageContent}
+                  canDelete={canManageContent}
+                  showFeedback={true}
+                />
+              )}
+            </div>
 
-              {/* Study Resources Section */}
-              <AccordionItem value="study-resources" className="border rounded-lg px-4">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4" />
-                    <span>Study Resources</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4">
-                  {chapterId && moduleId && (
-                    <StudyResourcesSection
-                      chapterId={chapterId}
-                      moduleId={moduleId}
-                      canManage={canManageContent}
-                      isSuperAdmin={isSuperAdmin}
-                    />
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            {/* Study Resources Section */}
+            {chapterId && moduleId && (
+              <StudyResourcesSection
+                chapterId={chapterId}
+                moduleId={moduleId}
+                canManage={canManageContent}
+                isSuperAdmin={isSuperAdmin}
+              />
+            )}
           </TabsContent>
 
           {/* MCQs Tab */}
