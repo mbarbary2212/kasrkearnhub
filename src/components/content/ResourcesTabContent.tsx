@@ -12,7 +12,7 @@ import { StudyDisclaimer } from '@/components/study/StudyDisclaimer';
 import { StudyResourceTypeSection } from '@/components/study/StudyResourceTypeSection';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { FlashcardDeck } from '@/components/study/FlashcardDeck';
+import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { TableResourceView } from '@/components/study/TableResourceView';
 import {
   useChapterStudyResources,
@@ -252,7 +252,7 @@ export function ResourcesTabContent({
 
             {/* Use special renderers for flashcards and tables, standard for others */}
             {type === 'flashcard' ? (
-              <FlashcardDeck
+              <FlashcardsTab
                 resources={filteredResourcesByType[type]}
                 canManage={canManageContent}
                 onEdit={handleEdit}
