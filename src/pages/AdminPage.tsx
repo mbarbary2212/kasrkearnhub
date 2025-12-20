@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
+import { AdminUploadDiagnostics } from '@/components/admin/AdminUploadDiagnostics';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -831,6 +832,7 @@ export default function AdminPage() {
 
           {/* Feedback Tab */}
           <TabsContent value="feedback">
+            <AdminUploadDiagnostics />
             <AdminFeedbackPanel />
           </TabsContent>
         </Tabs>

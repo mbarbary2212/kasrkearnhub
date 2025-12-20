@@ -120,8 +120,13 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
       return;
     }
 
+    if (!consent) {
+      toast.error('Please confirm the consent checkbox');
+      return;
+    }
+
     if (!canSubmit) {
-      toast.error('You have reached the daily submission limit');
+      toast.error('Daily limit reached (5/day). Try again tomorrow.');
       return;
     }
 
@@ -135,7 +140,7 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
     });
 
     if (success) {
-      toast.success('Thanks. Your feedback was submitted anonymously.');
+      toast.success('Thanks! Feedback submitted.');
       resetForm();
       onOpenChange(false);
     } else {
