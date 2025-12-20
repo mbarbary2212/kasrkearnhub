@@ -17,7 +17,7 @@ type StudentMode = 'interactive' | 'slideshow';
 
 export function FlashcardsTab({ resources, canManage, onEdit }: FlashcardsTabProps) {
   const { isAdmin, isTeacher } = useAuthContext();
-  const [studentMode, setStudentMode] = useState<StudentMode>('interactive');
+  const [studentMode, setStudentMode] = useState<StudentMode>('slideshow');
   
   // Admin/Teacher view shows the grid with edit/delete controls
   // NO slideshow mode for admins
