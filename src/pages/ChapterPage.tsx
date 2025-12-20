@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,16 @@ import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
 import EssayList from '@/components/content/EssayList';
+import CaseScenarioList from '@/components/content/CaseScenarioList';
+import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModal';
+import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBulkUploadModal';
 import { 
   useChapterLectures, 
   useChapterResources, 
   useChapterEssays, 
   useChapterPracticals
 } from '@/hooks/useChapterContent';
+import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
   ArrowLeft, 
@@ -26,6 +31,9 @@ import {
   HelpCircle, 
   PenTool, 
   FlaskConical,
+  Stethoscope,
+  Plus,
+  Upload,
 } from 'lucide-react';
 
 export default function ChapterPage() {
@@ -35,6 +43,10 @@ export default function ChapterPage() {
 
   const canManageContent = isAdmin || isTeacher;
 
+  // State for Case Scenarios modals
+  const [caseFormOpen, setCaseFormOpen] = useState(false);
+  const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
+
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
@@ -42,6 +54,7 @@ export default function ChapterPage() {
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
+  const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
 
   if (!chapterLoading && !chapter) {
     return (
@@ -83,7 +96,7 @@ export default function ChapterPage() {
 
         {/* Content Tabs */}
         <Tabs defaultValue="videos" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-6 h-auto">
             <TabsTrigger value="videos" className="flex flex-col gap-1 py-3">
               <Video className="w-4 h-4" />
               <span className="text-xs">Videos</span>
@@ -103,6 +116,10 @@ export default function ChapterPage() {
             <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
               <PenTool className="w-4 h-4" />
               <span className="text-xs">Short Qs</span>
+            </TabsTrigger>
+            <TabsTrigger value="cases" className="flex flex-col gap-1 py-3">
+              <Stethoscope className="w-4 h-4" />
+              <span className="text-xs">Cases</span>
             </TabsTrigger>
           </TabsList>
 
@@ -204,7 +221,54 @@ export default function ChapterPage() {
               />
             )}
           </TabsContent>
+
+          {/* Case Scenarios Tab */}
+          <TabsContent value="cases" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4 flex gap-2">
+                <Button size="sm" onClick={() => setCaseFormOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Case
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
+                  <Upload className="w-4 h-4 mr-1" />
+                  Bulk Upload
+                </Button>
+              </div>
+            )}
+            {caseScenariosLoading ? (
+              <div className="space-y-3">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+              </div>
+            ) : (
+              <CaseScenarioList
+                cases={caseScenarios || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+              />
+            )}
+          </TabsContent>
         </Tabs>
+
+        {/* Case Scenario Modals */}
+        {chapterId && moduleId && (
+          <>
+            <CaseScenarioFormModal
+              open={caseFormOpen}
+              onOpenChange={setCaseFormOpen}
+              moduleId={moduleId}
+              chapterId={chapterId}
+            />
+            <CaseScenarioBulkUploadModal
+              open={caseBulkUploadOpen}
+              onOpenChange={setCaseBulkUploadOpen}
+              moduleId={moduleId}
+              chapterId={chapterId}
+            />
+          </>
+        )}
       </div>
     </MainLayout>
   );
