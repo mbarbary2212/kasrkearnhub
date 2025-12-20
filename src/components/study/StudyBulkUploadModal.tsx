@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Upload, FileText, AlertCircle, Check, AlertTriangle, Copy } from 'lucide-react';
+import { AlertCircle, Check, AlertTriangle, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import {
   StudyResourceType,
   StudyResourceInsert,
@@ -156,15 +157,7 @@ export function StudyBulkUploadModal({
     [resourceType, detectDuplicates]
   );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file');
-      return;
-    }
-
+  const handleFileSelect = useCallback((file: File) => {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -172,7 +165,7 @@ export function StudyBulkUploadModal({
       processCSV(text);
     };
     reader.readAsText(file);
-  };
+  }, [processCSV]);
 
 
   const toggleItemStatus = (index: number) => {
@@ -245,32 +238,15 @@ export function StudyBulkUploadModal({
             </pre>
           </div>
 
-          {/* File Upload Area - Simple file input only, no drag & drop */}
-          <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
-            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">
-              {fileName ? (
-                <span className="flex items-center justify-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  {fileName}
-                </span>
-              ) : (
-                'Upload a CSV file using the button below.'
-              )}
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              className="hidden"
-              id="csv-upload"
-            />
-            <Button size="sm" variant="outline" asChild>
-              <label htmlFor="csv-upload" className="cursor-pointer">
-                Choose File
-              </label>
-            </Button>
-          </div>
+          {/* File Upload Area with Drag & Drop */}
+          <DragDropZone
+            id={`csv-upload-${resourceType}`}
+            onFileSelect={handleFileSelect}
+            accept=".csv"
+            fileName={fileName}
+            acceptedTypes={['.csv']}
+            maxSizeMB={10}
+          />
 
           {/* Errors */}
           {errors.length > 0 && (

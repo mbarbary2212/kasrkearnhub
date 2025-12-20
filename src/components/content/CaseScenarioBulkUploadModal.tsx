@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Upload, FileText, AlertCircle, Check } from 'lucide-react';
+import { AlertCircle, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useBulkCreateCaseScenarios, CaseScenarioInsert } from '@/hooks/useCaseScenarios';
 import { toast } from 'sonner';
 
@@ -110,15 +111,7 @@ export function CaseScenarioBulkUploadModal({
     setErrors(parseErrors);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file');
-      return;
-    }
-
+  const handleFileSelect = useCallback((file: File) => {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -126,7 +119,7 @@ export function CaseScenarioBulkUploadModal({
       processCSV(text);
     };
     reader.readAsText(file);
-  };
+  }, [processCSV]);
 
   const toggleItemStatus = (index: number) => {
     setParsedData(prev => prev.map((item, i) => 
@@ -193,32 +186,15 @@ export function CaseScenarioBulkUploadModal({
             </p>
           </div>
 
-          {/* File Upload Area */}
-          <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
-            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">
-              {fileName ? (
-                <span className="flex items-center justify-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  {fileName}
-                </span>
-              ) : (
-                'Upload a CSV file using the button below.'
-              )}
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              className="hidden"
-              id="case-csv-upload"
-            />
-            <Button size="sm" variant="outline" asChild>
-              <label htmlFor="case-csv-upload" className="cursor-pointer">
-                Choose File
-              </label>
-            </Button>
-          </div>
+          {/* File Upload Area with Drag & Drop */}
+          <DragDropZone
+            id="case-csv-upload"
+            onFileSelect={handleFileSelect}
+            accept=".csv"
+            fileName={fileName}
+            acceptedTypes={['.csv']}
+            maxSizeMB={10}
+          />
 
           {/* Errors */}
           {errors.length > 0 && (
