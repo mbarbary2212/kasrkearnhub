@@ -44,6 +44,69 @@ export type Database = {
         }
         Relationships: []
       }
+      case_scenarios: {
+        Row: {
+          case_history: string
+          case_questions: string
+          chapter_id: string | null
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          id: string
+          is_deleted: boolean
+          model_answer: string
+          module_id: string | null
+          rating: number | null
+          title: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_history: string
+          case_questions: string
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean
+          model_answer: string
+          module_id?: string | null
+          rating?: number | null
+          title: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_history?: string
+          case_questions?: string
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean
+          model_answer?: string
+          module_id?: string | null
+          rating?: number | null
+          title?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_scenarios_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_cases: {
         Row: {
           chapter_id: string | null
@@ -225,6 +288,7 @@ export type Database = {
           module_id: string | null
           question: string
           question_ar: string | null
+          rating: number | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -244,6 +308,7 @@ export type Database = {
           module_id?: string | null
           question: string
           question_ar?: string | null
+          rating?: number | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -263,6 +328,7 @@ export type Database = {
           module_id?: string | null
           question?: string
           question_ar?: string | null
+          rating?: number | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
