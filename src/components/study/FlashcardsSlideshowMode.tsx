@@ -10,9 +10,8 @@ import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 // Global admin constant: time to show question before auto-flip to answer
 const QUESTION_TIME_BEFORE_FLIP_SECONDS = 3;
 
-interface ChapterGroup {
-  chapterId: string;
-  chapterTitle: string;
+interface TopicGroup {
+  topic: string;
   cards: StudyResource[];
 }
 
@@ -52,7 +51,7 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   const [cardCountSelection, setCardCountSelection] = useState<string>('20');
   const [intervalSeconds, setIntervalSeconds] = useState<number>(7);
   const [shuffleEnabled, setSuffleEnabled] = useState<boolean>(false);
-  const [chapterSectionOpen, setChapterSectionOpen] = useState<boolean>(false);
+  const [topicSectionOpen, setTopicSectionOpen] = useState<boolean>(false);
 
   // Slideshow state
   const [state, setState] = useState<SlideshowState>('idle');
@@ -64,64 +63,63 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   const flipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const advanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Group cards by chapter
-  const chapterGroups = useMemo<ChapterGroup[]>(() => {
-    const groupMap = new Map<string, ChapterGroup>();
+  // Group cards by title (topic)
+  const topicGroups = useMemo<TopicGroup[]>(() => {
+    const groupMap = new Map<string, TopicGroup>();
     
     cards.forEach(card => {
-      const chapterId = card.chapter_id;
-      if (!groupMap.has(chapterId)) {
-        groupMap.set(chapterId, {
-          chapterId,
-          chapterTitle: card.title.split(' - ')[0] || `Chapter ${chapterId.slice(0, 8)}`,
+      const topic = card.title;
+      if (!groupMap.has(topic)) {
+        groupMap.set(topic, {
+          topic,
           cards: [],
         });
       }
-      groupMap.get(chapterId)!.cards.push(card);
+      groupMap.get(topic)!.cards.push(card);
     });
     
-    return Array.from(groupMap.values());
+    return Array.from(groupMap.values()).sort((a, b) => a.topic.localeCompare(b.topic));
   }, [cards]);
 
-  // Selected chapters (default: all selected)
-  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(() => {
-    return new Set(cards.map(c => c.chapter_id));
+  // Selected topics (default: all selected)
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() => {
+    return new Set(cards.map(c => c.title));
   });
 
-  // Update selected chapters when cards change
+  // Update selected topics when cards change
   useEffect(() => {
-    setSelectedChapters(new Set(cards.map(c => c.chapter_id)));
+    setSelectedTopics(new Set(cards.map(c => c.title)));
   }, [cards]);
 
-  // Flatten all cards based on selected chapters
+  // Flatten all cards based on selected topics
   const allCards = useMemo(() => {
     return cards
-      .filter(card => selectedChapters.has(card.chapter_id))
+      .filter(card => selectedTopics.has(card.title))
       .map(card => ({
         ...card,
         content: card.content as FlashcardContent,
       }));
-  }, [cards, selectedChapters]);
+  }, [cards, selectedTopics]);
 
-  // Toggle chapter selection
-  const toggleChapter = useCallback((chapterId: string) => {
-    setSelectedChapters(prev => {
+  // Toggle topic selection
+  const toggleTopic = useCallback((topic: string) => {
+    setSelectedTopics(prev => {
       const next = new Set(prev);
-      if (next.has(chapterId)) {
-        next.delete(chapterId);
+      if (next.has(topic)) {
+        next.delete(topic);
       } else {
-        next.add(chapterId);
+        next.add(topic);
       }
       return next;
     });
   }, []);
 
-  // Select/deselect all chapters
-  const toggleAllChapters = useCallback((selectAll: boolean) => {
+  // Select/deselect all topics
+  const toggleAllTopics = useCallback((selectAll: boolean) => {
     if (selectAll) {
-      setSelectedChapters(new Set(cards.map(c => c.chapter_id)));
+      setSelectedTopics(new Set(cards.map(c => c.title)));
     } else {
-      setSelectedChapters(new Set());
+      setSelectedTopics(new Set());
     }
   }, [cards]);
 
@@ -285,15 +283,15 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
             </div>
           </div>
 
-          {/* Chapter Selection */}
-          {chapterGroups.length > 1 && (
-            <Collapsible open={chapterSectionOpen} onOpenChange={setChapterSectionOpen}>
+          {/* Topic Selection */}
+          {topicGroups.length > 1 && (
+            <Collapsible open={topicSectionOpen} onOpenChange={setTopicSectionOpen}>
               <CollapsibleTrigger asChild>
                 <Button variant="outline" className="w-full justify-between" size="sm">
                   <span className="text-sm">
-                    Select Chapters ({selectedChapters.size}/{chapterGroups.length})
+                    Select Topics ({selectedTopics.size}/{topicGroups.length})
                   </span>
-                  {chapterSectionOpen ? (
+                  {topicSectionOpen ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
                     <ChevronDown className="w-4 h-4" />
@@ -310,7 +308,7 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
                         variant="ghost"
                         size="sm"
                         className="h-6 text-xs px-2"
-                        onClick={() => toggleAllChapters(true)}
+                        onClick={() => toggleAllTopics(true)}
                       >
                         Select All
                       </Button>
@@ -318,30 +316,30 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
                         variant="ghost"
                         size="sm"
                         className="h-6 text-xs px-2"
-                        onClick={() => toggleAllChapters(false)}
+                        onClick={() => toggleAllTopics(false)}
                       >
                         Deselect All
                       </Button>
                     </div>
                   </div>
                   
-                  {/* Chapter List */}
+                  {/* Topic List */}
                   <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {chapterGroups.map((group) => (
+                    {topicGroups.map((group) => (
                       <div
-                        key={group.chapterId}
+                        key={group.topic}
                         className="flex items-center gap-2 py-1"
                       >
                         <Checkbox
-                          id={`chapter-${group.chapterId}`}
-                          checked={selectedChapters.has(group.chapterId)}
-                          onCheckedChange={() => toggleChapter(group.chapterId)}
+                          id={`topic-${group.topic}`}
+                          checked={selectedTopics.has(group.topic)}
+                          onCheckedChange={() => toggleTopic(group.topic)}
                         />
                         <label
-                          htmlFor={`chapter-${group.chapterId}`}
+                          htmlFor={`topic-${group.topic}`}
                           className="text-sm cursor-pointer flex-1 flex items-center justify-between"
                         >
-                          <span className="truncate">{group.chapterTitle}</span>
+                          <span className="truncate">{group.topic}</span>
                           <span className="text-xs text-muted-foreground ml-2">
                             {group.cards.length} cards
                           </span>
