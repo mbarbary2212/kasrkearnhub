@@ -1,13 +1,20 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 
 // Global admin constant: time to show question before auto-flip to answer
 const QUESTION_TIME_BEFORE_FLIP_SECONDS = 3;
+
+interface ChapterGroup {
+  chapterId: string;
+  chapterTitle: string;
+  cards: StudyResource[];
+}
 
 interface FlashcardsSlideshowModeProps {
   cards: StudyResource[];
@@ -45,6 +52,7 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   const [cardCountSelection, setCardCountSelection] = useState<string>('20');
   const [intervalSeconds, setIntervalSeconds] = useState<number>(7);
   const [shuffleEnabled, setSuffleEnabled] = useState<boolean>(false);
+  const [chapterSectionOpen, setChapterSectionOpen] = useState<boolean>(false);
 
   // Slideshow state
   const [state, setState] = useState<SlideshowState>('idle');
@@ -56,12 +64,65 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   const flipTimerRef = useRef<NodeJS.Timeout | null>(null);
   const advanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Flatten all cards
+  // Group cards by chapter
+  const chapterGroups = useMemo<ChapterGroup[]>(() => {
+    const groupMap = new Map<string, ChapterGroup>();
+    
+    cards.forEach(card => {
+      const chapterId = card.chapter_id;
+      if (!groupMap.has(chapterId)) {
+        groupMap.set(chapterId, {
+          chapterId,
+          chapterTitle: card.title.split(' - ')[0] || `Chapter ${chapterId.slice(0, 8)}`,
+          cards: [],
+        });
+      }
+      groupMap.get(chapterId)!.cards.push(card);
+    });
+    
+    return Array.from(groupMap.values());
+  }, [cards]);
+
+  // Selected chapters (default: all selected)
+  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(() => {
+    return new Set(cards.map(c => c.chapter_id));
+  });
+
+  // Update selected chapters when cards change
+  useEffect(() => {
+    setSelectedChapters(new Set(cards.map(c => c.chapter_id)));
+  }, [cards]);
+
+  // Flatten all cards based on selected chapters
   const allCards = useMemo(() => {
-    return cards.map(card => ({
-      ...card,
-      content: card.content as FlashcardContent,
-    }));
+    return cards
+      .filter(card => selectedChapters.has(card.chapter_id))
+      .map(card => ({
+        ...card,
+        content: card.content as FlashcardContent,
+      }));
+  }, [cards, selectedChapters]);
+
+  // Toggle chapter selection
+  const toggleChapter = useCallback((chapterId: string) => {
+    setSelectedChapters(prev => {
+      const next = new Set(prev);
+      if (next.has(chapterId)) {
+        next.delete(chapterId);
+      } else {
+        next.add(chapterId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Select/deselect all chapters
+  const toggleAllChapters = useCallback((selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedChapters(new Set(cards.map(c => c.chapter_id)));
+    } else {
+      setSelectedChapters(new Set());
+    }
   }, [cards]);
 
   // Calculate flip time based on interval
@@ -223,6 +284,75 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
               </Select>
             </div>
           </div>
+
+          {/* Chapter Selection */}
+          {chapterGroups.length > 1 && (
+            <Collapsible open={chapterSectionOpen} onOpenChange={setChapterSectionOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between" size="sm">
+                  <span className="text-sm">
+                    Select Chapters ({selectedChapters.size}/{chapterGroups.length})
+                  </span>
+                  {chapterSectionOpen ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <div className="rounded-lg border bg-card p-3 space-y-2">
+                  {/* Select All / Deselect All */}
+                  <div className="flex items-center justify-between pb-2 border-b">
+                    <span className="text-xs text-muted-foreground">Quick actions:</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => toggleAllChapters(true)}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => toggleAllChapters(false)}
+                      >
+                        Deselect All
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Chapter List */}
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {chapterGroups.map((group) => (
+                      <div
+                        key={group.chapterId}
+                        className="flex items-center gap-2 py-1"
+                      >
+                        <Checkbox
+                          id={`chapter-${group.chapterId}`}
+                          checked={selectedChapters.has(group.chapterId)}
+                          onCheckedChange={() => toggleChapter(group.chapterId)}
+                        />
+                        <label
+                          htmlFor={`chapter-${group.chapterId}`}
+                          className="text-sm cursor-pointer flex-1 flex items-center justify-between"
+                        >
+                          <span className="truncate">{group.chapterTitle}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {group.cards.length} cards
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           <div className="flex items-center gap-2">
             <Checkbox
