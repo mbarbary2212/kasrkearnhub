@@ -39,15 +39,6 @@ export function FlashcardsTab({ resources, canManage, onEdit }: FlashcardsTabPro
       {/* Mode Selector - Students Only */}
       <div className="flex items-center justify-center gap-2">
         <Button
-          variant={studentMode === 'interactive' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setStudentMode('interactive')}
-          className="gap-2"
-        >
-          <Layers className="w-4 h-4" />
-          Interactive Mode
-        </Button>
-        <Button
           variant={studentMode === 'slideshow' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setStudentMode('slideshow')}
@@ -55,6 +46,15 @@ export function FlashcardsTab({ resources, canManage, onEdit }: FlashcardsTabPro
         >
           <Play className="w-4 h-4" />
           Slideshow Mode
+        </Button>
+        <Button
+          variant={studentMode === 'interactive' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setStudentMode('interactive')}
+          className="gap-2"
+        >
+          <Layers className="w-4 h-4" />
+          Interactive Mode
         </Button>
       </div>
 
