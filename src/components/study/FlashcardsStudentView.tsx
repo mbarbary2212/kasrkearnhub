@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,16 @@ const TIMING_OPTIONS = [
   { value: '5000', label: '5s' },
   { value: '7000', label: '7s' },
 ];
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   // Group flashcards by title into decks
@@ -41,14 +51,19 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   const [flipped, setFlipped] = useState(false);
   const [autoReturn, setAutoReturn] = useState(true);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
+  const [shuffledCards, setShuffledCards] = useState<typeof groups[0]['cards'] | null>(null);
+  const [isShuffled, setIsShuffled] = useState(false);
 
   const activeDeck = groups[activeDeckIndex];
-  const currentCard = activeDeck?.cards[cardIndex];
+  const displayCards = shuffledCards || activeDeck?.cards || [];
+  const currentCard = displayCards[cardIndex];
 
-  // Reset card index when switching decks
+  // Reset card index and shuffle state when switching decks
   useEffect(() => {
     setCardIndex(0);
     setFlipped(false);
+    setShuffledCards(null);
+    setIsShuffled(false);
   }, [activeDeckIndex]);
 
   // Auto-return after showing answer
@@ -57,6 +72,15 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
     const t = setTimeout(() => setFlipped(false), autoFlipMs);
     return () => clearTimeout(t);
   }, [flipped, autoReturn, autoFlipMs]);
+
+  const handleShuffle = useCallback(() => {
+    if (!activeDeck) return;
+    const shuffled = shuffleArray(activeDeck.cards);
+    setShuffledCards(shuffled);
+    setIsShuffled(true);
+    setCardIndex(0);
+    setFlipped(false);
+  }, [activeDeck]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -67,10 +91,13 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
         e.preventDefault();
         setFlipped((v) => !v);
       }
+      if (e.key === 's' || e.key === 'S') {
+        handleShuffle();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDeck?.cards.length]);
+  }, [displayCards.length, handleShuffle]);
 
   if (groups.length === 0) {
     return (
@@ -81,20 +108,22 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   }
 
   const handlePrev = () => {
-    if (!activeDeck) return;
+    if (!displayCards.length) return;
     setFlipped(false);
-    setCardIndex((v) => (v - 1 + activeDeck.cards.length) % activeDeck.cards.length);
+    setCardIndex((v) => (v - 1 + displayCards.length) % displayCards.length);
   };
 
   const handleNext = () => {
-    if (!activeDeck) return;
+    if (!displayCards.length) return;
     setFlipped(false);
-    setCardIndex((v) => (v + 1) % activeDeck.cards.length);
+    setCardIndex((v) => (v + 1) % displayCards.length);
   };
 
   const handleReset = () => {
     setCardIndex(0);
     setFlipped(false);
+    setShuffledCards(null);
+    setIsShuffled(false);
   };
 
   return (
@@ -149,7 +178,8 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
 
           {/* Progress indicator */}
           <div className="text-center text-sm text-muted-foreground mt-4">
-            Card {cardIndex + 1} of {activeDeck?.cards.length}
+            Card {cardIndex + 1} of {displayCards.length}
+            {isShuffled && <span className="ml-2 text-primary">(Shuffled)</span>}
           </div>
 
           {/* Navigation controls */}
@@ -158,7 +188,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
               variant="outline"
               size="icon"
               onClick={handlePrev}
-              disabled={!activeDeck || activeDeck.cards.length <= 1}
+              disabled={displayCards.length <= 1}
             >
               <ChevronLeft className="w-5 h-5" />
             </Button>
@@ -172,6 +202,17 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
                 Reset
+              </Button>
+
+              <Button
+                variant={isShuffled ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={handleShuffle}
+                className="text-xs"
+                disabled={displayCards.length <= 1}
+              >
+                <Shuffle className="w-3.5 h-3.5 mr-1" />
+                Shuffle
               </Button>
 
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
@@ -204,7 +245,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
               variant="outline"
               size="icon"
               onClick={handleNext}
-              disabled={!activeDeck || activeDeck.cards.length <= 1}
+              disabled={displayCards.length <= 1}
             >
               <ChevronRight className="w-5 h-5" />
             </Button>
@@ -212,7 +253,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
 
           {/* Keyboard hint */}
           <div className="text-center text-xs text-muted-foreground mt-4">
-            Use arrow keys to navigate • Space/Enter to flip
+            Arrow keys to navigate • Space/Enter to flip • S to shuffle
           </div>
         </div>
       )}
