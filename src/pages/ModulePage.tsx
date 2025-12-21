@@ -145,7 +145,7 @@ export default function ModulePage() {
             ) : hasBookGroups ? (
               // Grouped by book labels with collapsible sections
               Object.entries(groupedChapters).map(([bookLabel, bookChapters]) => (
-                <Collapsible key={bookLabel} defaultOpen={true} className="group">
+                <Collapsible key={bookLabel} defaultOpen={false} className="group">
                   <CollapsibleTrigger asChild>
                     <button className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors mb-2">
                       <div className="flex items-center gap-2">
