@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useModule, useModuleWithDepartments } from '@/hooks/useModules';
+import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { LectureList } from '@/components/content/LectureList';
@@ -34,8 +34,7 @@ import {
   ExternalLink,
   ChevronRight,
   ChevronDown,
-  BookOpen,
-  Building2
+  BookOpen
 } from 'lucide-react';
 
 export default function ModulePage() {
@@ -47,7 +46,6 @@ export default function ModulePage() {
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
-  const { data: moduleWithDepts, isLoading: deptsLoading } = useModuleWithDepartments(actualModuleId || '');
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
   const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(actualModuleId);
   const { data: resources, isLoading: resourcesLoading } = useModuleResources(actualModuleId);
@@ -103,75 +101,6 @@ export default function ModulePage() {
     'Book 3': 'Surgical Specialties',
   };
 
-  // Get departments for this module
-  const moduleDepartments = moduleWithDepts?.module_departments || [];
-  const hasDepartments = moduleDepartments.length > 0;
-
-  // Helper to render book sections with chapters
-  const renderBookSection = (bookLabel: string, bookChapters: typeof sortedChapters) => (
-    <Collapsible key={bookLabel} defaultOpen={false} className="group/book">
-      <CollapsibleTrigger asChild>
-        <button className="w-full flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors mb-2">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <div className="text-left">
-              <h3 className="text-base font-medium text-primary">{bookLabel}</h3>
-              {bookDescriptions[bookLabel] && (
-                <p className="text-xs text-muted-foreground">{bookDescriptions[bookLabel]}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-full">
-              {bookChapters.length} chapters
-            </span>
-            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]/book:-rotate-90" />
-          </div>
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="border rounded-lg divide-y mb-3 ml-4">
-          {bookChapters.map((chapter) => (
-            <button
-              key={chapter.id}
-              onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
-              className="w-full flex items-center gap-3 py-2.5 px-4 hover:bg-muted/50 transition-colors text-left"
-            >
-              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded min-w-[3rem] text-center">
-                Ch {chapter.chapter_number}
-              </span>
-              <span className="flex-1 text-sm font-medium truncate">
-                {chapter.title}
-              </span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            </button>
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-
-  // Helper to render chapter list without books
-  const renderChapterList = (chaptersList: typeof sortedChapters) => (
-    <div className="border rounded-lg divide-y ml-4">
-      {chaptersList.map((chapter) => (
-        <button
-          key={chapter.id}
-          onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
-          className="w-full flex items-center gap-3 py-2.5 px-4 hover:bg-muted/50 transition-colors text-left"
-        >
-          <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded min-w-[3rem] text-center">
-            Ch {chapter.chapter_number}
-          </span>
-          <span className="flex-1 text-sm font-medium truncate">
-            {chapter.title}
-          </span>
-          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        </button>
-      ))}
-    </div>
-  );
-
   // Render chapters list if module has chapters
   if (hasChapters) {
     return (
@@ -200,7 +129,7 @@ export default function ModulePage() {
           </div>
 
           {/* Chapters Section */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Sort control */}
             {hasChapters && !chaptersLoading && (
               <div className="flex justify-end">
@@ -208,59 +137,14 @@ export default function ModulePage() {
               </div>
             )}
             
-            {chaptersLoading || deptsLoading ? (
+            {chaptersLoading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full" />
                 ))}
               </div>
-            ) : hasDepartments ? (
-              // Department → Books → Chapters structure
-              moduleDepartments.map((md) => {
-                const deptName = md.departments?.name || 'Unknown Department';
-                return (
-                  <Collapsible key={md.id} defaultOpen={false} className="group/dept">
-                    <CollapsibleTrigger asChild>
-                      <button className="w-full flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl hover:bg-primary/10 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="text-left">
-                            <h2 className="text-lg font-semibold">{deptName}</h2>
-                            {md.is_primary && (
-                              <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Primary</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded-full">
-                            {hasBookGroups 
-                              ? `${bookLabels.length} ${bookLabels.length === 1 ? 'book' : 'books'}` 
-                              : `${sortedChapters.length} ${sortedChapters.length === 1 ? 'chapter' : 'chapters'}`}
-                          </span>
-                          <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-200 group-data-[state=closed]/dept:-rotate-90" />
-                        </div>
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="pt-3 pb-2 space-y-2">
-                        {hasBookGroups ? (
-                          // Books inside department
-                          Object.entries(groupedChapters).map(([bookLabel, bookChapters]) => 
-                            renderBookSection(bookLabel, bookChapters)
-                          )
-                        ) : (
-                          // Chapters directly inside department (no books)
-                          renderChapterList(sortedChapters)
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })
             ) : hasBookGroups ? (
-              // No departments but has books - render books directly
+              // Grouped by book labels with collapsible sections
               Object.entries(groupedChapters).map(([bookLabel, bookChapters]) => (
                 <Collapsible key={bookLabel} defaultOpen={false} className="group">
                   <CollapsibleTrigger asChild>
@@ -304,7 +188,7 @@ export default function ModulePage() {
                 </Collapsible>
               ))
             ) : (
-              // Simple chapter list without departments or book grouping
+              // Simple chapter list without book grouping
               <div>
                 <h2 className="text-lg font-medium mb-3 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-muted-foreground" />
