@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
@@ -118,31 +119,52 @@ export default function ChapterPage() {
           <TabsList className="grid w-full grid-cols-7 h-auto">
             <TabsTrigger value="lectures" className="flex flex-col gap-1 py-3">
               <Video className="w-4 h-4" />
-              <span className="text-xs">Lectures</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Lectures</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{lectures?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="flashcards" className="flex flex-col gap-1 py-3">
               <Layers className="w-4 h-4" />
-              <span className="text-xs">Flashcards</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Flashcards</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{flashcards.length}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="mcqs" className="flex flex-col gap-1 py-3">
               <HelpCircle className="w-4 h-4" />
-              <span className="text-xs">MCQ</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">MCQ</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{mcqs?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
               <PenTool className="w-4 h-4" />
-              <span className="text-xs">Short Qs</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Short Qs</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{essays?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="cases" className="flex flex-col gap-1 py-3">
               <Stethoscope className="w-4 h-4" />
-              <span className="text-xs">Cases</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Cases</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{caseScenarios?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="practical" className="flex flex-col gap-1 py-3">
               <FlaskConical className="w-4 h-4" />
-              <span className="text-xs">Practical</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Practical</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{practicals?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex flex-col gap-1 py-3">
               <FileText className="w-4 h-4" />
-              <span className="text-xs">Resources</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Resources</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{resources?.length || 0}</Badge>
+              </div>
             </TabsTrigger>
           </TabsList>
 
