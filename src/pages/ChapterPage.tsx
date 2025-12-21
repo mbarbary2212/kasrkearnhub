@@ -22,6 +22,10 @@ import {
   useChapterEssays, 
   useChapterPracticals
 } from '@/hooks/useChapterContent';
+import { FlashcardsTab } from '@/components/study/FlashcardsTab';
+import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
+import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
+import { useChapterStudyResources, StudyResource } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
@@ -48,6 +52,11 @@ export default function ChapterPage() {
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
 
+  // State for Flashcard modals
+  const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
+  const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
+  const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
+
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
@@ -56,6 +65,15 @@ export default function ChapterPage() {
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
+  const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
+
+  // Filter flashcards from study resources
+  const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
+
+  const handleEditFlashcard = (resource: StudyResource) => {
+    setEditingFlashcard(resource);
+    setFlashcardFormOpen(true);
+  };
 
   if (!chapterLoading && !chapter) {
     return (
@@ -151,12 +169,42 @@ export default function ChapterPage() {
             )}
           </TabsContent>
 
-          {/* Flashcards Tab - placeholder, will integrate with existing flashcards */}
+          {/* Flashcards Tab - using existing FlashcardsTab component */}
           <TabsContent value="flashcards" className="mt-6">
-            <div className="text-center py-12">
-              <Layers className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Flashcards coming soon.</p>
-            </div>
+            {canManageContent && chapterId && moduleId && (
+              <div className="flex gap-2 mb-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingFlashcard(null);
+                    setFlashcardFormOpen(true);
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Flashcard
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setFlashcardBulkOpen(true)}
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  Bulk Upload
+                </Button>
+              </div>
+            )}
+            {studyResourcesLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+              </div>
+            ) : (
+              <FlashcardsTab
+                resources={flashcards}
+                canManage={canManageContent}
+                onEdit={handleEditFlashcard}
+              />
+            )}
           </TabsContent>
 
           {/* MCQs Tab */}
@@ -279,6 +327,27 @@ export default function ChapterPage() {
               onOpenChange={setCaseBulkUploadOpen}
               moduleId={moduleId}
               chapterId={chapterId}
+            />
+          </>
+        )}
+
+        {/* Flashcard Modals */}
+        {chapterId && moduleId && (
+          <>
+            <StudyResourceFormModal
+              open={flashcardFormOpen}
+              onOpenChange={setFlashcardFormOpen}
+              chapterId={chapterId}
+              moduleId={moduleId}
+              resourceType="flashcard"
+              resource={editingFlashcard}
+            />
+            <StudyBulkUploadModal
+              open={flashcardBulkOpen}
+              onOpenChange={setFlashcardBulkOpen}
+              chapterId={chapterId}
+              moduleId={moduleId}
+              resourceType="flashcard"
             />
           </>
         )}
