@@ -96,6 +96,7 @@ export default function ModulePage() {
   const hasBookGroups = bookLabels.length > 1 || (bookLabels.length === 1 && bookLabels[0] !== 'Chapters');
 
   const bookDescriptions: Record<string, string> = {
+    'Book 1': 'General Surgical Principles',
     'Book 2': 'Gastrointestinal & Abdominal Surgery',
     'Book 3': 'Surgical Specialties',
   };
