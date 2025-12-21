@@ -8,7 +8,7 @@ import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
-import VideoList from '@/components/content/VideoList';
+import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
 import PracticalList from '@/components/content/PracticalList';
@@ -34,6 +34,7 @@ import {
   Stethoscope,
   Plus,
   Upload,
+  Layers,
 } from 'lucide-react';
 
 export default function ChapterPage() {
@@ -94,24 +95,20 @@ export default function ChapterPage() {
           </div>
         </div>
 
-        {/* Content Tabs */}
-        <Tabs defaultValue="videos" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 h-auto">
-            <TabsTrigger value="videos" className="flex flex-col gap-1 py-3">
+        {/* Content Tabs - New order: Lectures, Flashcards, MCQ, Short Qs, Cases, Practical, Resources */}
+        <Tabs defaultValue="lectures" className="w-full">
+          <TabsList className="grid w-full grid-cols-7 h-auto">
+            <TabsTrigger value="lectures" className="flex flex-col gap-1 py-3">
               <Video className="w-4 h-4" />
-              <span className="text-xs">Videos</span>
+              <span className="text-xs">Lectures</span>
             </TabsTrigger>
-            <TabsTrigger value="resources" className="flex flex-col gap-1 py-3">
-              <FileText className="w-4 h-4" />
-              <span className="text-xs">Resources</span>
+            <TabsTrigger value="flashcards" className="flex flex-col gap-1 py-3">
+              <Layers className="w-4 h-4" />
+              <span className="text-xs">Flashcards</span>
             </TabsTrigger>
             <TabsTrigger value="mcqs" className="flex flex-col gap-1 py-3">
               <HelpCircle className="w-4 h-4" />
-              <span className="text-xs">MCQs</span>
-            </TabsTrigger>
-            <TabsTrigger value="practical" className="flex flex-col gap-1 py-3">
-              <FlaskConical className="w-4 h-4" />
-              <span className="text-xs">Practical</span>
+              <span className="text-xs">MCQ</span>
             </TabsTrigger>
             <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
               <PenTool className="w-4 h-4" />
@@ -121,22 +118,30 @@ export default function ChapterPage() {
               <Stethoscope className="w-4 h-4" />
               <span className="text-xs">Cases</span>
             </TabsTrigger>
+            <TabsTrigger value="practical" className="flex flex-col gap-1 py-3">
+              <FlaskConical className="w-4 h-4" />
+              <span className="text-xs">Practical</span>
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex flex-col gap-1 py-3">
+              <FileText className="w-4 h-4" />
+              <span className="text-xs">Resources</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Videos Tab */}
-          <TabsContent value="videos" className="mt-6">
+          {/* Lectures Tab */}
+          <TabsContent value="lectures" className="mt-6">
             {canManageContent && chapterId && moduleId && (
               <div className="mb-4">
                 <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="lecture" />
               </div>
             )}
             {lecturesLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="aspect-video" />)}
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
               </div>
             ) : (
-              <VideoList 
-                videos={lectures || []} 
+              <LectureList 
+                lectures={lectures || []} 
                 moduleId={moduleId}
                 chapterId={chapterId}
                 canEdit={canManageContent}
@@ -146,18 +151,12 @@ export default function ChapterPage() {
             )}
           </TabsContent>
 
-          {/* Resources Tab */}
-          <TabsContent value="resources" className="mt-6">
-            {chapterId && moduleId && (
-              <ResourcesTabContent
-                chapterId={chapterId}
-                moduleId={moduleId}
-                resources={resources || []}
-                resourcesLoading={resourcesLoading}
-                canManageContent={canManageContent}
-                isSuperAdmin={isSuperAdmin}
-              />
-            )}
+          {/* Flashcards Tab - placeholder, will integrate with existing flashcards */}
+          <TabsContent value="flashcards" className="mt-6">
+            <div className="text-center py-12">
+              <Layers className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Flashcards coming soon.</p>
+            </div>
           </TabsContent>
 
           {/* MCQs Tab */}
@@ -172,29 +171,6 @@ export default function ChapterPage() {
                 moduleId={moduleId || ''}
                 chapterId={chapterId}
                 isAdmin={canManageContent}
-              />
-            )}
-          </TabsContent>
-
-          {/* Practical Tab */}
-          <TabsContent value="practical" className="mt-6">
-            {canManageContent && chapterId && moduleId && (
-              <div className="mb-4">
-                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
-              </div>
-            )}
-            {practicalsLoading ? (
-              <div className="space-y-3">
-                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-              </div>
-            ) : (
-              <PracticalList
-                practicals={practicals || []}
-                moduleId={moduleId}
-                chapterId={chapterId}
-                canEdit={canManageContent}
-                canDelete={canManageContent}
-                showFeedback={true}
               />
             )}
           </TabsContent>
@@ -247,6 +223,43 @@ export default function ChapterPage() {
                 chapterId={chapterId}
                 canEdit={canManageContent}
                 canDelete={canManageContent}
+              />
+            )}
+          </TabsContent>
+
+          {/* Practical Tab */}
+          <TabsContent value="practical" className="mt-6">
+            {canManageContent && chapterId && moduleId && (
+              <div className="mb-4">
+                <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
+              </div>
+            )}
+            {practicalsLoading ? (
+              <div className="space-y-3">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+              </div>
+            ) : (
+              <PracticalList
+                practicals={practicals || []}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+              />
+            )}
+          </TabsContent>
+
+          {/* Resources Tab */}
+          <TabsContent value="resources" className="mt-6">
+            {chapterId && moduleId && (
+              <ResourcesTabContent
+                chapterId={chapterId}
+                moduleId={moduleId}
+                resources={resources || []}
+                resourcesLoading={resourcesLoading}
+                canManageContent={canManageContent}
+                isSuperAdmin={isSuperAdmin}
               />
             )}
           </TabsContent>
