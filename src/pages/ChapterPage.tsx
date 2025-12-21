@@ -49,6 +49,10 @@ export default function ChapterPage() {
 
   const canManageContent = isAdmin || isTeacher;
 
+  // State for active tab and reset key for lectures
+  const [activeTab, setActiveTab] = useState("lectures");
+  const [lecturesResetKey, setLecturesResetKey] = useState(0);
+
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
@@ -57,6 +61,14 @@ export default function ChapterPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
+
+  // Clicking the Lectures tab always resets to list view
+  const handleTabChange = (value: string) => {
+    if (value === "lectures") {
+      setLecturesResetKey((k) => k + 1);
+    }
+    setActiveTab(value);
+  };
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
@@ -115,7 +127,7 @@ export default function ChapterPage() {
         </div>
 
         {/* Content Tabs - New order: Lectures, Flashcards, MCQ, Short Qs, Cases, Practical, Resources */}
-        <Tabs defaultValue="lectures" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-7 h-auto">
             <TabsTrigger value="lectures" className="flex flex-col gap-1 py-3">
               <Video className="w-4 h-4" />
@@ -181,6 +193,7 @@ export default function ChapterPage() {
               </div>
             ) : (
               <LectureList 
+                key={lecturesResetKey}
                 lectures={lectures || []} 
                 moduleId={moduleId}
                 chapterId={chapterId}
