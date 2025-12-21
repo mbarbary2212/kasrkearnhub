@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
-import VideoList from '@/components/content/VideoList';
+import { LectureList } from '@/components/content/LectureList';
 import { McqList } from '@/components/content/McqList';
+import { SortDropdown } from '@/components/ui/sort-dropdown';
+import { useChapterSort } from '@/hooks/useChapterSort';
 import { 
   useModuleLectures, 
   useModuleResources, 
@@ -23,7 +25,6 @@ import {
   HelpCircle, 
   PenTool, 
   FlaskConical,
-  Clock,
   ExternalLink,
   ChevronRight,
   BookOpen
@@ -46,6 +47,13 @@ export default function ModulePage() {
   const { data: practicals, isLoading: practicalsLoading } = useModulePracticals(actualModuleId);
 
   const hasChapters = chapters && chapters.length > 0;
+  
+  // Chapter sorting with localStorage persistence
+  const { sortMode, setSortMode, sortedItems: sortedChapters } = useChapterSort(
+    chapters,
+    `kasrlearn_sort_${actualModuleId}`,
+    'default'
+  );
 
   if (!moduleLoading && !module) {
     return (
@@ -69,13 +77,13 @@ export default function ModulePage() {
     </div>
   );
 
-  // Group chapters by book_label
-  const groupedChapters = hasChapters ? chapters.reduce((acc, chapter) => {
+  // Group sorted chapters by book_label
+  const groupedChapters = hasChapters ? sortedChapters.reduce((acc, chapter) => {
     const label = chapter.book_label || 'Chapters';
     if (!acc[label]) acc[label] = [];
     acc[label].push(chapter);
     return acc;
-  }, {} as Record<string, typeof chapters>) : {};
+  }, {} as Record<string, typeof sortedChapters>) : {};
 
   const bookLabels = Object.keys(groupedChapters);
   const hasBookGroups = bookLabels.length > 1 || (bookLabels.length === 1 && bookLabels[0] !== 'Chapters');
@@ -114,6 +122,13 @@ export default function ModulePage() {
 
           {/* Chapters Section */}
           <div className="space-y-6">
+            {/* Sort control */}
+            {hasChapters && !chaptersLoading && (
+              <div className="flex justify-end">
+                <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
+              </div>
+            )}
+            
             {chaptersLoading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
@@ -160,7 +175,7 @@ export default function ModulePage() {
                   Chapters
                 </h2>
                 <div className="border rounded-lg divide-y">
-                  {chapters.map((chapter) => (
+                  {sortedChapters.map((chapter) => (
                     <button
                       key={chapter.id}
                       onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
@@ -235,14 +250,14 @@ export default function ModulePage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Videos Tab (Lectures) */}
+          {/* Lectures Tab */}
           <TabsContent value="videos" className="mt-6">
             {lecturesLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="aspect-video" />)}
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
               </div>
             ) : (
-              <VideoList videos={lectures || []} />
+              <LectureList lectures={lectures || []} />
             )}
           </TabsContent>
 
