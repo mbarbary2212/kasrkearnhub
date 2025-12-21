@@ -1,9 +1,15 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -27,6 +33,7 @@ import {
   FlaskConical,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   BookOpen
 } from 'lucide-react';
 
@@ -136,36 +143,48 @@ export default function ModulePage() {
                 ))}
               </div>
             ) : hasBookGroups ? (
-              // Grouped by book labels
+              // Grouped by book labels with collapsible sections
               Object.entries(groupedChapters).map(([bookLabel, bookChapters]) => (
-                <div key={bookLabel}>
-                  <div className="mb-3">
-                    <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                      <BookOpen className="w-5 h-5" />
-                      {bookLabel}
-                    </h2>
-                    {bookDescriptions[bookLabel] && (
-                      <p className="text-sm text-muted-foreground ml-7">{bookDescriptions[bookLabel]}</p>
-                    )}
-                  </div>
-                  <div className="border rounded-lg divide-y">
-                    {bookChapters.map((chapter) => (
-                      <button
-                        key={chapter.id}
-                        onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
-                        className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
-                          Ch {chapter.chapter_number}
+                <Collapsible key={bookLabel} defaultOpen={true} className="group">
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors mb-2">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-primary" />
+                        <div className="text-left">
+                          <h2 className="text-lg font-semibold text-primary">{bookLabel}</h2>
+                          {bookDescriptions[bookLabel] && (
+                            <p className="text-sm text-muted-foreground">{bookDescriptions[bookLabel]}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded-full">
+                          {bookChapters.length} chapters
                         </span>
-                        <span className="flex-1 text-[15px] font-medium truncate">
-                          {chapter.title}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                    <div className="border rounded-lg divide-y mb-4">
+                      {bookChapters.map((chapter) => (
+                        <button
+                          key={chapter.id}
+                          onClick={() => navigate(`/module/${actualModuleId}/chapter/${chapter.id}`)}
+                          className="w-full flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
+                            Ch {chapter.chapter_number}
+                          </span>
+                          <span className="flex-1 text-[15px] font-medium truncate">
+                            {chapter.title}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               ))
             ) : (
               // Simple chapter list without book grouping
