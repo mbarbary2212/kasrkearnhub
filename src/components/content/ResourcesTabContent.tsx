@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search, Plus, BookOpen, Table2, GitBranch, Lightbulb, Image, FileText } from 'lucide-react';
+import { Search, Plus, Table2, GitBranch, Lightbulb, Image, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import { StudyDisclaimer } from '@/components/study/StudyDisclaimer';
 import { StudyResourceTypeSection } from '@/components/study/StudyResourceTypeSection';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { TableResourceView } from '@/components/study/TableResourceView';
 import {
   useChapterStudyResources,
@@ -41,8 +40,8 @@ interface ResourcesTabContentProps {
   isSuperAdmin: boolean;
 }
 
+// Flashcards removed - now a top-level tab
 const STUDY_RESOURCE_TYPES: { type: StudyResourceType; label: string; icon: React.ReactNode }[] = [
-  { type: 'flashcard', label: 'Flashcards', icon: <BookOpen className="w-4 h-4" /> },
   { type: 'table', label: 'Tables', icon: <Table2 className="w-4 h-4" /> },
   { type: 'algorithm', label: 'Algorithms', icon: <GitBranch className="w-4 h-4" /> },
   { type: 'exam_tip', label: 'Exam Tips', icon: <Lightbulb className="w-4 h-4" /> },
@@ -180,7 +179,7 @@ export function ResourcesTabContent({
       </div>
 
       {/* Horizontal Sub-tabs */}
-      <Tabs defaultValue="flashcard" className="w-full">
+      <Tabs defaultValue="table" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
           {/* Study Resource Type Tabs */}
           {STUDY_RESOURCE_TYPES.map(({ type, label, icon }) => (
@@ -250,14 +249,8 @@ export function ResourcesTabContent({
               </div>
             )}
 
-            {/* Use special renderers for flashcards and tables, standard for others */}
-            {type === 'flashcard' ? (
-              <FlashcardsTab
-                resources={filteredResourcesByType[type]}
-                canManage={canManageContent}
-                onEdit={handleEdit}
-              />
-            ) : type === 'table' ? (
+            {/* Use special renderer for tables, standard for others */}
+            {type === 'table' ? (
               <TableResourceView
                 resources={filteredResourcesByType[type]}
                 canManage={canManageContent}
