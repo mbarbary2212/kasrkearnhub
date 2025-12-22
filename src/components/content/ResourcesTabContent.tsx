@@ -220,6 +220,7 @@ export function ResourcesTabContent({
             canEdit={canManageContent}
             canDelete={canManageContent}
             showFeedback={true}
+            compact={true}
           />
         </TabsContent>
 

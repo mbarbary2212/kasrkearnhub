@@ -177,10 +177,10 @@ export default function ChapterPage() {
         </div>
 
         {/* Main Content Layout: Left Nav + Content Area */}
-        <div className="flex gap-6">
-          {/* Left Vertical Navigation */}
-          <div className="w-48 flex-shrink-0">
-            <nav className="space-y-1 sticky top-4">
+        <div className="flex gap-0">
+          {/* Left Vertical Navigation - with background panel and divider */}
+          <div className="w-[220px] flex-shrink-0 bg-muted/30 border-r border-border/50">
+            <nav className="space-y-1 sticky top-4 p-3">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -189,13 +189,13 @@ export default function ChapterPage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all text-left",
                       isActive 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-primary text-primary-foreground font-semibold scale-[1.02] shadow-sm" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
                     )}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className={cn("w-4 h-4", isActive && "w-[18px] h-[18px]")} />
                     {section.label}
                   </button>
                 );
@@ -204,7 +204,7 @@ export default function ChapterPage() {
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pl-6">
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
