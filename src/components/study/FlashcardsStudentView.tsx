@@ -187,13 +187,13 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center justify-between mt-4 gap-2">
               <Button
-                variant="outline"
+                variant="default"
                 size="icon"
                 onClick={handlePrev}
                 disabled={displayCards.length <= 1}
-                className="h-14 w-14 md:h-10 md:w-10 shrink-0"
+                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-full shadow-lg"
               >
-                <ChevronLeft className="w-8 h-8 md:w-5 md:h-5" />
+                <ChevronLeft className="w-10 h-10 md:w-5 md:h-5" />
               </Button>
 
               <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-center">
@@ -261,13 +261,13 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
               </div>
 
               <Button
-                variant="outline"
+                variant="default"
                 size="icon"
                 onClick={handleNext}
                 disabled={displayCards.length <= 1}
-                className="h-14 w-14 md:h-10 md:w-10 shrink-0"
+                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-full shadow-lg"
               >
-                <ChevronRight className="w-8 h-8 md:w-5 md:h-5" />
+                <ChevronRight className="w-10 h-10 md:w-5 md:h-5" />
               </Button>
             </div>
           </TooltipProvider>
