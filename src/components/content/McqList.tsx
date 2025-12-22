@@ -61,6 +61,7 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const [showMarkedOnly, setShowMarkedOnly] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+  const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useDeleteMcq();
@@ -355,6 +356,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                   onDelete={() => setDeletingMcq(mcq)}
                   isMarked={markedIds.has(mcq.id)}
                   onToggleMark={toggleMark}
+                  isExpanded={expandedMcqId === mcq.id}
+                  onToggleExpand={(id) => setExpandedMcqId(prev => prev === id ? null : id)}
                 />
               </div>
             );

@@ -1,12 +1,19 @@
-import { useState } from 'react';
-import { Stethoscope, Star, Edit2, Trash2, Printer, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Stethoscope, Star, Edit2, Trash2, Printer, ExternalLink, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { CaseScenario, useDeleteCaseScenario } from '@/hooks/useCaseScenarios';
 import { CaseScenarioDetailModal } from './CaseScenarioDetailModal';
 import { CaseScenarioFormModal } from './CaseScenarioFormModal';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,11 +46,35 @@ export default function CaseScenarioList({
   const [editingCase, setEditingCase] = useState<CaseScenario | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingCase, setDeletingCase] = useState<CaseScenario | null>(null);
+  const [showMarkedOnly, setShowMarkedOnly] = useState(false);
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
 
   const deleteCase = useDeleteCaseScenario();
 
-  const handleOpen = (index: number) => {
-    setSelectedIndex(index);
+  const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setMarkedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const filteredCases = useMemo(() => {
+    if (showMarkedOnly) {
+      return cases.filter(caseItem => markedIds.has(caseItem.id));
+    }
+    return cases;
+  }, [cases, showMarkedOnly, markedIds]);
+
+  const handleOpen = (filteredIndex: number) => {
+    const caseItem = filteredCases[filteredIndex];
+    const actualIndex = cases.findIndex(c => c.id === caseItem.id);
+    setSelectedIndex(actualIndex >= 0 ? actualIndex : 0);
     setDetailModalOpen(true);
   };
 
@@ -132,90 +163,137 @@ export default function CaseScenarioList({
 
   return (
     <>
-      <div className="space-y-3">
-        {cases.map((caseItem, index) => (
-          <Card 
-            key={caseItem.id} 
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleOpen(index)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium truncate">{caseItem.title}</h3>
-                    {caseItem.rating && (
-                      <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        {caseItem.rating}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {caseItem.case_history}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpen(index);
-                    }}
-                    title="Open"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  {(canEdit || canDelete) && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => handlePrint(caseItem, e)}
-                        title="Print"
+      {/* Filter Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="h-3 w-3" />
+              Filters
+              {showMarkedOnly && (
+                <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuCheckboxItem
+              checked={showMarkedOnly}
+              onCheckedChange={setShowMarkedOnly}
+            >
+              <Star className="h-3 w-3 mr-2 text-amber-500" />
+              Marked for review ({markedIds.size})
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {filteredCases.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>
+            {showMarkedOnly 
+              ? 'No marked cases. Click the star icon on any case to mark it for review.' 
+              : 'No case scenarios available yet.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredCases.map((caseItem, index) => (
+            <Card 
+              key={caseItem.id} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleOpen(index)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Mark for Review star */}
+                      <button
+                        onClick={(e) => toggleMark(caseItem.id, e)}
+                        className={cn(
+                          'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                          markedIds.has(caseItem.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                        )}
+                        title={markedIds.has(caseItem.id) ? 'Remove from review' : 'Mark for review'}
                       >
-                        <Printer className="w-4 h-4" />
-                      </Button>
-                      {canEdit && (
+                        <Star className={cn('h-4 w-4', markedIds.has(caseItem.id) && 'fill-current')} />
+                      </button>
+                      <h3 className="font-medium truncate">{caseItem.title}</h3>
+                      {caseItem.rating && (
+                        <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                          {caseItem.rating}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2 ml-7">
+                      {caseItem.case_history}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpen(index);
+                      }}
+                      title="Open"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                    {(canEdit || canDelete) && (
+                      <>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={(e) => handleEdit(caseItem, e)}
-                          title="Edit"
+                          onClick={(e) => handlePrint(caseItem, e)}
+                          title="Print"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Printer className="w-4 h-4" />
                         </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={(e) => handleDeleteClick(caseItem, e)}
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </>
-                  )}
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => handleEdit(caseItem, e)}
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={(e) => handleDeleteClick(caseItem, e)}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Detail Modal */}
+      {/* Detail Modal with single-focus behavior */}
       <CaseScenarioDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        cases={cases}
-        initialIndex={selectedIndex}
+        cases={showMarkedOnly ? filteredCases : cases}
+        initialIndex={showMarkedOnly ? 0 : selectedIndex}
+        markedIds={markedIds}
+        onToggleMark={toggleMark}
       />
 
       {/* Edit Modal */}

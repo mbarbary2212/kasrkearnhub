@@ -14,11 +14,15 @@ interface McqCardProps {
   onDelete?: () => void;
   isMarked?: boolean;
   onToggleMark?: (id: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: (id: string) => void;
 }
 
-export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onToggleMark }: McqCardProps) {
-  const [showAnswer, setShowAnswer] = useState(false);
+export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onToggleMark, isExpanded, onToggleExpand }: McqCardProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  
+  // Use controlled expand state if provided, otherwise internal state
+  const showAnswer = isExpanded ?? false;
 
   const choices = mcq.choices as McqChoice[];
 
@@ -143,7 +147,15 @@ export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onTog
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowAnswer(!showAnswer)}
+            onClick={() => {
+              if (onToggleExpand) {
+                onToggleExpand(mcq.id);
+              }
+              // Reset selection when collapsing
+              if (showAnswer) {
+                setSelectedKey(null);
+              }
+            }}
             className="gap-2"
           >
             {showAnswer ? (

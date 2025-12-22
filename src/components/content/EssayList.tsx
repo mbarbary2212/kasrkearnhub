@@ -1,10 +1,17 @@
-import { useState } from 'react';
-import { PenTool, Star, Edit2, Trash2, Printer, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { PenTool, Star, Printer, ExternalLink, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
+import { cn } from '@/lib/utils';
 
 interface Essay {
   id: string;
@@ -33,9 +40,34 @@ export default function EssayList({
 }: EssayListProps) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showMarkedOnly, setShowMarkedOnly] = useState(false);
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
 
-  const handleOpen = (index: number) => {
-    setSelectedIndex(index);
+  const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setMarkedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const filteredEssays = useMemo(() => {
+    if (showMarkedOnly) {
+      return essays.filter(essay => markedIds.has(essay.id));
+    }
+    return essays;
+  }, [essays, showMarkedOnly, markedIds]);
+
+  const handleOpen = (filteredIndex: number) => {
+    // Find the actual index in the original array for navigation
+    const essay = filteredEssays[filteredIndex];
+    const actualIndex = essays.findIndex(e => e.id === essay.id);
+    setSelectedIndex(actualIndex >= 0 ? actualIndex : 0);
     setDetailModalOpen(true);
   };
 
@@ -90,79 +122,126 @@ export default function EssayList({
 
   return (
     <>
-      <div className="space-y-3">
-        {essays.map((essay, index) => (
-          <Card 
-            key={essay.id} 
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleOpen(index)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium truncate">{essay.title}</h3>
-                    {essay.rating && (
-                      <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        {essay.rating}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{essay.question}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpen(index);
-                    }}
-                    title="Open"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  {(canEdit || canDelete) && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => handlePrint(essay, e)}
-                        title="Print"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </Button>
-                      {moduleId && (
-                        <ContentItemActions
-                          id={essay.id}
-                          title={essay.title}
-                          description={essay.question}
-                          contentType="essay"
-                          moduleId={moduleId}
-                          chapterId={chapterId}
-                          canEdit={canEdit}
-                          canDelete={canDelete}
-                          showFeedback={showFeedback}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Filter Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="h-3 w-3" />
+              Filters
+              {showMarkedOnly && (
+                <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuCheckboxItem
+              checked={showMarkedOnly}
+              onCheckedChange={setShowMarkedOnly}
+            >
+              <Star className="h-3 w-3 mr-2 text-amber-500" />
+              Marked for review ({markedIds.size})
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Detail Modal */}
+      {filteredEssays.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>
+            {showMarkedOnly 
+              ? 'No marked questions. Click the star icon on any question to mark it for review.' 
+              : 'No short questions available yet.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredEssays.map((essay, index) => (
+            <Card 
+              key={essay.id} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleOpen(index)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Mark for Review star */}
+                      <button
+                        onClick={(e) => toggleMark(essay.id, e)}
+                        className={cn(
+                          'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                          markedIds.has(essay.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                        )}
+                        title={markedIds.has(essay.id) ? 'Remove from review' : 'Mark for review'}
+                      >
+                        <Star className={cn('h-4 w-4', markedIds.has(essay.id) && 'fill-current')} />
+                      </button>
+                      <h3 className="font-medium truncate">{essay.title}</h3>
+                      {essay.rating && (
+                        <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                          {essay.rating}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2 ml-7">{essay.question}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpen(index);
+                      }}
+                      title="Open"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                    {(canEdit || canDelete) && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => handlePrint(essay, e)}
+                          title="Print"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                        {moduleId && (
+                          <ContentItemActions
+                            id={essay.id}
+                            title={essay.title}
+                            description={essay.question}
+                            contentType="essay"
+                            moduleId={moduleId}
+                            chapterId={chapterId}
+                            canEdit={canEdit}
+                            canDelete={canDelete}
+                            showFeedback={showFeedback}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Detail Modal with single-focus behavior */}
       <EssayDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        essays={essays}
-        initialIndex={selectedIndex}
+        essays={showMarkedOnly ? filteredEssays : essays}
+        initialIndex={showMarkedOnly ? 0 : selectedIndex}
+        markedIds={markedIds}
+        onToggleMark={toggleMark}
       />
     </>
   );
