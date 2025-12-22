@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter } from 'lucide-react';
+import { useState, useRef, useMemo, useCallback } from 'react';
+import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -59,6 +59,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [showMarkedOnly, setShowMarkedOnly] = useState(false);
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useDeleteMcq();
@@ -92,9 +94,27 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   );
 
   const filteredMcqs = useMemo(() => {
-    if (!showDuplicatesOnly) return mcqs;
-    return mcqs.filter(mcq => duplicateIds.has(mcq.id));
-  }, [mcqs, showDuplicatesOnly, duplicateIds]);
+    let result = mcqs;
+    if (showDuplicatesOnly) {
+      result = result.filter(mcq => duplicateIds.has(mcq.id));
+    }
+    if (showMarkedOnly) {
+      result = result.filter(mcq => markedIds.has(mcq.id));
+    }
+    return result;
+  }, [mcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds]);
+
+  const toggleMark = useCallback((id: string) => {
+    setMarkedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
 
   const handleDelete = () => {
     if (!deletingMcq) return;
@@ -239,33 +259,43 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Admin Actions */}
-      {isAdmin && (
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {duplicateMcqs.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="h-3 w-3" />
-                    Filters
-                    {showDuplicatesOnly && (
-                      <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuCheckboxItem
-                    checked={showDuplicatesOnly}
-                    onCheckedChange={setShowDuplicatesOnly}
-                  >
-                    <Copy className="h-3 w-3 mr-2" />
-                    Show duplicates only ({duplicateMcqs.length})
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+      {/* Actions Bar */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          {/* Marked for Review filter - always available */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="h-3 w-3" />
+                Filters
+                {(showDuplicatesOnly || showMarkedOnly) && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuCheckboxItem
+                checked={showMarkedOnly}
+                onCheckedChange={setShowMarkedOnly}
+              >
+                <Star className="h-3 w-3 mr-2 text-amber-500" />
+                Marked for review ({markedIds.size})
+              </DropdownMenuCheckboxItem>
+              {isAdmin && duplicateMcqs.length > 0 && (
+                <DropdownMenuCheckboxItem
+                  checked={showDuplicatesOnly}
+                  onCheckedChange={setShowDuplicatesOnly}
+                >
+                  <Copy className="h-3 w-3 mr-2" />
+                  Show duplicates only ({duplicateMcqs.length})
+                </DropdownMenuCheckboxItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {isAdmin && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowBulkModal(true)} className="gap-2">
               <Upload className="h-4 w-4" />
@@ -276,8 +306,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
               Add Question
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Duplicate Alert */}
       {isAdmin && showDuplicatesOnly && duplicateMcqs.length > 0 && (
@@ -292,7 +322,15 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
       {/* MCQ Cards */}
       {filteredMcqs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{showDuplicatesOnly ? 'No duplicates found.' : 'No MCQs yet. Click "Add Question" to create one.'}</p>
+          <p>
+            {showMarkedOnly 
+              ? 'No marked questions. Click the star icon on any question to mark it for review.' 
+              : showDuplicatesOnly 
+                ? 'No duplicates found.' 
+                : isAdmin 
+                  ? 'No MCQs yet. Click "Add Question" to create one.'
+                  : 'No MCQs available yet.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -315,6 +353,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                   isAdmin={isAdmin}
                   onEdit={() => setEditingMcq(mcq)}
                   onDelete={() => setDeletingMcq(mcq)}
+                  isMarked={markedIds.has(mcq.id)}
+                  onToggleMark={toggleMark}
                 />
               </div>
             );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash2, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 
@@ -12,9 +12,11 @@ interface McqCardProps {
   isAdmin: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  isMarked?: boolean;
+  onToggleMark?: (id: string) => void;
 }
 
-export function McqCard({ mcq, index, isAdmin, onEdit, onDelete }: McqCardProps) {
+export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onToggleMark }: McqCardProps) {
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -52,6 +54,19 @@ export function McqCard({ mcq, index, isAdmin, onEdit, onDelete }: McqCardProps)
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>
+              {/* Mark for Review star */}
+              {onToggleMark && (
+                <button
+                  onClick={() => onToggleMark(mcq.id)}
+                  className={cn(
+                    'p-1 rounded-full transition-colors hover:bg-muted',
+                    isMarked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                  )}
+                  title={isMarked ? 'Remove from review' : 'Mark for review'}
+                >
+                  <Star className={cn('h-4 w-4', isMarked && 'fill-current')} />
+                </button>
+              )}
               {/* Difficulty badge - only visible to admins */}
               {isAdmin && mcq.difficulty && (
                 <Badge 
