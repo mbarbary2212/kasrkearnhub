@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -18,12 +17,14 @@ import EssayList from '@/components/content/EssayList';
 import CaseScenarioList from '@/components/content/CaseScenarioList';
 import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModal';
 import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBulkUploadModal';
+import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { 
   useChapterLectures, 
   useChapterResources, 
   useChapterEssays, 
   useChapterPracticals
 } from '@/hooks/useChapterContent';
+import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -84,6 +85,7 @@ export default function ChapterPage() {
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
+  const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -100,11 +102,7 @@ export default function ChapterPage() {
     setResourcesTab(tab);
   };
 
-  // Calculate mock progress (visual only for now)
-  const totalItems = (lectures?.length || 0) + flashcards.length + (resources?.length || 0) + 
-                     (mcqs?.length || 0) + (essays?.length || 0) + (caseScenarios?.length || 0) + 
-                     (practicals?.length || 0);
-  const mockProgress = Math.min(35, Math.floor(Math.random() * 50)); // Placeholder progress
+  // Progress is now calculated from useChapterProgress hook
 
   if (!chapterLoading && !chapter) {
     return (
@@ -168,13 +166,16 @@ export default function ChapterPage() {
         </div>
 
         {/* Chapter Progress Bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Chapter Progress</span>
-            <span>{mockProgress}% complete</span>
-          </div>
-          <Progress value={mockProgress} className="h-2" />
-        </div>
+        <ChapterProgressBar
+          totalProgress={chapterProgress?.totalProgress || 0}
+          resourcesProgress={chapterProgress?.resourcesProgress || 0}
+          practiceProgress={chapterProgress?.practiceProgress || 0}
+          resourcesCompleted={chapterProgress?.resourcesCompleted || 0}
+          resourcesTotal={chapterProgress?.resourcesTotal || 0}
+          practiceCompleted={chapterProgress?.practiceCompleted || 0}
+          practiceTotal={chapterProgress?.practiceTotal || 0}
+          isLoading={progressLoading}
+        />
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
         <div className="flex">
