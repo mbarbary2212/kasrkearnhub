@@ -109,7 +109,7 @@ export default function ModulePage() {
         <div className="space-y-6 animate-fade-in">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${module?.year_id}`)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
@@ -239,7 +239,7 @@ export default function ModulePage() {
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${module?.year_id}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
