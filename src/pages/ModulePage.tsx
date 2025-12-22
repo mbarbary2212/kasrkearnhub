@@ -34,7 +34,8 @@ import {
   ExternalLink,
   ChevronRight,
   ChevronDown,
-  BookOpen
+  BookOpen,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export default function ModulePage() {
@@ -127,6 +128,24 @@ export default function ModulePage() {
               )}
             </div>
           </div>
+
+          {/* Mock Exam Button - Module Level */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <ClipboardCheck className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Mock Exam</h3>
+                  <p className="text-sm text-muted-foreground">Test your knowledge with practice exams</p>
+                </div>
+              </div>
+              <Button onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}>
+                Start Exam
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Chapters Section */}
           <div className="space-y-6">
@@ -245,6 +264,24 @@ export default function ModulePage() {
           </div>
         </div>
 
+        {/* Mock Exam Button - Module Level */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <ClipboardCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Mock Exam</h3>
+                <p className="text-sm text-muted-foreground">Test your knowledge with practice exams</p>
+              </div>
+            </div>
+            <Button onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}>
+              Start Exam
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Content Tabs - 5 tabs as requested */}
         <Tabs defaultValue="videos" className="w-full">
           <TabsList className="grid w-full grid-cols-5 h-auto">
@@ -266,7 +303,7 @@ export default function ModulePage() {
             </TabsTrigger>
             <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
               <PenTool className="w-4 h-4" />
-              <span className="text-xs">Short Questions</span>
+              <span className="text-xs">Short Essays</span>
             </TabsTrigger>
           </TabsList>
 
@@ -375,7 +412,7 @@ export default function ModulePage() {
             )}
           </TabsContent>
 
-          {/* Short Questions (SAQs/Essays) Tab */}
+          {/* Short Essays (SAQs/Essays) Tab */}
           <TabsContent value="saqs" className="mt-6">
             {essaysLoading ? (
               <div className="space-y-3">
@@ -402,7 +439,7 @@ export default function ModulePage() {
                 ))}
               </div>
             ) : (
-              renderEmptyState(<PenTool className="w-6 h-6 text-muted-foreground" />, "No short questions available yet.")
+              renderEmptyState(<PenTool className="w-6 h-6 text-muted-foreground" />, "No short essays available yet.")
             )}
           </TabsContent>
         </Tabs>
