@@ -67,12 +67,26 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
     setIsShuffled(false);
   }, [activeDeckIndex]);
 
-  // Auto-return after showing answer
+  // Auto-flip: show question for 2/3 of time, answer for 1/3, then move to next
   useEffect(() => {
-    if (!flipped || !autoReturn) return;
-    const t = setTimeout(() => setFlipped(false), autoFlipMs);
-    return () => clearTimeout(t);
-  }, [flipped, autoReturn, autoFlipMs]);
+    if (!autoReturn || displayCards.length <= 1) return;
+    
+    const questionTime = Math.round(autoFlipMs * (2 / 3));
+    const answerTime = autoFlipMs - questionTime;
+    
+    if (!flipped) {
+      // Show question, then flip to answer after 2/3 of the time
+      const t = setTimeout(() => setFlipped(true), questionTime);
+      return () => clearTimeout(t);
+    } else {
+      // Show answer, then move to next card after 1/3 of the time
+      const t = setTimeout(() => {
+        setFlipped(false);
+        setCardIndex((v) => (v + 1) % displayCards.length);
+      }, answerTime);
+      return () => clearTimeout(t);
+    }
+  }, [flipped, autoReturn, autoFlipMs, cardIndex, displayCards.length]);
 
   const handleShuffle = useCallback(() => {
     if (!activeDeck) return;
@@ -191,7 +205,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
                 size="icon"
                 onClick={handlePrev}
                 disabled={displayCards.length <= 1}
-                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-full shadow-lg"
+                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-xl shadow-lg"
               >
                 <ChevronLeft className="w-10 h-10 md:w-5 md:h-5" />
               </Button>
@@ -265,7 +279,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
                 size="icon"
                 onClick={handleNext}
                 disabled={displayCards.length <= 1}
-                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-full shadow-lg"
+                className="h-16 w-16 md:h-10 md:w-10 shrink-0 rounded-xl shadow-lg"
               >
                 <ChevronRight className="w-10 h-10 md:w-5 md:h-5" />
               </Button>
