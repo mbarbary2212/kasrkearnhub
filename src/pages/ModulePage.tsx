@@ -13,6 +13,7 @@ import {
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useYearById } from '@/hooks/useYears';
 import { LectureList } from '@/components/content/LectureList';
 import { McqList } from '@/components/content/McqList';
 import { SortDropdown } from '@/components/ui/sort-dropdown';
@@ -47,6 +48,7 @@ export default function ModulePage() {
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
+  const { data: year } = useYearById(module?.year_id || '');
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
   const { data: lectures, isLoading: lecturesLoading } = useModuleLectures(actualModuleId);
   const { data: resources, isLoading: resourcesLoading } = useModuleResources(actualModuleId);
@@ -109,7 +111,7 @@ export default function ModulePage() {
         <div className="space-y-6 animate-fade-in">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${module?.year_id}`)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
@@ -239,7 +241,7 @@ export default function ModulePage() {
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${module?.year_id}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
