@@ -58,6 +58,7 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   const [sessionCards, setSessionCards] = useState<StudyResource[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   // Timer refs
   const flipTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -212,8 +213,15 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
       clearTimers();
       setState('completed');
     } else {
-      setCurrentIndex(prev => prev + 1);
-      setFlipped(false);
+      // Start transition blackout
+      setTransitioning(true);
+      
+      // After brief blackout, show next card
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setFlipped(false);
+        setTransitioning(false);
+      }, 300);
     }
   }, [currentIndex, sessionCards.length, clearTimers]);
 
@@ -398,8 +406,15 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
             <Progress value={progressPercent} className="h-2" />
           </div>
 
-          {/* Card */}
-          <div className="perspective-1000">
+          {/* Card with transition overlay */}
+          <div className="perspective-1000 relative">
+            {/* Transition blackout overlay */}
+            <div 
+              className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-200 ${
+                transitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            />
+            
             <div
               className={`relative w-full h-64 transition-transform duration-500 transform-style-3d ${
                 flipped ? 'rotate-y-180' : ''
