@@ -129,23 +129,18 @@ export default function ModulePage() {
             </div>
           </div>
 
-          {/* Mock Exam Button - Module Level */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <ClipboardCheck className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Mock Exam</h3>
-                  <p className="text-sm text-muted-foreground">Test your knowledge with practice exams</p>
-                </div>
-              </div>
-              <Button onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}>
-                Start Exam
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Mock Exam Button - Small Secondary */}
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
+              className="gap-2"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              Mock Exam
+            </Button>
+          </div>
 
           {/* Chapters Section */}
           <div className="space-y-6">
@@ -264,23 +259,18 @@ export default function ModulePage() {
           </div>
         </div>
 
-        {/* Mock Exam Button - Module Level */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <ClipboardCheck className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">Mock Exam</h3>
-                <p className="text-sm text-muted-foreground">Test your knowledge with practice exams</p>
-              </div>
-            </div>
-            <Button onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}>
-              Start Exam
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Mock Exam Button - Small Secondary */}
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
+            className="gap-2"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Mock Exam
+          </Button>
+        </div>
 
         {/* Content Tabs - 5 tabs as requested */}
         <Tabs defaultValue="videos" className="w-full">
