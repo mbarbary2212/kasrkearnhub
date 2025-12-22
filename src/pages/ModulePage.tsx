@@ -108,39 +108,46 @@ export default function ModulePage() {
   if (hasChapters) {
     return (
       <MainLayout>
-        <div className="space-y-6 animate-fade-in">
-          {/* Header */}
-          <div className="flex items-center gap-4">
+        <div className="space-y-4 animate-fade-in">
+          {/* Header with Mock Exam Button */}
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               {moduleLoading ? (
                 <>
-                  <Skeleton className="h-9 w-64 mb-2" />
-                  <Skeleton className="h-5 w-96" />
+                  <Skeleton className="h-7 w-64 mb-1" />
+                  <Skeleton className="h-4 w-80" />
                 </>
               ) : (
                 <>
-                  <h1 className="text-2xl font-heading font-semibold">{module?.name}</h1>
+                  <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
                   {module?.description && (
-                    <p className="text-muted-foreground text-sm">{module.description}</p>
+                    <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                   )}
                 </>
               )}
             </div>
-          </div>
-
-          {/* Mock Exam Button - Small Secondary */}
-          <div className="flex justify-end">
+            {/* Mock Exam Button - Desktop/Tablet */}
             <Button 
-              variant="outline" 
-              size="sm"
               onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
-              className="gap-2"
+              className="hidden sm:flex gap-2 h-10 px-4"
             >
               <ClipboardCheck className="w-4 h-4" />
               Mock Exam
+            </Button>
+          </div>
+
+          {/* Mobile Mock Exam FAB */}
+          <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+            <Button 
+              onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
+              className="h-12 px-4 rounded-full shadow-lg gap-2"
+              size="lg"
+            >
+              <ClipboardCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">Mock Exam</span>
             </Button>
           </div>
 
@@ -238,39 +245,46 @@ export default function ModulePage() {
   // Default view without chapters (original tabs)
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center gap-4">
+      <div className="space-y-4 animate-fade-in">
+        {/* Header with Mock Exam Button */}
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {moduleLoading ? (
               <>
-                <Skeleton className="h-9 w-64 mb-2" />
-                <Skeleton className="h-5 w-96" />
+                <Skeleton className="h-7 w-64 mb-1" />
+                <Skeleton className="h-4 w-80" />
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-heading font-semibold">{module?.name}</h1>
+                <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
                 {module?.description && (
-                  <p className="text-muted-foreground text-sm">{module.description}</p>
+                  <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                 )}
               </>
             )}
           </div>
-        </div>
-
-        {/* Mock Exam Button - Small Secondary */}
-        <div className="flex justify-end">
+          {/* Mock Exam Button - Desktop/Tablet */}
           <Button 
-            variant="outline" 
-            size="sm"
             onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
-            className="gap-2"
+            className="hidden sm:flex gap-2 h-10 px-4"
           >
             <ClipboardCheck className="w-4 h-4" />
             Mock Exam
+          </Button>
+        </div>
+
+        {/* Mobile Mock Exam FAB */}
+        <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+          <Button 
+            onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
+            className="h-12 px-4 rounded-full shadow-lg gap-2"
+            size="lg"
+          >
+            <ClipboardCheck className="w-5 h-5" />
+            <span className="text-sm font-medium">Mock Exam</span>
           </Button>
         </div>
 

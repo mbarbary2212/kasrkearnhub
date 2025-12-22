@@ -37,6 +37,7 @@ interface ResourceListProps {
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
+  compact?: boolean;  // New prop for simple list view
 }
 
 export default function ResourceList({
@@ -46,6 +47,7 @@ export default function ResourceList({
   canEdit = false,
   canDelete = false,
   showFeedback = true,
+  compact = false,
 }: ResourceListProps) {
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
     'resources',
@@ -60,6 +62,108 @@ export default function ResourceList({
     return null;
   }
 
+  // Compact list view for simpler UI
+  if (compact) {
+    return (
+      <>
+        <div className="space-y-0.5 border rounded-lg divide-y">
+          {resources.map((resource) => (
+            <div key={resource.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors group">
+              <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium truncate block">{resource.title}</span>
+                {resource.resource_type && (
+                  <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                {(resource.file_url || resource.external_url) && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2" asChild>
+                    <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </Button>
+                )}
+                {canManage && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100">
+                        <Settings2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[160px] z-[50]">
+                      {canEdit && (
+                        <DropdownMenuItem className="gap-2 text-sm">
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <DropdownMenuItem
+                          onClick={() => askDelete(resource.id, resource.title)}
+                          className="gap-2 text-destructive focus:text-destructive text-sm"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                      {showFeedback && (
+                        <DropdownMenuItem
+                          onClick={() => setFeedbackItem(resource)}
+                          className="gap-2 text-sm"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Feedback
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
+          <AlertDialogContent className="z-[99999]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete resource?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  doDelete();
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {moduleId && feedbackItem && (
+          <ItemFeedbackModal
+            isOpen={!!feedbackItem}
+            onClose={() => setFeedbackItem(null)}
+            itemType="resource"
+            itemId={feedbackItem.id}
+            itemTitle={feedbackItem.title}
+            moduleId={moduleId}
+            chapterId={chapterId}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Full card view (original)
   return (
     <>
       <div className="space-y-3">
