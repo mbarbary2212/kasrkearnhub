@@ -4,7 +4,8 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -43,13 +44,14 @@ import {
   Image,
   FolderOpen,
   GraduationCap,
+  MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+type SectionMode = 'resources' | 'practice' | 'connect';
+type ResourcesTab = 'lectures' | 'flashcards' | 'documents';
+type PracticeTab = 'mcqs' | 'essays' | 'cases' | 'practical' | 'images';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -58,8 +60,10 @@ export default function ChapterPage() {
 
   const canManageContent = isAdmin || isTeacher;
 
-  // State for active tab and reset key for lectures
-  const [activeTab, setActiveTab] = useState("lectures");
+  // State for section mode and active tabs within sections
+  const [activeSection, setActiveSection] = useState<SectionMode>('resources');
+  const [resourcesTab, setResourcesTab] = useState<ResourcesTab>('lectures');
+  const [practiceTab, setPracticeTab] = useState<PracticeTab>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
 
   // State for Case Scenarios modals
@@ -70,14 +74,6 @@ export default function ChapterPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
-
-  // Clicking the Lectures tab always resets to list view
-  const handleTabChange = (value: string) => {
-    if (value === "lectures") {
-      setLecturesResetKey((k) => k + 1);
-    }
-    setActiveTab(value);
-  };
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
@@ -97,6 +93,19 @@ export default function ChapterPage() {
     setFlashcardFormOpen(true);
   };
 
+  const handleResourcesTabChange = (tab: ResourcesTab) => {
+    if (tab === 'lectures') {
+      setLecturesResetKey((k) => k + 1);
+    }
+    setResourcesTab(tab);
+  };
+
+  // Calculate mock progress (visual only for now)
+  const totalItems = (lectures?.length || 0) + flashcards.length + (resources?.length || 0) + 
+                     (mcqs?.length || 0) + (essays?.length || 0) + (caseScenarios?.length || 0) + 
+                     (practicals?.length || 0);
+  const mockProgress = Math.min(35, Math.floor(Math.random() * 50)); // Placeholder progress
+
   if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
@@ -110,9 +119,32 @@ export default function ChapterPage() {
     );
   }
 
+  // Section navigation items
+  const sectionNav = [
+    { id: 'resources' as SectionMode, label: 'Resources', icon: FolderOpen },
+    { id: 'practice' as SectionMode, label: 'Practice', icon: GraduationCap },
+    { id: 'connect' as SectionMode, label: 'Connect', icon: MessageCircle },
+  ];
+
+  // Resources sub-tabs
+  const resourcesTabs = [
+    { id: 'lectures' as ResourcesTab, label: 'Lectures', icon: Video, count: lectures?.length || 0 },
+    { id: 'flashcards' as ResourcesTab, label: 'Flashcards', icon: Layers, count: flashcards.length },
+    { id: 'documents' as ResourcesTab, label: 'Documents', icon: FileText, count: resources?.length || 0 },
+  ];
+
+  // Practice sub-tabs
+  const practiceTabs = [
+    { id: 'mcqs' as PracticeTab, label: 'MCQ', icon: HelpCircle, count: mcqs?.length || 0 },
+    { id: 'essays' as PracticeTab, label: 'Short Essays', icon: PenTool, count: essays?.length || 0 },
+    { id: 'cases' as PracticeTab, label: 'Cases', icon: Stethoscope, count: caseScenarios?.length || 0 },
+    { id: 'practical' as PracticeTab, label: 'OSCE/Practical', icon: FlaskConical, count: practicals?.length || 0 },
+    { id: 'images' as PracticeTab, label: 'Images', icon: Image, count: 0 },
+  ];
+
   return (
     <MainLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}`)}>
@@ -135,309 +167,329 @@ export default function ChapterPage() {
           </div>
         </div>
 
-        {/* Resources Section Header */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <FolderOpen className="w-4 h-4" />
-            <span>Resources</span>
+        {/* Chapter Progress Bar */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Chapter Progress</span>
+            <span>{mockProgress}% complete</span>
           </div>
-          
-          {/* Resources Tabs: Lectures, Flashcards, Documents */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TooltipProvider delayDuration={300}>
-              <TabsList className="grid w-full grid-cols-3 h-auto mb-4">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="lectures" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <Video className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Lectures</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{lectures?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Lectures</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="flashcards" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <Layers className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Flashcards</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{flashcards.length}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Flashcards</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="documents" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <FileText className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Documents</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{resources?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Documents</TooltipContent>
-                </Tooltip>
-              </TabsList>
-            </TooltipProvider>
-
-            {/* Lectures Tab */}
-            <TabsContent value="lectures" className="mt-4">
-              {canManageContent && chapterId && moduleId && (
-                <div className="mb-4">
-                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="lecture" />
-                </div>
-              )}
-              {lecturesLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                </div>
-              ) : (
-                <LectureList 
-                  key={lecturesResetKey}
-                  lectures={lectures || []} 
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  canEdit={canManageContent}
-                  canDelete={canManageContent}
-                  showFeedback={true}
-                />
-              )}
-            </TabsContent>
-
-            {/* Flashcards Tab - using existing FlashcardsTab component */}
-            <TabsContent value="flashcards" className="mt-4">
-              {canManageContent && chapterId && moduleId && (
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingFlashcard(null);
-                      setFlashcardFormOpen(true);
-                    }}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Flashcard
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setFlashcardBulkOpen(true)}
-                  >
-                    <Upload className="w-3 h-3 mr-1" />
-                    Bulk Upload
-                  </Button>
-                </div>
-              )}
-              {studyResourcesLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                </div>
-              ) : (
-                <FlashcardsTab
-                  resources={flashcards}
-                  canManage={canManageContent}
-                  onEdit={handleEditFlashcard}
-                />
-              )}
-            </TabsContent>
-
-            {/* Documents Tab (formerly Resources) */}
-            <TabsContent value="documents" className="mt-4">
-              {chapterId && moduleId && (
-                <ResourcesTabContent
-                  chapterId={chapterId}
-                  moduleId={moduleId}
-                  resources={resources || []}
-                  resourcesLoading={resourcesLoading}
-                  canManageContent={canManageContent}
-                  isSuperAdmin={isSuperAdmin}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+          <Progress value={mockProgress} className="h-2" />
         </div>
 
-        {/* Practice Section Header */}
-        <div className="space-y-4 pt-4 border-t">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <GraduationCap className="w-4 h-4" />
-            <span>Practice</span>
+        {/* Main Content Layout: Left Nav + Content Area */}
+        <div className="flex gap-6">
+          {/* Left Vertical Navigation */}
+          <div className="w-48 flex-shrink-0">
+            <nav className="space-y-1 sticky top-4">
+              {sectionNav.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                      isActive 
+                        ? "bg-primary text-primary-foreground" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {section.label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
-          
-          {/* Practice Tabs: MCQ, Short Essays, Cases, OSCE/Practical, Image Questions */}
-          <Tabs defaultValue="mcqs" className="w-full">
-            <TooltipProvider delayDuration={300}>
-              <TabsList className="grid w-full grid-cols-5 h-auto mb-4">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="mcqs" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <HelpCircle className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">MCQ</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{mcqs?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">MCQs</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="essays" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <PenTool className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Short Essays</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{essays?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Short Essays</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="cases" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <Stethoscope className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Cases</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{caseScenarios?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Cases</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="practical" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <FlaskConical className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">OSCE/Practical</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">{practicals?.length || 0}</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">OSCE/Practical</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="images" className="flex flex-col items-center gap-1 py-2 md:py-3">
-                      <Image className="w-5 h-5 md:w-4 md:h-4" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs hidden md:inline">Images</span>
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">0</Badge>
-                      </div>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="md:hidden">Image Questions</TooltipContent>
-                </Tooltip>
-              </TabsList>
-            </TooltipProvider>
 
-            {/* MCQs Tab */}
-            <TabsContent value="mcqs" className="mt-4">
-              {mcqsLoading ? (
-                <div className="space-y-3">
-                  {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
+            {/* Resources Section */}
+            {activeSection === 'resources' && (
+              <div className="space-y-4">
+                {/* Sub-tabs for Resources */}
+                <div className="flex gap-2 flex-wrap">
+                  {resourcesTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = resourcesTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleResourcesTabChange(tab.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          isActive 
+                            ? "bg-secondary text-secondary-foreground" 
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : (
-                <McqList
-                  mcqs={mcqs || []}
-                  moduleId={moduleId || ''}
-                  chapterId={chapterId}
-                  isAdmin={canManageContent}
-                />
-              )}
-            </TabsContent>
 
-            {/* Short Essays Tab (renamed from Short Questions) */}
-            <TabsContent value="essays" className="mt-4">
-              {canManageContent && chapterId && moduleId && (
-                <div className="mb-4">
-                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="essay" />
-                </div>
-              )}
-              {essaysLoading ? (
-                <div className="space-y-3">
-                  {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-                </div>
-              ) : (
-                <EssayList
-                  essays={essays || []}
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  canEdit={canManageContent}
-                  canDelete={canManageContent}
-                  showFeedback={true}
-                />
-              )}
-            </TabsContent>
+                {/* Lectures Content */}
+                {resourcesTab === 'lectures' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="lecture" />
+                      </div>
+                    )}
+                    {lecturesLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : (
+                      <LectureList 
+                        key={lecturesResetKey}
+                        lectures={lectures || []} 
+                        moduleId={moduleId}
+                        chapterId={chapterId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                        showFeedback={true}
+                      />
+                    )}
+                  </div>
+                )}
 
-            {/* Case Scenarios Tab */}
-            <TabsContent value="cases" className="mt-4">
-              {canManageContent && chapterId && moduleId && (
-                <div className="mb-4 flex gap-2">
-                  <Button size="sm" onClick={() => setCaseFormOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Case
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
-                    <Upload className="w-4 h-4 mr-1" />
-                    Bulk Upload
-                  </Button>
-                </div>
-              )}
-              {caseScenariosLoading ? (
-                <div className="space-y-3">
-                  {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                </div>
-              ) : (
-                <CaseScenarioList
-                  cases={caseScenarios || []}
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  canEdit={canManageContent}
-                  canDelete={canManageContent}
-                />
-              )}
-            </TabsContent>
+                {/* Flashcards Content (as cards) */}
+                {resourcesTab === 'flashcards' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId && (
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingFlashcard(null);
+                            setFlashcardFormOpen(true);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Flashcard
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setFlashcardBulkOpen(true)}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    {studyResourcesLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : (
+                      <FlashcardsTab
+                        resources={flashcards}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                      />
+                    )}
+                  </div>
+                )}
 
-            {/* OSCE/Practical Tab */}
-            <TabsContent value="practical" className="mt-4">
-              {canManageContent && chapterId && moduleId && (
-                <div className="mb-4">
-                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
-                </div>
-              )}
-              {practicalsLoading ? (
-                <div className="space-y-3">
-                  {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                </div>
-              ) : (
-                <PracticalList
-                  practicals={practicals || []}
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  canEdit={canManageContent}
-                  canDelete={canManageContent}
-                  showFeedback={true}
-                />
-              )}
-            </TabsContent>
+                {/* Documents Content (simple list, no cards) */}
+                {resourcesTab === 'documents' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId ? (
+                      <ResourcesTabContent
+                        chapterId={chapterId}
+                        moduleId={moduleId}
+                        resources={resources || []}
+                        resourcesLoading={resourcesLoading}
+                        canManageContent={canManageContent}
+                        isSuperAdmin={isSuperAdmin}
+                      />
+                    ) : (
+                      // Simple list view for students
+                      <div className="space-y-1">
+                        {resourcesLoading ? (
+                          <div className="space-y-2">
+                            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10" />)}
+                          </div>
+                        ) : resources && resources.length > 0 ? (
+                          resources.map((resource) => (
+                            <a
+                              key={resource.id}
+                              href={resource.file_url || resource.external_url || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors group"
+                            >
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                              <span className="flex-1 text-sm">{resource.title}</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </a>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground py-4 text-center">No documents available.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Image Questions Tab (placeholder) */}
-            <TabsContent value="images" className="mt-4">
+            {/* Practice Section */}
+            {activeSection === 'practice' && (
+              <div className="space-y-4">
+                {/* Sub-tabs for Practice */}
+                <div className="flex gap-2 flex-wrap">
+                  {practiceTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = practiceTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setPracticeTab(tab.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          isActive 
+                            ? "bg-secondary text-secondary-foreground" 
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* MCQs Content */}
+                {practiceTab === 'mcqs' && (
+                  <div>
+                    {mcqsLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <McqList
+                        mcqs={mcqs || []}
+                        moduleId={moduleId || ''}
+                        chapterId={chapterId}
+                        isAdmin={canManageContent}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Short Essays Content */}
+                {practiceTab === 'essays' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="essay" />
+                      </div>
+                    )}
+                    {essaysLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+                      </div>
+                    ) : (
+                      <EssayList
+                        essays={essays || []}
+                        moduleId={moduleId}
+                        chapterId={chapterId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                        showFeedback={true}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Cases Content */}
+                {practiceTab === 'cases' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId && (
+                      <div className="mb-4 flex gap-2">
+                        <Button size="sm" onClick={() => setCaseFormOpen(true)}>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Case
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    {caseScenariosLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <CaseScenarioList
+                        cases={caseScenarios || []}
+                        moduleId={moduleId}
+                        chapterId={chapterId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* OSCE/Practical Content */}
+                {practiceTab === 'practical' && (
+                  <div>
+                    {canManageContent && chapterId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
+                      </div>
+                    )}
+                    {practicalsLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <PracticalList
+                        practicals={practicals || []}
+                        moduleId={moduleId}
+                        chapterId={chapterId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                        showFeedback={true}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Image Questions Content (placeholder) */}
+                {practiceTab === 'images' && (
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Image className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground">Image questions coming soon.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Connect Section (placeholder) */}
+            {activeSection === 'connect' && (
               <div className="text-center py-12">
                 <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Image className="w-6 h-6 text-muted-foreground" />
+                  <MessageCircle className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">Image questions coming soon.</p>
+                <h3 className="font-medium mb-2">Connect</h3>
+                <p className="text-muted-foreground text-sm">Discussion forums and study groups coming soon.</p>
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </div>
 
         {/* Case Scenario Modals */}
