@@ -213,15 +213,19 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
       clearTimers();
       setState('completed');
     } else {
-      // Start transition blackout
+      // Start transition - hide card first
       setTransitioning(true);
+      setFlipped(false);
       
-      // After brief blackout, show next card
+      // Wait for overlay to fully cover, then swap card
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
-        setFlipped(false);
+      }, 250);
+      
+      // Wait longer, then reveal
+      setTimeout(() => {
         setTransitioning(false);
-      }, 300);
+      }, 400);
     }
   }, [currentIndex, sessionCards.length, clearTimers]);
 
@@ -410,15 +414,19 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
           <div className="perspective-1000 relative">
             {/* Transition blackout overlay */}
             <div 
-              className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-200 ${
+              className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-150 ${
                 transitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
             />
             
+            {/* Hide the entire card during transition to prevent any glimpse */}
             <div
-              className={`relative w-full h-64 transition-transform duration-500 transform-style-3d ${
-                flipped ? 'rotate-y-180' : ''
-              }`}
+              className={`relative w-full h-64 transform-style-3d ${
+                transitioning ? 'invisible' : 'visible'
+              } ${flipped ? 'rotate-y-180' : ''}`}
+              style={{ 
+                transition: transitioning ? 'none' : 'transform 500ms',
+              }}
             >
               {/* Front (Question) */}
               <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center">
