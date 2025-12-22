@@ -54,6 +54,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
   const [shuffledCards, setShuffledCards] = useState<typeof groups[0]['cards'] | null>(null);
   const [isShuffled, setIsShuffled] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   const activeDeck = groups[activeDeckIndex];
   const displayCards = shuffledCards || activeDeck?.cards || [];
@@ -79,10 +80,21 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
       const t = setTimeout(() => setFlipped(true), questionTime);
       return () => clearTimeout(t);
     } else {
-      // Show answer, then move to next card after 1/3 of the time
+      // Show answer, then transition and move to next card after 1/3 of the time
       const t = setTimeout(() => {
+        // Start transition - hide card first
+        setTransitioning(true);
         setFlipped(false);
-        setCardIndex((v) => (v + 1) % displayCards.length);
+        
+        // Wait for overlay to fully cover, then swap card
+        setTimeout(() => {
+          setCardIndex((v) => (v + 1) % displayCards.length);
+        }, 250);
+        
+        // Wait longer, then reveal
+        setTimeout(() => {
+          setTransitioning(false);
+        }, 400);
       }, answerTime);
       return () => clearTimeout(t);
     }
@@ -123,15 +135,27 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   }
 
   const handlePrev = () => {
-    if (!displayCards.length) return;
+    if (!displayCards.length || transitioning) return;
+    setTransitioning(true);
     setFlipped(false);
-    setCardIndex((v) => (v - 1 + displayCards.length) % displayCards.length);
+    setTimeout(() => {
+      setCardIndex((v) => (v - 1 + displayCards.length) % displayCards.length);
+    }, 250);
+    setTimeout(() => {
+      setTransitioning(false);
+    }, 400);
   };
 
   const handleNext = () => {
-    if (!displayCards.length) return;
+    if (!displayCards.length || transitioning) return;
+    setTransitioning(true);
     setFlipped(false);
-    setCardIndex((v) => (v + 1) % displayCards.length);
+    setTimeout(() => {
+      setCardIndex((v) => (v + 1) % displayCards.length);
+    }, 250);
+    setTimeout(() => {
+      setTransitioning(false);
+    }, 400);
   };
 
   const handleReset = () => {
@@ -169,14 +193,23 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
       {currentCard && (
         <div className="w-full max-w-md">
           {/* Flip Card */}
-          <div
-            className="perspective-1000 cursor-pointer"
-            onClick={() => setFlipped((v) => !v)}
-          >
-            <div
-              className={`relative w-full h-56 transition-transform duration-500 transform-style-3d ${
-                flipped ? 'rotate-y-180' : ''
+          <div className="perspective-1000 cursor-pointer relative">
+            {/* Transition blackout overlay */}
+            <div 
+              className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-150 ${
+                transitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
+            />
+            
+            {/* Hide the entire card during transition to prevent any glimpse */}
+            <div
+              onClick={() => setFlipped((v) => !v)}
+              className={`relative w-full h-56 transform-style-3d ${
+                transitioning ? 'invisible' : 'visible'
+              } ${flipped ? 'rotate-y-180' : ''}`}
+              style={{ 
+                transition: transitioning ? 'none' : 'transform 500ms',
+              }}
             >
               {/* Front */}
               <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center">
