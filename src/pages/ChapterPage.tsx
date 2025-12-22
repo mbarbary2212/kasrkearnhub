@@ -177,37 +177,39 @@ export default function ChapterPage() {
         </div>
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
-        <div className="flex gap-0">
-          {/* Compact Left Vertical Navigation Rail */}
-          <div className="flex-shrink-0 bg-muted/40 rounded-lg mr-4">
-            <nav className="flex flex-col gap-1 p-2 sticky top-4">
-              {sectionNav.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-all text-left w-[140px]",
-                      isActive 
-                        ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className={cn("truncate", isActive && "font-semibold")}>{section.label}</span>
-                  </button>
-                );
-              })}
+        <div className="flex">
+          {/* Fixed-Width Vertical Navigation Rail with unified background */}
+          <div className="w-[180px] flex-shrink-0">
+            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
+              <div className="flex flex-col gap-1">
+                {sectionNav.map((section) => {
+                  const Icon = section.icon;
+                  const isActive = activeSection === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        isActive 
+                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span>{section.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
           </div>
 
           {/* Vertical Divider */}
-          <div className="w-px bg-border/60 self-stretch" />
+          <div className="w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
 
           {/* Main Content Area */}
-          <div className="flex-1 min-w-0 pl-5">
+          <div className="flex-1 min-w-0">
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
