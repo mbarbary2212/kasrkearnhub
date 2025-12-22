@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 
 interface FlashcardsStudentViewProps {
@@ -183,76 +184,96 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
           </div>
 
           {/* Navigation controls */}
-          <div className="flex items-center justify-between mt-4 gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handlePrev}
-              disabled={displayCards.length <= 1}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-
-            <div className="flex items-center gap-3">
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center justify-between mt-4 gap-2">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleReset}
-                className="text-xs"
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                Reset
-              </Button>
-
-              <Button
-                variant={isShuffled ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={handleShuffle}
-                className="text-xs"
+                variant="outline"
+                size="icon"
+                onClick={handlePrev}
                 disabled={displayCards.length <= 1}
+                className="h-14 w-14 md:h-10 md:w-10 shrink-0"
               >
-                <Shuffle className="w-3.5 h-3.5 mr-1" />
-                Shuffle
+                <ChevronLeft className="w-8 h-8 md:w-5 md:h-5" />
               </Button>
 
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <Checkbox
-                  checked={autoReturn}
-                  onCheckedChange={(checked) => setAutoReturn(checked === true)}
-                  className="h-3.5 w-3.5"
-                />
-                Auto-flip
-              </label>
-              <Select
-                value={String(autoFlipMs)}
-                onValueChange={(v) => setAutoFlipMs(Number(v))}
-                disabled={!autoReturn}
+              <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleReset}
+                      className="h-10 w-10 md:h-9 md:w-auto md:px-3"
+                    >
+                      <RotateCcw className="w-5 h-5 md:w-3.5 md:h-3.5" />
+                      <span className="hidden md:inline md:ml-1 text-xs">Reset</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="md:hidden">Reset</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isShuffled ? 'secondary' : 'ghost'}
+                      size="icon"
+                      onClick={handleShuffle}
+                      disabled={displayCards.length <= 1}
+                      className="h-10 w-10 md:h-9 md:w-auto md:px-3"
+                    >
+                      <Shuffle className="w-5 h-5 md:w-3.5 md:h-3.5" />
+                      <span className="hidden md:inline md:ml-1 text-xs">Shuffle</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="md:hidden">Shuffle</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer h-10 px-2">
+                      <Checkbox
+                        checked={autoReturn}
+                        onCheckedChange={(checked) => setAutoReturn(checked === true)}
+                        className="h-4 w-4 md:h-3.5 md:w-3.5"
+                      />
+                      <span className="hidden md:inline">Auto-flip</span>
+                    </label>
+                  </TooltipTrigger>
+                  <TooltipContent className="md:hidden">Auto-flip</TooltipContent>
+                </Tooltip>
+                
+                <Select
+                  value={String(autoFlipMs)}
+                  onValueChange={(v) => setAutoFlipMs(Number(v))}
+                  disabled={!autoReturn}
+                >
+                  <SelectTrigger className="h-8 w-14 text-xs px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMING_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
+                disabled={displayCards.length <= 1}
+                className="h-14 w-14 md:h-10 md:w-10 shrink-0"
               >
-                <SelectTrigger className="h-7 w-16 text-xs px-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMING_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <ChevronRight className="w-8 h-8 md:w-5 md:h-5" />
+              </Button>
             </div>
+          </TooltipProvider>
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNext}
-              disabled={displayCards.length <= 1}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
-
-          {/* Keyboard hint */}
-          <div className="text-center text-xs text-muted-foreground mt-4">
+          {/* Keyboard hint - hide on mobile */}
+          <div className="hidden md:block text-center text-xs text-muted-foreground mt-4">
             Arrow keys to navigate • Space/Enter to flip • S to shuffle
           </div>
         </div>
