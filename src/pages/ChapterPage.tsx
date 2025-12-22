@@ -223,9 +223,9 @@ export default function ChapterPage() {
                         key={tab.id}
                         onClick={() => handleResourcesTabChange(tab.id)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
-                            ? "bg-secondary text-secondary-foreground" 
+                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
                             : "text-muted-foreground hover:bg-muted"
                         )}
                       >
@@ -359,9 +359,9 @@ export default function ChapterPage() {
                         key={tab.id}
                         onClick={() => setPracticeTab(tab.id)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
-                            ? "bg-secondary text-secondary-foreground" 
+                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
                             : "text-muted-foreground hover:bg-muted"
                         )}
                       >
