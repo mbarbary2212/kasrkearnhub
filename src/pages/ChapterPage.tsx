@@ -41,6 +41,12 @@ import {
   Upload,
   Layers,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -128,57 +134,94 @@ export default function ChapterPage() {
 
         {/* Content Tabs - New order: Lectures, Flashcards, MCQ, Short Qs, Cases, Practical, Resources */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-7 h-auto">
-            <TabsTrigger value="lectures" className="flex flex-col gap-1 py-3">
-              <Video className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Lectures</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{lectures?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="flashcards" className="flex flex-col gap-1 py-3">
-              <Layers className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Flashcards</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{flashcards.length}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="mcqs" className="flex flex-col gap-1 py-3">
-              <HelpCircle className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">MCQ</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{mcqs?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="saqs" className="flex flex-col gap-1 py-3">
-              <PenTool className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Short Qs</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{essays?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="cases" className="flex flex-col gap-1 py-3">
-              <Stethoscope className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Cases</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{caseScenarios?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="practical" className="flex flex-col gap-1 py-3">
-              <FlaskConical className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Practical</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{practicals?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="resources" className="flex flex-col gap-1 py-3">
-              <FileText className="w-4 h-4" />
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Resources</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{resources?.length || 0}</Badge>
-              </div>
-            </TabsTrigger>
-          </TabsList>
+          <TooltipProvider delayDuration={300}>
+            <TabsList className="grid w-full grid-cols-7 h-auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="lectures" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <Video className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Lectures</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{lectures?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Lectures</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="flashcards" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <Layers className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Flashcards</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{flashcards.length}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Flashcards</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="mcqs" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <HelpCircle className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">MCQ</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{mcqs?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">MCQs</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="saqs" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <PenTool className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Short Qs</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{essays?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Short Questions</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="cases" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <Stethoscope className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Cases</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{caseScenarios?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Cases</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="practical" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <FlaskConical className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Practical</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{practicals?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Practicals</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="resources" className="flex flex-col items-center gap-1 py-2 md:py-3">
+                    <FileText className="w-5 h-5 md:w-4 md:h-4" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs hidden md:inline">Resources</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">{resources?.length || 0}</Badge>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="md:hidden">Resources</TooltipContent>
+              </Tooltip>
+            </TabsList>
+          </TooltipProvider>
 
           {/* Lectures Tab */}
           <TabsContent value="lectures" className="mt-6">
