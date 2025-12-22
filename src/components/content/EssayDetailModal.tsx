@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Star, X, Printer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface Essay {
   id: string;
@@ -23,6 +24,8 @@ interface EssayDetailModalProps {
   onOpenChange: (open: boolean) => void;
   essays: Essay[];
   initialIndex: number;
+  markedIds?: Set<string>;
+  onToggleMark?: (id: string) => void;
 }
 
 export function EssayDetailModal({
@@ -30,19 +33,33 @@ export function EssayDetailModal({
   onOpenChange,
   essays,
   initialIndex,
+  markedIds,
+  onToggleMark,
 }: EssayDetailModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [showAnswer, setShowAnswer] = useState(false);
+  
+  // Reset state when modal opens or navigates
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(initialIndex);
+      setShowAnswer(false);
+    }
+  }, [open, initialIndex]);
+
   const essay = essays[currentIndex];
 
   const goNext = () => {
     if (currentIndex < essays.length - 1) {
       setCurrentIndex(currentIndex + 1);
+      setShowAnswer(false); // Single-focus: collapse answer when navigating
     }
   };
 
   const goPrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+      setShowAnswer(false); // Single-focus: collapse answer when navigating
     }
   };
 
@@ -93,11 +110,28 @@ export function EssayDetailModal({
 
   if (!essay) return null;
 
+  const isMarked = markedIds?.has(essay.id) ?? false;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
-          <DialogTitle className="text-xl font-semibold flex-1">{essay.title}</DialogTitle>
+          <div className="flex items-center gap-2 flex-1">
+            {/* Mark for Review star */}
+            {onToggleMark && (
+              <button
+                onClick={() => onToggleMark(essay.id)}
+                className={cn(
+                  'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                  isMarked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                )}
+                title={isMarked ? 'Remove from review' : 'Mark for review'}
+              >
+                <Star className={cn('h-5 w-5', isMarked && 'fill-current')} />
+              </button>
+            )}
+            <DialogTitle className="text-xl font-semibold">{essay.title}</DialogTitle>
+          </div>
           <div className="flex items-center gap-2">
             {essay.rating && (
               <Badge variant="secondary" className="flex items-center gap-1">
@@ -123,19 +157,43 @@ export function EssayDetailModal({
               </div>
             </div>
 
-            {/* Answer Section */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Answer
-              </h3>
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                {essay.model_answer ? (
-                  <p className="text-foreground whitespace-pre-wrap">{essay.model_answer}</p>
+            {/* Show/Hide Answer Button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAnswer(!showAnswer)}
+                className="gap-2"
+              >
+                {showAnswer ? (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    Hide Answer
+                  </>
                 ) : (
-                  <p className="text-muted-foreground italic">No model answer provided.</p>
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Show Answer
+                  </>
                 )}
-              </div>
+              </Button>
             </div>
+
+            {/* Answer Section - Only shown when toggled */}
+            {showAnswer && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Answer
+                </h3>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  {essay.model_answer ? (
+                    <p className="text-foreground whitespace-pre-wrap">{essay.model_answer}</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">No model answer provided.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 

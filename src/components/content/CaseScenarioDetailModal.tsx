@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Star, Printer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface CaseScenario {
   id: string;
@@ -24,6 +25,8 @@ interface CaseScenarioDetailModalProps {
   onOpenChange: (open: boolean) => void;
   cases: CaseScenario[];
   initialIndex: number;
+  markedIds?: Set<string>;
+  onToggleMark?: (id: string) => void;
 }
 
 // Parse questions separated by | into numbered list
@@ -37,19 +40,33 @@ export function CaseScenarioDetailModal({
   onOpenChange,
   cases,
   initialIndex,
+  markedIds,
+  onToggleMark,
 }: CaseScenarioDetailModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [showAnswer, setShowAnswer] = useState(false);
+  
+  // Reset state when modal opens or navigates
+  useEffect(() => {
+    if (open) {
+      setCurrentIndex(initialIndex);
+      setShowAnswer(false);
+    }
+  }, [open, initialIndex]);
+
   const caseItem = cases[currentIndex];
 
   const goNext = () => {
     if (currentIndex < cases.length - 1) {
       setCurrentIndex(currentIndex + 1);
+      setShowAnswer(false); // Single-focus: collapse answer when navigating
     }
   };
 
   const goPrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+      setShowAnswer(false); // Single-focus: collapse answer when navigating
     }
   };
 
@@ -109,12 +126,28 @@ export function CaseScenarioDetailModal({
   if (!caseItem) return null;
 
   const questions = parseQuestions(caseItem.case_questions);
+  const isMarked = markedIds?.has(caseItem.id) ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
-          <DialogTitle className="text-xl font-semibold flex-1">{caseItem.title}</DialogTitle>
+          <div className="flex items-center gap-2 flex-1">
+            {/* Mark for Review star */}
+            {onToggleMark && (
+              <button
+                onClick={() => onToggleMark(caseItem.id)}
+                className={cn(
+                  'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                  isMarked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                )}
+                title={isMarked ? 'Remove from review' : 'Mark for review'}
+              >
+                <Star className={cn('h-5 w-5', isMarked && 'fill-current')} />
+              </button>
+            )}
+            <DialogTitle className="text-xl font-semibold">{caseItem.title}</DialogTitle>
+          </div>
           <div className="flex items-center gap-2">
             {caseItem.rating && (
               <Badge variant="secondary" className="flex items-center gap-1">
@@ -158,15 +191,39 @@ export function CaseScenarioDetailModal({
               </div>
             </div>
 
-            {/* Model Answer Section */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Model Answer
-              </h3>
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                <p className="text-foreground whitespace-pre-wrap">{caseItem.model_answer}</p>
-              </div>
+            {/* Show/Hide Answer Button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAnswer(!showAnswer)}
+                className="gap-2"
+              >
+                {showAnswer ? (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    Hide Answer
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Show Answer
+                  </>
+                )}
+              </Button>
             </div>
+
+            {/* Model Answer Section - Only shown when toggled */}
+            {showAnswer && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Model Answer
+                </h3>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <p className="text-foreground whitespace-pre-wrap">{caseItem.model_answer}</p>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
