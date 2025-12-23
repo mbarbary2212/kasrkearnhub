@@ -103,7 +103,7 @@ export default function Home() {
               </div>
               <h3 className="font-heading font-semibold mb-2">Resources</h3>
               <p className="text-sm text-muted-foreground">
-                Lectures, flashcards, and documents to build understanding
+                To build understanding
               </p>
             </div>
             <div className="text-center">
@@ -130,7 +130,7 @@ export default function Home() {
               </div>
               <h3 className="font-heading font-semibold mb-2">Mock Exam</h3>
               <p className="text-sm text-muted-foreground">
-                Take mock exams designed around your module
+                Designed around your module
               </p>
             </div>
           </div>
