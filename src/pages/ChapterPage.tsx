@@ -120,7 +120,7 @@ export default function ChapterPage() {
   // Section navigation items
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
-    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Assess', icon: GraduationCap },
+    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
     { id: 'connect' as SectionMode, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
   ];
 
