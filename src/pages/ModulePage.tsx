@@ -140,7 +140,7 @@ export default function ModulePage() {
           </div>
 
           {/* Mobile Mock Exam FAB */}
-          <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+          <div className="fixed bottom-6 left-6 z-50 sm:hidden">
             <Button 
               onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
               className="h-12 px-4 rounded-full shadow-lg gap-2"
@@ -277,7 +277,7 @@ export default function ModulePage() {
         </div>
 
         {/* Mobile Mock Exam FAB */}
-        <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+        <div className="fixed bottom-6 left-6 z-50 sm:hidden">
           <Button 
             onClick={() => navigate(`/module/${actualModuleId}/mock-exam`)}
             className="h-12 px-4 rounded-full shadow-lg gap-2"
