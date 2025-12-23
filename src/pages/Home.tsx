@@ -3,7 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, PlayCircle, HeartPulse, ClipboardCheck, Settings, ChevronRight, BookOpen } from 'lucide-react';
+import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, Settings, ChevronRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 
@@ -96,32 +96,41 @@ export default function Home() {
           </div>
 
           {/* Features Section */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <PlayCircle className="w-6 h-6 text-secondary-foreground" />
+                <BookOpen className="w-6 h-6 text-secondary-foreground" />
               </div>
-              <h3 className="font-heading font-semibold mb-2">Video Lectures</h3>
+              <h3 className="font-heading font-semibold mb-2">Resources</h3>
               <p className="text-sm text-muted-foreground">
-                High-quality video content for all subjects
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <HeartPulse className="w-6 h-6 text-secondary-foreground" />
-              </div>
-              <h3 className="font-heading font-semibold mb-2">Clinical Cases</h3>
-              <p className="text-sm text-muted-foreground">
-                Real-world clinical scenarios and practice
+                Lectures, flashcards, and documents to build understanding
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
                 <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
               </div>
-              <h3 className="font-heading font-semibold mb-2">MCQs & Essays</h3>
+              <h3 className="font-heading font-semibold mb-2">Self Assessment</h3>
               <p className="text-sm text-muted-foreground">
-                Test your knowledge with quizzes
+                Test your understanding
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                <MessageCircle className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <h3 className="font-heading font-semibold mb-2">Connect</h3>
+              <p className="text-sm text-muted-foreground">
+                Your voice matters
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                <FileQuestion className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <h3 className="font-heading font-semibold mb-2">Mock Exam</h3>
+              <p className="text-sm text-muted-foreground">
+                Take mock exams designed around your module
               </p>
             </div>
           </div>
