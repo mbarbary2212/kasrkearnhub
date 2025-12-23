@@ -39,7 +39,7 @@ export default function Home() {
 
           {/* Login Options */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {/* Student Login */}
+            {/* Student Login - Primary, prominent on all devices */}
             <Card 
               className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2 border-0 shadow-lg group"
               onClick={() => navigate('/auth?type=student')}
@@ -60,9 +60,9 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Faculty & Staff Login */}
+            {/* Faculty & Staff Login - Only visible on desktop/tablet (md and up) */}
             <Card 
-              className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2 border-0 shadow-lg group"
+              className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2 border-0 shadow-lg group hidden md:block"
               onClick={() => navigate('/auth?type=faculty')}
             >
               <CardHeader className="text-center pb-4">
@@ -80,6 +80,19 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Mobile-only Faculty Login - Secondary/Less prominent */}
+          <div className="md:hidden mt-6 text-center">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => navigate('/auth?type=faculty')}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Faculty & Staff Login
+            </Button>
           </div>
 
           {/* Features Section */}

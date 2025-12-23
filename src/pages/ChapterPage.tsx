@@ -117,11 +117,29 @@ export default function ChapterPage() {
     );
   }
 
-  // Section navigation items
+  // Section navigation items with explanatory subtitles
   const sectionNav = [
-    { id: 'resources' as SectionMode, label: 'Resources', icon: FolderOpen },
-    { id: 'practice' as SectionMode, label: 'Self Assessment', icon: GraduationCap },
-    { id: 'connect' as SectionMode, label: 'Connect', icon: MessageCircle },
+    { 
+      id: 'resources' as SectionMode, 
+      label: 'Resources', 
+      icon: FolderOpen,
+      subtitle: 'Learn & revise from curated resources',
+      description: 'Lectures, flashcards, and documents to build understanding.'
+    },
+    { 
+      id: 'practice' as SectionMode, 
+      label: 'Self Assessment', 
+      icon: GraduationCap,
+      subtitle: 'Test your understanding',
+      description: 'MCQs, OSCEs, images, and short questions with feedback.'
+    },
+    { 
+      id: 'connect' as SectionMode, 
+      label: 'Connect', 
+      icon: MessageCircle,
+      subtitle: 'Your voice matters',
+      description: 'Ask questions, share feedback, and stay connected.'
+    },
   ];
 
   // Resources sub-tabs
@@ -191,14 +209,22 @@ export default function ChapterPage() {
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
                       className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        "w-full flex flex-col gap-1 px-3 py-3 rounded-md text-sm transition-colors text-left",
                         isActive 
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                          ? "bg-primary text-primary-foreground shadow-sm" 
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{section.label}</span>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-semibold">{section.label}</span>
+                      </div>
+                      <p className={cn(
+                        "text-[11px] leading-tight",
+                        isActive ? "text-primary-foreground/80" : "text-muted-foreground/70"
+                      )}>
+                        {section.subtitle}
+                      </p>
                     </button>
                   );
                 })}
