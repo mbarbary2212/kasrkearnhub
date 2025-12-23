@@ -181,7 +181,7 @@ export default function ChapterPage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs (only on small screens) */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-2 bg-muted/30 rounded-lg p-2">
+            <nav className="flex gap-1.5 bg-muted/30 rounded-lg p-1.5">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -190,14 +190,14 @@ export default function ChapterPage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm transition-colors",
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
                       isActive 
                         ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{section.mobileLabel}</span>
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{section.mobileLabel}</span>
                   </button>
                 );
               })}
