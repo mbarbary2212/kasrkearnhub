@@ -119,9 +119,9 @@ export default function ChapterPage() {
 
   // Section navigation items
   const sectionNav = [
-    { id: 'resources' as SectionMode, label: 'Resources', icon: FolderOpen },
-    { id: 'practice' as SectionMode, label: 'Self Assessment', icon: GraduationCap },
-    { id: 'connect' as SectionMode, label: 'Connect', icon: MessageCircle },
+    { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
+    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Assess', icon: GraduationCap },
+    { id: 'connect' as SectionMode, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
   ];
 
   // Resources sub-tabs
@@ -197,7 +197,7 @@ export default function ChapterPage() {
                     )}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{section.label}</span>
+                    <span className="truncate">{section.mobileLabel}</span>
                   </button>
                 );
               })}
