@@ -3,7 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GraduationCap, Users, BookOpen, Stethoscope, Settings, ChevronRight } from 'lucide-react';
+import { UserRound, UsersRound, PlayCircle, HeartPulse, ClipboardCheck, Settings, ChevronRight, BookOpen } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 
@@ -46,7 +46,7 @@ export default function Home() {
             >
               <CardHeader className="text-center pb-4">
                 <div className="w-20 h-20 bg-medical-blue rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-10 h-10 text-primary-foreground" />
+                  <UserRound className="w-10 h-10 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-2xl font-heading">Student</CardTitle>
                 <CardDescription className="text-base">
@@ -67,7 +67,7 @@ export default function Home() {
             >
               <CardHeader className="text-center pb-4">
                 <div className="w-20 h-20 bg-medical-teal rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                  <Users className="w-10 h-10 text-primary-foreground" />
+                  <UsersRound className="w-10 h-10 text-primary-foreground" />
                 </div>
                 <CardTitle className="text-2xl font-heading">Faculty & Staff</CardTitle>
                 <CardDescription className="text-base">
@@ -90,7 +90,7 @@ export default function Home() {
               className="text-muted-foreground"
               onClick={() => navigate('/auth?type=faculty')}
             >
-              <Users className="w-4 h-4 mr-2" />
+              <UsersRound className="w-4 h-4 mr-2" />
               Faculty & Staff Login
             </Button>
           </div>
@@ -99,7 +99,7 @@ export default function Home() {
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <BookOpen className="w-6 h-6 text-secondary-foreground" />
+                <PlayCircle className="w-6 h-6 text-secondary-foreground" />
               </div>
               <h3 className="font-heading font-semibold mb-2">Video Lectures</h3>
               <p className="text-sm text-muted-foreground">
@@ -108,7 +108,7 @@ export default function Home() {
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Stethoscope className="w-6 h-6 text-secondary-foreground" />
+                <HeartPulse className="w-6 h-6 text-secondary-foreground" />
               </div>
               <h3 className="font-heading font-semibold mb-2">Clinical Cases</h3>
               <p className="text-sm text-muted-foreground">
@@ -117,7 +117,7 @@ export default function Home() {
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+                <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
               </div>
               <h3 className="font-heading font-semibold mb-2">MCQs & Essays</h3>
               <p className="text-sm text-muted-foreground">
