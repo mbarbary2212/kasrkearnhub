@@ -35,7 +35,8 @@ export function ChapterProgressBar({
     );
   }
 
-  const hasContent = resourcesTotal > 0 || practiceTotal > 0;
+  // Phase 1: Progress is driven by practice items (self-assessment)
+  const hasContent = practiceTotal > 0;
 
   return (
     <div className="space-y-2">
@@ -48,28 +49,13 @@ export function ChapterProgressBar({
         <Progress value={hasContent ? totalProgress : 0} className="h-2" />
       </div>
 
-      {/* Optional Breakdown */}
+      {/* Optional Breakdown - Resources shown as informational only */}
       {showBreakdown && hasContent && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          {resourcesTotal > 0 && (
-            <div className="flex items-center gap-1.5">
-              <FolderOpen className="w-3 h-3" />
-              <span>Resources:</span>
-              <span className={cn(
-                "font-medium",
-                resourcesProgress === 100 && "text-accent"
-              )}>
-                {resourcesProgress}%
-              </span>
-              <span className="text-muted-foreground/60">
-                ({resourcesCompleted}/{resourcesTotal})
-              </span>
-            </div>
-          )}
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           {practiceTotal > 0 && (
             <div className="flex items-center gap-1.5">
               <GraduationCap className="w-3 h-3" />
-              <span>Practice:</span>
+              <span>Self-Assessment:</span>
               <span className={cn(
                 "font-medium",
                 practiceProgress === 100 && "text-accent"
@@ -78,6 +64,15 @@ export function ChapterProgressBar({
               </span>
               <span className="text-muted-foreground/60">
                 ({practiceCompleted}/{practiceTotal})
+              </span>
+            </div>
+          )}
+          {resourcesTotal > 0 && (
+            <div className="flex items-center gap-1.5 opacity-70">
+              <FolderOpen className="w-3 h-3" />
+              <span>Resources:</span>
+              <span className="font-medium">
+                {resourcesCompleted}/{resourcesTotal}
               </span>
             </div>
           )}
