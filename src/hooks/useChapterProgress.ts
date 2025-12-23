@@ -82,14 +82,17 @@ export function useChapterProgress(chapterId?: string) {
       // Calculate percentages
       const resourcesProgress = resourcesTotal > 0 ? Math.round((resourcesCompleted / resourcesTotal) * 100) : 0;
       const practiceProgress = practiceTotal > 0 ? Math.round((practiceCompleted / practiceTotal) * 100) : 0;
-      const totalProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      
+      // Phase 1: Use practice progress as the main chapter progress driver
+      // Resources are informational only and don't affect the main progress score
+      const totalProgress = practiceProgress;
 
       return {
         totalProgress,
         resourcesProgress,
         practiceProgress,
-        completedItems,
-        totalItems,
+        completedItems: practiceCompleted, // Focus on practice completions
+        totalItems: practiceTotal, // Focus on practice items
         resourcesCompleted,
         resourcesTotal,
         practiceCompleted,
