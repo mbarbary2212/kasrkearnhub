@@ -178,9 +178,34 @@ export default function ChapterPage() {
         />
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
-        <div className="flex">
-          {/* Fixed-Width Vertical Navigation Rail with unified background */}
-          <div className="w-[180px] flex-shrink-0">
+        <div className="flex flex-col md:flex-row">
+          {/* Mobile: Horizontal Navigation Tabs (only on small screens) */}
+          <div className="md:hidden mb-4">
+            <nav className="flex gap-2 bg-muted/30 rounded-lg p-2">
+              {sectionNav.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm transition-colors",
+                      isActive 
+                        ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{section.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Desktop: Fixed-Width Vertical Navigation Rail (hidden on mobile) */}
+          <div className="hidden md:block w-[180px] flex-shrink-0">
             <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
               <div className="flex flex-col gap-1">
                 {sectionNav.map((section) => {
@@ -206,8 +231,8 @@ export default function ChapterPage() {
             </nav>
           </div>
 
-          {/* Vertical Divider */}
-          <div className="w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
+          {/* Vertical Divider (hidden on mobile) */}
+          <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
