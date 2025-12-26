@@ -45,12 +45,11 @@ import {
   Image,
   FolderOpen,
   GraduationCap,
-  MessageCircle,
   ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type SectionMode = 'resources' | 'practice' | 'connect';
+type SectionMode = 'resources' | 'practice';
 type ResourcesTab = 'lectures' | 'flashcards' | 'documents';
 type PracticeTab = 'mcqs' | 'essays' | 'cases' | 'practical' | 'images';
 
@@ -117,11 +116,10 @@ export default function ChapterPage() {
     );
   }
 
-  // Section navigation items
+  // Section navigation items (only Resources and Self Assessment at chapter level)
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
     { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
-    { id: 'connect' as SectionMode, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
   ];
 
   // Resources sub-tabs
@@ -507,17 +505,6 @@ export default function ChapterPage() {
                     <p className="text-muted-foreground">Image questions coming soon.</p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Connect Section (placeholder) */}
-            {activeSection === 'connect' && (
-              <div className="text-center py-12">
-                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h3 className="font-medium mb-2">Connect</h3>
-                <p className="text-muted-foreground text-sm">Discussion forums and study groups coming soon.</p>
               </div>
             )}
           </div>
