@@ -7,6 +7,7 @@ import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useYearById } from '@/hooks/useYears';
+import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
@@ -23,15 +24,21 @@ type ModuleSection = 'learning' | 'formative' | 'connect';
 export default function ModulePage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isTeacher } = useAuthContext();
+  const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const [activeSection, setActiveSection] = useState<ModuleSection>('learning');
-
-  const canManageContent = isAdmin || isTeacher;
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
   const { data: year } = useYearById(module?.year_id || '');
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
+  
+  // Check module admin permissions
+  const { canManageContent, isModuleAdmin } = useIsModuleAdmin(actualModuleId);
+  
+  // Platform admin can manage books/departments
+  const canManageBooks = isPlatformAdmin || isSuperAdmin;
+  // Module admin, platform admin, or teachers can manage chapters
+  const canManageChapters = canManageContent;
 
   if (!moduleLoading && !module) {
     return (
@@ -144,6 +151,8 @@ export default function ModulePage() {
                 chapters={chapters}
                 chaptersLoading={chaptersLoading}
                 selectorLabel="Department"
+                canManageBooks={canManageBooks}
+                canManageChapters={canManageChapters}
               />
             )}
 
