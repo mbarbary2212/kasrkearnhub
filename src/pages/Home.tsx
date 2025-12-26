@@ -128,7 +128,7 @@ export default function Home() {
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
                 <FileQuestion className="w-6 h-6 text-secondary-foreground" />
               </div>
-              <h3 className="font-heading font-semibold mb-2">Mock Exam</h3>
+              <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
               <p className="text-sm text-muted-foreground">
                 Designed around your module
               </p>
