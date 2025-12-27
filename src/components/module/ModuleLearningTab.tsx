@@ -51,6 +51,7 @@ import { useChapterSort } from '@/hooks/useChapterSort';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleBooks, useDeleteBook, useReorderBooks, ModuleBook } from '@/hooks/useModuleBooks';
 import { useDeleteChapter } from '@/hooks/useChapterManagement';
+import { useTopics } from '@/hooks/useTopics';
 import { BookFormModal } from './BookFormModal';
 import { ChapterFormModal } from './ChapterFormModal';
 import { PharmacologyTopicsView } from './PharmacologyTopicsView';
@@ -74,6 +75,8 @@ interface ModuleLearningTabProps {
 function SortableBookCard({ 
   book, 
   chapterCount, 
+  topicCount,
+  isPharmacology,
   canManageBooks,
   onSelect,
   onEdit,
@@ -81,6 +84,8 @@ function SortableBookCard({
 }: { 
   book: ModuleBook;
   chapterCount: number;
+  topicCount?: number;
+  isPharmacology?: boolean;
   canManageBooks: boolean;
   onSelect: () => void;
   onEdit: () => void;
@@ -131,7 +136,10 @@ function SortableBookCard({
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold truncate">{book.book_label}</h3>
             <p className="text-sm text-muted-foreground">
-              {chapterCount} {chapterCount === 1 ? book.chapter_prefix : `${book.chapter_prefix}s`}
+              {isPharmacology 
+                ? `${topicCount || 0} ${(topicCount || 0) === 1 ? 'Topic' : 'Topics'}`
+                : `${chapterCount} ${chapterCount === 1 ? book.chapter_prefix : `${book.chapter_prefix}s`}`
+              }
             </p>
           </div>
         </div>
@@ -179,6 +187,9 @@ export function ModuleLearningTab({
   
   // Fetch books with metadata
   const { data: books, isLoading: booksLoading } = useModuleBooks(moduleId);
+  
+  // Fetch topics count for Pharmacology
+  const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID);
   
   // Modal states
   const [bookModalOpen, setBookModalOpen] = useState(false);
@@ -401,8 +412,34 @@ export function ModuleLearningTab({
     );
   }
 
-  // If a book is selected, show that book's chapters
+  // If a book is selected, show that book's chapters (or Topics for Pharmacology)
   if (selectedBook) {
+    // Check if this is Pharmacology - show Topics instead of chapters
+    if (selectedBook.toLowerCase() === 'pharmacology') {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSelectedBook(null)}
+              className="gap-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <h2 className="text-lg font-semibold flex-1">{selectedBook}</h2>
+          </div>
+          
+          <PharmacologyTopicsView
+            departmentId={PHARMACOLOGY_DEPT_ID}
+            moduleId={moduleId}
+            canManageTopics={canManageChapters}
+          />
+        </div>
+      );
+    }
+
     const bookChapters = groupedChapters[selectedBook] || [];
     const prefix = getChapterPrefix(selectedBook);
     
@@ -496,11 +533,14 @@ export function ModuleLearningTab({
               <div className="grid gap-3">
                 {sortedBooks.map((book) => {
                   const chapterCount = groupedChapters[book.book_label]?.length || 0;
+                  const isPharmacology = book.book_label.toLowerCase() === 'pharmacology';
                   return (
                     <SortableBookCard
                       key={book.book_label}
                       book={book}
                       chapterCount={chapterCount}
+                      topicCount={isPharmacology ? pharmacologyTopics?.length : undefined}
+                      isPharmacology={isPharmacology}
                       canManageBooks={canManageBooks}
                       onSelect={() => setSelectedBook(book.book_label)}
                       onEdit={() => handleEditBook(book.book_label)}
