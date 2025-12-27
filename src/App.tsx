@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
 import ModulePage from "./pages/ModulePage";
 import ChapterPage from "./pages/ChapterPage";
+import TopicDetailPage from "./pages/TopicDetailPage";
 import MockExamPage from "./pages/MockExamPage";
 import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/module/:moduleId" element={<ModulePage />} />
             <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
             <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
+            <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/inbox" element={<AdminInboxPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
