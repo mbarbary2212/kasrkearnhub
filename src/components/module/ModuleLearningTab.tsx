@@ -53,8 +53,12 @@ import { useModuleBooks, useDeleteBook, useReorderBooks, ModuleBook } from '@/ho
 import { useDeleteChapter } from '@/hooks/useChapterManagement';
 import { BookFormModal } from './BookFormModal';
 import { ChapterFormModal } from './ChapterFormModal';
+import { PharmacologyTopicsView } from './PharmacologyTopicsView';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// Pharmacology department ID - for Topics view
+const PHARMACOLOGY_DEPT_ID = '71af9f4d-578c-45d9-bec7-9598e54728e6';
 
 interface ModuleLearningTabProps {
   moduleId: string;
@@ -63,6 +67,7 @@ interface ModuleLearningTabProps {
   selectorLabel?: string;
   canManageBooks?: boolean;
   canManageChapters?: boolean;
+  selectedDepartmentId?: string | null;
 }
 
 // Sortable book card component
@@ -167,6 +172,7 @@ export function ModuleLearningTab({
   selectorLabel = 'Department',
   canManageBooks = false,
   canManageChapters = false,
+  selectedDepartmentId,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
@@ -369,6 +375,17 @@ export function ModuleLearningTab({
           <Skeleton key={i} className="h-14 w-full" />
         ))}
       </div>
+    );
+  }
+
+  // If Pharmacology department is selected, show Topics view instead of chapters
+  if (selectedDepartmentId === PHARMACOLOGY_DEPT_ID) {
+    return (
+      <PharmacologyTopicsView
+        departmentId={PHARMACOLOGY_DEPT_ID}
+        moduleId={moduleId}
+        canManageTopics={canManageChapters}
+      />
     );
   }
 
