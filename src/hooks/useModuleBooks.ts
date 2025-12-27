@@ -22,7 +22,7 @@ export function useModuleBooks(moduleId?: string) {
   });
 }
 
-// Add a new book (creates a placeholder chapter with the book label)
+// Add a new book (creates an initial placeholder chapter with the book label)
 export function useAddBook() {
   const queryClient = useQueryClient();
 
@@ -40,8 +40,33 @@ export function useAddBook() {
         throw new Error('Book label already exists');
       }
 
-      // For now, just return success - actual chapters will be added under this book
-      return { moduleId, bookLabel };
+      // Get the next order_index and chapter_number for this module
+      const { data: lastChapter } = await supabase
+        .from('module_chapters')
+        .select('order_index, chapter_number')
+        .eq('module_id', moduleId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextOrderIndex = (lastChapter?.order_index ?? -1) + 1;
+      const nextChapterNumber = (lastChapter?.chapter_number ?? 0) + 1;
+
+      // Create a placeholder chapter to establish the book
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .insert({
+          module_id: moduleId,
+          book_label: bookLabel,
+          title: 'Chapter 1',
+          chapter_number: nextChapterNumber,
+          order_index: nextOrderIndex,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
