@@ -1,72 +1,97 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-// Get unique book labels for a module
+export interface ModuleBook {
+  id: string;
+  module_id: string;
+  book_label: string;
+  display_order: number;
+  chapter_prefix: string;
+  created_at: string | null;
+}
+
+// Get books for a module with their metadata (order, prefix)
 export function useModuleBooks(moduleId?: string) {
   return useQuery({
     queryKey: ['module-books', moduleId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('module_chapters')
-        .select('book_label')
+        .from('module_books')
+        .select('*')
         .eq('module_id', moduleId!)
-        .order('book_label');
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
-      
-      // Get unique book labels
-      const uniqueLabels = [...new Set(data?.map(d => d.book_label).filter(Boolean))];
-      return uniqueLabels as string[];
+      return data as ModuleBook[];
     },
     enabled: !!moduleId,
   });
 }
 
-// Add a new book (creates an initial placeholder chapter with the book label)
+// Add a new book with metadata
 export function useAddBook() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ moduleId, bookLabel }: { moduleId: string; bookLabel: string }) => {
-      // Check if book label already exists
-      const { data: existing } = await supabase
-        .from('module_chapters')
-        .select('id')
+    mutationFn: async ({ 
+      moduleId, 
+      bookLabel,
+      chapterPrefix = 'Ch'
+    }: { 
+      moduleId: string; 
+      bookLabel: string;
+      chapterPrefix?: string;
+    }) => {
+      // Get the next display order
+      const { data: existingBooks } = await supabase
+        .from('module_books')
+        .select('display_order')
         .eq('module_id', moduleId)
-        .eq('book_label', bookLabel)
+        .order('display_order', { ascending: false })
         .limit(1);
 
-      if (existing && existing.length > 0) {
-        throw new Error('Book label already exists');
-      }
+      const nextOrder = (existingBooks?.[0]?.display_order ?? -1) + 1;
 
-      // Get the next order_index and chapter_number for this module
+      // Create book metadata entry
+      const { data: bookData, error: bookError } = await supabase
+        .from('module_books')
+        .insert({
+          module_id: moduleId,
+          book_label: bookLabel,
+          display_order: nextOrder,
+          chapter_prefix: chapterPrefix,
+        })
+        .select()
+        .single();
+
+      if (bookError) throw bookError;
+
+      // Get the next order_index for chapters in this module
       const { data: lastChapter } = await supabase
         .from('module_chapters')
-        .select('order_index, chapter_number')
+        .select('order_index')
         .eq('module_id', moduleId)
         .order('order_index', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const nextOrderIndex = (lastChapter?.order_index ?? -1) + 1;
-      const nextChapterNumber = (lastChapter?.chapter_number ?? 0) + 1;
 
       // Create a placeholder chapter to establish the book
-      const { data, error } = await supabase
+      const { data: chapterData, error: chapterError } = await supabase
         .from('module_chapters')
         .insert({
           module_id: moduleId,
           book_label: bookLabel,
-          title: 'Chapter 1',
-          chapter_number: nextChapterNumber,
+          title: `${chapterPrefix} 1`,
+          chapter_number: 1,
           order_index: nextOrderIndex,
         })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (chapterError) throw chapterError;
+      return { book: bookData, chapter: chapterData };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
@@ -75,32 +100,84 @@ export function useAddBook() {
   });
 }
 
-// Rename a book label
-export function useRenameBook() {
+// Update book metadata (rename and/or change prefix)
+export function useUpdateBook() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ 
       moduleId, 
       oldLabel, 
-      newLabel 
+      newLabel,
+      chapterPrefix,
     }: { 
       moduleId: string; 
       oldLabel: string; 
-      newLabel: string;
+      newLabel?: string;
+      chapterPrefix?: string;
     }) => {
-      const { error } = await supabase
-        .from('module_chapters')
-        .update({ book_label: newLabel })
+      const updates: Record<string, string> = {};
+      if (newLabel !== undefined) updates.book_label = newLabel;
+      if (chapterPrefix !== undefined) updates.chapter_prefix = chapterPrefix;
+
+      // Update book metadata
+      const { error: bookError } = await supabase
+        .from('module_books')
+        .update(updates)
         .eq('module_id', moduleId)
         .eq('book_label', oldLabel);
 
-      if (error) throw error;
-      return { moduleId, oldLabel, newLabel };
+      if (bookError) throw bookError;
+
+      // If renaming, also update all chapters with this book label
+      if (newLabel && newLabel !== oldLabel) {
+        const { error: chaptersError } = await supabase
+          .from('module_chapters')
+          .update({ book_label: newLabel })
+          .eq('module_id', moduleId)
+          .eq('book_label', oldLabel);
+
+        if (chaptersError) throw chaptersError;
+      }
+
+      return { moduleId, oldLabel, newLabel, chapterPrefix };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
       queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] });
+    },
+  });
+}
+
+// Reorder books
+export function useReorderBooks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      moduleId, 
+      bookOrders 
+    }: { 
+      moduleId: string; 
+      bookOrders: { bookLabel: string; displayOrder: number }[];
+    }) => {
+      // Update each book's display_order
+      const updates = bookOrders.map(({ bookLabel, displayOrder }) =>
+        supabase
+          .from('module_books')
+          .update({ display_order: displayOrder })
+          .eq('module_id', moduleId)
+          .eq('book_label', bookLabel)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) throw errors[0].error;
+
+      return { moduleId, bookOrders };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
     },
   });
 }
@@ -111,13 +188,24 @@ export function useDeleteBook() {
 
   return useMutation({
     mutationFn: async ({ moduleId, bookLabel }: { moduleId: string; bookLabel: string }) => {
-      const { error } = await supabase
+      // Delete chapters first
+      const { error: chaptersError } = await supabase
         .from('module_chapters')
         .delete()
         .eq('module_id', moduleId)
         .eq('book_label', bookLabel);
 
-      if (error) throw error;
+      if (chaptersError) throw chaptersError;
+
+      // Then delete book metadata
+      const { error: bookError } = await supabase
+        .from('module_books')
+        .delete()
+        .eq('module_id', moduleId)
+        .eq('book_label', bookLabel);
+
+      if (bookError) throw bookError;
+
       return { moduleId, bookLabel };
     },
     onSuccess: (_, variables) => {

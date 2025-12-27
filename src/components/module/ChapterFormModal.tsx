@@ -18,6 +18,7 @@ interface ChapterFormModalProps {
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   bookLabel: string;
+  chapterPrefix?: string;
   editingChapter?: ModuleChapter | null;
   existingChapters?: ModuleChapter[];
 }
@@ -27,6 +28,7 @@ export function ChapterFormModal({
   onOpenChange,
   moduleId,
   bookLabel,
+  chapterPrefix = 'Ch',
   editingChapter,
   existingChapters = [],
 }: ChapterFormModalProps) {
@@ -44,7 +46,7 @@ export function ChapterFormModal({
         setChapterNumber(editingChapter.chapter_number);
       } else {
         setTitle('');
-        // Auto-increment chapter number
+        // Auto-increment chapter number within this book only
         const bookChapters = existingChapters.filter(c => c.book_label === bookLabel);
         const maxNumber = bookChapters.reduce((max, c) => Math.max(max, c.chapter_number), 0);
         setChapterNumber(maxNumber + 1);
@@ -56,12 +58,12 @@ export function ChapterFormModal({
     e.preventDefault();
     
     if (!title.trim()) {
-      toast.error('Please enter a chapter title');
+      toast.error(`Please enter a ${chapterPrefix.toLowerCase()} title`);
       return;
     }
 
     if (chapterNumber < 1) {
-      toast.error('Chapter number must be at least 1');
+      toast.error(`${chapterPrefix} number must be at least 1`);
       return;
     }
 
@@ -73,7 +75,7 @@ export function ChapterFormModal({
           title: title.trim(),
           chapterNumber,
         });
-        toast.success('Chapter updated successfully');
+        toast.success(`${chapterPrefix} updated successfully`);
       } else {
         await createChapter.mutateAsync({
           moduleId,
@@ -81,11 +83,11 @@ export function ChapterFormModal({
           title: title.trim(),
           chapterNumber,
         });
-        toast.success('Chapter created successfully');
+        toast.success(`${chapterPrefix} created successfully`);
       }
       onOpenChange(false);
     } catch (error) {
-      toast.error(isEditing ? 'Failed to update chapter' : 'Failed to create chapter');
+      toast.error(isEditing ? `Failed to update ${chapterPrefix.toLowerCase()}` : `Failed to create ${chapterPrefix.toLowerCase()}`);
     }
   };
 
@@ -93,12 +95,12 @@ export function ChapterFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Chapter' : 'Add Chapter'}</DialogTitle>
+          <DialogTitle>{isEditing ? `Edit ${chapterPrefix}` : `Add ${chapterPrefix}`}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="chapterNumber">Chapter Number</Label>
+              <Label htmlFor="chapterNumber">{chapterPrefix} Number</Label>
               <Input
                 id="chapterNumber"
                 type="number"
@@ -113,15 +115,13 @@ export function ChapterFormModal({
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Introduction to Anatomy"
+                placeholder={`e.g., Introduction to ${bookLabel}`}
                 autoFocus
               />
             </div>
-            {bookLabel && (
-              <div className="text-sm text-muted-foreground">
-                Book/Department: <span className="font-medium">{bookLabel}</span>
-              </div>
-            )}
+            <div className="text-sm text-muted-foreground">
+              Department: <span className="font-medium">{bookLabel}</span>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -131,7 +131,7 @@ export function ChapterFormModal({
               type="submit" 
               disabled={createChapter.isPending || updateChapter.isPending}
             >
-              {isEditing ? 'Save' : 'Add Chapter'}
+              {isEditing ? 'Save' : `Add ${chapterPrefix}`}
             </Button>
           </DialogFooter>
         </form>

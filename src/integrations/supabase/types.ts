@@ -1116,6 +1116,41 @@ export type Database = {
           },
         ]
       }
+      module_books: {
+        Row: {
+          book_label: string
+          chapter_prefix: string
+          created_at: string | null
+          display_order: number
+          id: string
+          module_id: string
+        }
+        Insert: {
+          book_label: string
+          chapter_prefix?: string
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          module_id: string
+        }
+        Update: {
+          book_label?: string
+          chapter_prefix?: string
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          module_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_books_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_chapters: {
         Row: {
           book_label: string | null
