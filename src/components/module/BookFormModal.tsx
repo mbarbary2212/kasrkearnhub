@@ -9,15 +9,30 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useAddBook, useRenameBook } from '@/hooks/useModuleBooks';
+import { useAddBook, useUpdateBook, ModuleBook } from '@/hooks/useModuleBooks';
 
 interface BookFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleId: string;
-  editingBook?: string | null;
+  editingBook?: ModuleBook | null;
 }
+
+const CHAPTER_PREFIXES = [
+  { value: 'Ch', label: 'Chapter (Ch)' },
+  { value: 'Lec', label: 'Lecture (Lec)' },
+  { value: 'Unit', label: 'Unit' },
+  { value: 'Section', label: 'Section' },
+  { value: 'Part', label: 'Part' },
+];
 
 export function BookFormModal({
   open,
@@ -26,14 +41,21 @@ export function BookFormModal({
   editingBook,
 }: BookFormModalProps) {
   const [bookLabel, setBookLabel] = useState('');
+  const [chapterPrefix, setChapterPrefix] = useState('Ch');
   const addBook = useAddBook();
-  const renameBook = useRenameBook();
+  const updateBook = useUpdateBook();
 
   const isEditing = !!editingBook;
 
   useEffect(() => {
     if (open) {
-      setBookLabel(editingBook || '');
+      if (editingBook) {
+        setBookLabel(editingBook.book_label);
+        setChapterPrefix(editingBook.chapter_prefix || 'Ch');
+      } else {
+        setBookLabel('');
+        setChapterPrefix('Ch');
+      }
     }
   }, [open, editingBook]);
 
@@ -41,28 +63,35 @@ export function BookFormModal({
     e.preventDefault();
     
     if (!bookLabel.trim()) {
-      toast.error('Please enter a book/department name');
+      toast.error('Please enter a department/book name');
       return;
     }
 
     try {
       if (isEditing) {
-        await renameBook.mutateAsync({
+        await updateBook.mutateAsync({
           moduleId,
-          oldLabel: editingBook!,
-          newLabel: bookLabel.trim(),
+          oldLabel: editingBook.book_label,
+          newLabel: bookLabel.trim() !== editingBook.book_label ? bookLabel.trim() : undefined,
+          chapterPrefix: chapterPrefix !== editingBook.chapter_prefix ? chapterPrefix : undefined,
         });
-        toast.success('Book renamed successfully');
+        toast.success('Department updated successfully');
       } else {
         await addBook.mutateAsync({
           moduleId,
           bookLabel: bookLabel.trim(),
+          chapterPrefix,
         });
-        toast.success('Book added successfully');
+        toast.success('Department added successfully');
       }
       onOpenChange(false);
-    } catch (error) {
-      toast.error(isEditing ? 'Failed to rename book' : 'Failed to add book');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists')) {
+        toast.error('A department with this name already exists');
+      } else {
+        toast.error(isEditing ? 'Failed to update department' : 'Failed to add department');
+      }
     }
   };
 
@@ -70,19 +99,37 @@ export function BookFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Rename Book/Department' : 'Add Book/Department'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Department' : 'Add Department'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="bookLabel">Name</Label>
+              <Label htmlFor="bookLabel">Department Name</Label>
               <Input
                 id="bookLabel"
                 value={bookLabel}
                 onChange={(e) => setBookLabel(e.target.value)}
-                placeholder="e.g., Book 1, Anatomy, Physiology"
+                placeholder="e.g., Pharmacology, Pathology"
                 autoFocus
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="chapterPrefix">Chapter Label Style</Label>
+              <Select value={chapterPrefix} onValueChange={setChapterPrefix}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select style" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHAPTER_PREFIXES.map((prefix) => (
+                    <SelectItem key={prefix.value} value={prefix.value}>
+                      {prefix.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Chapters will be labeled as "{chapterPrefix} 1", "{chapterPrefix} 2", etc.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -91,9 +138,9 @@ export function BookFormModal({
             </Button>
             <Button 
               type="submit" 
-              disabled={addBook.isPending || renameBook.isPending}
+              disabled={addBook.isPending || updateBook.isPending}
             >
-              {isEditing ? 'Save' : 'Add'}
+              {isEditing ? 'Save' : 'Add Department'}
             </Button>
           </DialogFooter>
         </form>
