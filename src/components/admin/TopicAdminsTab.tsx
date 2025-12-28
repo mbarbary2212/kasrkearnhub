@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, Trash2, Plus, ChevronRight, BookOpen } from 'lucide-react';
+import { Loader2, FileText, Trash2, Plus, ChevronRight, BookOpen, User } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile, TopicAdmin, Topic } from '@/types/database';
 import type { Module, ModuleAdmin } from '@/types/curriculum';
@@ -22,13 +22,6 @@ interface ModuleChapter {
   order_index: number;
   book_label: string | null;
   created_at: string | null;
-}
-
-interface TopicAdminWithDetails extends TopicAdmin {
-  profile?: Profile;
-  topic?: Topic;
-  chapter?: ModuleChapter;
-  module?: Module;
 }
 
 interface TopicAdminsTabProps {
@@ -83,7 +76,33 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     },
   });
 
-  // Fetch topics for selected module
+  // Fetch all chapters for display
+  const { data: allChapters } = useQuery({
+    queryKey: ['all-chapters'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select('*')
+        .order('order_index');
+      if (error) throw error;
+      return data as ModuleChapter[];
+    },
+  });
+
+  // Fetch all topics for display
+  const { data: allTopics } = useQuery({
+    queryKey: ['all-topics'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('*')
+        .order('display_order');
+      if (error) throw error;
+      return data as Topic[];
+    },
+  });
+
+  // Fetch topics for selected module (for assignment dialog)
   const { data: topics } = useQuery({
     queryKey: ['topics', selectedModuleId],
     queryFn: async () => {
@@ -98,7 +117,7 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     enabled: !!selectedModuleId && assignmentType === 'topic',
   });
 
-  // Fetch chapters for selected module
+  // Fetch chapters for selected module (for assignment dialog)
   const { data: chapters } = useQuery({
     queryKey: ['chapters', selectedModuleId],
     queryFn: async () => {
@@ -183,21 +202,25 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     setAssignmentType('chapter');
   };
 
-  // Get user name by ID
-  const getUserName = (userId: string) => {
+  // Get user info by ID
+  const getUserInfo = (userId: string) => {
     const u = users.find(u => u.id === userId);
-    return u?.full_name || u?.email || 'Unknown';
-  };
-
-  // Get topic name by ID
-  const getTopicName = (topicId: string) => {
-    // Need to fetch from all topics
-    return topicId.substring(0, 8) + '...';
+    return {
+      name: u?.full_name || u?.email || 'Unknown',
+      email: u?.email || '',
+    };
   };
 
   // Get chapter name by ID
   const getChapterName = (chapterId: string) => {
-    return chapterId.substring(0, 8) + '...';
+    const chapter = allChapters?.find(c => c.id === chapterId);
+    return chapter ? `Ch. ${chapter.chapter_number}: ${chapter.title}` : 'Unknown Chapter';
+  };
+
+  // Get topic name by ID  
+  const getTopicName = (topicId: string) => {
+    const topic = allTopics?.find(t => t.id === topicId);
+    return topic?.name || 'Unknown Topic';
   };
 
   // Get module name
@@ -205,7 +228,7 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     return modules.find(m => m.id === moduleId)?.name || 'Unknown';
   };
 
-  // Users eligible to be Topic Admins (not already super/platform/module admins)
+  // Users eligible to be Topic Admins
   const eligibleUsers = users.filter(u => 
     u.role === 'student' || u.role === 'teacher' || u.role === 'topic_admin'
   );
@@ -215,13 +238,18 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     if (!topicAdmins) return {};
     const grouped: Record<string, TopicAdmin[]> = {};
     topicAdmins.forEach(ta => {
+      // Filter based on user access
+      if (!isSuperAdmin && !isPlatformAdmin) {
+        const assignedModuleIds = moduleAdmins?.map(a => a.module_id) || [];
+        if (!assignedModuleIds.includes(ta.module_id)) return;
+      }
       if (!grouped[ta.user_id]) {
         grouped[ta.user_id] = [];
       }
       grouped[ta.user_id].push(ta);
     });
     return grouped;
-  }, [topicAdmins]);
+  }, [topicAdmins, isSuperAdmin, isPlatformAdmin, moduleAdmins]);
 
   if (isLoading) {
     return (
@@ -242,7 +270,8 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
                 Topic (Chapter) Admin Assignments
               </CardTitle>
               <CardDescription>
-                Assign users to manage content within specific topics or chapters. Topic Admins can add/edit content only within their assigned scope.
+                Assign users to manage content within specific topics or chapters. 
+                {!isSuperAdmin && !isPlatformAdmin && ' You can only assign within your modules.'}
               </CardDescription>
             </div>
             <Button onClick={() => setAssignDialogOpen(true)}>
@@ -258,51 +287,66 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
             </p>
           ) : (
             <div className="space-y-4">
-              {Object.entries(topicAdminsByUser).map(([userId, assignments]) => (
-                <div key={userId} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center">
-                        <span className="font-semibold text-teal-700 dark:text-teal-300">
-                          {getUserName(userId)[0]?.toUpperCase() || '?'}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{getUserName(userId)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {assignments.length} assignment{assignments.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-teal-100 text-teal-700">Topic Admin</Badge>
-                  </div>
+              {Object.entries(topicAdminsByUser).map(([userId, assignments]) => {
+                const userInfo = getUserInfo(userId);
+                // Group assignments by module
+                const byModule: Record<string, TopicAdmin[]> = {};
+                assignments.forEach(a => {
+                  if (!byModule[a.module_id]) byModule[a.module_id] = [];
+                  byModule[a.module_id].push(a);
+                });
 
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Assigned Scope:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {assignments.map(a => (
-                        <Badge key={a.id} variant="secondary" className="gap-1 py-1">
-                          <BookOpen className="w-3 h-3" />
-                          {getModuleName(a.module_id)}
-                          <ChevronRight className="w-3 h-3" />
-                          {a.topic_id ? `Topic` : `Chapter`}
-                          <button
-                            onClick={() => {
-                              if (confirm('Remove this assignment?')) {
-                                removeMutation.mutate(a.id);
-                              }
-                            }}
-                            className="ml-1 hover:text-destructive"
-                            disabled={removeMutation.isPending}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </Badge>
+                return (
+                  <div key={userId} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-teal-700 dark:text-teal-300" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{userInfo.name}</p>
+                          <p className="text-sm text-muted-foreground">{userInfo.email}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-teal-100 text-teal-700">Topic Admin</Badge>
+                    </div>
+
+                    <div className="space-y-3 pl-13">
+                      {Object.entries(byModule).map(([moduleId, moduleAssignments]) => (
+                        <div key={moduleId} className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <BookOpen className="w-4 h-4 text-muted-foreground" />
+                            <span>{getModuleName(moduleId)}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 pl-6">
+                            {moduleAssignments.map(a => (
+                              <Badge key={a.id} variant="secondary" className="gap-1 py-1.5">
+                                {a.chapter_id 
+                                  ? getChapterName(a.chapter_id)
+                                  : a.topic_id 
+                                    ? getTopicName(a.topic_id)
+                                    : 'Unknown'
+                                }
+                                <button
+                                  onClick={() => {
+                                    if (confirm('Remove this assignment?')) {
+                                      removeMutation.mutate(a.id);
+                                    }
+                                  }}
+                                  className="ml-1 hover:text-destructive"
+                                  disabled={removeMutation.isPending}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -314,7 +358,8 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
           <DialogHeader>
             <DialogTitle>Assign Topic Admin</DialogTitle>
             <DialogDescription>
-              Select a user and the topics/chapters they should manage.
+              Select a user and the chapters they should manage.
+              {!isSuperAdmin && !isPlatformAdmin && ' You can only assign within your modules.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
