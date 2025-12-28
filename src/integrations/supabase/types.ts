@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_help_files: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_order: number | null
+          file_name: string
+          file_url: string
+          id: string
+          template_type: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          file_name: string
+          file_url: string
+          id?: string
+          template_type?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          template_type?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
