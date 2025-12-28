@@ -10,29 +10,41 @@ import { useModule } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
-import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import EssayList from '@/components/content/EssayList';
+import PracticalList from '@/components/content/PracticalList';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
-import { useLectures, useResources, useMcqSets, useEssays } from '@/hooks/useContent';
-import { useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
+import { FlashcardsTab } from '@/components/study/FlashcardsTab';
+import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
+import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
+import { useLectures, useResources, useMcqSets, useEssays, usePracticals, useClinicalCases } from '@/hooks/useContent';
+import { useHideEmptySelfAssessmentTabs, useChapterStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
+import { 
+  createResourceTabs, 
+  createPracticeTabs, 
+  filterTabsForStudent,
+  ResourceTabId,
+  PracticeTabId,
+} from '@/config/tabConfig';
 import { 
   ArrowLeft, 
   Video, 
   FileText, 
   HelpCircle, 
   PenTool, 
+  FlaskConical,
+  Stethoscope,
   FolderOpen,
   GraduationCap,
   ClipboardList,
   ExternalLink,
-  Link2,
+  Plus,
+  Upload,
+  Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type SectionMode = 'resources' | 'practice';
-type ResourcesTab = 'lectures' | 'documents';
-type PracticeTab = 'mcqs' | 'essays' | 'matching';
 
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
@@ -42,9 +54,14 @@ export default function TopicDetailPage() {
   const canManageContent = isAdmin || isTeacher || isSuperAdmin;
 
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
-  const [resourcesTab, setResourcesTab] = useState<ResourcesTab>('lectures');
-  const [practiceTab, setPracticeTab] = useState<PracticeTab>('mcqs');
+  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
+  const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
+
+  // Flashcard modals
+  const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
+  const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
+  const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
   const { data: topic, isLoading: topicLoading } = useTopic(topicId);
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
@@ -52,10 +69,18 @@ export default function TopicDetailPage() {
   const { data: resources, isLoading: resourcesLoading } = useResources(topicId);
   const { data: mcqSets, isLoading: mcqsLoading } = useMcqSets(topicId);
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
+  const { data: practicals, isLoading: practicalsLoading } = usePracticals(topicId);
+  const { data: clinicalCases, isLoading: casesLoading } = useClinicalCases(topicId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
+  const { data: flashcards, isLoading: flashcardsLoading } = useChapterStudyResourcesByType(undefined, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
 
-  const handleResourcesTabChange = (tab: ResourcesTab) => {
+  const handleEditFlashcard = (resource: StudyResource) => {
+    setEditingFlashcard(resource);
+    setFlashcardFormOpen(true);
+  };
+
+  const handleResourcesTabChange = (tab: ResourceTabId) => {
     if (tab === 'lectures') {
       setLecturesResetKey((k) => k + 1);
     }
@@ -80,27 +105,27 @@ export default function TopicDetailPage() {
     { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
   ];
 
-  const resourcesTabs = [
-    { id: 'lectures' as ResourcesTab, label: 'Videos', icon: Video, count: lectures?.length || 0 },
-    { id: 'documents' as ResourcesTab, label: 'Documents', icon: FileText, count: resources?.length || 0 },
-  ];
+  // Use unified tab configuration
+  const resourcesTabs = createResourceTabs({
+    lectures: lectures?.length || 0,
+    flashcards: flashcards?.length || 0,
+    documents: resources?.length || 0,
+  });
 
-  // Practice tabs - hide empty tabs for students, show all for admins
-  const allPracticeTabs = [
-    { id: 'mcqs' as PracticeTab, label: 'MCQs', icon: HelpCircle, count: mcqSets?.length || 0 },
-    { id: 'essays' as PracticeTab, label: 'Essays', icon: PenTool, count: essays?.length || 0 },
-    { id: 'matching' as PracticeTab, label: 'Matching', icon: Link2, count: matchingQuestions?.length || 0 },
-  ];
+  const allPracticeTabs = createPracticeTabs({
+    mcqs: mcqSets?.length || 0,
+    essays: essays?.length || 0,
+    cases: clinicalCases?.length || 0,
+    practical: practicals?.length || 0,
+    matching: matchingQuestions?.length || 0,
+    images: 0,
+  });
 
-  // Practice tabs - hide empty tabs for students if setting is enabled, show all for admins
+  // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    // If hideEmptyTabs is true (setting enabled), hide empty tabs; otherwise show all
-    if (hideEmptyTabs) {
-      return allPracticeTabs.filter(tab => tab.count > 0);
-    }
-    return allPracticeTabs;
-  }, [canManageContent, mcqSets, essays, matchingQuestions, hideEmptyTabs]);
+    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, mcqSets, essays, clinicalCases, practicals, matchingQuestions, hideEmptyTabs]);
 
   return (
     <MainLayout>
@@ -198,7 +223,7 @@ export default function TopicDetailPage() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => handleResourcesTabChange(tab.id)}
+                        onClick={() => handleResourcesTabChange(tab.id as ResourceTabId)}
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
@@ -240,6 +265,46 @@ export default function TopicDetailPage() {
                         <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">No videos available yet.</p>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Flashcards */}
+                {resourcesTab === 'flashcards' && (
+                  <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingFlashcard(null);
+                            setFlashcardFormOpen(true);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Flashcard
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setFlashcardBulkOpen(true)}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    {flashcardsLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : (
+                      <FlashcardsTab
+                        resources={flashcards || []}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                      />
                     )}
                   </div>
                 )}
@@ -293,7 +358,7 @@ export default function TopicDetailPage() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => setPracticeTab(tab.id)}
+                        onClick={() => setPracticeTab(tab.id as PracticeTabId)}
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
@@ -351,7 +416,7 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Essays */}
+                {/* Essays / Short Answer */}
                 {practiceTab === 'essays' && (
                   <div>
                     {canManageContent && topicId && moduleId && (
@@ -363,17 +428,36 @@ export default function TopicDetailPage() {
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
                       </div>
-                    ) : essays && essays.length > 0 ? (
+                    ) : (
+                      <EssayList
+                        essays={essays || []}
+                        moduleId={moduleId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                        showFeedback={true}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Case Scenarios - Topics use clinical_cases table */}
+                {practiceTab === 'cases' && (
+                  <div>
+                    {casesLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : clinicalCases && clinicalCases.length > 0 ? (
                       <div className="space-y-2">
-                        {essays.map((essay) => (
-                          <Card key={essay.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        {clinicalCases.map((c) => (
+                          <Card key={c.id} className="cursor-pointer hover:shadow-md transition-shadow">
                             <CardContent className="flex items-center gap-4 p-4">
                               <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <PenTool className="w-5 h-5 text-primary" />
+                                <Stethoscope className="w-5 h-5 text-primary" />
                               </div>
                               <div className="flex-1">
-                                <h4 className="font-medium">{essay.title}</h4>
-                                <p className="text-sm text-muted-foreground line-clamp-1">{essay.question}</p>
+                                <h4 className="font-medium">{c.title}</h4>
+                                <p className="text-sm text-muted-foreground line-clamp-1">{c.presentation}</p>
                               </div>
                             </CardContent>
                           </Card>
@@ -381,9 +465,33 @@ export default function TopicDetailPage() {
                       </div>
                     ) : (
                       <div className="text-center py-12 border rounded-lg">
-                        <PenTool className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No essays available yet.</p>
+                        <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No case scenarios available yet.</p>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* OSCE / Practical */}
+                {practiceTab === 'practical' && (
+                  <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="practical" />
+                      </div>
+                    )}
+                    {practicalsLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <PracticalList
+                        practicals={practicals || []}
+                        moduleId={moduleId}
+                        canEdit={canManageContent}
+                        canDelete={canManageContent}
+                        showFeedback={true}
+                      />
                     )}
                   </div>
                 )}
@@ -405,10 +513,39 @@ export default function TopicDetailPage() {
                     )}
                   </div>
                 )}
+
+                {/* Image Questions (placeholder) */}
+                {practiceTab === 'images' && (
+                  <div className="text-center py-12 border rounded-lg">
+                    <Image className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Image questions coming soon.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Flashcard Modals */}
+        {topicId && moduleId && (
+          <>
+            <StudyResourceFormModal
+              open={flashcardFormOpen}
+              onOpenChange={setFlashcardFormOpen}
+              chapterId={topicId}
+              moduleId={moduleId}
+              resourceType="flashcard"
+              resource={editingFlashcard}
+            />
+            <StudyBulkUploadModal
+              open={flashcardBulkOpen}
+              onOpenChange={setFlashcardBulkOpen}
+              chapterId={topicId}
+              moduleId={moduleId}
+              resourceType="flashcard"
+            />
+          </>
+        )}
       </div>
     </MainLayout>
   );
