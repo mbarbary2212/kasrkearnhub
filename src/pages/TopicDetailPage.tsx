@@ -8,7 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useTopic } from '@/hooks/useTopics';
 import { useModule } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
+import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
+import EssayList from '@/components/content/EssayList';
 import { useLectures, useResources, useMcqSets, useEssays } from '@/hooks/useContent';
 import { 
   ArrowLeft, 
@@ -16,11 +19,10 @@ import {
   FileText, 
   HelpCircle, 
   PenTool, 
-  Layers,
   FolderOpen,
   GraduationCap,
-  ExternalLink,
   ClipboardList,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -197,6 +199,11 @@ export default function TopicDetailPage() {
                 {/* Videos/Lectures */}
                 {resourcesTab === 'lectures' && (
                   <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="lecture" />
+                      </div>
+                    )}
                     {lecturesLoading ? (
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
@@ -222,6 +229,11 @@ export default function TopicDetailPage() {
                 {/* Documents */}
                 {resourcesTab === 'documents' && (
                   <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" />
+                      </div>
+                    )}
                     {resourcesLoading ? (
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10" />)}
@@ -282,6 +294,11 @@ export default function TopicDetailPage() {
                 {/* MCQs */}
                 {practiceTab === 'mcqs' && (
                   <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="mcq" />
+                      </div>
+                    )}
                     {mcqsLoading ? (
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
@@ -319,6 +336,11 @@ export default function TopicDetailPage() {
                 {/* Essays */}
                 {practiceTab === 'essays' && (
                   <div>
+                    {canManageContent && topicId && moduleId && (
+                      <div className="mb-4">
+                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="essay" />
+                      </div>
+                    )}
                     {essaysLoading ? (
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}

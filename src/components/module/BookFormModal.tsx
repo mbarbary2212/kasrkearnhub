@@ -87,8 +87,8 @@ export function BookFormModal({
       onOpenChange(false);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-      if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists')) {
-        toast.error('A department with this name already exists');
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists') || errorMessage.includes('module_books_module_id_book_label_key')) {
+        toast.error(`A department named "${bookLabel.trim()}" already exists in this module`);
       } else {
         toast.error(isEditing ? 'Failed to update department' : 'Failed to add department');
       }
