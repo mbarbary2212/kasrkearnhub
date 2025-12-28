@@ -40,6 +40,7 @@ interface TopicFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departmentId: string;
+  moduleId: string;
   editingTopic?: Topic | null;
 }
 
@@ -55,6 +56,7 @@ export function TopicFormModal({
   open,
   onOpenChange,
   departmentId,
+  moduleId,
   editingTopic,
 }: TopicFormModalProps) {
   const createTopic = useCreateTopic();
@@ -89,6 +91,7 @@ export function TopicFormModal({
         await updateTopic.mutateAsync({
           topicId: editingTopic.id,
           departmentId,
+          moduleId,
           data: {
             name: values.name,
             description: values.description || null,
@@ -98,6 +101,7 @@ export function TopicFormModal({
       } else {
         await createTopic.mutateAsync({
           departmentId,
+          moduleId,
           name: values.name,
           description: values.description || null,
         });

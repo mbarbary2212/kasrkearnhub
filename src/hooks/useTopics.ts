@@ -2,17 +2,23 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Topic } from '@/types/database';
 
-export function useTopics(departmentId: string | undefined) {
+export function useTopics(departmentId: string | undefined, moduleId?: string | undefined) {
   return useQuery({
-    queryKey: ['topics', departmentId],
+    queryKey: ['topics', departmentId, moduleId],
     queryFn: async () => {
       if (!departmentId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('topics')
         .select('*')
-        .eq('department_id', departmentId)
-        .order('display_order');
+        .eq('department_id', departmentId);
+      
+      // If moduleId is provided, filter by it
+      if (moduleId) {
+        query = query.eq('module_id', moduleId);
+      }
+      
+      const { data, error } = await query.order('display_order');
 
       if (error) throw error;
       return data as Topic[];

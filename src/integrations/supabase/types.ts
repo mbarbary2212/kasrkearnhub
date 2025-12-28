@@ -1666,6 +1666,7 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
+          module_id: string | null
           name: string
           name_ar: string | null
           slug: string
@@ -1676,6 +1677,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          module_id?: string | null
           name: string
           name_ar?: string | null
           slug: string
@@ -1686,6 +1688,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          module_id?: string | null
           name?: string
           name_ar?: string | null
           slug?: string
@@ -1696,6 +1699,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topics_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
         ]

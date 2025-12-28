@@ -45,7 +45,7 @@ export function PharmacologyTopicsView({
   canManageTopics = false,
 }: PharmacologyTopicsViewProps) {
   const navigate = useNavigate();
-  const { data: topics, isLoading } = useTopics(departmentId);
+  const { data: topics, isLoading } = useTopics(departmentId, moduleId);
   
   const [topicModalOpen, setTopicModalOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
@@ -65,7 +65,7 @@ export function PharmacologyTopicsView({
 
   const handleDeleteTopic = async (topic: Topic) => {
     try {
-      await deleteTopic.mutateAsync({ topicId: topic.id, departmentId });
+      await deleteTopic.mutateAsync({ topicId: topic.id, departmentId, moduleId });
       toast.success('Topic deleted successfully');
       setDeleteDialog(null);
     } catch {
@@ -187,6 +187,7 @@ export function PharmacologyTopicsView({
         open={topicModalOpen}
         onOpenChange={setTopicModalOpen}
         departmentId={departmentId}
+        moduleId={moduleId}
         editingTopic={editingTopic}
       />
 
