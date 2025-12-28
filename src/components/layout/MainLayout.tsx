@@ -139,13 +139,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
+                      <Inbox className="mr-2 h-4 w-4" />
+                      Feedback & Inquiries
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/admin?tab=help')}>
                       <FileText className="mr-2 h-4 w-4" />
                       Help & Templates
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
-                      <Inbox className="mr-2 h-4 w-4" />
-                      Admin Inbox
                     </DropdownMenuItem>
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>

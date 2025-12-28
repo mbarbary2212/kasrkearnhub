@@ -77,6 +77,8 @@ export function useMyInquiries() {
 
 export function useAllInquiries(filters?: {
   moduleId?: string;
+  moduleIds?: string[];
+  chapterIds?: string[];
   status?: InquiryStatus;
 }) {
   return useQuery({
@@ -89,6 +91,12 @@ export function useAllInquiries(filters?: {
 
       if (filters?.moduleId) {
         query = query.eq('module_id', filters.moduleId);
+      }
+      if (filters?.moduleIds && filters.moduleIds.length > 0) {
+        query = query.in('module_id', filters.moduleIds);
+      }
+      if (filters?.chapterIds && filters.chapterIds.length > 0) {
+        query = query.in('chapter_id', filters.chapterIds);
       }
       if (filters?.status) {
         query = query.eq('status', filters.status);

@@ -11,13 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
-import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
-import { AdminUploadDiagnostics } from '@/components/admin/AdminUploadDiagnostics';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
@@ -524,10 +522,6 @@ export default function AdminPage() {
                 Topic Admins
               </TabsTrigger>
             )}
-            <TabsTrigger value="feedback" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Feedback
-            </TabsTrigger>
             {isPlatformAdmin && (
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
@@ -914,12 +908,6 @@ export default function AdminPage() {
           {/* Topic Admins Tab */}
           <TabsContent value="topic-admins">
             <TopicAdminsTab users={users} modules={modules} />
-          </TabsContent>
-
-          {/* Feedback Tab */}
-          <TabsContent value="feedback">
-            <AdminUploadDiagnostics />
-            <AdminFeedbackPanel />
           </TabsContent>
 
           {/* Settings Tab - Platform Admin only */}
