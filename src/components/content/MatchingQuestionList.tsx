@@ -20,6 +20,7 @@ interface MatchingQuestionListProps {
   questions: MatchingQuestion[];
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
   isAdmin: boolean;
 }
 
@@ -27,6 +28,7 @@ export function MatchingQuestionList({
   questions,
   moduleId,
   chapterId,
+  topicId,
   isAdmin,
 }: MatchingQuestionListProps) {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -119,6 +121,7 @@ export function MatchingQuestionList({
         }}
         moduleId={moduleId}
         chapterId={chapterId}
+        topicId={topicId}
         question={editingQuestion}
       />
 
@@ -127,6 +130,7 @@ export function MatchingQuestionList({
         onOpenChange={setShowBulkModal}
         moduleId={moduleId}
         chapterId={chapterId}
+        topicId={topicId}
       />
 
       {/* Delete confirmation */}

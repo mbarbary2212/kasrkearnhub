@@ -101,6 +101,25 @@ export function useChapterMatchingQuestions(chapterId?: string) {
   });
 }
 
+// Fetch matching questions by topic
+export function useTopicMatchingQuestions(topicId?: string) {
+  return useQuery({
+    queryKey: ['matching-questions', 'topic', topicId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('matching_questions')
+        .select('*')
+        .eq('topic_id', topicId!)
+        .eq('is_deleted', false)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return (data || []).map(mapDbRowToMatchingQuestion);
+    },
+    enabled: !!topicId,
+  });
+}
+
 // Create matching question
 export function useCreateMatchingQuestion() {
   const queryClient = useQueryClient();
@@ -130,6 +149,9 @@ export function useCreateMatchingQuestion() {
       if (variables.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', variables.chapter_id] });
       }
+      if (variables.topic_id) {
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'topic', variables.topic_id] });
+      }
     },
     onError: (error: Error) => {
       toast({ title: 'Error adding matching question', description: error.message, variant: 'destructive' });
@@ -143,11 +165,12 @@ export function useUpdateMatchingQuestion() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ id, data, moduleId, chapterId }: { 
+    mutationFn: async ({ id, data, moduleId, chapterId, topicId }: { 
       id: string; 
       data: MatchingQuestionFormData; 
       moduleId: string;
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       const { error } = await supabase
         .from('matching_questions')
@@ -159,19 +182,22 @@ export function useUpdateMatchingQuestion() {
           explanation: data.explanation,
           show_explanation: data.show_explanation,
           difficulty: data.difficulty,
-          topic_id: data.topic_id || null,
+          topic_id: data.topic_id || topicId || null,
           updated_by: user?.id,
         })
         .eq('id', id);
 
       if (error) throw error;
-      return { moduleId, chapterId };
+      return { moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
       toast({ title: 'Matching question updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId] });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'topic', result.topicId] });
       }
     },
     onError: (error: Error) => {
@@ -221,15 +247,18 @@ export function useBulkCreateMatchingQuestions() {
     mutationFn: async ({ 
       questions, 
       moduleId, 
-      chapterId 
+      chapterId,
+      topicId 
     }: { 
       questions: MatchingQuestionFormData[]; 
       moduleId: string; 
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       const records = questions.map((q, index) => ({
         module_id: moduleId,
         chapter_id: chapterId || null,
+        topic_id: topicId || null,
         instruction: q.instruction,
         column_a_items: q.column_a_items as unknown as Json,
         column_b_items: q.column_b_items as unknown as Json,
@@ -243,13 +272,16 @@ export function useBulkCreateMatchingQuestions() {
 
       const { error } = await supabase.from('matching_questions').insert(records);
       if (error) throw error;
-      return { moduleId, chapterId, count: questions.length };
+      return { moduleId, chapterId, topicId, count: questions.length };
     },
     onSuccess: (result) => {
       toast({ title: `${result.count} matching questions imported successfully` });
       queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId] });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'topic', result.topicId] });
       }
     },
     onError: (error: Error) => {
