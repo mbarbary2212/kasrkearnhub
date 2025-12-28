@@ -101,7 +101,7 @@ function PlatformSettingsTab() {
 }
 
 export default function AdminPage() {
-  const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isLoading: authLoading } = useAuthContext();
+  const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, role, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -477,6 +477,9 @@ export default function AdminPage() {
     return null;
   }
 
+  // Determine default tab based on role
+  const defaultTab = isTopicAdmin ? 'feedback' : 'users';
+
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
@@ -487,17 +490,21 @@ export default function AdminPage() {
             <p className="text-muted-foreground">
               {isSuperAdmin ? 'Super Admin Access - Full System Control' : 
                isPlatformAdmin ? 'Platform Admin Access - All Modules' : 
+               isTopicAdmin ? 'Topic Admin Access' :
                'Admin Access'}
             </p>
           </div>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-4">
+        <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="users" className="gap-2">
-              <Users className="w-4 h-4" />
-              Users
-            </TabsTrigger>
+            {/* Only show Users tab to non-topic admins */}
+            {!isTopicAdmin && (
+              <TabsTrigger value="users" className="gap-2">
+                <Users className="w-4 h-4" />
+                Users
+              </TabsTrigger>
+            )}
             {isSuperAdmin && (
               <TabsTrigger value="curriculum" className="gap-2">
                 <Layers className="w-4 h-4" />
@@ -510,10 +517,13 @@ export default function AdminPage() {
                 Module Admins
               </TabsTrigger>
             )}
-            <TabsTrigger value="topic-admins" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Topic Admins
-            </TabsTrigger>
+            {/* Only show Topic Admins tab to non-topic admins */}
+            {!isTopicAdmin && (
+              <TabsTrigger value="topic-admins" className="gap-2">
+                <FileText className="w-4 h-4" />
+                Topic Admins
+              </TabsTrigger>
+            )}
             <TabsTrigger value="feedback" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               Feedback

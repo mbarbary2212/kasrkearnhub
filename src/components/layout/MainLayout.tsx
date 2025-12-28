@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, User, MessageSquare, Inbox, HelpCircle } from 'lucide-react';
+import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 
@@ -20,7 +20,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin } = useAuthContext();
+  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
@@ -48,6 +48,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return 'bg-indigo-500 text-white';
       case 'department_admin':
         return 'bg-purple-500 text-white';
+      case 'topic_admin':
+        return 'bg-teal-500 text-white';
       case 'admin':
         return 'bg-medical-purple text-primary-foreground';
       case 'teacher':
@@ -64,7 +66,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
       case 'platform_admin':
         return 'Platform Admin';
       case 'department_admin':
-        return 'Dept Admin';
+        return 'Module Admin';
+      case 'topic_admin':
+        return 'Topic Admin';
+      case 'teacher':
+        return 'Teacher';
+      case 'student':
+        return 'Student';
+      case 'admin':
+        return 'Admin';
       default:
         return userRole;
     }
@@ -92,16 +102,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
             >
               Home
             </Link>
-            {user && (
-              <Link
-                to="/feedback"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/feedback' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                Feedback
-              </Link>
-            )}
           </nav>
 
           {user ? (
@@ -132,24 +132,27 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/feedback')}>
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Feedback
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/auth')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Account
+                <DropdownMenuItem onClick={() => navigate('/auth?view=password')}>
+                  <Key className="mr-2 h-4 w-4" />
+                  Change Password
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/admin?tab=help')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Help & Templates
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
                       <Inbox className="mr-2 h-4 w-4" />
                       Admin Inbox
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Panel
-                    </DropdownMenuItem>
+                    {!isTopicAdmin && (
+                      <DropdownMenuItem onClick={() => navigate('/admin')}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Admin Panel
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
                 <DropdownMenuSeparator />
