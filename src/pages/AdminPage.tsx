@@ -959,18 +959,34 @@ export default function AdminPage() {
                             <div className="space-y-2">
                               <p className="text-sm font-medium">Assigned Modules:</p>
                               {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {u.moduleAssignments.map(a => (
-                                    <Badge key={a.id} variant="secondary" className="gap-1">
-                                      {getModuleName(a.module_id)}
-                                      <button
-                                        onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
-                                        className="ml-1 hover:text-destructive"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    </Badge>
-                                  ))}
+                                <div className="space-y-2">
+                                  {years.map(year => {
+                                    const yearAssignments = u.moduleAssignments?.filter(a => {
+                                      const mod = modules.find(m => m.id === a.module_id);
+                                      return mod?.year_id === year.id;
+                                    }) || [];
+                                    
+                                    if (yearAssignments.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={year.id} className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">{year.name}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {yearAssignments.map(a => (
+                                            <Badge key={a.id} variant="secondary" className="gap-1">
+                                              {getModuleName(a.module_id)}
+                                              <button
+                                                onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
+                                                className="ml-1 hover:text-destructive"
+                                              >
+                                                <Trash2 className="w-3 h-3" />
+                                              </button>
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <p className="text-sm text-muted-foreground">No modules assigned</p>
@@ -985,18 +1001,31 @@ export default function AdminPage() {
                                   setSelectedModule(value);
                                 }}
                               >
-                                <SelectTrigger className="w-60">
+                                <SelectTrigger className="w-72">
                                   <SelectValue placeholder="Select module to assign" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {modules
-                                    .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
-                                    .map(m => (
-                                      <SelectItem key={m.id} value={m.id}>
-                                        {getYearName(m.year_id)} - {m.name}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
+                                  {years.map(year => {
+                                    const yearModules = modules
+                                      .filter(m => m.year_id === year.id)
+                                      .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
+                                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                                    
+                                    if (yearModules.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={year.id}>
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                                          {year.name}
+                                        </div>
+                                        {yearModules.map(m => (
+                                          <SelectItem key={m.id} value={m.id}>
+                                            {m.name}
+                                          </SelectItem>
+                                        ))}
+                                      </div>
+                                    );
+                                  })}</SelectContent>
                               </Select>
                               <Button
                                 onClick={() => {
