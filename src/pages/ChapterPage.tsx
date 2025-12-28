@@ -4,7 +4,6 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -34,27 +33,25 @@ import { useChapterStudyResources, StudyResource, useHideEmptySelfAssessmentTabs
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
+  createResourceTabs, 
+  createPracticeTabs, 
+  filterTabsForStudent,
+  ResourceTabId,
+  PracticeTabId,
+} from '@/config/tabConfig';
+import { 
   ArrowLeft, 
-  Video, 
   FileText, 
-  HelpCircle, 
-  PenTool, 
-  FlaskConical,
-  Stethoscope,
   Plus,
   Upload,
-  Layers,
-  Image,
   FolderOpen,
   GraduationCap,
   ExternalLink,
-  Link2,
+  Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type SectionMode = 'resources' | 'practice';
-type ResourcesTab = 'lectures' | 'flashcards' | 'documents';
-type PracticeTab = 'mcqs' | 'essays' | 'cases' | 'practical' | 'matching' | 'images';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -65,8 +62,8 @@ export default function ChapterPage() {
 
   // State for section mode and active tabs within sections
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
-  const [resourcesTab, setResourcesTab] = useState<ResourcesTab>('lectures');
-  const [practiceTab, setPracticeTab] = useState<PracticeTab>('mcqs');
+  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
+  const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
 
   // State for Case Scenarios modals
@@ -99,14 +96,12 @@ export default function ChapterPage() {
     setFlashcardFormOpen(true);
   };
 
-  const handleResourcesTabChange = (tab: ResourcesTab) => {
+  const handleResourcesTabChange = (tab: ResourceTabId) => {
     if (tab === 'lectures') {
       setLecturesResetKey((k) => k + 1);
     }
     setResourcesTab(tab);
   };
-
-  // Progress is now calculated from useChapterProgress hook
 
   if (!chapterLoading && !chapter) {
     return (
@@ -121,37 +116,32 @@ export default function ChapterPage() {
     );
   }
 
-  // Section navigation items (only Resources and Self Assessment at chapter level)
+  // Section navigation items
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
     { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
   ];
 
-  // Resources sub-tabs
-  const resourcesTabs = [
-    { id: 'lectures' as ResourcesTab, label: 'Lectures', icon: Video, count: lectures?.length || 0 },
-    { id: 'flashcards' as ResourcesTab, label: 'Flashcards', icon: Layers, count: flashcards.length },
-    { id: 'documents' as ResourcesTab, label: 'Documents', icon: FileText, count: resources?.length || 0 },
-  ];
+  // Use unified tab configuration
+  const resourcesTabs = createResourceTabs({
+    lectures: lectures?.length || 0,
+    flashcards: flashcards.length,
+    documents: resources?.length || 0,
+  });
 
-  // Practice sub-tabs - conditionally visible for students
-  const allPracticeTabs = [
-    { id: 'mcqs' as PracticeTab, label: 'MCQ', icon: HelpCircle, count: mcqs?.length || 0 },
-    { id: 'essays' as PracticeTab, label: 'Short Essays', icon: PenTool, count: essays?.length || 0 },
-    { id: 'cases' as PracticeTab, label: 'Cases', icon: Stethoscope, count: caseScenarios?.length || 0 },
-    { id: 'practical' as PracticeTab, label: 'OSCE/Practical', icon: FlaskConical, count: practicals?.length || 0 },
-    { id: 'matching' as PracticeTab, label: 'Matching', icon: Link2, count: matchingQuestions?.length || 0 },
-    { id: 'images' as PracticeTab, label: 'Images', icon: Image, count: 0 },
-  ];
+  const allPracticeTabs = createPracticeTabs({
+    mcqs: mcqs?.length || 0,
+    essays: essays?.length || 0,
+    cases: caseScenarios?.length || 0,
+    practical: practicals?.length || 0,
+    matching: matchingQuestions?.length || 0,
+    images: 0,
+  });
 
-  // For students: hide tabs with no content if setting is enabled. For admins: show all tabs
+  // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    // If hideEmptyTabs is true (setting enabled), hide empty tabs; otherwise show all
-    if (hideEmptyTabs) {
-      return allPracticeTabs.filter(tab => tab.count > 0);
-    }
-    return allPracticeTabs;
+    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
   }, [canManageContent, mcqs, essays, caseScenarios, practicals, matchingQuestions, hideEmptyTabs]);
 
   return (
@@ -261,7 +251,7 @@ export default function ChapterPage() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => handleResourcesTabChange(tab.id)}
+                        onClick={() => handleResourcesTabChange(tab.id as ResourceTabId)}
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
@@ -397,7 +387,7 @@ export default function ChapterPage() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => setPracticeTab(tab.id)}
+                        onClick={() => setPracticeTab(tab.id as PracticeTabId)}
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
                           isActive 
