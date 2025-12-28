@@ -399,6 +399,7 @@ export default function TopicDetailPage() {
                       <MatchingQuestionList
                         questions={matchingQuestions || []}
                         moduleId={moduleId || ''}
+                        topicId={topicId}
                         isAdmin={canManageContent}
                       />
                     )}
