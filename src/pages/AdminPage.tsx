@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
 import { AdminUploadDiagnostics } from '@/components/admin/AdminUploadDiagnostics';
+import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -42,6 +43,58 @@ const ROLE_COLORS: Record<AppRole, string> = {
   platform_admin: 'bg-indigo-100 text-indigo-700',
   super_admin: 'bg-red-100 text-red-700',
 };
+
+// Platform Settings Tab Component
+function PlatformSettingsTab() {
+  const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
+  const upsertSetting = useUpsertStudySetting();
+
+  const handleToggle = async (checked: boolean) => {
+    try {
+      await upsertSetting.mutateAsync({
+        key: 'hide_empty_self_assessment_tabs',
+        value: checked ? 'true' : 'false',
+      });
+      toast.success('Setting updated successfully');
+    } catch (error) {
+      console.error('Error updating setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Platform Settings
+        </CardTitle>
+        <CardDescription>
+          Configure global platform behavior.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
+              Hide Empty Self-Assessment Tabs
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When enabled, students will only see self-assessment sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
+              Admins always see all tabs.
+            </p>
+          </div>
+          <Switch
+            id="hide-empty-tabs"
+            checked={hideEmptyTabs ?? false}
+            onCheckedChange={handleToggle}
+            disabled={isLoading || upsertSetting.isPending}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isLoading: authLoading } = useAuthContext();
@@ -457,6 +510,12 @@ export default function AdminPage() {
               <MessageSquare className="w-4 h-4" />
               Feedback
             </TabsTrigger>
+            {isPlatformAdmin && (
+              <TabsTrigger value="settings" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Users Tab */}
@@ -835,6 +894,13 @@ export default function AdminPage() {
             <AdminUploadDiagnostics />
             <AdminFeedbackPanel />
           </TabsContent>
+
+          {/* Settings Tab - Platform Admin only */}
+          {isPlatformAdmin && (
+            <TabsContent value="settings">
+              <PlatformSettingsTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </MainLayout>
