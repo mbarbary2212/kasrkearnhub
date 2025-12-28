@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AppRole, Profile, DepartmentAdmin } from '@/types/database';
+import { AppRole, Profile, DepartmentAdmin, TopicAdmin } from '@/types/database';
 
 interface AuthState {
   user: User | null;
@@ -9,6 +9,7 @@ interface AuthState {
   profile: Profile | null;
   role: AppRole | null;
   departmentAssignments: DepartmentAdmin[];
+  topicAssignments: TopicAdmin[];
   isLoading: boolean;
 }
 
@@ -16,6 +17,7 @@ interface AuthState {
 const ROLE_LEVELS: Record<AppRole, number> = {
   student: 10,
   teacher: 25,
+  topic_admin: 35,
   admin: 50,
   department_admin: 50,
   platform_admin: 75,
@@ -29,6 +31,7 @@ export function useAuth() {
     profile: null,
     role: null,
     departmentAssignments: [],
+    topicAssignments: [],
     isLoading: true,
   });
 
@@ -58,11 +61,22 @@ export function useAuth() {
         departmentAssignments = (assignments as DepartmentAdmin[]) || [];
       }
 
+      // Fetch topic assignments for topic admins
+      let topicAssignments: TopicAdmin[] = [];
+      if (roleData?.role === 'topic_admin') {
+        const { data: assignments } = await supabase
+          .from('topic_admins')
+          .select('*')
+          .eq('user_id', userId);
+        topicAssignments = (assignments as TopicAdmin[]) || [];
+      }
+
       setState(prev => ({
         ...prev,
         profile: profile as Profile | null,
         role: (roleData?.role as AppRole) || 'student',
         departmentAssignments,
+        topicAssignments,
         isLoading: false,
       }));
     } catch (error) {
@@ -92,6 +106,7 @@ export function useAuth() {
             profile: null,
             role: null,
             departmentAssignments: [],
+            topicAssignments: [],
             isLoading: false,
           }));
         }
@@ -188,6 +203,50 @@ export function useAuth() {
     return false;
   };
 
+  // Check if user can manage a specific topic
+  const canManageTopic = (topicId: string): boolean => {
+    if (!state.role) return false;
+    
+    // Platform admin and super admin can manage all topics
+    if (state.role === 'platform_admin' || state.role === 'super_admin') {
+      return true;
+    }
+    
+    // Topic admin can only manage assigned topics
+    if (state.role === 'topic_admin') {
+      return state.topicAssignments.some(a => a.topic_id === topicId);
+    }
+    
+    // Department admin, legacy admin and teacher can manage content
+    if (state.role === 'department_admin' || state.role === 'admin' || state.role === 'teacher') {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check if user can manage a specific chapter
+  const canManageChapter = (chapterId: string): boolean => {
+    if (!state.role) return false;
+    
+    // Platform admin and super admin can manage all chapters
+    if (state.role === 'platform_admin' || state.role === 'super_admin') {
+      return true;
+    }
+    
+    // Topic admin can only manage assigned chapters
+    if (state.role === 'topic_admin') {
+      return state.topicAssignments.some(a => a.chapter_id === chapterId);
+    }
+    
+    // Department admin, legacy admin and teacher can manage content
+    if (state.role === 'department_admin' || state.role === 'admin' || state.role === 'teacher') {
+      return true;
+    }
+    
+    return false;
+  };
+
   return {
     ...state,
     signIn,
@@ -197,11 +256,14 @@ export function useAuth() {
     updatePassword,
     hasRole,
     canManageDepartment,
+    canManageTopic,
+    canManageChapter,
     // Role checks
     isSuperAdmin: state.role === 'super_admin',
     isPlatformAdmin: state.role === 'platform_admin' || state.role === 'super_admin',
     isDepartmentAdmin: state.role === 'department_admin',
-    isAdmin: state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
+    isTopicAdmin: state.role === 'topic_admin',
+    isAdmin: state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin' || state.role === 'topic_admin',
     isTeacher: state.role === 'teacher' || state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
     isStudent: !!state.role,
   };

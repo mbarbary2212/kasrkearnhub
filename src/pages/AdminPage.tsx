@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
@@ -19,6 +19,7 @@ import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
 import { AdminUploadDiagnostics } from '@/components/admin/AdminUploadDiagnostics';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
+import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 
 interface UserWithRole extends Profile {
@@ -31,6 +32,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
   teacher: 'Teacher',
   admin: 'Admin (Legacy)',
+  topic_admin: 'Topic Admin',
   department_admin: 'Module Admin',
   platform_admin: 'Platform Admin',
   super_admin: 'Super Admin',
@@ -40,6 +42,7 @@ const ROLE_COLORS: Record<AppRole, string> = {
   student: 'bg-slate-100 text-slate-700',
   teacher: 'bg-blue-100 text-blue-700',
   admin: 'bg-amber-100 text-amber-700',
+  topic_admin: 'bg-teal-100 text-teal-700',
   department_admin: 'bg-purple-100 text-purple-700',
   platform_admin: 'bg-indigo-100 text-indigo-700',
   super_admin: 'bg-red-100 text-red-700',
@@ -329,10 +332,10 @@ export default function AdminPage() {
 
   const getAvailableRoles = (): AppRole[] => {
     if (isSuperAdmin) {
-      return ['student', 'teacher', 'department_admin', 'platform_admin', 'super_admin'];
+      return ['student', 'teacher', 'topic_admin', 'department_admin', 'platform_admin', 'super_admin'];
     }
     if (isPlatformAdmin) {
-      return ['student', 'teacher', 'department_admin'];
+      return ['student', 'teacher', 'topic_admin', 'department_admin'];
     }
     return ['student', 'teacher'];
   };
@@ -507,6 +510,10 @@ export default function AdminPage() {
                 Module Admins
               </TabsTrigger>
             )}
+            <TabsTrigger value="topic-admins" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Topic Admins
+            </TabsTrigger>
             <TabsTrigger value="feedback" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               Feedback
@@ -893,6 +900,11 @@ export default function AdminPage() {
               </Card>
             </TabsContent>
           )}
+
+          {/* Topic Admins Tab */}
+          <TabsContent value="topic-admins">
+            <TopicAdminsTab users={users} modules={modules} />
+          </TabsContent>
 
           {/* Feedback Tab */}
           <TabsContent value="feedback">

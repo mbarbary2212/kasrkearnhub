@@ -1793,6 +1793,58 @@ export type Database = {
         }
         Relationships: []
       }
+      topic_admins: {
+        Row: {
+          assigned_by: string | null
+          chapter_id: string | null
+          created_at: string | null
+          id: string
+          module_id: string
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string
+          module_id: string
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string
+          module_id?: string
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_admins_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_admins_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_admins_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           created_at: string | null
@@ -2021,8 +2073,16 @@ export type Database = {
       }
     }
     Functions: {
+      can_manage_chapter_content: {
+        Args: { _chapter_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_module_content: {
         Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_topic_content: {
+        Args: { _topic_id: string; _user_id: string }
         Returns: boolean
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
@@ -2041,6 +2101,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_chapter_admin: {
+        Args: { _chapter_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_department_admin: {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
@@ -2054,6 +2118,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_topic_admin: {
+        Args: { _topic_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_audit_event: {
         Args: {
           _action: string
@@ -2076,6 +2144,7 @@ export type Database = {
         | "department_admin"
         | "platform_admin"
         | "super_admin"
+        | "topic_admin"
       content_type: "lecture" | "resource" | "mcq" | "essay" | "practical"
       department_category: "basic" | "clinical"
       feedback_category:
@@ -2228,6 +2297,7 @@ export const Constants = {
         "department_admin",
         "platform_admin",
         "super_admin",
+        "topic_admin",
       ],
       content_type: ["lecture", "resource", "mcq", "essay", "practical"],
       department_category: ["basic", "clinical"],

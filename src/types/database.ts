@@ -1,5 +1,5 @@
 // Database types matching Supabase schema
-export type AppRole = 'student' | 'teacher' | 'admin' | 'department_admin' | 'platform_admin' | 'super_admin';
+export type AppRole = 'student' | 'teacher' | 'admin' | 'department_admin' | 'platform_admin' | 'super_admin' | 'topic_admin';
 export type DepartmentCategory = 'basic' | 'clinical';
 export type ContentType = 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
 
@@ -23,6 +23,16 @@ export interface DepartmentAdmin {
   id: string;
   user_id: string;
   department_id: string;
+  assigned_by: string | null;
+  created_at: string;
+}
+
+export interface TopicAdmin {
+  id: string;
+  user_id: string;
+  topic_id: string | null;
+  chapter_id: string | null;
+  module_id: string;
   assigned_by: string | null;
   created_at: string;
 }
