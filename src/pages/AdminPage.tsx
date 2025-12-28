@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, MessageSquare, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import AdminFeedbackPanel from '@/components/feedback/AdminFeedbackPanel';
 import { AdminUploadDiagnostics } from '@/components/admin/AdminUploadDiagnostics';
+import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 
 interface UserWithRole extends Profile {
@@ -516,6 +517,10 @@ export default function AdminPage() {
                 Settings
               </TabsTrigger>
             )}
+            <TabsTrigger value="help" className="gap-2">
+              <HelpCircle className="w-4 h-4" />
+              Help & Templates
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -901,6 +906,11 @@ export default function AdminPage() {
               <PlatformSettingsTab />
             </TabsContent>
           )}
+
+          {/* Help & Templates Tab */}
+          <TabsContent value="help">
+            <HelpTemplatesTab />
+          </TabsContent>
         </Tabs>
       </div>
     </MainLayout>
