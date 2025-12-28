@@ -528,12 +528,6 @@ export default function AdminPage() {
               </TabsTrigger>
             )}
             {isSuperAdmin && (
-              <TabsTrigger value="curriculum" className="gap-2">
-                <Layers className="w-4 h-4" />
-                Curriculum
-              </TabsTrigger>
-            )}
-            {isSuperAdmin && (
               <TabsTrigger value="admins" className="gap-2">
                 <Building2 className="w-4 h-4" />
                 Module Admins
@@ -547,6 +541,12 @@ export default function AdminPage() {
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
+              </TabsTrigger>
+            )}
+            {isSuperAdmin && (
+              <TabsTrigger value="curriculum" className="gap-2">
+                <Layers className="w-4 h-4" />
+                Curriculum
               </TabsTrigger>
             )}
             <TabsTrigger value="help" className="gap-2">
