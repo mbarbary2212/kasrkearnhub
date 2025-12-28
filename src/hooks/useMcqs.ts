@@ -195,10 +195,9 @@ export function useDeleteMcq() {
   });
 }
 
-// Bulk create MCQs from CSV
+// Bulk create MCQs from CSV - uses edge function to bypass RLS
 export function useBulkCreateMcqs() {
   const queryClient = useQueryClient();
-  const { user } = useAuthContext();
 
   return useMutation({
     mutationFn: async ({ 
@@ -210,20 +209,31 @@ export function useBulkCreateMcqs() {
       moduleId: string; 
       chapterId?: string | null;
     }) => {
-      const records = mcqs.map((mcq, index) => ({
-        module_id: moduleId,
-        chapter_id: chapterId || null,
-        stem: mcq.stem,
-        choices: mcq.choices as unknown as Json,
-        correct_key: mcq.correct_key,
-        explanation: mcq.explanation,
-        difficulty: mcq.difficulty,
-        display_order: index,
-        created_by: user?.id,
-      }));
+      // Get current session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to import MCQs');
+      }
 
-      const { error } = await supabase.from('mcqs').insert(records);
-      if (error) throw error;
+      // Call edge function which uses service role key
+      const response = await fetch(
+        `https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/bulk-import-mcqs`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ mcqs, moduleId, chapterId }),
+        }
+      );
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import MCQs');
+      }
+
       return { moduleId, chapterId, count: mcqs.length };
     },
     onSuccess: (result) => {
