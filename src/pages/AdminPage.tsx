@@ -476,7 +476,28 @@ export default function AdminPage() {
   }
 
   // Determine default tab based on role
-  const defaultTab = isTopicAdmin ? 'feedback' : 'users';
+  const defaultTab = isTopicAdmin ? 'help' : 'users';
+
+  // For topic admins, show a simplified view with just Help & Templates
+  if (isTopicAdmin) {
+    return (
+      <MainLayout>
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <HelpCircle className="w-8 h-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-heading font-bold">Help & Templates</h1>
+              <p className="text-muted-foreground">
+                Download guides and templates for content preparation.
+              </p>
+            </div>
+          </div>
+
+          <HelpTemplatesTab />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -488,7 +509,6 @@ export default function AdminPage() {
             <p className="text-muted-foreground">
               {isSuperAdmin ? 'Super Admin Access - Full System Control' : 
                isPlatformAdmin ? 'Platform Admin Access - All Modules' : 
-               isTopicAdmin ? 'Topic Admin Access' :
                'Admin Access'}
             </p>
           </div>
@@ -496,13 +516,10 @@ export default function AdminPage() {
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            {/* Only show Users tab to non-topic admins */}
-            {!isTopicAdmin && (
-              <TabsTrigger value="users" className="gap-2">
-                <Users className="w-4 h-4" />
-                Users
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="w-4 h-4" />
+              Users
+            </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="curriculum" className="gap-2">
                 <Layers className="w-4 h-4" />
@@ -515,13 +532,10 @@ export default function AdminPage() {
                 Module Admins
               </TabsTrigger>
             )}
-            {/* Only show Topic Admins tab to non-topic admins */}
-            {!isTopicAdmin && (
-              <TabsTrigger value="topic-admins" className="gap-2">
-                <FileText className="w-4 h-4" />
-                Topic Admins
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="topic-admins" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Topic Admins
+            </TabsTrigger>
             {isPlatformAdmin && (
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
