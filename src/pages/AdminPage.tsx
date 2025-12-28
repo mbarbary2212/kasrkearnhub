@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
@@ -108,6 +108,7 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<string>('');
+  const [studentSearch, setStudentSearch] = useState('');
 
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
@@ -520,6 +521,12 @@ export default function AdminPage() {
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="students" className="gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Students
+              </TabsTrigger>
+            )}
             {isSuperAdmin && (
               <TabsTrigger value="curriculum" className="gap-2">
                 <Layers className="w-4 h-4" />
@@ -630,6 +637,98 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Students Tab - Super Admin & Platform Admin */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="students">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5" />
+                    Student Users
+                  </CardTitle>
+                  <CardDescription>
+                    Search and view student accounts.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  {(() => {
+                    const studentUsers = users.filter(u => u.role === 'student');
+                    const filteredStudents = studentUsers.filter(u => {
+                      if (!studentSearch.trim()) return true;
+                      const search = studentSearch.toLowerCase();
+                      return (
+                        u.full_name?.toLowerCase().includes(search) ||
+                        u.email.toLowerCase().includes(search)
+                      );
+                    });
+                    
+                    if (filteredStudents.length === 0) {
+                      return (
+                        <p className="text-muted-foreground text-center py-8">
+                          {studentSearch ? 'No students found matching your search' : 'No students found'}
+                        </p>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Showing {filteredStudents.length} of {studentUsers.length} students
+                        </p>
+                        {filteredStudents.slice(0, 50).map((u) => (
+                          <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                                <span className="font-semibold text-secondary-foreground">
+                                  {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium">{u.full_name || 'No name'}</p>
+                                <p className="text-sm text-muted-foreground">{u.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={ROLE_COLORS.student}>
+                                {ROLE_LABELS.student}
+                              </Badge>
+                              {isSuperAdmin && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSendPasswordReset(u.email)}
+                                  title="Send password reset email"
+                                >
+                                  <Mail className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {filteredStudents.length > 50 && (
+                          <p className="text-sm text-muted-foreground text-center py-2">
+                            Showing first 50 results. Refine your search to see more.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Curriculum Tab - Super Admin Only */}
           {isSuperAdmin && (
