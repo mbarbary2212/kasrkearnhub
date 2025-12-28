@@ -1055,7 +1055,7 @@ export default function AdminPage() {
 
           {/* Topic Admins Tab */}
           <TabsContent value="topic-admins">
-            <TopicAdminsTab users={users} modules={modules} />
+            <TopicAdminsTab users={users} modules={modules} years={years} />
           </TabsContent>
 
           {/* Settings Tab - Platform Admin only */}

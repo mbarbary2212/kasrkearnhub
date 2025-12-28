@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, FileText, Trash2, Plus, ChevronRight, BookOpen, User } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile, TopicAdmin, Topic } from '@/types/database';
-import type { Module, ModuleAdmin } from '@/types/curriculum';
+import type { Module, ModuleAdmin, Year } from '@/types/curriculum';
 
 interface ModuleChapter {
   id: string;
@@ -27,9 +27,10 @@ interface ModuleChapter {
 interface TopicAdminsTabProps {
   users: Array<Profile & { role: string }>;
   modules: Module[];
+  years: Year[];
 }
 
-export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
+export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
   const { user, isSuperAdmin, isPlatformAdmin } = useAuthContext();
   const queryClient = useQueryClient();
   
@@ -55,13 +56,28 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     enabled: !!user,
   });
 
-  // Filter modules based on user access
+  // Filter and sort modules based on user access - sorted by year number then display_order
   const availableModules = useMemo(() => {
-    if (isSuperAdmin || isPlatformAdmin) return modules;
-    if (!moduleAdmins) return [];
-    const assignedModuleIds = moduleAdmins.map(a => a.module_id);
-    return modules.filter(m => assignedModuleIds.includes(m.id));
-  }, [modules, moduleAdmins, isSuperAdmin, isPlatformAdmin]);
+    let filtered = modules;
+    if (!isSuperAdmin && !isPlatformAdmin) {
+      if (!moduleAdmins) return [];
+      const assignedModuleIds = moduleAdmins.map(a => a.module_id);
+      filtered = modules.filter(m => assignedModuleIds.includes(m.id));
+    }
+    
+    // Sort by year number first, then by display_order
+    return [...filtered].sort((a, b) => {
+      const yearA = years.find(y => y.id === a.year_id);
+      const yearB = years.find(y => y.id === b.year_id);
+      const yearNumA = yearA?.number ?? 0;
+      const yearNumB = yearB?.number ?? 0;
+      
+      if (yearNumA !== yearNumB) {
+        return yearNumA - yearNumB;
+      }
+      return (a.display_order ?? 0) - (b.display_order ?? 0);
+    });
+  }, [modules, years, moduleAdmins, isSuperAdmin, isPlatformAdmin]);
 
   // Fetch all topic admins
   const { data: topicAdmins, isLoading } = useQuery({
