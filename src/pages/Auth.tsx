@@ -10,12 +10,13 @@ import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
-type AuthView = 'login' | 'forgot' | 'reset';
+type AuthView = 'login' | 'forgot' | 'reset' | 'change-password';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const loginType = searchParams.get('type') || 'student';
   const mode = searchParams.get('mode');
+  const view = searchParams.get('view');
   const [isLoading, setIsLoading] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
   const { signIn, signUp, signOut, resetPassword, updatePassword, user, isLoading: authLoading } = useAuthContext();
@@ -25,8 +26,10 @@ export default function Auth() {
     // Check if this is a password reset callback
     if (mode === 'reset') {
       setAuthView('reset');
+    } else if (view === 'password' && user) {
+      setAuthView('change-password');
     }
-  }, [mode]);
+  }, [mode, view, user]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -264,6 +267,85 @@ export default function Auth() {
     );
   }
 
+  // Show change password form for logged-in users
+  if (authView === 'change-password' && user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="absolute inset-0 gradient-medical opacity-5" />
+        
+        <div className="w-full max-w-md relative z-10">
+          <Button 
+            variant="ghost" 
+            className="mb-4"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Button>
+
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-2">
+              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <CardTitle className="text-2xl font-heading font-bold">Change Password</CardTitle>
+              <CardDescription>Enter your new password below</CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="change-password">New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="change-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-change-password">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="confirm-change-password"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-medical"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating password...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   // Show account management if already logged in
   if (user) {
     return (
@@ -277,6 +359,10 @@ export default function Auth() {
           <CardContent className="space-y-4">
             <Button className="w-full" onClick={() => navigate('/')}>
               Go to Dashboard
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setAuthView('change-password')}>
+              <KeyRound className="mr-2 h-4 w-4" />
+              Change Password
             </Button>
             <Button variant="outline" className="w-full" onClick={handleSignOut}>
               Sign Out
