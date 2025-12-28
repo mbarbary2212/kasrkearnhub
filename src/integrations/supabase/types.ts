@@ -856,6 +856,95 @@ export type Database = {
           },
         ]
       }
+      matching_questions: {
+        Row: {
+          chapter_id: string | null
+          column_a_items: Json
+          column_b_items: Json
+          contributing_department_id: string | null
+          correct_matches: Json
+          created_at: string | null
+          created_by: string | null
+          difficulty: string | null
+          display_order: number | null
+          explanation: string | null
+          id: string
+          instruction: string
+          is_deleted: boolean
+          module_id: string
+          show_explanation: boolean
+          topic_id: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          column_a_items?: Json
+          column_b_items?: Json
+          contributing_department_id?: string | null
+          correct_matches?: Json
+          created_at?: string | null
+          created_by?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          instruction?: string
+          is_deleted?: boolean
+          module_id: string
+          show_explanation?: boolean
+          topic_id?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          column_a_items?: Json
+          column_b_items?: Json
+          contributing_department_id?: string | null
+          correct_matches?: Json
+          created_at?: string | null
+          created_by?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          instruction?: string
+          is_deleted?: boolean
+          module_id?: string
+          show_explanation?: boolean
+          topic_id?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matching_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_questions_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcq_attempts: {
         Row: {
           answers: Json | null
