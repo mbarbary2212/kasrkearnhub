@@ -14,6 +14,7 @@ import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import EssayList from '@/components/content/EssayList';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { useLectures, useResources, useMcqSets, useEssays } from '@/hooks/useContent';
+import { useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { 
   ArrowLeft, 
@@ -52,6 +53,7 @@ export default function TopicDetailPage() {
   const { data: mcqSets, isLoading: mcqsLoading } = useMcqSets(topicId);
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
+  const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
 
   const handleResourcesTabChange = (tab: ResourcesTab) => {
     if (tab === 'lectures') {
@@ -90,10 +92,15 @@ export default function TopicDetailPage() {
     { id: 'matching' as PracticeTab, label: 'Matching', icon: Link2, count: matchingQuestions?.length || 0 },
   ];
 
+  // Practice tabs - hide empty tabs for students if setting is enabled, show all for admins
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    return allPracticeTabs.filter(tab => tab.count > 0);
-  }, [canManageContent, mcqSets, essays, matchingQuestions]);
+    // If hideEmptyTabs is true (setting enabled), hide empty tabs; otherwise show all
+    if (hideEmptyTabs) {
+      return allPracticeTabs.filter(tab => tab.count > 0);
+    }
+    return allPracticeTabs;
+  }, [canManageContent, mcqSets, essays, matchingQuestions, hideEmptyTabs]);
 
   return (
     <MainLayout>

@@ -109,6 +109,66 @@ export function useStudySettings() {
   });
 }
 
+// Fetch the hide_empty_self_assessment_tabs setting
+export function useHideEmptySelfAssessmentTabs() {
+  return useQuery({
+    queryKey: ['study-settings', 'hide_empty_self_assessment_tabs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('study_settings')
+        .select('value')
+        .eq('key', 'hide_empty_self_assessment_tabs')
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data?.value === 'true';
+    },
+  });
+}
+
+// Create or update a study setting (upsert)
+export function useUpsertStudySetting() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      // Try update first
+      const { data: existingData } = await supabase
+        .from('study_settings')
+        .select('id')
+        .eq('key', key)
+        .maybeSingle();
+
+      if (existingData) {
+        const { data, error } = await supabase
+          .from('study_settings')
+          .update({ value, updated_by: userData.user?.id, updated_at: new Date().toISOString() })
+          .eq('key', key)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from('study_settings')
+          .insert({ key, value, updated_by: userData.user?.id })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['study-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['study-settings', variables.key] });
+    },
+  });
+}
+
 export function useStudyDisclaimer() {
   return useQuery({
     queryKey: ['study-settings', 'disclaimer'],

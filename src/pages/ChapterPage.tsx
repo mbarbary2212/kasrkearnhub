@@ -30,7 +30,7 @@ import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { useChapterStudyResources, StudyResource } from '@/hooks/useStudyResources';
+import { useChapterStudyResources, StudyResource, useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
@@ -89,6 +89,7 @@ export default function ChapterPage() {
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
+  const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -143,11 +144,15 @@ export default function ChapterPage() {
     { id: 'images' as PracticeTab, label: 'Images', icon: Image, count: 0 },
   ];
 
-  // For students: hide tabs with no content. For admins: show all tabs
+  // For students: hide tabs with no content if setting is enabled. For admins: show all tabs
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    return allPracticeTabs.filter(tab => tab.count > 0);
-  }, [canManageContent, mcqs, essays, caseScenarios, practicals, matchingQuestions]);
+    // If hideEmptyTabs is true (setting enabled), hide empty tabs; otherwise show all
+    if (hideEmptyTabs) {
+      return allPracticeTabs.filter(tab => tab.count > 0);
+    }
+    return allPracticeTabs;
+  }, [canManageContent, mcqs, essays, caseScenarios, practicals, matchingQuestions, hideEmptyTabs]);
 
   return (
     <MainLayout>
