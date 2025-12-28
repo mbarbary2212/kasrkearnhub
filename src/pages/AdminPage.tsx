@@ -218,8 +218,14 @@ export default function AdminPage() {
 
       if (error) throw error;
 
+      // Clean up module_admins if role is no longer department_admin
       if (newRole !== 'department_admin') {
         await supabase.from('module_admins').delete().eq('user_id', userId);
+      }
+
+      // Clean up topic_admins if role is no longer topic_admin
+      if (newRole !== 'topic_admin') {
+        await supabase.from('topic_admins').delete().eq('user_id', userId);
       }
 
       setUsers(prev =>

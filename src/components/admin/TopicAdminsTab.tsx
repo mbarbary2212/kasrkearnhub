@@ -233,23 +233,34 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
     u.role === 'student' || u.role === 'teacher' || u.role === 'topic_admin'
   );
 
+  // Users with topic_admin role (for showing in the list even without assignments)
+  const topicAdminUsers = users.filter(u => u.role === 'topic_admin');
+
   // Group topic admins by user
   const topicAdminsByUser = useMemo(() => {
-    if (!topicAdmins) return {};
     const grouped: Record<string, TopicAdmin[]> = {};
-    topicAdmins.forEach(ta => {
-      // Filter based on user access
-      if (!isSuperAdmin && !isPlatformAdmin) {
-        const assignedModuleIds = moduleAdmins?.map(a => a.module_id) || [];
-        if (!assignedModuleIds.includes(ta.module_id)) return;
-      }
-      if (!grouped[ta.user_id]) {
-        grouped[ta.user_id] = [];
-      }
-      grouped[ta.user_id].push(ta);
+    
+    // First, add all users with topic_admin role (even if they have no assignments)
+    topicAdminUsers.forEach(u => {
+      grouped[u.id] = [];
     });
+    
+    // Then add their assignments
+    if (topicAdmins) {
+      topicAdmins.forEach(ta => {
+        // Filter based on user access
+        if (!isSuperAdmin && !isPlatformAdmin) {
+          const assignedModuleIds = moduleAdmins?.map(a => a.module_id) || [];
+          if (!assignedModuleIds.includes(ta.module_id)) return;
+        }
+        if (!grouped[ta.user_id]) {
+          grouped[ta.user_id] = [];
+        }
+        grouped[ta.user_id].push(ta);
+      });
+    }
     return grouped;
-  }, [topicAdmins, isSuperAdmin, isPlatformAdmin, moduleAdmins]);
+  }, [topicAdmins, topicAdminUsers, isSuperAdmin, isPlatformAdmin, moduleAdmins]);
 
   if (isLoading) {
     return (
@@ -283,7 +294,7 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
         <CardContent>
           {Object.keys(topicAdminsByUser).length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No Topic Admins assigned yet. Click "Assign Topic Admin" to get started.
+              No Topic Admins found. Change a user's role to "Topic Admin" first in the Users tab.
             </p>
           ) : (
             <div className="space-y-4">
@@ -295,6 +306,8 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
                   if (!byModule[a.module_id]) byModule[a.module_id] = [];
                   byModule[a.module_id].push(a);
                 });
+
+                const hasAssignments = assignments.length > 0;
 
                 return (
                   <div key={userId} className="border rounded-lg p-4 space-y-3">
@@ -312,37 +325,43 @@ export function TopicAdminsTab({ users, modules }: TopicAdminsTabProps) {
                     </div>
 
                     <div className="space-y-3 pl-13">
-                      {Object.entries(byModule).map(([moduleId, moduleAssignments]) => (
-                        <div key={moduleId} className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <BookOpen className="w-4 h-4 text-muted-foreground" />
-                            <span>{getModuleName(moduleId)}</span>
+                      {hasAssignments ? (
+                        Object.entries(byModule).map(([moduleId, moduleAssignments]) => (
+                          <div key={moduleId} className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <BookOpen className="w-4 h-4 text-muted-foreground" />
+                              <span>{getModuleName(moduleId)}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 pl-6">
+                              {moduleAssignments.map(a => (
+                                <Badge key={a.id} variant="secondary" className="gap-1 py-1.5">
+                                  {a.chapter_id 
+                                    ? getChapterName(a.chapter_id)
+                                    : a.topic_id 
+                                      ? getTopicName(a.topic_id)
+                                      : 'Unknown'
+                                  }
+                                  <button
+                                    onClick={() => {
+                                      if (confirm('Remove this assignment?')) {
+                                        removeMutation.mutate(a.id);
+                                      }
+                                    }}
+                                    className="ml-1 hover:text-destructive"
+                                    disabled={removeMutation.isPending}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2 pl-6">
-                            {moduleAssignments.map(a => (
-                              <Badge key={a.id} variant="secondary" className="gap-1 py-1.5">
-                                {a.chapter_id 
-                                  ? getChapterName(a.chapter_id)
-                                  : a.topic_id 
-                                    ? getTopicName(a.topic_id)
-                                    : 'Unknown'
-                                }
-                                <button
-                                  onClick={() => {
-                                    if (confirm('Remove this assignment?')) {
-                                      removeMutation.mutate(a.id);
-                                    }
-                                  }}
-                                  className="ml-1 hover:text-destructive"
-                                  disabled={removeMutation.isPending}
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No chapters/topics assigned yet. Click "Assign Topic Admin" to assign content.
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
