@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import CaseScenarioList from '@/components/content/CaseScenarioList';
 import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModal';
 import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBulkUploadModal';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
+import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -25,6 +26,7 @@ import {
   useChapterPracticals
 } from '@/hooks/useChapterContent';
 import { useChapterProgress } from '@/hooks/useChapterProgress';
+import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -46,12 +48,13 @@ import {
   FolderOpen,
   GraduationCap,
   ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type SectionMode = 'resources' | 'practice';
 type ResourcesTab = 'lectures' | 'flashcards' | 'documents';
-type PracticeTab = 'mcqs' | 'essays' | 'cases' | 'practical' | 'images';
+type PracticeTab = 'mcqs' | 'essays' | 'cases' | 'practical' | 'matching' | 'images';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -85,6 +88,7 @@ export default function ChapterPage() {
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
+  const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -129,14 +133,21 @@ export default function ChapterPage() {
     { id: 'documents' as ResourcesTab, label: 'Documents', icon: FileText, count: resources?.length || 0 },
   ];
 
-  // Practice sub-tabs
-  const practiceTabs = [
+  // Practice sub-tabs - conditionally visible for students
+  const allPracticeTabs = [
     { id: 'mcqs' as PracticeTab, label: 'MCQ', icon: HelpCircle, count: mcqs?.length || 0 },
     { id: 'essays' as PracticeTab, label: 'Short Essays', icon: PenTool, count: essays?.length || 0 },
     { id: 'cases' as PracticeTab, label: 'Cases', icon: Stethoscope, count: caseScenarios?.length || 0 },
     { id: 'practical' as PracticeTab, label: 'OSCE/Practical', icon: FlaskConical, count: practicals?.length || 0 },
+    { id: 'matching' as PracticeTab, label: 'Matching', icon: Link2, count: matchingQuestions?.length || 0 },
     { id: 'images' as PracticeTab, label: 'Images', icon: Image, count: 0 },
   ];
+
+  // For students: hide tabs with no content. For admins: show all tabs
+  const practiceTabs = useMemo(() => {
+    if (canManageContent) return allPracticeTabs;
+    return allPracticeTabs.filter(tab => tab.count > 0);
+  }, [canManageContent, mcqs, essays, caseScenarios, practicals, matchingQuestions]);
 
   return (
     <MainLayout>
@@ -491,6 +502,24 @@ export default function ChapterPage() {
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Matching Questions Content */}
+                {practiceTab === 'matching' && (
+                  <div>
+                    {matchingLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <MatchingQuestionList
+                        questions={matchingQuestions || []}
+                        moduleId={moduleId || ''}
+                        chapterId={chapterId}
+                        isAdmin={canManageContent}
                       />
                     )}
                   </div>
