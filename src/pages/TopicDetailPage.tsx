@@ -49,9 +49,9 @@ type SectionMode = 'resources' | 'practice';
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isTeacher, isSuperAdmin } = useAuthContext();
+  const { isAdmin, isTeacher, isSuperAdmin, canManageTopic } = useAuthContext();
 
-  const canManageContent = isAdmin || isTeacher || isSuperAdmin;
+  const canManageContent = isAdmin || isTeacher || isSuperAdmin || (topicId && canManageTopic(topicId));
 
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
