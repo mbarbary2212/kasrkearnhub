@@ -102,16 +102,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 Feedback
               </Link>
             )}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname.startsWith('/admin') ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                Admin
-              </Link>
-            )}
           </nav>
 
           {user ? (

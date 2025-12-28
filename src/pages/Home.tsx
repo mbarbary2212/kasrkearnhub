@@ -3,17 +3,22 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, Settings, ChevronRight } from 'lucide-react';
+import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
+import MainLayout from '@/components/layout/MainLayout';
 
 export default function Home() {
   const { user } = useAuthContext();
   const navigate = useNavigate();
 
-  // If user is logged in, show the year selection page
+  // If user is logged in, show the year selection page wrapped in MainLayout
   if (user) {
-    return <LoggedInHome />;
+    return (
+      <MainLayout>
+        <LoggedInHome />
+      </MainLayout>
+    );
   }
 
   // Landing page for non-logged in users
@@ -143,10 +148,8 @@ export default function Home() {
 // Logged in user home page
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile, role } = useAuthContext();
+  const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
-
-  const isAdmin = role === 'admin' || role === 'department_admin' || role === 'platform_admin' || role === 'super_admin';
 
   // Color mapping for years - using inline styles since dynamic Tailwind classes are purged
   const getYearStyle = (color: string | null): React.CSSProperties => {
@@ -167,85 +170,60 @@ function LoggedInHome() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
-            <span className="font-heading font-bold text-xl">KasrLearn</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {isAdmin && (
-              <Button variant="ghost" onClick={() => navigate('/admin')}>
-                <Settings className="w-4 h-4 mr-2" />
-                Admin
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate('/auth')}>
-              {profile?.full_name || 'Account'}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="space-y-8 animate-fade-in">
+      {/* Welcome Section */}
+      <section className="text-center py-8">
+        <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">
+          Welcome back, <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
+        </h1>
+        <p className="text-lg text-muted-foreground">
+          Select your academic year to continue
+        </p>
+      </section>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-8 animate-fade-in">
-          {/* Welcome Section */}
-          <section className="text-center py-8">
-            <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-              Welcome back, <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Select your academic year to continue
-            </p>
-          </section>
-
-          {/* Year Selection */}
-          <section className="max-w-3xl mx-auto">
-            <h2 className="text-xl font-heading font-semibold mb-4">Academic Years</h2>
-            
-            {isLoading ? (
-              <div className="flex flex-col gap-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-[72px] w-full" />
-                ))}
+      {/* Year Selection */}
+      <section className="max-w-3xl mx-auto">
+        <h2 className="text-xl font-heading font-semibold mb-4">Academic Years</h2>
+        
+        {isLoading ? (
+          <div className="flex flex-col gap-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-[72px] w-full" />
+            ))}
+          </div>
+        ) : years && years.length > 0 ? (
+          <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
+            {years.map((year) => (
+              <div
+                key={year.id}
+                className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
+                onClick={() => navigate(`/year/${year.number}`)}
+              >
+                <div 
+                  className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
+                  style={getYearStyle(year.color)}
+                >
+                  <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-medium text-foreground">
+                    {year.name}
+                  </p>
+                  {year.subtitle && (
+                    <p className="text-sm text-muted-foreground truncate">{year.subtitle}</p>
+                  )}
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
               </div>
-            ) : years && years.length > 0 ? (
-              <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-                {years.map((year) => (
-                  <div
-                    key={year.id}
-                    className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
-                    onClick={() => navigate(`/year/${year.number}`)}
-                  >
-                    <div 
-                      className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
-                      style={getYearStyle(year.color)}
-                    >
-                      <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-foreground">
-                        {year.name}
-                      </p>
-                      {year.subtitle && (
-                        <p className="text-sm text-muted-foreground truncate">{year.subtitle}</p>
-                      )}
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No years available yet.</p>
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No years available yet.</p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
