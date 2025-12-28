@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +12,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useAllFeedback, useUpdateFeedback, FeedbackStatus, ItemFeedback } from '@/hooks/useItemFeedback';
 import { useAllInquiries, useUpdateInquiry, InquiryStatus, Inquiry } from '@/hooks/useInquiries';
 import { useUserManagedModules } from '@/hooks/useModuleAdmin';
-import { MessageSquare, Mail, Flag, CheckCircle, Clock, Star, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Mail, Flag, Star, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -32,7 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminInboxPage() {
-  const { isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
+  const { isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isDepartmentAdmin, topicAssignments } = useAuthContext();
   const [selectedModule, setSelectedModule] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedFeedback, setSelectedFeedback] = useState<ItemFeedback | null>(null);
@@ -41,15 +41,86 @@ export default function AdminInboxPage() {
 
   const { data: modules, isLoading: modulesLoading } = useUserManagedModules();
   
-  const feedbackFilters = {
-    moduleId: selectedModule !== 'all' ? selectedModule : undefined,
-    status: selectedStatus !== 'all' ? (selectedStatus as FeedbackStatus) : undefined,
-  };
-  
-  const inquiryFilters = {
-    moduleId: selectedModule !== 'all' ? selectedModule : undefined,
-    status: selectedStatus !== 'all' ? (selectedStatus as InquiryStatus) : undefined,
-  };
+  // Determine filter based on user role
+  const feedbackFilters = useMemo(() => {
+    const filters: {
+      moduleId?: string;
+      moduleIds?: string[];
+      chapterIds?: string[];
+      status?: FeedbackStatus;
+    } = {};
+
+    // Apply status filter
+    if (selectedStatus !== 'all') {
+      filters.status = selectedStatus as FeedbackStatus;
+    }
+
+    // Role-based filtering
+    if (isSuperAdmin || isPlatformAdmin) {
+      // Super/Platform admins see all, but can filter by module
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      }
+    } else if (isDepartmentAdmin) {
+      // Module admin sees only their modules
+      const moduleIds = modules?.map((m: { id: string }) => m.id) || [];
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      } else if (moduleIds.length > 0) {
+        filters.moduleIds = moduleIds;
+      }
+    } else if (isTopicAdmin) {
+      // Topic admin sees only feedback for their assigned chapters
+      const chapterIds = topicAssignments
+        .filter(a => a.chapter_id)
+        .map(a => a.chapter_id as string);
+      if (chapterIds.length > 0) {
+        filters.chapterIds = chapterIds;
+      }
+    }
+
+    return filters;
+  }, [selectedModule, selectedStatus, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, modules, topicAssignments]);
+
+  const inquiryFilters = useMemo(() => {
+    const filters: {
+      moduleId?: string;
+      moduleIds?: string[];
+      chapterIds?: string[];
+      status?: InquiryStatus;
+    } = {};
+
+    // Apply status filter
+    if (selectedStatus !== 'all') {
+      filters.status = selectedStatus as InquiryStatus;
+    }
+
+    // Role-based filtering
+    if (isSuperAdmin || isPlatformAdmin) {
+      // Super/Platform admins see all, but can filter by module
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      }
+    } else if (isDepartmentAdmin) {
+      // Module admin sees only their modules
+      const moduleIds = modules?.map((m: { id: string }) => m.id) || [];
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      } else if (moduleIds.length > 0) {
+        filters.moduleIds = moduleIds;
+      }
+    } else if (isTopicAdmin) {
+      // Topic admin sees only inquiries for their assigned chapters
+      const chapterIds = topicAssignments
+        .filter(a => a.chapter_id)
+        .map(a => a.chapter_id as string);
+      if (chapterIds.length > 0) {
+        filters.chapterIds = chapterIds;
+      }
+    }
+
+    return filters;
+  }, [selectedModule, selectedStatus, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, modules, topicAssignments]);
 
   const { data: feedbackList, isLoading: feedbackLoading } = useAllFeedback(feedbackFilters);
   const { data: inquiryList, isLoading: inquiriesLoading } = useAllInquiries(inquiryFilters);
@@ -133,29 +204,48 @@ export default function AdminInboxPage() {
     );
   };
 
+  // Determine page title based on role
+  const getPageDescription = () => {
+    if (isSuperAdmin || isPlatformAdmin) {
+      return 'Manage all feedback and inquiries across the platform';
+    }
+    if (isDepartmentAdmin) {
+      return 'Manage feedback and inquiries for your assigned modules';
+    }
+    if (isTopicAdmin) {
+      return 'Manage feedback and inquiries for your assigned chapters';
+    }
+    return 'Manage feedback and inquiries';
+  };
+
+  // Show module filter only for super/platform admins or module admins with multiple modules
+  const showModuleFilter = isSuperAdmin || isPlatformAdmin || (isDepartmentAdmin && modules && modules.length > 1);
+
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-heading font-semibold">Admin Inbox</h1>
-          <p className="text-muted-foreground">Manage feedback and inquiries</p>
+          <p className="text-muted-foreground">{getPageDescription()}</p>
         </div>
 
         {/* Filters */}
         <div className="flex gap-4 flex-wrap">
-          <Select value={selectedModule} onValueChange={setSelectedModule}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by module" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Modules</SelectItem>
-              {modules?.map((mod: { id: string; name: string }) => (
-                <SelectItem key={mod.id} value={mod.id}>
-                  {mod.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {showModuleFilter && (
+            <Select value={selectedModule} onValueChange={setSelectedModule}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by module" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modules</SelectItem>
+                {modules?.map((mod: { id: string; name: string }) => (
+                  <SelectItem key={mod.id} value={mod.id}>
+                    {mod.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-40">
