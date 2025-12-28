@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface CreateTopicData {
   departmentId: string;
+  moduleId: string;
   name: string;
   description?: string | null;
 }
@@ -10,6 +11,7 @@ interface CreateTopicData {
 interface UpdateTopicData {
   topicId: string;
   departmentId: string;
+  moduleId?: string;
   data: {
     name?: string;
     description?: string | null;
@@ -19,6 +21,7 @@ interface UpdateTopicData {
 interface DeleteTopicData {
   topicId: string;
   departmentId: string;
+  moduleId?: string;
 }
 
 // Generate slug from name
@@ -34,12 +37,13 @@ export function useCreateTopic() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ departmentId, name, description }: CreateTopicData) => {
-      // Get next display order
+    mutationFn: async ({ departmentId, moduleId, name, description }: CreateTopicData) => {
+      // Get next display order for this department+module combination
       const { data: existingTopics } = await supabase
         .from('topics')
         .select('display_order')
         .eq('department_id', departmentId)
+        .eq('module_id', moduleId)
         .order('display_order', { ascending: false })
         .limit(1);
       
@@ -49,6 +53,7 @@ export function useCreateTopic() {
         .from('topics')
         .insert({
           department_id: departmentId,
+          module_id: moduleId,
           name,
           slug: generateSlug(name),
           description,
@@ -61,7 +66,7 @@ export function useCreateTopic() {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId] });
+      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId, variables.moduleId] });
     },
   });
 }
@@ -89,7 +94,7 @@ export function useUpdateTopic() {
       return result;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId] });
+      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId, variables.moduleId] });
     },
   });
 }
@@ -107,7 +112,7 @@ export function useDeleteTopic() {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId] });
+      queryClient.invalidateQueries({ queryKey: ['topics', variables.departmentId, variables.moduleId] });
     },
   });
 }

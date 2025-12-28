@@ -81,6 +81,7 @@ export interface Department {
 export interface Topic {
   id: string;
   department_id: string;
+  module_id: string | null;
   slug: string;
   name: string;
   name_ar: string | null;
