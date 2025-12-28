@@ -188,8 +188,8 @@ export function ModuleLearningTab({
   // Fetch books with metadata
   const { data: books, isLoading: booksLoading } = useModuleBooks(moduleId);
   
-  // Fetch topics count for Pharmacology
-  const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID);
+  // Fetch topics count for Pharmacology (filtered by moduleId)
+  const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
   // Modal states
   const [bookModalOpen, setBookModalOpen] = useState(false);
