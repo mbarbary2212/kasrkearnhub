@@ -56,9 +56,9 @@ type SectionMode = 'resources' | 'practice';
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isTeacher, isSuperAdmin, canManageChapter } = useAuthContext();
+  const { isTeacher, isSuperAdmin, canManageChapter } = useAuthContext();
 
-  const canManageContent = isAdmin || isTeacher || isSuperAdmin || (chapterId && canManageChapter(chapterId));
+  const canManageContent = !!(isTeacher || (chapterId && canManageChapter(chapterId)));
 
   // State for section mode and active tabs within sections
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
