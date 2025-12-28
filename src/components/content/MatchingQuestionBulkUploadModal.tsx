@@ -22,6 +22,7 @@ interface MatchingQuestionBulkUploadModalProps {
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
 }
 
 export function MatchingQuestionBulkUploadModal({
@@ -29,6 +30,7 @@ export function MatchingQuestionBulkUploadModal({
   onOpenChange,
   moduleId,
   chapterId,
+  topicId,
 }: MatchingQuestionBulkUploadModalProps) {
   const [csvText, setCsvText] = useState('');
   const [parsedQuestions, setParsedQuestions] = useState<MatchingQuestionFormData[]>([]);
@@ -71,6 +73,7 @@ export function MatchingQuestionBulkUploadModal({
         questions: parsedQuestions,
         moduleId,
         chapterId,
+        topicId,
       });
       onOpenChange(false);
       setCsvText('');

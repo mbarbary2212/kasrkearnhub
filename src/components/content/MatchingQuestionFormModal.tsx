@@ -32,6 +32,7 @@ interface MatchingQuestionFormModalProps {
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
   question?: MatchingQuestion | null;
 }
 
@@ -40,6 +41,7 @@ export function MatchingQuestionFormModal({
   onOpenChange,
   moduleId,
   chapterId,
+  topicId,
   question,
 }: MatchingQuestionFormModalProps) {
   const { isAdmin, isSuperAdmin } = useAuthContext();
@@ -139,6 +141,7 @@ export function MatchingQuestionFormModal({
       explanation: explanation || null,
       show_explanation: showExplanation,
       difficulty,
+      topic_id: topicId,
     };
 
     if (question) {
@@ -147,6 +150,7 @@ export function MatchingQuestionFormModal({
         data,
         moduleId,
         chapterId,
+        topicId,
       });
     } else {
       await createMutation.mutateAsync({

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,9 @@ import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import EssayList from '@/components/content/EssayList';
+import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { useLectures, useResources, useMcqSets, useEssays } from '@/hooks/useContent';
+import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { 
   ArrowLeft, 
   Video, 
@@ -23,12 +25,13 @@ import {
   GraduationCap,
   ClipboardList,
   ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type SectionMode = 'resources' | 'practice';
 type ResourcesTab = 'lectures' | 'documents';
-type PracticeTab = 'mcqs' | 'essays';
+type PracticeTab = 'mcqs' | 'essays' | 'matching';
 
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
@@ -48,6 +51,7 @@ export default function TopicDetailPage() {
   const { data: resources, isLoading: resourcesLoading } = useResources(topicId);
   const { data: mcqSets, isLoading: mcqsLoading } = useMcqSets(topicId);
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
+  const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
 
   const handleResourcesTabChange = (tab: ResourcesTab) => {
     if (tab === 'lectures') {
@@ -79,10 +83,17 @@ export default function TopicDetailPage() {
     { id: 'documents' as ResourcesTab, label: 'Documents', icon: FileText, count: resources?.length || 0 },
   ];
 
-  const practiceTabs = [
+  // Practice tabs - hide empty tabs for students, show all for admins
+  const allPracticeTabs = [
     { id: 'mcqs' as PracticeTab, label: 'MCQs', icon: HelpCircle, count: mcqSets?.length || 0 },
     { id: 'essays' as PracticeTab, label: 'Essays', icon: PenTool, count: essays?.length || 0 },
+    { id: 'matching' as PracticeTab, label: 'Matching', icon: Link2, count: matchingQuestions?.length || 0 },
   ];
+
+  const practiceTabs = useMemo(() => {
+    if (canManageContent) return allPracticeTabs;
+    return allPracticeTabs.filter(tab => tab.count > 0);
+  }, [canManageContent, mcqSets, essays, matchingQuestions]);
 
   return (
     <MainLayout>
@@ -366,6 +377,23 @@ export default function TopicDetailPage() {
                         <PenTool className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">No essays available yet.</p>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Matching Questions */}
+                {practiceTab === 'matching' && (
+                  <div>
+                    {matchingLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <MatchingQuestionList
+                        questions={matchingQuestions || []}
+                        moduleId={moduleId || ''}
+                        isAdmin={canManageContent}
+                      />
                     )}
                   </div>
                 )}
