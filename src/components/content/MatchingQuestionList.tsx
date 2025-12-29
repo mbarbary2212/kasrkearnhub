@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Link2, Filter, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Upload, Link2, Trash2, RotateCcw } from 'lucide-react';
 import { MatchingQuestionCard } from './MatchingQuestionCard';
 import { MatchingQuestionFormModal } from './MatchingQuestionFormModal';
 import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadModal';
@@ -18,12 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface MatchingQuestionListProps {
   questions: MatchingQuestion[];
@@ -114,27 +108,20 @@ export function MatchingQuestionList({
             <Upload className="h-4 w-4 mr-1" />
             Bulk Import
           </Button>
+          {/* Separate Show Deleted button - only visible to admins */}
           {showDeletedToggle && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="default" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filters
-                  {showDeleted && (
-                    <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuCheckboxItem
-                  checked={showDeleted}
-                  onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
-                >
-                  <Trash2 className="h-3 w-3 mr-2 text-destructive" />
-                  Show deleted ({deletedQuestions.length})
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant={showDeleted ? "secondary" : "outline"}
+              size="default"
+              className={cn(
+                "gap-2",
+                showDeleted && "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
+              )}
+              onClick={() => onShowDeletedChange?.(!showDeleted)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Show deleted ({deletedQuestions.length})
+            </Button>
           )}
         </div>
       )}

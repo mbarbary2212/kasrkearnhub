@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ContentItemActions from '@/components/admin/ContentItemActions';
@@ -140,40 +139,44 @@ export default function EssayList({
     <>
       {/* Filter Bar */}
       <div className="flex justify-between items-center mb-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="h-3 w-3" />
-              Filters
-              {(showMarkedOnly || showDeleted) && (
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {(showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
-                </Badge>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="h-3 w-3" />
+                Filters
+                {showMarkedOnly && (
+                  <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuCheckboxItem
+                checked={showMarkedOnly}
+                onCheckedChange={setShowMarkedOnly}
+              >
+                <Star className="h-3 w-3 mr-2 text-amber-500" />
+                Marked for review ({markedIds.size})
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Separate Show Deleted button - only visible to admins */}
+          {showDeletedToggle && (
+            <Button
+              variant={showDeleted ? "secondary" : "outline"}
+              size="sm"
+              className={cn(
+                "gap-2",
+                showDeleted && "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
               )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuCheckboxItem
-              checked={showMarkedOnly}
-              onCheckedChange={setShowMarkedOnly}
+              onClick={() => onShowDeletedChange?.(!showDeleted)}
             >
-              <Star className="h-3 w-3 mr-2 text-amber-500" />
-              Marked for review ({markedIds.size})
-            </DropdownMenuCheckboxItem>
-            {showDeletedToggle && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem
-                  checked={showDeleted}
-                  onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
-                >
-                  <Trash2 className="h-3 w-3 mr-2 text-destructive" />
-                  Show deleted ({deletedEssays.length})
-                </DropdownMenuCheckboxItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Trash2 className="h-3 w-3" />
+              Show deleted ({deletedEssays.length})
+            </Button>
+          )}
+        </div>
       </div>
 
       {displayEssays.length === 0 && filteredEssays.length === 0 ? (
