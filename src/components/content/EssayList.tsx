@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { PenTool, Star, Printer, ExternalLink, Filter } from 'lucide-react';
+import { PenTool, Star, Printer, ExternalLink, Filter, Trash2, RotateCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,11 +7,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
 import { cn } from '@/lib/utils';
+import { useContentDelete } from '@/hooks/useContentDelete';
 
 interface Essay {
   id: string;
@@ -19,29 +21,40 @@ interface Essay {
   question: string;
   model_answer?: string | null;
   rating?: number | null;
+  is_deleted?: boolean;
 }
 
 interface EssayListProps {
   essays: Essay[];
+  deletedEssays?: Essay[];
   moduleId?: string;
   chapterId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
+  showDeletedToggle?: boolean;
+  showDeleted?: boolean;
+  onShowDeletedChange?: (show: boolean) => void;
 }
 
 export default function EssayList({
   essays,
+  deletedEssays = [],
   moduleId,
   chapterId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
+  showDeletedToggle = false,
+  showDeleted = false,
+  onShowDeletedChange,
 }: EssayListProps) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showMarkedOnly, setShowMarkedOnly] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+
+  const { doRestore } = useContentDelete('essays', moduleId || '', chapterId);
 
   const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -120,6 +133,9 @@ export default function EssayList({
     );
   }
 
+  // Combine active and deleted essays when showing deleted
+  const displayEssays = showDeleted ? [...essays, ...deletedEssays] : essays;
+
   return (
     <>
       {/* Filter Bar */}
@@ -129,8 +145,10 @@ export default function EssayList({
             <Button variant="outline" size="sm" className="gap-2">
               <Filter className="h-3 w-3" />
               Filters
-              {showMarkedOnly && (
-                <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+              {(showMarkedOnly || showDeleted) && (
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {(showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
+                </Badge>
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -142,11 +160,23 @@ export default function EssayList({
               <Star className="h-3 w-3 mr-2 text-amber-500" />
               Marked for review ({markedIds.size})
             </DropdownMenuCheckboxItem>
+            {showDeletedToggle && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={showDeleted}
+                  onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
+                >
+                  <Trash2 className="h-3 w-3 mr-2 text-destructive" />
+                  Show deleted ({deletedEssays.length})
+                </DropdownMenuCheckboxItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {filteredEssays.length === 0 ? (
+      {displayEssays.length === 0 && filteredEssays.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
             {showMarkedOnly 
@@ -156,81 +186,110 @@ export default function EssayList({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredEssays.map((essay, index) => (
-            <Card 
-              key={essay.id} 
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleOpen(index)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Mark for Review star */}
-                      <button
-                        onClick={(e) => toggleMark(essay.id, e)}
-                        className={cn(
-                          'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
-                          markedIds.has(essay.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+          {(showMarkedOnly ? filteredEssays : displayEssays).map((essay, index) => {
+            const isDeleted = essay.is_deleted;
+            return (
+              <Card 
+                key={essay.id} 
+                className={cn(
+                  "hover:shadow-md transition-shadow cursor-pointer",
+                  isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
+                )}
+                onClick={() => !isDeleted && handleOpen(index)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {/* Mark for Review star */}
+                        {!isDeleted && (
+                          <button
+                            onClick={(e) => toggleMark(essay.id, e)}
+                            className={cn(
+                              'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                              markedIds.has(essay.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                            )}
+                            title={markedIds.has(essay.id) ? 'Remove from review' : 'Mark for review'}
+                          >
+                            <Star className={cn('h-4 w-4', markedIds.has(essay.id) && 'fill-current')} />
+                          </button>
                         )}
-                        title={markedIds.has(essay.id) ? 'Remove from review' : 'Mark for review'}
-                      >
-                        <Star className={cn('h-4 w-4', markedIds.has(essay.id) && 'fill-current')} />
-                      </button>
-                      <h3 className="font-medium truncate">{essay.title}</h3>
-                      {essay.rating && (
-                        <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                          {essay.rating}
-                        </Badge>
+                        {isDeleted && (
+                          <Badge variant="destructive" className="text-xs mr-1">Deleted</Badge>
+                        )}
+                        <h3 className={cn("font-medium truncate", isDeleted && "line-through")}>{essay.title}</h3>
+                        {essay.rating && !isDeleted && (
+                          <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                            <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                            {essay.rating}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2 ml-7">{essay.question}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isDeleted ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            doRestore(essay.id, essay.title);
+                          }}
+                          className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                          title="Restore"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Restore
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpen(index);
+                            }}
+                            title="Open"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          {(canEdit || canDelete) && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handlePrint(essay, e)}
+                                title="Print"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                              {moduleId && (
+                                <ContentItemActions
+                                  id={essay.id}
+                                  title={essay.title}
+                                  description={essay.question}
+                                  contentType="essay"
+                                  moduleId={moduleId}
+                                  chapterId={chapterId}
+                                  canEdit={canEdit}
+                                  canDelete={canDelete}
+                                  showFeedback={showFeedback}
+                                />
+                              )}
+                            </>
+                          )}
+                        </>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 ml-7">{essay.question}</p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpen(index);
-                      }}
-                      title="Open"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                    {(canEdit || canDelete) && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => handlePrint(essay, e)}
-                          title="Print"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </Button>
-                        {moduleId && (
-                          <ContentItemActions
-                            id={essay.id}
-                            title={essay.title}
-                            description={essay.question}
-                            contentType="essay"
-                            moduleId={moduleId}
-                            chapterId={chapterId}
-                            canEdit={canEdit}
-                            canDelete={canDelete}
-                            showFeedback={showFeedback}
-                          />
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
