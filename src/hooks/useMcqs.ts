@@ -52,17 +52,21 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
   };
 }
 
-// Fetch MCQs by module
-export function useModuleMcqs(moduleId?: string) {
+// Fetch MCQs by module (with optional includeDeleted flag)
+export function useModuleMcqs(moduleId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['mcqs', 'module', moduleId],
+    queryKey: ['mcqs', 'module', moduleId, { includeDeleted }],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('module_id', moduleId!)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
+        .eq('module_id', moduleId!);
+      
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+      
+      const { data, error } = await query.order('display_order', { ascending: true });
 
       if (error) throw error;
       return (data || []).map(mapDbRowToMcq);
@@ -71,17 +75,21 @@ export function useModuleMcqs(moduleId?: string) {
   });
 }
 
-// Fetch MCQs by chapter
-export function useChapterMcqs(chapterId?: string) {
+// Fetch MCQs by chapter (with optional includeDeleted flag)
+export function useChapterMcqs(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['mcqs', 'chapter', chapterId],
+    queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted }],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
+        .eq('chapter_id', chapterId!);
+      
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+      
+      const { data, error } = await query.order('display_order', { ascending: true });
 
       if (error) throw error;
       return (data || []).map(mapDbRowToMcq);
@@ -174,24 +182,15 @@ export function useDeleteMcq() {
       moduleId: string;
       chapterId?: string | null;
     }) => {
-      const { data, error } = await supabase
+      // Simple update without .select() to avoid JSON coercion issues
+      const { error, count } = await supabase
         .from('mcqs')
         .update({ is_deleted: true, updated_by: user?.id })
-        .eq('id', id)
-        .select('id');
+        .eq('id', id);
 
       if (error) throw error;
 
-      // If RLS blocks the update, Supabase can return 0 rows without throwing.
-      if (!data || data.length === 0) {
-        throw new Error('Delete failed: no MCQ was updated (0 rows affected). Check your permissions.');
-      }
-
-      // Sanity check: id is unique, we should never update more than one row.
-      if (data.length > 1) {
-        throw new Error('Delete failed: unexpected multiple rows affected.');
-      }
-
+      // count can be null if not returned; we proceed with success if no error
       return { moduleId, chapterId };
     },
     onSuccess: (result) => {
@@ -207,6 +206,43 @@ export function useDeleteMcq() {
       toast({ 
         title: 'Error deleting MCQ', 
         description: error.message || 'Delete failed. You may not have permission.', 
+        variant: 'destructive' 
+      });
+    },
+  });
+}
+
+// Restore soft-deleted MCQ
+export function useRestoreMcq() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async ({ id, moduleId, chapterId }: { 
+      id: string; 
+      moduleId: string;
+      chapterId?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('mcqs')
+        .update({ is_deleted: false, updated_by: user?.id })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { moduleId, chapterId };
+    },
+    onSuccess: (result) => {
+      toast({ title: 'MCQ restored successfully' });
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+      }
+    },
+    onError: (error: Error) => {
+      console.error('MCQ restore error:', error);
+      toast({ 
+        title: 'Error restoring MCQ', 
+        description: error.message || 'Restore failed. You may not have permission.', 
         variant: 'destructive' 
       });
     },

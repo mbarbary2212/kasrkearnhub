@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
-import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star } from 'lucide-react';
+import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -29,18 +29,23 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
-import { useDeleteMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 
 interface McqListProps {
   mcqs: Mcq[];
+  deletedMcqs?: Mcq[];
   moduleId: string;
   chapterId?: string | null;
   isAdmin: boolean;
+  showDeletedToggle?: boolean;
+  showDeleted?: boolean;
+  onShowDeletedChange?: (show: boolean) => void;
 }
 
 const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty
@@ -49,9 +54,19 @@ const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,e
 
 const SIMILARITY_THRESHOLD = 0.85;
 
-export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
+export function McqList({ 
+  mcqs, 
+  deletedMcqs = [],
+  moduleId, 
+  chapterId, 
+  isAdmin,
+  showDeletedToggle = false,
+  showDeleted = false,
+  onShowDeletedChange,
+}: McqListProps) {
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
+  const [restoringMcq, setRestoringMcq] = useState<Mcq | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [csvText, setCsvText] = useState('');
@@ -65,7 +80,11 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useDeleteMcq();
+  const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+
+  // Combine active and deleted MCQs based on showDeleted flag
+  const displayMcqs = showDeleted ? deletedMcqs : mcqs;
 
   // Find duplicates in existing MCQs
   const duplicateMcqs = useMemo(() => {
@@ -95,15 +114,15 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   );
 
   const filteredMcqs = useMemo(() => {
-    let result = mcqs;
-    if (showDuplicatesOnly) {
+    let result = displayMcqs;
+    if (showDuplicatesOnly && !showDeleted) {
       result = result.filter(mcq => duplicateIds.has(mcq.id));
     }
     if (showMarkedOnly) {
       result = result.filter(mcq => markedIds.has(mcq.id));
     }
     return result;
-  }, [mcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted]);
 
   const toggleMark = useCallback((id: string) => {
     setMarkedIds(prev => {
@@ -123,6 +142,15 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
     deleteMutation.mutate(
       { id: deletingMcq.id, moduleId, chapterId },
       { onSuccess: () => setDeletingMcq(null) }
+    );
+  };
+
+  const handleRestore = () => {
+    if (!restoringMcq || restoreMutation.isPending) return;
+
+    restoreMutation.mutate(
+      { id: restoringMcq.id, moduleId, chapterId },
+      { onSuccess: () => setRestoringMcq(null) }
     );
   };
 
@@ -250,7 +278,7 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   const possibleDuplicates = previewData?.filter(p => p.isPossibleDuplicate).length || 0;
   const itemsToImport = previewData?.filter(p => p.status !== 'skip').length || 0;
 
-  if (mcqs.length === 0 && !isAdmin) {
+  if (displayMcqs.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>No MCQs available yet.</p>
@@ -263,15 +291,15 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
       {/* Actions Bar */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {/* Marked for Review filter - always available */}
+          {/* Filters dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Filter className="h-3 w-3" />
                 Filters
-                {(showDuplicatesOnly || showMarkedOnly) && (
+                {(showDuplicatesOnly || showMarkedOnly || showDeleted) && (
                   <Badge variant="secondary" className="ml-1 text-xs">
-                    {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0)}
+                    {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
                   </Badge>
                 )}
               </Button>
@@ -284,7 +312,7 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                 <Star className="h-3 w-3 mr-2 text-amber-500" />
                 Marked for review ({markedIds.size})
               </DropdownMenuCheckboxItem>
-              {isAdmin && duplicateMcqs.length > 0 && (
+              {isAdmin && duplicateMcqs.length > 0 && !showDeleted && (
                 <DropdownMenuCheckboxItem
                   checked={showDuplicatesOnly}
                   onCheckedChange={setShowDuplicatesOnly}
@@ -293,10 +321,22 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                   Show duplicates only ({duplicateMcqs.length})
                 </DropdownMenuCheckboxItem>
               )}
+              {isAdmin && showDeletedToggle && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={showDeleted}
+                    onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
+                  >
+                    <Trash2 className="h-3 w-3 mr-2 text-destructive" />
+                    Show deleted ({deletedMcqs.length})
+                  </DropdownMenuCheckboxItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {isAdmin && (
+        {isAdmin && !showDeleted && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowBulkModal(true)} className="gap-2">
               <Upload className="h-4 w-4" />
@@ -310,8 +350,18 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
         )}
       </div>
 
+      {/* Deleted Items Alert */}
+      {showDeleted && (
+        <Alert className="border-destructive/50 bg-destructive/5">
+          <Trash2 className="h-4 w-4 text-destructive" />
+          <AlertDescription>
+            Showing {deletedMcqs.length} deleted question(s). Click "Restore" to recover.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Duplicate Alert */}
-      {isAdmin && showDuplicatesOnly && duplicateMcqs.length > 0 && (
+      {isAdmin && showDuplicatesOnly && !showDeleted && duplicateMcqs.length > 0 && (
         <Alert>
           <Copy className="h-4 w-4" />
           <AlertDescription>
@@ -324,21 +374,23 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
       {filteredMcqs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
-            {showMarkedOnly 
-              ? 'No marked questions. Click the star icon on any question to mark it for review.' 
-              : showDuplicatesOnly 
-                ? 'No duplicates found.' 
-                : isAdmin 
-                  ? 'No MCQs yet. Click "Add Question" to create one.'
-                  : 'No MCQs available yet.'}
+            {showDeleted
+              ? 'No deleted questions.'
+              : showMarkedOnly 
+                ? 'No marked questions. Click the star icon on any question to mark it for review.' 
+                : showDuplicatesOnly 
+                  ? 'No duplicates found.' 
+                  : isAdmin 
+                    ? 'No MCQs yet. Click "Add Question" to create one.'
+                    : 'No MCQs available yet.'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredMcqs.map((mcq, index) => {
-            const duplicateInfo = duplicateMcqs.find(d => d.mcq.id === mcq.id);
+            const duplicateInfo = !showDeleted ? duplicateMcqs.find(d => d.mcq.id === mcq.id) : null;
             return (
-              <div key={mcq.id} className="relative">
+              <div key={mcq.id} className={`relative ${showDeleted ? 'opacity-75' : ''}`}>
                 {duplicateInfo && (
                   <Badge 
                     variant="outline" 
@@ -348,16 +400,27 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
                     {Math.round(duplicateInfo.similarity * 100)}% similar
                   </Badge>
                 )}
+                {showDeleted && (
+                  <Badge 
+                    variant="outline" 
+                    className="absolute -top-2 right-2 z-10 bg-destructive/10 text-destructive border-destructive/30"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Deleted
+                  </Badge>
+                )}
                 <McqCard
                   mcq={mcq}
                   index={index}
                   isAdmin={isAdmin}
-                  onEdit={() => setEditingMcq(mcq)}
-                  onDelete={() => setDeletingMcq(mcq)}
+                  onEdit={showDeleted ? undefined : () => setEditingMcq(mcq)}
+                  onDelete={showDeleted ? undefined : () => setDeletingMcq(mcq)}
+                  onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}
                   isMarked={markedIds.has(mcq.id)}
                   onToggleMark={toggleMark}
                   isExpanded={expandedMcqId === mcq.id}
                   onToggleExpand={(id) => setExpandedMcqId(prev => prev === id ? null : id)}
+                  isDeleted={showDeleted}
                 />
               </div>
             );
@@ -613,6 +676,40 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Restore Confirmation Dialog */}
+      <AlertDialog
+        open={!!restoringMcq}
+        onOpenChange={(open) => {
+          if (!open && !restoreMutation.isPending) setRestoringMcq(null);
+        }}
+      >
+        <AlertDialogContent className="z-[99999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore MCQ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will restore the deleted question and make it visible again.
+              <br />
+              <span className="font-medium mt-2 block text-foreground">
+                "{restoringMcq?.stem.slice(0, 100)}..."
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restoreMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleRestore();
+              }}
+              disabled={restoreMutation.isPending}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
