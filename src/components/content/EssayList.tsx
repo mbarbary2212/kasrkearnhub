@@ -123,7 +123,14 @@ export default function EssayList({
     }
   };
 
-  if (essays.length === 0) {
+  // Show empty state if no essays AND no deleted essays (and not showing deleted)
+  const hasNoContent = essays.length === 0 && (!showDeleted || deletedEssays.length === 0);
+
+  // Combine active and deleted essays when showing deleted
+  const displayEssays = showDeleted ? [...essays, ...deletedEssays] : essays;
+
+  // If no content and no admin toggle, show simple empty state
+  if (hasNoContent && !showDeletedToggle) {
     return (
       <div className="text-center py-12">
         <PenTool className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -132,12 +139,9 @@ export default function EssayList({
     );
   }
 
-  // Combine active and deleted essays when showing deleted
-  const displayEssays = showDeleted ? [...essays, ...deletedEssays] : essays;
-
   return (
     <>
-      {/* Filter Bar */}
+      {/* Filter Bar - always visible when there's a toggle or content */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>

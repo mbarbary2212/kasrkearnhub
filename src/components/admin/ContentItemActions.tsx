@@ -219,7 +219,7 @@ export default function ContentItemActions({
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
+        <DialogContent onClick={(e) => e.stopPropagation()} className="z-[99999]">
           <DialogHeader>
             <DialogTitle>Delete {contentType}?</DialogTitle>
             <DialogDescription>
