@@ -56,9 +56,17 @@ type SectionMode = 'resources' | 'practice';
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
-  const { isTeacher, isSuperAdmin, canManageChapter } = useAuthContext();
+  const { isTeacher, isSuperAdmin, canManageChapter, canManageModule } = useAuthContext();
 
-  const canManageContent = !!(isTeacher || (chapterId && canManageChapter(chapterId)));
+  // User can manage content if:
+  // 1. They are a teacher/admin/platform admin/super admin (isTeacher is true for all of these)
+  // 2. They can manage this specific chapter (topic admins assigned to this chapter)
+  // 3. They can manage the parent module (module admins assigned to this module)
+  const canManageContent = !!(
+    isTeacher || 
+    (chapterId && canManageChapter(chapterId)) || 
+    (moduleId && canManageModule(moduleId))
+  );
 
   // State for section mode and active tabs within sections
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');

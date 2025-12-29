@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AppRole, Profile, DepartmentAdmin, TopicAdmin } from '@/types/database';
+import { AppRole, Profile, DepartmentAdmin, TopicAdmin, ModuleAdmin } from '@/types/database';
 
 interface AuthState {
   user: User | null;
@@ -10,6 +10,7 @@ interface AuthState {
   role: AppRole | null;
   departmentAssignments: DepartmentAdmin[];
   topicAssignments: TopicAdmin[];
+  moduleAssignments: ModuleAdmin[];
   isLoading: boolean;
 }
 
@@ -32,6 +33,7 @@ export function useAuth() {
     role: null,
     departmentAssignments: [],
     topicAssignments: [],
+    moduleAssignments: [],
     isLoading: true,
   });
 
@@ -71,12 +73,21 @@ export function useAuth() {
         topicAssignments = (assignments as TopicAdmin[]) || [];
       }
 
+      // Fetch module assignments for module admins (check for any user who might have module assignments)
+      let moduleAssignments: ModuleAdmin[] = [];
+      const { data: moduleAdminData } = await supabase
+        .from('module_admins')
+        .select('*')
+        .eq('user_id', userId);
+      moduleAssignments = (moduleAdminData as ModuleAdmin[]) || [];
+
       setState(prev => ({
         ...prev,
         profile: profile as Profile | null,
         role: (roleData?.role as AppRole) || 'student',
         departmentAssignments,
         topicAssignments,
+        moduleAssignments,
         isLoading: false,
       }));
     } catch (error) {
@@ -107,6 +118,7 @@ export function useAuth() {
             role: null,
             departmentAssignments: [],
             topicAssignments: [],
+            moduleAssignments: [],
             isLoading: false,
           }));
         }
@@ -247,6 +259,31 @@ export function useAuth() {
     return false;
   };
 
+  // Check if user can manage a specific module
+  const canManageModule = (moduleId: string): boolean => {
+    if (!state.role) return false;
+    
+    // Platform admin and super admin can manage all modules
+    if (state.role === 'platform_admin' || state.role === 'super_admin') {
+      return true;
+    }
+    
+    // Department admin, legacy admin and teacher can manage content
+    if (state.role === 'department_admin' || state.role === 'admin' || state.role === 'teacher') {
+      return true;
+    }
+    
+    // Check if user has module admin assignment for this specific module
+    if (state.moduleAssignments.some(a => a.module_id === moduleId)) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check if user is a module admin (has any module assignments)
+  const isModuleAdminRole = state.moduleAssignments.length > 0;
+
   return {
     ...state,
     signIn,
@@ -258,11 +295,13 @@ export function useAuth() {
     canManageDepartment,
     canManageTopic,
     canManageChapter,
+    canManageModule,
     // Role checks
     isSuperAdmin: state.role === 'super_admin',
     isPlatformAdmin: state.role === 'platform_admin' || state.role === 'super_admin',
     isDepartmentAdmin: state.role === 'department_admin',
     isTopicAdmin: state.role === 'topic_admin',
+    isModuleAdmin: isModuleAdminRole,
     isAdmin: state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin' || state.role === 'topic_admin',
     isTeacher: state.role === 'teacher' || state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
     isStudent: !!state.role,

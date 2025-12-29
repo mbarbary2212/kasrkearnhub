@@ -37,6 +37,14 @@ export interface TopicAdmin {
   created_at: string;
 }
 
+export interface ModuleAdmin {
+  id: string;
+  user_id: string;
+  module_id: string;
+  assigned_by: string | null;
+  created_at: string;
+}
+
 export interface FeedbackTopic {
   id: string;
   name: string;
