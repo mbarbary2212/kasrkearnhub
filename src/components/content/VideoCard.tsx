@@ -99,6 +99,11 @@ export default function VideoCard({
                   Google Drive
                 </div>
               )}
+              {videoInfo.source === 'vimeo' && (
+                <div className="absolute top-2 left-2 px-2 py-0.5 bg-background/80 rounded text-xs text-muted-foreground">
+                  Vimeo
+                </div>
+              )}
             </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">

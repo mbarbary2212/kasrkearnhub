@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useUpdateContent, useSoftDeleteContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 import { ItemType } from '@/hooks/useItemFeedback';
-import { isValidVideoUrl } from '@/lib/video';
+import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 
 interface ContentItemActionsProps {
   id: string;
@@ -87,8 +87,11 @@ export default function ContentItemActions({
       return;
     }
 
-    if ((contentType === 'lecture' || contentType === 'practical') && editVideoUrl && !isValidVideoUrl(editVideoUrl)) {
-      toast.error('Invalid video URL');
+    // Normalize video URL (extract from iframe if needed)
+    const normalizedVideoUrl = normalizeVideoInput(editVideoUrl);
+    
+    if ((contentType === 'lecture' || contentType === 'practical') && normalizedVideoUrl && !isValidVideoUrl(normalizedVideoUrl)) {
+      toast.error('Invalid video URL. Use YouTube, Vimeo, or Google Drive links.');
       return;
     }
 
@@ -99,7 +102,7 @@ export default function ContentItemActions({
       };
 
       if (contentType === 'lecture' || contentType === 'practical') {
-        data.video_url = editVideoUrl || null;
+        data.video_url = normalizedVideoUrl || null;
       }
       if (contentType === 'resource') {
         data.external_url = editFileUrl || null;
@@ -201,7 +204,15 @@ export default function ContentItemActions({
             {(contentType === 'lecture' || contentType === 'practical') && (
               <div>
                 <Label>Video URL</Label>
-                <Input value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" className="mt-1" />
+                <Input 
+                  value={editVideoUrl} 
+                  onChange={(e) => setEditVideoUrl(e.target.value)} 
+                  placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)" 
+                  className="mt-1" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can paste iframe embed codes - the URL will be extracted automatically.
+                </p>
               </div>
             )}
             {contentType === 'resource' && (
