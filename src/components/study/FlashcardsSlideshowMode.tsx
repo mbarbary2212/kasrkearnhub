@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
+import { cn } from '@/lib/utils';
 
 // Global admin constant: time to show question before auto-flip to answer
 const QUESTION_TIME_BEFORE_FLIP_SECONDS = 3;
@@ -17,6 +18,8 @@ interface TopicGroup {
 
 interface FlashcardsSlideshowModeProps {
   cards: StudyResource[];
+  markedIds?: Set<string>;
+  onToggleMark?: (id: string) => void;
 }
 
 const CARD_COUNT_OPTIONS = [
@@ -46,7 +49,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps) {
+export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: FlashcardsSlideshowModeProps) {
   // Settings
   const [cardCountSelection, setCardCountSelection] = useState<string>('20');
   const [intervalSeconds, setIntervalSeconds] = useState<number>(7);
@@ -247,8 +250,10 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
   }, [state, currentIndex, sessionCards.length, flipTime, intervalSeconds, advanceToNext, clearTimers]);
 
   const currentCard = sessionCards[currentIndex]?.content as FlashcardContent | undefined;
+  const currentResource = sessionCards[currentIndex];
   const currentTitle = sessionCards[currentIndex]?.title;
   const progressPercent = sessionCards.length > 0 ? ((currentIndex + 1) / sessionCards.length) * 100 : 0;
+  const isCurrentMarked = currentResource && markedIds?.has(currentResource.id);
 
   const canStart = allCards.length > 0;
 
@@ -399,12 +404,15 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
       )}
 
       {/* Playing / Paused state */}
-      {(state === 'playing' || state === 'paused') && currentCard && (
+      {(state === 'playing' || state === 'paused') && currentCard && currentResource && (
         <div className="w-full max-w-md">
           {/* Progress */}
           <div className="mb-4">
             <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>{currentTitle}</span>
+              <span className="flex items-center gap-1">
+                {currentTitle}
+                {isCurrentMarked && <Star className="w-3 h-3 text-amber-500 fill-current" />}
+              </span>
               <span>Card {currentIndex + 1} of {sessionCards.length}</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
@@ -412,6 +420,25 @@ export function FlashcardsSlideshowMode({ cards }: FlashcardsSlideshowModeProps)
 
           {/* Card with transition overlay */}
           <div className="perspective-1000 relative">
+            {/* Mark for Review star - positioned above the card */}
+            {onToggleMark && (
+              <div className="absolute -top-2 -right-2 z-20">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMark(currentResource.id);
+                  }}
+                  className={cn(
+                    'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                    isCurrentMarked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                  )}
+                  title={isCurrentMarked ? 'Remove from review' : 'Mark for review'}
+                >
+                  <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
+                </button>
+              </div>
+            )}
+
             {/* Transition blackout overlay */}
             <div 
               className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-150 ${
