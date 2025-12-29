@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, X } from 'lucide-react';
+import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,10 +15,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
+import { useUpdateContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +51,11 @@ interface LectureListProps {
   showFeedback?: boolean;
 }
 
-function buildAutoplayUrl(url: string | null | undefined): string | null {
+function buildAutoplayUrl(rawUrl: string | null | undefined): string | null {
+  // First normalize to handle iframe codes
+  const url = normalizeVideoInput(rawUrl);
   if (!url) return null;
+  
   try {
     // YouTube watch -> embed with autoplay
     if (url.includes("youtube.com/watch")) {
@@ -78,9 +87,9 @@ function buildAutoplayUrl(url: string | null | undefined): string | null {
       u.searchParams.set("playsinline", "1");
       return u.toString();
     }
-    // Vimeo
-    if (url.includes("vimeo.com/")) {
-      const match = url.match(/vimeo\.com\/(\d+)/);
+    // Vimeo - handle both regular and player URLs
+    if (url.includes("vimeo.com/") || url.includes("player.vimeo.com/")) {
+      const match = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
       if (match) {
         return `https://player.vimeo.com/video/${match[1]}?autoplay=1&muted=1`;
       }
@@ -101,10 +110,61 @@ export function LectureList({
 }: LectureListProps) {
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   const [feedbackItem, setFeedbackItem] = useState<Lecture | null>(null);
+  const [editLecture, setEditLecture] = useState<Lecture | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editVideoUrl, setEditVideoUrl] = useState('');
+  const [editDuration, setEditDuration] = useState('');
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
     moduleId || '',
     chapterId
   );
+  const updateContent = useUpdateContent('lectures');
+
+  const handleOpenEdit = (lecture: Lecture) => {
+    setEditLecture(lecture);
+    setEditTitle(lecture.title);
+    setEditDescription(lecture.description || '');
+    setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
+    setEditDuration(lecture.duration || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editLecture) return;
+    if (!editTitle.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    
+    // Normalize video URL (extract from iframe if needed)
+    const normalizedUrl = normalizeVideoInput(editVideoUrl);
+    
+    if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
+      toast.error('Invalid video URL. Use YouTube, Vimeo, or Google Drive links.');
+      return;
+    }
+
+    setIsEditSaving(true);
+    try {
+      await updateContent.mutateAsync({
+        id: editLecture.id,
+        data: {
+          title: editTitle.trim(),
+          description: editDescription.trim() || null,
+          video_url: normalizedUrl || null,
+          duration: editDuration.trim() || null,
+        },
+      });
+      toast.success('Lecture updated successfully');
+      setEditLecture(null);
+    } catch (error) {
+      toast.error('Failed to update lecture');
+    } finally {
+      setIsEditSaving(false);
+    }
+  };
 
   const canManage = canEdit || canDelete;
 
@@ -180,7 +240,13 @@ export function LectureList({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {canEdit && (
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }} className="gap-2">
+                      <DropdownMenuItem 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleOpenEdit(lecture);
+                        }} 
+                        className="gap-2"
+                      >
                         <Pencil className="h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
@@ -230,6 +296,69 @@ export function LectureList({
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editLecture} onOpenChange={(open) => !open && setEditLecture(null)}>
+        <DialogContent className="z-[99999]">
+          <DialogHeader>
+            <DialogTitle>Edit Lecture</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Lecture title"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description (optional)</Label>
+              <Textarea
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Lecture description"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-video-url">Video URL</Label>
+              <Input
+                id="edit-video-url"
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Supports YouTube, Vimeo, and Google Drive. You can paste iframe embed codes too.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="edit-duration">Duration (optional)</Label>
+              <Input
+                id="edit-duration"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+                placeholder="e.g., 15:30"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isEditSaving}>
+              {isEditSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play } from 'lucide-react';
-import { getVideoInfo } from '@/lib/video';
+import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -13,7 +13,9 @@ interface VideoPlayerModalProps {
 
 export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: VideoPlayerModalProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const videoInfo = getVideoInfo(videoUrl);
+  // Normalize the video URL to handle iframe embed codes
+  const normalizedUrl = normalizeVideoInput(videoUrl);
+  const videoInfo = getVideoInfo(normalizedUrl);
 
   // Reset playing state when modal closes or video changes
   useEffect(() => {

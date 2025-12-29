@@ -12,6 +12,27 @@ export interface VideoInfo {
 }
 
 /**
+ * Normalize video input - extracts URL from iframe embed codes or returns clean URL
+ * Handles cases where users paste full iframe embed code instead of just the URL
+ */
+export function normalizeVideoInput(input: string | null | undefined): string | null {
+  if (!input) return null;
+  
+  // Check if input contains an iframe tag
+  if (input.includes('<iframe')) {
+    // Extract src attribute from iframe
+    const srcMatch = input.match(/src=["']([^"']+)["']/);
+    if (srcMatch && srcMatch[1]) {
+      // Decode HTML entities like &amp; to &
+      return srcMatch[1].replace(/&amp;/g, '&');
+    }
+  }
+  
+  // Return trimmed input as-is (it might be a direct URL)
+  return input.trim();
+}
+
+/**
  * Extract YouTube video ID from various URL formats
  */
 export function extractYouTubeId(url: string | null | undefined): string | null {
@@ -157,9 +178,11 @@ export function getVimeoThumbnail(videoId: string): string {
 }
 
 /**
- * Get complete video info from URL
+ * Get complete video info from URL or iframe embed code
  */
-export function getVideoInfo(url: string | null | undefined): VideoInfo {
+export function getVideoInfo(input: string | null | undefined): VideoInfo {
+  // Normalize input first to handle iframe embed codes
+  const url = normalizeVideoInput(input);
   const source = detectVideoSource(url);
   
   if (source === 'youtube') {
@@ -201,9 +224,11 @@ export function getVideoInfo(url: string | null | undefined): VideoInfo {
 }
 
 /**
- * Check if a URL is a valid video URL (YouTube or Google Drive)
+ * Check if a URL is a valid video URL (YouTube, Google Drive, or Vimeo)
+ * Also handles iframe embed codes
  */
-export function isValidVideoUrl(url: string | null | undefined): boolean {
+export function isValidVideoUrl(input: string | null | undefined): boolean {
+  const url = normalizeVideoInput(input);
   return detectVideoSource(url) !== 'unknown';
 }
 

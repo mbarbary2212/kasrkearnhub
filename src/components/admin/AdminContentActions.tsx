@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
-import { isValidVideoUrl, detectVideoSource } from '@/lib/video';
+import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -64,14 +64,17 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const addLecture = useMutation({
     mutationFn: async () => {
+      // Normalize video URL (extract from iframe if needed)
+      const normalizedUrl = normalizeVideoInput(videoUrl);
+      
       // Validate video URL if provided
-      if (videoUrl && !isValidVideoUrl(videoUrl)) {
-        throw new Error('Invalid video URL. Please use a YouTube or Google Drive link.');
+      if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
+        throw new Error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
       }
       const { error } = await supabase.from('lectures').insert({
         title,
         description: description || null,
-        video_url: videoUrl || null,
+        video_url: normalizedUrl || null,
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
