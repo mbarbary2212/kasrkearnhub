@@ -179,6 +179,7 @@ export function getVimeoThumbnail(videoId: string): string {
 
 /**
  * Get complete video info from URL or iframe embed code
+ * For Vimeo, preserves query parameters from embed URLs to support private videos
  */
 export function getVideoInfo(input: string | null | undefined): VideoInfo {
   // Normalize input first to handle iframe embed codes
@@ -207,10 +208,22 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
   
   if (source === 'vimeo') {
     const id = extractVimeoId(url);
+    // For Vimeo, preserve the original embed URL if it's already a player URL
+    // This keeps query parameters like app_id which may be needed for private videos
+    let embedUrl: string | null = null;
+    if (id) {
+      if (url && url.includes('player.vimeo.com')) {
+        // Already an embed URL, use it as-is (preserves query params)
+        embedUrl = url;
+      } else {
+        // Regular Vimeo URL, build embed URL
+        embedUrl = getVimeoEmbedUrl(id);
+      }
+    }
     return {
       source,
       id,
-      embedUrl: id ? getVimeoEmbedUrl(id) : null,
+      embedUrl,
       thumbnailUrl: id ? getVimeoThumbnail(id) : null,
     };
   }
