@@ -16,6 +16,7 @@ interface ContentItemActionsProps {
   id: string;
   title: string;
   description?: string | null;
+  modelAnswer?: string | null;
   videoUrl?: string | null;
   fileUrl?: string | null;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
@@ -46,6 +47,7 @@ export default function ContentItemActions({
   id,
   title,
   description,
+  modelAnswer,
   videoUrl,
   fileUrl,
   contentType,
@@ -61,6 +63,7 @@ export default function ContentItemActions({
 
   const [editTitle, setEditTitle] = useState(title);
   const [editDescription, setEditDescription] = useState(description || '');
+  const [editModelAnswer, setEditModelAnswer] = useState(modelAnswer || '');
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
 
@@ -68,6 +71,7 @@ export default function ContentItemActions({
   const handleOpenEdit = () => {
     setEditTitle(title);
     setEditDescription(description || '');
+    setEditModelAnswer(modelAnswer || '');
     setEditVideoUrl(videoUrl || '');
     setEditFileUrl(fileUrl || '');
     setEditOpen(true);
@@ -102,6 +106,7 @@ export default function ContentItemActions({
       }
       if (contentType === 'essay') {
         data.question = editDescription.trim() || null;
+        data.model_answer = editModelAnswer.trim() || null;
       }
 
       await updateContent.mutateAsync({ id, data });
@@ -181,6 +186,18 @@ export default function ContentItemActions({
               <Label>{contentType === 'essay' ? 'Question' : 'Description'}</Label>
               <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1" />
             </div>
+            {contentType === 'essay' && (
+              <div>
+                <Label>Model Answer (optional)</Label>
+                <Textarea 
+                  value={editModelAnswer} 
+                  onChange={(e) => setEditModelAnswer(e.target.value)} 
+                  placeholder="Enter the model answer that students can reveal"
+                  rows={4}
+                  className="mt-1"
+                />
+              </div>
+            )}
             {(contentType === 'lecture' || contentType === 'practical') && (
               <div>
                 <Label>Video URL</Label>
