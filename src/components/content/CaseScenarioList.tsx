@@ -161,14 +161,8 @@ export default function CaseScenarioList({
     }
   };
 
-  if (cases.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">No case scenarios available yet.</p>
-      </div>
-    );
-  }
+  // Check if there's no content to show at all
+  const hasNoContent = cases.length === 0 && (!showDeleted || deletedCases.length === 0);
 
   const handleRestore = async (caseItem: CaseScenario, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -184,9 +178,19 @@ export default function CaseScenarioList({
   // Combine active and deleted cases when showing deleted
   const displayCases = showDeleted ? [...cases, ...deletedCases] : cases;
 
+  // If no content and no admin toggle, show simple empty state
+  if (hasNoContent && !showDeletedToggle) {
+    return (
+      <div className="text-center py-12">
+        <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground">No case scenarios available yet.</p>
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Filter Bar */}
+      {/* Filter Bar - always visible when there's a toggle or content */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>

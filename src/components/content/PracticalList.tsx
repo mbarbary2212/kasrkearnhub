@@ -71,7 +71,14 @@ export default function PracticalList({
     return practicals;
   }, [practicals, showMarkedOnly, markedIds]);
 
-  if (practicals.length === 0) {
+  // Check if there's no content to show at all
+  const hasNoContent = practicals.length === 0 && (!showDeleted || deletedPracticals.length === 0);
+
+  // Combine active and deleted practicals when showing deleted
+  const displayPracticals = showDeleted ? [...practicals, ...deletedPracticals] : practicals;
+
+  // If no content and no admin toggle, show simple empty state
+  if (hasNoContent && !showDeletedToggle) {
     return (
       <div className="text-center py-12">
         <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -80,12 +87,9 @@ export default function PracticalList({
     );
   }
 
-  // Combine active and deleted practicals when showing deleted
-  const displayPracticals = showDeleted ? [...practicals, ...deletedPracticals] : practicals;
-
   return (
     <>
-      {/* Filter Bar */}
+      {/* Filter Bar - always visible when there's a toggle or content */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
