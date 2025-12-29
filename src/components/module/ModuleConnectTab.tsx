@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
+import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner';
 
 interface ModuleConnectTabProps {
   moduleId: string;
@@ -21,6 +22,9 @@ export function ModuleConnectTab({ moduleId, moduleName }: ModuleConnectTabProps
 
   return (
     <div className="space-y-6">
+      {/* Announcements Banner */}
+      <AnnouncementBanner moduleId={moduleId} className="mb-4" />
+
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold mb-2">Connect</h2>
         <p className="text-muted-foreground text-sm">

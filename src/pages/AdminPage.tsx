@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
 import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
+import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 
 interface UserWithRole extends Profile {
@@ -555,6 +556,12 @@ export default function AdminPage() {
                 Curriculum
               </TabsTrigger>
             )}
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="announcements" className="gap-2">
+                <Megaphone className="w-4 h-4" />
+                Announcements
+              </TabsTrigger>
+            )}
             <TabsTrigger value="help" className="gap-2">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
@@ -1062,6 +1069,16 @@ export default function AdminPage() {
           {isPlatformAdmin && (
             <TabsContent value="settings">
               <PlatformSettingsTab />
+            </TabsContent>
+          )}
+
+          {/* Announcements Tab */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="announcements">
+              <AnnouncementsTab 
+                modules={modules.map(m => ({ id: m.id, name: m.name }))} 
+                years={years.map(y => ({ id: y.id, name: y.name }))} 
+              />
             </TabsContent>
           )}
 
