@@ -19,6 +19,11 @@ export interface Inquiry {
   resolved_by: string | null;
   resolved_at: string | null;
   created_at: string;
+  // Joined profile data
+  user_profile?: {
+    full_name: string | null;
+    email: string;
+  } | null;
 }
 
 export function useSubmitInquiry() {
@@ -104,7 +109,27 @@ export function useAllInquiries(filters?: {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Inquiry[];
+
+      // Fetch user profiles for all inquiries
+      const userIds = [...new Set((data || []).map(i => i.user_id).filter(Boolean))];
+      let profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+        
+        profilesMap = (profiles || []).reduce((acc, p) => {
+          acc[p.id] = { full_name: p.full_name, email: p.email };
+          return acc;
+        }, {} as Record<string, { full_name: string | null; email: string }>);
+      }
+
+      return (data || []).map(inquiry => ({
+        ...inquiry,
+        user_profile: inquiry.user_id ? profilesMap[inquiry.user_id] || null : null,
+      })) as Inquiry[];
     },
   });
 }

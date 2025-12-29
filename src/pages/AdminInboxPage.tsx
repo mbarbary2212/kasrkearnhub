@@ -12,7 +12,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useAllFeedback, useUpdateFeedback, FeedbackStatus, ItemFeedback } from '@/hooks/useItemFeedback';
 import { useAllInquiries, useUpdateInquiry, InquiryStatus, Inquiry } from '@/hooks/useInquiries';
 import { useUserManagedModules } from '@/hooks/useModuleAdmin';
-import { MessageSquare, Mail, Flag, Star, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -38,7 +38,7 @@ export default function AdminInboxPage() {
   const [selectedFeedback, setSelectedFeedback] = useState<ItemFeedback | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
-
+  const [revealedFeedbackIds, setRevealedFeedbackIds] = useState<Set<string>>(new Set());
   const { data: modules, isLoading: modulesLoading } = useUserManagedModules();
   
   // Determine filter based on user role
@@ -122,7 +122,8 @@ export default function AdminInboxPage() {
     return filters;
   }, [selectedModule, selectedStatus, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, modules, topicAssignments]);
 
-  const { data: feedbackList, isLoading: feedbackLoading } = useAllFeedback(feedbackFilters);
+  // Super admins get user profiles for feedback (to reveal when needed)
+  const { data: feedbackList, isLoading: feedbackLoading } = useAllFeedback(feedbackFilters, { includeUserProfiles: isSuperAdmin });
   const { data: inquiryList, isLoading: inquiriesLoading } = useAllInquiries(inquiryFilters);
   
   const updateFeedback = useUpdateFeedback();
@@ -280,66 +281,109 @@ export default function AdminInboxPage() {
               </div>
             ) : feedbackList && feedbackList.length > 0 ? (
               <div className="space-y-3">
-                {feedbackList.map((feedback) => (
-                  <Card key={feedback.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline">{feedback.item_type}</Badge>
-                            <Badge className={STATUS_COLORS[feedback.status]}>{feedback.status}</Badge>
-                            {feedback.is_flagged && (
-                              <Badge variant="destructive" className="flex items-center gap-1">
-                                <Flag className="w-3 h-3" /> Flagged
-                              </Badge>
-                            )}
-                            {renderRating(feedback.rating)}
+                {feedbackList.map((feedback) => {
+                  const isRevealed = revealedFeedbackIds.has(feedback.id);
+                  const showUserInfo = !feedback.is_anonymous || isRevealed;
+
+                  return (
+                    <Card key={feedback.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline">{feedback.item_type}</Badge>
+                              <Badge className={STATUS_COLORS[feedback.status]}>{feedback.status}</Badge>
+                              {feedback.is_flagged && (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                  <Flag className="w-3 h-3" /> Flagged
+                                </Badge>
+                              )}
+                              {feedback.is_anonymous && !isRevealed && (
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <EyeOff className="w-3 h-3" /> Anonymous
+                                </Badge>
+                              )}
+                              {renderRating(feedback.rating)}
+                            </div>
+                            <p className="mt-2 text-sm">{feedback.message}</p>
+                            
+                            {/* User info display */}
+                            <div className="flex items-center gap-2 mt-2 text-xs">
+                              {showUserInfo && feedback.user_profile ? (
+                                <>
+                                  <User className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-foreground font-medium">
+                                    {feedback.user_profile.full_name || feedback.user_profile.email}
+                                    {feedback.user_profile.full_name && (
+                                      <span className="text-muted-foreground ml-1">({feedback.user_profile.email})</span>
+                                    )}
+                                  </span>
+                                  {isRevealed && <Badge variant="outline" className="text-xs">Revealed</Badge>}
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground">Anonymous</span>
+                              )}
+                              <span className="text-muted-foreground">• {formatDistanceToNow(new Date(feedback.created_at), { addSuffix: true })}</span>
+                            </div>
                           </div>
-                          <p className="mt-2 text-sm">{feedback.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {feedback.is_anonymous ? 'Anonymous' : 'User'} • {formatDistanceToNow(new Date(feedback.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={feedback.status}
-                            onValueChange={(v) => handleUpdateFeedbackStatus(feedback.id, v as FeedbackStatus)}
-                          >
-                            <SelectTrigger className="w-28 h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="in_review">In Review</SelectItem>
-                              <SelectItem value="resolved">Resolved</SelectItem>
-                              <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {isSuperAdmin && (
-                            <Button
-                              variant={feedback.is_flagged ? 'destructive' : 'outline'}
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleToggleFlagged(feedback.id, feedback.is_flagged)}
+                          <div className="flex items-center gap-2">
+                            {/* Reveal identity button for super admins on anonymous feedback */}
+                            {isSuperAdmin && feedback.is_anonymous && !isRevealed && feedback.user_profile && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Reveal user identity"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to reveal the identity of this anonymous user? This action should only be taken for serious issues like offensive content.')) {
+                                    setRevealedFeedbackIds(prev => new Set([...prev, feedback.id]));
+                                    toast.success('Identity revealed');
+                                  }
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Select
+                              value={feedback.status}
+                              onValueChange={(v) => handleUpdateFeedbackStatus(feedback.id, v as FeedbackStatus)}
                             >
-                              <Flag className="w-4 h-4" />
+                              <SelectTrigger className="w-28 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="in_review">In Review</SelectItem>
+                                <SelectItem value="resolved">Resolved</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {isSuperAdmin && (
+                              <Button
+                                variant={feedback.is_flagged ? 'destructive' : 'outline'}
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleToggleFlagged(feedback.id, feedback.is_flagged)}
+                              >
+                                <Flag className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedFeedback(feedback);
+                                setAdminNotes(feedback.admin_notes || '');
+                              }}
+                            >
+                              Notes
                             </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedFeedback(feedback);
-                              setAdminNotes(feedback.admin_notes || '');
-                            }}
-                          >
-                            Notes
-                          </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">
@@ -367,9 +411,22 @@ export default function AdminInboxPage() {
                           </div>
                           <h3 className="font-medium mt-2">{inquiry.subject}</h3>
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{inquiry.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {inquiry.is_anonymous ? 'Anonymous' : 'User'} • {formatDistanceToNow(new Date(inquiry.created_at), { addSuffix: true })}
-                          </p>
+                          
+                          {/* User info for inquiries - always visible to admins */}
+                          <div className="flex items-center gap-2 mt-2 text-xs">
+                            <User className="w-3 h-3 text-muted-foreground" />
+                            {inquiry.user_profile ? (
+                              <span className="text-foreground font-medium">
+                                {inquiry.user_profile.full_name || inquiry.user_profile.email}
+                                {inquiry.user_profile.full_name && (
+                                  <span className="text-muted-foreground ml-1">({inquiry.user_profile.email})</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground italic">User info unavailable</span>
+                            )}
+                            <span className="text-muted-foreground">• {formatDistanceToNow(new Date(inquiry.created_at), { addSuffix: true })}</span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Select
