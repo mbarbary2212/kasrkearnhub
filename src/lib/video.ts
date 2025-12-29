@@ -1,8 +1,8 @@
 /**
- * Video utility functions for YouTube and Google Drive
+ * Video utility functions for YouTube, Google Drive, and Vimeo
  */
 
-export type VideoSource = 'youtube' | 'googledrive' | 'unknown';
+export type VideoSource = 'youtube' | 'googledrive' | 'vimeo' | 'unknown';
 
 export interface VideoInfo {
   source: VideoSource;
@@ -66,6 +66,33 @@ export function extractGoogleDriveId(url: string | null | undefined): string | n
 }
 
 /**
+ * Extract Vimeo video ID from various URL formats
+ */
+export function extractVimeoId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  
+  const patterns = [
+    // https://vimeo.com/VIDEO_ID
+    /vimeo\.com\/(\d+)/,
+    // https://player.vimeo.com/video/VIDEO_ID
+    /player\.vimeo\.com\/video\/(\d+)/,
+    // https://vimeo.com/channels/CHANNEL/VIDEO_ID
+    /vimeo\.com\/channels\/[^\/]+\/(\d+)/,
+    // https://vimeo.com/groups/GROUP/videos/VIDEO_ID
+    /vimeo\.com\/groups\/[^\/]+\/videos\/(\d+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+/**
  * Detect the video source from URL
  */
 export function detectVideoSource(url: string | null | undefined): VideoSource {
@@ -73,6 +100,7 @@ export function detectVideoSource(url: string | null | undefined): VideoSource {
   
   if (extractYouTubeId(url)) return 'youtube';
   if (extractGoogleDriveId(url)) return 'googledrive';
+  if (extractVimeoId(url)) return 'vimeo';
   
   return 'unknown';
 }
@@ -114,6 +142,21 @@ export function getGoogleDriveThumbnail(fileId: string): string {
 }
 
 /**
+ * Get Vimeo embed URL from video ID
+ */
+export function getVimeoEmbedUrl(videoId: string): string {
+  return `https://player.vimeo.com/video/${videoId}`;
+}
+
+/**
+ * Get Vimeo thumbnail URL from video ID
+ * Uses vumbnail.com service for easy thumbnail access
+ */
+export function getVimeoThumbnail(videoId: string): string {
+  return `https://vumbnail.com/${videoId}.jpg`;
+}
+
+/**
  * Get complete video info from URL
  */
 export function getVideoInfo(url: string | null | undefined): VideoInfo {
@@ -136,6 +179,16 @@ export function getVideoInfo(url: string | null | undefined): VideoInfo {
       id,
       embedUrl: id ? getGoogleDriveEmbedUrl(id) : null,
       thumbnailUrl: id ? getGoogleDriveThumbnail(id) : null,
+    };
+  }
+  
+  if (source === 'vimeo') {
+    const id = extractVimeoId(url);
+    return {
+      source,
+      id,
+      embedUrl: id ? getVimeoEmbedUrl(id) : null,
+      thumbnailUrl: id ? getVimeoThumbnail(id) : null,
     };
   }
   
@@ -166,4 +219,11 @@ export function isValidYouTubeUrl(url: string | null | undefined): boolean {
  */
 export function isValidGoogleDriveUrl(url: string | null | undefined): boolean {
   return extractGoogleDriveId(url) !== null;
+}
+
+/**
+ * Check if a URL is a valid Vimeo URL
+ */
+export function isValidVimeoUrl(url: string | null | undefined): boolean {
+  return extractVimeoId(url) !== null;
 }
