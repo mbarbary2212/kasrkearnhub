@@ -27,18 +27,22 @@ export interface CaseScenarioInsert {
   module_id: string;
 }
 
-// Fetch case scenarios for a chapter
-export function useChapterCaseScenarios(chapterId?: string) {
+// Fetch case scenarios for a chapter (optionally include deleted)
+export function useChapterCaseScenarios(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['chapter-case-scenarios', chapterId],
+    queryKey: ['chapter-case-scenarios', chapterId, includeDeleted],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('case_scenarios')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as CaseScenario[];
     },
@@ -104,7 +108,29 @@ export function useDeleteCaseScenario() {
       return { id, chapterId };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, false] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, true] });
+    },
+  });
+}
+
+// Restore (undo soft delete) a case scenario
+export function useRestoreCaseScenario() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, chapterId }: { id: string; chapterId: string }) => {
+      const { error } = await supabase
+        .from('case_scenarios')
+        .update({ is_deleted: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { id, chapterId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, false] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, true] });
     },
   });
 }

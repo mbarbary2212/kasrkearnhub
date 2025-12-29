@@ -82,18 +82,22 @@ export function useModuleMatchingQuestions(moduleId?: string) {
   });
 }
 
-// Fetch matching questions by chapter
-export function useChapterMatchingQuestions(chapterId?: string) {
+// Fetch matching questions by chapter (optionally include deleted)
+export function useChapterMatchingQuestions(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['matching-questions', 'chapter', chapterId],
+    queryKey: ['matching-questions', 'chapter', chapterId, includeDeleted],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('matching_questions')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(mapDbRowToMatchingQuestion);
     },
@@ -229,11 +233,45 @@ export function useDeleteMatchingQuestion() {
       toast({ title: 'Matching question deleted successfully' });
       queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', result.moduleId] });
       if (result.chapterId) {
-        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, false] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, true] });
       }
     },
     onError: (error: Error) => {
       toast({ title: 'Error deleting matching question', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+// Restore (undo soft delete) matching question
+export function useRestoreMatchingQuestion() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async ({ id, moduleId, chapterId }: { 
+      id: string; 
+      moduleId: string;
+      chapterId?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('matching_questions')
+        .update({ is_deleted: false, updated_by: user?.id })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { moduleId, chapterId };
+    },
+    onSuccess: (result) => {
+      toast({ title: 'Matching question restored successfully' });
+      queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', result.moduleId] });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, false] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, true] });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error restoring matching question', description: error.message, variant: 'destructive' });
     },
   });
 }

@@ -57,6 +57,14 @@ export function useContentDelete(
     setPendingItem(null);
   };
 
+  const invalidateAll = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: [keys.chapter, chapterId] }),
+      qc.invalidateQueries({ queryKey: [keys.module, moduleId] }),
+      qc.invalidateQueries({ queryKey: [keys.topic] }),
+    ]);
+  };
+
   const doDelete = async () => {
     if (!pendingItem) return;
 
@@ -90,11 +98,7 @@ export function useContentDelete(
 
       if (error) throw error;
 
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: [keys.chapter, chapterId] }),
-        qc.invalidateQueries({ queryKey: [keys.module, moduleId] }),
-        qc.invalidateQueries({ queryKey: [keys.topic] }),
-      ]);
+      await invalidateAll();
 
       toast.success(`"${deletingTitle}" deleted successfully`);
     } catch (error) {
@@ -102,20 +106,35 @@ export function useContentDelete(
       toast.error(`Failed to delete ${label.toLowerCase()}`);
 
       // Roll back by refetching
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: [keys.chapter, chapterId] }),
-        qc.invalidateQueries({ queryKey: [keys.module, moduleId] }),
-        qc.invalidateQueries({ queryKey: [keys.topic] }),
-      ]);
+      await invalidateAll();
     } finally {
       setIsDeleting(false);
       setPendingItem(null);
     }
   };
 
+  const doRestore = async (id: string, title: string) => {
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ is_deleted: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await invalidateAll();
+
+      toast.success(`"${title}" restored successfully`);
+    } catch (error) {
+      console.error(`Failed to restore ${table}:`, error);
+      toast.error(`Failed to restore ${label.toLowerCase()}`);
+    }
+  };
+
   return {
     askDelete,
     doDelete,
+    doRestore,
     cancelDelete,
     confirmOpen,
     isDeleting,

@@ -54,19 +54,23 @@ export interface StudyResourceInsert {
   created_by?: string;
 }
 
-// Fetch study resources for a chapter
-export function useChapterStudyResources(chapterId?: string) {
+// Fetch study resources for a chapter (optionally include deleted)
+export function useChapterStudyResources(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['study-resources', 'chapter', chapterId],
+    queryKey: ['study-resources', 'chapter', chapterId, includeDeleted],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('study_resources')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
         .order('resource_type')
         .order('display_order');
+
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
       
+      const { data, error } = await query;
       if (error) throw error;
       return data as unknown as StudyResource[];
     },
@@ -298,7 +302,30 @@ export function useDeleteStudyResource() {
       return { id, chapterId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, false] });
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, true] });
+    },
+  });
+}
+
+// Restore study resource (undo soft delete)
+export function useRestoreStudyResource() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, chapterId }: { id: string; chapterId: string }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('study_resources')
+        .update({ is_deleted: false, updated_by: userData.user?.id })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { id, chapterId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, false] });
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, true] });
     },
   });
 }
