@@ -107,19 +107,50 @@ Deno.serve(async (req) => {
     // Create admin client with service role key (bypasses RLS)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user has permission to manage MCQs using the database function
-    const { data: canManage, error: permError } = await adminClient.rpc(
+    // Verify user has permission to import MCQs.
+    // - Module admins / teachers / platform admins can import for the module
+    // - Chapter-scoped admins (topic admins assigned to the chapter) can import when chapterId is provided
+    const { data: canManageModule, error: modulePermError } = await adminClient.rpc(
       'can_manage_module_content',
       { _user_id: user.id, _module_id: moduleId }
     );
 
-    if (permError) {
-      console.error('Permission check error:', permError);
+    if (modulePermError) {
+      console.error('Module permission check error:', modulePermError);
       return new Response(
         JSON.stringify({ error: 'Failed to verify permissions' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    let canManageChapter: boolean | null = null;
+    if (chapterId) {
+      const { data, error } = await adminClient.rpc('can_manage_chapter_content', {
+        _user_id: user.id,
+        _chapter_id: chapterId,
+      });
+
+      if (error) {
+        console.error('Chapter permission check error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify permissions' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      canManageChapter = data as boolean;
+    }
+
+    const canManage = Boolean(canManageModule) || Boolean(canManageChapter);
+
+    console.log('bulk-import-mcqs permission check', {
+      user_id: user.id,
+      moduleId,
+      chapterId: chapterId || null,
+      canManageModule: Boolean(canManageModule),
+      canManageChapter: canManageChapter === null ? null : Boolean(canManageChapter),
+      canManage,
+    });
 
     if (!canManage) {
       return new Response(
