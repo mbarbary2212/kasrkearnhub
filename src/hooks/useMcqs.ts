@@ -174,23 +174,37 @@ export function useDeleteMcq() {
       moduleId: string;
       chapterId?: string | null;
     }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('mcqs')
         .update({ is_deleted: true, updated_by: user?.id })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .single();
 
       if (error) throw error;
+      
+      // Verify the update actually happened
+      if (!data) {
+        throw new Error('Delete failed: MCQ was not updated. Check your permissions.');
+      }
+      
       return { moduleId, chapterId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ deleted successfully' });
+      // Force refetch to confirm deletion
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
     },
     onError: (error: Error) => {
-      toast({ title: 'Error deleting MCQ', description: error.message, variant: 'destructive' });
+      console.error('MCQ delete error:', error);
+      toast({ 
+        title: 'Error deleting MCQ', 
+        description: error.message || 'Delete failed. You may not have permission.', 
+        variant: 'destructive' 
+      });
     },
   });
 }
