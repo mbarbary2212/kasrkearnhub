@@ -23,6 +23,12 @@ export interface ItemFeedback {
   resolved_by: string | null;
   resolved_at: string | null;
   created_at: string;
+  // Revealed user profile (only for super admins who reveal)
+  user_profile?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+  is_identity_revealed?: boolean;
 }
 
 export function useSubmitItemFeedback() {
@@ -87,9 +93,9 @@ export function useAllFeedback(filters?: {
   chapterIds?: string[];
   status?: FeedbackStatus;
   isFlagged?: boolean;
-}) {
+}, options?: { includeUserProfiles?: boolean }) {
   return useQuery({
-    queryKey: ['item-feedback', 'all', filters],
+    queryKey: ['item-feedback', 'all', filters, options?.includeUserProfiles],
     queryFn: async () => {
       let query = supabase
         .from('item_feedback')
@@ -114,6 +120,30 @@ export function useAllFeedback(filters?: {
 
       const { data, error } = await query;
       if (error) throw error;
+
+      // If super admin wants user profiles, fetch them
+      if (options?.includeUserProfiles) {
+        const userIds = [...new Set((data || []).map(f => f.user_id).filter(Boolean))];
+        let profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+        
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', userIds);
+          
+          profilesMap = (profiles || []).reduce((acc, p) => {
+            acc[p.id] = { full_name: p.full_name, email: p.email };
+            return acc;
+          }, {} as Record<string, { full_name: string | null; email: string }>);
+        }
+
+        return (data || []).map(feedback => ({
+          ...feedback,
+          user_profile: feedback.user_id ? profilesMap[feedback.user_id] || null : null,
+        })) as ItemFeedback[];
+      }
+
       return data as ItemFeedback[];
     },
   });
