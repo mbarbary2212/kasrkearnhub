@@ -57,6 +57,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [modelAnswer, setModelAnswer] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [csvText, setCsvText] = useState('');
@@ -135,6 +136,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       const { error } = await supabase.from('essays').insert({
         title,
         question: description,
+        model_answer: modelAnswer || null,
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
@@ -291,6 +293,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const resetForm = () => {
     setTitle('');
     setDescription('');
+    setModelAnswer('');
     setVideoUrl('');
     setFileUrl('');
     setCsvText('');
@@ -348,6 +351,17 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
               <Label>{label.descField}</Label>
               <Textarea value={description} onChange={e => setDescription(e.target.value)} />
             </div>
+            {contentType === 'essay' && (
+              <div>
+                <Label>Model Answer (optional)</Label>
+                <Textarea 
+                  value={modelAnswer} 
+                  onChange={e => setModelAnswer(e.target.value)} 
+                  placeholder="Enter the model answer that students can reveal"
+                  rows={4}
+                />
+              </div>
+            )}
             {(contentType === 'lecture' || contentType === 'practical') && (
               <div>
                 <Label>Video URL</Label>

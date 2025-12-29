@@ -271,17 +271,18 @@ export default function EssayList({
                                 <Printer className="w-4 h-4" />
                               </Button>
                               {moduleId && (
-                                <ContentItemActions
-                                  id={essay.id}
-                                  title={essay.title}
-                                  description={essay.question}
-                                  contentType="essay"
-                                  moduleId={moduleId}
-                                  chapterId={chapterId}
-                                  canEdit={canEdit}
-                                  canDelete={canDelete}
-                                  showFeedback={showFeedback}
-                                />
+                              <ContentItemActions
+                                id={essay.id}
+                                title={essay.title}
+                                description={essay.question}
+                                modelAnswer={essay.model_answer}
+                                contentType="essay"
+                                moduleId={moduleId}
+                                chapterId={chapterId}
+                                canEdit={canEdit}
+                                canDelete={canDelete}
+                                showFeedback={showFeedback}
+                              />
                               )}
                             </>
                           )}
