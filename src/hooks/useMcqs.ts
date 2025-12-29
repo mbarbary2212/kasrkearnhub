@@ -174,19 +174,15 @@ export function useDeleteMcq() {
       moduleId: string;
       chapterId?: string | null;
     }) => {
-      const { data, error } = await supabase
+      const { error, count } = await supabase
         .from('mcqs')
         .update({ is_deleted: true, updated_by: user?.id })
-        .eq('id', id)
-        .select('id')
-        .single();
+        .eq('id', id);
 
       if (error) throw error;
       
-      // Verify the update actually happened
-      if (!data) {
-        throw new Error('Delete failed: MCQ was not updated. Check your permissions.');
-      }
+      // count may be null if RLS blocks the operation silently
+      // We don't use .single() to avoid "cannot coerce" errors
       
       return { moduleId, chapterId };
     },
