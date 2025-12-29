@@ -174,16 +174,24 @@ export function useDeleteMcq() {
       moduleId: string;
       chapterId?: string | null;
     }) => {
-      const { error, count } = await supabase
+      const { data, error } = await supabase
         .from('mcqs')
         .update({ is_deleted: true, updated_by: user?.id })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
       if (error) throw error;
-      
-      // count may be null if RLS blocks the operation silently
-      // We don't use .single() to avoid "cannot coerce" errors
-      
+
+      // If RLS blocks the update, Supabase can return 0 rows without throwing.
+      if (!data || data.length === 0) {
+        throw new Error('Delete failed: no MCQ was updated (0 rows affected). Check your permissions.');
+      }
+
+      // Sanity check: id is unique, we should never update more than one row.
+      if (data.length > 1) {
+        throw new Error('Delete failed: unexpected multiple rows affected.');
+      }
+
       return { moduleId, chapterId };
     },
     onSuccess: (result) => {
