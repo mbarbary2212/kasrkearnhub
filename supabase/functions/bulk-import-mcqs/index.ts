@@ -24,6 +24,34 @@ interface RequestBody {
   chapterId?: string | null;
 }
 
+const VALID_CORRECT_KEYS = ['A', 'B', 'C', 'D', 'E'];
+
+function normalizeCorrectKey(key: string | null | undefined): string | null {
+  if (key === null || key === undefined) return null;
+  const normalized = String(key).trim().toUpperCase();
+  // Extract just the letter if it contains extra text like "Answer: B"
+  const match = normalized.match(/^([A-E])/);
+  return match ? match[1] : normalized;
+}
+
+function validateCorrectKey(key: string | null | undefined, rowIndex: number): { valid: boolean; normalized: string | null; error?: string } {
+  const normalized = normalizeCorrectKey(key);
+  
+  if (!normalized) {
+    return { valid: false, normalized: null, error: `Row ${rowIndex + 1}: correct_key is missing or empty` };
+  }
+  
+  if (!VALID_CORRECT_KEYS.includes(normalized)) {
+    return { 
+      valid: false, 
+      normalized: null, 
+      error: `Row ${rowIndex + 1}: correct_key "${key}" is invalid. Must be A, B, C, D, or E` 
+    };
+  }
+  
+  return { valid: true, normalized };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -100,24 +128,60 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare records for insertion
-    const records = mcqs.map((mcq, index) => ({
+    // Validate and normalize all correct_keys before insertion
+    const validationErrors: string[] = [];
+    const validatedMcqs: Array<McqFormData & { normalizedCorrectKey: string }> = [];
+    
+    for (let i = 0; i < mcqs.length; i++) {
+      const mcq = mcqs[i];
+      const validation = validateCorrectKey(mcq.correct_key, i);
+      
+      if (!validation.valid) {
+        validationErrors.push(validation.error!);
+        console.error(`Validation failed for MCQ ${i + 1}:`, {
+          original_correct_key: mcq.correct_key,
+          stem_preview: mcq.stem?.substring(0, 50),
+          error: validation.error
+        });
+      } else {
+        validatedMcqs.push({ ...mcq, normalizedCorrectKey: validation.normalized! });
+      }
+    }
+    
+    if (validationErrors.length > 0) {
+      console.error('MCQ validation errors:', validationErrors);
+      return new Response(
+        JSON.stringify({ 
+          error: `Invalid MCQ data:\n${validationErrors.slice(0, 5).join('\n')}${validationErrors.length > 5 ? `\n...and ${validationErrors.length - 5} more errors` : ''}` 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prepare records for insertion with normalized correct_key
+    const records = validatedMcqs.map((mcq, index) => ({
       module_id: moduleId,
       chapter_id: chapterId || null,
       stem: mcq.stem,
       choices: mcq.choices,
-      correct_key: mcq.correct_key,
+      correct_key: mcq.normalizedCorrectKey, // Use normalized value
       explanation: mcq.explanation,
       difficulty: mcq.difficulty,
       display_order: index,
       created_by: user.id,
     }));
 
+    console.log(`Inserting ${records.length} MCQs for module ${moduleId}, chapter ${chapterId}`);
+
     // Insert using admin client (bypasses RLS)
     const { error: insertError } = await adminClient.from('mcqs').insert(records);
 
     if (insertError) {
       console.error('Insert error:', insertError);
+      // Log the first record for debugging
+      if (records.length > 0) {
+        console.error('First record that failed:', JSON.stringify(records[0], null, 2));
+      }
       return new Response(
         JSON.stringify({ error: `Failed to import MCQs: ${insertError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
