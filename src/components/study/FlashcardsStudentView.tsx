@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
+import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
   cards: StudyResource[];
+  markedIds?: Set<string>;
+  onToggleMark?: (id: string) => void;
 }
 
 interface GroupedDeck {
@@ -31,7 +34,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
+export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: FlashcardsStudentViewProps) {
   // Group flashcards by title into decks
   const groups = useMemo(() => {
     const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
@@ -59,6 +62,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
   const activeDeck = groups[activeDeckIndex];
   const displayCards = shuffledCards || activeDeck?.cards || [];
   const currentCard = displayCards[cardIndex];
+  const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
 
   // Reset card index and shuffle state when switching decks
   useEffect(() => {
@@ -121,10 +125,15 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
       if (e.key === 's' || e.key === 'S') {
         handleShuffle();
       }
+      if (e.key === 'm' || e.key === 'M') {
+        if (currentCard && onToggleMark) {
+          onToggleMark(currentCard.resource.id);
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayCards.length, handleShuffle]);
+  }, [displayCards.length, handleShuffle, currentCard, onToggleMark]);
 
   if (groups.length === 0) {
     return (
@@ -194,6 +203,25 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
+            {/* Mark for Review star - positioned above the card */}
+            {onToggleMark && (
+              <div className="absolute -top-2 -right-2 z-20">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMark(currentCard.resource.id);
+                  }}
+                  className={cn(
+                    'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                    isCurrentMarked ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                  )}
+                  title={isCurrentMarked ? 'Remove from review' : 'Mark for review'}
+                >
+                  <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
+                </button>
+              </div>
+            )}
+
             {/* Transition blackout overlay */}
             <div 
               className={`absolute inset-0 bg-background rounded-xl z-10 transition-opacity duration-150 ${
@@ -228,6 +256,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
           <div className="text-center text-sm text-muted-foreground mt-4">
             Card {cardIndex + 1} of {displayCards.length}
             {isShuffled && <span className="ml-2 text-primary">(Shuffled)</span>}
+            {isCurrentMarked && <span className="ml-2 text-amber-500">★</span>}
           </div>
 
           {/* Navigation controls */}
@@ -321,7 +350,7 @@ export function FlashcardsStudentView({ cards }: FlashcardsStudentViewProps) {
 
           {/* Keyboard hint - hide on mobile */}
           <div className="hidden md:block text-center text-xs text-muted-foreground mt-4">
-            Arrow keys to navigate • Space/Enter to flip • S to shuffle
+            Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark
           </div>
         </div>
       )}
