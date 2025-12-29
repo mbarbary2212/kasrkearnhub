@@ -171,7 +171,7 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
         <div>
           <p className="text-sm font-medium text-primary">Your Privacy is Protected</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Your feedback is completely anonymous. No one can see your identity.
+            Your feedback is anonymous. However, in rare cases involving inappropriate language, abuse, or violations of community guidelines, your identity may be disclosed to appropriate authorities.
           </p>
         </div>
       </div>
