@@ -65,6 +65,7 @@ export default function ChapterPage() {
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
+  const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -79,7 +80,8 @@ export default function ChapterPage() {
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
   const { data: resources, isLoading: resourcesLoading } = useChapterResources(chapterId);
-  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
+  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false);
+  const { data: deletedMcqs } = useChapterMcqs(chapterId, true);
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
@@ -87,6 +89,10 @@ export default function ChapterPage() {
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
+
+  // Filter deleted MCQs only (exclude active ones)
+  const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
+
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -413,9 +419,13 @@ export default function ChapterPage() {
                     ) : (
                       <McqList
                         mcqs={mcqs || []}
+                        deletedMcqs={deletedOnlyMcqs}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
                         isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedMcqs}
+                        onShowDeletedChange={setShowDeletedMcqs}
                       />
                     )}
                   </div>

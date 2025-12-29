@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, EyeOff, Pencil, Trash2, Star } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 
@@ -12,13 +12,27 @@ interface McqCardProps {
   isAdmin: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onRestore?: () => void;
   isMarked?: boolean;
   onToggleMark?: (id: string) => void;
   isExpanded?: boolean;
   onToggleExpand?: (id: string) => void;
+  isDeleted?: boolean;
 }
 
-export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onToggleMark, isExpanded, onToggleExpand }: McqCardProps) {
+export function McqCard({ 
+  mcq, 
+  index, 
+  isAdmin, 
+  onEdit, 
+  onDelete, 
+  onRestore,
+  isMarked, 
+  onToggleMark, 
+  isExpanded, 
+  onToggleExpand,
+  isDeleted = false,
+}: McqCardProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   
   // Use controlled expand state if provided, otherwise internal state
@@ -89,27 +103,46 @@ export function McqCard({ mcq, index, isAdmin, onEdit, onDelete, isMarked, onTog
             <p className="text-base font-medium leading-relaxed">{mcq.stem}</p>
           </div>
           
-          {/* Admin controls - visible Edit and Delete buttons */}
+          {/* Admin controls - visible Edit and Delete buttons, or Restore for deleted */}
           {isAdmin && (
             <div className="flex items-center gap-1 shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onEdit}
-                className="h-8 w-8 p-0"
-                title="Edit MCQ"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onDelete}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                title="Delete MCQ"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {isDeleted && onRestore ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRestore}
+                  className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                  title="Restore MCQ"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restore
+                </Button>
+              ) : (
+                <>
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onEdit}
+                      className="h-8 w-8 p-0"
+                      title="Edit MCQ"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onDelete}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Delete MCQ"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
