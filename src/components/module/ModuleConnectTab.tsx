@@ -99,6 +99,8 @@ export function ModuleConnectTab({ moduleId, moduleName }: ModuleConnectTabProps
       <FeedbackModal 
         open={feedbackOpen} 
         onOpenChange={setFeedbackOpen}
+        moduleId={moduleId}
+        moduleName={moduleName}
       />
     </div>
   );

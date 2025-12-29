@@ -17,6 +17,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface FeedbackModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  moduleId?: string;
+  moduleName?: string;
 }
 
 interface Year {
@@ -53,7 +55,7 @@ const TABS = [
   { value: 'short_questions', label: 'Short Questions' },
 ];
 
-export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
+export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName }: FeedbackModalProps) {
   const { user } = useAuthContext();
   const isMobile = useIsMobile();
   const { submitFeedback, isSubmitting, canSubmit, remainingSubmissions, isCheckingLimit } = useFeedback();
@@ -65,17 +67,21 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
   // Form state
   const [category, setCategory] = useState<FeedbackCategory | ''>('');
   const [severity, setSeverity] = useState<FeedbackSeverity>('normal');
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedModule, setSelectedModule] = useState('');
-  const [selectedTab, setSelectedTab] = useState('');
+  const [selectedYear, setSelectedYear] = useState('none');
+  const [selectedModule, setSelectedModule] = useState(moduleId || 'none');
+  const [selectedTab, setSelectedTab] = useState('none');
   const [message, setMessage] = useState('');
   const [consent, setConsent] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchData();
+      // Initialize module selection if moduleId is provided
+      if (moduleId) {
+        setSelectedModule(moduleId);
+      }
     }
-  }, [open]);
+  }, [open, moduleId]);
 
   const fetchData = async () => {
     try {
@@ -93,16 +99,16 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
     }
   };
 
-  const filteredModules = selectedYear 
+  const filteredModules = selectedYear && selectedYear !== 'none'
     ? modules.filter(m => m.year_id === selectedYear)
     : modules;
 
   const resetForm = () => {
     setCategory('');
     setSeverity('normal');
-    setSelectedYear('');
-    setSelectedModule('');
-    setSelectedTab('');
+    setSelectedYear('none');
+    setSelectedModule('none');
+    setSelectedTab('none');
     setMessage('');
     setConsent(false);
   };
@@ -133,9 +139,9 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
     const success = await submitFeedback({
       category,
       severity,
-      year_id: selectedYear || undefined,
-      module_id: selectedModule || undefined,
-      tab: selectedTab || undefined,
+      year_id: selectedYear !== 'none' ? selectedYear : undefined,
+      module_id: selectedModule !== 'none' ? selectedModule : undefined,
+      tab: selectedTab !== 'none' ? selectedTab : undefined,
       message,
     });
 
@@ -150,6 +156,15 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
 
   const content = (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Module context notice */}
+      {moduleName && (
+        <div className="p-3 rounded-lg bg-muted border">
+          <p className="text-sm text-muted-foreground">
+            Submitting feedback for: <span className="font-medium text-foreground">{moduleName}</span>
+          </p>
+        </div>
+      )}
+
       {/* Privacy notice */}
       <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
@@ -218,13 +233,13 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
           <Label>Year (optional)</Label>
           <Select value={selectedYear} onValueChange={(v) => {
             setSelectedYear(v);
-            setSelectedModule('');
+            setSelectedModule('none');
           }}>
             <SelectTrigger>
               <SelectValue placeholder="Select year" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {years.map(y => (
                 <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
               ))}
@@ -239,7 +254,7 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
               <SelectValue placeholder="Select module" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               {filteredModules.map(m => (
                 <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
               ))}
@@ -255,7 +270,7 @@ export default function FeedbackModal({ open, onOpenChange }: FeedbackModalProps
             <SelectValue placeholder="Select tab" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {TABS.map(t => (
               <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
             ))}
