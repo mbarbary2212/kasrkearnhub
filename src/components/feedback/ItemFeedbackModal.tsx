@@ -143,6 +143,13 @@ export default function ItemFeedbackModal({
             <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
           </div>
 
+          {/* Privacy warning */}
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              <strong>Note:</strong> While your feedback is anonymous, in rare cases involving inappropriate language, abuse, or community guideline violations, your identity may be disclosed to appropriate authorities.
+            </p>
+          </div>
+
           <Button onClick={handleSubmit} className="w-full" disabled={submitFeedback.isPending}>
             {submitFeedback.isPending ? 'Submitting...' : 'Submit Feedback'}
           </Button>
