@@ -118,8 +118,8 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
   }, []);
 
   const handleDelete = () => {
-    if (!deletingMcq) return;
-    
+    if (!deletingMcq || deleteMutation.isPending) return;
+
     deleteMutation.mutate(
       { id: deletingMcq.id, moduleId, chapterId },
       { onSuccess: () => setDeletingMcq(null) }
@@ -581,25 +581,38 @@ export function McqList({ mcqs, moduleId, chapterId, isAdmin }: McqListProps) {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deletingMcq} onOpenChange={(open) => !open && setDeletingMcq(null)}>
+      <AlertDialog
+        open={!!deletingMcq}
+        onOpenChange={(open) => {
+          // Don't allow the dialog to close while the delete mutation is running.
+          if (!open && !deleteMutation.isPending) setDeletingMcq(null);
+        }}
+      >
         <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete MCQ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this question? This action cannot be undone.
+              This will 
+              <span className="font-medium text-foreground"> soft-delete </span>
+              the question (set <code>is_deleted=true</code>). You can restore it later.
               <br />
               <span className="font-medium mt-2 block text-foreground">
-                "{deletingMcq?.stem.slice(0, 100)}..."
+                “{deletingMcq?.stem.slice(0, 100)}...”
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => {
+                // Prevent Radix from auto-closing the dialog before the mutation completes.
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
