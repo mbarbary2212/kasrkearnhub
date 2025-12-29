@@ -11,6 +11,7 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
+import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner';
 import { 
   ArrowLeft, 
   BookOpen,
@@ -63,6 +64,9 @@ export default function ModulePage() {
   return (
     <MainLayout>
       <div className="space-y-4 animate-fade-in">
+        {/* Global Announcements at top of module */}
+        <AnnouncementBanner moduleId={actualModuleId} yearId={module?.year_id} />
+
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
