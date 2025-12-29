@@ -59,17 +59,21 @@ export function useChapterMcqSets(chapterId?: string) {
 }
 
 // Fetch essays for a chapter
-export function useChapterEssays(chapterId?: string) {
+export function useChapterEssays(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['chapter-essays', chapterId],
+    queryKey: ['chapter-essays', chapterId, includeDeleted],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('essays')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -78,17 +82,21 @@ export function useChapterEssays(chapterId?: string) {
 }
 
 // Fetch practicals for a chapter
-export function useChapterPracticals(chapterId?: string) {
+export function useChapterPracticals(chapterId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ['chapter-practicals', chapterId],
+    queryKey: ['chapter-practicals', chapterId, includeDeleted],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('practicals')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

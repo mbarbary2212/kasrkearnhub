@@ -74,6 +74,10 @@ export default function ChapterPage() {
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedCases, setShowDeletedCases] = useState(false);
+  const [showDeletedMatching, setShowDeletedMatching] = useState(false);
+  const [showDeletedEssays, setShowDeletedEssays] = useState(false);
+  const [showDeletedPracticals, setShowDeletedPracticals] = useState(false);
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -91,15 +95,23 @@ export default function ChapterPage() {
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false);
   const { data: deletedMcqs } = useChapterMcqs(chapterId, true);
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
+  const { data: deletedEssays } = useChapterEssays(chapterId, true);
   const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
+  const { data: deletedPracticals } = useChapterPracticals(chapterId, true);
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
+  const { data: deletedCaseScenarios } = useChapterCaseScenarios(chapterId, true);
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
+  const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
+  const deletedOnlyCases = (deletedCaseScenarios || []).filter(c => c.is_deleted);
+  const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
+  const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
+  const deletedOnlyPracticals = (deletedPracticals || []).filter(p => p.is_deleted);
 
 
   // Filter flashcards from study resources
@@ -454,11 +466,15 @@ export default function ChapterPage() {
                     ) : (
                       <EssayList
                         essays={essays || []}
+                        deletedEssays={deletedOnlyEssays}
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedEssays}
+                        onShowDeletedChange={setShowDeletedEssays}
                       />
                     )}
                   </div>
@@ -486,10 +502,14 @@ export default function ChapterPage() {
                     ) : (
                       <CaseScenarioList
                         cases={caseScenarios || []}
+                        deletedCases={deletedOnlyCases}
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedCases}
+                        onShowDeletedChange={setShowDeletedCases}
                       />
                     )}
                   </div>
@@ -510,11 +530,15 @@ export default function ChapterPage() {
                     ) : (
                       <PracticalList
                         practicals={practicals || []}
+                        deletedPracticals={deletedOnlyPracticals}
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedPracticals}
+                        onShowDeletedChange={setShowDeletedPracticals}
                       />
                     )}
                   </div>
@@ -530,9 +554,13 @@ export default function ChapterPage() {
                     ) : (
                       <MatchingQuestionList
                         questions={matchingQuestions || []}
+                        deletedQuestions={deletedOnlyMatching}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
                         isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedMatching}
+                        onShowDeletedChange={setShowDeletedMatching}
                       />
                     )}
                   </div>

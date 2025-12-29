@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Stethoscope, Star, Edit2, Trash2, Printer, ExternalLink, Filter } from 'lucide-react';
+import { Stethoscope, Star, Edit2, Trash2, Printer, ExternalLink, Filter, RotateCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +7,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CaseScenario, useDeleteCaseScenario } from '@/hooks/useCaseScenarios';
+import { CaseScenario, useDeleteCaseScenario, useRestoreCaseScenario } from '@/hooks/useCaseScenarios';
 import { CaseScenarioDetailModal } from './CaseScenarioDetailModal';
 import { CaseScenarioFormModal } from './CaseScenarioFormModal';
 import { toast } from 'sonner';
@@ -27,18 +28,26 @@ import {
 
 interface CaseScenarioListProps {
   cases: CaseScenario[];
+  deletedCases?: CaseScenario[];
   moduleId?: string;
   chapterId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
+  showDeletedToggle?: boolean;
+  showDeleted?: boolean;
+  onShowDeletedChange?: (show: boolean) => void;
 }
 
 export default function CaseScenarioList({
   cases,
+  deletedCases = [],
   moduleId,
   chapterId,
   canEdit = false,
   canDelete = false,
+  showDeletedToggle = false,
+  showDeleted = false,
+  onShowDeletedChange,
 }: CaseScenarioListProps) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -50,6 +59,7 @@ export default function CaseScenarioList({
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
 
   const deleteCase = useDeleteCaseScenario();
+  const restoreCase = useRestoreCaseScenario();
 
   const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -161,6 +171,20 @@ export default function CaseScenarioList({
     );
   }
 
+  const handleRestore = async (caseItem: CaseScenario, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!chapterId) return;
+    try {
+      await restoreCase.mutateAsync({ id: caseItem.id, chapterId });
+      toast.success('Case scenario restored');
+    } catch (error) {
+      toast.error('Failed to restore case scenario');
+    }
+  };
+
+  // Combine active and deleted cases when showing deleted
+  const displayCases = showDeleted ? [...cases, ...deletedCases] : cases;
+
   return (
     <>
       {/* Filter Bar */}
@@ -170,8 +194,10 @@ export default function CaseScenarioList({
             <Button variant="outline" size="sm" className="gap-2">
               <Filter className="h-3 w-3" />
               Filters
-              {showMarkedOnly && (
-                <Badge variant="secondary" className="ml-1 text-xs">1</Badge>
+              {(showMarkedOnly || showDeleted) && (
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {(showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
+                </Badge>
               )}
             </Button>
           </DropdownMenuTrigger>
@@ -183,11 +209,23 @@ export default function CaseScenarioList({
               <Star className="h-3 w-3 mr-2 text-amber-500" />
               Marked for review ({markedIds.size})
             </DropdownMenuCheckboxItem>
+            {showDeletedToggle && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={showDeleted}
+                  onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
+                >
+                  <Trash2 className="h-3 w-3 mr-2 text-destructive" />
+                  Show deleted ({deletedCases.length})
+                </DropdownMenuCheckboxItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {filteredCases.length === 0 ? (
+      {displayCases.length === 0 && filteredCases.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
             {showMarkedOnly 
@@ -197,92 +235,118 @@ export default function CaseScenarioList({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredCases.map((caseItem, index) => (
-            <Card 
-              key={caseItem.id} 
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleOpen(index)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Mark for Review star */}
-                      <button
-                        onClick={(e) => toggleMark(caseItem.id, e)}
-                        className={cn(
-                          'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
-                          markedIds.has(caseItem.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+          {(showMarkedOnly ? filteredCases : displayCases).map((caseItem, index) => {
+            const isDeleted = caseItem.is_deleted;
+            return (
+              <Card 
+                key={caseItem.id} 
+                className={cn(
+                  "hover:shadow-md transition-shadow cursor-pointer",
+                  isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
+                )}
+                onClick={() => !isDeleted && handleOpen(index)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {/* Mark for Review star */}
+                        {!isDeleted && (
+                          <button
+                            onClick={(e) => toggleMark(caseItem.id, e)}
+                            className={cn(
+                              'p-1 rounded-full transition-colors hover:bg-muted shrink-0',
+                              markedIds.has(caseItem.id) ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                            )}
+                            title={markedIds.has(caseItem.id) ? 'Remove from review' : 'Mark for review'}
+                          >
+                            <Star className={cn('h-4 w-4', markedIds.has(caseItem.id) && 'fill-current')} />
+                          </button>
                         )}
-                        title={markedIds.has(caseItem.id) ? 'Remove from review' : 'Mark for review'}
-                      >
-                        <Star className={cn('h-4 w-4', markedIds.has(caseItem.id) && 'fill-current')} />
-                      </button>
-                      <h3 className="font-medium truncate">{caseItem.title}</h3>
-                      {caseItem.rating && (
-                        <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                          {caseItem.rating}
-                        </Badge>
-                      )}
+                        {isDeleted && (
+                          <Badge variant="destructive" className="text-xs mr-1">Deleted</Badge>
+                        )}
+                        <h3 className={cn("font-medium truncate", isDeleted && "line-through")}>{caseItem.title}</h3>
+                        {caseItem.rating && !isDeleted && (
+                          <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                            <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                            {caseItem.rating}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2 ml-7">
+                        {caseItem.case_history}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 ml-7">
-                      {caseItem.case_history}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpen(index);
-                      }}
-                      title="Open"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                    {(canEdit || canDelete) && (
-                      <>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isDeleted ? (
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => handlePrint(caseItem, e)}
-                          title="Print"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => handleRestore(caseItem, e)}
+                          className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                          title="Restore"
                         >
-                          <Printer className="w-4 h-4" />
+                          <RotateCcw className="h-4 w-4" />
+                          Restore
                         </Button>
-                        {canEdit && (
+                      ) : (
+                        <>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={(e) => handleEdit(caseItem, e)}
-                            title="Edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpen(index);
+                            }}
+                            title="Open"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={(e) => handleDeleteClick(caseItem, e)}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </>
-                    )}
+                          {(canEdit || canDelete) && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handlePrint(caseItem, e)}
+                                title="Print"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => handleEdit(caseItem, e)}
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={(e) => handleDeleteClick(caseItem, e)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
