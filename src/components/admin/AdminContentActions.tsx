@@ -70,13 +70,12 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     auth.isSuperAdmin
   );
 
-  const { canManageContent, isLoading: permissionLoading } = useAddPermissionGuard({
-    moduleId,
-    chapterId: chapterId ?? null,
-    topicId: topicId ?? null,
-  });
-
-  const { guard, dialog } = useAddPermissionGuard({
+  const {
+    guard,
+    dialog,
+    canManage: canManageContent,
+    isCheckingPermission: permissionLoading,
+  } = useAddPermissionGuard({
     moduleId,
     chapterId: chapterId ?? null,
     topicId: topicId ?? null,
