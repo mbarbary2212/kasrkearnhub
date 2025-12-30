@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
-import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw, Upload } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -31,12 +31,19 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
+import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
+import { toast } from 'sonner';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -65,6 +72,9 @@ export function McqList({
   showDeleted = false,
   onShowDeletedChange,
 }: McqListProps) {
+  // Check if user can manage this module's content
+  const { canManageContent, isLoading: permissionLoading } = useIsModuleAdmin(moduleId);
+  
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
   const [restoringMcq, setRestoringMcq] = useState<Mcq | null>(null);
@@ -79,6 +89,11 @@ export function McqList({
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handler for permission-denied clicks
+  const handlePermissionDenied = () => {
+    toast.error('You can only add MCQs in modules you\'ve been assigned to. Contact a Platform Admin if you need access to this module.');
+  };
 
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
@@ -338,12 +353,35 @@ export function McqList({
           </DropdownMenu>
         </div>
         {isAdmin && !showDeleted && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowBulkModal(true)} className="gap-2">
+          <div className="flex gap-2 items-center">
+            {/* Permission warning for admins without access */}
+            {!permissionLoading && !canManageContent && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                    <ShieldAlert className="h-3 w-3" />
+                    <span>Not your module</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p>You can only manage MCQs in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={canManageContent ? () => setShowBulkModal(true) : handlePermissionDenied} 
+              className="gap-2"
+              disabled={!canManageContent}
+            >
               <Upload className="h-4 w-4" />
               Bulk Import
             </Button>
-            <Button onClick={() => setShowAddModal(true)} className="gap-2">
+            <Button 
+              onClick={canManageContent ? () => setShowAddModal(true) : handlePermissionDenied} 
+              className="gap-2"
+              disabled={!canManageContent}
+            >
               <Plus className="h-4 w-4" />
               Add Question
             </Button>
