@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -432,29 +433,17 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                       title,description,video_url{"\n"}"Practical Title","Description text","https://youtube.com/..."
                     </pre>
                   </div>
-                  <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground mb-3">Upload a CSV file</p>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = () => setCsvText(String(reader.result ?? ''));
-                          reader.readAsText(file);
-                        }
-                      }}
-                      className="hidden"
-                      id="practical-csv-upload"
-                    />
-                    <Button size="sm" variant="outline" asChild>
-                      <label htmlFor="practical-csv-upload" className="cursor-pointer">
-                        Choose File
-                      </label>
-                    </Button>
-                  </div>
+                  <DragDropZone
+                    id="practical-csv-upload"
+                    onFileSelect={(file) => {
+                      const reader = new FileReader();
+                      reader.onload = () => setCsvText(String(reader.result ?? ''));
+                      reader.readAsText(file);
+                    }}
+                    accept=".csv"
+                    acceptedTypes={['.csv']}
+                    maxSizeMB={10}
+                  />
                   {csvText && (
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">CSV loaded. Ready to upload.</p>
@@ -473,29 +462,17 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                       title,question,model_answer{"\n"}"Question Title","Question text","Model answer text"
                     </pre>
                   </div>
-                  <div className="rounded-xl border border-dashed border-muted-foreground/25 p-6 text-center bg-background">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground mb-3">Upload a CSV file</p>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = () => setCsvText(String(reader.result ?? ''));
-                          reader.readAsText(file);
-                        }
-                      }}
-                      className="hidden"
-                      id="essay-csv-upload"
-                    />
-                    <Button size="sm" variant="outline" asChild>
-                      <label htmlFor="essay-csv-upload" className="cursor-pointer">
-                        Choose File
-                      </label>
-                    </Button>
-                  </div>
+                  <DragDropZone
+                    id="essay-csv-upload"
+                    onFileSelect={(file) => {
+                      const reader = new FileReader();
+                      reader.onload = () => setCsvText(String(reader.result ?? ''));
+                      reader.readAsText(file);
+                    }}
+                    accept=".csv"
+                    acceptedTypes={['.csv']}
+                    maxSizeMB={10}
+                  />
                   {csvText && (
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">CSV loaded. Ready to upload.</p>

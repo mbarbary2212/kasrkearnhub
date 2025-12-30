@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
-import { Plus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,7 @@ import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -482,32 +483,45 @@ export function McqList({
                 
                 {/* File Upload Tab */}
                 <TabsContent value="upload" className="space-y-4 mt-4">
-                  <div
-                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                    {fileName ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <p className="text-sm font-medium">{fileName}</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-sm font-medium">Click to upload CSV file</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Or drag and drop your file here
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <DragDropZone
+                    id="mcq-csv-upload"
+                    onFileSelect={(file) => {
+                      setFileName(file.name);
+                      setFileError(null);
+                      setPreviewData(null);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const text = event.target?.result as string;
+                          if (!text.trim()) {
+                            setFileError('The file is empty');
+                            return;
+                          }
+                          
+                          const parsed = parseMcqCsv(text);
+                          
+                          if (parsed.length === 0) {
+                            setFileError('No valid MCQs found in the file. Check the format.');
+                            return;
+                          }
+                          
+                          const withDuplicates = processWithDuplicateDetection(parsed);
+                          setPreviewData(withDuplicates);
+                          setCsvText(text);
+                        } catch (err) {
+                          setFileError('Failed to parse CSV file');
+                        }
+                      };
+                      reader.onerror = () => {
+                        setFileError('Failed to read file');
+                      };
+                      reader.readAsText(file);
+                    }}
+                    fileName={fileName || undefined}
+                    accept=".csv"
+                    acceptedTypes={['.csv']}
+                    maxSizeMB={10}
+                  />
 
                   {fileError && (
                     <Alert variant="destructive">
