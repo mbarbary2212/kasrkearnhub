@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Tooltip,
@@ -23,7 +22,7 @@ import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/v
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
-import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -59,26 +58,42 @@ interface AdminContentActionsProps {
 }
 
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
-  const { isModuleAdmin, isTopicAdmin } = useAuthContext();
-  const { canManageContent, isLoading: permissionLoading } = useIsModuleAdmin(moduleId);
+  const auth = useAuthContext();
+
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const { canManageContent, isLoading: permissionLoading } = useAddPermissionGuard({
+    moduleId,
+    chapterId: chapterId ?? null,
+    topicId: topicId ?? null,
+  });
+
+  const { guard, dialog } = useAddPermissionGuard({
+    moduleId,
+    chapterId: chapterId ?? null,
+    topicId: topicId ?? null,
+  });
+
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const queryClient = useQueryClient();
-
-  // Handler for permission-denied clicks
-  const handlePermissionDenied = () => {
-    const contentLabel = contentType === 'lecture' ? 'videos' : contentType === 'mcq' ? 'MCQ sets' : `${contentType}s`;
-    toast.error(`You can only add ${contentLabel} in modules you've been assigned to. Contact a Platform Admin if you need access.`);
-  };
 
   // Helper to create permission-aware error handler
   const handlePermissionError = (error: Error | unknown, action: 'add' | 'edit' | 'delete') => {
     const message = getPermissionErrorMessage(error, {
       action,
       contentType,
-      isModuleAdmin,
-      isTopicAdmin,
-      isChapterAdmin: isTopicAdmin, // Topic admins are essentially chapter admins in this context
+      isModuleAdmin: auth.isModuleAdmin,
+      isTopicAdmin: auth.isTopicAdmin,
+      isChapterAdmin: auth.isTopicAdmin, // Topic admins are essentially chapter admins in this context
     });
     toast.error(message);
   };
@@ -363,8 +378,9 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   return (
     <div className="flex gap-2 items-center">
+      {dialog}
       {/* Permission warning for admins without access */}
-      {!permissionLoading && !canManageContent && (
+      {!permissionLoading && showAddControls && !canManageContent && (
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
@@ -377,15 +393,13 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
           </TooltipContent>
         </Tooltip>
       )}
-      
-      {canManageContent ? (
+
+      {showAddControls && (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Plus className="w-4 h-4 mr-1" />
-              {label.title}
-            </Button>
-          </DialogTrigger>
+          <Button size="sm" variant="outline" onClick={() => guard(() => setOpen(true))}>
+            <Plus className="w-4 h-4 mr-1" />
+            {label.title}
+          </Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{label.title}</DialogTitle>
@@ -431,21 +445,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
             </div>
           </DialogContent>
         </Dialog>
-      ) : (
-        <Button size="sm" variant="outline" disabled onClick={handlePermissionDenied}>
-          <Plus className="w-4 h-4 mr-1" />
-          {label.title}
-        </Button>
       )}
 
-      {(contentType === 'mcq' || contentType === 'practical' || contentType === 'essay') && canManageContent && (
+      {(contentType === 'mcq' || contentType === 'practical' || contentType === 'essay') && showAddControls && (
         <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Upload className="w-4 h-4 mr-1" />
-              Bulk Upload
-            </Button>
-          </DialogTrigger>
+          <Button size="sm" variant="outline" onClick={() => guard(() => setBulkOpen(true))}>
+            <Upload className="w-4 h-4 mr-1" />
+            Bulk Upload
+          </Button>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>

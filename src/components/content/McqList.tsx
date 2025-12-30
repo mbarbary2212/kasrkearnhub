@@ -42,8 +42,8 @@ import { McqFormModal } from './McqFormModal';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
-import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
-import { toast } from 'sonner';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -72,8 +72,24 @@ export function McqList({
   showDeleted = false,
   onShowDeletedChange,
 }: McqListProps) {
-  // Check if user can manage this module's content
-  const { canManageContent, isLoading: permissionLoading } = useIsModuleAdmin(moduleId);
+  const auth = useAuthContext();
+
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const {
+    guard,
+    dialog,
+    canManage: canManageContent,
+    isCheckingPermission: permissionLoading,
+  } = useAddPermissionGuard({ moduleId, chapterId });
   
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
@@ -89,11 +105,6 @@ export function McqList({
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Handler for permission-denied clicks
-  const handlePermissionDenied = () => {
-    toast.error('You can only add MCQs in modules you\'ve been assigned to. Contact a Platform Admin if you need access to this module.');
-  };
 
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
@@ -304,6 +315,7 @@ export function McqList({
 
   return (
     <div className="space-y-4">
+      {dialog}
       {/* Actions Bar */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -352,7 +364,7 @@ export function McqList({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {isAdmin && !showDeleted && (
+        {showAddControls && !showDeleted && (
           <div className="flex gap-2 items-center">
             {/* Permission warning for admins without access */}
             {!permissionLoading && !canManageContent && (
@@ -368,20 +380,15 @@ export function McqList({
                 </TooltipContent>
               </Tooltip>
             )}
-            <Button 
-              variant="outline" 
-              onClick={canManageContent ? () => setShowBulkModal(true) : handlePermissionDenied} 
+            <Button
+              variant="outline"
+              onClick={() => guard(() => setShowBulkModal(true))}
               className="gap-2"
-              disabled={!canManageContent}
             >
               <Upload className="h-4 w-4" />
               Bulk Import
             </Button>
-            <Button 
-              onClick={canManageContent ? () => setShowAddModal(true) : handlePermissionDenied} 
-              className="gap-2"
-              disabled={!canManageContent}
-            >
+            <Button onClick={() => guard(() => setShowAddModal(true))} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Question
             </Button>

@@ -21,6 +21,8 @@ import {
 } from '@/hooks/useStudyResources';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 
 interface Resource {
   id: string;
@@ -57,6 +59,20 @@ export function ResourcesTabContent({
   isSuperAdmin,
 }: ResourcesTabContentProps) {
   const queryClient = useQueryClient();
+  const auth = useAuthContext();
+
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId });
+
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const deleteStudyResource = useDeleteStudyResource();
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,6 +180,7 @@ export function ResourcesTabContent({
 
   return (
     <div className="space-y-4">
+      {dialog}
       {/* Disclaimer */}
       <StudyDisclaimer isSuperAdmin={isSuperAdmin} />
 
@@ -208,7 +225,7 @@ export function ResourcesTabContent({
 
         {/* Documents Content */}
         <TabsContent value="documents" className="mt-4">
-          {canManageContent && (
+          {showAddControls && (
             <div className="mb-4">
               <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
             </div>
@@ -228,12 +245,12 @@ export function ResourcesTabContent({
         {STUDY_RESOURCE_TYPES.map(({ type, label }) => (
           <TabsContent key={type} value={type} className="mt-4">
             {/* Admin actions */}
-            {canManageContent && (
+            {showAddControls && (
               <div className="flex gap-2 mb-4">
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleAddResource(type)}
+                  onClick={() => guard(() => handleAddResource(type))}
                 >
                   <Plus className="w-3 h-3 mr-1" />
                   Add {label.slice(0, -1)}
@@ -242,7 +259,7 @@ export function ResourcesTabContent({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleBulkUpload(type)}
+                    onClick={() => guard(() => handleBulkUpload(type))}
                   >
                     Bulk Upload
                   </Button>

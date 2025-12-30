@@ -8,6 +8,8 @@ import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadMod
 import { useDeleteMatchingQuestion, useRestoreMatchingQuestion, type MatchingQuestion } from '@/hooks/useMatchingQuestions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,20 @@ export function MatchingQuestionList({
   showDeleted = false,
   onShowDeletedChange,
 }: MatchingQuestionListProps) {
+  const auth = useAuthContext();
+
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId, topicId });
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<MatchingQuestion | null>(null);
@@ -86,7 +102,7 @@ export function MatchingQuestionList({
   const displayQuestions = showDeleted ? [...questions, ...deletedQuestions] : questions;
 
   // For students: show nothing if no questions
-  if (questions.length === 0 && !isAdmin) {
+  if (questions.length === 0 && !isAdmin && !showAddControls) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -97,17 +113,30 @@ export function MatchingQuestionList({
 
   return (
     <div className="space-y-4">
+      {dialog}
       {/* Admin controls */}
-      {isAdmin && (
+      {(showAddControls || showDeletedToggle) && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          <Button onClick={() => { setEditingQuestion(null); setShowAddModal(true); }}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Question
-          </Button>
-          <Button variant="outline" onClick={() => setShowBulkModal(true)}>
-            <Upload className="h-4 w-4 mr-1" />
-            Bulk Import
-          </Button>
+          {showAddControls && (
+            <>
+              <Button
+                onClick={() =>
+                  guard(() => {
+                    setEditingQuestion(null);
+                    setShowAddModal(true);
+                  })
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Question
+              </Button>
+              <Button variant="outline" onClick={() => guard(() => setShowBulkModal(true))}>
+                <Upload className="h-4 w-4 mr-1" />
+                Bulk Import
+              </Button>
+            </>
+          )}
+
           {/* Separate Show Deleted button - only visible to admins */}
           {showDeletedToggle && (
             <Button
@@ -127,11 +156,18 @@ export function MatchingQuestionList({
       )}
 
       {/* Empty state for admin */}
-      {displayQuestions.length === 0 && isAdmin && (
+      {displayQuestions.length === 0 && showAddControls && (
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
           <Link2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground mb-4">No matching questions yet</p>
-          <Button onClick={() => { setEditingQuestion(null); setShowAddModal(true); }}>
+          <Button
+            onClick={() =>
+              guard(() => {
+                setEditingQuestion(null);
+                setShowAddModal(true);
+              })
+            }
+          >
             <Plus className="h-4 w-4 mr-1" />
             Add First Question
           </Button>

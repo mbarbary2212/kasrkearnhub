@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { AdminContentActions } from '@/components/admin/AdminContentActions';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
@@ -56,16 +56,27 @@ type SectionMode = 'resources' | 'practice';
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
-  const { isTeacher, isSuperAdmin, canManageChapter, canManageModule } = useAuthContext();
+  const auth = useAuthContext();
+  const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, chapterId });
+
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
 
   // User can manage content if:
   // 1. They are a teacher/admin/platform admin/super admin (isTeacher is true for all of these)
   // 2. They can manage this specific chapter (topic admins assigned to this chapter)
   // 3. They can manage the parent module (module admins assigned to this module)
   const canManageContent = !!(
-    isTeacher || 
-    (chapterId && canManageChapter(chapterId)) || 
-    (moduleId && canManageModule(moduleId))
+    auth.isTeacher ||
+    (chapterId && auth.canManageChapter(chapterId)) ||
+    (moduleId && auth.canManageModule(moduleId))
   );
 
   // State for section mode and active tabs within sections
@@ -299,7 +310,7 @@ export default function ChapterPage() {
                 {/* Lectures Content */}
                 {resourcesTab === 'lectures' && (
                   <div>
-                    {canManageContent && chapterId && moduleId && (
+                    {showAddControls && chapterId && moduleId && (
                       <div className="mb-4">
                         <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="lecture" />
                       </div>
@@ -325,15 +336,17 @@ export default function ChapterPage() {
                 {/* Flashcards Content (as cards) */}
                 {resourcesTab === 'flashcards' && (
                   <div>
-                    {canManageContent && chapterId && moduleId && (
+                    {showAddControls && chapterId && moduleId && (
                       <div className="flex gap-2 mb-4">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            setEditingFlashcard(null);
-                            setFlashcardFormOpen(true);
-                          }}
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              setFlashcardFormOpen(true);
+                            })
+                          }
                         >
                           <Plus className="w-3 h-3 mr-1" />
                           Add Flashcard
@@ -341,7 +354,7 @@ export default function ChapterPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setFlashcardBulkOpen(true)}
+                          onClick={() => guardAdd(() => setFlashcardBulkOpen(true))}
                         >
                           <Upload className="w-3 h-3 mr-1" />
                           Bulk Upload
@@ -365,14 +378,14 @@ export default function ChapterPage() {
                 {/* Documents Content (simple list, no cards) */}
                 {resourcesTab === 'documents' && (
                   <div>
-                    {canManageContent && chapterId && moduleId ? (
+                    {showAddControls && chapterId && moduleId ? (
                       <ResourcesTabContent
                         chapterId={chapterId}
                         moduleId={moduleId}
                         resources={resources || []}
                         resourcesLoading={resourcesLoading}
                         canManageContent={canManageContent}
-                        isSuperAdmin={isSuperAdmin}
+                        isSuperAdmin={auth.isSuperAdmin}
                       />
                     ) : (
                       // Simple list view for students
@@ -455,13 +468,13 @@ export default function ChapterPage() {
                 )}
 
                 {/* Short Essays Content */}
-                {practiceTab === 'essays' && (
-                  <div>
-                    {canManageContent && chapterId && moduleId && (
-                      <div className="mb-4">
-                        <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="essay" />
-                      </div>
-                    )}
+                    {practiceTab === 'essays' && (
+                      <div>
+                        {showAddControls && chapterId && moduleId && (
+                          <div className="mb-4">
+                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="essay" />
+                          </div>
+                        )}
                     {essaysLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
@@ -484,20 +497,24 @@ export default function ChapterPage() {
                 )}
 
                 {/* Cases Content */}
-                {practiceTab === 'cases' && (
-                  <div>
-                    {canManageContent && chapterId && moduleId && (
-                      <div className="mb-4 flex gap-2">
-                        <Button size="sm" onClick={() => setCaseFormOpen(true)}>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Case
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
-                          <Upload className="w-4 h-4 mr-1" />
-                          Bulk Upload
-                        </Button>
-                      </div>
-                    )}
+                    {practiceTab === 'cases' && (
+                      <div>
+                        {showAddControls && chapterId && moduleId && (
+                          <div className="mb-4 flex gap-2">
+                            <Button size="sm" onClick={() => guardAdd(() => setCaseFormOpen(true))}>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add Case
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => guardAdd(() => setCaseBulkUploadOpen(true))}
+                            >
+                              <Upload className="w-4 h-4 mr-1" />
+                              Bulk Upload
+                            </Button>
+                          </div>
+                        )}
                     {caseScenariosLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -519,13 +536,13 @@ export default function ChapterPage() {
                 )}
 
                 {/* OSCE/Practical Content */}
-                {practiceTab === 'practical' && (
-                  <div>
-                    {canManageContent && chapterId && moduleId && (
-                      <div className="mb-4">
-                        <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
-                      </div>
-                    )}
+                    {practiceTab === 'practical' && (
+                      <div>
+                        {showAddControls && chapterId && moduleId && (
+                          <div className="mb-4">
+                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
+                          </div>
+                        )}
                     {practicalsLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}

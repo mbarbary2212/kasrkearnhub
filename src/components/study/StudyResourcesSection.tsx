@@ -18,6 +18,8 @@ import {
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 
 interface StudyResourcesSectionProps {
   chapterId: string;
@@ -40,6 +42,19 @@ export function StudyResourcesSection({
   canManage = false,
   isSuperAdmin = false,
 }: StudyResourcesSectionProps) {
+  const auth = useAuthContext();
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId });
+
   const { data: resources, isLoading } = useChapterStudyResources(chapterId);
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -122,6 +137,7 @@ export function StudyResourcesSection({
 
   return (
     <div className="space-y-4">
+      {dialog}
       {/* Disclaimer */}
       <StudyDisclaimer isSuperAdmin={isSuperAdmin} />
 
@@ -159,12 +175,12 @@ export function StudyResourcesSection({
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-4">
               {/* Admin actions */}
-              {canManage && (
+              {showAddControls && (
                 <div className="flex gap-2 mb-4">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleAddResource(type)}
+                    onClick={() => guard(() => handleAddResource(type))}
                   >
                     <Plus className="w-3 h-3 mr-1" />
                     Add {label.slice(0, -1)}
@@ -173,7 +189,7 @@ export function StudyResourcesSection({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleBulkUpload(type)}
+                      onClick={() => guard(() => handleBulkUpload(type))}
                     >
                       Bulk Upload
                     </Button>

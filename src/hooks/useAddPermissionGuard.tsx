@@ -108,7 +108,7 @@ async function fetchCanManageScope(args: {
 export function useAddPermissionGuard(scope: PermissionScope) {
   const auth = useAuthContext();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [deniedOpen, setDeniedOpen] = useState(false);
 
   const roleLabel = useMemo(() => getRoleLabel(auth), [auth]);
 
@@ -206,14 +206,14 @@ export function useAddPermissionGuard(scope: PermissionScope) {
     async (onAllowed: () => void) => {
       // Not logged in: block.
       if (!auth.user?.id) {
-        setOpen(true);
-        return;
+        setDeniedOpen(true);
+        return false;
       }
 
       // Global roles: allow.
       if (auth.isSuperAdmin || auth.isPlatformAdmin || auth.role === "teacher" || auth.role === "admin") {
         onAllowed();
-        return;
+        return true;
       }
 
       // Ensure we check server-side permission (matches RLS logic).
@@ -224,9 +224,11 @@ export function useAddPermissionGuard(scope: PermissionScope) {
 
       if (allowed) {
         onAllowed();
-      } else {
-        setOpen(true);
+        return true;
       }
+
+      setDeniedOpen(true);
+      return false;
     },
     [
       auth.user?.id,
@@ -241,8 +243,8 @@ export function useAddPermissionGuard(scope: PermissionScope) {
 
   const dialog = (
     <PermissionRequiredDialog
-      open={open}
-      onOpenChange={setOpen}
+      open={deniedOpen}
+      onOpenChange={setDeniedOpen}
       roleLabel={roleLabel}
       allowedScopeLabel={allowedScopeLabel}
       targetModuleLabel={targetModuleLabel || "this module"}
@@ -254,5 +256,7 @@ export function useAddPermissionGuard(scope: PermissionScope) {
     dialog,
     canManage,
     isCheckingPermission,
+    deniedOpen,
+    setDeniedOpen,
   };
 }
