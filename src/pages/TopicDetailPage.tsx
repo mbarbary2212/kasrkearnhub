@@ -8,8 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useTopic } from '@/hooks/useTopics';
 import { useModule } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
-import { LectureList } from '@/components/content/LectureList';
 import EssayList from '@/components/content/EssayList';
 import PracticalList from '@/components/content/PracticalList';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
@@ -49,9 +49,20 @@ type SectionMode = 'resources' | 'practice';
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
   const navigate = useNavigate();
-  const { isTeacher, canManageTopic } = useAuthContext();
+  const auth = useAuthContext();
+  const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, topicId });
 
-  const canManageContent = !!(isTeacher || (topicId && canManageTopic(topicId)));
+  const showAddControls = !!(
+    auth.isTeacher ||
+    auth.isAdmin ||
+    auth.isModuleAdmin ||
+    auth.isTopicAdmin ||
+    auth.isDepartmentAdmin ||
+    auth.isPlatformAdmin ||
+    auth.isSuperAdmin
+  );
+
+  const canManageContent = !!(auth.isTeacher || (topicId && auth.canManageTopic(topicId)));
 
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
@@ -242,7 +253,7 @@ export default function TopicDetailPage() {
                 {/* Videos/Lectures */}
                 {resourcesTab === 'lectures' && (
                   <div>
-                    {canManageContent && topicId && moduleId && (
+                    {showAddControls && topicId && moduleId && (
                       <div className="mb-4">
                         <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="lecture" />
                       </div>
@@ -272,15 +283,17 @@ export default function TopicDetailPage() {
                 {/* Flashcards */}
                 {resourcesTab === 'flashcards' && (
                   <div>
-                    {canManageContent && topicId && moduleId && (
+                    {showAddControls && topicId && moduleId && (
                       <div className="flex gap-2 mb-4">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            setEditingFlashcard(null);
-                            setFlashcardFormOpen(true);
-                          }}
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              setFlashcardFormOpen(true);
+                            })
+                          }
                         >
                           <Plus className="w-3 h-3 mr-1" />
                           Add Flashcard
@@ -288,7 +301,7 @@ export default function TopicDetailPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setFlashcardBulkOpen(true)}
+                          onClick={() => guardAdd(() => setFlashcardBulkOpen(true))}
                         >
                           <Upload className="w-3 h-3 mr-1" />
                           Bulk Upload
@@ -312,7 +325,7 @@ export default function TopicDetailPage() {
                 {/* Documents */}
                 {resourcesTab === 'documents' && (
                   <div>
-                    {canManageContent && topicId && moduleId && (
+                    {showAddControls && topicId && moduleId && (
                       <div className="mb-4">
                         <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" />
                       </div>
