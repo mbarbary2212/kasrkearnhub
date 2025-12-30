@@ -97,6 +97,7 @@ export type Database = {
           id: string
           is_active: boolean
           module_id: string | null
+          pending_approval: boolean
           priority: string
           target_type: string
           title: string
@@ -111,6 +112,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           module_id?: string | null
+          pending_approval?: boolean
           priority?: string
           target_type?: string
           title: string
@@ -125,6 +127,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           module_id?: string | null
+          pending_approval?: boolean
           priority?: string
           target_type?: string
           title?: string

@@ -284,6 +284,9 @@ export function useAuth() {
   // Check if user is a module admin (has any module assignments)
   const isModuleAdminRole = state.moduleAssignments.length > 0;
 
+  // Get module IDs for module admin
+  const moduleAdminModuleIds = state.moduleAssignments.map(a => a.module_id);
+
   return {
     ...state,
     signIn,
@@ -296,6 +299,7 @@ export function useAuth() {
     canManageTopic,
     canManageChapter,
     canManageModule,
+    moduleAdminModuleIds,
     // Role checks
     isSuperAdmin: state.role === 'super_admin',
     isPlatformAdmin: state.role === 'platform_admin' || state.role === 'super_admin',

@@ -100,7 +100,7 @@ function PlatformSettingsTab() {
 }
 
 export default function AdminPage() {
-  const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, role, isLoading: authLoading } = useAuthContext();
+  const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, role, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -556,7 +556,7 @@ export default function AdminPage() {
                 Curriculum
               </TabsTrigger>
             )}
-            {(isSuperAdmin || isPlatformAdmin) && (
+            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
               <TabsTrigger value="announcements" className="gap-2">
                 <Megaphone className="w-4 h-4" />
                 Announcements
@@ -1073,11 +1073,12 @@ export default function AdminPage() {
           )}
 
           {/* Announcements Tab */}
-          {(isSuperAdmin || isPlatformAdmin) && (
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="announcements">
               <AnnouncementsTab 
                 modules={modules.map(m => ({ id: m.id, name: m.name }))} 
-                years={years.map(y => ({ id: y.id, name: y.name }))} 
+                years={years.map(y => ({ id: y.id, name: y.name }))}
+                moduleAdminModuleIds={moduleAdminModuleIds}
               />
             </TabsContent>
           )}
