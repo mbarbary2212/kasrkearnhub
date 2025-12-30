@@ -1,4 +1,10 @@
 export { StudentDashboard } from './StudentDashboard';
+export { LearningHubTabs } from './LearningHubTabs';
+export { LearningHubOverview } from './LearningHubOverview';
+export { LearningHubStudyPlan } from './LearningHubStudyPlan';
+export { LearningHubUnlocks } from './LearningHubUnlocks';
+export { LearningHubEmptyState } from './LearningHubEmptyState';
+export { LockedContentScreen } from './LockedContentScreen';
 export { DashboardHeader } from './DashboardHeader';
 export { DashboardStatusStrip } from './DashboardStatusStrip';
 export { DashboardTodayPlan } from './DashboardTodayPlan';
