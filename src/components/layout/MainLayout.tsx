@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield } from 'lucide-react';
+import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield, BarChart3 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -140,6 +140,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuItem onClick={() => navigate('/')}>
                   <Home className="mr-2 h-4 w-4" />
                   Home
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/progress')}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  My Progress
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/auth?view=password')}>
                   <Key className="mr-2 h-4 w-4" />

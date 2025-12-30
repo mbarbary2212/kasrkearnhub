@@ -8,7 +8,6 @@ import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
 import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnouncementAlert';
-import { StudentDashboard } from '@/components/dashboard';
 
 export default function Home() {
   const { user } = useAuthContext();
@@ -147,19 +146,11 @@ export default function Home() {
   );
 }
 
-// Logged in user home page
+// Logged in user home page - shows year selection for ALL users
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile, isPlatformAdmin, isSuperAdmin, isModuleAdmin, isDepartmentAdmin } = useAuthContext();
+  const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
-
-  // Check if user is any type of admin
-  const isAdmin = isPlatformAdmin || isSuperAdmin || isModuleAdmin || isDepartmentAdmin;
-
-  // Show Student Dashboard for non-admin users
-  if (!isAdmin) {
-    return <StudentDashboard />;
-  }
 
   // Color mapping for years - using inline styles since dynamic Tailwind classes are purged
   const getYearStyle = (color: string | null): React.CSSProperties => {
@@ -187,7 +178,7 @@ function LoggedInHome() {
       {/* Welcome Section */}
       <section className="text-center py-8">
         <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-          Welcome back, <span className="text-gradient-medical">{profile?.full_name || 'Admin'}</span>
+          Welcome back, <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
         </h1>
         <p className="text-lg text-muted-foreground">
           Select your academic year to continue
