@@ -143,7 +143,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/progress')}>
                   <BarChart3 className="mr-2 h-4 w-4" />
-                  My Progress
+                  My Learning Hub
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/auth?view=password')}>
                   <Key className="mr-2 h-4 w-4" />
