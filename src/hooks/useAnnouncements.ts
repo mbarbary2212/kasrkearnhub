@@ -12,6 +12,7 @@ export interface Announcement {
   year_id: string | null;
   priority: 'normal' | 'important' | 'urgent';
   is_active: boolean;
+  pending_approval: boolean;
   expires_at: string | null;
   created_at: string;
   created_by: string | null;
@@ -176,6 +177,7 @@ export function useCreateAnnouncement() {
       year_id?: string | null;
       priority?: 'normal' | 'important' | 'urgent';
       expires_at?: string | null;
+      pending_approval?: boolean;
     }) => {
       if (!user?.id) throw new Error('Must be logged in');
 
@@ -187,16 +189,23 @@ export function useCreateAnnouncement() {
         year_id: data.year_id || null,
         priority: data.priority || 'normal',
         expires_at: data.expires_at || null,
+        pending_approval: data.pending_approval || false,
         created_by: user.id,
       });
 
       if (error) throw error;
+      
+      return { pending_approval: data.pending_approval };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
       queryClient.invalidateQueries({ queryKey: ['module-announcements'] });
       queryClient.invalidateQueries({ queryKey: ['student-announcements'] });
-      toast.success('Announcement created successfully');
+      if (result?.pending_approval) {
+        toast.success('Announcement submitted for approval');
+      } else {
+        toast.success('Announcement created successfully');
+      }
     },
     onError: (error) => {
       console.error('Error creating announcement:', error);
@@ -216,6 +225,7 @@ export function useUpdateAnnouncement() {
       content?: string;
       priority?: 'normal' | 'important' | 'urgent';
       is_active?: boolean;
+      pending_approval?: boolean;
       expires_at?: string | null;
     }) => {
       const { id, ...updates } = data;

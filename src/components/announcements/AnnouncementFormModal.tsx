@@ -21,6 +21,8 @@ interface AnnouncementFormModalProps {
   years?: { id: string; name: string }[];
   defaultModuleId?: string;
   isModuleContext?: boolean;
+  isModuleAdminOnly?: boolean;
+  moduleAdminModuleIds?: string[];
 }
 
 export function AnnouncementFormModal({
@@ -31,6 +33,8 @@ export function AnnouncementFormModal({
   years = [],
   defaultModuleId,
   isModuleContext = false,
+  isModuleAdminOnly = false,
+  moduleAdminModuleIds = [],
 }: AnnouncementFormModalProps) {
   const createAnnouncement = useCreateAnnouncement();
   const updateAnnouncement = useUpdateAnnouncement();
@@ -60,21 +64,29 @@ export function AnnouncementFormModal({
         is_active: announcement.is_active,
       });
     } else {
+      // For module admins, default to module target and their first module
+      const defaultModuleForAdmin = isModuleAdminOnly && moduleAdminModuleIds.length > 0 
+        ? moduleAdminModuleIds[0] 
+        : (defaultModuleId || '');
+      
       setForm({
         title: '',
         content: '',
-        target_type: isModuleContext ? 'module' : 'all',
-        module_id: defaultModuleId || '',
+        target_type: isModuleContext || isModuleAdminOnly ? 'module' : 'all',
+        module_id: defaultModuleForAdmin,
         year_id: '',
         priority: 'normal',
         expires_at: null,
         is_active: true,
       });
     }
-  }, [announcement, defaultModuleId, isModuleContext]);
+  }, [announcement, defaultModuleId, isModuleContext, isModuleAdminOnly, moduleAdminModuleIds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Determine if this needs approval (module admin creating non-module-specific announcement)
+    const needsApproval = isModuleAdminOnly && form.target_type !== 'module';
 
     const data = {
       title: form.title,
@@ -84,6 +96,7 @@ export function AnnouncementFormModal({
       year_id: form.target_type === 'year' ? form.year_id : null,
       priority: form.priority,
       expires_at: form.expires_at?.toISOString() || null,
+      pending_approval: needsApproval,
     };
 
     try {
@@ -155,7 +168,7 @@ export function AnnouncementFormModal({
               </Select>
             </div>
 
-            {!isModuleContext && (
+          {!isModuleContext && !isModuleAdminOnly && (
               <div className="space-y-2">
                 <Label>Target Audience</Label>
                 <Select
@@ -173,6 +186,30 @@ export function AnnouncementFormModal({
                 </Select>
               </div>
             )}
+
+            {/* Module admins see a simplified target selector */}
+            {isModuleAdminOnly && (
+              <div className="space-y-2">
+                <Label>Target Audience</Label>
+                <Select
+                  value={form.target_type}
+                  onValueChange={v => setForm(f => ({ ...f, target_type: v as 'all' | 'module' | 'year' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="module">My Module Students</SelectItem>
+                    <SelectItem value="all">All Students (requires approval)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.target_type === 'all' && (
+                  <p className="text-xs text-warning-foreground">
+                    Announcements to all students require Super Admin approval before being published.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {form.target_type === 'module' && !isModuleContext && (
@@ -186,7 +223,10 @@ export function AnnouncementFormModal({
                   <SelectValue placeholder="Select a module" />
                 </SelectTrigger>
                 <SelectContent>
-                  {modules.map(m => (
+                  {(isModuleAdminOnly 
+                    ? modules.filter(m => moduleAdminModuleIds.includes(m.id))
+                    : modules
+                  ).map(m => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>

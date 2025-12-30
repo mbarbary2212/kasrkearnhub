@@ -24,24 +24,41 @@ import {
   Calendar,
   AlertTriangle,
   AlertCircle,
+  Clock,
+  CheckCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { 
   useAdminAnnouncements, 
+  useModuleAnnouncements,
   useUpdateAnnouncement, 
   useDeleteAnnouncement,
   Announcement,
 } from '@/hooks/useAnnouncements';
 import { AnnouncementFormModal } from '@/components/announcements/AnnouncementFormModal';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface AnnouncementsTabProps {
   modules: { id: string; name: string }[];
   years: { id: string; name: string }[];
+  moduleAdminModuleIds?: string[];
 }
 
-export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
-  const { data: announcements, isLoading } = useAdminAnnouncements();
+export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: AnnouncementsTabProps) {
+  const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
+  const isModuleAdminOnly = moduleAdminModuleIds.length > 0 && !isPlatformAdmin && !isSuperAdmin;
+  
+  // Use admin announcements for platform/super admins, module announcements for module admins
+  const { data: adminAnnouncements, isLoading: adminLoading } = useAdminAnnouncements();
+  const { data: moduleAnnouncements, isLoading: moduleLoading } = useModuleAnnouncements(
+    isModuleAdminOnly ? moduleAdminModuleIds[0] : ''
+  );
+  
+  // For module admins with multiple modules, we need to fetch all their module announcements
+  const announcements = isModuleAdminOnly ? moduleAnnouncements : adminAnnouncements;
+  const isLoading = isModuleAdminOnly ? moduleLoading : adminLoading;
+  
   const updateAnnouncement = useUpdateAnnouncement();
   const deleteAnnouncement = useDeleteAnnouncement();
 
@@ -73,6 +90,13 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
     });
   };
 
+  const handleApprove = async (announcement: Announcement) => {
+    await updateAnnouncement.mutateAsync({
+      id: announcement.id,
+      pending_approval: false,
+    });
+  };
+
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'urgent':
@@ -94,6 +118,13 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
     if (announcement.target_type === 'year' && announcement.years) {
       return <Badge variant="outline" className="gap-1"><Calendar className="w-3 h-3" />{announcement.years.name}</Badge>;
     }
+    // For module admin view, show module name from the modules list
+    if (announcement.target_type === 'module' && announcement.module_id) {
+      const moduleName = modules.find(m => m.id === announcement.module_id)?.name;
+      if (moduleName) {
+        return <Badge variant="outline" className="gap-1"><BookOpen className="w-3 h-3" />{moduleName}</Badge>;
+      }
+    }
     return <Badge variant="outline">Unknown</Badge>;
   };
 
@@ -108,7 +139,10 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
                 Announcements
               </CardTitle>
               <CardDescription>
-                Broadcast messages to students across the platform.
+                {isModuleAdminOnly 
+                  ? 'Broadcast messages to students in your modules.'
+                  : 'Broadcast messages to students across the platform.'
+                }
               </CardDescription>
             </div>
             <Button onClick={handleCreate} className="gap-2">
@@ -137,7 +171,8 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
                   key={announcement.id}
                   className={cn(
                     'border rounded-lg p-4 transition-all',
-                    !announcement.is_active && 'opacity-60 bg-muted/50'
+                    !announcement.is_active && 'opacity-60 bg-muted/50',
+                    announcement.pending_approval && 'border-warning bg-warning/5'
                   )}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -146,7 +181,13 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
                         <h4 className="font-semibold">{announcement.title}</h4>
                         {getPriorityBadge(announcement.priority)}
                         {getTargetBadge(announcement)}
-                        {!announcement.is_active && (
+                        {announcement.pending_approval && (
+                          <Badge className="bg-warning/20 text-warning-foreground gap-1 border-warning">
+                            <Clock className="w-3 h-3" />
+                            Pending Approval
+                          </Badge>
+                        )}
+                        {!announcement.is_active && !announcement.pending_approval && (
                           <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>
                         )}
                       </div>
@@ -171,11 +212,25 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Switch
-                        checked={announcement.is_active}
-                        onCheckedChange={() => handleToggleActive(announcement)}
-                        aria-label="Toggle active"
-                      />
+                      {/* Approve button for super admins when pending */}
+                      {announcement.pending_approval && (isSuperAdmin || isPlatformAdmin) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 text-green-600 border-green-600 hover:bg-green-50"
+                          onClick={() => handleApprove(announcement)}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Approve
+                        </Button>
+                      )}
+                      {!announcement.pending_approval && (
+                        <Switch
+                          checked={announcement.is_active}
+                          onCheckedChange={() => handleToggleActive(announcement)}
+                          aria-label="Toggle active"
+                        />
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -203,8 +258,10 @@ export function AnnouncementsTab({ modules, years }: AnnouncementsTabProps) {
         open={formOpen}
         onOpenChange={setFormOpen}
         announcement={editingAnnouncement}
-        modules={modules}
+        modules={isModuleAdminOnly ? modules.filter(m => moduleAdminModuleIds.includes(m.id)) : modules}
         years={years}
+        isModuleAdminOnly={isModuleAdminOnly}
+        moduleAdminModuleIds={moduleAdminModuleIds}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
