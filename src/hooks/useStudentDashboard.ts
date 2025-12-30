@@ -50,41 +50,81 @@ export interface DashboardData {
   
   // Today's suggestions
   suggestions: SuggestedItem[];
+  
+  // Selected context
+  selectedModuleName?: string;
+  selectedYearName?: string;
 }
 
-export function useStudentDashboard() {
+interface DashboardFilters {
+  yearId?: string;
+  moduleId?: string;
+}
+
+export function useStudentDashboard(filters?: DashboardFilters) {
   const { user } = useAuthContext();
 
   return useQuery({
-    queryKey: ['student-dashboard', user?.id],
+    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId],
     queryFn: async (): Promise<DashboardData> => {
       if (!user?.id) {
         return getEmptyDashboard();
       }
 
+      // Build queries with filters
+      let modulesQuery = supabase.from('modules').select('id, name, year_id').eq('is_published', true);
+      
+      // If yearId is set, filter modules by year
+      if (filters?.yearId) {
+        modulesQuery = modulesQuery.eq('year_id', filters.yearId);
+      }
+
+      // Fetch modules first to get the list
+      const modulesRes = await modulesQuery;
+      const modules = modulesRes.data || [];
+      
+      // Get module IDs to filter chapters
+      let moduleIds = modules.map(m => m.id);
+      
+      // If specific module is selected, use only that
+      if (filters?.moduleId) {
+        moduleIds = [filters.moduleId];
+      }
+
+      // If no modules match the filter, return empty
+      if (moduleIds.length === 0) {
+        return getEmptyDashboard();
+      }
+
+      // Fetch chapters filtered by module IDs
+      const chaptersQuery = supabase
+        .from('module_chapters')
+        .select('id, title, chapter_number, book_label, module_id')
+        .in('module_id', moduleIds)
+        .order('order_index');
+
       // Fetch all data in parallel
       const [
         chaptersRes,
-        modulesRes,
         userProgressRes,
         mcqsRes,
         essaysRes,
         practicalsRes,
         caseScenariosRes,
         lecturesRes,
+        yearRes,
       ] = await Promise.all([
-        supabase.from('module_chapters').select('id, title, chapter_number, book_label, module_id').order('order_index'),
-        supabase.from('modules').select('id, name').eq('is_published', true),
+        chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
-        supabase.from('mcqs').select('id, chapter_id').eq('is_deleted', false),
-        supabase.from('essays').select('id, chapter_id').eq('is_deleted', false),
-        supabase.from('practicals').select('id, chapter_id').eq('is_deleted', false),
-        supabase.from('case_scenarios').select('id, chapter_id').eq('is_deleted', false),
-        supabase.from('lectures').select('id, chapter_id, title').eq('is_deleted', false),
+        supabase.from('mcqs').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('essays').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('case_scenarios').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
       ]);
 
       const chapters = chaptersRes.data || [];
-      const modules = modulesRes.data || [];
       const userProgress = userProgressRes.data || [];
       const mcqs = mcqsRes.data || [];
       const essays = essaysRes.data || [];
@@ -152,11 +192,20 @@ export function useStudentDashboard() {
       // Calculate study streak (days with activity in user_progress)
       const studyStreak = calculateStudyStreak(userProgress);
 
-      // Calculate weekly stats
+      // Calculate weekly stats - filter to content within selected modules
+      const contentIds = new Set([
+        ...mcqs.map(m => m.id),
+        ...essays.map(e => e.id),
+        ...practicals.map(p => p.id),
+        ...caseScenarios.map(c => c.id),
+      ]);
+
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weeklyProgress = userProgress.filter(p => 
-        p.completed_at && new Date(p.completed_at) >= weekAgo
+        p.completed_at && 
+        new Date(p.completed_at) >= weekAgo &&
+        contentIds.has(p.content_id)
       );
       
       // Estimate time based on completed items (rough estimate: 5 min per item)
@@ -185,6 +234,11 @@ export function useStudentDashboard() {
       // Generate suggestions (book-first approach)
       const suggestions = generateSuggestions(chapterStatuses, lectures);
 
+      // Get selected module name
+      const selectedModuleName = filters?.moduleId 
+        ? moduleMap.get(filters.moduleId) 
+        : undefined;
+
       return {
         examReadiness,
         coverageCompleted: completedChapters,
@@ -196,6 +250,8 @@ export function useStudentDashboard() {
         chapters: chapterStatuses,
         insights,
         suggestions,
+        selectedModuleName,
+        selectedYearName: yearRes?.data?.name,
       };
     },
     enabled: !!user?.id,
