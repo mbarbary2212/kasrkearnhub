@@ -12,12 +12,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, ShieldAlert } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
+import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -54,9 +60,16 @@ interface AdminContentActionsProps {
 
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
   const { isModuleAdmin, isTopicAdmin } = useAuthContext();
+  const { canManageContent, isLoading: permissionLoading } = useIsModuleAdmin(moduleId);
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Handler for permission-denied clicks
+  const handlePermissionDenied = () => {
+    const contentLabel = contentType === 'lecture' ? 'videos' : contentType === 'mcq' ? 'MCQ sets' : `${contentType}s`;
+    toast.error(`You can only add ${contentLabel} in modules you've been assigned to. Contact a Platform Admin if you need access.`);
+  };
 
   // Helper to create permission-aware error handler
   const handlePermissionError = (error: Error | unknown, action: 'add' | 'edit' | 'delete') => {
@@ -349,61 +362,83 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const label = labels[contentType];
 
   return (
-    <div className="flex gap-2">
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" variant="outline">
-            <Plus className="w-4 h-4 mr-1" />
-            {label.title}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{label.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div>
-              <Label>{label.titleField}</Label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} />
+    <div className="flex gap-2 items-center">
+      {/* Permission warning for admins without access */}
+      {!permissionLoading && !canManageContent && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+              <ShieldAlert className="h-3 w-3" />
+              <span>Not your module</span>
             </div>
-            <div>
-              <Label>{label.descField}</Label>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-            {contentType === 'essay' && (
-              <div>
-                <Label>Model Answer (optional)</Label>
-                <Textarea 
-                  value={modelAnswer} 
-                  onChange={e => setModelAnswer(e.target.value)} 
-                  placeholder="Enter the model answer that students can reveal"
-                  rows={4}
-                />
-              </div>
-            )}
-            {(contentType === 'lecture' || contentType === 'practical') && (
-              <div>
-                <Label>Video URL</Label>
-                <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
-                </p>
-              </div>
-            )}
-            {contentType === 'resource' && (
-              <div>
-                <Label>File/External URL</Label>
-                <Input value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://..." />
-              </div>
-            )}
-            <Button onClick={handleSubmit} className="w-full">
-              Save
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <p>You can only manage content in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+      
+      {canManageContent ? (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <Plus className="w-4 h-4 mr-1" />
+              {label.title}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{label.title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label>{label.titleField}</Label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
+              <div>
+                <Label>{label.descField}</Label>
+                <Textarea value={description} onChange={e => setDescription(e.target.value)} />
+              </div>
+              {contentType === 'essay' && (
+                <div>
+                  <Label>Model Answer (optional)</Label>
+                  <Textarea 
+                    value={modelAnswer} 
+                    onChange={e => setModelAnswer(e.target.value)} 
+                    placeholder="Enter the model answer that students can reveal"
+                    rows={4}
+                  />
+                </div>
+              )}
+              {(contentType === 'lecture' || contentType === 'practical') && (
+                <div>
+                  <Label>Video URL</Label>
+                  <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
+                  </p>
+                </div>
+              )}
+              {contentType === 'resource' && (
+                <div>
+                  <Label>File/External URL</Label>
+                  <Input value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://..." />
+                </div>
+              )}
+              <Button onClick={handleSubmit} className="w-full">
+                Save
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Button size="sm" variant="outline" disabled onClick={handlePermissionDenied}>
+          <Plus className="w-4 h-4 mr-1" />
+          {label.title}
+        </Button>
+      )}
 
-      {(contentType === 'mcq' || contentType === 'practical' || contentType === 'essay') && (
+      {(contentType === 'mcq' || contentType === 'practical' || contentType === 'essay') && canManageContent && (
         <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
