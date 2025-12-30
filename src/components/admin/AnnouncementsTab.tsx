@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Megaphone, 
   Plus, 
@@ -26,9 +36,13 @@ import {
   AlertCircle,
   Clock,
   CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   useAdminAnnouncements, 
   useModuleAnnouncements,
@@ -46,7 +60,8 @@ interface AnnouncementsTabProps {
 }
 
 export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: AnnouncementsTabProps) {
-  const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
+  const { user, isSuperAdmin, isPlatformAdmin } = useAuthContext();
+  const queryClient = useQueryClient();
   const isModuleAdminOnly = moduleAdminModuleIds.length > 0 && !isPlatformAdmin && !isSuperAdmin;
   
   // Use admin announcements for platform/super admins, module announcements for module admins
@@ -65,6 +80,8 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
   const [formOpen, setFormOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [rejectingAnnouncement, setRejectingAnnouncement] = useState<Announcement | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const handleEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
@@ -95,6 +112,33 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
       id: announcement.id,
       pending_approval: false,
     });
+  };
+
+  const handleReject = async () => {
+    if (!rejectingAnnouncement || !user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('announcements')
+        .update({
+          rejected_at: new Date().toISOString(),
+          rejected_by: user.id,
+          rejection_reason: rejectionReason || 'No reason provided',
+          is_active: false,
+        })
+        .eq('id', rejectingAnnouncement.id);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['module-announcements'] });
+      toast.success('Announcement rejected');
+      setRejectingAnnouncement(null);
+      setRejectionReason('');
+    } catch (error) {
+      console.error('Error rejecting announcement:', error);
+      toast.error('Failed to reject announcement');
+    }
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -181,13 +225,19 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
                         <h4 className="font-semibold">{announcement.title}</h4>
                         {getPriorityBadge(announcement.priority)}
                         {getTargetBadge(announcement)}
-                        {announcement.pending_approval && (
+                        {announcement.pending_approval && !announcement.rejected_at && (
                           <Badge className="bg-warning/20 text-warning-foreground gap-1 border-warning">
                             <Clock className="w-3 h-3" />
                             Pending Approval
                           </Badge>
                         )}
-                        {!announcement.is_active && !announcement.pending_approval && (
+                        {announcement.rejected_at && (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="w-3 h-3" />
+                            Rejected
+                          </Badge>
+                        )}
+                        {!announcement.is_active && !announcement.pending_approval && !announcement.rejected_at && (
                           <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>
                         )}
                       </div>
@@ -209,35 +259,53 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
                           </span>
                         )}
                       </div>
+                      {announcement.rejected_at && announcement.rejection_reason && (
+                        <p className="text-xs text-destructive mt-2 italic">
+                          Rejection reason: {announcement.rejection_reason}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Approve button for super admins when pending */}
-                      {announcement.pending_approval && (isSuperAdmin || isPlatformAdmin) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1 text-green-600 border-green-600 hover:bg-green-50"
-                          onClick={() => handleApprove(announcement)}
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          Approve
-                        </Button>
+                      {/* Approve/Reject buttons for super admins when pending */}
+                      {announcement.pending_approval && !announcement.rejected_at && (isSuperAdmin || isPlatformAdmin) && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-green-600 border-green-600 hover:bg-green-50"
+                            onClick={() => handleApprove(announcement)}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-destructive border-destructive hover:bg-destructive/10"
+                            onClick={() => setRejectingAnnouncement(announcement)}
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Reject
+                          </Button>
+                        </>
                       )}
-                      {!announcement.pending_approval && (
+                      {!announcement.pending_approval && !announcement.rejected_at && (
                         <Switch
                           checked={announcement.is_active}
                           onCheckedChange={() => handleToggleActive(announcement)}
                           aria-label="Toggle active"
                         />
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(announcement)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {!announcement.rejected_at && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(announcement)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -280,6 +348,38 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rejection Reason Dialog */}
+      <Dialog open={!!rejectingAnnouncement} onOpenChange={() => { setRejectingAnnouncement(null); setRejectionReason(''); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Announcement</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this announcement. The module admin will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">Reason for Rejection</Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="Enter the reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectingAnnouncement(null); setRejectionReason(''); }}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleReject}>
+              Reject Announcement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

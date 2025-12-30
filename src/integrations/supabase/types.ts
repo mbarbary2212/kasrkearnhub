@@ -59,6 +59,48 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          read_at: string | null
+          recipient_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -99,6 +141,9 @@ export type Database = {
           module_id: string | null
           pending_approval: boolean
           priority: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           target_type: string
           title: string
           updated_at: string
@@ -114,6 +159,9 @@ export type Database = {
           module_id?: string | null
           pending_approval?: boolean
           priority?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           target_type?: string
           title: string
           updated_at?: string
@@ -129,6 +177,9 @@ export type Database = {
           module_id?: string | null
           pending_approval?: boolean
           priority?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           target_type?: string
           title?: string
           updated_at?: string

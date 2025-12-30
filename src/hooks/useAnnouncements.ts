@@ -17,6 +17,9 @@ export interface Announcement {
   created_at: string;
   created_by: string | null;
   updated_at: string;
+  rejected_at: string | null;
+  rejected_by: string | null;
+  rejection_reason: string | null;
   // Joined data
   modules?: { name: string } | null;
   years?: { name: string } | null;
@@ -49,7 +52,7 @@ export function useStudentAnnouncements(moduleId?: string, yearId?: string) {
       if (error) throw error;
 
       // Filter announcements based on context
-      const filtered = (announcements || []).filter((a: Announcement) => {
+      const filtered = (announcements || []).filter((a) => {
         // Global announcements always show
         if (a.target_type === 'all') return true;
         // Module-specific announcements
@@ -65,16 +68,16 @@ export function useStudentAnnouncements(moduleId?: string, yearId?: string) {
           .from('announcement_reads')
           .select('announcement_id')
           .eq('user_id', user.id)
-          .in('announcement_id', filtered.map((a: Announcement) => a.id));
+          .in('announcement_id', filtered.map((a) => a.id));
 
         const readIds = new Set((reads || []).map(r => r.announcement_id));
-        return filtered.map((a: Announcement) => ({
+        return filtered.map((a) => ({
           ...a,
           isRead: readIds.has(a.id),
-        }));
+        })) as (Announcement & { isRead: boolean })[];
       }
 
-      return filtered.map((a: Announcement) => ({ ...a, isRead: false }));
+      return filtered.map((a) => ({ ...a, isRead: false })) as (Announcement & { isRead: boolean })[];
     },
     enabled: !!user?.id,
   });
