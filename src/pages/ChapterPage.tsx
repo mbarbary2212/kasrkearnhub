@@ -113,9 +113,12 @@ export default function ChapterPage() {
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
   const deletedOnlyPracticals = (deletedPracticals || []).filter(p => p.is_deleted);
 
-
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
+  
+  // Count non-flashcard study resources (tables, algorithms, exam tips, images) for Documents tab
+  const nonFlashcardStudyResources = studyResources?.filter(r => r.resource_type !== 'flashcard') || [];
+  const documentsCount = (resources?.length || 0) + nonFlashcardStudyResources.length;
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -152,7 +155,7 @@ export default function ChapterPage() {
   const resourcesTabs = createResourceTabs({
     lectures: lectures?.length || 0,
     flashcards: flashcards.length,
-    documents: resources?.length || 0,
+    documents: documentsCount,
   });
 
   const allPracticeTabs = createPracticeTabs({
