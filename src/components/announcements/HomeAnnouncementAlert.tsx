@@ -83,10 +83,14 @@ function useHomeAnnouncements() {
 
 export function HomeAnnouncementAlert() {
   const navigate = useNavigate();
+  const { isPlatformAdmin, isSuperAdmin, isModuleAdmin } = useAuthContext();
   const { data: announcements, isLoading } = useHomeAnnouncements();
   const [dismissed, setDismissed] = useState(false);
 
-  if (isLoading || dismissed || !announcements || announcements.length === 0) {
+  // Hide for admin users - they see announcements in the admin panel
+  const isAdmin = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
+
+  if (isAdmin || isLoading || dismissed || !announcements || announcements.length === 0) {
     return null;
   }
 
