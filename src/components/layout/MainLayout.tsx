@@ -14,6 +14,7 @@ import {
 import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
+import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -104,7 +105,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Link>
           </nav>
 
-          {user ? (
+          <div className="flex items-center gap-2">
+            {/* Admin notifications for admins */}
+            {user && isAdmin && (
+              <AdminNotificationsPopover 
+                onNavigateToAnnouncement={() => navigate('/admin?tab=announcements')}
+              />
+            )}
+
+            {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -162,11 +171,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
+            ) : (
             <Button onClick={() => navigate('/auth')} className="gradient-medical">
               Sign In
             </Button>
           )}
+          </div>
         </div>
       </header>
 
