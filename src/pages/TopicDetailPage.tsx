@@ -10,6 +10,7 @@ import { useModule } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
+import { LectureList } from '@/components/content/LectureList';
 import EssayList from '@/components/content/EssayList';
 import PracticalList from '@/components/content/PracticalList';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
