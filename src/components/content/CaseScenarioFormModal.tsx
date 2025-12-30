@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CaseScenario, useCreateCaseScenario, useUpdateCaseScenario } from '@/hooks/useCaseScenarios';
 import { toast } from 'sonner';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 
 interface CaseScenarioFormModalProps {
   open: boolean;
@@ -29,6 +31,7 @@ export function CaseScenarioFormModal({
   chapterId,
   existingCase,
 }: CaseScenarioFormModalProps) {
+  const { isModuleAdmin, isTopicAdmin } = useAuthContext();
   const [title, setTitle] = useState('');
   const [caseHistory, setCaseHistory] = useState('');
   const [caseQuestions, setCaseQuestions] = useState('');
@@ -85,7 +88,13 @@ export function CaseScenarioFormModal({
 
       onOpenChange(false);
     } catch (error) {
-      toast.error(isEditing ? 'Failed to update case scenario' : 'Failed to create case scenario');
+      const message = getPermissionErrorMessage(error, {
+        action: isEditing ? 'edit' : 'add',
+        contentType: 'case_scenario',
+        isModuleAdmin,
+        isTopicAdmin,
+      });
+      toast.error(message);
     }
   };
 

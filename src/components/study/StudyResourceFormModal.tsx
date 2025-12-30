@@ -24,6 +24,8 @@ import {
 } from '@/hooks/useStudyResources';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -50,6 +52,7 @@ export function StudyResourceFormModal({
   resourceType,
   resource,
 }: StudyResourceFormModalProps) {
+  const { isModuleAdmin, isTopicAdmin } = useAuthContext();
   const createResource = useCreateStudyResource();
   const updateResource = useUpdateStudyResource();
 
@@ -95,7 +98,13 @@ export function StudyResourceFormModal({
       }
       onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to save resource');
+      const message = getPermissionErrorMessage(error, {
+        action: isEditing ? 'edit' : 'add',
+        contentType: 'study_resource',
+        isModuleAdmin,
+        isTopicAdmin,
+      });
+      toast.error(message);
     }
   };
 
