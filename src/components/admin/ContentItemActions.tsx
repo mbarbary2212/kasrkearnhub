@@ -11,6 +11,8 @@ import { useUpdateContent, useSoftDeleteContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 import { ItemType } from '@/hooks/useItemFeedback';
 import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 
 interface ContentItemActionsProps {
   id: string;
@@ -57,9 +59,22 @@ export default function ContentItemActions({
   canDelete,
   showFeedback = true,
 }: ContentItemActionsProps) {
+  const { isModuleAdmin, isTopicAdmin } = useAuthContext();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  // Helper to create permission-aware error messages
+  const handlePermissionError = (error: Error | unknown, action: 'edit' | 'delete') => {
+    const message = getPermissionErrorMessage(error, {
+      action,
+      contentType,
+      isModuleAdmin,
+      isTopicAdmin,
+      isChapterAdmin: isTopicAdmin,
+    });
+    toast.error(message);
+  };
 
   const [editTitle, setEditTitle] = useState(title);
   const [editDescription, setEditDescription] = useState(description || '');
@@ -116,7 +131,7 @@ export default function ContentItemActions({
       toast.success('Updated successfully');
       setEditOpen(false);
     } catch (error) {
-      toast.error('Failed to update');
+      handlePermissionError(error, 'edit');
     }
   };
 
@@ -126,7 +141,7 @@ export default function ContentItemActions({
       toast.success('Deleted successfully');
       setDeleteOpen(false);
     } catch (error) {
-      toast.error('Failed to delete');
+      handlePermissionError(error, 'delete');
     }
   };
 

@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { Plus, Upload } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -51,9 +53,22 @@ interface AdminContentActionsProps {
 }
 
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
+  const { isModuleAdmin, isTopicAdmin } = useAuthContext();
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Helper to create permission-aware error handler
+  const handlePermissionError = (error: Error | unknown, action: 'add' | 'edit' | 'delete') => {
+    const message = getPermissionErrorMessage(error, {
+      action,
+      contentType,
+      isModuleAdmin,
+      isTopicAdmin,
+      isChapterAdmin: isTopicAdmin, // Topic admins are essentially chapter admins in this context
+    });
+    toast.error(message);
+  };
 
   // Form state
   const [title, setTitle] = useState('');
@@ -89,7 +104,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const addResource = useMutation({
@@ -111,7 +126,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const addMcqSet = useMutation({
@@ -132,7 +147,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const addEssay = useMutation({
@@ -154,7 +169,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const addPractical = useMutation({
@@ -180,7 +195,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const bulkUploadMcqs = useMutation({
@@ -219,7 +234,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setBulkOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const bulkUploadPracticals = useMutation({
@@ -255,7 +270,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setBulkOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const bulkUploadEssays = useMutation({
@@ -291,7 +306,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       setBulkOpen(false);
       resetForm();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => handlePermissionError(error, 'add'),
   });
 
   const resetForm = () => {
