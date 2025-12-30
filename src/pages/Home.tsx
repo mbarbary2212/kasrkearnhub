@@ -7,6 +7,7 @@ import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQue
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
+import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnouncementAlert';
 
 export default function Home() {
   const { user } = useAuthContext();
@@ -171,6 +172,9 @@ function LoggedInHome() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Announcement Alert - shows when there are unread announcements */}
+      <HomeAnnouncementAlert />
+
       {/* Welcome Section */}
       <section className="text-center py-8">
         <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">
