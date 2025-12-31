@@ -1834,6 +1834,175 @@ export type Database = {
           },
         ]
       }
+      study_plan_baseline: {
+        Row: {
+          baseline_completed_percent: number
+          created_at: string
+          id: string
+          module_id: string
+          plan_id: string
+        }
+        Insert: {
+          baseline_completed_percent?: number
+          created_at?: string
+          id?: string
+          module_id: string
+          plan_id: string
+        }
+        Update: {
+          baseline_completed_percent?: number
+          created_at?: string
+          id?: string
+          module_id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_baseline_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_baseline_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plan_items: {
+        Row: {
+          chapter_id: string | null
+          completed_at: string | null
+          created_at: string
+          display_order: number
+          id: string
+          item_title: string
+          item_type: string
+          module_id: string
+          plan_id: string
+          planned_date_from: string
+          planned_date_to: string
+          status: string
+          updated_at: string
+          week_index: number
+          year_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          item_title: string
+          item_type?: string
+          module_id: string
+          plan_id: string
+          planned_date_from: string
+          planned_date_to: string
+          status?: string
+          updated_at?: string
+          week_index: number
+          year_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          item_title?: string
+          item_type?: string
+          module_id?: string
+          plan_id?: string
+          planned_date_from?: string
+          planned_date_to?: string
+          status?: string
+          updated_at?: string
+          week_index?: number
+          year_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_items_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_items_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plans: {
+        Row: {
+          created_at: string
+          days_per_week: number
+          end_date: string
+          hours_per_day: number
+          id: string
+          revision_rounds: number
+          start_date: string
+          updated_at: string
+          user_id: string
+          year_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_per_week: number
+          end_date: string
+          hours_per_day: number
+          id?: string
+          revision_rounds?: number
+          start_date: string
+          updated_at?: string
+          user_id: string
+          year_id: string
+        }
+        Update: {
+          created_at?: string
+          days_per_week?: number
+          end_date?: string
+          hours_per_day?: number
+          id?: string
+          revision_rounds?: number
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+          year_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plans_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_resources: {
         Row: {
           chapter_id: string

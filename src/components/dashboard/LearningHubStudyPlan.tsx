@@ -1,7 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { CalendarDays, BookOpen, Clock, Shield, LayoutGrid, Info } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { CalendarDays } from 'lucide-react';
+import { useStudyPlan } from '@/hooks/useStudyPlan';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { StudyPlanWizard } from './StudyPlanWizard';
+import { StudyPlanTimeline } from './StudyPlanTimeline';
+import { StudyPlanSchedule } from './StudyPlanSchedule';
+import { StudyPlanThisWeek } from './StudyPlanThisWeek';
+import { StudyPlanOverview } from './StudyPlanOverview';
+import { StudyPlanCohortInsights } from './StudyPlanCohortInsights';
 
 interface Module {
   id: string;
@@ -12,51 +19,50 @@ interface LearningHubStudyPlanProps {
   moduleSelected: boolean;
   modules: Module[];
   selectedYearName: string;
+  selectedYearId?: string;
+  selectedModuleId?: string | null;
 }
 
-// Predefined module weight classifications
-const MODULE_WEIGHTS: Record<string, 'heavy+' | 'heavy' | 'light'> = {
-  'medicine': 'heavy+',
-  'internal medicine': 'heavy+',
-  'general surgery': 'heavy',
-  'surgery': 'heavy',
-};
+export function LearningHubStudyPlan({ 
+  moduleSelected, 
+  modules, 
+  selectedYearName,
+  selectedYearId,
+  selectedModuleId,
+}: LearningHubStudyPlanProps) {
+  const {
+    plan,
+    baselines,
+    planItems,
+    isLoading,
+    createPlan,
+    isCreating,
+    updateItemStatus,
+    resetPlan,
+    isResetting,
+    calculateFeasibility,
+  } = useStudyPlan(selectedYearId || null);
 
-function getModuleWeight(moduleName: string): 'heavy+' | 'heavy' | 'light' {
-  const normalizedName = moduleName.toLowerCase();
-  for (const [key, weight] of Object.entries(MODULE_WEIGHTS)) {
-    if (normalizedName.includes(key)) {
-      return weight;
-    }
-  }
-  return 'light';
-}
+  // Fetch chapters for plan generation
+  const { data: chapters = [] } = useQuery({
+    queryKey: ['all-chapters', selectedYearId],
+    queryFn: async () => {
+      if (!selectedYearId) return [];
+      const moduleIds = modules.map(m => m.id);
+      if (moduleIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select('id, module_id, title, chapter_number')
+        .in('module_id', moduleIds)
+        .order('chapter_number');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedYearId && modules.length > 0,
+  });
 
-function getWeightLabel(weight: 'heavy+' | 'heavy' | 'light'): string {
-  switch (weight) {
-    case 'heavy+': return 'Heavy+';
-    case 'heavy': return 'Heavy';
-    case 'light': return 'Light';
-  }
-}
-
-function getWeightColor(weight: 'heavy+' | 'heavy' | 'light'): string {
-  switch (weight) {
-    case 'heavy+': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-    case 'heavy': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-    case 'light': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-  }
-}
-
-function getChunkWidth(weight: 'heavy+' | 'heavy' | 'light'): string {
-  switch (weight) {
-    case 'heavy+': return 'flex-[3]';
-    case 'heavy': return 'flex-[2.5]';
-    case 'light': return 'flex-[1]';
-  }
-}
-
-export function LearningHubStudyPlan({ moduleSelected, modules, selectedYearName }: LearningHubStudyPlanProps) {
   // Show placeholder if no module selected
   if (!moduleSelected) {
     return (
@@ -70,143 +76,94 @@ export function LearningHubStudyPlan({ moduleSelected, modules, selectedYearName
     );
   }
 
-  // Calculate module chunks with weights
-  const moduleChunks = modules.map(mod => ({
-    id: mod.id,
-    name: mod.name,
-    weight: getModuleWeight(mod.name),
-  }));
+  const selectedModuleName = modules.find(m => m.id === selectedModuleId)?.name || '';
+
+  const handleGenerate = (data: {
+    startDate: Date;
+    endDate: Date;
+    daysPerWeek: number;
+    hoursPerDay: number;
+    revisionRounds: number;
+    baselinePercents: Record<string, number>;
+  }) => {
+    if (!selectedYearId) return;
+    createPlan({
+      yearId: selectedYearId,
+      ...data,
+      modules,
+      chapters,
+    });
+  };
+
+  const handleMarkDone = (itemId: string) => {
+    updateItemStatus({ itemId, status: 'done' });
+  };
+
+  const handleUndo = (itemId: string) => {
+    updateItemStatus({ itemId, status: 'planned' });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Year Plan Header */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <LayoutGrid className="w-5 h-5" />
-              Year Plan
-            </CardTitle>
-            <Badge variant="secondary" className="text-xs font-normal">
-              {selectedYearName} • Covers all modules
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Year Overview Timeline */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">Module Timeline (Big Chunks)</span>
-            </div>
-            
-            {/* Timeline visualization */}
-            <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
-              {/* Module chunks row */}
-              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                {moduleChunks.map((chunk) => (
-                  <div 
-                    key={chunk.id}
-                    className={`${getChunkWidth(chunk.weight)} min-w-[100px] p-3 rounded-lg border bg-background hover:shadow-sm transition-shadow`}
-                  >
-                    <p className="font-medium text-sm truncate mb-1">{chunk.name}</p>
-                    <Badge className={`${getWeightColor(chunk.weight)} text-xs`}>
-                      {getWeightLabel(chunk.weight)}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+      {/* Wizard - Create/Update Plan */}
+      <StudyPlanWizard
+        existingPlan={plan}
+        modules={modules}
+        onGenerate={handleGenerate}
+        onReset={resetPlan}
+        isGenerating={isCreating}
+        isResetting={isResetting}
+        calculateFeasibility={(start, end, days, hours, mods, baselines) => 
+          calculateFeasibility(start, end, days, hours, mods, baselines)
+        }
+      />
 
-              {/* Revision blocks */}
-              <div className="flex gap-2 border-t border-border/50 pt-4">
-                <div className="flex-1 p-3 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/20">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <p className="font-medium text-sm text-amber-700 dark:text-amber-300">Revision 1</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Protected block</p>
-                </div>
-                <div className="flex-1 p-3 rounded-lg border-2 border-dashed border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-900/20">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    <p className="font-medium text-sm text-purple-700 dark:text-purple-300">Final Revision</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Protected block</p>
-                </div>
-              </div>
-            </div>
+      {/* Year Timeline (Big Chunks) */}
+      {plan && planItems.length > 0 && (
+        <StudyPlanTimeline
+          modules={modules}
+          planItems={planItems}
+          startDate={plan.start_date}
+          endDate={plan.end_date}
+          selectedYearName={selectedYearName}
+        />
+      )}
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-red-200 dark:bg-red-800" />
-                <span>Heavy+ (largest)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-orange-200 dark:bg-orange-800" />
-                <span>Heavy</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-green-200 dark:bg-green-800" />
-                <span>Light (smallest)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-3 h-3 text-amber-500" />
-                <span>Protected (cannot be modified)</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Year Overview */}
+      <StudyPlanOverview
+        modules={modules}
+        planItems={planItems}
+        baselines={baselines || []}
+        startDate={plan?.start_date || ''}
+        endDate={plan?.end_date || ''}
+        selectedYearName={selectedYearName}
+      />
 
-      {/* Phase 2 Placeholder - Manual Time Chunks */}
-      <Card className="border-dashed">
-        <CardContent className="py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium text-sm">Manual Time Chunks</span>
-                <Badge variant="outline" className="text-xs">Coming Soon</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                You'll be able to assign module time blocks and the system will check feasibility.
-              </p>
-              <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-md mt-3">
-                <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  When enabled, you can set date ranges for each module. The system will validate if your plan is achievable and suggest adjustments if needed. Revision blocks remain protected.
-                </p>
-              </div>
-            </div>
-            <div className="shrink-0">
-              <Switch disabled checked={false} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* This Week Queue + Chapter Schedule */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <StudyPlanThisWeek
+            planItems={planItems}
+            selectedModuleId={selectedModuleId || null}
+            onMarkDone={handleMarkDone}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <StudyPlanSchedule
+            planItems={planItems}
+            selectedModuleId={selectedModuleId || null}
+            moduleName={selectedModuleName}
+            onMarkDone={handleMarkDone}
+            onUndo={handleUndo}
+          />
+        </div>
+      </div>
 
-      {/* Module-specific study plan placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5" />
-            Chapter Schedule
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-6 border border-dashed rounded-lg text-center text-muted-foreground">
-            <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p className="font-medium">Book-Based Chapter Planning</p>
-            <p className="text-sm mt-2">
-              A detailed chapter-by-chapter schedule for the selected module will be available here.
-            </p>
-            <p className="text-sm mt-1 text-muted-foreground/70">
-              This feature integrates with the Anki-like spaced repetition engine.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Cohort Insights */}
+      <StudyPlanCohortInsights
+        yearId={selectedYearId || null}
+        selectedYearName={selectedYearName}
+      />
     </div>
   );
 }
