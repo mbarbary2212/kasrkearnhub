@@ -481,12 +481,13 @@ export function useStudyPlan(yearId: string | null) {
 
   return {
     plan,
-    baselines,
-    planItems,
-    baselineChapterIds: baselineItems || [],
+    baselines: baselines ?? [],
+    planItems: planItems ?? [],
+    baselineChapterIds: baselineItems ?? [],
     isLoading: planLoading || itemsLoading,
     createPlan: createPlanMutation.mutate,
     isCreating: createPlanMutation.isPending,
+    createError: createPlanMutation.error,
     updateItemStatus: updateItemStatusMutation.mutate,
     resetPlan: resetPlanMutation.mutate,
     isResetting: resetPlanMutation.isPending,
