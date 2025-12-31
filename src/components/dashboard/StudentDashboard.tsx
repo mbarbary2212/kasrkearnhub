@@ -172,9 +172,11 @@ export function StudentDashboard() {
             {/* Actions - Desktop: Both buttons, Mobile: Only back */}
             <div className="flex items-center gap-2 self-start sm:self-center">
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm"
-                onClick={() => navigate('/')}
+                className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                onClick={() => selectedYearId && navigate(`/year/${selectedYearId}`)}
+                disabled={!selectedYearId}
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to Year
