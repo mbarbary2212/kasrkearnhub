@@ -27,29 +27,39 @@ export function StudyPlanOverview({
   endDate,
   selectedYearName,
 }: StudyPlanOverviewProps) {
-  const totalWeeks = differenceInWeeks(new Date(endDate), new Date(startDate));
+  // Defensive defaults
+  const safeModules = modules ?? [];
+  const safePlanItems = planItems ?? [];
+  const safeBaselines = baselines ?? [];
+
+  const totalWeeks = startDate && endDate 
+    ? differenceInWeeks(new Date(endDate), new Date(startDate)) 
+    : 0;
 
   // Calculate stats per module
-  const moduleStats = modules.map(module => {
-    const moduleItems = planItems.filter(i => i.module_id === module.id && i.item_type === 'chapter');
+  const moduleStats = safeModules.map(module => {
+    const moduleItems = safePlanItems.filter(i => i.module_id === module.id && i.item_type === 'chapter');
     const doneItems = moduleItems.filter(i => i.status === 'done');
-    const baseline = baselines.find(b => b.module_id === module.id)?.baseline_completed_percent || 0;
+    const baseline = safeBaselines.find(b => b.module_id === module.id)?.baseline_completed_percent || 0;
     
     // Calculate weeks allocated
     const moduleWeeks = new Set(moduleItems.map(i => i.week_index)).size;
-    const lastWeek = Math.max(...moduleItems.map(i => i.week_index), 0);
-    const estimatedCompletionDate = addWeeks(new Date(startDate), lastWeek + 1);
+    const weekIndices = moduleItems.map(i => i.week_index);
+    const lastWeek = weekIndices.length > 0 ? Math.max(...weekIndices) : 0;
+    const estimatedCompletionDate = startDate 
+      ? addWeeks(new Date(startDate), lastWeek + 1) 
+      : new Date();
     
     // Calculate total weight share
     const weight = getModuleWeightCategory(module.name);
     const weightValue = weight === 'heavy+' ? 3.5 : weight === 'heavy' ? 3 : weight === 'medium' ? 2 : 1;
     
-    const totalWeight = modules.reduce((sum, m) => {
+    const totalWeight = safeModules.reduce((sum, m) => {
       const w = getModuleWeightCategory(m.name);
       return sum + (w === 'heavy+' ? 3.5 : w === 'heavy' ? 3 : w === 'medium' ? 2 : 1);
     }, 0);
     
-    const sharePercent = Math.round((weightValue / totalWeight) * 100);
+    const sharePercent = totalWeight > 0 ? Math.round((weightValue / totalWeight) * 100) : 0;
     
     // Progress: baseline + (done/total) * remaining
     const remainingPercent = 100 - baseline;
@@ -69,7 +79,7 @@ export function StudyPlanOverview({
     };
   });
 
-  if (planItems.length === 0) {
+  if (safePlanItems.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -142,7 +152,7 @@ export function StudyPlanOverview({
             <p className="text-xs text-muted-foreground">Total weeks</p>
           </div>
           <div>
-            <p className="text-2xl font-semibold">{modules.length}</p>
+            <p className="text-2xl font-semibold">{safeModules.length}</p>
             <p className="text-xs text-muted-foreground">Modules</p>
           </div>
         </div>

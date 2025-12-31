@@ -20,14 +20,17 @@ export function StudyPlanSchedule({
   onMarkDone,
   onUndo,
 }: StudyPlanScheduleProps) {
+  // Defensive default
+  const safePlanItems = planItems ?? [];
+
   // Filter items for selected module (or show all for revisions)
   const filteredItems = selectedModuleId
-    ? planItems.filter(item => 
+    ? safePlanItems.filter(item => 
         item.module_id === selectedModuleId || 
         item.item_type === 'revision' || 
         item.item_type === 'final_revision'
       )
-    : planItems;
+    : safePlanItems;
 
   // Group by week
   const weekGroups: Record<number, StudyPlanItem[]> = {};

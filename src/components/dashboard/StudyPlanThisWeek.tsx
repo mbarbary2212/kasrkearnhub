@@ -16,12 +16,15 @@ export function StudyPlanThisWeek({
   selectedModuleId,
   onMarkDone,
 }: StudyPlanThisWeekProps) {
+  // Defensive default
+  const safePlanItems = planItems ?? [];
+
   const today = new Date();
   const weekStart = startOfWeek(today);
   const weekEnd = endOfWeek(today);
 
   // Get items for this week
-  const thisWeekItems = planItems
+  const thisWeekItems = safePlanItems
     .filter(item => {
       const itemStart = new Date(item.planned_date_from);
       const itemEnd = new Date(item.planned_date_to);
@@ -39,7 +42,7 @@ export function StudyPlanThisWeek({
     })
     .slice(0, 10);
 
-  if (planItems.length === 0) {
+  if (safePlanItems.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
