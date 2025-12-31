@@ -95,7 +95,7 @@ export function StudentDashboard() {
       {/* Page Title */}
       <div className="flex items-center gap-3 mb-1">
         <GraduationCap className="w-7 h-7 text-primary" />
-        <h1 className="text-2xl font-heading font-bold">My Learning Hub</h1>
+        <h1 className="text-2xl font-heading font-bold">Personal Study Guide</h1>
       </div>
 
       {/* Study Context Strip - Compact version */}
@@ -227,6 +227,8 @@ export function StudentDashboard() {
           moduleSelected={moduleSelected}
           modules={modules || []}
           selectedYearName={selectedYear?.name || ''}
+          selectedYearId={selectedYearId}
+          selectedModuleId={selectedModuleId || undefined}
           onNavigate={(moduleId, chapterId) => {
             navigate(`/module/${moduleId}/chapter/${chapterId}`);
           }}
