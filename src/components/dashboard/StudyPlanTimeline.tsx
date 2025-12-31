@@ -42,27 +42,31 @@ export function StudyPlanTimeline({
   endDate,
   selectedYearName,
 }: StudyPlanTimelineProps) {
+  // Defensive defaults
+  const safeModules = modules ?? [];
+  const safePlanItems = planItems ?? [];
+
   const totalWeeks = differenceInWeeks(new Date(endDate), new Date(startDate));
 
   // Group items by module to calculate weeks per module
   const moduleWeeks: Record<string, { weeks: Set<number>; weight: 'heavy+' | 'heavy' | 'medium' | 'light' }> = {};
   
-  modules.forEach(m => {
+  safeModules.forEach(m => {
     moduleWeeks[m.id] = { 
       weeks: new Set(), 
       weight: getModuleWeightCategory(m.name) 
     };
   });
 
-  planItems.forEach(item => {
+  safePlanItems.forEach(item => {
     if (item.item_type === 'chapter' && moduleWeeks[item.module_id]) {
       moduleWeeks[item.module_id].weeks.add(item.week_index);
     }
   });
 
   // Count revision weeks
-  const revision1Weeks = planItems.filter(i => i.item_type === 'revision').length;
-  const finalRevisionWeeks = planItems.filter(i => i.item_type === 'final_revision').length;
+  const revision1Weeks = safePlanItems.filter(i => i.item_type === 'revision').length;
+  const finalRevisionWeeks = safePlanItems.filter(i => i.item_type === 'final_revision').length;
 
   // Calculate width percentages
   const studyWeeks = totalWeeks - revision1Weeks - finalRevisionWeeks;
@@ -96,7 +100,7 @@ export function StudyPlanTimeline({
         <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-4">
           {/* Module chunks */}
           <div className="flex gap-1.5 overflow-x-auto pb-2">
-            {modules.map((module) => {
+            {safeModules.map((module) => {
               const data = moduleWeeks[module.id];
               const weekCount = data?.weeks.size || 1;
               const widthPercent = totalModuleWeeks > 0 

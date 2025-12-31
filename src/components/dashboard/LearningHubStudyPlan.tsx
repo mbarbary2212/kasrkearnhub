@@ -38,11 +38,16 @@ export function LearningHubStudyPlan({
     isLoading,
     createPlan,
     isCreating,
+    createError,
     updateItemStatus,
     resetPlan,
     isResetting,
     calculateFeasibility,
   } = useStudyPlan(selectedYearId || null);
+
+  // Defensive defaults - always work with arrays
+  const safePlanItems = planItems ?? [];
+  const safeBaselines = baselines ?? [];
 
   // Fetch chapters for plan generation
   const { data: chapters = [] } = useQuery({
@@ -128,11 +133,21 @@ export function LearningHubStudyPlan({
         initialBaselineChapterIds={baselineChapterIds}
       />
 
+      {/* Loading State */}
+      {isLoading && (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-50 animate-pulse" />
+            <p className="font-medium">Loading your study plan...</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Year Timeline (Big Chunks) */}
-      {plan && planItems.length > 0 && (
+      {!isLoading && plan && safePlanItems.length > 0 && (
         <StudyPlanTimeline
           modules={modules}
-          planItems={planItems}
+          planItems={safePlanItems}
           startDate={plan.start_date}
           endDate={plan.end_date}
           selectedYearName={selectedYearName}
@@ -140,34 +155,38 @@ export function LearningHubStudyPlan({
       )}
 
       {/* Year Overview */}
-      <StudyPlanOverview
-        modules={modules}
-        planItems={planItems}
-        baselines={baselines || []}
-        startDate={plan?.start_date || ''}
-        endDate={plan?.end_date || ''}
-        selectedYearName={selectedYearName}
-      />
+      {!isLoading && (
+        <StudyPlanOverview
+          modules={modules}
+          planItems={safePlanItems}
+          baselines={safeBaselines}
+          startDate={plan?.start_date || ''}
+          endDate={plan?.end_date || ''}
+          selectedYearName={selectedYearName}
+        />
+      )}
 
       {/* This Week Queue + Chapter Schedule */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <StudyPlanThisWeek
-            planItems={planItems}
-            selectedModuleId={selectedModuleId || null}
-            onMarkDone={handleMarkDone}
-          />
+      {!isLoading && (
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <StudyPlanThisWeek
+              planItems={safePlanItems}
+              selectedModuleId={selectedModuleId || null}
+              onMarkDone={handleMarkDone}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <StudyPlanSchedule
+              planItems={safePlanItems}
+              selectedModuleId={selectedModuleId || null}
+              moduleName={selectedModuleName}
+              onMarkDone={handleMarkDone}
+              onUndo={handleUndo}
+            />
+          </div>
         </div>
-        <div className="lg:col-span-2">
-          <StudyPlanSchedule
-            planItems={planItems}
-            selectedModuleId={selectedModuleId || null}
-            moduleName={selectedModuleName}
-            onMarkDone={handleMarkDone}
-            onUndo={handleUndo}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Cohort Insights */}
       <StudyPlanCohortInsights
