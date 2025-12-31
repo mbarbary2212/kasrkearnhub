@@ -14,13 +14,15 @@ interface ExportReportDropdownProps {
   yearName: string;
   moduleName: string;
   studentName?: string;
+  fullWidth?: boolean;
 }
 
 export function ExportReportDropdown({ 
   dashboard, 
   yearName, 
   moduleName,
-  studentName 
+  studentName,
+  fullWidth = false
 }: ExportReportDropdownProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -272,12 +274,17 @@ export function ExportReportDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isGenerating}>
-          <FileDown className="w-4 h-4 mr-2" />
+        <Button 
+          variant="outline" 
+          size="sm" 
+          disabled={isGenerating}
+          className={fullWidth ? "w-full justify-center" : ""}
+        >
+          {!fullWidth && <FileDown className="w-4 h-4 mr-2" />}
           Export Report
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={fullWidth ? "center" : "end"} className="w-48">
         <DropdownMenuItem onClick={handleExportPDF}>
           <Download className="w-4 h-4 mr-2" />
           Export as PDF

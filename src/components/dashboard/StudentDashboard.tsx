@@ -88,100 +88,125 @@ export function StudentDashboard() {
   const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+    <div className="space-y-4 animate-fade-in max-w-5xl mx-auto">
       {/* Announcements */}
       <HomeAnnouncementAlert />
 
       {/* Page Title */}
-      <div className="flex items-center gap-3 mb-2">
-        <GraduationCap className="w-8 h-8 text-primary" />
+      <div className="flex items-center gap-3 mb-1">
+        <GraduationCap className="w-7 h-7 text-primary" />
         <h1 className="text-2xl font-heading font-bold">My Learning Hub</h1>
       </div>
 
-      {/* Study Context Strip - Enhanced visibility */}
-      <Card className="bg-muted/50 border-border/60">
-        <CardContent className="py-5 px-6">
-          <div className="flex flex-col gap-4">
-            {/* Context Label */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {/* Study Context Strip - Compact version */}
+      <Card className="bg-muted/30 border-border/40">
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Year and Module Display */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Study Context
               </span>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => navigate(`/year/${selectedYearId}`)}
-                  disabled={!selectedYearId}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-1" />
-                  Back to Year
-                </Button>
-                {moduleSelected && dashboard && (
+              
+              {/* Desktop: Dropdowns */}
+              <div className="hidden sm:flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Year:</span>
+                  <Select value={selectedYearId} onValueChange={handleYearChange}>
+                    <SelectTrigger className="h-8 w-[160px] bg-background text-sm">
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years?.map((year) => (
+                        <SelectItem key={year.id} value={year.id}>
+                          {year.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <span className="text-muted-foreground/40">|</span>
+
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Module:</span>
+                  <Select 
+                    value={selectedModuleId} 
+                    onValueChange={setSelectedModuleId}
+                    disabled={!selectedYearId}
+                  >
+                    <SelectTrigger ref={moduleSelectRef} className="h-8 w-[220px] bg-background text-sm">
+                      <SelectValue placeholder={selectedYearId ? "Select module" : "Select year first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modules?.map((module) => (
+                        <SelectItem key={module.id} value={module.id}>
+                          {module.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!moduleSelected && selectedYearId && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400">Required</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile: Read-only labels */}
+              <div className="flex sm:hidden flex-col gap-1">
+                <span className="text-sm font-medium">
+                  Year: <span className="text-foreground">{selectedYear?.name || 'Not selected'}</span>
+                </span>
+                <span className="text-sm font-medium">
+                  Module: <span className="text-foreground">{selectedModule?.name || 'Not selected'}</span>
+                </span>
+                {moduleSelected && (
+                  <span className="text-xs text-muted-foreground">
+                    To change module, go back to Year.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Actions - Desktop: Both buttons, Mobile: Only back */}
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Year
+              </Button>
+              {/* Desktop Export */}
+              {moduleSelected && dashboard && (
+                <div className="hidden sm:block">
                   <ExportReportDropdown
                     dashboard={dashboard}
                     yearName={selectedYear?.name || ''}
                     moduleName={selectedModule?.name || ''}
                     studentName={firstName}
                   />
-                )}
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-border/60" />
-
-            {/* Year and Module Selection */}
-            <div className="flex flex-wrap items-center gap-6">
-              {/* Year Display */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-muted-foreground">Year:</span>
-                <Select value={selectedYearId} onValueChange={handleYearChange}>
-                  <SelectTrigger className="w-[200px] bg-background">
-                    <SelectValue placeholder="Select Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years?.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>
-                        {year.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <span className="text-muted-foreground/50">|</span>
-
-              {/* Module Selection - Required */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <BookOpen className="w-4 h-4" />
-                  Module:
-                </span>
-                <Select 
-                  value={selectedModuleId} 
-                  onValueChange={setSelectedModuleId}
-                  disabled={!selectedYearId}
-                >
-                  <SelectTrigger ref={moduleSelectRef} className="w-[280px] bg-background">
-                    <SelectValue placeholder={selectedYearId ? "Select a module to continue" : "Select year first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modules?.map((module) => (
-                      <SelectItem key={module.id} value={module.id}>
-                        {module.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!moduleSelected && selectedYearId && (
-                  <span className="text-xs text-amber-600 dark:text-amber-400">Required</span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile: Export Report - Full width below context strip */}
+      {moduleSelected && dashboard && (
+        <div className="sm:hidden">
+          <ExportReportDropdown
+            dashboard={dashboard}
+            yearName={selectedYear?.name || ''}
+            moduleName={selectedModule?.name || ''}
+            studentName={firstName}
+            fullWidth
+          />
+        </div>
+      )}
 
       {/* Header with context */}
       <DashboardHeader 
