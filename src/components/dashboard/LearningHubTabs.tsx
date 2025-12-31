@@ -14,10 +14,12 @@ interface LearningHubTabsProps {
   moduleSelected: boolean;
   modules: Module[];
   selectedYearName: string;
+  selectedYearId?: string;
+  selectedModuleId?: string | null;
   onNavigate: (moduleId: string, chapterId: string) => void;
 }
 
-export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, onNavigate }: LearningHubTabsProps) {
+export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
@@ -54,6 +56,8 @@ export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYe
           moduleSelected={moduleSelected} 
           modules={modules}
           selectedYearName={selectedYearName}
+          selectedYearId={selectedYearId}
+          selectedModuleId={selectedModuleId}
         />
       </TabsContent>
 
