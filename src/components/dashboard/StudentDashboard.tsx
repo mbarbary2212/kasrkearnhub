@@ -225,6 +225,8 @@ export function StudentDashboard() {
         <LearningHubTabs 
           dashboard={dashboard}
           moduleSelected={moduleSelected}
+          modules={modules || []}
+          selectedYearName={selectedYear?.name || ''}
           onNavigate={(moduleId, chapterId) => {
             navigate(`/module/${moduleId}/chapter/${chapterId}`);
           }}
