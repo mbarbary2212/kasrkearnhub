@@ -13,22 +13,22 @@ interface LearningHubTabsProps {
 export function LearningHubTabs({ dashboard, moduleSelected, onNavigate }: LearningHubTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/60 p-1">
+      <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
         <TabsTrigger 
           value="overview" 
-          className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none"
+          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
         >
           Overview
         </TabsTrigger>
         <TabsTrigger 
           value="study-plan"
-          className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none"
+          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
         >
           Study Plan
         </TabsTrigger>
         <TabsTrigger 
           value="unlocks"
-          className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none"
+          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
         >
           Unlocks
         </TabsTrigger>
