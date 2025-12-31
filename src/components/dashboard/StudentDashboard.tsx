@@ -101,15 +101,33 @@ export function StudentDashboard() {
       {/* Study Context Strip - Compact version */}
       <Card className="bg-muted/30 border-border/40">
         <CardContent className="py-3 px-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {/* Year and Module Display */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div className="flex flex-col gap-3">
+            {/* Header row: Study Context label + Back button (mobile) */}
+            <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Study Context
               </span>
               
-              {/* Desktop: Dropdowns */}
-              <div className="hidden sm:flex items-center gap-3">
+              {/* Mobile: Back button next to Study Context */}
+              <div className="sm:hidden">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                  onClick={() => selectedYear && navigate(`/year/${selectedYear.number}`)}
+                  disabled={!selectedYear}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back to Year
+                </Button>
+              </div>
+            </div>
+
+            {/* Dropdowns row */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              {/* Year and Module Dropdowns */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                {/* Year Dropdown */}
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Year:</span>
                   <Select value={selectedYearId} onValueChange={handleYearChange}>
@@ -126,11 +144,11 @@ export function StudentDashboard() {
                   </Select>
                 </div>
 
-                <span className="text-muted-foreground/40">|</span>
+                <span className="hidden sm:inline text-muted-foreground/40">|</span>
 
+                {/* Module Dropdown */}
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Module:</span>
                   <Select 
                     value={selectedModuleId} 
                     onValueChange={setSelectedModuleId}
@@ -153,45 +171,27 @@ export function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Mobile: Read-only labels */}
-              <div className="flex sm:hidden flex-col gap-1">
-                <span className="text-sm font-medium">
-                  Year: <span className="text-foreground">{selectedYear?.name || 'Not selected'}</span>
-                </span>
-                <span className="text-sm font-medium">
-                  Module: <span className="text-foreground">{selectedModule?.name || 'Not selected'}</span>
-                </span>
-                {moduleSelected && (
-                  <span className="text-xs text-muted-foreground">
-                    To change module, go back to Year.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Actions - Desktop: Both buttons, Mobile: Only back */}
-            <div className="flex items-center gap-2 self-start sm:self-center">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900"
-                onClick={() => selectedYear && navigate(`/year/${selectedYear.number}`)}
-                disabled={!selectedYear}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to Year
-              </Button>
-              {/* Desktop Export */}
-              {moduleSelected && dashboard && (
-                <div className="hidden sm:block">
+              {/* Desktop/Tablet: Back button and Export */}
+              <div className="hidden sm:flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                  onClick={() => selectedYear && navigate(`/year/${selectedYear.number}`)}
+                  disabled={!selectedYear}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back to Year
+                </Button>
+                {moduleSelected && dashboard && (
                   <ExportReportDropdown
                     dashboard={dashboard}
                     yearName={selectedYear?.name || ''}
                     moduleName={selectedModule?.name || ''}
                     studentName={firstName}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
