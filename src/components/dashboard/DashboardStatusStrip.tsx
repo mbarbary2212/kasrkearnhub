@@ -1,24 +1,32 @@
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, BookOpen, Calendar } from 'lucide-react';
+import { TrendingUp, BookOpen, Calendar, Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DashboardStatusStripProps {
   examReadiness: number;
+  coveragePercent: number;
   coverageCompleted: number;
   coverageTotal: number;
+  chaptersStarted: number;
+  chaptersTotal: number;
   studyStreak: number;
 }
 
 export function DashboardStatusStrip({
   examReadiness,
+  coveragePercent,
   coverageCompleted,
   coverageTotal,
+  chaptersStarted,
+  chaptersTotal,
   studyStreak,
 }: DashboardStatusStripProps) {
-  const coveragePercent = coverageTotal > 0 
-    ? Math.round((coverageCompleted / coverageTotal) * 100) 
-    : 0;
-
   return (
     <Card className="p-4 md:p-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -32,12 +40,25 @@ export function DashboardStatusStrip({
               <span className="text-3xl font-heading font-bold text-foreground">
                 {examReadiness}%
               </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-sm">
+                      Readiness reflects preparedness, not grades. 
+                      Accuracy will be added once MCQ attempt tracking is enabled.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Exam Readiness
             </p>
             <p className="text-xs text-muted-foreground/70">
-              Based on coverage, accuracy, and consistency
+              Based on coverage and consistency (not grades)
             </p>
           </div>
         </div>
@@ -58,8 +79,13 @@ export function DashboardStatusStrip({
             </div>
             <Progress value={coveragePercent} className="h-2" />
             <p className="text-xs text-muted-foreground mt-1.5">
-              {coverageCompleted} of {coverageTotal} chapters completed
+              {coverageCompleted} of {coverageTotal} items completed
             </p>
+            {chaptersTotal > 0 && (
+              <p className="text-xs text-muted-foreground/70">
+                {chaptersStarted} of {chaptersTotal} chapters started
+              </p>
+            )}
           </div>
         </div>
 

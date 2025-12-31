@@ -33,14 +33,18 @@ export interface SuggestedItem {
 export interface DashboardData {
   // Core metrics
   examReadiness: number;
-  coverageCompleted: number;
-  coverageTotal: number;
+  coveragePercent: number;
+  coverageCompleted: number; // completed items count
+  coverageTotal: number; // total items count
+  chaptersStarted: number;
+  chaptersTotal: number;
   studyStreak: number;
+  consistencyScore: number;
   
   // Weekly stats
   weeklyTimeMinutes: number;
-  weeklyAccuracyTrend: number; // positive or negative percentage change
   weeklyChaptersAdvanced: number;
+  hasRealAccuracyData: boolean; // flag to control UI display
   
   // Chapters
   chapters: ChapterStatus[];
@@ -179,26 +183,34 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         };
       });
 
-      // Calculate overall metrics
-      const chaptersWithContent = chapterStatuses.filter(c => c.totalItems > 0);
-      const completedChapters = chaptersWithContent.filter(c => c.status === 'completed').length;
-      const totalChapters = chaptersWithContent.length;
-
-      // Exam readiness: weighted average of completed chapters
-      const examReadiness = totalChapters > 0 
-        ? Math.round((completedChapters / totalChapters) * 100) 
-        : 0;
-
-      // Calculate study streak (days with activity in user_progress)
-      const studyStreak = calculateStudyStreak(userProgress);
-
-      // Calculate weekly stats - filter to content within selected modules
+      // Calculate content IDs set for module scoping
       const contentIds = new Set([
         ...mcqs.map(m => m.id),
         ...essays.map(e => e.id),
         ...practicals.map(p => p.id),
         ...caseScenarios.map(c => c.id),
       ]);
+
+      // Calculate overall metrics - ITEM-BASED coverage
+      const totalItems = chapterStatuses.reduce((sum, c) => sum + c.totalItems, 0);
+      const completedItems = chapterStatuses.reduce((sum, c) => sum + c.completedItems, 0);
+      const coveragePercent = totalItems > 0 
+        ? Math.round((completedItems / totalItems) * 100) 
+        : 0;
+
+      // Chapter counts for secondary display
+      const chaptersWithContent = chapterStatuses.filter(c => c.totalItems > 0);
+      const chaptersStarted = chaptersWithContent.filter(c => c.status !== 'not_started').length;
+      const chaptersTotal = chaptersWithContent.length;
+
+      // Calculate study streak (days with activity in user_progress)
+      const studyStreak = calculateStudyStreak(userProgress);
+      
+      // Calculate consistency score (0-100) based on recent activity
+      const consistencyScore = calculateConsistencyScore(userProgress, contentIds);
+      
+      // Exam Readiness = 0.7 * Coverage% + 0.3 * ConsistencyScore
+      const examReadiness = Math.round(0.7 * coveragePercent + 0.3 * consistencyScore);
 
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -241,12 +253,16 @@ export function useStudentDashboard(filters?: DashboardFilters) {
 
       return {
         examReadiness,
-        coverageCompleted: completedChapters,
-        coverageTotal: totalChapters,
+        coveragePercent,
+        coverageCompleted: completedItems,
+        coverageTotal: totalItems,
+        chaptersStarted,
+        chaptersTotal,
         studyStreak,
+        consistencyScore,
         weeklyTimeMinutes,
-        weeklyAccuracyTrend: 0, // Would need MCQ attempt data for real accuracy
         weeklyChaptersAdvanced,
+        hasRealAccuracyData: false, // No MCQ attempt tracking yet
         chapters: chapterStatuses,
         insights,
         suggestions,
@@ -262,16 +278,61 @@ export function useStudentDashboard(filters?: DashboardFilters) {
 function getEmptyDashboard(): DashboardData {
   return {
     examReadiness: 0,
+    coveragePercent: 0,
     coverageCompleted: 0,
     coverageTotal: 0,
+    chaptersStarted: 0,
+    chaptersTotal: 0,
     studyStreak: 0,
+    consistencyScore: 0,
     weeklyTimeMinutes: 0,
-    weeklyAccuracyTrend: 0,
     weeklyChaptersAdvanced: 0,
+    hasRealAccuracyData: false,
     chapters: [],
     insights: [],
     suggestions: [],
   };
+}
+
+function calculateConsistencyScore(
+  userProgress: { completed_at: string | null; content_id: string }[],
+  moduleContentIds: Set<string>
+): number {
+  // Filter to module-specific progress
+  const moduleProgress = userProgress.filter(p => 
+    p.completed_at && moduleContentIds.has(p.content_id)
+  );
+  
+  if (moduleProgress.length === 0) return 0;
+
+  const now = new Date();
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Get unique dates with activity in last 14 days
+  const recentDates = new Set(
+    moduleProgress
+      .filter(p => new Date(p.completed_at!) >= fourteenDaysAgo)
+      .map(p => new Date(p.completed_at!).toDateString())
+  );
+
+  // Get unique dates in last 7 days
+  const veryRecentDates = new Set(
+    moduleProgress
+      .filter(p => new Date(p.completed_at!) >= sevenDaysAgo)
+      .map(p => new Date(p.completed_at!).toDateString())
+  );
+
+  // Score based on activity frequency
+  // 14-day activity: up to 50 points (proportional to days active out of 14)
+  const fourteenDayScore = Math.min(50, (recentDates.size / 14) * 100);
+  
+  // 7-day activity: up to 50 points (proportional to days active out of 7)
+  const sevenDayScore = Math.min(50, (veryRecentDates.size / 7) * 100);
+
+  return Math.round(fourteenDayScore + sevenDayScore);
 }
 
 function calculateStudyStreak(userProgress: { completed_at: string | null }[]): number {
@@ -308,22 +369,23 @@ function calculateStudyStreak(userProgress: { completed_at: string | null }[]): 
 function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
   const insights: DashboardInsight[] = [];
 
-  // Strong areas: completed chapters
-  const completedChapters = chapters.filter(c => c.status === 'completed');
-  if (completedChapters.length > 0) {
-    const recentCompleted = completedChapters.slice(0, 3);
-    recentCompleted.forEach(ch => {
-      insights.push({
-        type: 'strong',
-        label: ch.title,
-        detail: ch.moduleName,
-      });
+  // Strong areas: chapters with highest coverage (completed or high progress)
+  const highCoverageChapters = chapters
+    .filter(c => c.status === 'completed' || (c.status === 'in_progress' && c.progress >= 75))
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3);
+  
+  highCoverageChapters.forEach(ch => {
+    insights.push({
+      type: 'strong',
+      label: ch.title,
+      detail: ch.status === 'completed' ? '100% coverage' : `${ch.progress}% coverage`,
     });
-  }
+  });
 
-  // Needs attention: in-progress chapters with low progress
+  // Needs attention: in-progress chapters with low progress (prioritize lowest)
   const needsAttention = chapters
-    .filter(c => c.status === 'in_progress' && c.progress < 50)
+    .filter(c => c.status === 'in_progress' && c.progress < 50 && c.totalItems > 0)
     .sort((a, b) => a.progress - b.progress)
     .slice(0, 3);
   
@@ -331,17 +393,20 @@ function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
     insights.push({
       type: 'attention',
       label: ch.title,
-      detail: `${ch.progress}% complete`,
+      detail: `${ch.progress}% coverage — ${ch.completedItems} of ${ch.totalItems} items`,
     });
   });
 
-  // If no insights, add encouraging message
-  if (insights.length === 0) {
-    insights.push({
-      type: 'attention',
-      label: 'Start your journey',
-      detail: 'Begin with any chapter to track your progress',
-    });
+  // If no strong areas but have not-started chapters, encourage starting
+  if (insights.filter(i => i.type === 'strong').length === 0) {
+    const notStarted = chapters.filter(c => c.status === 'not_started' && c.totalItems > 0);
+    if (notStarted.length > 0) {
+      insights.push({
+        type: 'attention',
+        label: 'Ready to begin',
+        detail: `${notStarted.length} chapter${notStarted.length > 1 ? 's' : ''} awaiting your study`,
+      });
+    }
   }
 
   return insights;
