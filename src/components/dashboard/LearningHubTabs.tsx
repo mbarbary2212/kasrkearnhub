@@ -4,13 +4,20 @@ import { LearningHubOverview } from './LearningHubOverview';
 import { LearningHubStudyPlan } from './LearningHubStudyPlan';
 import { LearningHubUnlocks } from './LearningHubUnlocks';
 
+interface Module {
+  id: string;
+  name: string;
+}
+
 interface LearningHubTabsProps {
   dashboard: DashboardData;
   moduleSelected: boolean;
+  modules: Module[];
+  selectedYearName: string;
   onNavigate: (moduleId: string, chapterId: string) => void;
 }
 
-export function LearningHubTabs({ dashboard, moduleSelected, onNavigate }: LearningHubTabsProps) {
+export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, onNavigate }: LearningHubTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
@@ -43,7 +50,11 @@ export function LearningHubTabs({ dashboard, moduleSelected, onNavigate }: Learn
       </TabsContent>
 
       <TabsContent value="study-plan" className="space-y-6">
-        <LearningHubStudyPlan moduleSelected={moduleSelected} />
+        <LearningHubStudyPlan 
+          moduleSelected={moduleSelected} 
+          modules={modules}
+          selectedYearName={selectedYearName}
+        />
       </TabsContent>
 
       <TabsContent value="unlocks" className="space-y-6">
