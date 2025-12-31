@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { StudyPlan, getModuleWeightCategory } from '@/hooks/useStudyPlan';
+import { StudyPlanBaselineChapters } from './StudyPlanBaselineChapters';
 
 interface Module {
   id: string;
@@ -46,6 +47,7 @@ interface FeasibilityResult {
 interface StudyPlanWizardProps {
   existingPlan: StudyPlan | null;
   modules: Module[];
+  selectedModuleId: string | null;
   onGenerate: (data: {
     startDate: Date;
     endDate: Date;
@@ -53,6 +55,7 @@ interface StudyPlanWizardProps {
     hoursPerDay: number;
     revisionRounds: number;
     baselinePercents: Record<string, number>;
+    baselineChapterIds: string[];
   }) => void;
   onReset: () => void;
   isGenerating: boolean;
@@ -65,16 +68,19 @@ interface StudyPlanWizardProps {
     modules: Module[],
     baselinePercents?: Record<string, number>
   ) => FeasibilityResult;
+  initialBaselineChapterIds?: string[];
 }
 
 export function StudyPlanWizard({
   existingPlan,
   modules,
+  selectedModuleId,
   onGenerate,
   onReset,
   isGenerating,
   isResetting,
   calculateFeasibility,
+  initialBaselineChapterIds = [],
 }: StudyPlanWizardProps) {
   const [startDate, setStartDate] = useState<string>(
     existingPlan?.start_date || format(new Date(), 'yyyy-MM-dd')
@@ -86,7 +92,19 @@ export function StudyPlanWizard({
   const [hoursPerDay, setHoursPerDay] = useState(existingPlan?.hours_per_day || 4);
   const [revisionRounds, setRevisionRounds] = useState(existingPlan?.revision_rounds || 2);
   const [baselinePercents, setBaselinePercents] = useState<Record<string, number>>({});
+  const [completedChapterIds, setCompletedChapterIds] = useState<Set<string>>(
+    new Set(initialBaselineChapterIds)
+  );
   const [showBaselines, setShowBaselines] = useState(false);
+
+  // Sync initial baseline chapter IDs when they load
+  useEffect(() => {
+    if (initialBaselineChapterIds.length > 0) {
+      setCompletedChapterIds(new Set(initialBaselineChapterIds));
+    }
+  }, [initialBaselineChapterIds]);
+
+  const selectedModule = modules.find(m => m.id === selectedModuleId);
 
   const feasibility = calculateFeasibility(
     new Date(startDate),
@@ -97,6 +115,32 @@ export function StudyPlanWizard({
     baselinePercents
   );
 
+  const handleToggleChapter = (chapterId: string, isCompleted: boolean) => {
+    setCompletedChapterIds(prev => {
+      const newSet = new Set(prev);
+      if (isCompleted) {
+        newSet.add(chapterId);
+      } else {
+        newSet.delete(chapterId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMarkAllInBook = (chapterIds: string[], isCompleted: boolean) => {
+    setCompletedChapterIds(prev => {
+      const newSet = new Set(prev);
+      chapterIds.forEach(id => {
+        if (isCompleted) {
+          newSet.add(id);
+        } else {
+          newSet.delete(id);
+        }
+      });
+      return newSet;
+    });
+  };
+
   const handleSubmit = () => {
     onGenerate({
       startDate: new Date(startDate),
@@ -105,6 +149,7 @@ export function StudyPlanWizard({
       hoursPerDay,
       revisionRounds,
       baselinePercents,
+      baselineChapterIds: Array.from(completedChapterIds),
     });
   };
 
@@ -187,43 +232,63 @@ export function StudyPlanWizard({
           </Select>
         </div>
 
-        {/* Baseline progress (collapsible) */}
-        {modules.length > 0 && (
-          <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Already Studied? (Optional)
-                </span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showBaselines ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4 space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Set baseline completion for modules you've already partially studied.
-              </p>
-              {modules.map((module) => (
-                <div key={module.id} className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="truncate flex-1">{module.name}</span>
-                    <Badge variant="outline" className="ml-2">
-                      {baselinePercents[module.id] || 0}%
-                    </Badge>
+        {/* Already Studied - Module-context aware */}
+        <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+              <span className="text-sm font-medium text-muted-foreground">
+                Already Studied? (Optional)
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showBaselines ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              {selectedModuleId 
+                ? 'Mark the chapters you have already completed to exclude them from your study plan.'
+                : 'Select a module above to set chapter-level baselines, or use module percentages below for a quick estimate.'}
+            </p>
+            
+            {/* Granular chapter selection when module is selected */}
+            {selectedModuleId && (
+              <StudyPlanBaselineChapters
+                selectedModuleId={selectedModuleId}
+                selectedModuleName={selectedModule?.name || ''}
+                completedChapterIds={completedChapterIds}
+                onToggleChapter={handleToggleChapter}
+                onMarkAllInBook={handleMarkAllInBook}
+              />
+            )}
+
+            {/* Year-level percentage sliders when no module selected */}
+            {!selectedModuleId && modules.length > 0 && (
+              <div className="space-y-4 pt-2">
+                <p className="text-xs text-muted-foreground font-medium">
+                  Quick module estimates (approximate):
+                </p>
+                {modules.map((module) => (
+                  <div key={module.id} className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="truncate flex-1">{module.name}</span>
+                      <Badge variant="outline" className="ml-2">
+                        {baselinePercents[module.id] || 0}%
+                      </Badge>
+                    </div>
+                    <Slider
+                      value={[baselinePercents[module.id] || 0]}
+                      onValueChange={([value]) => 
+                        setBaselinePercents(prev => ({ ...prev, [module.id]: value }))
+                      }
+                      min={0}
+                      max={100}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[baselinePercents[module.id] || 0]}
-                    onValueChange={([value]) => 
-                      setBaselinePercents(prev => ({ ...prev, [module.id]: value }))
-                    }
-                    min={0}
-                    max={100}
-                    step={5}
-                  />
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Feasibility card */}
         <div className={`p-4 rounded-lg border ${
