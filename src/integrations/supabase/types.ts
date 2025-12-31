@@ -1873,6 +1873,55 @@ export type Database = {
           },
         ]
       }
+      study_plan_baseline_items: {
+        Row: {
+          chapter_id: string
+          created_at: string
+          id: string
+          is_completed: boolean
+          module_id: string
+          plan_id: string
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          module_id: string
+          plan_id: string
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          module_id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_baseline_items_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_baseline_items_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_baseline_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_plan_items: {
         Row: {
           chapter_id: string | null

@@ -34,6 +34,7 @@ export function LearningHubStudyPlan({
     plan,
     baselines,
     planItems,
+    baselineChapterIds,
     isLoading,
     createPlan,
     isCreating,
@@ -85,11 +86,18 @@ export function LearningHubStudyPlan({
     hoursPerDay: number;
     revisionRounds: number;
     baselinePercents: Record<string, number>;
+    baselineChapterIds: string[];
   }) => {
     if (!selectedYearId) return;
     createPlan({
       yearId: selectedYearId,
-      ...data,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      daysPerWeek: data.daysPerWeek,
+      hoursPerDay: data.hoursPerDay,
+      revisionRounds: data.revisionRounds,
+      baselinePercents: data.baselinePercents,
+      baselineChapterIds: data.baselineChapterIds,
       modules,
       chapters,
     });
@@ -109,6 +117,7 @@ export function LearningHubStudyPlan({
       <StudyPlanWizard
         existingPlan={plan}
         modules={modules}
+        selectedModuleId={selectedModuleId || null}
         onGenerate={handleGenerate}
         onReset={resetPlan}
         isGenerating={isCreating}
@@ -116,6 +125,7 @@ export function LearningHubStudyPlan({
         calculateFeasibility={(start, end, days, hours, mods, baselines) => 
           calculateFeasibility(start, end, days, hours, mods, baselines)
         }
+        initialBaselineChapterIds={baselineChapterIds}
       />
 
       {/* Year Timeline (Big Chunks) */}

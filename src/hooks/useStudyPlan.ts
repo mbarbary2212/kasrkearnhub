@@ -48,6 +48,7 @@ export interface CreatePlanInput {
   hoursPerDay: number;
   revisionRounds: number;
   baselinePercents?: Record<string, number>;
+  baselineChapterIds?: string[];
 }
 
 export interface Module {
@@ -128,6 +129,24 @@ export function useStudyPlan(yearId: string | null) {
     enabled: !!plan?.id,
   });
 
+  // Fetch baseline chapter items (granular)
+  const { data: baselineItems } = useQuery({
+    queryKey: ['study-plan-baseline-items', plan?.id],
+    queryFn: async () => {
+      if (!plan?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('study_plan_baseline_items')
+        .select('chapter_id')
+        .eq('plan_id', plan.id)
+        .eq('is_completed', true);
+      
+      if (error) throw error;
+      return data?.map(item => item.chapter_id) || [];
+    },
+    enabled: !!plan?.id,
+  });
+
   // Fetch plan items
   const { data: planItems, isLoading: itemsLoading } = useQuery({
     queryKey: ['study-plan-items', plan?.id],
@@ -157,6 +176,7 @@ export function useStudyPlan(yearId: string | null) {
       hoursPerDay, 
       revisionRounds, 
       baselinePercents,
+      baselineChapterIds,
       modules,
       chapters 
     }: CreatePlanInput & { modules: Module[]; chapters: Chapter[] }) => {
@@ -226,6 +246,34 @@ export function useStudyPlan(yearId: string | null) {
             .from('study_plan_baseline')
             .insert(baselineRows);
           if (baselineError) throw baselineError;
+        }
+      }
+
+      // Save baseline chapter items (granular)
+      await supabase
+        .from('study_plan_baseline_items')
+        .delete()
+        .eq('plan_id', planData.id);
+
+      if (baselineChapterIds && baselineChapterIds.length > 0) {
+        // Get chapter info to know module_id
+        const { data: chapterInfo } = await supabase
+          .from('module_chapters')
+          .select('id, module_id')
+          .in('id', baselineChapterIds);
+        
+        if (chapterInfo && chapterInfo.length > 0) {
+          const baselineItemRows = chapterInfo.map(ch => ({
+            plan_id: planData.id,
+            module_id: ch.module_id,
+            chapter_id: ch.id,
+            is_completed: true,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('study_plan_baseline_items')
+            .insert(baselineItemRows);
+          if (itemsError) throw itemsError;
         }
       }
 
@@ -342,6 +390,7 @@ export function useStudyPlan(yearId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['study-plan'] });
       queryClient.invalidateQueries({ queryKey: ['study-plan-items'] });
       queryClient.invalidateQueries({ queryKey: ['study-plan-baselines'] });
+      queryClient.invalidateQueries({ queryKey: ['study-plan-baseline-items'] });
       toast.success('Study plan generated successfully');
     },
     onError: (error) => {
@@ -386,6 +435,7 @@ export function useStudyPlan(yearId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['study-plan'] });
       queryClient.invalidateQueries({ queryKey: ['study-plan-items'] });
       queryClient.invalidateQueries({ queryKey: ['study-plan-baselines'] });
+      queryClient.invalidateQueries({ queryKey: ['study-plan-baseline-items'] });
       toast.success('Study plan reset');
     },
   });
@@ -433,6 +483,7 @@ export function useStudyPlan(yearId: string | null) {
     plan,
     baselines,
     planItems,
+    baselineChapterIds: baselineItems || [],
     isLoading: planLoading || itemsLoading,
     createPlan: createPlanMutation.mutate,
     isCreating: createPlanMutation.isPending,
