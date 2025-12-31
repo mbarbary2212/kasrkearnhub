@@ -175,8 +175,8 @@ export function StudentDashboard() {
                 variant="outline" 
                 size="sm"
                 className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900"
-                onClick={() => selectedYearId && navigate(`/year/${selectedYearId}`)}
-                disabled={!selectedYearId}
+                onClick={() => selectedYear && navigate(`/year/${selectedYear.number}`)}
+                disabled={!selectedYear}
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to Year
