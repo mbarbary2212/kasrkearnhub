@@ -7,11 +7,13 @@ import { useModules } from '@/hooks/useModules';
 import { DashboardHeader } from './DashboardHeader';
 import { LearningHubTabs } from './LearningHubTabs';
 import { LearningHubEmptyState } from './LearningHubEmptyState';
+import { ExportReportDropdown } from './ExportReportDropdown';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnouncementAlert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { GraduationCap, BookOpen } from 'lucide-react';
+import { GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
 
 const LAST_SELECTED_YEAR_KEY = 'kasrlearn_last_selected_year';
 
@@ -96,16 +98,46 @@ export function StudentDashboard() {
         <h1 className="text-2xl font-heading font-bold">My Learning Hub</h1>
       </div>
 
-      {/* Year and Module Selection */}
-      <Card>
-        <CardContent className="py-4">
+      {/* Study Context Strip - Enhanced visibility */}
+      <Card className="bg-muted/50 border-border/60">
+        <CardContent className="py-5 px-6">
           <div className="flex flex-col gap-4">
-            {/* Year Display */}
+            {/* Context Label */}
             <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Study Context
+              </span>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate(`/year/${selectedYearId}`)}
+                  disabled={!selectedYearId}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back to Year
+                </Button>
+                {moduleSelected && dashboard && (
+                  <ExportReportDropdown
+                    dashboard={dashboard}
+                    yearName={selectedYear?.name || ''}
+                    moduleName={selectedModule?.name || ''}
+                    studentName={firstName}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-border/60" />
+
+            {/* Year and Module Selection */}
+            <div className="flex flex-wrap items-center gap-6">
+              {/* Year Display */}
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-muted-foreground">Academic Year:</span>
+                <span className="text-sm font-medium text-muted-foreground">Year:</span>
                 <Select value={selectedYearId} onValueChange={handleYearChange}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[200px] bg-background">
                     <SelectValue placeholder="Select Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -117,33 +149,35 @@ export function StudentDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Module Selection - Required */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                <BookOpen className="w-4 h-4" />
-                Module:
-              </span>
-              <Select 
-                value={selectedModuleId} 
-                onValueChange={setSelectedModuleId}
-                disabled={!selectedYearId}
-              >
-                <SelectTrigger ref={moduleSelectRef} className="w-[280px]">
-                  <SelectValue placeholder={selectedYearId ? "Select a module to continue" : "Select year first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {modules?.map((module) => (
-                    <SelectItem key={module.id} value={module.id}>
-                      {module.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!moduleSelected && selectedYearId && (
-                <span className="text-xs text-amber-600 dark:text-amber-400">Required</span>
-              )}
+              <span className="text-muted-foreground/50">|</span>
+
+              {/* Module Selection - Required */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <BookOpen className="w-4 h-4" />
+                  Module:
+                </span>
+                <Select 
+                  value={selectedModuleId} 
+                  onValueChange={setSelectedModuleId}
+                  disabled={!selectedYearId}
+                >
+                  <SelectTrigger ref={moduleSelectRef} className="w-[280px] bg-background">
+                    <SelectValue placeholder={selectedYearId ? "Select a module to continue" : "Select year first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modules?.map((module) => (
+                      <SelectItem key={module.id} value={module.id}>
+                        {module.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!moduleSelected && selectedYearId && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400">Required</span>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

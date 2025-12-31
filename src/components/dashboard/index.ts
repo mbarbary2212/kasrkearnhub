@@ -5,6 +5,7 @@ export { LearningHubStudyPlan } from './LearningHubStudyPlan';
 export { LearningHubUnlocks } from './LearningHubUnlocks';
 export { LearningHubEmptyState } from './LearningHubEmptyState';
 export { LockedContentScreen } from './LockedContentScreen';
+export { ExportReportDropdown } from './ExportReportDropdown';
 export { DashboardHeader } from './DashboardHeader';
 export { DashboardStatusStrip } from './DashboardStatusStrip';
 export { DashboardTodayPlan } from './DashboardTodayPlan';
