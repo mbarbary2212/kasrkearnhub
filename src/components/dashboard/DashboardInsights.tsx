@@ -1,16 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
 import type { DashboardInsight } from '@/hooks/useStudentDashboard';
 
 interface DashboardInsightsProps {
   insights: DashboardInsight[];
+  hasRealAccuracyData?: boolean;
 }
 
 const insightConfig = {
   strong: {
     icon: CheckCircle2,
-    label: 'Strong Area',
+    label: 'Strong Areas',
     className: 'bg-accent/10 text-accent border-accent/20',
     iconClass: 'text-accent',
   },
@@ -29,15 +29,19 @@ const insightConfig = {
   },
 };
 
-export function DashboardInsights({ insights }: DashboardInsightsProps) {
-  if (insights.length === 0) {
-    return null;
-  }
-
+export function DashboardInsights({ insights, hasRealAccuracyData = false }: DashboardInsightsProps) {
   // Group insights by type
   const strongAreas = insights.filter(i => i.type === 'strong');
   const needsAttention = insights.filter(i => i.type === 'attention');
   const missedConcepts = insights.filter(i => i.type === 'missed');
+
+  // Only show columns with content, and hide "missed" if no real accuracy data
+  const showMissedColumn = hasRealAccuracyData && missedConcepts.length > 0;
+  const hasAnyInsights = strongAreas.length > 0 || needsAttention.length > 0;
+
+  if (!hasAnyInsights && !showMissedColumn) {
+    return null;
+  }
 
   return (
     <Card>
@@ -45,7 +49,7 @@ export function DashboardInsights({ insights }: DashboardInsightsProps) {
         <CardTitle className="text-lg font-heading">Learning Insights</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className={`grid gap-4 ${showMissedColumn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           {/* Strong Areas */}
           <InsightColumn
             type="strong"
@@ -60,13 +64,22 @@ export function DashboardInsights({ insights }: DashboardInsightsProps) {
             emptyMessage="All areas are progressing well"
           />
 
-          {/* Frequently Missed */}
-          <InsightColumn
-            type="missed"
-            items={missedConcepts}
-            emptyMessage="No patterns identified yet"
-          />
+          {/* Frequently Missed - only show if real accuracy data exists */}
+          {showMissedColumn && (
+            <InsightColumn
+              type="missed"
+              items={missedConcepts}
+              emptyMessage="No patterns identified yet"
+            />
+          )}
         </div>
+
+        {/* Note about accuracy tracking */}
+        {!hasRealAccuracyData && (
+          <p className="text-xs text-muted-foreground/70 mt-4 text-center italic">
+            Frequently missed concepts will appear once MCQ attempt tracking is enabled.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

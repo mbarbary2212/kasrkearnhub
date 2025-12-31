@@ -28,8 +28,11 @@ export function LearningHubOverview({ dashboard, moduleSelected, onNavigate }: L
       {/* Core Status Strip */}
       <DashboardStatusStrip
         examReadiness={dashboard.examReadiness}
+        coveragePercent={dashboard.coveragePercent}
         coverageCompleted={dashboard.coverageCompleted}
         coverageTotal={dashboard.coverageTotal}
+        chaptersStarted={dashboard.chaptersStarted}
+        chaptersTotal={dashboard.chaptersTotal}
         studyStreak={dashboard.studyStreak}
       />
 
@@ -44,7 +47,10 @@ export function LearningHubOverview({ dashboard, moduleSelected, onNavigate }: L
       />
 
       {/* Learning Insights */}
-      <DashboardInsights insights={dashboard.insights} />
+      <DashboardInsights 
+        insights={dashboard.insights} 
+        hasRealAccuracyData={dashboard.hasRealAccuracyData}
+      />
 
       {/* Course Progress Map */}
       <DashboardProgressMap 
@@ -57,8 +63,8 @@ export function LearningHubOverview({ dashboard, moduleSelected, onNavigate }: L
       {/* Weekly Summary Preview */}
       <DashboardWeeklySummary
         weeklyTimeMinutes={dashboard.weeklyTimeMinutes}
-        weeklyAccuracyTrend={dashboard.weeklyAccuracyTrend}
         weeklyChaptersAdvanced={dashboard.weeklyChaptersAdvanced}
+        hasRealAccuracyData={dashboard.hasRealAccuracyData}
       />
     </>
   );
