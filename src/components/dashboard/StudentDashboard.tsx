@@ -88,7 +88,7 @@ export function StudentDashboard() {
   const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
   return (
-    <div className="space-y-4 animate-fade-in max-w-5xl mx-auto">
+    <div className="space-y-4 animate-fade-in max-w-5xl mx-auto overflow-x-hidden">
       {/* Announcements */}
       <HomeAnnouncementAlert />
 
