@@ -234,17 +234,17 @@ export function StudyPlanWizard({
         </div>
 
         {/* Already Studied - Module-context aware */}
-        <div className="bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-800/40 rounded-xl p-5 mt-2">
+        <div className="bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-800/40 rounded-xl p-5 mt-2 overflow-hidden">
           <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full p-0 h-auto hover:bg-transparent group">
-                <div className="flex items-start gap-2.5 w-full">
+              <Button variant="ghost" className="w-full p-0 h-auto hover:bg-transparent group text-left">
+                <div className="flex items-start gap-2.5 w-full overflow-hidden">
                   <BookCheck className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
-                  <div className="text-left flex-1 min-w-0 pr-2">
+                  <div className="flex-1 min-w-0 overflow-hidden pr-2">
                     <span className="text-sm font-semibold text-foreground block">
                       Already Studied
                     </span>
-                    <span className="text-xs text-muted-foreground block leading-relaxed">
+                    <span className="text-xs text-muted-foreground block leading-relaxed break-words whitespace-normal">
                       Mark chapters you have already completed so your study plan is realistic.
                     </span>
                   </div>
