@@ -94,10 +94,10 @@ export function useAddBook() {
       return { success: true, bookLabel, moduleId };
     },
     onSuccess: async (_, variables) => {
-      // Invalidate and refetch queries to update the UI
+      // Force refetch queries to update the UI immediately
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] }),
-        queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] }),
+        queryClient.refetchQueries({ queryKey: ['module-books', variables.moduleId] }),
+        queryClient.refetchQueries({ queryKey: ['module-chapters', variables.moduleId] }),
       ]);
     },
   });
