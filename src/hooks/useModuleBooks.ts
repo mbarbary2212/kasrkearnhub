@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface ModuleBook {
   id: string;
@@ -33,40 +34,52 @@ export function useAddBook() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      moduleId, 
+    mutationFn: async ({
+      moduleId,
       bookLabel,
-      chapterPrefix = 'Ch'
-    }: { 
-      moduleId: string; 
+      chapterPrefix = 'Ch',
+    }: {
+      moduleId: string;
       bookLabel: string;
       chapterPrefix?: string;
     }) => {
       // Get the next display order
-      const { data: existingBooks } = await supabase
+      const { data: existingBooks, error: orderError } = await supabase
         .from('module_books')
         .select('display_order')
         .eq('module_id', moduleId)
         .order('display_order', { ascending: false })
         .limit(1);
 
+      if (orderError) throw new Error(orderError.message);
+
       const nextOrder = (existingBooks?.[0]?.display_order ?? -1) + 1;
 
-      // Create book metadata entry - treat insert success as source of truth
-      const { error: bookError } = await supabase
+      const payload = {
+        module_id: moduleId,
+        book_label: bookLabel,
+        display_order: nextOrder,
+        chapter_prefix: chapterPrefix,
+      };
+
+      // Insert department/book - treat insert success as source of truth
+      const { data: insertedBook, error: bookError } = await supabase
         .from('module_books')
-        .insert({
-          module_id: moduleId,
-          book_label: bookLabel,
-          display_order: nextOrder,
-          chapter_prefix: chapterPrefix,
-        });
+        .insert(payload)
+        .select('*')
+        .single();
 
-      // Only throw if there's an actual error from the insert
-      if (bookError) throw bookError;
+      // If the insert succeeded but "returning representation" is blocked (RLS),
+      // PostgREST can return PGRST116 (0 rows). That should still be treated as success.
+      if (bookError && bookError.code !== 'PGRST116') {
+        throw new Error(bookError.message);
+      }
 
-      // Get the next order_index for chapters in this module
-      const { data: lastChapter } = await supabase
+      // Try creating a placeholder chapter to establish the grouping.
+      // This must NOT fail the whole operation because the department may already be created.
+      let placeholderChapterError: string | null = null;
+
+      const { data: lastChapter, error: lastChapterError } = await supabase
         .from('module_chapters')
         .select('order_index')
         .eq('module_id', moduleId)
@@ -74,12 +87,12 @@ export function useAddBook() {
         .limit(1)
         .maybeSingle();
 
-      const nextOrderIndex = (lastChapter?.order_index ?? -1) + 1;
+      if (lastChapterError) {
+        placeholderChapterError = lastChapterError.message;
+      } else {
+        const nextOrderIndex = (lastChapter?.order_index ?? -1) + 1;
 
-      // Create a placeholder chapter to establish the book
-      const { error: chapterError } = await supabase
-        .from('module_chapters')
-        .insert({
+        const { error: chapterError } = await supabase.from('module_chapters').insert({
           module_id: moduleId,
           book_label: bookLabel,
           title: `${chapterPrefix} 1`,
@@ -87,18 +100,54 @@ export function useAddBook() {
           order_index: nextOrderIndex,
         });
 
-      // Only throw if there's an actual error from the insert
-      if (chapterError) throw chapterError;
-      
-      // Return success indicator (data may be null if RLS blocks select)
-      return { success: true, bookLabel, moduleId };
+        if (chapterError) placeholderChapterError = chapterError.message;
+      }
+
+      return {
+        moduleId,
+        bookLabel,
+        chapterPrefix,
+        displayOrder: nextOrder,
+        insertedBook: insertedBook ?? null,
+        placeholderChapterError,
+      };
     },
-    onSuccess: async (_, variables) => {
-      // Force refetch queries to update the UI immediately
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['module-books', variables.moduleId] }),
-        queryClient.refetchQueries({ queryKey: ['module-chapters', variables.moduleId] }),
-      ]);
+    onSuccess: async (result) => {
+      // Optimistically update local cache so the UI updates instantly.
+      const optimistic: ModuleBook = result.insertedBook ?? {
+        id:
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}`,
+        module_id: result.moduleId,
+        book_label: result.bookLabel,
+        display_order: result.displayOrder,
+        chapter_prefix: result.chapterPrefix,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<ModuleBook[]>(['module-books', result.moduleId], (old) => {
+        const prev = old ?? [];
+        const withoutDupes = prev.filter((b) => b.book_label !== optimistic.book_label);
+        return [...withoutDupes, optimistic].sort((a, b) => a.display_order - b.display_order);
+      });
+
+      const doRefetch = () =>
+        Promise.all([
+          queryClient.refetchQueries({ queryKey: ['module-books', result.moduleId] }),
+          queryClient.refetchQueries({ queryKey: ['module-chapters', result.moduleId] }),
+        ]);
+
+      try {
+        await doRefetch();
+      } catch {
+        toast('Department added. Syncing list…');
+        try {
+          await doRefetch();
+        } catch {
+          // UI already has the optimistic item; next navigation/refresh will reconcile.
+        }
+      }
     },
   });
 }

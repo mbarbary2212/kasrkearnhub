@@ -244,6 +244,11 @@ export function ModuleLearningTab({
 
   const hasMultipleBooks = (books?.length || 0) > 1 || Object.keys(groupedChapters).length > 1;
 
+  const sortedBooks = useMemo(() => {
+    const list = books ? [...books] : [];
+    return list.sort((a, b) => a.display_order - b.display_order);
+  }, [books]);
+
   const handleAddBook = () => {
     setEditingBook(null);
     setBookModalOpen(true);
@@ -503,8 +508,6 @@ export function ModuleLearningTab({
 
   // Show book selector view (or add first book for admins)
   if (hasMultipleBooks || canManageBooks) {
-    const sortedBooks = books?.sort((a, b) => a.display_order - b.display_order) || [];
-    
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
