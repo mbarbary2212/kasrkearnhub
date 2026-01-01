@@ -29,11 +29,9 @@ import {
   Pencil,
   Trash2,
   GripVertical,
-  Video,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { LectureList } from '@/components/content/LectureList';
 import {
   DndContext,
   closestCenter,
@@ -177,7 +175,7 @@ function SortableBookCard({
   );
 }
 
-// Component to show lectures directly for a book/department
+// Component to show lectures (chapters) for a book/department
 function BookLecturesView({
   moduleId,
   bookLabel,
@@ -189,41 +187,38 @@ function BookLecturesView({
   canManage: boolean;
   onBack: () => void;
 }) {
-  // Find chapter IDs for this book to fetch lectures
-  const { data: chapters } = useQuery({
+  const navigate = useNavigate();
+  const [chapterModalOpen, setChapterModalOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState<ModuleChapter | null>(null);
+  const [deleteChapterDialog, setDeleteChapterDialog] = useState<ModuleChapter | null>(null);
+  
+  const deleteChapter = useDeleteChapter();
+  
+  // Fetch chapters for this book (these are the "lectures")
+  const { data: chapters, isLoading: chaptersLoading } = useQuery({
     queryKey: ['module-chapters-for-book', moduleId, bookLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
-        .select('id')
-        .eq('module_id', moduleId)
-        .eq('book_label', bookLabel);
-      
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const chapterIds = chapters?.map(c => c.id) || [];
-
-  // Fetch lectures for all chapters in this book
-  const { data: lectures, isLoading: lecturesLoading } = useQuery({
-    queryKey: ['book-lectures', moduleId, bookLabel, chapterIds],
-    queryFn: async () => {
-      if (chapterIds.length === 0) return [];
-      
-      const { data, error } = await supabase
-        .from('lectures')
         .select('*')
-        .in('chapter_id', chapterIds)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
+        .eq('module_id', moduleId)
+        .eq('book_label', bookLabel)
+        .order('order_index', { ascending: true });
       
       if (error) throw error;
-      return data;
+      return data as ModuleChapter[];
     },
-    enabled: chapterIds.length > 0,
   });
+
+  const handleDeleteChapter = async (chapter: ModuleChapter) => {
+    try {
+      await deleteChapter.mutateAsync({ chapterId: chapter.id, moduleId });
+      toast.success('Lecture deleted successfully');
+      setDeleteChapterDialog(null);
+    } catch {
+      toast.error('Failed to delete lecture');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -238,38 +233,138 @@ function BookLecturesView({
           Back
         </Button>
         <h2 className="text-lg font-semibold flex-1">{bookLabel}</h2>
+        {canManage && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+              setEditingChapter(null);
+              setChapterModalOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Lecture
+          </Button>
+        )}
       </div>
       
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Video className="w-4 h-4" />
+        <BookOpen className="w-4 h-4" />
         <span className="text-sm font-medium">Lectures</span>
-        {lectures && lectures.length > 0 && (
+        {chapters && chapters.length > 0 && (
           <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-            {lectures.length}
+            {chapters.length}
           </span>
         )}
       </div>
       
-      {lecturesLoading ? (
+      {chaptersLoading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
         </div>
-      ) : lectures && lectures.length > 0 ? (
-        <LectureList
-          lectures={lectures}
-          moduleId={moduleId}
-          chapterId={chapterIds[0]}
-          canEdit={canManage}
-          canDelete={canManage}
-        />
+      ) : chapters && chapters.length > 0 ? (
+        <div className="border rounded-lg divide-y">
+          {chapters.map((chapter, index) => (
+            <div
+              key={chapter.id}
+              className="flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors group"
+            >
+              <button
+                onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
+                className="flex-1 flex items-center gap-3 text-left"
+              >
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                  {index + 1}
+                </span>
+                <span className="flex-1 text-[15px] font-medium truncate">
+                  {chapter.title}
+                </span>
+              </button>
+              
+              {canManage ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      setEditingChapter(chapter);
+                      setChapterModalOpen(true);
+                    }}>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => setDeleteChapterDialog(chapter)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="text-center py-12 border rounded-lg">
-          <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No lectures available yet.</p>
+          {canManage && (
+            <Button 
+              className="mt-4" 
+              onClick={() => {
+                setEditingChapter(null);
+                setChapterModalOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add First Lecture
+            </Button>
+          )}
         </div>
       )}
+
+      {/* Chapter/Lecture Form Modal */}
+      <ChapterFormModal
+        open={chapterModalOpen}
+        onOpenChange={setChapterModalOpen}
+        moduleId={moduleId}
+        bookLabel={bookLabel}
+        chapterPrefix="Lecture"
+        editingChapter={editingChapter}
+        existingChapters={chapters}
+      />
+
+      {/* Delete Chapter Confirmation */}
+      <AlertDialog open={!!deleteChapterDialog} onOpenChange={() => setDeleteChapterDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lecture</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteChapterDialog?.title}"? 
+              This will also delete all content (videos, resources, assessments) associated with this lecture.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteChapterDialog && handleDeleteChapter(deleteChapterDialog)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -292,25 +387,22 @@ export function ModuleLearningTab({
   // Fetch topics count for Pharmacology (filtered by moduleId)
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
-  // Fetch lecture counts per book
+  // Fetch chapter (lecture) counts per book
   const { data: lectureCounts } = useQuery({
-    queryKey: ['book-lecture-counts', moduleId],
+    queryKey: ['book-chapter-counts', moduleId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
-        .select(`
-          book_label,
-          lectures!inner(id)
-        `)
+        .select('book_label')
         .eq('module_id', moduleId);
       
       if (error) throw error;
       
-      // Count lectures per book
+      // Count chapters per book
       const counts: Record<string, number> = {};
       for (const chapter of data || []) {
         const label = chapter.book_label || 'General';
-        counts[label] = (counts[label] || 0) + (Array.isArray(chapter.lectures) ? chapter.lectures.length : 1);
+        counts[label] = (counts[label] || 0) + 1;
       }
       return counts;
     },
