@@ -25,6 +25,7 @@ import {
   ChevronDown,
   AlertCircle,
   CheckCircle2,
+  BookCheck,
 } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { StudyPlan, getModuleWeightCategory } from '@/hooks/useStudyPlan';
@@ -233,62 +234,72 @@ export function StudyPlanWizard({
         </div>
 
         {/* Already Studied - Module-context aware */}
-        <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
-              <span className="text-sm font-medium text-muted-foreground">
-                Already Studied? (Optional)
-              </span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showBaselines ? 'rotate-180' : ''}`} />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4 space-y-4">
-            <p className="text-xs text-muted-foreground">
-              {selectedModuleId 
-                ? 'Mark the chapters you have already completed to exclude them from your study plan.'
-                : 'Select a module above to set chapter-level baselines, or use module percentages below for a quick estimate.'}
-            </p>
-            
-            {/* Granular chapter selection when module is selected */}
-            {selectedModuleId && (
-              <StudyPlanBaselineChapters
-                selectedModuleId={selectedModuleId}
-                selectedModuleName={selectedModule?.name || ''}
-                completedChapterIds={completedChapterIds}
-                onToggleChapter={handleToggleChapter}
-                onMarkAllInBook={handleMarkAllInBook}
-              />
-            )}
-
-            {/* Year-level percentage sliders when no module selected */}
-            {!selectedModuleId && modules.length > 0 && (
-              <div className="space-y-4 pt-2">
-                <p className="text-xs text-muted-foreground font-medium">
-                  Quick module estimates (approximate):
-                </p>
-                {modules.map((module) => (
-                  <div key={module.id} className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="truncate flex-1">{module.name}</span>
-                      <Badge variant="outline" className="ml-2">
-                        {baselinePercents[module.id] || 0}%
-                      </Badge>
-                    </div>
-                    <Slider
-                      value={[baselinePercents[module.id] || 0]}
-                      onValueChange={([value]) => 
-                        setBaselinePercents(prev => ({ ...prev, [module.id]: value }))
-                      }
-                      min={0}
-                      max={100}
-                      step={5}
-                    />
+        <div className="bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-800/40 rounded-xl p-5 mt-2">
+          <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent group">
+                <div className="flex items-center gap-2.5">
+                  <BookCheck className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                  <div className="text-left">
+                    <span className="text-sm font-semibold text-foreground block">
+                      Already Studied
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Mark chapters you have already completed so your study plan is realistic.
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showBaselines ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-5 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                {selectedModuleId 
+                  ? 'Mark the chapters you have already completed to exclude them from your study plan.'
+                  : 'Select a module above to set chapter-level baselines, or use module percentages below for a quick estimate.'}
+              </p>
+              
+              {/* Granular chapter selection when module is selected */}
+              {selectedModuleId && (
+                <StudyPlanBaselineChapters
+                  selectedModuleId={selectedModuleId}
+                  selectedModuleName={selectedModule?.name || ''}
+                  completedChapterIds={completedChapterIds}
+                  onToggleChapter={handleToggleChapter}
+                  onMarkAllInBook={handleMarkAllInBook}
+                />
+              )}
+
+              {/* Year-level percentage sliders when no module selected */}
+              {!selectedModuleId && modules.length > 0 && (
+                <div className="space-y-4 pt-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Quick module estimates (approximate):
+                  </p>
+                  {modules.map((module) => (
+                    <div key={module.id} className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="truncate flex-1">{module.name}</span>
+                        <Badge variant="outline" className="ml-2">
+                          {baselinePercents[module.id] || 0}%
+                        </Badge>
+                      </div>
+                      <Slider
+                        value={[baselinePercents[module.id] || 0]}
+                        onValueChange={([value]) => 
+                          setBaselinePercents(prev => ({ ...prev, [module.id]: value }))
+                        }
+                        min={0}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
         {/* Feasibility card */}
         <div className={`p-4 rounded-lg border ${
