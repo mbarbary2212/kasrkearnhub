@@ -97,9 +97,9 @@ export function StudyPlanTimeline({
         </div>
 
         {/* Timeline visualization */}
-        <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-4">
-          {/* Module chunks */}
-          <div className="flex gap-1.5 overflow-x-auto pb-2">
+        <div className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-4 overflow-hidden">
+          {/* Module chunks - responsive grid on mobile, flex on desktop */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex gap-2 md:gap-1.5 md:overflow-x-auto pb-2">
             {safeModules.map((module) => {
               const data = moduleWeeks[module.id];
               const weekCount = data?.weeks.size || 1;
@@ -111,11 +111,11 @@ export function StudyPlanTimeline({
                 <div
                   key={module.id}
                   className={`${getChunkBgColor(data?.weight || 'light')} 
-                    min-w-[80px] p-3 rounded-lg border transition-colors cursor-default`}
+                    p-3 rounded-lg border transition-colors cursor-default md:min-w-[100px]`}
                   style={{ flex: `${widthPercent} 0 0` }}
                 >
                   <p className="font-medium text-sm truncate mb-1">{module.name}</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${getWeightColor(data?.weight || 'light')} text-xs border`}>
                       {data?.weight === 'heavy+' ? 'Heavy+' : 
                        data?.weight === 'heavy' ? 'Heavy' : 

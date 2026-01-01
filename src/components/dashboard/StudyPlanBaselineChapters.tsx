@@ -178,39 +178,40 @@ export function StudyPlanBaselineChapters({
               <div className="border rounded-lg overflow-hidden">
                 {/* Book header */}
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left">
-                    <div className="flex items-center gap-2">
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      <span className="text-sm font-medium">{book.label}</span>
-                      <Badge variant="outline" className="text-xs">
+                  <button className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <span className="text-sm font-medium truncate">{book.label}</span>
+                      <Badge variant="outline" className="text-xs shrink-0">
                         {bookCompletedCount}/{book.chapters.length}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-6 sm:ml-0">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           onMarkAllInBook(bookChapterIds, true);
                         }}
                       >
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Mark all
+                        <CheckCircle2 className="w-3 h-3 mr-1 shrink-0" />
+                        <span className="hidden xs:inline">Mark all</span>
+                        <span className="xs:hidden">All</span>
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           onMarkAllInBook(bookChapterIds, false);
                         }}
                       >
-                        <XCircle className="w-3 h-3 mr-1" />
+                        <XCircle className="w-3 h-3 mr-1 shrink-0" />
                         Clear
                       </Button>
                     </div>

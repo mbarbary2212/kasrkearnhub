@@ -87,22 +87,22 @@ export function StudyPlanSchedule({
 
           return (
             <div key={weekIndex} className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2 border-b flex items-center justify-between">
+              <div className="bg-muted/50 px-3 sm:px-4 py-2 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
                 <div className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                  <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="font-medium text-sm">{weekLabel}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{dateRange}</span>
+                <span className="text-xs text-muted-foreground ml-6 sm:ml-0">{dateRange}</span>
               </div>
               <div className="divide-y">
                 {items.map((item) => (
                   <div 
                     key={item.id} 
-                    className={`px-4 py-3 flex items-center justify-between gap-3 ${
+                    className={`px-3 sm:px-4 py-3 flex items-center justify-between gap-2 ${
                       item.status === 'done' ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                       {(item.item_type === 'revision' || item.item_type === 'final_revision') && (
                         <Shield className={`w-4 h-4 shrink-0 ${
                           item.item_type === 'final_revision' 
@@ -116,7 +116,7 @@ export function StudyPlanSchedule({
                         {item.item_title}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <Badge 
                         variant={item.status === 'done' ? 'default' : 'secondary'}
                         className={`text-xs ${
