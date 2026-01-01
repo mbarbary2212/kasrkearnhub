@@ -29,7 +29,11 @@ import {
   Pencil,
   Trash2,
   GripVertical,
+  Video,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { LectureList } from '@/components/content/LectureList';
 import {
   DndContext,
   closestCenter,
@@ -74,7 +78,7 @@ interface ModuleLearningTabProps {
 // Sortable book card component
 function SortableBookCard({ 
   book, 
-  chapterCount, 
+  lectureCount,
   topicCount,
   isPharmacology,
   canManageBooks,
@@ -83,7 +87,7 @@ function SortableBookCard({
   onDelete,
 }: { 
   book: ModuleBook;
-  chapterCount: number;
+  lectureCount: number;
   topicCount?: number;
   isPharmacology?: boolean;
   canManageBooks: boolean;
@@ -138,7 +142,7 @@ function SortableBookCard({
             <p className="text-sm text-muted-foreground">
               {isPharmacology 
                 ? `${topicCount || 0} ${(topicCount || 0) === 1 ? 'Topic' : 'Topics'}`
-                : `${chapterCount} ${chapterCount === 1 ? book.chapter_prefix : `${book.chapter_prefix}s`}`
+                : `${lectureCount} ${lectureCount === 1 ? 'Lecture' : 'Lectures'}`
               }
             </p>
           </div>
@@ -173,7 +177,104 @@ function SortableBookCard({
   );
 }
 
-export function ModuleLearningTab({ 
+// Component to show lectures directly for a book/department
+function BookLecturesView({
+  moduleId,
+  bookLabel,
+  canManage,
+  onBack,
+}: {
+  moduleId: string;
+  bookLabel: string;
+  canManage: boolean;
+  onBack: () => void;
+}) {
+  // Find chapter IDs for this book to fetch lectures
+  const { data: chapters } = useQuery({
+    queryKey: ['module-chapters-for-book', moduleId, bookLabel],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select('id')
+        .eq('module_id', moduleId)
+        .eq('book_label', bookLabel);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const chapterIds = chapters?.map(c => c.id) || [];
+
+  // Fetch lectures for all chapters in this book
+  const { data: lectures, isLoading: lecturesLoading } = useQuery({
+    queryKey: ['book-lectures', moduleId, bookLabel, chapterIds],
+    queryFn: async () => {
+      if (chapterIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('lectures')
+        .select('*')
+        .in('chapter_id', chapterIds)
+        .eq('is_deleted', false)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: chapterIds.length > 0,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={onBack}
+          className="gap-1"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <h2 className="text-lg font-semibold flex-1">{bookLabel}</h2>
+      </div>
+      
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Video className="w-4 h-4" />
+        <span className="text-sm font-medium">Lectures</span>
+        {lectures && lectures.length > 0 && (
+          <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+            {lectures.length}
+          </span>
+        )}
+      </div>
+      
+      {lecturesLoading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : lectures && lectures.length > 0 ? (
+        <LectureList
+          lectures={lectures}
+          moduleId={moduleId}
+          chapterId={chapterIds[0]}
+          canEdit={canManage}
+          canDelete={canManage}
+        />
+      ) : (
+        <div className="text-center py-12 border rounded-lg">
+          <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">No lectures available yet.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ModuleLearningTab({
   moduleId, 
   chapters, 
   chaptersLoading,
@@ -190,6 +291,30 @@ export function ModuleLearningTab({
   
   // Fetch topics count for Pharmacology (filtered by moduleId)
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
+  
+  // Fetch lecture counts per book
+  const { data: lectureCounts } = useQuery({
+    queryKey: ['book-lecture-counts', moduleId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select(`
+          book_label,
+          lectures!inner(id)
+        `)
+        .eq('module_id', moduleId);
+      
+      if (error) throw error;
+      
+      // Count lectures per book
+      const counts: Record<string, number> = {};
+      for (const chapter of data || []) {
+        const label = chapter.book_label || 'General';
+        counts[label] = (counts[label] || 0) + (Array.isArray(chapter.lectures) ? chapter.lectures.length : 1);
+      }
+      return counts;
+    },
+  });
   
   // Modal states
   const [bookModalOpen, setBookModalOpen] = useState(false);
@@ -417,9 +542,9 @@ export function ModuleLearningTab({
     );
   }
 
-  // If a book is selected, show that book's chapters (or Topics for Pharmacology)
+  // If a book is selected, show lectures directly (or Topics for Pharmacology)
   if (selectedBook) {
-    // Check if this is Pharmacology - show Topics instead of chapters
+    // Check if this is Pharmacology - show Topics instead
     if (selectedBook.toLowerCase() === 'pharmacology') {
       return (
         <div className="space-y-4">
@@ -445,64 +570,14 @@ export function ModuleLearningTab({
       );
     }
 
-    const bookChapters = groupedChapters[selectedBook] || [];
-    const prefix = getChapterPrefix(selectedBook);
-    
+    // Show lectures directly for the selected book
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setSelectedBook(null)}
-            className="gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <h2 className="text-lg font-semibold flex-1">{selectedBook}</h2>
-        </div>
-        
-        <div className="flex justify-end">
-          <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
-        </div>
-        
-        {renderChapterList(bookChapters, selectedBook)}
-
-        {/* Modals */}
-        <ChapterFormModal
-          open={chapterModalOpen}
-          onOpenChange={setChapterModalOpen}
-          moduleId={moduleId}
-          bookLabel={selectedBook}
-          chapterPrefix={prefix}
-          editingChapter={editingChapter}
-          existingChapters={chapters}
-        />
-
-        {/* Delete Chapter Confirmation */}
-        <AlertDialog open={!!deleteChapterDialog} onOpenChange={() => setDeleteChapterDialog(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete {prefix}</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{deleteChapterDialog?.title}"? 
-                This will also delete all content (lectures, flashcards, documents, etc.) associated with this {prefix.toLowerCase()}.
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => deleteChapterDialog && handleDeleteChapter(deleteChapterDialog)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      <BookLecturesView
+        moduleId={moduleId}
+        bookLabel={selectedBook}
+        canManage={canManageChapters}
+        onBack={() => setSelectedBook(null)}
+      />
     );
   }
 
@@ -535,13 +610,13 @@ export function ModuleLearningTab({
             >
               <div className="grid gap-3">
                 {sortedBooks.map((book) => {
-                  const chapterCount = groupedChapters[book.book_label]?.length || 0;
+                  const bookLectureCount = lectureCounts?.[book.book_label] || 0;
                   const isPharmacology = book.book_label.toLowerCase() === 'pharmacology';
                   return (
                     <SortableBookCard
                       key={book.book_label}
                       book={book}
-                      chapterCount={chapterCount}
+                      lectureCount={bookLectureCount}
                       topicCount={isPharmacology ? pharmacologyTopics?.length : undefined}
                       isPharmacology={isPharmacology}
                       canManageBooks={canManageBooks}
