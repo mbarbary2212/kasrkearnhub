@@ -237,19 +237,19 @@ export function StudyPlanWizard({
         <div className="bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-800/40 rounded-xl p-5 mt-2">
           <Collapsible open={showBaselines} onOpenChange={setShowBaselines}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent group">
-                <div className="flex items-center gap-2.5">
-                  <BookCheck className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-                  <div className="text-left">
+              <Button variant="ghost" className="w-full p-0 h-auto hover:bg-transparent group">
+                <div className="flex items-start gap-2.5 w-full">
+                  <BookCheck className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                  <div className="text-left flex-1 min-w-0 pr-2">
                     <span className="text-sm font-semibold text-foreground block">
                       Already Studied
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground block leading-relaxed">
                       Mark chapters you have already completed so your study plan is realistic.
                     </span>
                   </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 mt-0.5 ${showBaselines ? 'rotate-180' : ''}`} />
                 </div>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showBaselines ? 'rotate-180' : ''}`} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-5 space-y-4">
