@@ -64,21 +64,21 @@ export function StudyPlanSchedule({
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden">
+      <CardHeader className="px-3 sm:px-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <BookOpen className="w-5 h-5" />
-            Chapter Schedule
+            <BookOpen className="w-5 h-5 shrink-0" />
+            <span className="truncate">Chapter Schedule</span>
           </CardTitle>
           {selectedModuleId && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs shrink-0">
               Filtered: {moduleName}
             </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-3 sm:px-6">
         {sortedWeeks.slice(0, 12).map((weekIndex) => {
           const items = weekGroups[weekIndex];
           const firstItem = items[0];
