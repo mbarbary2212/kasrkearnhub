@@ -52,18 +52,17 @@ export function useAddBook() {
 
       const nextOrder = (existingBooks?.[0]?.display_order ?? -1) + 1;
 
-      // Create book metadata entry
-      const { data: bookData, error: bookError } = await supabase
+      // Create book metadata entry - treat insert success as source of truth
+      const { error: bookError } = await supabase
         .from('module_books')
         .insert({
           module_id: moduleId,
           book_label: bookLabel,
           display_order: nextOrder,
           chapter_prefix: chapterPrefix,
-        })
-        .select()
-        .single();
+        });
 
+      // Only throw if there's an actual error from the insert
       if (bookError) throw bookError;
 
       // Get the next order_index for chapters in this module
@@ -78,7 +77,7 @@ export function useAddBook() {
       const nextOrderIndex = (lastChapter?.order_index ?? -1) + 1;
 
       // Create a placeholder chapter to establish the book
-      const { data: chapterData, error: chapterError } = await supabase
+      const { error: chapterError } = await supabase
         .from('module_chapters')
         .insert({
           module_id: moduleId,
@@ -86,16 +85,20 @@ export function useAddBook() {
           title: `${chapterPrefix} 1`,
           chapter_number: 1,
           order_index: nextOrderIndex,
-        })
-        .select()
-        .single();
+        });
 
+      // Only throw if there's an actual error from the insert
       if (chapterError) throw chapterError;
-      return { book: bookData, chapter: chapterData };
+      
+      // Return success indicator (data may be null if RLS blocks select)
+      return { success: true, bookLabel, moduleId };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
-      queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] });
+    onSuccess: async (_, variables) => {
+      // Invalidate and refetch queries to update the UI
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] }),
+        queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] }),
+      ]);
     },
   });
 }
