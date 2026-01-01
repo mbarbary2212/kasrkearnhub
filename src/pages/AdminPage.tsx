@@ -121,6 +121,7 @@ export default function AdminPage() {
     slug: '',
     description: '',
     is_published: false,
+    workload_level: '' as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus',
   });
 
   useEffect(() => {
@@ -363,6 +364,7 @@ export default function AdminPage() {
           slug: moduleForm.slug,
           description: moduleForm.description || null,
           is_published: moduleForm.is_published,
+          workload_level: moduleForm.workload_level || null,
           display_order: modules.filter(m => m.year_id === moduleForm.year_id).length,
         })
         .select()
@@ -392,6 +394,7 @@ export default function AdminPage() {
           slug: moduleForm.slug,
           description: moduleForm.description || null,
           is_published: moduleForm.is_published,
+          workload_level: moduleForm.workload_level || null,
         })
         .eq('id', editingModule.id)
         .select()
@@ -439,6 +442,7 @@ export default function AdminPage() {
       slug: '',
       description: '',
       is_published: false,
+      workload_level: '',
     });
   };
 
@@ -451,6 +455,7 @@ export default function AdminPage() {
       slug: module.slug,
       description: module.description || '',
       is_published: module.is_published || false,
+      workload_level: module.workload_level || '',
     });
     setShowModuleDialog(true);
   };
@@ -866,6 +871,25 @@ export default function AdminPage() {
                                 onChange={(e) => setModuleForm(prev => ({ ...prev, description: e.target.value }))}
                                 placeholder="Module description"
                               />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Workload Level</Label>
+                              <Select
+                                value={moduleForm.workload_level}
+                                onValueChange={(value) => setModuleForm(prev => ({ ...prev, workload_level: value as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus' }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Auto-calculate" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">Auto-calculate</SelectItem>
+                                  <SelectItem value="light">Light</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="heavy">Heavy</SelectItem>
+                                  <SelectItem value="heavy_plus">Heavy+</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">Leave empty to auto-calculate based on content volume.</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Switch

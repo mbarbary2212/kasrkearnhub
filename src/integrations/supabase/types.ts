@@ -1516,6 +1516,7 @@ export type Database = {
           name_ar: string | null
           slug: string
           updated_at: string | null
+          workload_level: string | null
           year_id: string
         }
         Insert: {
@@ -1528,6 +1529,7 @@ export type Database = {
           name_ar?: string | null
           slug: string
           updated_at?: string | null
+          workload_level?: string | null
           year_id: string
         }
         Update: {
@@ -1540,6 +1542,7 @@ export type Database = {
           name_ar?: string | null
           slug?: string
           updated_at?: string | null
+          workload_level?: string | null
           year_id?: string
         }
         Relationships: [

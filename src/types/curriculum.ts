@@ -13,6 +13,8 @@ export interface Year {
   created_at: string | null;
 }
 
+export type WorkloadLevel = 'light' | 'medium' | 'heavy' | 'heavy_plus';
+
 export interface Module {
   id: string;
   year_id: string;
@@ -22,6 +24,7 @@ export interface Module {
   description: string | null;
   display_order: number | null;
   is_published: boolean | null;
+  workload_level: WorkloadLevel | null;
   created_at: string | null;
   updated_at: string | null;
 }

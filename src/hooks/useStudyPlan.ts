@@ -54,6 +54,7 @@ export interface CreatePlanInput {
 export interface Module {
   id: string;
   name: string;
+  workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
 }
 
 export interface Chapter {
@@ -63,7 +64,7 @@ export interface Chapter {
   chapter_number: number;
 }
 
-// Module weight configuration
+// Module weight configuration - fallback when no workload_level and no content counts
 const MODULE_WEIGHTS: Record<string, number> = {
   'medicine': 3.5,
   'internal medicine': 3.5,
@@ -71,18 +72,34 @@ const MODULE_WEIGHTS: Record<string, number> = {
   'surgery': 3,
 };
 
-function getModuleWeightValue(moduleName: string): number {
-  const normalizedName = moduleName.toLowerCase();
+function getModuleWeightValue(module: Module): number {
+  // Use explicit workload_level if set
+  if (module.workload_level) {
+    switch (module.workload_level) {
+      case 'heavy_plus': return 3.5;
+      case 'heavy': return 3;
+      case 'medium': return 2;
+      case 'light': return 1;
+    }
+  }
+  
+  // Fallback to name-based matching
+  const normalizedName = module.name.toLowerCase();
   for (const [key, weight] of Object.entries(MODULE_WEIGHTS)) {
     if (normalizedName.includes(key)) {
       return weight;
     }
   }
-  return 1; // Light modules
+  return 1; // Light modules by default
 }
 
-export function getModuleWeightCategory(moduleName: string): 'heavy+' | 'heavy' | 'medium' | 'light' {
-  const weight = getModuleWeightValue(moduleName);
+export function getModuleWeightCategory(module: Module | string): 'heavy+' | 'heavy' | 'medium' | 'light' {
+  // Handle both module object and string for backward compatibility
+  const mod: Module = typeof module === 'string' 
+    ? { id: '', name: module, workload_level: null } 
+    : module;
+  
+  const weight = getModuleWeightValue(mod);
   if (weight >= 3.5) return 'heavy+';
   if (weight >= 3) return 'heavy';
   if (weight >= 2) return 'medium';
@@ -203,7 +220,7 @@ export function useStudyPlan(yearId: string | null) {
       const totalWeight = modules.reduce((sum, m) => {
         const baseline = baselinePercents?.[m.id] || 0;
         const remainingPercent = (100 - baseline) / 100;
-        return sum + getModuleWeightValue(m.name) * remainingPercent;
+        return sum + getModuleWeightValue(m) * remainingPercent;
       }, 0);
 
       const hoursPerWeek = daysPerWeek * hoursPerDay;
@@ -292,7 +309,7 @@ export function useStudyPlan(yearId: string | null) {
       for (const module of modules) {
         const baseline = baselinePercents?.[module.id] || 0;
         const remainingPercent = (100 - baseline) / 100;
-        const moduleWeight = getModuleWeightValue(module.name) * remainingPercent;
+        const moduleWeight = getModuleWeightValue(module) * remainingPercent;
         const moduleWeeks = Math.max(1, Math.round((moduleWeight / totalWeight) * studyWeeks));
         
         // Get chapters for this module
@@ -457,7 +474,7 @@ export function useStudyPlan(yearId: string | null) {
     const totalWeight = modules.reduce((sum, m) => {
       const baseline = baselinePercents?.[m.id] || 0;
       const remainingPercent = (100 - baseline) / 100;
-      return sum + getModuleWeightValue(m.name) * remainingPercent;
+      return sum + getModuleWeightValue(m) * remainingPercent;
     }, 0);
 
     const estimatedRequiredHours = totalWeight * 50; // 50 hours per weight unit
