@@ -98,28 +98,53 @@ export function StudyPlanSchedule({
                 {items.map((item) => (
                   <div 
                     key={item.id} 
-                    className={`px-3 sm:px-4 py-3 flex items-center justify-between gap-2 ${
+                    className={`px-3 sm:px-4 py-3 ${
                       item.status === 'done' ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      {(item.item_type === 'revision' || item.item_type === 'final_revision') && (
-                        <Shield className={`w-4 h-4 shrink-0 ${
-                          item.item_type === 'final_revision' 
-                            ? 'text-purple-500' 
-                            : 'text-amber-500'
-                        }`} />
+                    <div className="flex items-center gap-2">
+                      {/* Checkmark button - always visible on left for chapters */}
+                      {item.item_type === 'chapter' && (
+                        item.status === 'done' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onUndo(item.id)}
+                            className="h-8 w-8 p-0 shrink-0 border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:border-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onMarkDone(item.id)}
+                            className="h-8 w-8 p-0 shrink-0 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )
                       )}
-                      <span className={`text-sm truncate ${
+                      {/* Shield icon for revisions */}
+                      {(item.item_type === 'revision' || item.item_type === 'final_revision') && (
+                        <div className="h-8 w-8 flex items-center justify-center shrink-0">
+                          <Shield className={`w-5 h-5 ${
+                            item.item_type === 'final_revision' 
+                              ? 'text-purple-500' 
+                              : 'text-amber-500'
+                          }`} />
+                        </div>
+                      )}
+                      {/* Title - truncates as needed */}
+                      <span className={`text-sm flex-1 min-w-0 truncate ${
                         item.status === 'done' ? 'line-through text-muted-foreground' : ''
                       }`}>
                         {item.item_title}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      {/* Status badge */}
                       <Badge 
                         variant={item.status === 'done' ? 'default' : 'secondary'}
-                        className={`text-xs ${
+                        className={`text-xs shrink-0 ${
                           item.status === 'done' 
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' 
                             : ''
@@ -127,27 +152,6 @@ export function StudyPlanSchedule({
                       >
                         {item.status === 'done' ? 'Done' : 'Planned'}
                       </Badge>
-                      {item.item_type === 'chapter' && (
-                        item.status === 'done' ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onUndo(item.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Undo2 className="w-3.5 h-3.5" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onMarkDone(item.id)}
-                            className="h-7 w-7 p-0 hover:bg-emerald-100 hover:text-emerald-700"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </Button>
-                        )
-                      )}
                     </div>
                   </div>
                 ))}
