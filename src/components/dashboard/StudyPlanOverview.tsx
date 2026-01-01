@@ -8,6 +8,7 @@ import { differenceInWeeks, addWeeks, format } from 'date-fns';
 interface Module {
   id: string;
   name: string;
+  workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
 }
 
 interface StudyPlanOverviewProps {
@@ -50,16 +51,19 @@ export function StudyPlanOverview({
       ? addWeeks(new Date(startDate), lastWeek + 1) 
       : new Date();
     
-    // Calculate total weight share
-    const weight = getModuleWeightCategory(module.name);
+    // Calculate total weight share using module object (supports workload_level)
+    const weight = getModuleWeightCategory(module);
     const weightValue = weight === 'heavy+' ? 3.5 : weight === 'heavy' ? 3 : weight === 'medium' ? 2 : 1;
     
     const totalWeight = safeModules.reduce((sum, m) => {
-      const w = getModuleWeightCategory(m.name);
+      const w = getModuleWeightCategory(m);
       return sum + (w === 'heavy+' ? 3.5 : w === 'heavy' ? 3 : w === 'medium' ? 2 : 1);
     }, 0);
     
     const sharePercent = totalWeight > 0 ? Math.round((weightValue / totalWeight) * 100) : 0;
+    
+    // Format weight for display
+    const weightLabel = weight === 'heavy+' ? 'Heavy+' : weight.charAt(0).toUpperCase() + weight.slice(1);
     
     // Progress: baseline + (done/total) * remaining
     const remainingPercent = 100 - baseline;
@@ -71,6 +75,7 @@ export function StudyPlanOverview({
       id: module.id,
       name: module.name,
       weight,
+      weightLabel,
       sharePercent,
       baselinePercent: baseline,
       progressPercent: donePercent,
@@ -120,7 +125,10 @@ export function StudyPlanOverview({
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-medium text-sm truncate">{stat.name}</span>
                   <Badge variant="outline" className="text-xs shrink-0">
-                    {stat.sharePercent}% of year
+                    {stat.weightLabel}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {stat.sharePercent}%
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
