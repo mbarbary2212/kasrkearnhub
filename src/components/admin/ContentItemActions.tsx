@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogCancel,
+  AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -174,7 +175,7 @@ export default function ContentItemActions({
         )}
 
         {showEditDelete && (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreVertical className="h-4 w-4" />
@@ -276,17 +277,19 @@ export default function ContentItemActions({
             <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
               Cancel
             </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                void handleDelete();
-              }}
-              disabled={softDeleteContent.isPending}
-            >
-              {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void handleDelete();
+                }}
+                disabled={softDeleteContent.isPending}
+              >
+                {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
