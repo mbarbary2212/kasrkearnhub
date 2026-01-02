@@ -108,8 +108,8 @@ export function useDeleteCaseScenario() {
       return { id, chapterId };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, false] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, true] });
+      // Use partial key match to invalidate all case scenario queries for this chapter
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId] });
     },
   });
 }
@@ -129,8 +129,8 @@ export function useRestoreCaseScenario() {
       return { id, chapterId };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, false] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId, true] });
+      // Use partial key match to invalidate all case scenario queries for this chapter
+      queryClient.invalidateQueries({ queryKey: ['chapter-case-scenarios', variables.chapterId] });
     },
   });
 }
