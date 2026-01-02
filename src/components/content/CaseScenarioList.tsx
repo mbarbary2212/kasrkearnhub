@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -391,13 +390,14 @@ export default function CaseScenarioList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={deleteCase.isPending}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
               onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteCase.isPending}
             >
-              Delete
-            </AlertDialogAction>
+              {deleteCase.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

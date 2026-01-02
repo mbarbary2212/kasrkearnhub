@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModa
 import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBulkUploadModal';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
+import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -30,9 +31,11 @@ import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { useChapterStudyResources, StudyResource, useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
+import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   createResourceTabs, 
   createPracticeTabs, 
@@ -58,7 +61,9 @@ export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
   const navigate = useNavigate();
   const auth = useAuthContext();
+  const queryClient = useQueryClient();
   const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, chapterId });
+  const deleteStudyResource = useDeleteStudyResource();
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -143,6 +148,18 @@ export default function ChapterPage() {
     }
     setResourcesTab(tab);
   };
+
+  // Handler for deleting flashcards via ResourcesDeleteManager
+  const handleDeleteFlashcard = useCallback(async (kind: ResourceKind, id: string) => {
+    if (!chapterId) return;
+    await deleteStudyResource.mutateAsync({ id, chapterId });
+    toast.success('Flashcard deleted');
+  }, [deleteStudyResource, chapterId]);
+
+  // Refetch flashcards
+  const refetchFlashcards = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
+  }, [queryClient, chapterId]);
 
   if (!chapterLoading && !chapter) {
     return (
@@ -638,6 +655,14 @@ export default function ChapterPage() {
               resourceType="flashcard"
             />
           </>
+        )}
+
+        {/* Flashcard Delete Manager - page level for top-level flashcards tab */}
+        {canManageContent && chapterId && (
+          <ResourcesDeleteManager
+            deleteResource={handleDeleteFlashcard}
+            refetchResources={refetchFlashcards}
+          />
         )}
       </div>
     </MainLayout>

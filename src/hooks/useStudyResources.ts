@@ -302,8 +302,8 @@ export function useDeleteStudyResource() {
       return { id, chapterId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, false] });
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, true] });
+      // Invalidate all study-resources queries for this chapter (with and without includeDeleted param)
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
     },
   });
 }
@@ -324,8 +324,8 @@ export function useRestoreStudyResource() {
       return { id, chapterId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, false] });
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId, true] });
+      // Invalidate all study-resources queries for this chapter
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
     },
   });
 }
