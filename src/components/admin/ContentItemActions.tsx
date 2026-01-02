@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
@@ -157,14 +157,23 @@ export default function ContentItemActions({
 
   const showEditDelete = canEdit || canDelete;
 
+  const stopParentClick = (e: SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div
+        className="flex items-center gap-1"
+        onPointerDownCapture={stopParentClick}
+        onClickCapture={stopParentClick}
+      >
         {showFeedback && (
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            onPointerDown={stopParentClick}
             onClick={(e) => {
               e.stopPropagation();
               setFeedbackOpen(true);
@@ -176,8 +185,14 @@ export default function ContentItemActions({
 
         {showEditDelete && (
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onPointerDown={stopParentClick}
+                onClick={stopParentClick}
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -185,6 +200,7 @@ export default function ContentItemActions({
               {canEdit && (
                 <DropdownMenuItem
                   onSelect={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     handleOpenEdit();
                   }}
@@ -196,6 +212,7 @@ export default function ContentItemActions({
               {canDelete && (
                 <DropdownMenuItem
                   onSelect={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     setDeleteOpen(true);
                   }}
