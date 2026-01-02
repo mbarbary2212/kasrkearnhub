@@ -163,11 +163,7 @@ export default function ContentItemActions({
 
   return (
     <>
-      <div
-        className="flex items-center gap-1"
-        onPointerDownCapture={stopParentClick}
-        onClickCapture={stopParentClick}
-      >
+      <div className="flex items-center gap-1">
         {showFeedback && (
           <Button
             variant="ghost"
@@ -200,7 +196,6 @@ export default function ContentItemActions({
               {canEdit && (
                 <DropdownMenuItem
                   onSelect={(e) => {
-                    e.preventDefault();
                     e.stopPropagation();
                     handleOpenEdit();
                   }}
@@ -212,7 +207,6 @@ export default function ContentItemActions({
               {canDelete && (
                 <DropdownMenuItem
                   onSelect={(e) => {
-                    e.preventDefault();
                     e.stopPropagation();
                     setDeleteOpen(true);
                   }}
