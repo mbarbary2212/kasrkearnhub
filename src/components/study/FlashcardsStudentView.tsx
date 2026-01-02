@@ -53,7 +53,8 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
   const [activeDeckIndex, setActiveDeckIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [autoReturn, setAutoReturn] = useState(true);
+  // Interactive mode: Auto-flip defaults to OFF (global app-wide rule)
+  const [autoReturn, setAutoReturn] = useState(false);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
   const [shuffledCards, setShuffledCards] = useState<typeof groups[0]['cards'] | null>(null);
   const [isShuffled, setIsShuffled] = useState(false);
