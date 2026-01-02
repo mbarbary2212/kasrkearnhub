@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -135,9 +144,7 @@ export default function ContentItemActions({
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDelete = async () => {
     try {
       await softDeleteContent.mutateAsync(id);
       toast.success('Deleted successfully');
@@ -175,13 +182,24 @@ export default function ContentItemActions({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {canEdit && (
-                <DropdownMenuItem onClick={handleOpenEdit}>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.stopPropagation();
+                    handleOpenEdit();
+                  }}
+                >
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
               )}
               {canDelete && (
-                <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.stopPropagation();
+                    setDeleteOpen(true);
+                  }}
+                  className="text-destructive"
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -246,24 +264,32 @@ export default function ContentItemActions({
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()} className="z-[99999]">
-          <DialogHeader>
-            <DialogTitle>Delete {contentType}?</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {contentType}?</AlertDialogTitle>
+            <AlertDialogDescription>
               Are you sure you want to delete "{title}"? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
               Cancel
-            </Button>
-            <Button variant="destructive" onClick={(e) => handleDelete(e)} disabled={softDeleteContent.isPending}>
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleDelete();
+              }}
+              disabled={softDeleteContent.isPending}
+            >
               {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Feedback Modal */}
       <ItemFeedbackModal
