@@ -135,7 +135,9 @@ export default function ContentItemActions({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await softDeleteContent.mutateAsync(id);
       toast.success('Deleted successfully');
@@ -256,7 +258,7 @@ export default function ContentItemActions({
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={softDeleteContent.isPending}>
+            <Button variant="destructive" onClick={(e) => handleDelete(e)} disabled={softDeleteContent.isPending}>
               {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
