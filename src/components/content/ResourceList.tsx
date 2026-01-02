@@ -76,7 +76,11 @@ export default function ResourceList({
                   <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div
+                className="flex items-center gap-1.5"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(resource.file_url || resource.external_url) && (
                   <Button size="sm" variant="ghost" className="h-7 px-2" asChild>
                     <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
@@ -180,7 +184,11 @@ export default function ResourceList({
                 )}
                 <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div
+                className="flex items-center gap-2"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(resource.file_url || resource.external_url) && (
                   <Button size="sm" variant="outline" asChild>
                     <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">

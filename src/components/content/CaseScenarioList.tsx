@@ -284,7 +284,11 @@ export default function CaseScenarioList({
                         {caseItem.case_history}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div
+                      className="flex items-center gap-1 shrink-0"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isDeleted ? (
                         <Button
                           variant="outline"

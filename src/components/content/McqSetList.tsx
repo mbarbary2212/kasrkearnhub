@@ -72,6 +72,10 @@ export default function McqSetList({
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-lg flex-1">{mcqSet.title}</CardTitle>
                 {canManage && (
+                  <div
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="secondary" size="sm" className="gap-2">
@@ -106,6 +110,7 @@ export default function McqSetList({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 )}
               </div>
               {mcqSet.description && (
