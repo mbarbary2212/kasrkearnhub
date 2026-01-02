@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone } from 'lucide-react';
+import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
@@ -19,6 +19,7 @@ import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
+import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 
 interface UserWithRole extends Profile {
@@ -567,6 +568,12 @@ export default function AdminPage() {
                 Announcements
               </TabsTrigger>
             )}
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart3 className="w-4 h-4" />
+                User Analytics
+              </TabsTrigger>
+            )}
             <TabsTrigger value="help" className="gap-2">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
@@ -1104,6 +1111,26 @@ export default function AdminPage() {
                 years={years.map(y => ({ id: y.id, name: y.name }))}
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
+            </TabsContent>
+          )}
+
+          {/* User Analytics Tab - Platform Admin & Super Admin */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="analytics">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    User Analytics & Management
+                  </CardTitle>
+                  <CardDescription>
+                    View user activity, session analytics, and manage user access.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserAnalyticsTab />
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
 

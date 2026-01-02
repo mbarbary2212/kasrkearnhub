@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          target_user_id: string
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_user_id: string
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       admin_help_files: {
         Row: {
           category: string
@@ -1650,26 +1677,41 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banned_until: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
+          status: string
+          status_reason: string | null
+          status_updated_at: string | null
+          status_updated_by: string | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          banned_until?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
+          status?: string
+          status_reason?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          banned_until?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          status?: string
+          status_reason?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2314,6 +2356,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          last_seen_at: string
+          session_end: string | null
+          session_start: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          last_seen_at?: string
+          session_end?: string | null
+          session_start?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          last_seen_at?: string
+          session_end?: string | null
+          session_start?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       years: {
         Row: {
           color: string | null
@@ -2437,6 +2515,26 @@ export type Database = {
       }
     }
     Functions: {
+      admin_ban_user: {
+        Args: {
+          _banned_until?: string
+          _reason: string
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_remove_user: {
+        Args: { _reason: string; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_restore_user: {
+        Args: { _reason?: string; _target_user_id: string }
+        Returns: undefined
+      }
+      admin_unban_user: {
+        Args: { _reason?: string; _target_user_id: string }
+        Returns: undefined
+      }
       can_manage_chapter_content: {
         Args: { _chapter_id: string; _user_id: string }
         Returns: boolean
@@ -2450,6 +2548,16 @@ export type Database = {
         Returns: boolean
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
+      get_user_analytics: {
+        Args: { _user_id: string }
+        Returns: {
+          last_seen: string
+          sessions_30d: number
+          total_time_30d: number
+          total_time_7d: number
+          total_time_all: number
+        }[]
+      }
       get_user_feedback_count_today: {
         Args: { _user_id: string }
         Returns: number
@@ -2457,6 +2565,13 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_status: {
+        Args: { _user_id: string }
+        Returns: {
+          banned_until: string
+          status: string
+        }[]
       }
       has_role: {
         Args: {
@@ -2486,6 +2601,8 @@ export type Database = {
         Args: { _topic_id: string; _user_id: string }
         Returns: boolean
       }
+      is_user_banned: { Args: { _user_id: string }; Returns: boolean }
+      is_user_removed: { Args: { _user_id: string }; Returns: boolean }
       log_audit_event: {
         Args: {
           _action: string
