@@ -1,20 +1,24 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
+import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
   cards: StudyResource[];
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
+  availableTopics?: string[];
+  chapterId?: string;
 }
 
-interface GroupedDeck {
-  title: string;
+interface TopicGroup {
+  topic: string;
   cards: { front: string; back: string; resource: StudyResource }[];
 }
 
@@ -34,46 +38,113 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: FlashcardsStudentViewProps) {
-  // Group flashcards by title into decks
-  const groups = useMemo(() => {
-    const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
-    for (const resource of cards) {
-      const content = resource.content as FlashcardContent;
-      const title = resource.title;
-      if (!map.has(title)) map.set(title, []);
-      map.get(title)!.push({ front: content.front, back: content.back, resource });
-    }
-    return Array.from(map.entries()).map(([title, items]) => ({
-      title,
-      cards: items,
-    }));
-  }, [cards]);
+export function FlashcardsStudentView({ 
+  cards, 
+  markedIds, 
+  onToggleMark, 
+  availableTopics = [],
+  chapterId 
+}: FlashcardsStudentViewProps) {
+  // Persisted settings
+  const { 
+    settings, 
+    setSelectedTopics, 
+    setShuffle 
+  } = useFlashcardSettings(chapterId);
 
-  const [activeDeckIndex, setActiveDeckIndex] = useState(0);
+  const [topicSectionOpen, setTopicSectionOpen] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   // Interactive mode: Auto-flip defaults to OFF (global app-wide rule)
   const [autoReturn, setAutoReturn] = useState(false);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
-  const [shuffledCards, setShuffledCards] = useState<typeof groups[0]['cards'] | null>(null);
-  const [isShuffled, setIsShuffled] = useState(false);
+  const [shuffledCards, setShuffledCards] = useState<{ front: string; back: string; resource: StudyResource }[] | null>(null);
   const [transitioning, setTransitioning] = useState(false);
 
-  const activeDeck = groups[activeDeckIndex];
-  const displayCards = shuffledCards || activeDeck?.cards || [];
+  // Defensive: ensure cards is always an array
+  const safeCards = cards ?? [];
+
+  // Group all cards by topic
+  const topicGroups = useMemo<TopicGroup[]>(() => {
+    const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
+    for (const resource of safeCards) {
+      const content = resource.content as FlashcardContent;
+      const topic = resource.title;
+      if (!map.has(topic)) map.set(topic, []);
+      map.get(topic)!.push({ front: content.front, back: content.back, resource });
+    }
+    return Array.from(map.entries())
+      .map(([topic, items]) => ({ topic, cards: items }))
+      .sort((a, b) => a.topic.localeCompare(b.topic));
+  }, [safeCards]);
+
+  // All topic names
+  const allTopicNames = useMemo(() => topicGroups.map(g => g.topic), [topicGroups]);
+
+  // Selected topics from settings (empty means "all")
+  const selectedTopics = useMemo(() => {
+    const stored = settings.selectedTopics;
+    // If empty or contains topics not in current list, select all
+    if (!stored.length || !stored.some(t => allTopicNames.includes(t))) {
+      return new Set(allTopicNames);
+    }
+    return new Set(stored.filter(t => allTopicNames.includes(t)));
+  }, [settings.selectedTopics, allTopicNames]);
+
+  // Filtered cards based on selected topics
+  const filteredCards = useMemo(() => {
+    return topicGroups
+      .filter(g => selectedTopics.has(g.topic))
+      .flatMap(g => g.cards);
+  }, [topicGroups, selectedTopics]);
+
+  // Display cards (shuffled or not)
+  const displayCards = shuffledCards ?? filteredCards;
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
 
-  // Reset card index and shuffle state when switching decks
+  // Reset when filtered cards change
   useEffect(() => {
     setCardIndex(0);
     setFlipped(false);
     setShuffledCards(null);
-    setIsShuffled(false);
-  }, [activeDeckIndex]);
+  }, [filteredCards.length]);
 
-  // Auto-flip: show question for 2/3 of time, answer for 1/3, then move to next
+  // Apply shuffle from settings
+  useEffect(() => {
+    if (settings.shuffle && filteredCards.length > 0) {
+      setShuffledCards(shuffleArray(filteredCards));
+    } else {
+      setShuffledCards(null);
+    }
+  }, [settings.shuffle, filteredCards]);
+
+  // Toggle topic selection
+  const toggleTopic = useCallback((topic: string) => {
+    const newSet = new Set(selectedTopics);
+    if (newSet.has(topic)) {
+      newSet.delete(topic);
+    } else {
+      newSet.add(topic);
+    }
+    // If all selected or none selected, store empty array (means "all")
+    if (newSet.size === allTopicNames.length || newSet.size === 0) {
+      setSelectedTopics([]);
+    } else {
+      setSelectedTopics([...newSet]);
+    }
+  }, [selectedTopics, allTopicNames.length, setSelectedTopics]);
+
+  // Select/deselect all topics
+  const toggleAllTopics = useCallback((selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedTopics([]);
+    } else {
+      setSelectedTopics([]);
+    }
+  }, [setSelectedTopics]);
+
+  // Auto-flip logic
   useEffect(() => {
     if (!autoReturn || displayCards.length <= 1) return;
     
@@ -81,22 +152,17 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
     const answerTime = autoFlipMs - questionTime;
     
     if (!flipped) {
-      // Show question, then flip to answer after 2/3 of the time
       const t = setTimeout(() => setFlipped(true), questionTime);
       return () => clearTimeout(t);
     } else {
-      // Show answer, then transition and move to next card after 1/3 of the time
       const t = setTimeout(() => {
-        // Start transition - hide card first
         setTransitioning(true);
         setFlipped(false);
         
-        // Wait for overlay to fully cover, then swap card
         setTimeout(() => {
           setCardIndex((v) => (v + 1) % displayCards.length);
         }, 250);
         
-        // Wait longer, then reveal
         setTimeout(() => {
           setTransitioning(false);
         }, 400);
@@ -106,13 +172,13 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
   }, [flipped, autoReturn, autoFlipMs, cardIndex, displayCards.length]);
 
   const handleShuffle = useCallback(() => {
-    if (!activeDeck) return;
-    const shuffled = shuffleArray(activeDeck.cards);
+    if (filteredCards.length === 0) return;
+    const shuffled = shuffleArray(filteredCards);
     setShuffledCards(shuffled);
-    setIsShuffled(true);
+    setShuffle(true);
     setCardIndex(0);
     setFlipped(false);
-  }, [activeDeck]);
+  }, [filteredCards, setShuffle]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -135,14 +201,6 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [displayCards.length, handleShuffle, currentCard, onToggleMark]);
-
-  if (groups.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        No flashcards available
-      </div>
-    );
-  }
 
   const handlePrev = () => {
     if (!displayCards.length || transitioning) return;
@@ -172,31 +230,90 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
     setCardIndex(0);
     setFlipped(false);
     setShuffledCards(null);
-    setIsShuffled(false);
+    setShuffle(false);
   };
+
+  if (safeCards.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        No flashcards available
+      </div>
+    );
+  }
+
+  if (filteredCards.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>No cards match your current topic selection.</p>
+        <Button variant="link" onClick={() => setSelectedTopics([])}>
+          Show all topics
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-6 py-4">
-      {/* Deck selector (if multiple decks) */}
-      {groups.length > 1 && (
-        <div className="flex flex-wrap gap-2 justify-center">
-          {groups.map((group, i) => (
-            <Button
-              key={group.title}
-              variant={i === activeDeckIndex ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveDeckIndex(i)}
-              className="text-xs"
-            >
-              {group.title} ({group.cards.length})
-            </Button>
-          ))}
+      {/* Topic selector (like slideshow) */}
+      {allTopicNames.length > 1 && (
+        <div className="w-full max-w-md">
+          <Collapsible open={topicSectionOpen} onOpenChange={setTopicSectionOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between" size="sm">
+                <span className="text-sm">
+                  {selectedTopics.size === allTopicNames.length 
+                    ? 'All Topics' 
+                    : `${selectedTopics.size} of ${allTopicNames.length} Topics`}
+                </span>
+                {topicSectionOpen ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <div className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b">
+                  <span className="text-xs text-muted-foreground">Quick actions:</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => toggleAllTopics(true)}
+                    >
+                      Select All
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {topicGroups.map((group) => (
+                    <div
+                      key={group.topic}
+                      className="flex items-center gap-2 py-1"
+                    >
+                      <Checkbox
+                        id={`topic-${group.topic}`}
+                        checked={selectedTopics.has(group.topic)}
+                        onCheckedChange={() => toggleTopic(group.topic)}
+                      />
+                      <label
+                        htmlFor={`topic-${group.topic}`}
+                        className="text-sm cursor-pointer flex-1 flex items-center justify-between"
+                      >
+                        <span className="truncate">{group.topic}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {group.cards.length} cards
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
-      )}
-
-      {/* Single deck title */}
-      {groups.length === 1 && (
-        <div className="text-lg font-semibold text-foreground">{activeDeck?.title}</div>
       )}
 
       {/* Main flashcard */}
@@ -204,7 +321,7 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
-            {/* Mark for Review star - positioned above the card */}
+            {/* Mark for Review star */}
             {onToggleMark && (
               <div className="absolute -top-2 -right-2 z-20">
                 <button
@@ -230,15 +347,12 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
               }`}
             />
             
-            {/* Hide the entire card during transition to prevent any glimpse */}
             <div
               onClick={() => setFlipped((v) => !v)}
               className={`relative w-full h-56 transform-style-3d ${
                 transitioning ? 'invisible' : 'visible'
               } ${flipped ? 'rotate-y-180' : ''}`}
-              style={{ 
-                transition: transitioning ? 'none' : 'transform 500ms',
-              }}
+              style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
             >
               {/* Front */}
               <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center">
@@ -256,7 +370,7 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
           {/* Progress indicator */}
           <div className="text-center text-sm text-muted-foreground mt-4">
             Card {cardIndex + 1} of {displayCards.length}
-            {isShuffled && <span className="ml-2 text-primary">(Shuffled)</span>}
+            {shuffledCards && <span className="ml-2 text-primary">(Shuffled)</span>}
             {isCurrentMarked && <span className="ml-2 text-amber-500">★</span>}
           </div>
 
@@ -292,7 +406,7 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant={isShuffled ? 'secondary' : 'ghost'}
+                      variant={shuffledCards ? 'secondary' : 'ghost'}
                       size="icon"
                       onClick={handleShuffle}
                       disabled={displayCards.length <= 1}
@@ -349,7 +463,7 @@ export function FlashcardsStudentView({ cards, markedIds, onToggleMark }: Flashc
             </div>
           </TooltipProvider>
 
-          {/* Keyboard hint - hide on mobile */}
+          {/* Keyboard hint */}
           <div className="hidden md:block text-center text-xs text-muted-foreground mt-4">
             Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark
           </div>

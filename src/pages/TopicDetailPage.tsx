@@ -318,6 +318,7 @@ export default function TopicDetailPage() {
                         resources={flashcards || []}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
+                        chapterId={topicId}
                       />
                     )}
                   </div>

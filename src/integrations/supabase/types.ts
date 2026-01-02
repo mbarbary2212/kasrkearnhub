@@ -2302,6 +2302,45 @@ export type Database = {
           },
         ]
       }
+      user_flashcard_stars: {
+        Row: {
+          card_id: string
+          chapter_id: string | null
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_flashcard_stars_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "study_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_flashcard_stars_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_progress: {
         Row: {
           completed: boolean | null
