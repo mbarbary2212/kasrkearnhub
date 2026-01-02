@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -277,18 +277,16 @@ export default function ContentItemActions({
             <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-                variant="destructive"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  void handleDelete();
-                }}
-                disabled={softDeleteContent.isPending}
-              >
-                {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'destructive' })}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleDelete();
+              }}
+              disabled={softDeleteContent.isPending}
+            >
+              {softDeleteContent.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
