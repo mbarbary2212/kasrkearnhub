@@ -104,6 +104,8 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const [videoUrl, setVideoUrl] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [csvText, setCsvText] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const addLecture = useMutation({
     mutationFn: async () => {
@@ -136,10 +138,38 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const addResource = useMutation({
     mutationFn: async () => {
+      let finalFileUrl = fileUrl || null;
+
+      // If a file was uploaded, upload to storage first
+      if (uploadedFile) {
+        setUploading(true);
+        try {
+          const fileExt = uploadedFile.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `documents/${moduleId}/${chapterId || 'general'}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('study-resources')
+            .upload(filePath, uploadedFile);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('study-resources')
+            .getPublicUrl(filePath);
+
+          finalFileUrl = publicUrl;
+        } finally {
+          setUploading(false);
+        }
+      }
+
       const { error } = await supabase.from('resources').insert({
         title,
         description: description || null,
-        external_url: fileUrl || null,
+        file_url: uploadedFile ? finalFileUrl : null,
+        external_url: !uploadedFile ? fileUrl || null : null,
+        resource_type: uploadedFile ? 'pdf' : 'link',
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
@@ -149,7 +179,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chapter-resources', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-resources', moduleId] });
-      toast.success('Resource added successfully');
+      toast.success('Document added successfully');
       setOpen(false);
       resetForm();
     },
@@ -343,6 +373,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     setVideoUrl('');
     setFileUrl('');
     setCsvText('');
+    setUploadedFile(null);
   };
 
   const handleSubmit = () => {
@@ -433,13 +464,66 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                 </div>
               )}
               {contentType === 'resource' && (
-                <div>
-                  <Label>File/External URL</Label>
-                  <Input value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://..." />
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Upload PDF File</Label>
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setUploadedFile(file);
+                            setFileUrl(''); // Clear URL when file is selected
+                          }
+                        }}
+                        className="block w-full text-sm text-muted-foreground
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-medium
+                          file:bg-primary file:text-primary-foreground
+                          hover:file:bg-primary/90
+                          cursor-pointer"
+                      />
+                      {uploadedFile && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Selected: {uploadedFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">External URL</Label>
+                    <Input 
+                      value={fileUrl} 
+                      onChange={e => {
+                        setFileUrl(e.target.value);
+                        setUploadedFile(null); // Clear file when URL is entered
+                      }} 
+                      placeholder="https://..." 
+                      className="mt-2"
+                      disabled={!!uploadedFile}
+                    />
+                  </div>
                 </div>
               )}
-              <Button onClick={handleSubmit} className="w-full">
-                Save
+              <Button 
+                onClick={handleSubmit} 
+                className="w-full"
+                disabled={uploading || addResource.isPending}
+              >
+                {uploading ? 'Uploading...' : 'Save'}
               </Button>
             </div>
           </DialogContent>

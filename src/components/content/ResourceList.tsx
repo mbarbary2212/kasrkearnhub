@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, ExternalLink, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { FileText, ExternalLink, Settings2, Pencil, Trash2, MessageSquare, FileIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useContentDelete } from '@/hooks/useContentDelete';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
+import { PdfViewerModal } from '@/components/content/PdfViewerModal';
 
 interface Resource {
   id: string;
@@ -37,7 +38,14 @@ interface ResourceListProps {
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
-  compact?: boolean;  // New prop for simple list view
+  compact?: boolean;
+}
+
+// Check if a URL is a PDF (by extension or resource_type)
+function isPdfResource(resource: Resource): boolean {
+  if (resource.resource_type === 'pdf') return true;
+  const url = resource.file_url || resource.external_url || '';
+  return url.toLowerCase().endsWith('.pdf');
 }
 
 export default function ResourceList({
@@ -55,8 +63,21 @@ export default function ResourceList({
     chapterId
   );
   const [feedbackItem, setFeedbackItem] = useState<Resource | null>(null);
+  const [pdfViewerResource, setPdfViewerResource] = useState<Resource | null>(null);
 
   const canManage = canEdit || canDelete;
+
+  // Handle resource click - open PDF viewer or external link
+  const handleResourceClick = (resource: Resource) => {
+    const url = resource.file_url || resource.external_url;
+    if (!url) return;
+
+    if (isPdfResource(resource)) {
+      setPdfViewerResource(resource);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   if (resources.length === 0) {
     return null;
@@ -82,10 +103,17 @@ export default function ResourceList({
                 onClick={(e) => e.stopPropagation()}
               >
                 {(resource.file_url || resource.external_url) && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2" asChild>
-                    <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-7 px-2"
+                    onClick={() => handleResourceClick(resource)}
+                  >
+                    {isPdfResource(resource) ? (
+                      <FileIcon className="w-3.5 h-3.5" />
+                    ) : (
                       <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                    )}
                   </Button>
                 )}
                 {canManage && (
@@ -163,6 +191,15 @@ export default function ResourceList({
             chapterId={chapterId}
           />
         )}
+
+        {pdfViewerResource && (
+          <PdfViewerModal
+            open={!!pdfViewerResource}
+            onOpenChange={(open) => !open && setPdfViewerResource(null)}
+            pdfUrl={pdfViewerResource.file_url || pdfViewerResource.external_url || ''}
+            title={pdfViewerResource.title}
+          />
+        )}
       </>
     );
   }
@@ -190,11 +227,17 @@ export default function ResourceList({
                 onClick={(e) => e.stopPropagation()}
               >
                 {(resource.file_url || resource.external_url) && (
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={resource.file_url || resource.external_url || '#'} target="_blank" rel="noopener noreferrer">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleResourceClick(resource)}
+                  >
+                    {isPdfResource(resource) ? (
+                      <FileIcon className="w-4 h-4 mr-1" />
+                    ) : (
                       <ExternalLink className="w-4 h-4 mr-1" />
-                      Open
-                    </a>
+                    )}
+                    {isPdfResource(resource) ? 'View' : 'Open'}
                   </Button>
                 )}
                 {canManage && (
@@ -272,6 +315,15 @@ export default function ResourceList({
           itemTitle={feedbackItem.title}
           moduleId={moduleId}
           chapterId={chapterId}
+        />
+      )}
+
+      {pdfViewerResource && (
+        <PdfViewerModal
+          open={!!pdfViewerResource}
+          onOpenChange={(open) => !open && setPdfViewerResource(null)}
+          pdfUrl={pdfViewerResource.file_url || pdfViewerResource.external_url || ''}
+          title={pdfViewerResource.title}
         />
       )}
     </>
