@@ -117,8 +117,12 @@ export default function VideoCard({
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-base font-medium line-clamp-2 flex-1">{title}</CardTitle>
             {canManage && (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
               <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     <Settings2 className="h-4 w-4" />
                     Manage
@@ -151,6 +155,7 @@ export default function VideoCard({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             )}
           </div>
           {duration && (

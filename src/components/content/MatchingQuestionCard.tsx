@@ -153,7 +153,11 @@ export function MatchingQuestionCard({
           
           {/* Admin controls */}
           {isAdmin && (
-            <div className="flex items-center gap-1 shrink-0">
+            <div
+              className="flex items-center gap-1 shrink-0"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
               <Button
                 variant="ghost"
                 size="sm"

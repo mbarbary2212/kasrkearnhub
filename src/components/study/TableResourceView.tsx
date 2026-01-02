@@ -100,7 +100,11 @@ function TableCard({ resource, canManage, onEdit }: TableCardProps) {
     <div className="rounded-xl border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-base font-semibold text-foreground">{resource.title}</div>
-        <div className="flex gap-1">
+        <div
+          className="flex gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             size="icon"
             variant="ghost"

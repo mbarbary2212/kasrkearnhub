@@ -106,7 +106,11 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit }: FlashcardDe
     <div className="rounded-xl border bg-card p-3 max-w-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           {canManage && (
             <>
               <Button
