@@ -234,7 +234,11 @@ export default function EssayList({
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 ml-7">{essay.question}</p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div
+                      className="flex items-center gap-1 shrink-0"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isDeleted ? (
                         <Button
                           variant="outline"

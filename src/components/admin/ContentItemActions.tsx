@@ -123,18 +123,21 @@ export default function ContentItemActions({
     try {
       const data: Record<string, unknown> = {
         title: editTitle.trim(),
-        description: editDescription.trim() || null,
       };
+
+      // Essays store the prompt in `question`, not `description`
+      if (contentType === 'essay') {
+        data.question = editDescription.trim() || null;
+        data.model_answer = editModelAnswer.trim() || null;
+      } else {
+        data.description = editDescription.trim() || null;
+      }
 
       if (contentType === 'lecture' || contentType === 'practical') {
         data.video_url = normalizedVideoUrl || null;
       }
       if (contentType === 'resource') {
         data.external_url = editFileUrl || null;
-      }
-      if (contentType === 'essay') {
-        data.question = editDescription.trim() || null;
-        data.model_answer = editModelAnswer.trim() || null;
       }
 
       await updateContent.mutateAsync({ id, data });
