@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
+import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { cn } from '@/lib/utils';
 
 // Global admin constant: time to show question before auto-flip to answer
@@ -20,6 +21,7 @@ interface FlashcardsSlideshowModeProps {
   cards: StudyResource[];
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
+  chapterId?: string;
 }
 
 const CARD_COUNT_OPTIONS = [
@@ -49,11 +51,19 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: FlashcardsSlideshowModeProps) {
-  // Settings
-  const [cardCountSelection, setCardCountSelection] = useState<string>('20');
-  const [intervalSeconds, setIntervalSeconds] = useState<number>(7);
-  const [shuffleEnabled, setSuffleEnabled] = useState<boolean>(false);
+export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapterId }: FlashcardsSlideshowModeProps) {
+  // Defensive: ensure cards is always an array
+  const safeCards = cards ?? [];
+
+  // Persisted settings
+  const {
+    settings,
+    setSelectedTopics,
+    setNumberOfCards,
+    setIntervalSeconds,
+    setShuffle,
+  } = useFlashcardSettings(chapterId);
+
   const [topicSectionOpen, setTopicSectionOpen] = useState<boolean>(false);
 
   // Slideshow state
@@ -71,61 +81,58 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
   const topicGroups = useMemo<TopicGroup[]>(() => {
     const groupMap = new Map<string, TopicGroup>();
     
-    cards.forEach(card => {
+    safeCards.forEach(card => {
       const topic = card.title;
       if (!groupMap.has(topic)) {
-        groupMap.set(topic, {
-          topic,
-          cards: [],
-        });
+        groupMap.set(topic, { topic, cards: [] });
       }
       groupMap.get(topic)!.cards.push(card);
     });
     
     return Array.from(groupMap.values()).sort((a, b) => a.topic.localeCompare(b.topic));
-  }, [cards]);
+  }, [safeCards]);
 
-  // Selected topics (default: all selected)
-  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() => {
-    return new Set(cards.map(c => c.title));
-  });
+  const allTopicNames = useMemo(() => topicGroups.map(g => g.topic), [topicGroups]);
 
-  // Update selected topics when cards change
-  useEffect(() => {
-    setSelectedTopics(new Set(cards.map(c => c.title)));
-  }, [cards]);
+  // Selected topics from persisted settings
+  const selectedTopics = useMemo(() => {
+    const stored = settings.selectedTopics;
+    // If empty or contains topics not in current list, select all
+    if (!stored.length || !stored.some(t => allTopicNames.includes(t))) {
+      return new Set(allTopicNames);
+    }
+    return new Set(stored.filter(t => allTopicNames.includes(t)));
+  }, [settings.selectedTopics, allTopicNames]);
 
   // Flatten all cards based on selected topics
   const allCards = useMemo(() => {
-    return cards
+    return safeCards
       .filter(card => selectedTopics.has(card.title))
       .map(card => ({
         ...card,
         content: card.content as FlashcardContent,
       }));
-  }, [cards, selectedTopics]);
+  }, [safeCards, selectedTopics]);
 
   // Toggle topic selection
   const toggleTopic = useCallback((topic: string) => {
-    setSelectedTopics(prev => {
-      const next = new Set(prev);
-      if (next.has(topic)) {
-        next.delete(topic);
-      } else {
-        next.add(topic);
-      }
-      return next;
-    });
-  }, []);
+    const newSet = new Set(selectedTopics);
+    if (newSet.has(topic)) {
+      newSet.delete(topic);
+    } else {
+      newSet.add(topic);
+    }
+    if (newSet.size === allTopicNames.length || newSet.size === 0) {
+      setSelectedTopics([]);
+    } else {
+      setSelectedTopics([...newSet]);
+    }
+  }, [selectedTopics, allTopicNames.length, setSelectedTopics]);
 
   // Select/deselect all topics
   const toggleAllTopics = useCallback((selectAll: boolean) => {
-    if (selectAll) {
-      setSelectedTopics(new Set(cards.map(c => c.title)));
-    } else {
-      setSelectedTopics(new Set());
-    }
-  }, [cards]);
+    setSelectedTopics([]);
+  }, [setSelectedTopics]);
 
   // Calculate flip time based on interval
   const getFlipTime = useCallback((interval: number): number => {
@@ -135,8 +142,8 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
     return QUESTION_TIME_BEFORE_FLIP_SECONDS;
   }, []);
 
-  const flipTime = getFlipTime(intervalSeconds);
-  const answerTime = intervalSeconds - flipTime;
+  const flipTime = getFlipTime(settings.intervalSeconds);
+  const answerTime = settings.intervalSeconds - flipTime;
 
   // Clear all timers
   const clearTimers = useCallback(() => {
@@ -173,14 +180,14 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
     let cardsToUse = [...allCards];
     
     // Apply shuffle if enabled
-    if (shuffleEnabled) {
+    if (settings.shuffle) {
       cardsToUse = shuffleArray(cardsToUse);
     }
 
     // Apply card count limit
-    const cardCount = cardCountSelection === 'all' 
+    const cardCount = settings.numberOfCards === 'all' 
       ? cardsToUse.length 
-      : Math.min(parseInt(cardCountSelection), cardsToUse.length);
+      : Math.min(parseInt(settings.numberOfCards), cardsToUse.length);
     
     cardsToUse = cardsToUse.slice(0, cardCount);
 
@@ -188,7 +195,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
     setCurrentIndex(0);
     setFlipped(false);
     setState('playing');
-  }, [allCards, shuffleEnabled, cardCountSelection]);
+  }, [allCards, settings.shuffle, settings.numberOfCards]);
 
   // Pause slideshow
   const handlePause = useCallback(() => {
@@ -216,16 +223,13 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
       clearTimers();
       setState('completed');
     } else {
-      // Start transition - hide card first
       setTransitioning(true);
       setFlipped(false);
       
-      // Wait for overlay to fully cover, then swap card
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
       }, 250);
       
-      // Wait longer, then reveal
       setTimeout(() => {
         setTransitioning(false);
       }, 400);
@@ -236,18 +240,16 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
   useEffect(() => {
     if (state !== 'playing' || sessionCards.length === 0) return;
 
-    // Set timer to flip card
     flipTimerRef.current = setTimeout(() => {
       setFlipped(true);
     }, flipTime * 1000);
 
-    // Set timer to advance to next card
     advanceTimerRef.current = setTimeout(() => {
       advanceToNext();
-    }, intervalSeconds * 1000);
+    }, settings.intervalSeconds * 1000);
 
     return () => clearTimers();
-  }, [state, currentIndex, sessionCards.length, flipTime, intervalSeconds, advanceToNext, clearTimers]);
+  }, [state, currentIndex, sessionCards.length, flipTime, settings.intervalSeconds, advanceToNext, clearTimers]);
 
   const currentCard = sessionCards[currentIndex]?.content as FlashcardContent | undefined;
   const currentResource = sessionCards[currentIndex];
@@ -269,7 +271,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">Number of Cards</label>
-              <Select value={cardCountSelection} onValueChange={setCardCountSelection}>
+              <Select value={settings.numberOfCards} onValueChange={setNumberOfCards}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -285,7 +287,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
 
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">Interval per Card</label>
-              <Select value={String(intervalSeconds)} onValueChange={(v) => setIntervalSeconds(Number(v))}>
+              <Select value={String(settings.intervalSeconds)} onValueChange={(v) => setIntervalSeconds(Number(v))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -306,7 +308,9 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
               <CollapsibleTrigger asChild>
                 <Button variant="outline" className="w-full justify-between" size="sm">
                   <span className="text-sm">
-                    Select Topics ({selectedTopics.size}/{topicGroups.length})
+                    {selectedTopics.size === allTopicNames.length
+                      ? 'All Topics'
+                      : `${selectedTopics.size} of ${topicGroups.length} Topics`}
                   </span>
                   {topicSectionOpen ? (
                     <ChevronUp className="w-4 h-4" />
@@ -317,7 +321,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2">
                 <div className="rounded-lg border bg-card p-3 space-y-2">
-                  {/* Select All / Deselect All */}
                   <div className="flex items-center justify-between pb-2 border-b">
                     <span className="text-xs text-muted-foreground">Quick actions:</span>
                     <div className="flex gap-2">
@@ -329,24 +332,12 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
                       >
                         Select All
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs px-2"
-                        onClick={() => toggleAllTopics(false)}
-                      >
-                        Deselect All
-                      </Button>
                     </div>
                   </div>
                   
-                  {/* Topic List */}
                   <div className="space-y-1.5 max-h-48 overflow-y-auto">
                     {topicGroups.map((group) => (
-                      <div
-                        key={group.topic}
-                        className="flex items-center gap-2 py-1"
-                      >
+                      <div key={group.topic} className="flex items-center gap-2 py-1">
                         <Checkbox
                           id={`topic-${group.topic}`}
                           checked={selectedTopics.has(group.topic)}
@@ -372,8 +363,8 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
           <div className="flex items-center gap-2">
             <Checkbox
               id="shuffle"
-              checked={shuffleEnabled}
-              onCheckedChange={(checked) => setSuffleEnabled(checked === true)}
+              checked={settings.shuffle}
+              onCheckedChange={(checked) => setShuffle(checked === true)}
             />
             <label htmlFor="shuffle" className="text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
               <Shuffle className="w-3.5 h-3.5" />
@@ -420,7 +411,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
 
           {/* Card with transition overlay */}
           <div className="perspective-1000 relative">
-            {/* Mark for Review star - positioned above the card */}
+            {/* Mark for Review star */}
             {onToggleMark && (
               <div className="absolute -top-2 -right-2 z-20">
                 <button
@@ -446,14 +437,11 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
               }`}
             />
             
-            {/* Hide the entire card during transition to prevent any glimpse */}
             <div
               className={`relative w-full h-64 transform-style-3d ${
                 transitioning ? 'invisible' : 'visible'
               } ${flipped ? 'rotate-y-180' : ''}`}
-              style={{ 
-                transition: transitioning ? 'none' : 'transform 500ms',
-              }}
+              style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
             >
               {/* Front (Question) */}
               <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center">
@@ -486,24 +474,16 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark }: Flas
               Stop
             </Button>
           </div>
-
-          {state === 'paused' && (
-            <div className="text-center text-sm text-muted-foreground mt-3">
-              Slideshow paused
-            </div>
-          )}
         </div>
       )}
 
       {/* Completed state */}
       {state === 'completed' && (
         <div className="w-full max-w-md text-center space-y-4">
-          <div className="text-2xl font-semibold text-foreground">
-            Slideshow completed!
-          </div>
-          <div className="text-muted-foreground">
-            You reviewed {sessionCards.length} cards
-          </div>
+          <div className="text-2xl font-bold text-foreground">🎉 Well Done!</div>
+          <p className="text-muted-foreground">
+            You've reviewed all {sessionCards.length} cards.
+          </p>
           <div className="flex gap-3 justify-center">
             <Button onClick={handleStart} size="lg">
               <Play className="w-4 h-4 mr-2" />

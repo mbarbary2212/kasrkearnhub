@@ -388,6 +388,7 @@ export default function ChapterPage() {
                         resources={flashcards}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
+                        chapterId={chapterId}
                       />
                     )}
                   </div>
