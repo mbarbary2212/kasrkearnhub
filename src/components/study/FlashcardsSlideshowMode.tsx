@@ -438,20 +438,20 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
             />
             
             <div
-              className={`relative w-full h-64 transform-style-3d ${
+              className={`relative w-full min-h-64 transform-style-3d ${
                 transitioning ? 'invisible' : 'visible'
               } ${flipped ? 'rotate-y-180' : ''}`}
               style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
             >
               {/* Front (Question) */}
-              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center">
-                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2">Question</div>
-                <div className="text-lg font-medium text-foreground">{currentCard.front}</div>
+              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center overflow-y-auto max-h-[45vh] sm:max-h-[55vh]">
+                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Question</div>
+                <div className="text-lg font-medium text-foreground whitespace-pre-wrap">{currentCard.front}</div>
               </div>
               {/* Back (Answer) */}
-              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-center text-center rotate-y-180">
-                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2">Answer</div>
-                <div className="text-lg font-medium text-foreground">{currentCard.back}</div>
+              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-center text-center rotate-y-180 overflow-y-auto max-h-[45vh] sm:max-h-[55vh]">
+                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Answer</div>
+                <div className="text-lg font-medium text-foreground whitespace-pre-wrap">{currentCard.back}</div>
               </div>
             </div>
           </div>
