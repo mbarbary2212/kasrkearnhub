@@ -78,7 +78,7 @@ export function PdfViewerModal({ open, onOpenChange, pdfUrl, title }: PdfViewerM
         </DialogHeader>
 
         {/* PDF Viewer */}
-        <div className="flex-1 min-h-0 overflow-auto bg-muted/30">
+        <div className="flex-1 overflow-auto bg-muted/30">
           <div
             className="w-full h-full flex items-start justify-center p-4"
             style={{ minHeight: '100%' }}
