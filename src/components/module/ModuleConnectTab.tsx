@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { 
   HelpCircle, 
   MessageSquare, 
@@ -14,9 +13,10 @@ import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanne
 interface ModuleConnectTabProps {
   moduleId: string;
   moduleName: string;
+  moduleCode?: string;
 }
 
-export function ModuleConnectTab({ moduleId, moduleName }: ModuleConnectTabProps) {
+export function ModuleConnectTab({ moduleId, moduleName, moduleCode }: ModuleConnectTabProps) {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -99,12 +99,15 @@ export function ModuleConnectTab({ moduleId, moduleName }: ModuleConnectTabProps
         isOpen={inquiryOpen} 
         onClose={() => setInquiryOpen(false)}
         moduleId={moduleId}
+        moduleName={moduleName}
+        moduleCode={moduleCode}
       />
       <FeedbackModal 
         open={feedbackOpen} 
         onOpenChange={setFeedbackOpen}
         moduleId={moduleId}
         moduleName={moduleName}
+        moduleCode={moduleCode}
       />
     </div>
   );

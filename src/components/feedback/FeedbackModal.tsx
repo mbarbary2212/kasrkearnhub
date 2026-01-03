@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { useFeedback, FeedbackCategory, FeedbackSeverity } from '@/hooks/useFeedback';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MessageSquare, ShieldCheck, AlertTriangle, Send } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { MessageSquare, ShieldCheck, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -19,105 +15,39 @@ interface FeedbackModalProps {
   onOpenChange: (open: boolean) => void;
   moduleId?: string;
   moduleName?: string;
+  moduleCode?: string;
 }
 
-interface Year {
-  id: string;
-  name: string;
-}
-
-interface Module {
-  id: string;
-  name: string;
-  year_id: string;
-}
+type FeedbackCategory = 'suggestion' | 'bug' | 'content' | 'other';
 
 const CATEGORIES: { value: FeedbackCategory; label: string }[] = [
-  { value: 'bug', label: 'Bug / Technical issue' },
-  { value: 'content_error', label: 'Content error' },
   { value: 'suggestion', label: 'Suggestion' },
-  { value: 'complaint', label: 'Complaint' },
-  { value: 'academic_integrity', label: 'Academic integrity concern' },
+  { value: 'bug', label: 'Bug / Technical issue' },
+  { value: 'content', label: 'Content issue' },
   { value: 'other', label: 'Other' },
 ];
 
-const SEVERITIES: { value: FeedbackSeverity; label: string; description: string }[] = [
-  { value: 'normal', label: 'Normal', description: 'General feedback' },
-  { value: 'urgent', label: 'Urgent', description: 'Needs attention soon' },
-  { value: 'extreme', label: 'Extreme condition', description: 'Safety / Abuse / Serious misconduct' },
-];
+const getCategoryLabel = (value: FeedbackCategory): string => {
+  return CATEGORIES.find(c => c.value === value)?.label || value;
+};
 
-const TABS = [
-  { value: 'videos', label: 'Videos' },
-  { value: 'resources', label: 'Resources' },
-  { value: 'mcqs', label: 'MCQs' },
-  { value: 'practical', label: 'Practical' },
-  { value: 'short_questions', label: 'Short Questions' },
-];
-
-export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName }: FeedbackModalProps) {
-  const { user } = useAuthContext();
+export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName, moduleCode }: FeedbackModalProps) {
   const isMobile = useIsMobile();
-  const { submitFeedback, isSubmitting, canSubmit, remainingSubmissions, isCheckingLimit } = useFeedback();
-
-  const [years, setYears] = useState<Year[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Form state
   const [category, setCategory] = useState<FeedbackCategory | ''>('');
-  const [severity, setSeverity] = useState<FeedbackSeverity>('normal');
-  const [selectedYear, setSelectedYear] = useState('none');
-  const [selectedModule, setSelectedModule] = useState(moduleId || 'none');
-  const [selectedTab, setSelectedTab] = useState('none');
   const [message, setMessage] = useState('');
-  const [consent, setConsent] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      fetchData();
-      // Initialize module selection if moduleId is provided
-      if (moduleId) {
-        setSelectedModule(moduleId);
-      }
-    }
-  }, [open, moduleId]);
-
-  const fetchData = async () => {
-    try {
-      const [yearsRes, modulesRes] = await Promise.all([
-        supabase.from('years').select('id, name').eq('is_active', true).order('display_order'),
-        supabase.from('modules').select('id, name, year_id').eq('is_published', true).order('display_order'),
-      ]);
-
-      setYears((yearsRes.data as Year[]) || []);
-      setModules((modulesRes.data as Module[]) || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoadingData(false);
-    }
-  };
-
-  const filteredModules = selectedYear && selectedYear !== 'none'
-    ? modules.filter(m => m.year_id === selectedYear)
-    : modules;
 
   const resetForm = () => {
     setCategory('');
-    setSeverity('normal');
-    setSelectedYear('none');
-    setSelectedModule('none');
-    setSelectedTab('none');
     setMessage('');
-    setConsent(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!category) {
-      toast.error('Please select a category');
+      toast.error('Please select a feedback type');
       return;
     }
 
@@ -126,36 +56,33 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       return;
     }
 
-    if (!consent) {
-      toast.error('Please confirm the consent checkbox');
-      return;
-    }
+    const code = moduleCode || 'N/A';
+    const modName = moduleName || 'Not specified';
 
-    if (!canSubmit) {
-      toast.error('Daily limit reached (5/day). Try again tomorrow.');
-      return;
-    }
+    // Build mailto link - anonymous, no user info
+    const recipient = 'learning.admin@kasralainy.edu.eg';
+    const subject = encodeURIComponent(`KasrLearn Feedback – ${code}`);
+    
+    const body = encodeURIComponent(
+`Module: ${code} – ${modName}
+Feedback Type: ${getCategoryLabel(category)}
 
-    const success = await submitFeedback({
-      category,
-      severity,
-      year_id: selectedYear !== 'none' ? selectedYear : undefined,
-      module_id: selectedModule !== 'none' ? selectedModule : undefined,
-      tab: selectedTab !== 'none' ? selectedTab : undefined,
-      message,
-    });
+Feedback:
+${message.trim()}`
+    );
 
-    if (success) {
-      toast.success('Thanks! Feedback submitted.');
-      resetForm();
-      onOpenChange(false);
-    } else {
-      toast.error('Failed to submit feedback. Please try again.');
-    }
+    const mailtoLink = `mailto:${recipient}?subject=${subject}&body=${body}`;
+    
+    // Open mailto link
+    window.location.href = mailtoLink;
+    
+    toast.success('Thanks! Opening your email client to send feedback.');
+    resetForm();
+    onOpenChange(false);
   };
 
   const content = (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Module context notice */}
       {moduleName && (
         <div className="p-3 rounded-lg bg-muted border">
@@ -169,110 +96,24 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
         <div>
-          <p className="text-sm font-medium text-primary">Your Privacy is Protected</p>
+          <p className="text-sm font-medium text-primary">Anonymous Feedback</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Your feedback is anonymous. However, in rare cases involving inappropriate language, abuse, or violations of community guidelines, your identity may be disclosed to appropriate authorities.
+            Your feedback is anonymous. Your name and email are not shared with staff. 
+            The platform reserves the right to identify the sender in cases of abusive or inappropriate language.
           </p>
         </div>
       </div>
 
-      {/* Rate limit warning */}
-      {!isCheckingLimit && (
-        <div className="flex items-center gap-2">
-          <Badge variant={canSubmit ? 'secondary' : 'destructive'}>
-            {remainingSubmissions} submissions remaining today
-          </Badge>
-        </div>
-      )}
-
       {/* Category */}
       <div className="space-y-2">
-        <Label>Category *</Label>
+        <Label>Feedback Type *</Label>
         <Select value={category} onValueChange={(v) => setCategory(v as FeedbackCategory)}>
           <SelectTrigger>
-            <SelectValue placeholder="Select category" />
+            <SelectValue placeholder="Select feedback type" />
           </SelectTrigger>
           <SelectContent>
             {CATEGORIES.map(c => (
               <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Severity */}
-      <div className="space-y-2">
-        <Label>Severity *</Label>
-        <Select value={severity} onValueChange={(v) => setSeverity(v as FeedbackSeverity)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SEVERITIES.map(s => (
-              <SelectItem key={s.value} value={s.value}>
-                <div className="flex items-center gap-2">
-                  {s.value === 'extreme' && <AlertTriangle className="w-4 h-4 text-destructive" />}
-                  <span>{s.label}</span>
-                  <span className="text-xs text-muted-foreground">- {s.description}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {severity === 'extreme' && (
-          <p className="text-xs text-destructive flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            Extreme reports may require identity disclosure in serious cases.
-          </p>
-        )}
-      </div>
-
-      {/* Related area */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Year (optional)</Label>
-          <Select value={selectedYear} onValueChange={(v) => {
-            setSelectedYear(v);
-            setSelectedModule('none');
-          }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {years.map(y => (
-                <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Module (optional)</Label>
-          <Select value={selectedModule} onValueChange={setSelectedModule}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select module" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {filteredModules.map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Tab (optional)</Label>
-        <Select value={selectedTab} onValueChange={setSelectedTab}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select tab" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {TABS.map(t => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -285,7 +126,7 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Describe your feedback in detail..."
-          rows={4}
+          rows={5}
           required
           minLength={20}
         />
@@ -294,35 +135,10 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
         </p>
       </div>
 
-      {/* Consent */}
-      <div className="flex items-start gap-3">
-        <Checkbox
-          id="consent"
-          checked={consent}
-          onCheckedChange={(checked) => setConsent(checked as boolean)}
-        />
-        <Label htmlFor="consent" className="text-sm font-normal cursor-pointer">
-          I confirm this report is truthful and respectful.
-        </Label>
-      </div>
-
       {/* Submit */}
-      <Button 
-        type="submit" 
-        className="w-full" 
-        disabled={isSubmitting || !canSubmit || isCheckingLimit}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Submitting...
-          </>
-        ) : (
-          <>
-            <Send className="w-4 h-4 mr-2" />
-            Submit Anonymous Feedback
-          </>
-        )}
+      <Button type="submit" className="w-full">
+        <Send className="w-4 h-4 mr-2" />
+        Submit Anonymous Feedback
       </Button>
     </form>
   );
@@ -332,12 +148,15 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-h-[90vh]">
           <DrawerHeader>
-            <DrawerTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Submit Feedback
-            </DrawerTitle>
+            <div className="flex items-center gap-2">
+              <DrawerTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Give Feedback
+              </DrawerTitle>
+              <Badge variant="secondary" className="text-xs">Anonymous</Badge>
+            </div>
             <DrawerDescription>
-              Share your feedback anonymously
+              Share suggestions, report issues, or provide general feedback.
             </DrawerDescription>
           </DrawerHeader>
           <div className="px-4 pb-4 overflow-y-auto">
@@ -352,12 +171,15 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Submit Feedback
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Give Feedback
+            </DialogTitle>
+            <Badge variant="secondary" className="text-xs">Anonymous</Badge>
+          </div>
           <DialogDescription>
-            Share your feedback anonymously
+            Share suggestions, report issues, or provide general feedback.
           </DialogDescription>
         </DialogHeader>
         {content}
