@@ -43,6 +43,7 @@ import {
   ResourceTabId,
   PracticeTabId,
 } from '@/config/tabConfig';
+import { ChapterMockExamSection } from '@/components/exam';
 import { 
   ArrowLeft, 
   FileText, 
@@ -177,7 +178,7 @@ export default function ChapterPage() {
   // Section navigation items
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
-    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
+    { id: 'practice' as SectionMode, label: 'Practice', mobileLabel: 'Practice', icon: GraduationCap },
   ];
 
   // Use unified tab configuration
@@ -194,6 +195,7 @@ export default function ChapterPage() {
     practical: practicals?.length || 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
+    test: 1, // Always show "Take a Test" tab
   });
 
   // Admin sees all tabs; students see filtered based on setting
@@ -613,6 +615,11 @@ export default function ChapterPage() {
                     </div>
                     <p className="text-muted-foreground">Image questions coming soon.</p>
                   </div>
+                )}
+
+                {/* Take a Test Content - Mock Exam for this chapter's module */}
+                {practiceTab === 'test' && moduleId && (
+                  <ChapterMockExamSection moduleId={moduleId} />
                 )}
               </div>
             )}

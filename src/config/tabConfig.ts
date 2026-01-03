@@ -9,6 +9,7 @@ import {
   Image,
   Link2,
   LucideIcon,
+  ClipboardCheck,
 } from 'lucide-react';
 
 // Unified tab configuration for the entire app
@@ -17,8 +18,8 @@ import {
 // Resource tab types
 export type ResourceTabId = 'lectures' | 'flashcards' | 'documents';
 
-// Self-assessment tab types
-export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'practical' | 'matching' | 'images';
+// Self-assessment tab types (Practice tabs)
+export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'practical' | 'matching' | 'images' | 'test';
 
 export interface TabConfig {
   id: string;
@@ -33,7 +34,7 @@ export const RESOURCES_TABS: TabConfig[] = [
   { id: 'documents', label: 'Documents', icon: FileText },
 ];
 
-// Standard Self-Assessment tabs - same for all modules/departments
+// Standard Practice tabs - same for all modules/departments
 export const PRACTICE_TABS: TabConfig[] = [
   { id: 'mcqs', label: 'MCQs', icon: HelpCircle },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
@@ -41,6 +42,7 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'practical', label: 'OSCE / Practical', icon: FlaskConical },
   { id: 'matching', label: 'Matching', icon: Link2 },
   { id: 'images', label: 'Image Questions', icon: Image },
+  { id: 'test', label: 'Take a Test', icon: ClipboardCheck },
 ];
 
 // Helper to add counts to tabs
@@ -66,6 +68,7 @@ export function createPracticeTabs(counts: {
   practical?: number;
   matching?: number;
   images?: number;
+  test?: number;
 }): TabWithCount[] {
   return PRACTICE_TABS.map(tab => ({
     ...tab,
