@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { type SortMode } from '@/hooks/useChapterSort';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -194,15 +195,18 @@ function BookLecturesView({
   
   const deleteChapter = useDeleteChapter();
   
-  // Module IDs for SUR-423 and SUR-523 that need alphabetical sorting
+  // Module IDs for SUR-423 and SUR-523 that show sort filter for Book 2 and Book 3
   const SURGERY_MODULE_IDS = [
     '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', // SUR-423
     '7f5167dd-b746-4ac6-94f3-109d637df861', // SUR-523
   ];
-  const shouldSortAlphabetically = SURGERY_MODULE_IDS.includes(moduleId);
+  const SORTABLE_BOOKS = ['Book 2', 'Book 3'];
+  const showSortFilter = SURGERY_MODULE_IDS.includes(moduleId) && SORTABLE_BOOKS.includes(bookLabel);
+  
+  const [sortMode, setSortMode] = useState<SortMode>('default');
   
   // Fetch chapters for this book (these are the "lectures")
-  const { data: chapters, isLoading: chaptersLoading } = useQuery({
+  const { data: chaptersRaw, isLoading: chaptersLoading } = useQuery({
     queryKey: ['module-chapters-for-book', moduleId, bookLabel],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -213,17 +217,21 @@ function BookLecturesView({
         .order('order_index', { ascending: true });
       
       if (error) throw error;
-      
-      // Sort alphabetically for Surgery modules
-      const chaptersData = data as ModuleChapter[];
-      if (shouldSortAlphabetically) {
-        return chaptersData.sort((a, b) => 
-          a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
-        );
-      }
-      return chaptersData;
+      return data as ModuleChapter[];
     },
   });
+  
+  // Apply sorting based on user selection
+  const chapters = useMemo(() => {
+    if (!chaptersRaw) return undefined;
+    if (sortMode === 'default') return chaptersRaw;
+    
+    const sorted = [...chaptersRaw].sort((a, b) => 
+      a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+    );
+    if (sortMode === 'za') sorted.reverse();
+    return sorted;
+  }, [chaptersRaw, sortMode]);
 
   const handleDeleteChapter = async (chapter: ModuleChapter) => {
     try {
@@ -263,13 +271,18 @@ function BookLecturesView({
         )}
       </div>
       
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <BookOpen className="w-4 h-4" />
-        <span className="text-sm font-medium">Lectures</span>
-        {chapters && chapters.length > 0 && (
-          <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-            {chapters.length}
-          </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <BookOpen className="w-4 h-4" />
+          <span className="text-sm font-medium">Lectures</span>
+          {chapters && chapters.length > 0 && (
+            <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+              {chapters.length}
+            </span>
+          )}
+        </div>
+        {showSortFilter && (
+          <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
         )}
       </div>
       
