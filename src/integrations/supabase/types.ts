@@ -1388,6 +1388,121 @@ export type Database = {
           },
         ]
       }
+      mock_exam_attempts: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          is_completed: boolean
+          module_id: string
+          question_ids: string[]
+          score: number
+          started_at: string
+          submitted_at: string | null
+          total_questions: number
+          user_answers: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          is_completed?: boolean
+          module_id: string
+          question_ids?: string[]
+          score?: number
+          started_at?: string
+          submitted_at?: string | null
+          total_questions?: number
+          user_answers?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          is_completed?: boolean
+          module_id?: string
+          question_ids?: string[]
+          score?: number
+          started_at?: string
+          submitted_at?: string | null
+          total_questions?: number
+          user_answers?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_exam_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mock_exam_global_settings: {
+        Row: {
+          default_question_count: number
+          default_seconds_per_question: number
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_question_count?: number
+          default_seconds_per_question?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_question_count?: number
+          default_seconds_per_question?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      mock_exam_settings: {
+        Row: {
+          created_at: string
+          id: string
+          module_id: string
+          question_count: number
+          seconds_per_question: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_id: string
+          question_count?: number
+          seconds_per_question?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_id?: string
+          question_count?: number
+          seconds_per_question?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_exam_settings_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: true
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_admins: {
         Row: {
           assigned_by: string | null
