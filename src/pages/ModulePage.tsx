@@ -175,6 +175,7 @@ export default function ModulePage() {
               <ModuleConnectTab
                 moduleId={actualModuleId}
                 moduleName={module?.name || ''}
+                moduleCode={module?.slug || ''}
               />
             )}
           </div>
