@@ -1399,6 +1399,7 @@ export type Database = {
           score: number
           started_at: string
           submitted_at: string | null
+          test_mode: string
           total_questions: number
           user_answers: Json
           user_id: string
@@ -1413,6 +1414,7 @@ export type Database = {
           score?: number
           started_at?: string
           submitted_at?: string | null
+          test_mode?: string
           total_questions?: number
           user_answers?: Json
           user_id: string
@@ -1427,6 +1429,7 @@ export type Database = {
           score?: number
           started_at?: string
           submitted_at?: string | null
+          test_mode?: string
           total_questions?: number
           user_answers?: Json
           user_id?: string
