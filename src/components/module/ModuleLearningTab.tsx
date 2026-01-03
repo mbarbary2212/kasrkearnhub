@@ -194,6 +194,13 @@ function BookLecturesView({
   
   const deleteChapter = useDeleteChapter();
   
+  // Module IDs for SUR-423 and SUR-523 that need alphabetical sorting
+  const SURGERY_MODULE_IDS = [
+    '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', // SUR-423
+    '7f5167dd-b746-4ac6-94f3-109d637df861', // SUR-523
+  ];
+  const shouldSortAlphabetically = SURGERY_MODULE_IDS.includes(moduleId);
+  
   // Fetch chapters for this book (these are the "lectures")
   const { data: chapters, isLoading: chaptersLoading } = useQuery({
     queryKey: ['module-chapters-for-book', moduleId, bookLabel],
@@ -206,7 +213,15 @@ function BookLecturesView({
         .order('order_index', { ascending: true });
       
       if (error) throw error;
-      return data as ModuleChapter[];
+      
+      // Sort alphabetically for Surgery modules
+      const chaptersData = data as ModuleChapter[];
+      if (shouldSortAlphabetically) {
+        return chaptersData.sort((a, b) => 
+          a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+        );
+      }
+      return chaptersData;
     },
   });
 
