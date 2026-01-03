@@ -53,10 +53,11 @@ import {
   GraduationCap,
   ExternalLink,
   Image,
+  ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type SectionMode = 'resources' | 'practice';
+type SectionMode = 'resources' | 'practice' | 'test';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -179,6 +180,7 @@ export default function ChapterPage() {
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
     { id: 'practice' as SectionMode, label: 'Practice', mobileLabel: 'Practice', icon: GraduationCap },
+    { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
 
   // Use unified tab configuration
@@ -195,7 +197,6 @@ export default function ChapterPage() {
     practical: practicals?.length || 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
-    test: 1, // Always show "Take a Test" tab
   });
 
   // Admin sees all tabs; students see filtered based on setting
@@ -616,12 +617,12 @@ export default function ChapterPage() {
                     <p className="text-muted-foreground">Image questions coming soon.</p>
                   </div>
                 )}
-
-                {/* Test Yourself Content - Mock Exam for this chapter's MCQs */}
-                {practiceTab === 'test' && moduleId && chapterId && (
-                  <ChapterMockExamSection moduleId={moduleId} chapterId={chapterId} />
-                )}
               </div>
+            )}
+
+            {/* Test Yourself Section */}
+            {activeSection === 'test' && moduleId && chapterId && (
+              <ChapterMockExamSection moduleId={moduleId} chapterId={chapterId} />
             )}
           </div>
         </div>
