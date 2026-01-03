@@ -178,11 +178,18 @@ export function MockTimedExam({
     }
   };
 
-  // Handle answer selection
+  // Handle answer selection with auto-progress
   const handleSelectAnswer = (key: string) => {
     const questionId = examQuestions[currentIndex]?.id;
     if (questionId) {
       setUserAnswers(prev => ({ ...prev, [questionId]: key }));
+      
+      // Auto-progress to next question after a short delay (1.5 seconds)
+      if (currentIndex < examQuestions.length - 1) {
+        setTimeout(() => {
+          setCurrentIndex(i => Math.min(examQuestions.length - 1, i + 1));
+        }, 1500);
+      }
     }
   };
 
