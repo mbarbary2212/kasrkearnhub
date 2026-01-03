@@ -114,7 +114,7 @@ export function EssayDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <div className="flex items-center gap-2 flex-1">
             {/* Mark for Review star */}
@@ -185,7 +185,7 @@ export function EssayDetailModal({
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Answer
                 </h3>
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 max-h-[40vh] sm:max-h-[50vh] overflow-y-auto">
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                   {essay.model_answer ? (
                     <p className="text-foreground whitespace-pre-wrap">{essay.model_answer}</p>
                   ) : (

@@ -355,14 +355,14 @@ export function FlashcardsStudentView({
               style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
             >
               {/* Front */}
-              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-center text-center overflow-y-auto max-h-[45vh] sm:max-h-[55vh]">
+              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-start text-center overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
                 <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Question</div>
-                <div className="text-base font-medium text-foreground whitespace-pre-wrap">{currentCard.front}</div>
+                <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.front}</div>
               </div>
               {/* Back */}
-              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-center text-center rotate-y-180 overflow-y-auto max-h-[45vh] sm:max-h-[55vh]">
+              <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
                 <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Answer</div>
-                <div className="text-base font-medium text-foreground whitespace-pre-wrap">{currentCard.back}</div>
+                <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.back}</div>
               </div>
             </div>
           </div>

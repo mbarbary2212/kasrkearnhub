@@ -207,7 +207,7 @@ export function McqCard({
 
         {/* Explanation - shown when answer is revealed */}
         {showAnswer && mcq.explanation && (
-          <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border max-h-[40vh] sm:max-h-[50vh] overflow-y-auto">
+          <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
             <p className="text-sm font-medium text-muted-foreground mb-1">Explanation</p>
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{mcq.explanation}</p>
           </div>
