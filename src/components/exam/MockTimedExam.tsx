@@ -6,10 +6,13 @@ import {
   useSubmitMockExam,
   formatDuration,
 } from '@/hooks/useMockExam';
+import { TestModeSelector, TestMode } from './TestModeSelector';
 import { MockExamQuestion } from './MockExamQuestion';
+import { HardModeQuestion } from './HardModeQuestion';
+import { TransitionScreen } from './TransitionScreen';
 import { MockExamResults } from './MockExamResults';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,10 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   Clock, 
-  AlertTriangle, 
-  Flag, 
-  CircleDot,
-  Play,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModuleChapter } from '@/hooks/useChapters';
@@ -47,7 +47,10 @@ interface MockTimedExamProps {
   secondsPerQuestion?: number;
 }
 
-type ExamPhase = 'ready' | 'in-progress' | 'completed';
+type ExamPhase = 'select-mode' | 'in-progress' | 'transition' | 'completed';
+
+// Transition delay between questions in hard mode (seconds)
+const HARD_MODE_TRANSITION_SECONDS = 3;
 
 export function MockTimedExam({
   moduleId,
@@ -59,18 +62,17 @@ export function MockTimedExam({
   chapterId,
   chapterMcqs,
   onComplete,
-  questionCount: propQuestionCount,
   secondsPerQuestion: propSecondsPerQuestion,
 }: MockTimedExamProps) {
   const createAttempt = useCreateMockExamAttempt();
   const submitExam = useSubmitMockExam();
 
-  const [phase, setPhase] = useState<ExamPhase>('ready');
+  const [phase, setPhase] = useState<ExamPhase>('select-mode');
+  const [testMode, setTestMode] = useState<TestMode>('easy');
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [examQuestions, setExamQuestions] = useState<Mcq[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -82,11 +84,8 @@ export function MockTimedExam({
   const examMcqs = chapterMcqs || mcqs || [];
   const isChapterMode = !!chapterMcqs;
   
-  // Calculate exam parameters - use props for chapter mode, settings for module mode
-  const effectiveQuestionCount = propQuestionCount ?? (settings ? Math.min(settings.question_count, examMcqs.length) : examMcqs.length);
+  // Calculate exam parameters
   const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? settings?.seconds_per_question ?? 60;
-  const questionCount = Math.min(effectiveQuestionCount, examMcqs.length);
-  const totalTime = questionCount * effectiveSecondsPerQuestion;
 
   // Handler for going back - supports both modes
   const handleGoBack = () => {
@@ -98,25 +97,26 @@ export function MockTimedExam({
   };
 
   // Shuffle and select questions
-  const selectQuestions = useCallback(() => {
+  const selectQuestions = useCallback((count: number) => {
     const shuffled = [...examMcqs].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, questionCount);
-  }, [examMcqs, questionCount]);
+    return shuffled.slice(0, count);
+  }, [examMcqs]);
 
-  // Start the exam
-  const handleStartExam = async () => {
-    const selected = selectQuestions();
+  // Start the exam with selected mode and question count
+  const handleStartExam = async (mode: TestMode, questionCount: number) => {
+    const selected = selectQuestions(questionCount);
     setExamQuestions(selected);
-    setTimeRemaining(totalTime);
+    setTestMode(mode);
+    setTimeRemaining(questionCount * effectiveSecondsPerQuestion);
     setStartTime(new Date());
     setUserAnswers({});
-    setFlaggedQuestions(new Set());
     setCurrentIndex(0);
 
     try {
       const result = await createAttempt.mutateAsync({
         moduleId,
         questionIds: selected.map(q => q.id),
+        testMode: mode,
       });
       setAttemptId(result.id);
       setPhase('in-progress');
@@ -125,9 +125,9 @@ export function MockTimedExam({
     }
   };
 
-  // Timer effect
+  // Timer effect for EASY MODE only (global timer)
   useEffect(() => {
-    if (phase !== 'in-progress') return;
+    if (phase !== 'in-progress' || testMode !== 'easy') return;
 
     const interval = setInterval(() => {
       setTimeRemaining(prev => {
@@ -145,7 +145,7 @@ export function MockTimedExam({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, testMode]);
 
   // Calculate score
   const calculateScore = useCallback(() => {
@@ -181,12 +181,14 @@ export function MockTimedExam({
     }
   };
 
-  // Auto-submit when time runs out
+  // Auto-submit when time runs out (Easy Mode) or last question done (Hard Mode)
   const handleAutoSubmit = async () => {
-    if (!attemptId || !startTime || phase !== 'in-progress') return;
+    if (!attemptId || !startTime || (phase !== 'in-progress' && phase !== 'transition')) return;
 
     const score = calculateScore();
-    const duration = totalTime; // Full time used
+    const duration = testMode === 'easy' 
+      ? examQuestions.length * effectiveSecondsPerQuestion // Full time used for easy mode
+      : Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
 
     try {
       await submitExam.mutateAsync({
@@ -204,43 +206,45 @@ export function MockTimedExam({
     }
   };
 
-  // Handle answer selection with auto-progress
-  const handleSelectAnswer = (key: string) => {
+  // Handle answer selection - EASY MODE (manual navigation)
+  const handleSelectAnswerEasy = (key: string) => {
     const questionId = examQuestions[currentIndex]?.id;
     if (questionId) {
       setUserAnswers(prev => ({ ...prev, [questionId]: key }));
-      
-      // Auto-progress to next question after a short delay (1.5 seconds)
-      if (currentIndex < examQuestions.length - 1) {
-        setTimeout(() => {
-          setCurrentIndex(i => Math.min(examQuestions.length - 1, i + 1));
-        }, 1500);
-      }
     }
   };
 
-  // Handle flag toggle
-  const handleToggleFlag = () => {
+  // Handle answer selection - HARD MODE (auto-advance after answer)
+  const handleSelectAnswerHard = (key: string) => {
     const questionId = examQuestions[currentIndex]?.id;
-    if (questionId) {
-      setFlaggedQuestions(prev => {
-        const next = new Set(prev);
-        if (next.has(questionId)) {
-          next.delete(questionId);
-        } else {
-          next.add(questionId);
-        }
-        return next;
-      });
+    if (questionId && !userAnswers[questionId]) {
+      setUserAnswers(prev => ({ ...prev, [questionId]: key }));
+      // Don't immediately advance - wait for time up or short delay
     }
   };
+
+  // Handle time up for current question in HARD MODE
+  const handleHardModeTimeUp = useCallback(() => {
+    // Move to transition screen or submit if last question
+    if (currentIndex >= examQuestions.length - 1) {
+      handleAutoSubmit();
+    } else {
+      setPhase('transition');
+    }
+  }, [currentIndex, examQuestions.length]);
+
+  // Handle transition complete - move to next question
+  const handleTransitionComplete = useCallback(() => {
+    setCurrentIndex(prev => prev + 1);
+    setPhase('in-progress');
+  }, []);
 
   // Count unanswered questions
   const unansweredCount = useMemo(() => {
     return examQuestions.filter(q => !userAnswers[q.id]).length;
   }, [examQuestions, userAnswers]);
 
-  // Submit button handler
+  // Submit button handler (Easy mode only)
   const handleSubmitClick = () => {
     if (unansweredCount > 0) {
       setShowSubmitConfirm(true);
@@ -249,8 +253,8 @@ export function MockTimedExam({
     }
   };
 
-  // Render ready phase
-  if (phase === 'ready') {
+  // Render mode selection phase
+  if (phase === 'select-mode') {
     if (examMcqs.length === 0) {
       return (
         <Card className="text-center py-8">
@@ -271,63 +275,15 @@ export function MockTimedExam({
     }
 
     return (
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">{isChapterMode ? 'Test Yourself' : 'Mock Timed Exam'}</CardTitle>
-          <CardDescription>{moduleName}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-              <CircleDot className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium">{questionCount} Questions</p>
-                <p className="text-sm text-muted-foreground">MCQ format</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-              <Clock className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium">{formatDuration(totalTime)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {effectiveSecondsPerQuestion}s per question
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-200">
-                  Test Rules
-                </p>
-                <ul className="mt-2 space-y-1 text-amber-700 dark:text-amber-300">
-                  <li>• Complete within the time limit</li>
-                  <li>• Answers are hidden until submission</li>
-                  <li>• You can flag questions to review later</li>
-                  <li>• Test auto-submits when time expires</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={handleGoBack} className="flex-1">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleStartExam} 
-              className="flex-1 gap-2"
-              disabled={createAttempt.isPending}
-            >
-              <Play className="w-4 h-4" />
-              {createAttempt.isPending ? 'Starting...' : 'Start Test'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <TestModeSelector
+        totalMcqs={examMcqs.length}
+        secondsPerQuestion={effectiveSecondsPerQuestion}
+        onStart={handleStartExam}
+        onCancel={handleGoBack}
+        isLoading={createAttempt.isPending}
+        title={isChapterMode ? 'Test Yourself' : 'Mock Timed Exam'}
+        subtitle={moduleName}
+      />
     );
   }
 
@@ -347,28 +303,66 @@ export function MockTimedExam({
     );
   }
 
+  // Render transition phase (Hard Mode only)
+  if (phase === 'transition') {
+    return (
+      <TransitionScreen
+        durationSeconds={HARD_MODE_TRANSITION_SECONDS}
+        currentQuestion={currentIndex + 1}
+        totalQuestions={examQuestions.length}
+        onComplete={handleTransitionComplete}
+      />
+    );
+  }
+
   // Render in-progress phase
   const currentQuestion = examQuestions[currentIndex];
   const answeredCount = Object.keys(userAnswers).length;
   const progressPercent = (answeredCount / examQuestions.length) * 100;
-  const isTimeLow = timeRemaining <= 60;
+  const isTimeLow = testMode === 'easy' && timeRemaining <= 60;
 
+  // HARD MODE RENDER
+  if (testMode === 'hard') {
+    return (
+      <div className="space-y-4">
+        {/* Global progress header for hard mode */}
+        <div className="sticky top-0 z-10 bg-background pb-4 border-b">
+          <div className="flex items-center justify-between mb-3">
+            <Badge variant="outline" className="gap-1">
+              {answeredCount}/{examQuestions.length} answered
+            </Badge>
+            <Badge variant="destructive" className="gap-1">
+              Hard Mode
+            </Badge>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </div>
+
+        {/* Current question with per-question timer */}
+        {currentQuestion && (
+          <HardModeQuestion
+            question={currentQuestion}
+            questionIndex={currentIndex}
+            totalQuestions={examQuestions.length}
+            secondsPerQuestion={effectiveSecondsPerQuestion}
+            selectedAnswer={userAnswers[currentQuestion.id] || null}
+            onSelectAnswer={handleSelectAnswerHard}
+            onTimeUp={handleHardModeTimeUp}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // EASY MODE RENDER
   return (
     <div className="space-y-4">
       {/* Timer and progress header */}
       <div className="sticky top-0 z-10 bg-background pb-4 border-b">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
-              {answeredCount}/{examQuestions.length} answered
-            </Badge>
-            {flaggedQuestions.size > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <Flag className="w-3 h-3" />
-                {flaggedQuestions.size} flagged
-              </Badge>
-            )}
-          </div>
+          <Badge variant="outline" className="gap-1">
+            {answeredCount}/{examQuestions.length} answered
+          </Badge>
           <div className={cn(
             "flex items-center gap-2 font-mono text-lg font-semibold",
             isTimeLow && "text-red-600 animate-pulse"
@@ -384,7 +378,6 @@ export function MockTimedExam({
       <div className="flex flex-wrap gap-1 justify-center">
         {examQuestions.map((q, idx) => {
           const isAnswered = !!userAnswers[q.id];
-          const isFlagged = flaggedQuestions.has(q.id);
           const isCurrent = idx === currentIndex;
 
           return (
@@ -394,9 +387,8 @@ export function MockTimedExam({
               className={cn(
                 "w-8 h-8 rounded-full text-xs font-medium transition-all",
                 isCurrent && "ring-2 ring-primary ring-offset-2",
-                isAnswered && !isFlagged && "bg-primary text-primary-foreground",
-                isFlagged && "bg-amber-500 text-white",
-                !isAnswered && !isFlagged && "bg-muted text-muted-foreground"
+                isAnswered && "bg-primary text-primary-foreground",
+                !isAnswered && "bg-muted text-muted-foreground"
               )}
             >
               {idx + 1}
@@ -412,9 +404,7 @@ export function MockTimedExam({
           questionIndex={currentIndex}
           totalQuestions={examQuestions.length}
           selectedAnswer={userAnswers[currentQuestion.id] || null}
-          isFlagged={flaggedQuestions.has(currentQuestion.id)}
-          onSelectAnswer={handleSelectAnswer}
-          onToggleFlag={handleToggleFlag}
+          onSelectAnswer={handleSelectAnswerEasy}
           onPrevious={() => setCurrentIndex(i => Math.max(0, i - 1))}
           onNext={() => setCurrentIndex(i => Math.min(examQuestions.length - 1, i + 1))}
           canGoPrevious={currentIndex > 0}

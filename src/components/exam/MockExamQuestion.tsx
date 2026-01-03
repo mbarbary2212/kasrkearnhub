@@ -1,7 +1,7 @@
 import { Mcq, McqChoice } from '@/hooks/useMcqs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Flag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MockExamQuestionProps {
@@ -9,9 +9,7 @@ interface MockExamQuestionProps {
   questionIndex: number;
   totalQuestions: number;
   selectedAnswer: string | null;
-  isFlagged: boolean;
   onSelectAnswer: (key: string) => void;
-  onToggleFlag: () => void;
   onPrevious: () => void;
   onNext: () => void;
   canGoPrevious: boolean;
@@ -23,9 +21,7 @@ export function MockExamQuestion({
   questionIndex,
   totalQuestions,
   selectedAnswer,
-  isFlagged,
   onSelectAnswer,
-  onToggleFlag,
   onPrevious,
   onNext,
   canGoPrevious,
@@ -40,15 +36,6 @@ export function MockExamQuestion({
         <span className="text-sm font-medium text-muted-foreground">
           Question {questionIndex + 1} of {totalQuestions}
         </span>
-        <Button
-          variant={isFlagged ? "default" : "outline"}
-          size="sm"
-          onClick={onToggleFlag}
-          className="gap-1"
-        >
-          <Flag className={cn("w-4 h-4", isFlagged && "fill-current")} />
-          {isFlagged ? 'Flagged' : 'Flag'}
-        </Button>
       </div>
 
       {/* Question card */}

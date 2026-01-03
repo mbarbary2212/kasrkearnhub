@@ -107,7 +107,7 @@ export function useCreateMockExamAttempt() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ moduleId, questionIds }: { moduleId: string; questionIds: string[] }) => {
+    mutationFn: async ({ moduleId, questionIds, testMode = 'easy' }: { moduleId: string; questionIds: string[]; testMode?: string }) => {
       const { data, error } = await supabase
         .from('mock_exam_attempts')
         .insert({
@@ -117,6 +117,7 @@ export function useCreateMockExamAttempt() {
           total_questions: questionIds.length,
           user_answers: {},
           score: 0,
+          test_mode: testMode,
         })
         .select()
         .single();
