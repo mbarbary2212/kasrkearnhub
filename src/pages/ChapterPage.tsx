@@ -617,9 +617,9 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Take a Test Content - Mock Exam for this chapter's module */}
-                {practiceTab === 'test' && moduleId && (
-                  <ChapterMockExamSection moduleId={moduleId} />
+                {/* Test Yourself Content - Mock Exam for this chapter's MCQs */}
+                {practiceTab === 'test' && moduleId && chapterId && (
+                  <ChapterMockExamSection moduleId={moduleId} chapterId={chapterId} />
                 )}
               </div>
             )}
