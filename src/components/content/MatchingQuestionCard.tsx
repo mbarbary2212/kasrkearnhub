@@ -278,9 +278,9 @@ export function MatchingQuestionCard({
 
         {/* Explanation */}
         {showAnswer && question.show_explanation && question.explanation && (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+          <div className="mt-4 p-3 bg-muted/50 rounded-lg max-h-[40vh] sm:max-h-[50vh] overflow-y-auto">
             <p className="text-sm font-medium mb-1">Explanation:</p>
-            <p className="text-sm text-muted-foreground">{question.explanation}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{question.explanation}</p>
           </div>
         )}
 

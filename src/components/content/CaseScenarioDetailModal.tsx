@@ -130,8 +130,8 @@ export function CaseScenarioDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex flex-row items-center justify-between pr-8">
+      <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <div className="flex items-center gap-2 flex-1">
             {/* Mark for Review star */}
             {onToggleMark && (
@@ -161,8 +161,8 @@ export function CaseScenarioDetailModal({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6 py-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
+          <div className="space-y-6 py-4 pb-6">
             {/* Case History Section */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -219,7 +219,7 @@ export function CaseScenarioDetailModal({
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Model Answer
                 </h3>
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 max-h-[40vh] sm:max-h-[50vh] overflow-y-auto">
                   <p className="text-foreground whitespace-pre-wrap">{caseItem.model_answer}</p>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export function CaseScenarioDetailModal({
 
         {/* Navigation Footer */}
         {cases.length > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center justify-between pt-4 border-t shrink-0">
             <Button
               variant="outline"
               size="sm"
