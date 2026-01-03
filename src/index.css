@@ -141,4 +141,11 @@
   .rotate-y-180 {
     transform: rotateY(180deg);
   }
+
+  /* Global Modal & Scroll Utilities */
+  .modal-scroll-content {
+    @apply overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
 }
