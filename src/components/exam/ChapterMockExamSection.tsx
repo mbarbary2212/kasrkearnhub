@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,43 +8,42 @@ import {
   Clock, 
   GraduationCap,
   ChevronRight,
-  History,
   Target,
 } from 'lucide-react';
-import { useModuleMcqs } from '@/hooks/useMcqs';
+import { useChapterMcqs } from '@/hooks/useMcqs';
 import { 
   useMockExamSettings, 
-  useMockExamAttempts, 
   formatDuration,
 } from '@/hooks/useMockExam';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { MockExamAdminSettings } from '@/components/exam/MockExamAdminSettings';
-import { format } from 'date-fns';
+import { MockTimedExam } from './MockTimedExam';
 
 interface ChapterMockExamSectionProps {
   moduleId: string;
+  chapterId?: string;
 }
 
-export function ChapterMockExamSection({ moduleId }: ChapterMockExamSectionProps) {
-  const navigate = useNavigate();
-  const auth = useAuthContext();
+export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamSectionProps) {
+  const [examStarted, setExamStarted] = useState(false);
   
-  // Fetch MCQs, settings, and attempts
-  const { data: mcqs, isLoading: mcqsLoading } = useModuleMcqs(moduleId);
+  // Fetch chapter MCQs and settings
+  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
-  const { data: attempts, isLoading: attemptsLoading } = useMockExamAttempts(moduleId);
 
-  const isAdmin = auth.isPlatformAdmin || auth.isSuperAdmin;
   const isLoading = mcqsLoading || settingsLoading;
 
-  // Calculate exam info
+  // Calculate exam info based on chapter MCQs
   const mcqCount = mcqs?.length || 0;
-  const questionCount = settings ? Math.min(settings.question_count, mcqCount) : 0;
-  const totalTime = settings ? questionCount * settings.seconds_per_question : 0;
+  const questionCount = settings ? Math.min(settings.question_count, mcqCount) : Math.min(20, mcqCount);
+  const secondsPerQuestion = settings?.seconds_per_question || 60;
+  const totalTime = questionCount * secondsPerQuestion;
   const hasEnoughQuestions = mcqCount > 0;
 
   const handleStartExam = () => {
-    navigate(`/module/${moduleId}/mock-exam`);
+    setExamStarted(true);
+  };
+
+  const handleExamComplete = () => {
+    setExamStarted(false);
   };
 
   if (isLoading) {
@@ -55,9 +54,23 @@ export function ChapterMockExamSection({ moduleId }: ChapterMockExamSectionProps
     );
   }
 
+  // Show the exam interface when started
+  if (examStarted && mcqs && mcqs.length > 0) {
+    return (
+      <MockTimedExam 
+        moduleId={moduleId}
+        chapterId={chapterId}
+        chapterMcqs={mcqs}
+        onComplete={handleExamComplete}
+        questionCount={questionCount}
+        secondsPerQuestion={secondsPerQuestion}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Mock Timed Exam Card */}
+      {/* Chapter Test Card */}
       <Card className="hover:shadow-md transition-all">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-4">
@@ -65,9 +78,9 @@ export function ChapterMockExamSection({ moduleId }: ChapterMockExamSectionProps
               <GraduationCap className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-base">Mock Timed Exam</CardTitle>
+              <CardTitle className="text-base">Test Yourself</CardTitle>
               <CardDescription className="mt-1 text-sm">
-                Simulate real exam conditions with a timed MCQ assessment
+                Practice with a timed MCQ test from this chapter
               </CardDescription>
             </div>
           </div>
@@ -87,14 +100,14 @@ export function ChapterMockExamSection({ moduleId }: ChapterMockExamSectionProps
               </div>
               <Button onClick={handleStartExam} className="w-full gap-2" size="sm">
                 <ClipboardCheck className="w-4 h-4" />
-                Start Exam
+                Start Test
                 <ChevronRight className="w-4 h-4 ml-auto" />
               </Button>
             </>
           ) : (
             <div className="text-center py-4">
               <p className="text-muted-foreground text-sm">
-                Mock exam is not available yet for this module.
+                Test is not available yet for this chapter.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 No MCQ questions have been added.
@@ -103,54 +116,6 @@ export function ChapterMockExamSection({ moduleId }: ChapterMockExamSectionProps
           )}
         </CardContent>
       </Card>
-
-      {/* Previous Attempts */}
-      {!attemptsLoading && attempts && attempts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <History className="w-4 h-4" />
-              Previous Attempts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {attempts.slice(0, 3).map((attempt) => {
-                const percentage = attempt.total_questions > 0 
-                  ? Math.round((attempt.score / attempt.total_questions) * 100) 
-                  : 0;
-                const date = attempt.submitted_at 
-                  ? format(new Date(attempt.submitted_at), 'MMM d, yyyy h:mm a')
-                  : 'In progress';
-
-                return (
-                  <div 
-                    key={attempt.id} 
-                    className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {attempt.score}/{attempt.total_questions} ({percentage}%)
-                      </p>
-                      <p className="text-xs text-muted-foreground">{date}</p>
-                    </div>
-                    {attempt.duration_seconds && (
-                      <Badge variant="outline" className="text-xs">
-                        {formatDuration(attempt.duration_seconds)}
-                      </Badge>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Admin Settings */}
-      {isAdmin && settings && (
-        <MockExamAdminSettings moduleId={moduleId} settings={settings} />
-      )}
     </div>
   );
 }

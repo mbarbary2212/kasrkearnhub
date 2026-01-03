@@ -34,22 +34,33 @@ import { ModuleChapter } from '@/hooks/useChapters';
 
 interface MockTimedExamProps {
   moduleId: string;
-  moduleName: string;
-  mcqs: Mcq[];
-  settings: MockExamSettings;
+  moduleName?: string;
+  mcqs?: Mcq[];
+  settings?: MockExamSettings;
   chapters?: ModuleChapter[];
-  onBack: () => void;
+  onBack?: () => void;
+  // Chapter-level exam props
+  chapterId?: string;
+  chapterMcqs?: Mcq[];
+  onComplete?: () => void;
+  questionCount?: number;
+  secondsPerQuestion?: number;
 }
 
 type ExamPhase = 'ready' | 'in-progress' | 'completed';
 
 export function MockTimedExam({
   moduleId,
-  moduleName,
+  moduleName = 'Test',
   mcqs,
   settings,
   chapters = [],
   onBack,
+  chapterId,
+  chapterMcqs,
+  onComplete,
+  questionCount: propQuestionCount,
+  secondsPerQuestion: propSecondsPerQuestion,
 }: MockTimedExamProps) {
   const createAttempt = useCreateMockExamAttempt();
   const submitExam = useSubmitMockExam();
@@ -67,15 +78,30 @@ export function MockTimedExam({
   const [finalScore, setFinalScore] = useState(0);
   const [finalDuration, setFinalDuration] = useState(0);
 
-  // Calculate exam parameters
-  const questionCount = Math.min(settings.question_count, mcqs.length);
-  const totalTime = questionCount * settings.seconds_per_question;
+  // Use chapter MCQs if provided, otherwise use module MCQs
+  const examMcqs = chapterMcqs || mcqs || [];
+  const isChapterMode = !!chapterMcqs;
+  
+  // Calculate exam parameters - use props for chapter mode, settings for module mode
+  const effectiveQuestionCount = propQuestionCount ?? (settings ? Math.min(settings.question_count, examMcqs.length) : examMcqs.length);
+  const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? settings?.seconds_per_question ?? 60;
+  const questionCount = Math.min(effectiveQuestionCount, examMcqs.length);
+  const totalTime = questionCount * effectiveSecondsPerQuestion;
+
+  // Handler for going back - supports both modes
+  const handleGoBack = () => {
+    if (onComplete) {
+      onComplete();
+    } else if (onBack) {
+      onBack();
+    }
+  };
 
   // Shuffle and select questions
   const selectQuestions = useCallback(() => {
-    const shuffled = [...mcqs].sort(() => Math.random() - 0.5);
+    const shuffled = [...examMcqs].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, questionCount);
-  }, [mcqs, questionCount]);
+  }, [examMcqs, questionCount]);
 
   // Start the exam
   const handleStartExam = async () => {
@@ -225,18 +251,18 @@ export function MockTimedExam({
 
   // Render ready phase
   if (phase === 'ready') {
-    if (mcqs.length === 0) {
+    if (examMcqs.length === 0) {
       return (
         <Card className="text-center py-8">
           <CardContent>
             <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              Mock exam is not available yet for this module.
+              {isChapterMode ? 'Test is not available yet for this chapter.' : 'Mock exam is not available yet for this module.'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              No MCQs have been added to this module.
+              No MCQs have been added.
             </p>
-            <Button variant="outline" className="mt-4" onClick={onBack}>
+            <Button variant="outline" className="mt-4" onClick={handleGoBack}>
               Go Back
             </Button>
           </CardContent>
@@ -247,7 +273,7 @@ export function MockTimedExam({
     return (
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Mock Timed Exam</CardTitle>
+          <CardTitle className="text-xl">{isChapterMode ? 'Test Yourself' : 'Mock Timed Exam'}</CardTitle>
           <CardDescription>{moduleName}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -264,7 +290,7 @@ export function MockTimedExam({
               <div>
                 <p className="font-medium">{formatDuration(totalTime)}</p>
                 <p className="text-sm text-muted-foreground">
-                  {settings.seconds_per_question}s per question
+                  {effectiveSecondsPerQuestion}s per question
                 </p>
               </div>
             </div>
@@ -275,20 +301,20 @@ export function MockTimedExam({
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-amber-800 dark:text-amber-200">
-                  Exam Rules
+                  Test Rules
                 </p>
                 <ul className="mt-2 space-y-1 text-amber-700 dark:text-amber-300">
                   <li>• Complete within the time limit</li>
                   <li>• Answers are hidden until submission</li>
                   <li>• You can flag questions to review later</li>
-                  <li>• Exam auto-submits when time expires</li>
+                  <li>• Test auto-submits when time expires</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={onBack} className="flex-1">
+            <Button variant="outline" onClick={handleGoBack} className="flex-1">
               Cancel
             </Button>
             <Button 
@@ -297,7 +323,7 @@ export function MockTimedExam({
               disabled={createAttempt.isPending}
             >
               <Play className="w-4 h-4" />
-              {createAttempt.isPending ? 'Starting...' : 'Start Exam'}
+              {createAttempt.isPending ? 'Starting...' : 'Start Test'}
             </Button>
           </div>
         </CardContent>

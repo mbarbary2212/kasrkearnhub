@@ -42,7 +42,7 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'practical', label: 'OSCE / Practical', icon: FlaskConical },
   { id: 'matching', label: 'Matching', icon: Link2 },
   { id: 'images', label: 'Image Questions', icon: Image },
-  { id: 'test', label: 'Take a Test', icon: ClipboardCheck },
+  { id: 'test', label: 'Test Yourself', icon: ClipboardCheck },
 ];
 
 // Helper to add counts to tabs
