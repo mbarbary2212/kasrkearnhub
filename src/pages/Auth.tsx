@@ -48,11 +48,12 @@ export default function Auth() {
     setIsLoading(false);
   };
 
-  const ALLOWED_EMAIL_DOMAIN = '@kasralainy.edu.eg';
-
+  // Accepts @kasralainy.edu.eg and any subdomain like @students.kasralainy.edu.eg
   const isAllowedEmailDomain = (email: string): boolean => {
     const normalizedEmail = email.toLowerCase().trim();
-    return normalizedEmail.endsWith(ALLOWED_EMAIL_DOMAIN);
+    // Match exact domain or any subdomain
+    return normalizedEmail.endsWith('@kasralainy.edu.eg') || 
+           normalizedEmail.includes('@') && normalizedEmail.split('@')[1]?.endsWith('.kasralainy.edu.eg');
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,7 +66,7 @@ export default function Auth() {
 
     // Validate email domain for new sign-ups
     if (!isAllowedEmailDomain(email)) {
-      toast.error('Registration is currently limited to Kasr Al-Ainy accounts (@kasralainy.edu.eg).');
+      toast.error('Registration is currently limited to Kasr Al-Ainy accounts (@kasralainy.edu.eg or subdomains).');
       setIsLoading(false);
       return;
     }
@@ -503,13 +504,13 @@ export default function Auth() {
                         id="signup-email"
                         name="email"
                         type="email"
-                        placeholder="your@kasralainy.edu.eg"
+                        placeholder="you@kasralainy.edu.eg"
                         className="pl-10"
                         required
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      New registrations are limited to @kasralainy.edu.eg accounts.
+                      New registrations are limited to Kasr Al-Ainy accounts (e.g. @kasralainy.edu.eg, @students.kasralainy.edu.eg).
                     </p>
                   </div>
                   
