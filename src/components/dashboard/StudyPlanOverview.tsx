@@ -9,6 +9,7 @@ interface Module {
   id: string;
   name: string;
   workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
+  page_count?: number | null;
 }
 
 interface StudyPlanOverviewProps {
@@ -51,12 +52,12 @@ export function StudyPlanOverview({
       ? addWeeks(new Date(startDate), lastWeek + 1) 
       : new Date();
     
-    // Calculate total weight share using module object (supports workload_level)
-    const weight = getModuleWeightCategory(module);
+    // Calculate total weight share using module object (supports workload_level and page_count)
+    const weight = getModuleWeightCategory(module, safeModules);
     const weightValue = weight === 'heavy+' ? 3.5 : weight === 'heavy' ? 3 : weight === 'medium' ? 2 : 1;
     
     const totalWeight = safeModules.reduce((sum, m) => {
-      const w = getModuleWeightCategory(m);
+      const w = getModuleWeightCategory(m, safeModules);
       return sum + (w === 'heavy+' ? 3.5 : w === 'heavy' ? 3 : w === 'medium' ? 2 : 1);
     }, 0);
     

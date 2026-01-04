@@ -2,6 +2,40 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { WorkloadLevel } from '@/types/curriculum';
 
+interface ModulePageCount {
+  moduleId: string;
+  pageCount: number;
+}
+
+// Fetch page counts for all modules in a year to calculate quartiles
+export function useModulePageCounts(yearId: string | null) {
+  return useQuery({
+    queryKey: ['module-page-counts', yearId],
+    queryFn: async () => {
+      if (!yearId) return [];
+
+      // Get modules for this year with their page counts
+      const { data: modules, error: modulesError } = await supabase
+        .from('modules')
+        .select('id, page_count')
+        .eq('year_id', yearId);
+
+      if (modulesError) throw modulesError;
+      if (!modules || modules.length === 0) return [];
+
+      // Map to page counts (default to 0 if not set)
+      const counts: ModulePageCount[] = modules.map(m => ({
+        moduleId: m.id,
+        pageCount: m.page_count || 0,
+      }));
+
+      return counts;
+    },
+    enabled: !!yearId,
+  });
+}
+
+// Legacy: Keep for backward compatibility during transition
 interface ModuleContentCount {
   moduleId: string;
   chapterCount: number;
@@ -13,14 +47,13 @@ interface ModuleContentCount {
   totalItems: number;
 }
 
-// Fetch content counts for all modules in a year to calculate quartiles
+// Legacy function - kept for backward compatibility
 export function useModuleContentCounts(yearId: string | null) {
   return useQuery({
     queryKey: ['module-content-counts', yearId],
     queryFn: async () => {
       if (!yearId) return [];
 
-      // Get modules for this year
       const { data: modules, error: modulesError } = await supabase
         .from('modules')
         .select('id')
@@ -31,7 +64,6 @@ export function useModuleContentCounts(yearId: string | null) {
 
       const moduleIds = modules.map(m => m.id);
 
-      // Fetch counts in parallel
       const [chapters, mcqs, essays, practicals, caseScenarios, lectures] = await Promise.all([
         supabase
           .from('module_chapters')
@@ -64,7 +96,6 @@ export function useModuleContentCounts(yearId: string | null) {
           .eq('is_deleted', false),
       ]);
 
-      // Aggregate counts per module
       const counts: ModuleContentCount[] = moduleIds.map(moduleId => {
         const chapterCount = chapters.data?.filter(c => c.module_id === moduleId).length || 0;
         const mcqCount = mcqs.data?.filter(m => m.module_id === moduleId).length || 0;
@@ -73,7 +104,6 @@ export function useModuleContentCounts(yearId: string | null) {
         const caseScenarioCount = caseScenarios.data?.filter(c => c.module_id === moduleId).length || 0;
         const lectureCount = lectures.data?.filter(l => l.module_id === moduleId).length || 0;
 
-        // Weight different content types (chapters are most important)
         const totalItems = 
           chapterCount * 3 + 
           mcqCount * 0.1 + 
@@ -100,18 +130,18 @@ export function useModuleContentCounts(yearId: string | null) {
   });
 }
 
-// Calculate workload level based on quartiles within the year
-export function calculateAutoWorkload(
+// Calculate workload level based on page count quartiles within the year
+export function calculateAutoWorkloadFromPages(
   moduleId: string, 
-  contentCounts: ModuleContentCount[]
+  pageCounts: ModulePageCount[]
 ): WorkloadLevel {
-  if (!contentCounts || contentCounts.length === 0) return 'medium';
+  if (!pageCounts || pageCounts.length === 0) return 'medium';
   
-  const moduleCount = contentCounts.find(c => c.moduleId === moduleId);
-  if (!moduleCount) return 'medium';
+  const modulePageCount = pageCounts.find(c => c.moduleId === moduleId);
+  if (!modulePageCount || modulePageCount.pageCount === 0) return 'medium';
 
-  // Sort by total items to determine quartiles
-  const sortedCounts = [...contentCounts].sort((a, b) => b.totalItems - a.totalItems);
+  // Sort by page count to determine quartiles (highest first)
+  const sortedCounts = [...pageCounts].sort((a, b) => b.pageCount - a.pageCount);
   const position = sortedCounts.findIndex(c => c.moduleId === moduleId);
   const percentile = (position / sortedCounts.length) * 100;
 
@@ -122,7 +152,37 @@ export function calculateAutoWorkload(
   return 'light';
 }
 
-// Get effective workload level (override if set, otherwise auto-calculate)
+// Legacy: Calculate workload from content counts (deprecated, use page counts)
+export function calculateAutoWorkload(
+  moduleId: string, 
+  contentCounts: ModuleContentCount[]
+): WorkloadLevel {
+  if (!contentCounts || contentCounts.length === 0) return 'medium';
+  
+  const moduleCount = contentCounts.find(c => c.moduleId === moduleId);
+  if (!moduleCount) return 'medium';
+
+  const sortedCounts = [...contentCounts].sort((a, b) => b.totalItems - a.totalItems);
+  const position = sortedCounts.findIndex(c => c.moduleId === moduleId);
+  const percentile = (position / sortedCounts.length) * 100;
+
+  if (percentile < 25) return 'heavy_plus';
+  if (percentile < 50) return 'heavy';
+  if (percentile < 75) return 'medium';
+  return 'light';
+}
+
+// Get effective workload level (override if set, otherwise auto-calculate from pages)
+export function getEffectiveWorkloadFromPages(
+  moduleWorkloadLevel: WorkloadLevel | null,
+  moduleId: string,
+  pageCounts: ModulePageCount[]
+): WorkloadLevel {
+  if (moduleWorkloadLevel) return moduleWorkloadLevel;
+  return calculateAutoWorkloadFromPages(moduleId, pageCounts);
+}
+
+// Legacy: Get effective workload from content counts
 export function getEffectiveWorkload(
   moduleWorkloadLevel: WorkloadLevel | null,
   moduleId: string,

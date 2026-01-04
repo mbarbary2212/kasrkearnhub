@@ -25,6 +25,7 @@ export interface Module {
   display_order: number | null;
   is_published: boolean | null;
   workload_level: WorkloadLevel | null;
+  page_count: number | null;
   created_at: string | null;
   updated_at: string | null;
 }

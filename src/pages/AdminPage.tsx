@@ -183,6 +183,7 @@ export default function AdminPage() {
     description: '',
     is_published: false,
     workload_level: '' as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus',
+    page_count: '' as string,
   });
 
   useEffect(() => {
@@ -426,6 +427,7 @@ export default function AdminPage() {
           description: moduleForm.description || null,
           is_published: moduleForm.is_published,
           workload_level: moduleForm.workload_level || null,
+          page_count: moduleForm.page_count ? parseInt(moduleForm.page_count, 10) : null,
           display_order: modules.filter(m => m.year_id === moduleForm.year_id).length,
         })
         .select()
@@ -456,6 +458,7 @@ export default function AdminPage() {
           description: moduleForm.description || null,
           is_published: moduleForm.is_published,
           workload_level: moduleForm.workload_level || null,
+          page_count: moduleForm.page_count ? parseInt(moduleForm.page_count, 10) : null,
         })
         .eq('id', editingModule.id)
         .select()
@@ -504,6 +507,7 @@ export default function AdminPage() {
       description: '',
       is_published: false,
       workload_level: '',
+      page_count: '',
     });
   };
 
@@ -517,6 +521,7 @@ export default function AdminPage() {
       description: module.description || '',
       is_published: module.is_published || false,
       workload_level: module.workload_level || '',
+      page_count: module.page_count?.toString() || '',
     });
     setShowModuleDialog(true);
   };
@@ -940,23 +945,34 @@ export default function AdminPage() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label>Workload Level</Label>
+                              <Label>Page Count</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={moduleForm.page_count}
+                                onChange={(e) => setModuleForm(prev => ({ ...prev, page_count: e.target.value }))}
+                                placeholder="Total pages in module books"
+                              />
+                              <p className="text-xs text-muted-foreground">Used for auto-calculating workload. Higher pages = heavier workload.</p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Workload Level Override</Label>
                               <Select
                                 value={moduleForm.workload_level}
                                 onValueChange={(value) => setModuleForm(prev => ({ ...prev, workload_level: value as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus' }))}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Auto-calculate" />
+                                  <SelectValue placeholder="Auto-calculate from pages" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Auto-calculate</SelectItem>
+                                  <SelectItem value="">Auto-calculate from pages</SelectItem>
                                   <SelectItem value="light">Light</SelectItem>
                                   <SelectItem value="medium">Medium</SelectItem>
                                   <SelectItem value="heavy">Heavy</SelectItem>
                                   <SelectItem value="heavy_plus">Heavy+</SelectItem>
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-muted-foreground">Leave empty to auto-calculate based on content volume.</p>
+                              <p className="text-xs text-muted-foreground">Override to manually set workload, or leave empty to auto-calculate based on page count.</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Switch

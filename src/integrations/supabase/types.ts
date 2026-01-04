@@ -1659,6 +1659,7 @@ export type Database = {
           is_published: boolean | null
           name: string
           name_ar: string | null
+          page_count: number | null
           slug: string
           updated_at: string | null
           workload_level: string | null
@@ -1672,6 +1673,7 @@ export type Database = {
           is_published?: boolean | null
           name: string
           name_ar?: string | null
+          page_count?: number | null
           slug: string
           updated_at?: string | null
           workload_level?: string | null
@@ -1685,6 +1687,7 @@ export type Database = {
           is_published?: boolean | null
           name?: string
           name_ar?: string | null
+          page_count?: number | null
           slug?: string
           updated_at?: string | null
           workload_level?: string | null
