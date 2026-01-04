@@ -21,6 +21,7 @@ export type TestMode = 'easy' | 'hard';
 interface TestModeSelectorProps {
   totalMcqs: number;
   secondsPerQuestion: number;
+  hardModeSecondsPerQuestion?: number; // Optional: different time for hard mode
   onStart: (mode: TestMode, questionCount: number) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -33,12 +34,15 @@ const QUESTION_OPTIONS = [10, 20, 30, 50];
 export function TestModeSelector({
   totalMcqs,
   secondsPerQuestion,
+  hardModeSecondsPerQuestion,
   onStart,
   onCancel,
   isLoading,
   title = 'Test Yourself',
   subtitle,
 }: TestModeSelectorProps) {
+  // Use separate time for hard mode if provided
+  const effectiveHardModeSeconds = hardModeSecondsPerQuestion ?? secondsPerQuestion;
   const [mode, setMode] = useState<TestMode>('easy');
   const [questionCount, setQuestionCount] = useState<number>(() => {
     // Default to first available option that's <= totalMcqs
@@ -48,7 +52,9 @@ export function TestModeSelector({
 
   // Calculate time based on mode and question count
   const effectiveQuestionCount = Math.min(questionCount, totalMcqs);
-  const totalTime = effectiveQuestionCount * secondsPerQuestion;
+  const totalTime = mode === 'hard' 
+    ? effectiveQuestionCount * effectiveHardModeSeconds 
+    : effectiveQuestionCount * secondsPerQuestion;
 
   // Filter options to only show those possible with available MCQs
   const availableOptions = QUESTION_OPTIONS.filter(opt => opt <= totalMcqs);
@@ -133,7 +139,7 @@ export function TestModeSelector({
                     Fixed time per question with auto-advance. Simulates real exam pressure.
                   </p>
                   <ul className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                    <li>• {secondsPerQuestion}s per question, auto-advances</li>
+                    <li>• {effectiveHardModeSeconds}s per question, auto-advances</li>
                     <li>• No going back once time expires</li>
                     <li>• Brief pause between questions</li>
                   </ul>
@@ -198,7 +204,7 @@ export function TestModeSelector({
           {mode === 'hard' && (
             <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300">
               <AlertTriangle className="w-3 h-3" />
-              {secondsPerQuestion}s/question
+              {effectiveHardModeSeconds}s/question
             </Badge>
           )}
         </div>

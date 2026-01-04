@@ -251,6 +251,7 @@ export function OsceTimedExam({
       <TestModeSelector
         totalMcqs={osceQuestions.length}
         secondsPerQuestion={effectiveSecondsPerQuestion}
+        hardModeSecondsPerQuestion={HARD_MODE_SECONDS_PER_OSCE}
         onStart={handleStartExam}
         onCancel={handleGoBack}
         title="OSCE Test"
