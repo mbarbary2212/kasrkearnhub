@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { FlaskConical, Star, Filter, Trash2, RotateCcw } from 'lucide-react';
+import { FlaskConical, Star, Filter, Trash2, RotateCcw, Play, Video } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,8 @@ import {
 import ContentItemActions from '@/components/admin/ContentItemActions';
 import { cn } from '@/lib/utils';
 import { useContentDelete } from '@/hooks/useContentDelete';
+import { isValidVideoUrl, getVideoInfo } from '@/lib/video';
+import VideoPlayerModal from '@/components/content/VideoPlayerModal';
 
 interface Practical {
   id: string;
@@ -48,6 +50,7 @@ export default function PracticalList({
 }: PracticalListProps) {
   const [showMarkedOnly, setShowMarkedOnly] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+  const [selectedPractical, setSelectedPractical] = useState<Practical | null>(null);
 
   const { doRestore } = useContentDelete('practicals', moduleId || '', chapterId);
 
@@ -143,13 +146,18 @@ export default function PracticalList({
         <div className="space-y-3">
           {(showMarkedOnly ? filteredPracticals : displayPracticals).map((practical) => {
             const isDeleted = practical.is_deleted;
+            const hasVideo = isValidVideoUrl(practical.video_url);
+            const videoInfo = hasVideo ? getVideoInfo(practical.video_url) : null;
+            
             return (
               <Card 
                 key={practical.id} 
                 className={cn(
                   "hover:shadow-md transition-shadow",
-                  isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
+                  isDeleted && "opacity-60 border-destructive/30 bg-destructive/5",
+                  hasVideo && !isDeleted && "cursor-pointer"
                 )}
+                onClick={() => hasVideo && !isDeleted && setSelectedPractical(practical)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
@@ -166,12 +174,39 @@ export default function PracticalList({
                         <Star className={cn('h-4 w-4', markedIds.has(practical.id) && 'fill-current')} />
                       </button>
                     )}
-                    <div className={cn(
-                      "w-12 h-12 bg-accent rounded-lg flex items-center justify-center flex-shrink-0",
-                      isDeleted && "opacity-50"
-                    )}>
-                      <FlaskConical className="w-6 h-6 text-accent-foreground" />
-                    </div>
+                    
+                    {/* Video thumbnail or icon */}
+                    {hasVideo && videoInfo?.thumbnailUrl && !isDeleted ? (
+                      <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative group">
+                        <img
+                          src={videoInfo.thumbnailUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                          <div className="w-6 h-6 rounded-full bg-primary/90 flex items-center justify-center">
+                            <Play className="w-3 h-3 text-primary-foreground ml-0.5" fill="currentColor" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : hasVideo && !isDeleted ? (
+                      <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center relative group">
+                        <Video className="w-5 h-5 text-muted-foreground" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                          <div className="w-6 h-6 rounded-full bg-primary/90 flex items-center justify-center">
+                            <Play className="w-3 h-3 text-primary-foreground ml-0.5" fill="currentColor" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={cn(
+                        "w-12 h-12 bg-accent rounded-lg flex items-center justify-center flex-shrink-0",
+                        isDeleted && "opacity-50"
+                      )}>
+                        <FlaskConical className="w-6 h-6 text-accent-foreground" />
+                      </div>
+                    )}
+                    
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
@@ -179,34 +214,39 @@ export default function PracticalList({
                             <Badge variant="destructive" className="text-xs">Deleted</Badge>
                           )}
                           <h3 className={cn("font-medium", isDeleted && "line-through")}>{practical.title}</h3>
+                          {hasVideo && !isDeleted && (
+                            <span className="text-xs text-muted-foreground">Click to play</span>
+                          )}
                         </div>
-                        {isDeleted ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => doRestore(practical.id, practical.title)}
-                            className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                            title="Restore"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Restore
-                          </Button>
-                        ) : (
-                          moduleId && (
-                            <ContentItemActions
-                              id={practical.id}
-                              title={practical.title}
-                              description={practical.description}
-                              videoUrl={practical.video_url}
-                              contentType="practical"
-                              moduleId={moduleId}
-                              chapterId={chapterId}
-                              canEdit={canEdit}
-                              canDelete={canDelete}
-                              showFeedback={showFeedback}
-                            />
-                          )
-                        )}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          {isDeleted ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => doRestore(practical.id, practical.title)}
+                              className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                              title="Restore"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              Restore
+                            </Button>
+                          ) : (
+                            moduleId && (
+                              <ContentItemActions
+                                id={practical.id}
+                                title={practical.title}
+                                description={practical.description}
+                                videoUrl={practical.video_url}
+                                contentType="practical"
+                                moduleId={moduleId}
+                                chapterId={chapterId}
+                                canEdit={canEdit}
+                                canDelete={canDelete}
+                                showFeedback={showFeedback}
+                              />
+                            )
+                          )}
+                        </div>
                       </div>
                       {practical.description && !isDeleted && (
                         <p className="text-sm text-muted-foreground mt-1">{practical.description}</p>
@@ -218,6 +258,16 @@ export default function PracticalList({
             );
           })}
         </div>
+      )}
+
+      {/* Video Player Modal for Practicals */}
+      {selectedPractical && (
+        <VideoPlayerModal
+          isOpen={!!selectedPractical}
+          onClose={() => setSelectedPractical(null)}
+          videoUrl={selectedPractical.video_url || null}
+          title={selectedPractical.title}
+        />
       )}
     </>
   );

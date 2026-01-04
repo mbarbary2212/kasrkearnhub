@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractVimeoId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { VimeoPlayer } from '@/components/video/VimeoPlayer';
 
 interface Lecture {
   id: string;
@@ -87,12 +88,9 @@ function buildAutoplayUrl(rawUrl: string | null | undefined): string | null {
       u.searchParams.set("playsinline", "1");
       return u.toString();
     }
-    // Vimeo - handle both regular and player URLs
-    if (url.includes("vimeo.com/") || url.includes("player.vimeo.com/")) {
-      const match = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
-      if (match) {
-        return `https://player.vimeo.com/video/${match[1]}?autoplay=1&muted=1`;
-      }
+    // Google Drive
+    if (url.includes("drive.google.com")) {
+      return url;
     }
     return url;
   } catch {
@@ -178,7 +176,10 @@ export function LectureList({
   }
 
   const videoUrl = selectedLecture?.video_url || selectedLecture?.videoUrl;
-  const embedUrl = buildAutoplayUrl(videoUrl);
+  const normalizedVideoUrl = normalizeVideoInput(videoUrl);
+  const vimeoId = extractVimeoId(normalizedVideoUrl);
+  const isVimeoVideo = !!vimeoId;
+  const embedUrl = isVimeoVideo ? null : buildAutoplayUrl(videoUrl);
 
   return (
     <>
@@ -285,16 +286,23 @@ export function LectureList({
           <DialogHeader className="p-4 pb-2">
             <DialogTitle className="pr-8">{selectedLecture?.title}</DialogTitle>
           </DialogHeader>
-          <div className="w-full aspect-video bg-black">
-            {embedUrl && (
-              <iframe
-                src={embedUrl}
-                title={selectedLecture?.title}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
+          <div className="w-full bg-black">
+            {isVimeoVideo && vimeoId ? (
+              <VimeoPlayer
+                videoId={vimeoId}
+                autoplay={true}
               />
-            )}
+            ) : embedUrl ? (
+              <div className="aspect-video w-full">
+                <iframe
+                  src={embedUrl}
+                  title={selectedLecture?.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

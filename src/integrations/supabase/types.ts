@@ -2549,6 +2549,36 @@ export type Database = {
         }
         Relationships: []
       }
+      video_progress: {
+        Row: {
+          duration_seconds: number | null
+          id: string
+          last_time_seconds: number
+          percent_watched: number
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          duration_seconds?: number | null
+          id?: string
+          last_time_seconds?: number
+          percent_watched?: number
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          duration_seconds?: number | null
+          id?: string
+          last_time_seconds?: number
+          percent_watched?: number
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
       years: {
         Row: {
           color: string | null
