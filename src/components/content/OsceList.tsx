@@ -27,6 +27,8 @@ interface OsceListProps {
   deletedQuestions?: OsceQuestion[];
   moduleId: string;
   chapterId?: string;
+  moduleCode?: string;
+  chapterTitle?: string;
   isAdmin?: boolean;
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
@@ -38,6 +40,8 @@ export function OsceList({
   deletedQuestions = [],
   moduleId,
   chapterId,
+  moduleCode,
+  chapterTitle,
   isAdmin = false,
   showDeletedToggle = false,
   showDeleted = false,
@@ -166,6 +170,8 @@ export function OsceList({
         onOpenChange={setBulkUploadOpen}
         moduleId={moduleId}
         chapterId={chapterId}
+        moduleCode={moduleCode}
+        chapterTitle={chapterTitle}
       />
 
       {/* Delete Confirmation */}

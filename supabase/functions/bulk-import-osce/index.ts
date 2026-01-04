@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,42 +18,17 @@ interface ParsedRow {
   imageFound?: boolean;
 }
 
-// Simple CSV parser
-function parseCSV(content: string): string[][] {
-  const rows: string[][] = [];
-  const lines = content.split(/\r?\n/);
-  
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    
-    const row: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        row.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    row.push(current.trim());
-    rows.push(row);
-  }
-  
-  return rows;
+// Parse Excel file using xlsx library
+async function parseExcel(file: File): Promise<Record<string, any>[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+  return data as Record<string, any>[];
 }
 
-// Simple ZIP parser (handles basic ZIP format)
+// Simple ZIP parser (handles basic ZIP format with stored/deflated files)
 async function parseZip(buffer: ArrayBuffer): Promise<Map<string, Uint8Array>> {
   const files = new Map<string, Uint8Array>();
   const data = new Uint8Array(buffer);
@@ -67,7 +43,6 @@ async function parseZip(buffer: ArrayBuffer): Promise<Map<string, Uint8Array>> {
       const view = new DataView(buffer, offset);
       const compressionMethod = view.getUint16(8, true);
       const compressedSize = view.getUint32(18, true);
-      const uncompressedSize = view.getUint32(22, true);
       const filenameLength = view.getUint16(26, true);
       const extraLength = view.getUint16(28, true);
       
@@ -80,11 +55,16 @@ async function parseZip(buffer: ArrayBuffer): Promise<Map<string, Uint8Array>> {
         // Stored (no compression)
         const fileData = data.slice(dataStart, dataStart + compressedSize);
         if (!filename.endsWith('/') && filename.length > 0) {
-          files.set(filename, fileData);
+          // Extract just the filename without directory path
+          const parts = filename.split('/');
+          const justFilename = parts[parts.length - 1];
+          if (justFilename) {
+            files.set(justFilename, fileData);
+          }
         }
         offset = dataStart + compressedSize;
       } else {
-        // Compressed - skip for now, we'll need the raw data
+        // Compressed - skip for now
         offset = dataStart + compressedSize;
       }
     } else if (data[offset] === 0x50 && data[offset + 1] === 0x4B) {
@@ -156,6 +136,8 @@ serve(async (req) => {
     const excelFile = formData.get('excel') as File;
     const zipFile = formData.get('zip') as File;
     const moduleId = formData.get('moduleId') as string;
+    const moduleCode = formData.get('moduleCode') as string || 'module';
+    const chapterTitle = formData.get('chapterTitle') as string || 'chapter';
     const chapterId = formData.get('chapterId') as string | null;
     const validateOnly = formData.get('validateOnly') === 'true';
 
@@ -166,91 +148,97 @@ serve(async (req) => {
       });
     }
 
+    // Create clean folder path
+    const cleanModuleCode = moduleCode.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const cleanChapterTitle = chapterTitle.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const storagePath = `${cleanModuleCode}/${cleanChapterTitle}`;
+
     console.log(`Processing bulk OSCE import for module ${moduleId}, chapter ${chapterId}`);
+    console.log(`Storage path: ${storagePath}`);
     console.log(`Excel file: ${excelFile.name}, ZIP file: ${zipFile.name}`);
 
-    // Parse CSV/Excel file (we'll handle CSV for simplicity)
-    const excelText = await excelFile.text();
-    const rows = parseCSV(excelText);
+    // Parse Excel file
+    const excelRows = await parseExcel(excelFile);
+    
+    console.log(`Found ${excelRows.length} data rows in Excel`);
 
     // Parse ZIP file
     const zipBuffer = await zipFile.arrayBuffer();
     const zipFiles = await parseZip(zipBuffer);
     
+    // Build case-insensitive lookup for ZIP files
     const zipFileNames = new Map<string, string>();
-    for (const [path] of zipFiles) {
-      const parts = path.split('/');
-      const filename = parts[parts.length - 1].toLowerCase();
-      zipFileNames.set(filename, path);
+    for (const [filename] of zipFiles) {
+      zipFileNames.set(filename.toLowerCase(), filename);
     }
 
-    console.log(`Found ${rows.length - 1} data rows and ${zipFileNames.size} images in ZIP`);
+    console.log(`Found ${zipFileNames.size} images in ZIP`);
 
-    // Parse rows (skip header)
+    // Parse rows
     const parsedRows: ParsedRow[] = [];
     const missingImages: string[] = [];
 
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.length === 0 || !row[0]) continue;
+    for (let i = 0; i < excelRows.length; i++) {
+      const row = excelRows[i];
+      const rowNumber = i + 2; // +2 because row 1 is header and Excel is 1-indexed
 
-      const imageFilename = (row[0] || '').toString().trim();
-      const historyText = (row[1] || '').toString().trim();
+      const imageFilename = String(row['image_filename'] || '').trim();
+      const historyText = String(row['case_history'] || '').trim();
       
       const statements = [
-        (row[2] || '').toString().trim(),
-        (row[4] || '').toString().trim(),
-        (row[6] || '').toString().trim(),
-        (row[8] || '').toString().trim(),
-        (row[10] || '').toString().trim(),
+        String(row['statement_1_text'] || '').trim(),
+        String(row['statement_2_text'] || '').trim(),
+        String(row['statement_3_text'] || '').trim(),
+        String(row['statement_4_text'] || '').trim(),
+        String(row['statement_5_text'] || '').trim(),
       ];
 
       const rawAnswers = [
-        (row[3] || '').toString().trim().toUpperCase(),
-        (row[5] || '').toString().trim().toUpperCase(),
-        (row[7] || '').toString().trim().toUpperCase(),
-        (row[9] || '').toString().trim().toUpperCase(),
-        (row[11] || '').toString().trim().toUpperCase(),
+        String(row['statement_1_answer'] || '').trim().toUpperCase(),
+        String(row['statement_2_answer'] || '').trim().toUpperCase(),
+        String(row['statement_3_answer'] || '').trim().toUpperCase(),
+        String(row['statement_4_answer'] || '').trim().toUpperCase(),
+        String(row['statement_5_answer'] || '').trim().toUpperCase(),
       ];
 
       const explanations = [
-        (row[12] || '').toString().trim(),
-        (row[13] || '').toString().trim(),
-        (row[14] || '').toString().trim(),
-        (row[15] || '').toString().trim(),
-        (row[16] || '').toString().trim(),
+        String(row['statement_1_explanation'] || '').trim(),
+        String(row['statement_2_explanation'] || '').trim(),
+        String(row['statement_3_explanation'] || '').trim(),
+        String(row['statement_4_explanation'] || '').trim(),
+        String(row['statement_5_explanation'] || '').trim(),
       ];
 
       // Validate
       const errors: string[] = [];
 
-      if (!imageFilename) errors.push('Missing image filename');
-      if (!historyText) errors.push('Missing history text');
+      if (!imageFilename) errors.push('Missing image_filename');
+      if (!historyText) errors.push('Missing case_history');
       
       statements.forEach((s, idx) => {
-        if (!s) errors.push(`Missing statement ${idx + 1}`);
+        if (!s) errors.push(`Missing statement_${idx + 1}_text`);
       });
 
       const answers: boolean[] = [];
       rawAnswers.forEach((a, idx) => {
-        if (a === 'T' || a === 'TRUE' || a === '1') {
+        if (a === 'T' || a === 'TRUE' || a === '1' || a === 'YES') {
           answers.push(true);
-        } else if (a === 'F' || a === 'FALSE' || a === '0') {
+        } else if (a === 'F' || a === 'FALSE' || a === '0' || a === 'NO') {
           answers.push(false);
         } else {
-          errors.push(`Invalid answer ${idx + 1}: "${a}" (must be T/F)`);
+          errors.push(`Invalid statement_${idx + 1}_answer: "${a}" (must be TRUE/FALSE)`);
           answers.push(false);
         }
       });
 
-      // Check if image exists in ZIP
+      // Check if image exists in ZIP (case-insensitive)
       const imageFound = zipFileNames.has(imageFilename.toLowerCase());
-      if (!imageFound) {
+      if (!imageFound && imageFilename) {
         missingImages.push(imageFilename);
       }
 
       parsedRows.push({
-        rowNumber: i + 1,
+        rowNumber,
         imageFilename,
         historyText,
         statements,
@@ -272,14 +260,14 @@ serve(async (req) => {
         valid: valid.map(r => ({
           rowNumber: r.rowNumber,
           imageFilename: r.imageFilename,
-          historyText: r.historyText.substring(0, 50) + '...',
+          historyText: r.historyText.substring(0, 50) + (r.historyText.length > 50 ? '...' : ''),
         })),
         invalid: invalid.map(r => ({
           rowNumber: r.rowNumber,
           imageFilename: r.imageFilename,
           error: r.error || (!r.imageFound ? 'Image not found in ZIP' : undefined),
         })),
-        missingImages,
+        missingImages: [...new Set(missingImages)],
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -297,27 +285,29 @@ serve(async (req) => {
 
     for (const row of valid) {
       try {
-        // Find the actual file path in ZIP
-        const actualZipPath = zipFileNames.get(row.imageFilename.toLowerCase());
-        if (!actualZipPath) {
+        // Find the actual filename in ZIP (case-insensitive lookup)
+        const actualFilename = zipFileNames.get(row.imageFilename.toLowerCase());
+        if (!actualFilename) {
           console.error(`Could not find image ${row.imageFilename} in ZIP`);
           continue;
         }
 
-        const imageData = zipFiles.get(actualZipPath);
+        const imageData = zipFiles.get(actualFilename);
         if (!imageData) {
           console.error(`Could not read image data for ${row.imageFilename}`);
           continue;
         }
 
-        // Upload image
-        const ext = row.imageFilename.split('.').pop() || 'jpg';
-        const newFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        const storagePath = `${moduleId}/${chapterId || 'general'}/${newFilename}`;
+        // Upload image to storage with structured path
+        const ext = row.imageFilename.split('.').pop()?.toLowerCase() || 'jpg';
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const newFilename = `${timestamp}-${randomSuffix}.${ext}`;
+        const fullStoragePath = `${storagePath}/${newFilename}`;
 
         const { error: uploadError } = await supabase.storage
           .from('osce-images')
-          .upload(storagePath, imageData, {
+          .upload(fullStoragePath, imageData, {
             contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
           });
 
@@ -328,7 +318,7 @@ serve(async (req) => {
 
         const { data: { publicUrl } } = supabase.storage
           .from('osce-images')
-          .getPublicUrl(storagePath);
+          .getPublicUrl(fullStoragePath);
 
         // Insert OSCE question
         const { error: insertError } = await supabase.from('osce_questions').insert({

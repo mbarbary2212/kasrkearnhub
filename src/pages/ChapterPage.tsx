@@ -542,6 +542,8 @@ export default function ChapterPage() {
                         deletedQuestions={deletedOnlyOsce}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
+                        moduleCode={module?.slug?.toUpperCase() || 'MODULE'}
+                        chapterTitle={chapter?.title || 'CHAPTER'}
                         isAdmin={canManageContent}
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedOsce}
