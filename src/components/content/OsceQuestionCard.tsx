@@ -84,22 +84,24 @@ export function OsceQuestionCard({
       <CardContent className="p-0">
         {/* Image and History */}
         <div className="flex flex-col md:flex-row gap-4 p-4 border-b">
-          <div className="md:w-1/3">
-            <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+          {/* Image container - larger on desktop/tablet */}
+          <div className="w-full md:w-[380px] lg:w-[440px] shrink-0">
+            <div className="relative w-full max-h-[260px] md:max-h-[360px] lg:max-h-[420px] rounded-lg overflow-hidden bg-muted">
               {question.image_url ? (
                 <img
                   src={question.image_url}
                   alt="Clinical image"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain max-h-[260px] md:max-h-[360px] lg:max-h-[420px]"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-40 md:h-64 lg:h-80">
                   <ImageIcon className="w-12 h-12 text-muted-foreground" />
                 </div>
               )}
             </div>
           </div>
-          <div className="md:w-2/3">
+          {/* History and controls */}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-2">
               <Badge variant="outline">Question {questionNumber}</Badge>
               {isDeleted && (
@@ -190,10 +192,15 @@ export function OsceQuestionCard({
                       )}
                     </div>
 
-                    {/* Explanation */}
-                    {submitted && showExplanations && statement.explanation && (
+                    {/* Explanation - show after submission when toggled */}
+                    {submitted && showExplanations && (
                       <p className="mt-2 text-sm text-muted-foreground bg-muted p-2 rounded">
-                        <strong>Explanation:</strong> {statement.explanation}
+                        <strong>Explanation:</strong>{' '}
+                        {statement.explanation ? (
+                          statement.explanation
+                        ) : (
+                          <span className="italic text-muted-foreground/70">No explanation provided.</span>
+                        )}
                       </p>
                     )}
                   </div>
