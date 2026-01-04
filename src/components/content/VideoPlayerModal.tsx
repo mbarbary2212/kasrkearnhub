@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play } from 'lucide-react';
 import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
+import { VimeoPlayer } from '@/components/video/VimeoPlayer';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -28,6 +29,9 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
     setIsPlaying(true);
   };
 
+  // Check if this is a Vimeo video
+  const isVimeo = videoInfo.source === 'vimeo' && videoInfo.id;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 bg-background border-border overflow-hidden">
@@ -46,20 +50,29 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
           </button>
 
           {/* Video container with 16:9 aspect ratio */}
-          <div className="aspect-video w-full bg-muted">
+          <div className="w-full bg-muted">
             {videoInfo.embedUrl ? (
               isPlaying ? (
-                <iframe
-                  src={videoInfo.embedUrl}
-                  title={title || 'Video'}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                isVimeo ? (
+                  <VimeoPlayer
+                    videoId={videoInfo.id!}
+                    autoplay={true}
+                  />
+                ) : (
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src={videoInfo.embedUrl}
+                      title={title || 'Video'}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )
               ) : (
                 <button
                   onClick={handlePlay}
-                  className="w-full h-full relative group cursor-pointer focus:outline-none"
+                  className="w-full aspect-video relative group cursor-pointer focus:outline-none"
                   aria-label="Play video"
                 >
                   {/* Thumbnail */}
@@ -83,7 +96,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                 </button>
               )
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div className="w-full aspect-video flex items-center justify-center text-muted-foreground">
                 <p>Video link is invalid or unsupported</p>
               </div>
             )}
