@@ -1,4 +1,5 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -100,11 +101,34 @@ export function McqList({
   const [previewData, setPreviewData] = useState<DuplicateResult<McqFormData>[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
-  const [showMarkedOnly, setShowMarkedOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize filter states from URL params
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(() => 
+    searchParams.get('mcq_duplicates') === 'true'
+  );
+  const [showMarkedOnly, setShowMarkedOnly] = useState(() => 
+    searchParams.get('mcq_marked') === 'true'
+  );
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist filter states to URL params
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    if (showDuplicatesOnly) {
+      newParams.set('mcq_duplicates', 'true');
+    } else {
+      newParams.delete('mcq_duplicates');
+    }
+    if (showMarkedOnly) {
+      newParams.set('mcq_marked', 'true');
+    } else {
+      newParams.delete('mcq_marked');
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [showDuplicatesOnly, showMarkedOnly, setSearchParams]);
 
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
