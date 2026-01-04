@@ -26,12 +26,15 @@ import {
   AlertCircle,
   CheckCircle2,
   BookCheck,
-  Settings2,
-  AlertTriangle,
+  ArrowRight,
+  Calendar,
 } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
-import { StudyPlan, getModuleWeightCategory } from '@/hooks/useStudyPlan';
+import { format, addMonths, differenceInWeeks } from 'date-fns';
+import { StudyPlan } from '@/hooks/useStudyPlan';
 import { StudyPlanBaselineChapters } from './StudyPlanBaselineChapters';
+import { StudyPlanCalendarWizard } from './StudyPlanCalendarWizard';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Module {
   id: string;
@@ -77,6 +80,8 @@ interface StudyPlanWizardProps {
   initialBaselineChapterIds?: string[];
 }
 
+type WizardStep = 'settings' | 'calendar';
+
 export function StudyPlanWizard({
   existingPlan,
   modules,
@@ -88,6 +93,7 @@ export function StudyPlanWizard({
   calculateFeasibility,
   initialBaselineChapterIds = [],
 }: StudyPlanWizardProps) {
+  const [step, setStep] = useState<WizardStep>('settings');
   const [startDate, setStartDate] = useState<string>(
     existingPlan?.start_date || format(new Date(), 'yyyy-MM-dd')
   );
@@ -102,8 +108,25 @@ export function StudyPlanWizard({
     new Set(initialBaselineChapterIds)
   );
   const [showBaselines, setShowBaselines] = useState(false);
-  const [showWeekOverrides, setShowWeekOverrides] = useState(false);
-  const [moduleWeekOverrides, setModuleWeekOverrides] = useState<Record<string, number>>({});
+
+  // Fetch chapters for all modules
+  const { data: chapters = [] } = useQuery({
+    queryKey: ['wizard-chapters', modules.map(m => m.id).join(',')],
+    queryFn: async () => {
+      const moduleIds = modules.map(m => m.id);
+      if (moduleIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select('id, module_id, title, chapter_number')
+        .in('module_id', moduleIds)
+        .order('chapter_number');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: modules.length > 0,
+  });
 
   // Sync initial baseline chapter IDs when they load
   useEffect(() => {
@@ -122,6 +145,8 @@ export function StudyPlanWizard({
     modules,
     baselinePercents
   );
+
+  const totalWeeks = differenceInWeeks(new Date(endDate), new Date(startDate));
 
   const handleToggleChapter = (chapterId: string, isCompleted: boolean) => {
     setCompletedChapterIds(prev => {
@@ -149,7 +174,14 @@ export function StudyPlanWizard({
     });
   };
 
-  const handleSubmit = () => {
+  const handleProceedToCalendar = () => {
+    if (totalWeeks < 4) {
+      return; // Don't proceed if less than 4 weeks
+    }
+    setStep('calendar');
+  };
+
+  const handleCalendarConfirm = (moduleWeekOverrides: Record<string, number>) => {
     onGenerate({
       startDate: new Date(startDate),
       endDate: new Date(endDate),
@@ -160,53 +192,29 @@ export function StudyPlanWizard({
       baselineChapterIds: Array.from(completedChapterIds),
       moduleWeekOverrides: Object.keys(moduleWeekOverrides).length > 0 ? moduleWeekOverrides : undefined,
     });
+    setStep('settings'); // Reset to settings after generation
   };
 
-  // Calculate suggested weeks per module based on weights
-  const getSuggestedWeeks = (moduleId: string) => {
-    const totalWeeks = feasibility.totalWeeks;
-    const studyWeeks = Math.floor(totalWeeks * (revisionRounds === 2 ? 0.63 : 0.75));
-    
-    const module = modules.find(m => m.id === moduleId);
-    if (!module) return 1;
-    
-    const weight = getModuleWeightCategory(module, modules);
-    const weightValue = weight === 'heavy+' ? 3.5 : weight === 'heavy' ? 3 : weight === 'medium' ? 2 : 1;
-    
-    const totalWeight = modules.reduce((sum, m) => {
-      const w = getModuleWeightCategory(m, modules);
-      return sum + (w === 'heavy+' ? 3.5 : w === 'heavy' ? 3 : w === 'medium' ? 2 : 1);
-    }, 0);
-    
-    return Math.max(1, Math.round((weightValue / totalWeight) * studyWeeks));
+  const handleBackToSettings = () => {
+    setStep('settings');
   };
 
-  // Check if override is risky
-  const getOverrideRisk = (moduleId: string, weeks: number): 'safe' | 'warning' | 'danger' => {
-    const suggested = getSuggestedWeeks(moduleId);
-    const ratio = weeks / suggested;
-    
-    if (ratio < 0.5) return 'danger';
-    if (ratio < 0.75 || ratio > 1.5) return 'warning';
-    return 'safe';
-  };
+  // Calendar step
+  if (step === 'calendar') {
+    return (
+      <StudyPlanCalendarWizard
+        modules={modules}
+        chapters={chapters}
+        totalWeeks={totalWeeks}
+        revisionRounds={revisionRounds}
+        startDate={new Date(startDate)}
+        onConfirm={handleCalendarConfirm}
+        onBack={handleBackToSettings}
+      />
+    );
+  }
 
-  // Calculate total overridden weeks
-  const getTotalAllocatedWeeks = () => {
-    const studyWeeks = Math.floor(feasibility.totalWeeks * (revisionRounds === 2 ? 0.63 : 0.75));
-    let total = 0;
-    
-    modules.forEach(m => {
-      if (moduleWeekOverrides[m.id] !== undefined) {
-        total += moduleWeekOverrides[m.id];
-      } else {
-        total += getSuggestedWeeks(m.id);
-      }
-    });
-    
-    return { total, available: studyWeeks };
-  };
-
+  // Settings step
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -354,153 +362,7 @@ export function StudyPlanWizard({
           </Collapsible>
         </div>
 
-        {/* Module Week Overrides - Advanced Control */}
-        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl p-5 overflow-hidden">
-          <Collapsible open={showWeekOverrides} onOpenChange={setShowWeekOverrides}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full p-0 h-auto hover:bg-transparent group text-left">
-                <div className="flex items-start gap-2.5 w-full overflow-hidden">
-                  <Settings2 className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0 overflow-hidden pr-2">
-                    <span className="text-sm font-semibold text-foreground block">
-                      Customize Week Allocation
-                    </span>
-                    <span className="text-xs text-muted-foreground block leading-relaxed break-words whitespace-normal">
-                      Override the suggested weeks for each module (advanced).
-                    </span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 mt-0.5 ${showWeekOverrides ? 'rotate-180' : ''}`} />
-                </div>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-5 space-y-4">
-              {/* Week allocation summary */}
-              {(() => {
-                const { total, available } = getTotalAllocatedWeeks();
-                const isOver = total > available;
-                const isUnder = total < available - 1;
-                return (
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${
-                    isOver ? 'bg-red-100 dark:bg-red-950/30' : 
-                    isUnder ? 'bg-amber-100 dark:bg-amber-950/30' : 
-                    'bg-emerald-100 dark:bg-emerald-950/30'
-                  }`}>
-                    <span className="text-xs font-medium">
-                      {isOver ? (
-                        <span className="text-red-700 dark:text-red-400 flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          {total - available} week(s) over budget
-                        </span>
-                      ) : isUnder ? (
-                        <span className="text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          {available - total} week(s) unallocated
-                        </span>
-                      ) : (
-                        <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Weeks balanced
-                        </span>
-                      )}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {total} / {available} weeks
-                    </Badge>
-                  </div>
-                );
-              })()}
-
-              {modules.length > 0 && (
-                <div className="space-y-4">
-                  {modules.map((module) => {
-                    const suggested = getSuggestedWeeks(module.id);
-                    const current = moduleWeekOverrides[module.id] ?? suggested;
-                    const risk = getOverrideRisk(module.id, current);
-                    const weight = getModuleWeightCategory(module, modules);
-                    const weightLabel = weight === 'heavy+' ? 'Heavy+' : weight.charAt(0).toUpperCase() + weight.slice(1);
-                    
-                    return (
-                      <div key={module.id} className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="truncate">{module.name}</span>
-                            <Badge variant="outline" className="text-xs shrink-0">
-                              {weightLabel}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {risk === 'danger' && (
-                              <AlertTriangle className="w-4 h-4 text-red-500" />
-                            )}
-                            {risk === 'warning' && (
-                              <AlertCircle className="w-4 h-4 text-amber-500" />
-                            )}
-                            <Badge 
-                              variant={risk === 'safe' ? 'secondary' : 'outline'} 
-                              className={`${
-                                risk === 'danger' ? 'border-red-300 text-red-700 dark:text-red-400' : 
-                                risk === 'warning' ? 'border-amber-300 text-amber-700 dark:text-amber-400' : ''
-                              }`}
-                            >
-                              {current}w
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <Slider
-                            value={[current]}
-                            onValueChange={([value]) => {
-                              if (value === suggested) {
-                                setModuleWeekOverrides(prev => {
-                                  const next = { ...prev };
-                                  delete next[module.id];
-                                  return next;
-                                });
-                              } else {
-                                setModuleWeekOverrides(prev => ({ ...prev, [module.id]: value }));
-                              }
-                            }}
-                            min={1}
-                            max={Math.max(suggested * 2, 8)}
-                            step={1}
-                            className="flex-1"
-                          />
-                          <span className="text-xs text-muted-foreground w-16 text-right">
-                            (rec: {suggested}w)
-                          </span>
-                        </div>
-                        
-                        {risk === 'danger' && (
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            ⚠️ Dangerously short for this module's workload
-                          </p>
-                        )}
-                        {risk === 'warning' && moduleWeekOverrides[module.id] !== undefined && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400">
-                            This allocation differs significantly from recommended
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {Object.keys(moduleWeekOverrides).length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setModuleWeekOverrides({})}
-                  className="mt-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                  Reset to Recommended
-                </Button>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
+        {/* Feasibility indicator */}
         <div className={`p-4 rounded-lg border ${
           feasibility.isFeasible 
             ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800' 
@@ -542,21 +404,13 @@ export function StudyPlanWizard({
         {/* Action buttons */}
         <div className="flex flex-wrap gap-3 pt-2">
           <Button 
-            onClick={handleSubmit} 
-            disabled={isGenerating}
-            className="flex-1 sm:flex-none"
+            onClick={handleProceedToCalendar} 
+            disabled={isGenerating || totalWeeks < 4}
+            className="flex-1 sm:flex-none gap-2"
           >
-            {isGenerating ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                {existingPlan ? 'Update Plan' : 'Generate Plan'}
-              </>
-            )}
+            <Calendar className="w-4 h-4" />
+            Customize Calendar
+            <ArrowRight className="w-4 h-4" />
           </Button>
           {existingPlan && (
             <Button 
@@ -564,10 +418,21 @@ export function StudyPlanWizard({
               onClick={onReset}
               disabled={isResetting}
             >
-              {isResetting ? 'Resetting...' : 'Reset Plan'}
+              {isResetting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : 'Reset Plan'}
             </Button>
           )}
         </div>
+
+        {totalWeeks < 4 && (
+          <p className="text-xs text-red-600 dark:text-red-400">
+            Plan must be at least 4 weeks long
+          </p>
+        )}
       </CardContent>
     </Card>
   );
