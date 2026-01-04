@@ -35,9 +35,9 @@ export function HardModeQuestion({
     setTimeLeft(secondsPerQuestion);
   }, [question.id, secondsPerQuestion]);
 
-  // Countdown timer - stops if answer selected
+  // Countdown timer
   useEffect(() => {
-    if (isPaused || selectedAnswer !== null) return;
+    if (isPaused) return;
 
     const interval = setInterval(() => {
       setTimeLeft(prev => {
@@ -51,14 +51,7 @@ export function HardModeQuestion({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [question.id, isPaused, selectedAnswer, onTimeUp]);
-
-  // Immediately advance when answer is selected
-  useEffect(() => {
-    if (selectedAnswer !== null) {
-      onTimeUp();
-    }
-  }, [selectedAnswer, onTimeUp]);
+  }, [question.id, isPaused, onTimeUp]);
 
   const progressPercent = (timeLeft / secondsPerQuestion) * 100;
   const isTimeLow = timeLeft <= 10;
@@ -119,7 +112,10 @@ export function HardModeQuestion({
 
       {/* No navigation in hard mode - informational text */}
       <p className="text-center text-sm text-muted-foreground">
-        Select an answer before time runs out
+        {selectedAnswer 
+          ? "Answer locked. Moving to next question..."
+          : "Select an answer before time runs out"
+        }
       </p>
     </div>
   );
