@@ -239,7 +239,7 @@ export function VimeoPlayer({
   }, [videoId, fetchProgress, saveProgress, markComplete, onReady, onPlay, onPause, onEnded]);
 
   // Build embed URL with necessary parameters
-  const embedUrl = `https://player.vimeo.com/video/${videoId}?${autoplay ? 'autoplay=1&muted=1&' : ''}playsinline=1`;
+  const embedUrl = `https://player.vimeo.com/video/${videoId}?${autoplay ? 'autoplay=1&' : ''}playsinline=1&dnt=1`;
 
   return (
     <div className={`relative w-full ${className}`}>
@@ -247,8 +247,9 @@ export function VimeoPlayer({
         <iframe
           ref={iframeRef}
           src={embedUrl}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          title="Vimeo video player"
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture"
           allowFullScreen
         />
       </div>
