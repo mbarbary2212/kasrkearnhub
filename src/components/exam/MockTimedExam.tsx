@@ -219,7 +219,13 @@ export function MockTimedExam({
     const questionId = examQuestions[currentIndex]?.id;
     if (questionId && !userAnswers[questionId]) {
       setUserAnswers(prev => ({ ...prev, [questionId]: key }));
-      // Don't immediately advance - wait for time up or short delay
+      // Immediately advance to next question or submit if last
+      if (currentIndex >= examQuestions.length - 1) {
+        // Use setTimeout to allow state update before submit
+        setTimeout(() => handleAutoSubmit(), 100);
+      } else {
+        setPhase('transition');
+      }
     }
   };
 
