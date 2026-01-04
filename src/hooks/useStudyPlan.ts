@@ -55,6 +55,7 @@ export interface Module {
   id: string;
   name: string;
   workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
+  page_count?: number | null;
 }
 
 export interface Chapter {
@@ -64,7 +65,7 @@ export interface Chapter {
   chapter_number: number;
 }
 
-// Module weight configuration - fallback when no workload_level and no content counts
+// Module weight configuration - fallback when no workload_level and no page counts
 const MODULE_WEIGHTS: Record<string, number> = {
   'medicine': 3.5,
   'internal medicine': 3.5,
@@ -72,10 +73,40 @@ const MODULE_WEIGHTS: Record<string, number> = {
   'surgery': 3,
 };
 
-function getModuleWeightValue(module: Module): number {
-  // Use explicit workload_level if set
+// Calculate workload from page count relative to other modules in the year
+function calculateWorkloadFromPageCount(
+  pageCount: number,
+  allPageCounts: number[]
+): 'heavy_plus' | 'heavy' | 'medium' | 'light' {
+  if (pageCount === 0 || allPageCounts.length === 0) return 'medium';
+  
+  // Sort page counts descending and find position
+  const sorted = [...allPageCounts].sort((a, b) => b - a);
+  const position = sorted.indexOf(pageCount);
+  const percentile = (position / sorted.length) * 100;
+  
+  if (percentile < 25) return 'heavy_plus';
+  if (percentile < 50) return 'heavy';
+  if (percentile < 75) return 'medium';
+  return 'light';
+}
+
+function getModuleWeightValue(module: Module, allModules?: Module[]): number {
+  // Use explicit workload_level if set (admin override)
   if (module.workload_level) {
     switch (module.workload_level) {
+      case 'heavy_plus': return 3.5;
+      case 'heavy': return 3;
+      case 'medium': return 2;
+      case 'light': return 1;
+    }
+  }
+  
+  // Use page_count for auto-calculation if available
+  if (module.page_count && module.page_count > 0 && allModules && allModules.length > 0) {
+    const allPageCounts = allModules.map(m => m.page_count || 0);
+    const workload = calculateWorkloadFromPageCount(module.page_count, allPageCounts);
+    switch (workload) {
       case 'heavy_plus': return 3.5;
       case 'heavy': return 3;
       case 'medium': return 2;
@@ -93,13 +124,13 @@ function getModuleWeightValue(module: Module): number {
   return 1; // Light modules by default
 }
 
-export function getModuleWeightCategory(module: Module | string): 'heavy+' | 'heavy' | 'medium' | 'light' {
+export function getModuleWeightCategory(module: Module | string, allModules?: Module[]): 'heavy+' | 'heavy' | 'medium' | 'light' {
   // Handle both module object and string for backward compatibility
   const mod: Module = typeof module === 'string' 
-    ? { id: '', name: module, workload_level: null } 
+    ? { id: '', name: module, workload_level: null, page_count: null } 
     : module;
   
-  const weight = getModuleWeightValue(mod);
+  const weight = getModuleWeightValue(mod, allModules);
   if (weight >= 3.5) return 'heavy+';
   if (weight >= 3) return 'heavy';
   if (weight >= 2) return 'medium';
@@ -220,7 +251,7 @@ export function useStudyPlan(yearId: string | null) {
       const totalWeight = modules.reduce((sum, m) => {
         const baseline = baselinePercents?.[m.id] || 0;
         const remainingPercent = (100 - baseline) / 100;
-        return sum + getModuleWeightValue(m) * remainingPercent;
+        return sum + getModuleWeightValue(m, modules) * remainingPercent;
       }, 0);
 
       const hoursPerWeek = daysPerWeek * hoursPerDay;
@@ -309,7 +340,7 @@ export function useStudyPlan(yearId: string | null) {
       for (const module of modules) {
         const baseline = baselinePercents?.[module.id] || 0;
         const remainingPercent = (100 - baseline) / 100;
-        const moduleWeight = getModuleWeightValue(module) * remainingPercent;
+        const moduleWeight = getModuleWeightValue(module, modules) * remainingPercent;
         const moduleWeeks = Math.max(1, Math.round((moduleWeight / totalWeight) * studyWeeks));
         
         // Get chapters for this module
