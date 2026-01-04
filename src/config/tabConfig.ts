@@ -18,7 +18,7 @@ import {
 export type ResourceTabId = 'lectures' | 'flashcards' | 'documents';
 
 // Self-assessment tab types (Practice tabs)
-export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'practical' | 'matching' | 'images';
+export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images';
 
 export interface TabConfig {
   id: string;
@@ -38,7 +38,8 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'mcqs', label: 'MCQs', icon: HelpCircle },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
   { id: 'cases', label: 'Case Scenarios', icon: Stethoscope },
-  { id: 'practical', label: 'OSCE / Practical', icon: FlaskConical },
+  { id: 'osce', label: 'OSCE', icon: FlaskConical },
+  { id: 'practical', label: 'Practical', icon: Stethoscope },
   { id: 'matching', label: 'Matching', icon: Link2 },
   { id: 'images', label: 'Image Questions', icon: Image },
 ];
@@ -63,6 +64,7 @@ export function createPracticeTabs(counts: {
   mcqs?: number;
   essays?: number;
   cases?: number;
+  osce?: number;
   practical?: number;
   matching?: number;
   images?: number;

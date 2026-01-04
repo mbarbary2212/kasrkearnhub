@@ -487,12 +487,20 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* OSCE / Practical - Note: OSCE is available at Chapter level */}
-                {practiceTab === 'practical' && (
+                {/* OSCE - Note: OSCE is available at Chapter level */}
+                {practiceTab === 'osce' && (
                   <div className="text-center py-12 border rounded-lg">
                     <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-muted-foreground">OSCE questions are available at the Chapter level.</p>
                     <p className="text-sm text-muted-foreground mt-2">Navigate to a chapter to access OSCE content.</p>
+                  </div>
+                )}
+
+                {/* Practical Content (placeholder) */}
+                {practiceTab === 'practical' && (
+                  <div className="text-center py-12 border rounded-lg">
+                    <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Practical content coming soon.</p>
                   </div>
                 )}
 
