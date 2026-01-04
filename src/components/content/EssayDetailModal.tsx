@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 
 interface Essay {
   id: string;
@@ -17,6 +18,7 @@ interface Essay {
   question: string;
   model_answer?: string | null;
   rating?: number | null;
+  chapter_id?: string | null;
 }
 
 interface EssayDetailModalProps {
@@ -26,6 +28,7 @@ interface EssayDetailModalProps {
   initialIndex: number;
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
+  isAdmin?: boolean;
 }
 
 export function EssayDetailModal({
@@ -35,9 +38,12 @@ export function EssayDetailModal({
   initialIndex,
   markedIds,
   onToggleMark,
+  isAdmin = false,
 }: EssayDetailModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showAnswer, setShowAnswer] = useState(false);
+  const completedEssays = useRef<Set<string>>(new Set());
+  const { markComplete } = useMarkItemComplete();
   
   // Reset state when modal opens or navigates
   useEffect(() => {
@@ -48,6 +54,14 @@ export function EssayDetailModal({
   }, [open, initialIndex]);
 
   const essay = essays[currentIndex];
+
+  // Mark as complete when answer is shown (model answer revealed)
+  useEffect(() => {
+    if (showAnswer && essay && !completedEssays.current.has(essay.id) && !isAdmin && essay.chapter_id) {
+      markComplete(essay.id, 'essay', essay.chapter_id);
+      completedEssays.current.add(essay.id);
+    }
+  }, [showAnswer, essay, isAdmin, markComplete]);
 
   const goNext = () => {
     if (currentIndex < essays.length - 1) {

@@ -94,10 +94,10 @@ function PlatformSettingsTab() {
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div className="space-y-1">
             <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
-              Hide Empty Self-Assessment Tabs
+              Hide Empty Practice Tabs
             </Label>
             <p className="text-sm text-muted-foreground">
-              When enabled, students will only see self-assessment sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
+              When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
               Admins always see all tabs.
             </p>
           </div>

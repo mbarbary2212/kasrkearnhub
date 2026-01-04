@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 
 interface McqCardProps {
   mcq: Mcq;
   index: number;
   isAdmin: boolean;
+  chapterId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
@@ -24,6 +26,7 @@ export function McqCard({
   mcq, 
   index, 
   isAdmin, 
+  chapterId,
   onEdit, 
   onDelete, 
   onRestore,
@@ -34,11 +37,21 @@ export function McqCard({
   isDeleted = false,
 }: McqCardProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const hasMarkedComplete = useRef(false);
+  const { markComplete } = useMarkItemComplete();
   
   // Use controlled expand state if provided, otherwise internal state
   const showAnswer = isExpanded ?? false;
 
   const choices = mcq.choices as McqChoice[];
+
+  // Mark as complete when answer is shown (user has submitted and received feedback)
+  useEffect(() => {
+    if (showAnswer && selectedKey && !hasMarkedComplete.current && !isAdmin && chapterId) {
+      markComplete(mcq.id, 'mcq', chapterId);
+      hasMarkedComplete.current = true;
+    }
+  }, [showAnswer, selectedKey, mcq.id, chapterId, isAdmin, markComplete]);
 
   const handleChoiceClick = (key: string) => {
     if (!showAnswer) {

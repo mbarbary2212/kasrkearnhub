@@ -1,7 +1,12 @@
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FolderOpen, GraduationCap } from 'lucide-react';
+import { FolderOpen, GraduationCap, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ChapterProgressBarProps {
   totalProgress: number;
@@ -35,7 +40,7 @@ export function ChapterProgressBar({
     );
   }
 
-  // Phase 1: Progress is driven by practice items (self-assessment)
+  // Progress is driven by practice items (coverage of completed interactions)
   const hasContent = practiceTotal > 0;
 
   return (
@@ -43,7 +48,20 @@ export function ChapterProgressBar({
       {/* Main Progress Bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium">Chapter Progress</span>
+          <div className="flex items-center gap-1">
+            <span className="font-medium">Progress</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 cursor-help opacity-60 hover:opacity-100" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  Progress reflects completed practice items, not exam scores.
+                  Complete MCQs, OSCE, Essays, and other practice items to increase your progress.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
           <span>{hasContent ? `${totalProgress}% complete` : 'No content yet'}</span>
         </div>
         <Progress value={hasContent ? totalProgress : 0} className="h-2" />
@@ -55,7 +73,7 @@ export function ChapterProgressBar({
           {practiceTotal > 0 && (
             <div className="flex items-center gap-1.5">
               <GraduationCap className="w-3 h-3" />
-              <span>Self-Assessment:</span>
+              <span>Practice:</span>
               <span className={cn(
                 "font-medium",
                 practiceProgress === 100 && "text-accent"

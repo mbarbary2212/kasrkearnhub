@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +16,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OsceQuestion } from '@/hooks/useOsceQuestions';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 
 interface OsceQuestionCardProps {
   question: OsceQuestion;
   questionNumber: number;
   isAdmin?: boolean;
+  chapterId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
@@ -30,6 +32,7 @@ export function OsceQuestionCard({
   question,
   questionNumber,
   isAdmin = false,
+  chapterId,
   onEdit,
   onDelete,
   onRestore,
@@ -39,6 +42,8 @@ export function OsceQuestionCard({
   });
   const [submitted, setSubmitted] = useState(false);
   const [showExplanations, setShowExplanations] = useState(false);
+  const hasMarkedComplete = useRef(false);
+  const { markComplete } = useMarkItemComplete();
 
   const statements = [
     { text: question.statement_1, correct: question.answer_1, explanation: question.explanation_1 },
@@ -47,6 +52,14 @@ export function OsceQuestionCard({
     { text: question.statement_4, correct: question.answer_4, explanation: question.explanation_4 },
     { text: question.statement_5, correct: question.answer_5, explanation: question.explanation_5 },
   ];
+
+  // Mark as complete when submitted (all T/F statements answered)
+  useEffect(() => {
+    if (submitted && !hasMarkedComplete.current && !isAdmin && chapterId) {
+      markComplete(question.id, 'osce', chapterId);
+      hasMarkedComplete.current = true;
+    }
+  }, [submitted, question.id, chapterId, isAdmin, markComplete]);
 
   const handleAnswerChange = (index: number, value: boolean) => {
     if (submitted) return;
@@ -63,6 +76,7 @@ export function OsceQuestionCard({
     setAnswers({ 1: null, 2: null, 3: null, 4: null, 5: null });
     setSubmitted(false);
     setShowExplanations(false);
+    // Note: We don't reset hasMarkedComplete - once completed, it stays completed
   };
 
   const getScore = () => {

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 
 interface CaseScenario {
   id: string;
@@ -18,6 +19,7 @@ interface CaseScenario {
   case_questions: string;
   model_answer: string;
   rating?: number | null;
+  chapter_id?: string | null;
 }
 
 interface CaseScenarioDetailModalProps {
@@ -27,6 +29,7 @@ interface CaseScenarioDetailModalProps {
   initialIndex: number;
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
+  isAdmin?: boolean;
 }
 
 // Parse questions separated by | into numbered list
@@ -42,9 +45,12 @@ export function CaseScenarioDetailModal({
   initialIndex,
   markedIds,
   onToggleMark,
+  isAdmin = false,
 }: CaseScenarioDetailModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showAnswer, setShowAnswer] = useState(false);
+  const completedCases = useRef<Set<string>>(new Set());
+  const { markComplete } = useMarkItemComplete();
   
   // Reset state when modal opens or navigates
   useEffect(() => {
@@ -55,6 +61,14 @@ export function CaseScenarioDetailModal({
   }, [open, initialIndex]);
 
   const caseItem = cases[currentIndex];
+
+  // Mark as complete when solution is viewed
+  useEffect(() => {
+    if (showAnswer && caseItem && !completedCases.current.has(caseItem.id) && !isAdmin && caseItem.chapter_id) {
+      markComplete(caseItem.id, 'case_scenario', caseItem.chapter_id);
+      completedCases.current.add(caseItem.id);
+    }
+  }, [showAnswer, caseItem, isAdmin, markComplete]);
 
   const goNext = () => {
     if (currentIndex < cases.length - 1) {

@@ -459,6 +459,7 @@ export function McqList({
                   mcq={mcq}
                   index={index}
                   isAdmin={isAdmin}
+                  chapterId={chapterId}
                   onEdit={showDeleted ? undefined : () => setEditingMcq(mcq)}
                   onDelete={showDeleted ? undefined : () => setDeletingMcq(mcq)}
                   onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}

@@ -1,6 +1,36 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+
+/**
+ * Progress Tracking System
+ * 
+ * INTERNAL TERMINOLOGY:
+ * - "Learning Unit" = Chapter or Lecture (never exposed to users)
+ * - "Item" = Any practice-based interaction (MCQ, OSCE, Essay, Case Scenario, Matching)
+ * 
+ * COMPLETION RULES:
+ * - MCQ: Answer submitted and feedback shown
+ * - OSCE: All T/F statements submitted
+ * - Short Answer (Essay): Model answer revealed OR marked as done
+ * - Case Scenario: Full solution viewed
+ * - Matching: Interaction completed
+ * 
+ * PROGRESS CALCULATION:
+ * Progress (%) = (Completed Items / Total Items) × 100
+ * This reflects COVERAGE only, not performance or grades.
+ */
+
+// Content types that can be tracked for progress
+export type TrackableContentType = 
+  | 'lecture' 
+  | 'resource' 
+  | 'mcq' 
+  | 'essay' 
+  | 'practical' 
+  | 'osce' 
+  | 'case_scenario' 
+  | 'matching';
 
 interface ChapterProgressData {
   totalProgress: number;
@@ -34,7 +64,7 @@ export function useChapterProgress(chapterId?: string) {
         };
       }
 
-      // Fetch all content items for this chapter
+      // Fetch all content items for this learning unit (chapter)
       const [
         lecturesRes,
         resourcesRes,
@@ -42,6 +72,8 @@ export function useChapterProgress(chapterId?: string) {
         essaysRes,
         practicalsRes,
         caseScenariosRes,
+        osceRes,
+        matchingRes,
         userProgressRes,
       ] = await Promise.all([
         supabase.from('lectures').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
@@ -50,6 +82,8 @@ export function useChapterProgress(chapterId?: string) {
         supabase.from('essays').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('practicals').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('case_scenarios').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
+        supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
+        supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('user_progress').select('content_id, content_type, completed').eq('user_id', user.id),
       ]);
 
@@ -60,11 +94,13 @@ export function useChapterProgress(chapterId?: string) {
       const essayIds = essaysRes.data?.map(e => e.id) || [];
       const practicalIds = practicalsRes.data?.map(p => p.id) || [];
       const caseIds = caseScenariosRes.data?.map(c => c.id) || [];
+      const osceIds = osceRes.data?.map(o => o.id) || [];
+      const matchingIds = matchingRes.data?.map(m => m.id) || [];
 
-      // Resources = lectures + documents
+      // Resources = lectures + documents (informational, not tracked for progress)
       const allResourceIds = [...lectureIds, ...resourceIds];
-      // Practice = mcqs + essays + practicals + cases
-      const allPracticeIds = [...mcqIds, ...essayIds, ...practicalIds, ...caseIds];
+      // Practice = all interactive items (MCQs, Essays, Practicals, Cases, OSCE, Matching)
+      const allPracticeIds = [...mcqIds, ...essayIds, ...practicalIds, ...caseIds, ...osceIds, ...matchingIds];
 
       const resourcesTotal = allResourceIds.length;
       const practiceTotal = allPracticeIds.length;
@@ -83,7 +119,7 @@ export function useChapterProgress(chapterId?: string) {
       const resourcesProgress = resourcesTotal > 0 ? Math.round((resourcesCompleted / resourcesTotal) * 100) : 0;
       const practiceProgress = practiceTotal > 0 ? Math.round((practiceCompleted / practiceTotal) * 100) : 0;
       
-      // Phase 1: Use practice progress as the main chapter progress driver
+      // Progress is driven by practice items (coverage of completed interactions)
       // Resources are informational only and don't affect the main progress score
       const totalProgress = practiceProgress;
 
@@ -91,8 +127,8 @@ export function useChapterProgress(chapterId?: string) {
         totalProgress,
         resourcesProgress,
         practiceProgress,
-        completedItems: practiceCompleted, // Focus on practice completions
-        totalItems: practiceTotal, // Focus on practice items
+        completedItems: practiceCompleted,
+        totalItems: practiceTotal,
         resourcesCompleted,
         resourcesTotal,
         practiceCompleted,
@@ -104,11 +140,25 @@ export function useChapterProgress(chapterId?: string) {
   });
 }
 
-// Hook to mark an item as completed
+/**
+ * Hook to mark an item as completed
+ * 
+ * Call this when:
+ * - MCQ: After answer is submitted and feedback shown
+ * - OSCE: After all T/F statements submitted
+ * - Essay: When "Show Answer" clicked or "Mark as Done"
+ * - Case Scenario: When full solution viewed
+ * - Matching: When interaction completed
+ */
 export function useMarkItemComplete() {
   const { user } = useAuthContext();
+  const queryClient = useQueryClient();
 
-  const markComplete = async (contentId: string, contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical') => {
+  const markComplete = async (
+    contentId: string, 
+    contentType: TrackableContentType,
+    chapterId?: string
+  ) => {
     if (!user?.id) return;
 
     const { error } = await supabase
@@ -125,8 +175,47 @@ export function useMarkItemComplete() {
 
     if (error) {
       console.error('Failed to mark item complete:', error);
+      return;
     }
+
+    // Invalidate progress queries to update UI immediately
+    if (chapterId) {
+      queryClient.invalidateQueries({ queryKey: ['chapter-progress', chapterId] });
+    }
+    // Also invalidate the general progress query
+    queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
   };
 
   return { markComplete };
+}
+
+/**
+ * Hook to check if a specific item is completed
+ */
+export function useItemCompletionStatus(contentId?: string, contentType?: TrackableContentType) {
+  const { user } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['item-completion', contentId, contentType, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !contentId || !contentType) return false;
+
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('completed')
+        .eq('user_id', user.id)
+        .eq('content_id', contentId)
+        .eq('content_type', contentType)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to check completion status:', error);
+        return false;
+      }
+
+      return data?.completed ?? false;
+    },
+    enabled: !!contentId && !!contentType && !!user?.id,
+    staleTime: 30000,
+  });
 }
