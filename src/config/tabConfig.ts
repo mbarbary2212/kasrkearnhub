@@ -17,7 +17,8 @@ import {
 // Resource tab types
 export type ResourceTabId = 'lectures' | 'flashcards' | 'documents';
 
-// Self-assessment tab types (Practice tabs)
+// Practice tab types (formerly "Self-Assessment")
+// Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
 export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images';
 
 export interface TabConfig {

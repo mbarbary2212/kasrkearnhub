@@ -135,6 +135,7 @@ export function OsceList({
             question={question}
             questionNumber={index + 1}
             isAdmin={isAdmin}
+            chapterId={chapterId}
             onEdit={() => handleEdit(question)}
             onDelete={() => setDeleteConfirmId(question.id)}
             onRestore={() => handleRestore(question)}

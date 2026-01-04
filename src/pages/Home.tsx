@@ -116,7 +116,7 @@ export default function Home() {
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
                 <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
               </div>
-              <h3 className="font-heading font-semibold mb-2">Self Assessment</h3>
+              <h3 className="font-heading font-semibold mb-2">Practice</h3>
               <p className="text-sm text-muted-foreground">
                 Test your understanding
               </p>

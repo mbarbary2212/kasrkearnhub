@@ -21,6 +21,7 @@ interface Essay {
   model_answer?: string | null;
   rating?: number | null;
   is_deleted?: boolean;
+  chapter_id?: string | null;
 }
 
 interface EssayListProps {
@@ -309,10 +310,11 @@ export default function EssayList({
       <EssayDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        essays={showMarkedOnly ? filteredEssays : essays}
+        essays={(showMarkedOnly ? filteredEssays : essays).map(e => ({ ...e, chapter_id: chapterId }))}
         initialIndex={showMarkedOnly ? 0 : selectedIndex}
         markedIds={markedIds}
         onToggleMark={toggleMark}
+        isAdmin={canEdit}
       />
     </>
   );

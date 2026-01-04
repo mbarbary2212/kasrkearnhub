@@ -2922,7 +2922,15 @@ export type Database = {
         | "platform_admin"
         | "super_admin"
         | "topic_admin"
-      content_type: "lecture" | "resource" | "mcq" | "essay" | "practical"
+      content_type:
+        | "lecture"
+        | "resource"
+        | "mcq"
+        | "essay"
+        | "practical"
+        | "osce"
+        | "case_scenario"
+        | "matching"
       department_category: "basic" | "clinical"
       feedback_category:
         | "bug"
@@ -3076,7 +3084,16 @@ export const Constants = {
         "super_admin",
         "topic_admin",
       ],
-      content_type: ["lecture", "resource", "mcq", "essay", "practical"],
+      content_type: [
+        "lecture",
+        "resource",
+        "mcq",
+        "essay",
+        "practical",
+        "osce",
+        "case_scenario",
+        "matching",
+      ],
       department_category: ["basic", "clinical"],
       feedback_category: [
         "bug",

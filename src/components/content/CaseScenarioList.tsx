@@ -364,10 +364,11 @@ export default function CaseScenarioList({
       <CaseScenarioDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        cases={showMarkedOnly ? filteredCases : cases}
+        cases={(showMarkedOnly ? filteredCases : cases).map(c => ({ ...c, chapter_id: chapterId }))}
         initialIndex={showMarkedOnly ? 0 : selectedIndex}
         markedIds={markedIds}
         onToggleMark={toggleMark}
+        isAdmin={canEdit}
       />
 
       {/* Edit Modal */}

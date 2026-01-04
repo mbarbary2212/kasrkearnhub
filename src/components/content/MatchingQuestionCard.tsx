@@ -1,15 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MatchingQuestion, MatchItem } from '@/hooks/useMatchingQuestions';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 
 interface MatchingQuestionCardProps {
   question: MatchingQuestion;
   index: number;
   isAdmin: boolean;
+  chapterId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   isExpanded?: boolean;
@@ -20,6 +22,7 @@ export function MatchingQuestionCard({
   question, 
   index, 
   isAdmin, 
+  chapterId,
   onEdit, 
   onDelete,
   isExpanded,
@@ -28,8 +31,18 @@ export function MatchingQuestionCard({
   const [selectedMatches, setSelectedMatches] = useState<Record<string, string>>({});
   const [selectedA, setSelectedA] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const hasMarkedComplete = useRef(false);
+  const { markComplete } = useMarkItemComplete();
 
   const showAnswer = isExpanded ?? false;
+
+  // Mark as complete when submitted
+  useEffect(() => {
+    if (submitted && !hasMarkedComplete.current && !isAdmin && chapterId) {
+      markComplete(question.id, 'matching', chapterId);
+      hasMarkedComplete.current = true;
+    }
+  }, [submitted, question.id, chapterId, isAdmin, markComplete]);
 
   // Shuffle column B items for student view (deterministic based on question id)
   const shuffledColumnB = useMemo(() => {
@@ -68,6 +81,7 @@ export function MatchingQuestionCard({
     setSelectedMatches({});
     setSelectedA(null);
     setSubmitted(false);
+    // Note: We don't reset hasMarkedComplete - once completed, it stays completed
   };
 
   const getScore = () => {

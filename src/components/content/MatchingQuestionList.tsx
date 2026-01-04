@@ -201,6 +201,7 @@ export function MatchingQuestionList({
                   question={question}
                   index={index}
                   isAdmin={isAdmin}
+                  chapterId={chapterId || undefined}
                   onEdit={() => handleEdit(question)}
                   onDelete={() => setDeleteId(question.id)}
                   isExpanded={expandedId === question.id}
