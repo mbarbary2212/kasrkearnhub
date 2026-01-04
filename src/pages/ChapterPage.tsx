@@ -397,45 +397,16 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Documents Content (simple list, no cards) */}
-                {resourcesTab === 'documents' && (
-                  <div>
-                    {showAddControls && chapterId && moduleId ? (
-                      <ResourcesTabContent
-                        chapterId={chapterId}
-                        moduleId={moduleId}
-                        resources={resources || []}
-                        resourcesLoading={resourcesLoading}
-                        canManageContent={canManageContent}
-                        isSuperAdmin={auth.isSuperAdmin}
-                      />
-                    ) : (
-                      // Simple list view for students
-                      <div className="space-y-1">
-                        {resourcesLoading ? (
-                          <div className="space-y-2">
-                            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10" />)}
-                          </div>
-                        ) : resources && resources.length > 0 ? (
-                          resources.map((resource) => (
-                            <a
-                              key={resource.id}
-                              href={resource.file_url || resource.external_url || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors group"
-                            >
-                              <FileText className="w-4 h-4 text-muted-foreground" />
-                              <span className="flex-1 text-sm">{resource.title}</span>
-                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </a>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground py-4 text-center">No documents available.</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                {/* Documents Content */}
+                {resourcesTab === 'documents' && chapterId && moduleId && (
+                  <ResourcesTabContent
+                    chapterId={chapterId}
+                    moduleId={moduleId}
+                    resources={resources || []}
+                    resourcesLoading={resourcesLoading}
+                    canManageContent={canManageContent}
+                    isSuperAdmin={auth.isSuperAdmin}
+                  />
                 )}
               </div>
             )}
