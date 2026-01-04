@@ -7,6 +7,8 @@ import { differenceInWeeks, format } from 'date-fns';
 interface Module {
   id: string;
   name: string;
+  workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
+  page_count?: number | null;
 }
 
 interface StudyPlanTimelineProps {
@@ -54,7 +56,7 @@ export function StudyPlanTimeline({
   safeModules.forEach(m => {
     moduleWeeks[m.id] = { 
       weeks: new Set(), 
-      weight: getModuleWeightCategory(m.name) 
+      weight: getModuleWeightCategory(m, safeModules) 
     };
   });
 
