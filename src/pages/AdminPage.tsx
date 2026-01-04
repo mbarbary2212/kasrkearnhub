@@ -958,14 +958,14 @@ export default function AdminPage() {
                             <div className="space-y-2">
                               <Label>Workload Level Override</Label>
                               <Select
-                                value={moduleForm.workload_level}
-                                onValueChange={(value) => setModuleForm(prev => ({ ...prev, workload_level: value as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus' }))}
+                                value={moduleForm.workload_level || 'auto'}
+                                onValueChange={(value) => setModuleForm(prev => ({ ...prev, workload_level: value === 'auto' ? '' : value as 'light' | 'medium' | 'heavy' | 'heavy_plus' }))}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Auto-calculate from pages" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Auto-calculate from pages</SelectItem>
+                                  <SelectItem value="auto">Auto-calculate from pages</SelectItem>
                                   <SelectItem value="light">Light</SelectItem>
                                   <SelectItem value="medium">Medium</SelectItem>
                                   <SelectItem value="heavy">Heavy</SelectItem>
