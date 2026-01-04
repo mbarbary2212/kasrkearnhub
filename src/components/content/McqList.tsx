@@ -40,11 +40,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
+import { PracticeHeader } from './PracticeHeader';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
+import { 
+  useChapterQuestionAttempts, 
+  useChapterAttemptHistory, 
+  useResetChapterAttempt,
+  useChapterPercentile,
+} from '@/hooks/useQuestionAttempts';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -176,6 +183,59 @@ export function McqList({
   const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
 
+  // Question attempt tracking hooks (for students)
+  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
+    chapterId ?? undefined, 
+    'mcq'
+  );
+  const { data: attemptHistory = [] } = useChapterAttemptHistory(
+    chapterId ?? undefined, 
+    'mcq'
+  );
+  const resetAttemptMutation = useResetChapterAttempt();
+  const { data: percentileData } = useChapterPercentile(
+    chapterId ?? undefined, 
+    'mcq'
+  );
+
+  // Create a map of question attempts for quick lookup
+  const attemptMap = useMemo(() => {
+    const map = new Map<string, typeof questionAttempts[0]>();
+    questionAttempts.forEach(a => map.set(a.question_id, a));
+    return map;
+  }, [questionAttempts]);
+
+  // Calculate attempted/unattempted counts
+  const attemptedIds = useMemo(() => new Set(questionAttempts.map(a => a.question_id)), [questionAttempts]);
+  const totalQuestions = mcqs.length;
+  const attemptedCount = mcqs.filter(m => attemptedIds.has(m.id)).length;
+  const unattemptedCount = totalQuestions - attemptedCount;
+
+  // Show attempted toggle (default off = only show unattempted)
+  const [showAttempted, setShowAttempted] = useState(() => 
+    searchParams.get('mcq_show_attempted') === 'true'
+  );
+
+  // Persist show attempted to URL
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (showAttempted) next.set('mcq_show_attempted', 'true');
+        else next.delete('mcq_show_attempted');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [showAttempted, setSearchParams]);
+
+  // Get current attempt number
+  const currentAttemptNumber = useMemo(() => {
+    if (attemptHistory.length === 0) return 1;
+    const latest = attemptHistory[attemptHistory.length - 1];
+    return latest.is_completed ? latest.attempt_number + 1 : latest.attempt_number;
+  }, [attemptHistory]);
+
   // Combine active and deleted MCQs based on showDeleted flag
   const displayMcqs = showDeleted ? deletedMcqs : mcqs;
 
@@ -206,8 +266,15 @@ export function McqList({
     [duplicateMcqs]
   );
 
+  // Smart practice: filter based on attempt status + other filters
   const filteredMcqs = useMemo(() => {
     let result = displayMcqs;
+    
+    // For students: hide attempted questions by default (smart practice)
+    if (!isAdmin && !showDeleted && !showAttempted) {
+      result = result.filter(mcq => !attemptedIds.has(mcq.id));
+    }
+    
     if (showDuplicatesOnly && !showDeleted) {
       result = result.filter(mcq => duplicateIds.has(mcq.id));
     }
@@ -215,7 +282,12 @@ export function McqList({
       result = result.filter(mcq => markedIds.has(mcq.id));
     }
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, showAttempted, attemptedIds]);
+
+  const handleResetAttempt = () => {
+    if (!chapterId) return;
+    resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' });
+  };
 
   const toggleMark = useCallback((id: string) => {
     setMarkedIds(prev => {
@@ -482,6 +554,24 @@ export function McqList({
         </Alert>
       )}
 
+      {/* Practice Header for students (not admin, not deleted view) */}
+      {!isAdmin && !showDeleted && chapterId && totalQuestions > 0 && (
+        <PracticeHeader
+          questionType="mcq"
+          chapterId={chapterId}
+          totalQuestions={totalQuestions}
+          attemptedCount={attemptedCount}
+          unattemptedCount={unattemptedCount}
+          currentAttemptNumber={currentAttemptNumber}
+          attemptHistory={attemptHistory}
+          percentileData={percentileData ?? null}
+          showAttempted={showAttempted}
+          onShowAttemptedChange={setShowAttempted}
+          onResetAttempt={handleResetAttempt}
+          isResetting={resetAttemptMutation.isPending}
+        />
+      )}
+
       {/* MCQ Cards */}
       {filteredMcqs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
@@ -492,15 +582,18 @@ export function McqList({
                 ? 'No marked questions. Click the star icon on any question to mark it for review.' 
                 : showDuplicatesOnly 
                   ? 'No duplicates found.' 
-                  : isAdmin 
-                    ? 'No MCQs yet. Click "Add Question" to create one.'
-                    : 'No MCQs available yet.'}
+                  : !isAdmin && !showAttempted && unattemptedCount === 0 && attemptedCount > 0
+                    ? 'All questions attempted! Toggle "Include attempted" to review, or reset to start a new attempt.'
+                    : isAdmin 
+                      ? 'No MCQs yet. Click "Add Question" to create one.'
+                      : 'No MCQs available yet.'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredMcqs.map((mcq, index) => {
             const duplicateInfo = !showDeleted ? duplicateMcqs.find(d => d.mcq.id === mcq.id) : null;
+            const previousAttempt = !isAdmin ? attemptMap.get(mcq.id) : undefined;
             return (
               <div key={mcq.id} className={`relative ${showDeleted ? 'opacity-75' : ''}`}>
                 {duplicateInfo && (
@@ -525,15 +618,17 @@ export function McqList({
                   mcq={mcq}
                   index={index}
                   isAdmin={isAdmin}
-                  chapterId={chapterId}
+                  chapterId={chapterId ?? undefined}
+                  moduleId={moduleId}
                   onEdit={showDeleted ? undefined : () => setEditingMcq(mcq)}
                   onDelete={showDeleted ? undefined : () => setDeletingMcq(mcq)}
                   onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}
                   isMarked={markedIds.has(mcq.id)}
                   onToggleMark={toggleMark}
-                  isExpanded={expandedMcqId === mcq.id}
+                  isExpanded={expandedMcqId === mcq.id || !!previousAttempt}
                   onToggleExpand={(id) => setExpandedMcqId(prev => prev === id ? null : id)}
                   isDeleted={showDeleted}
+                  previousAttempt={previousAttempt}
                 />
               </div>
             );

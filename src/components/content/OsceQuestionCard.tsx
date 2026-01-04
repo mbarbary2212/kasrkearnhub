@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,20 +12,26 @@ import {
   Edit, 
   Trash2, 
   RotateCcw,
-  Image as ImageIcon 
+  Image as ImageIcon,
+  CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { useSaveQuestionAttempt, QuestionAttempt } from '@/hooks/useQuestionAttempts';
+import type { Json } from '@/integrations/supabase/types';
 
 interface OsceQuestionCardProps {
   question: OsceQuestion;
   questionNumber: number;
   isAdmin?: boolean;
   chapterId?: string;
+  moduleId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
+  // Previous attempt data for restoring state
+  previousAttempt?: QuestionAttempt | null;
 }
 
 export function OsceQuestionCard({
@@ -33,17 +39,34 @@ export function OsceQuestionCard({
   questionNumber,
   isAdmin = false,
   chapterId,
+  moduleId,
   onEdit,
   onDelete,
   onRestore,
+  previousAttempt,
 }: OsceQuestionCardProps) {
-  const [answers, setAnswers] = useState<Record<number, boolean | null>>({
-    1: null, 2: null, 3: null, 4: null, 5: null
-  });
-  const [submitted, setSubmitted] = useState(false);
+  // Restore previous answers if available
+  const initialAnswers = useMemo(() => {
+    if (previousAttempt?.selected_answer && typeof previousAttempt.selected_answer === 'object') {
+      const savedAnswers = previousAttempt.selected_answer as Record<string, boolean>;
+      return {
+        1: savedAnswers['1'] ?? null,
+        2: savedAnswers['2'] ?? null,
+        3: savedAnswers['3'] ?? null,
+        4: savedAnswers['4'] ?? null,
+        5: savedAnswers['5'] ?? null,
+      };
+    }
+    return { 1: null, 2: null, 3: null, 4: null, 5: null };
+  }, [previousAttempt]);
+
+  const [answers, setAnswers] = useState<Record<number, boolean | null>>(initialAnswers);
+  const [submitted, setSubmitted] = useState(!!previousAttempt);
   const [showExplanations, setShowExplanations] = useState(false);
-  const hasMarkedComplete = useRef(false);
+  const hasMarkedComplete = useRef(!!previousAttempt);
+  const hasSavedAttempt = useRef(!!previousAttempt);
   const { markComplete } = useMarkItemComplete();
+  const saveAttempt = useSaveQuestionAttempt();
 
   const statements = [
     { text: question.statement_1, correct: question.answer_1, explanation: question.explanation_1 },
@@ -61,6 +84,30 @@ export function OsceQuestionCard({
     }
   }, [submitted, question.id, chapterId, isAdmin, markComplete]);
 
+  // Auto-save attempt when submitted
+  useEffect(() => {
+    if (submitted && !hasSavedAttempt.current && !isAdmin && chapterId && moduleId) {
+      const score = getScore();
+      const selectedAnswer: Record<string, boolean> = {};
+      Object.entries(answers).forEach(([key, value]) => {
+        if (value !== null) {
+          selectedAnswer[key] = value;
+        }
+      });
+      
+      saveAttempt.mutate({
+        questionId: question.id,
+        questionType: 'osce',
+        chapterId,
+        moduleId,
+        selectedAnswer: selectedAnswer as unknown as Json,
+        isCorrect: score === 5,
+        score,
+      });
+      hasSavedAttempt.current = true;
+    }
+  }, [submitted, answers, question.id, chapterId, moduleId, isAdmin, saveAttempt]);
+
   const handleAnswerChange = (index: number, value: boolean) => {
     if (submitted) return;
     setAnswers(prev => ({ ...prev, [index + 1]: value }));
@@ -77,6 +124,8 @@ export function OsceQuestionCard({
     setSubmitted(false);
     setShowExplanations(false);
     // Note: We don't reset hasMarkedComplete - once completed, it stays completed
+    // But we do allow re-saving for practice purposes
+    hasSavedAttempt.current = false;
   };
 
   const getScore = () => {
@@ -90,17 +139,45 @@ export function OsceQuestionCard({
   const allAnswered = Object.values(answers).every(a => a !== null);
   const isDeleted = question.is_deleted;
 
+  // Check if this question was previously answered
+  const wasAttempted = !!previousAttempt;
+  const previousScore = previousAttempt?.score ?? null;
+  const wasAllCorrect = previousScore === 5;
+
   return (
     <Card className={cn(
       "overflow-hidden",
-      isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
+      isDeleted && "opacity-60 border-destructive/30 bg-destructive/5",
+      wasAttempted && !isDeleted && "ring-1 ring-offset-1",
+      wasAttempted && wasAllCorrect && !isDeleted && "ring-green-300 dark:ring-green-700",
+      wasAttempted && !wasAllCorrect && !isDeleted && "ring-amber-300 dark:ring-amber-700"
     )}>
       <CardContent className="p-0">
         {/* Image and History - stacked layout */}
         <div className="p-4 border-b space-y-4">
           {/* Header with question number and admin actions */}
           <div className="flex items-center justify-between">
-            <Badge variant="outline">Question {questionNumber}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Question {questionNumber}</Badge>
+              {/* Previously answered indicator */}
+              {wasAttempted && !isAdmin && !isDeleted && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn(
+                    "text-xs",
+                    wasAllCorrect 
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  )}
+                >
+                  {wasAllCorrect ? (
+                    <><CheckCircle className="h-3 w-3 mr-1" /> 5/5</>
+                  ) : (
+                    `${previousScore}/5`
+                  )}
+                </Badge>
+              )}
+            </div>
             {isDeleted && (
               <Badge variant="destructive">Deleted</Badge>
             )}

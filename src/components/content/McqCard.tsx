@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +6,15 @@ import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw, CheckCircle } from 'lucid
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { useSaveQuestionAttempt, QuestionAttempt } from '@/hooks/useQuestionAttempts';
+import type { Json } from '@/integrations/supabase/types';
 
 interface McqCardProps {
   mcq: Mcq;
   index: number;
   isAdmin: boolean;
   chapterId?: string;
+  moduleId?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
@@ -20,6 +23,8 @@ interface McqCardProps {
   isExpanded?: boolean;
   onToggleExpand?: (id: string) => void;
   isDeleted?: boolean;
+  // Previous attempt data for restoring state
+  previousAttempt?: QuestionAttempt | null;
 }
 
 export function McqCard({ 
@@ -27,6 +32,7 @@ export function McqCard({
   index, 
   isAdmin, 
   chapterId,
+  moduleId,
   onEdit, 
   onDelete, 
   onRestore,
@@ -35,23 +41,51 @@ export function McqCard({
   isExpanded, 
   onToggleExpand,
   isDeleted = false,
+  previousAttempt,
 }: McqCardProps) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Restore previous answer if available
+  const initialSelectedKey = useMemo(() => {
+    if (previousAttempt?.selected_answer) {
+      return previousAttempt.selected_answer as string;
+    }
+    return null;
+  }, [previousAttempt]);
+
+  const [selectedKey, setSelectedKey] = useState<string | null>(initialSelectedKey);
   const hasMarkedComplete = useRef(false);
+  const hasSavedAttempt = useRef(!!previousAttempt);
   const { markComplete } = useMarkItemComplete();
+  const saveAttempt = useSaveQuestionAttempt();
   
   // Use controlled expand state if provided, otherwise internal state
-  const showAnswer = isExpanded ?? false;
+  // If there's a previous attempt, auto-expand to show the answer
+  const showAnswer = isExpanded ?? !!previousAttempt;
 
   const choices = mcq.choices as McqChoice[];
 
-  // Mark as complete when answer is shown (user has submitted and received feedback)
+  // Mark as complete and save attempt when answer is shown
   useEffect(() => {
     if (showAnswer && selectedKey && !hasMarkedComplete.current && !isAdmin && chapterId) {
       markComplete(mcq.id, 'mcq', chapterId);
       hasMarkedComplete.current = true;
     }
   }, [showAnswer, selectedKey, mcq.id, chapterId, isAdmin, markComplete]);
+
+  // Auto-save attempt when user selects and reveals answer
+  useEffect(() => {
+    if (showAnswer && selectedKey && !hasSavedAttempt.current && !isAdmin && chapterId && moduleId) {
+      const isCorrect = selectedKey === mcq.correct_key;
+      saveAttempt.mutate({
+        questionId: mcq.id,
+        questionType: 'mcq',
+        chapterId,
+        moduleId,
+        selectedAnswer: selectedKey as Json,
+        isCorrect,
+      });
+      hasSavedAttempt.current = true;
+    }
+  }, [showAnswer, selectedKey, mcq.id, mcq.correct_key, chapterId, moduleId, isAdmin, saveAttempt]);
 
   const handleChoiceClick = (key: string) => {
     if (!showAnswer) {
@@ -76,8 +110,17 @@ export function McqCard({
     return 'border-border opacity-60';
   };
 
+  // Check if this question was previously answered
+  const wasAttempted = !!previousAttempt;
+  const wasCorrect = previousAttempt?.is_correct;
+
   return (
-    <Card className="overflow-hidden">
+    <Card className={cn(
+      "overflow-hidden",
+      wasAttempted && "ring-1 ring-offset-1",
+      wasAttempted && wasCorrect && "ring-green-300 dark:ring-green-700",
+      wasAttempted && !wasCorrect && "ring-amber-300 dark:ring-amber-700"
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
@@ -85,6 +128,24 @@ export function McqCard({
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>
+              {/* Previously answered indicator */}
+              {wasAttempted && !isAdmin && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn(
+                    "text-xs",
+                    wasCorrect 
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  )}
+                >
+                  {wasCorrect ? (
+                    <><CheckCircle className="h-3 w-3 mr-1" /> Correct</>
+                  ) : (
+                    'Attempted'
+                  )}
+                </Badge>
+              )}
               {/* Mark for Review star */}
               {onToggleMark && (
                 <button
@@ -198,7 +259,7 @@ export function McqCard({
                 onToggleExpand(mcq.id);
               }
               // Reset selection when collapsing
-              if (showAnswer) {
+              if (showAnswer && !wasAttempted) {
                 setSelectedKey(null);
               }
             }}

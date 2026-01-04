@@ -322,6 +322,75 @@ export type Database = {
           },
         ]
       }
+      chapter_attempts: {
+        Row: {
+          attempt_number: number
+          chapter_id: string
+          completed_at: string | null
+          correct_count: number
+          created_at: string
+          id: string
+          is_completed: boolean
+          module_id: string
+          question_type: Database["public"]["Enums"]["practice_question_type"]
+          score: number
+          started_at: string
+          time_spent_seconds: number
+          total_questions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_number?: number
+          chapter_id: string
+          completed_at?: string | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          module_id: string
+          question_type: Database["public"]["Enums"]["practice_question_type"]
+          score?: number
+          started_at?: string
+          time_spent_seconds?: number
+          total_questions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_number?: number
+          chapter_id?: string
+          completed_at?: string | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          module_id?: string
+          question_type?: Database["public"]["Enums"]["practice_question_type"]
+          score?: number
+          started_at?: string
+          time_spent_seconds?: number
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_attempts_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_cases: {
         Row: {
           chapter_id: string | null
@@ -1942,6 +2011,72 @@ export type Database = {
         }
         Relationships: []
       }
+      question_attempts: {
+        Row: {
+          attempt_number: number
+          chapter_id: string | null
+          created_at: string
+          id: string
+          is_correct: boolean | null
+          module_id: string | null
+          question_id: string
+          question_type: Database["public"]["Enums"]["practice_question_type"]
+          score: number | null
+          selected_answer: Json | null
+          status: Database["public"]["Enums"]["question_attempt_status"]
+          time_spent_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_number?: number
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          module_id?: string | null
+          question_id: string
+          question_type: Database["public"]["Enums"]["practice_question_type"]
+          score?: number | null
+          selected_answer?: Json | null
+          status?: Database["public"]["Enums"]["question_attempt_status"]
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_number?: number
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          module_id?: string | null
+          question_id?: string
+          question_type?: Database["public"]["Enums"]["practice_question_type"]
+          score?: number | null
+          selected_answer?: Json | null
+          status?: Database["public"]["Enums"]["question_attempt_status"]
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_attempts_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           chapter_id: string | null
@@ -2844,6 +2979,14 @@ export type Database = {
         Returns: boolean
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
+      get_chapter_percentile: {
+        Args: {
+          p_chapter_id: string
+          p_question_type: Database["public"]["Enums"]["practice_question_type"]
+          p_user_score: number
+        }
+        Returns: number
+      }
       get_user_analytics: {
         Args: { _user_id: string }
         Returns: {
@@ -2942,6 +3085,8 @@ export type Database = {
       feedback_severity: "normal" | "urgent" | "extreme"
       feedback_status: "new" | "in_review" | "closed"
       mcq_difficulty: "easy" | "medium" | "hard"
+      practice_question_type: "mcq" | "osce"
+      question_attempt_status: "unseen" | "attempted" | "correct" | "incorrect"
       study_resource_type:
         | "flashcard"
         | "table"
@@ -3106,6 +3251,8 @@ export const Constants = {
       feedback_severity: ["normal", "urgent", "extreme"],
       feedback_status: ["new", "in_review", "closed"],
       mcq_difficulty: ["easy", "medium", "hard"],
+      practice_question_type: ["mcq", "osce"],
+      question_attempt_status: ["unseen", "attempted", "correct", "incorrect"],
       study_resource_type: [
         "flashcard",
         "table",
