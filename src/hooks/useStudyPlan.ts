@@ -49,6 +49,7 @@ export interface CreatePlanInput {
   revisionRounds: number;
   baselinePercents?: Record<string, number>;
   baselineChapterIds?: string[];
+  moduleWeekOverrides?: Record<string, number>;
 }
 
 export interface Module {
@@ -225,6 +226,7 @@ export function useStudyPlan(yearId: string | null) {
       revisionRounds, 
       baselinePercents,
       baselineChapterIds,
+      moduleWeekOverrides,
       modules,
       chapters 
     }: CreatePlanInput & { modules: Module[]; chapters: Chapter[] }) => {
@@ -341,7 +343,14 @@ export function useStudyPlan(yearId: string | null) {
         const baseline = baselinePercents?.[module.id] || 0;
         const remainingPercent = (100 - baseline) / 100;
         const moduleWeight = getModuleWeightValue(module, modules) * remainingPercent;
-        const moduleWeeks = Math.max(1, Math.round((moduleWeight / totalWeight) * studyWeeks));
+        
+        // Use override if provided, otherwise calculate based on weight
+        let moduleWeeks: number;
+        if (moduleWeekOverrides && moduleWeekOverrides[module.id] !== undefined) {
+          moduleWeeks = moduleWeekOverrides[module.id];
+        } else {
+          moduleWeeks = Math.max(1, Math.round((moduleWeight / totalWeight) * studyWeeks));
+        }
         
         // Get chapters for this module
         const moduleChapters = chapters.filter(c => c.module_id === module.id);
