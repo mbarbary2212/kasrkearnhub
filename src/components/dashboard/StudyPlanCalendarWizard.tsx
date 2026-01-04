@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -203,19 +202,19 @@ export function StudyPlanCalendarWizard({
         <>
           {/* Week Budget Summary */}
           <Card>
-            <CardContent className="py-4">
-              <div className={`flex items-center justify-between p-3 rounded-lg ${
+            <CardContent className="py-3 px-3 sm:px-6">
+              <div className={`flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg ${
                 weekDifference > 0 ? 'bg-red-100 dark:bg-red-950/30' : 
                 weekDifference < -1 ? 'bg-amber-100 dark:bg-amber-950/30' : 
                 'bg-emerald-100 dark:bg-emerald-950/30'
               }`}>
                 <div className="flex items-center gap-2">
                   {weekDifference > 0 ? (
-                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
                   ) : weekDifference < -1 ? (
-                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                   ) : (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   )}
                   <div>
                     <p className="font-medium text-sm">
@@ -226,44 +225,46 @@ export function StudyPlanCalendarWizard({
                         : 'Weeks balanced perfectly!'
                       }
                     </p>
-                    {weekDifference > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Reduce some modules to fit your timeline
-                      </p>
-                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="text-sm">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Badge variant="secondary" className="text-xs sm:text-sm whitespace-nowrap">
                     {totalAllocatedWeeks} / {studyWeeks} study weeks
                   </Badge>
-                  <Button variant="ghost" size="sm" onClick={handleReset}>
-                    <RotateCcw className="w-4 h-4 mr-1" />
-                    Reset
+                  <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2 sm:px-3">
+                    <RotateCcw className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Reset</span>
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Calendar Grid View */}
-          <Card>
-            <CardContent className="py-4">
-              <ScrollArea className="w-full">
-                <div className="min-w-[600px]">
-                  {/* Week numbers header */}
-                  <div className="flex gap-1 mb-3 pl-4">
-                    {Array.from({ length: Math.min(totalWeeks, 30) }, (_, i) => (
+          {/* Calendar Grid View - with bi-directional scroll */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {/* Scrollable container */}
+              <div 
+                className="overflow-auto max-h-[400px]"
+                style={{ 
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                <div 
+                  className="min-w-max p-4"
+                  style={{ minWidth: `calc(${Math.min(totalWeeks, 40)} * 2.5rem + 10rem)` }}
+                >
+                  {/* Week numbers header - sticky */}
+                  <div className="flex gap-1 mb-3 sticky top-0 bg-card z-10 pb-2">
+                    <div className="w-28 sm:w-36 shrink-0" /> {/* Spacer for module names */}
+                    {Array.from({ length: totalWeeks }, (_, i) => (
                       <div 
                         key={i} 
-                        className="w-8 text-center text-xs text-muted-foreground"
+                        className="w-8 sm:w-9 text-center text-xs text-muted-foreground font-medium shrink-0"
                       >
                         {i + 1}
                       </div>
                     ))}
-                    {totalWeeks > 30 && (
-                      <div className="text-xs text-muted-foreground">...</div>
-                    )}
                   </div>
 
                   {/* Module rows */}
@@ -273,38 +274,49 @@ export function StudyPlanCalendarWizard({
                         key={alloc.moduleId}
                         className="flex items-center gap-2 group"
                       >
-                        {/* Module label */}
-                        <div className="w-32 shrink-0 truncate text-sm font-medium">
+                        {/* Module label - sticky on left */}
+                        <div 
+                          className="w-28 sm:w-36 shrink-0 text-xs sm:text-sm font-medium truncate sticky left-0 bg-card pr-2 z-[5]"
+                          title={alloc.moduleName}
+                        >
                           {alloc.moduleName}
                         </div>
 
                         {/* Visual timeline bar */}
-                        <div className="flex-1 relative h-10">
-                          {/* Background grid */}
-                          <div className="absolute inset-0 flex gap-1">
-                            {Array.from({ length: Math.min(totalWeeks, 30) }, (_, i) => (
-                              <div 
-                                key={i}
-                                className="w-8 h-full bg-muted/30 rounded-sm"
-                              />
-                            ))}
-                          </div>
-
-                          {/* Module block */}
-                          <div
-                            className={`absolute h-full rounded-md border-2 ${getWeightBgColor(alloc.weight)} 
-                              cursor-pointer hover:shadow-md transition-shadow flex items-center justify-center gap-1`}
-                            style={{
-                              left: `calc(${alloc.startWeek} * (2rem + 0.25rem))`,
-                              width: `calc(${alloc.allocatedWeeks} * 2rem + ${alloc.allocatedWeeks - 1} * 0.25rem)`,
-                            }}
-                            onClick={() => setSelectedModuleId(alloc.moduleId)}
-                          >
-                            <span className={`text-xs font-medium ${getWeightTextColor(alloc.weight)} truncate px-1`}>
-                              {alloc.allocatedWeeks}w
-                            </span>
-                            <Eye className={`w-3 h-3 ${getWeightTextColor(alloc.weight)} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                          </div>
+                        <div className="flex gap-1 items-center">
+                          {Array.from({ length: totalWeeks }, (_, weekIdx) => {
+                            const isInModule = weekIdx >= alloc.startWeek && weekIdx < alloc.startWeek + alloc.allocatedWeeks;
+                            const isFirstWeek = weekIdx === alloc.startWeek;
+                            const isLastWeek = weekIdx === alloc.startWeek + alloc.allocatedWeeks - 1;
+                            
+                            if (!isInModule) {
+                              return (
+                                <div 
+                                  key={weekIdx}
+                                  className="w-8 sm:w-9 h-10 bg-muted/30 rounded-sm shrink-0"
+                                />
+                              );
+                            }
+                            
+                            return (
+                              <div
+                                key={weekIdx}
+                                className={`w-8 sm:w-9 h-10 shrink-0 ${getWeightBgColor(alloc.weight)} 
+                                  cursor-pointer hover:shadow-md transition-all flex items-center justify-center
+                                  ${isFirstWeek ? 'rounded-l-md border-l-2' : 'border-l-0'} 
+                                  ${isLastWeek ? 'rounded-r-md border-r-2' : 'border-r-0'}
+                                  border-t-2 border-b-2`}
+                                onClick={() => setSelectedModuleId(alloc.moduleId)}
+                              >
+                                {/* Show week count in middle of block */}
+                                {isFirstWeek && (
+                                  <span className={`text-xs font-semibold ${getWeightTextColor(alloc.weight)} whitespace-nowrap`}>
+                                    {alloc.allocatedWeeks}w
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -312,111 +324,135 @@ export function StudyPlanCalendarWizard({
                     {/* Revision blocks */}
                     {revision1Weeks > 0 && (
                       <div className="flex items-center gap-2">
-                        <div className="w-32 shrink-0 text-sm font-medium text-amber-700 dark:text-amber-400">
+                        <div className="w-28 sm:w-36 shrink-0 text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 sticky left-0 bg-card pr-2 z-[5]">
                           Revision 1
                         </div>
-                        <div className="flex-1 relative h-10">
-                          <div className="absolute inset-0 flex gap-1">
-                            {Array.from({ length: Math.min(totalWeeks, 30) }, (_, i) => (
-                              <div key={i} className="w-8 h-full bg-muted/30 rounded-sm" />
-                            ))}
-                          </div>
-                          <div
-                            className="absolute h-full rounded-md border-2 border-dashed border-amber-400 bg-amber-50/50 dark:bg-amber-900/20 flex items-center justify-center"
-                            style={{
-                              left: `calc(${totalAllocatedWeeks} * (2rem + 0.25rem))`,
-                              width: `calc(${revision1Weeks} * 2rem + ${revision1Weeks - 1} * 0.25rem)`,
-                            }}
-                          >
-                            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                              {revision1Weeks}w
-                            </span>
-                          </div>
+                        <div className="flex gap-1 items-center">
+                          {Array.from({ length: totalWeeks }, (_, weekIdx) => {
+                            const rev1Start = totalAllocatedWeeks;
+                            const isInRevision = weekIdx >= rev1Start && weekIdx < rev1Start + revision1Weeks;
+                            const isFirst = weekIdx === rev1Start;
+                            const isLast = weekIdx === rev1Start + revision1Weeks - 1;
+                            
+                            if (!isInRevision) {
+                              return <div key={weekIdx} className="w-8 sm:w-9 h-10 bg-muted/30 rounded-sm shrink-0" />;
+                            }
+                            
+                            return (
+                              <div
+                                key={weekIdx}
+                                className={`w-8 sm:w-9 h-10 shrink-0 border-2 border-dashed border-amber-400 bg-amber-50/50 dark:bg-amber-900/20 flex items-center justify-center
+                                  ${isFirst ? 'rounded-l-md' : ''} ${isLast ? 'rounded-r-md' : ''}`}
+                              >
+                                {isFirst && (
+                                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                                    {revision1Weeks}w
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
                     <div className="flex items-center gap-2">
-                      <div className="w-32 shrink-0 text-sm font-medium text-purple-700 dark:text-purple-400">
+                      <div className="w-28 sm:w-36 shrink-0 text-xs sm:text-sm font-medium text-purple-700 dark:text-purple-400 sticky left-0 bg-card pr-2 z-[5]">
                         Final Revision
                       </div>
-                      <div className="flex-1 relative h-10">
-                        <div className="absolute inset-0 flex gap-1">
-                          {Array.from({ length: Math.min(totalWeeks, 30) }, (_, i) => (
-                            <div key={i} className="w-8 h-full bg-muted/30 rounded-sm" />
-                          ))}
-                        </div>
-                        <div
-                          className="absolute h-full rounded-md border-2 border-dashed border-purple-400 bg-purple-50/50 dark:bg-purple-900/20 flex items-center justify-center"
-                          style={{
-                            left: `calc(${totalAllocatedWeeks + revision1Weeks} * (2rem + 0.25rem))`,
-                            width: `calc(${finalRevisionWeeks} * 2rem + ${finalRevisionWeeks - 1} * 0.25rem)`,
-                          }}
-                        >
-                          <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                            {finalRevisionWeeks}w
-                          </span>
-                        </div>
+                      <div className="flex gap-1 items-center">
+                        {Array.from({ length: totalWeeks }, (_, weekIdx) => {
+                          const finalStart = totalAllocatedWeeks + revision1Weeks;
+                          const isInFinal = weekIdx >= finalStart && weekIdx < finalStart + finalRevisionWeeks;
+                          const isFirst = weekIdx === finalStart;
+                          const isLast = weekIdx === finalStart + finalRevisionWeeks - 1;
+                          
+                          if (!isInFinal) {
+                            return <div key={weekIdx} className="w-8 sm:w-9 h-10 bg-muted/30 rounded-sm shrink-0" />;
+                          }
+                          
+                          return (
+                            <div
+                              key={weekIdx}
+                              className={`w-8 sm:w-9 h-10 shrink-0 border-2 border-dashed border-purple-400 bg-purple-50/50 dark:bg-purple-900/20 flex items-center justify-center
+                                ${isFirst ? 'rounded-l-md' : ''} ${isLast ? 'rounded-r-md' : ''}`}
+                            >
+                              {isFirst && (
+                                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                                  {finalRevisionWeeks}w
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
+              
+              {/* Scroll hint for mobile */}
+              <div className="sm:hidden p-2 text-center text-xs text-muted-foreground border-t">
+                ← Scroll horizontally and vertically to see all weeks →
+              </div>
             </CardContent>
           </Card>
 
           {/* Module Controls */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 px-3 sm:px-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <GripVertical className="w-4 h-4" />
                 Adjust Week Allocations
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 px-3 sm:px-6">
               {allocationsWithPositions.map((alloc) => {
                 const isOverAllocated = alloc.allocatedWeeks > alloc.suggestedWeeks * 1.5;
                 const isUnderAllocated = alloc.allocatedWeeks < alloc.suggestedWeeks * 0.5;
                 
                 return (
                   <div key={alloc.moduleId} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${getWeightColor(alloc.weight)}`} />
-                        <span className="text-sm font-medium">{alloc.moduleName}</span>
-                        <Badge variant="outline" className="text-xs">
+                    {/* Mobile-friendly header */}
+                    <div className="flex flex-wrap items-start sm:items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0 ${getWeightColor(alloc.weight)}`} />
+                        <span className="text-sm font-medium break-words max-w-[140px] sm:max-w-none">
+                          {alloc.moduleName}
+                        </span>
+                        <Badge variant="outline" className="text-xs shrink-0">
                           {alloc.weight === 'heavy+' ? 'Heavy+' : 
                            alloc.weight.charAt(0).toUpperCase() + alloc.weight.slice(1)}
                         </Badge>
                         {alloc.pageCount > 0 && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
                             ({alloc.pageCount} pages)
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
                         {isUnderAllocated && (
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                         )}
                         {isOverAllocated && (
-                          <AlertCircle className="w-4 h-4 text-amber-500" />
+                          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                         )}
                         <Badge 
                           variant={alloc.allocatedWeeks === alloc.suggestedWeeks ? 'secondary' : 'outline'}
-                          className={isUnderAllocated ? 'border-red-300 text-red-700' : 
-                                     isOverAllocated ? 'border-amber-300 text-amber-700' : ''}
+                          className={`text-xs sm:text-sm whitespace-nowrap ${
+                            isUnderAllocated ? 'border-red-300 text-red-700' : 
+                            isOverAllocated ? 'border-amber-300 text-amber-700' : ''
+                          }`}
                         >
                           {alloc.allocatedWeeks} weeks
-                          {alloc.allocatedWeeks !== alloc.suggestedWeeks && (
-                            <span className="text-muted-foreground ml-1">
-                              (rec: {alloc.suggestedWeeks})
-                            </span>
-                          )}
+                          <span className="text-muted-foreground ml-1">
+                            (rec: {alloc.suggestedWeeks})
+                          </span>
                         </Badge>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2"
+                          className="h-7 w-7 sm:w-auto sm:px-2 p-0"
                           onClick={() => setSelectedModuleId(alloc.moduleId)}
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -433,8 +469,8 @@ export function StudyPlanCalendarWizard({
                     />
                     {isUnderAllocated && (
                       <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        Dangerously low - may not have enough time to cover all chapters
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <span>Dangerously low - may not cover all chapters</span>
                       </p>
                     )}
                   </div>
