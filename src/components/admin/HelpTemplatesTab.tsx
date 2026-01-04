@@ -39,7 +39,7 @@ const TEMPLATE_TYPES = [
   { value: 'matching', label: 'Matching Questions' },
   { value: 'essay', label: 'Short Answer / Essay' },
   { value: 'case_scenario', label: 'Case Scenarios' },
-  { value: 'osce', label: 'OSCE / Practical' },
+  { value: 'osce', label: 'OSCE' },
   { value: 'flashcard', label: 'Flashcards' },
 ];
 

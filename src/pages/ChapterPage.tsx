@@ -54,6 +54,7 @@ import {
   ExternalLink,
   Image,
   ClipboardCheck,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -529,8 +530,8 @@ export default function ChapterPage() {
                 )}
 
                 {/* OSCE Content */}
-                    {practiceTab === 'practical' && (
-                      <div>
+                {practiceTab === 'osce' && (
+                  <div>
                     {osceLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -547,6 +548,14 @@ export default function ChapterPage() {
                         onShowDeletedChange={setShowDeletedOsce}
                       />
                     )}
+                  </div>
+                )}
+
+                {/* Practical Content (placeholder) */}
+                {practiceTab === 'practical' && (
+                  <div className="text-center py-12 border rounded-lg">
+                    <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Practical content coming soon.</p>
                   </div>
                 )}
 
