@@ -102,33 +102,75 @@ export function McqList({
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Initialize filter states from URL params
-  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(() => 
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(() =>
     searchParams.get('mcq_duplicates') === 'true'
   );
-  const [showMarkedOnly, setShowMarkedOnly] = useState(() => 
+  const [showMarkedOnly, setShowMarkedOnly] = useState(() =>
     searchParams.get('mcq_marked') === 'true'
   );
-  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+
+  // Persist "marked for review" per user + per learning unit (chapter if available, otherwise module)
+  const markedStorageKey = useMemo(() => {
+    const scopeId = chapterId ?? moduleId;
+    const userScope = auth.user?.id ?? 'anon';
+    return `mcq-marked-${userScope}-${scopeId}`;
+  }, [auth.user?.id, chapterId, moduleId]);
+
+  const [markedIds, setMarkedIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    const stored = localStorage.getItem(markedStorageKey);
+    if (!stored) return new Set();
+    try {
+      const parsed = JSON.parse(stored);
+      return new Set(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return new Set();
+    }
+  });
+
   const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Persist filter states to URL params
   useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
-    if (showDuplicatesOnly) {
-      newParams.set('mcq_duplicates', 'true');
-    } else {
-      newParams.delete('mcq_duplicates');
-    }
-    if (showMarkedOnly) {
-      newParams.set('mcq_marked', 'true');
-    } else {
-      newParams.delete('mcq_marked');
-    }
-    setSearchParams(newParams, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (showDuplicatesOnly) next.set('mcq_duplicates', 'true');
+        else next.delete('mcq_duplicates');
+
+        if (showMarkedOnly) next.set('mcq_marked', 'true');
+        else next.delete('mcq_marked');
+
+        return next;
+      },
+      { replace: true }
+    );
   }, [showDuplicatesOnly, showMarkedOnly, setSearchParams]);
+
+  // Load marks from storage whenever scope (chapter/module) or user changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(markedStorageKey);
+    if (!stored) {
+      setMarkedIds(new Set());
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      setMarkedIds(new Set(Array.isArray(parsed) ? parsed : []));
+    } catch {
+      setMarkedIds(new Set());
+    }
+  }, [markedStorageKey]);
+
+  // Persist marks to storage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(markedStorageKey, JSON.stringify(Array.from(markedIds)));
+  }, [markedIds, markedStorageKey]);
 
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
