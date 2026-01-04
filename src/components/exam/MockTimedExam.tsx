@@ -77,6 +77,7 @@ export function MockTimedExam({
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [finalDuration, setFinalDuration] = useState(0);
 
@@ -334,8 +335,8 @@ export function MockTimedExam({
         {/* Global progress header for hard mode */}
         <div className="sticky top-0 z-10 bg-background pb-4 border-b">
           <div className="flex items-center justify-between mb-3">
-            <Button variant="ghost" size="sm" onClick={handleGoBack}>
-              ← Exit
+            <Button variant="destructive" size="sm" onClick={() => setShowAbortConfirm(true)}>
+              Abort
             </Button>
             <Badge variant="outline" className="gap-1">
               {answeredCount}/{examQuestions.length} answered
@@ -369,8 +370,8 @@ export function MockTimedExam({
       {/* Timer and progress header */}
       <div className="sticky top-0 z-10 bg-background pb-4 border-b">
         <div className="flex items-center justify-between mb-3">
-          <Button variant="ghost" size="sm" onClick={handleGoBack}>
-            ← Exit
+          <Button variant="destructive" size="sm" onClick={() => setShowAbortConfirm(true)}>
+            Abort
           </Button>
           <Badge variant="outline" className="gap-1">
             {answeredCount}/{examQuestions.length} answered
@@ -469,6 +470,33 @@ export function MockTimedExam({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Abort confirmation dialog */}
+      <AlertDialog open={showAbortConfirm} onOpenChange={setShowAbortConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Abort Exam?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to abort the exam. Your progress will not be saved. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Exam</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setPhase('select-mode');
+                setShowAbortConfirm(false);
+              }}
+            >
+              Abort
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
