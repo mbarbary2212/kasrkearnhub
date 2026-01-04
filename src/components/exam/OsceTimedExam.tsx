@@ -42,11 +42,8 @@ interface UserOsceAnswers {
 // Transition delay between questions in hard mode (seconds)
 const HARD_MODE_TRANSITION_SECONDS = 3;
 
-// Default time per OSCE question for easy mode
-const DEFAULT_SECONDS_PER_OSCE = 90;
-
-// Hard mode: 2.5 minutes (150 seconds) per OSCE question
-const HARD_MODE_SECONDS_PER_OSCE = 150;
+// 2.5 minutes (150 seconds) per OSCE question for both modes
+const SECONDS_PER_OSCE = 150;
 
 export function OsceTimedExam({
   moduleId,
@@ -69,7 +66,7 @@ export function OsceTimedExam({
   const [finalDuration, setFinalDuration] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? DEFAULT_SECONDS_PER_OSCE;
+  const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? SECONDS_PER_OSCE;
 
   // Handler for going back
   const handleGoBack = () => {
@@ -250,8 +247,7 @@ export function OsceTimedExam({
     return (
       <TestModeSelector
         totalMcqs={osceQuestions.length}
-        secondsPerQuestion={effectiveSecondsPerQuestion}
-        hardModeSecondsPerQuestion={HARD_MODE_SECONDS_PER_OSCE}
+        secondsPerQuestion={SECONDS_PER_OSCE}
         onStart={handleStartExam}
         onCancel={handleGoBack}
         title="OSCE Test"
@@ -318,7 +314,7 @@ export function OsceTimedExam({
             question={currentQuestion}
             questionIndex={currentIndex}
             totalQuestions={examQuestions.length}
-            secondsPerQuestion={HARD_MODE_SECONDS_PER_OSCE}
+            secondsPerQuestion={SECONDS_PER_OSCE}
             userAnswers={currentQuestionAnswers}
             onSelectAnswer={handleSelectAnswer}
             onTimeUp={handleHardModeTimeUp}
