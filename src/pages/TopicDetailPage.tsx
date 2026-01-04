@@ -487,27 +487,12 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* OSCE / Practical */}
+                {/* OSCE / Practical - Note: OSCE is available at Chapter level */}
                 {practiceTab === 'practical' && (
-                  <div>
-                    {canManageContent && topicId && moduleId && (
-                      <div className="mb-4">
-                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="practical" />
-                      </div>
-                    )}
-                    {practicalsLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
-                    ) : (
-                      <PracticalList
-                        practicals={practicals || []}
-                        moduleId={moduleId}
-                        canEdit={canManageContent}
-                        canDelete={canManageContent}
-                        showFeedback={true}
-                      />
-                    )}
+                  <div className="text-center py-12 border rounded-lg">
+                    <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">OSCE questions are available at the Chapter level.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Navigate to a chapter to access OSCE content.</p>
                   </div>
                 )}
 

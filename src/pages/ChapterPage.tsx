@@ -12,7 +12,7 @@ import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
-import PracticalList from '@/components/content/PracticalList';
+import { OsceList } from '@/components/content/OsceList';
 import EssayList from '@/components/content/EssayList';
 import CaseScenarioList from '@/components/content/CaseScenarioList';
 import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModal';
@@ -23,9 +23,9 @@ import { ResourcesDeleteManager, ResourceKind } from '@/components/content/Resou
 import { 
   useChapterLectures, 
   useChapterResources, 
-  useChapterEssays, 
-  useChapterPracticals
+  useChapterEssays,
 } from '@/hooks/useChapterContent';
+import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
@@ -96,7 +96,7 @@ export default function ChapterPage() {
   const [showDeletedCases, setShowDeletedCases] = useState(false);
   const [showDeletedMatching, setShowDeletedMatching] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
-  const [showDeletedPracticals, setShowDeletedPracticals] = useState(false);
+  const [showDeletedOsce, setShowDeletedOsce] = useState(false);
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -115,8 +115,8 @@ export default function ChapterPage() {
   const { data: deletedMcqs } = useChapterMcqs(chapterId, true);
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
   const { data: deletedEssays } = useChapterEssays(chapterId, true);
-  const { data: practicals, isLoading: practicalsLoading } = useChapterPracticals(chapterId);
-  const { data: deletedPracticals } = useChapterPracticals(chapterId, true);
+  const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId);
+  const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true);
   const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
   const { data: deletedCaseScenarios } = useChapterCaseScenarios(chapterId, true);
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
@@ -130,7 +130,7 @@ export default function ChapterPage() {
   const deletedOnlyCases = (deletedCaseScenarios || []).filter(c => c.is_deleted);
   const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
-  const deletedOnlyPracticals = (deletedPracticals || []).filter(p => p.is_deleted);
+  const deletedOnlyOsce = (deletedOsceQuestions || []).filter(q => q.is_deleted);
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -194,7 +194,7 @@ export default function ChapterPage() {
     mcqs: mcqs?.length || 0,
     essays: essays?.length || 0,
     cases: caseScenarios?.length || 0,
-    practical: practicals?.length || 0,
+    practical: osceQuestions?.length || 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
   });
@@ -203,7 +203,7 @@ export default function ChapterPage() {
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
     return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, mcqs, essays, caseScenarios, practicals, matchingQuestions, hideEmptyTabs]);
+  }, [canManageContent, mcqs, essays, caseScenarios, osceQuestions, matchingQuestions, hideEmptyTabs]);
 
   return (
     <MainLayout>
@@ -528,34 +528,28 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* OSCE/Practical Content */}
+                {/* OSCE Content */}
                     {practiceTab === 'practical' && (
                       <div>
-                        {showAddControls && chapterId && moduleId && (
-                          <div className="mb-4">
-                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="practical" />
-                          </div>
-                        )}
-                    {practicalsLoading ? (
+                    {osceLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
                       </div>
                     ) : (
-                      <PracticalList
-                        practicals={practicals || []}
-                        deletedPracticals={deletedOnlyPracticals}
-                        moduleId={moduleId}
+                      <OsceList
+                        questions={osceQuestions || []}
+                        deletedQuestions={deletedOnlyOsce}
+                        moduleId={moduleId || ''}
                         chapterId={chapterId}
-                        canEdit={canManageContent}
-                        canDelete={canManageContent}
-                        showFeedback={true}
+                        isAdmin={canManageContent}
                         showDeletedToggle={canManageContent}
-                        showDeleted={showDeletedPracticals}
-                        onShowDeletedChange={setShowDeletedPracticals}
+                        showDeleted={showDeletedOsce}
+                        onShowDeletedChange={setShowDeletedOsce}
                       />
                     )}
                   </div>
                 )}
+
 
                 {/* Matching Questions Content */}
                 {practiceTab === 'matching' && (

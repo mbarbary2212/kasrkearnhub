@@ -21,6 +21,7 @@ import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
+import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -52,6 +53,9 @@ const ROLE_COLORS: Record<AppRole, string> = {
 function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
   const upsertSetting = useUpsertStudySetting();
+  const archiveLegacyOsce = useArchiveLegacyOsce();
+  const { isSuperAdmin } = useAuthContext();
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
     try {
@@ -63,6 +67,15 @@ function PlatformSettingsTab() {
     } catch (error) {
       console.error('Error updating setting:', error);
       toast.error('Failed to update setting');
+    }
+  };
+
+  const handleArchiveLegacy = async () => {
+    try {
+      await archiveLegacyOsce.mutateAsync();
+      setArchiveConfirmOpen(false);
+    } catch (error) {
+      console.error('Error archiving legacy OSCE:', error);
     }
   };
 
@@ -95,6 +108,53 @@ function PlatformSettingsTab() {
             disabled={isLoading || upsertSetting.isPending}
           />
         </div>
+
+        {/* Archive Legacy OSCE - Super Admin Only */}
+        {isSuperAdmin && (
+          <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-destructive" />
+                <Label className="text-base font-medium text-destructive">
+                  Archive Legacy OSCE Questions
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will archive all old-format OSCE/Practical questions that don't fit the new Image + History + 5 T/F format.
+                This is a one-time migration action.
+              </p>
+              <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="mt-2">
+                    Archive Legacy OSCE Questions
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Archive Legacy OSCE Questions?</DialogTitle>
+                    <DialogDescription>
+                      This will soft-delete ALL existing Practical/OSCE questions in the old format.
+                      They will be hidden from students and admin views. This action is logged in the audit trail.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setArchiveConfirmOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={handleArchiveLegacy}
+                      disabled={archiveLegacyOsce.isPending}
+                    >
+                      {archiveLegacyOsce.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Archive All Legacy OSCE
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

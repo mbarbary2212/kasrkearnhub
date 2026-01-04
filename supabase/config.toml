@@ -1,1 +1,7 @@
 project_id = "dwmxnokprfiwmvzksyjg"
+
+[functions.bulk-import-mcqs]
+verify_jwt = false
+
+[functions.bulk-import-osce]
+verify_jwt = false

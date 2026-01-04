@@ -1700,6 +1700,111 @@ export type Database = {
           },
         ]
       }
+      osce_questions: {
+        Row: {
+          answer_1: boolean
+          answer_2: boolean
+          answer_3: boolean
+          answer_4: boolean
+          answer_5: boolean
+          chapter_id: string | null
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          explanation_1: string | null
+          explanation_2: string | null
+          explanation_3: string | null
+          explanation_4: string | null
+          explanation_5: string | null
+          history_text: string
+          id: string
+          image_url: string
+          is_deleted: boolean
+          legacy_archived: boolean
+          module_id: string
+          statement_1: string
+          statement_2: string
+          statement_3: string
+          statement_4: string
+          statement_5: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          answer_1: boolean
+          answer_2: boolean
+          answer_3: boolean
+          answer_4: boolean
+          answer_5: boolean
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          explanation_1?: string | null
+          explanation_2?: string | null
+          explanation_3?: string | null
+          explanation_4?: string | null
+          explanation_5?: string | null
+          history_text: string
+          id?: string
+          image_url: string
+          is_deleted?: boolean
+          legacy_archived?: boolean
+          module_id: string
+          statement_1: string
+          statement_2: string
+          statement_3: string
+          statement_4: string
+          statement_5: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          answer_1?: boolean
+          answer_2?: boolean
+          answer_3?: boolean
+          answer_4?: boolean
+          answer_5?: boolean
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          explanation_1?: string | null
+          explanation_2?: string | null
+          explanation_3?: string | null
+          explanation_4?: string | null
+          explanation_5?: string | null
+          history_text?: string
+          id?: string
+          image_url?: string
+          is_deleted?: boolean
+          legacy_archived?: boolean
+          module_id?: string
+          statement_1?: string
+          statement_2?: string
+          statement_3?: string
+          statement_4?: string
+          statement_5?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "osce_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "osce_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practicals: {
         Row: {
           chapter_id: string | null
@@ -2722,6 +2827,7 @@ export type Database = {
         Args: { _reason?: string; _target_user_id: string }
         Returns: undefined
       }
+      archive_legacy_osce_questions: { Args: never; Returns: number }
       can_manage_chapter_content: {
         Args: { _chapter_id: string; _user_id: string }
         Returns: boolean
