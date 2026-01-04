@@ -334,6 +334,9 @@ export function MockTimedExam({
         {/* Global progress header for hard mode */}
         <div className="sticky top-0 z-10 bg-background pb-4 border-b">
           <div className="flex items-center justify-between mb-3">
+            <Button variant="ghost" size="sm" onClick={handleGoBack}>
+              ← Exit
+            </Button>
             <Badge variant="outline" className="gap-1">
               {answeredCount}/{examQuestions.length} answered
             </Badge>
@@ -366,6 +369,9 @@ export function MockTimedExam({
       {/* Timer and progress header */}
       <div className="sticky top-0 z-10 bg-background pb-4 border-b">
         <div className="flex items-center justify-between mb-3">
+          <Button variant="ghost" size="sm" onClick={handleGoBack}>
+            ← Exit
+          </Button>
           <Badge variant="outline" className="gap-1">
             {answeredCount}/{examQuestions.length} answered
           </Badge>
