@@ -13,6 +13,8 @@ import { StudyPlanCohortInsights } from './StudyPlanCohortInsights';
 interface Module {
   id: string;
   name: string;
+  workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
+  page_count?: number | null;
 }
 
 interface LearningHubStudyPlanProps {
@@ -92,6 +94,7 @@ export function LearningHubStudyPlan({
     revisionRounds: number;
     baselinePercents: Record<string, number>;
     baselineChapterIds: string[];
+    moduleWeekOverrides?: Record<string, number>;
   }) => {
     if (!selectedYearId) return;
     createPlan({
@@ -103,6 +106,7 @@ export function LearningHubStudyPlan({
       revisionRounds: data.revisionRounds,
       baselinePercents: data.baselinePercents,
       baselineChapterIds: data.baselineChapterIds,
+      moduleWeekOverrides: data.moduleWeekOverrides,
       modules,
       chapters,
     });
