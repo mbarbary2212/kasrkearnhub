@@ -10,6 +10,7 @@ interface VideoProgress {
 }
 
 const LOCAL_STORAGE_PREFIX = 'vimeo_progress:';
+const COMPLETION_THRESHOLD = 95; // percent
 
 export function useVideoProgress(videoId: string | null) {
   const { user } = useAuth();
@@ -64,7 +65,7 @@ export function useVideoProgress(videoId: string | null) {
 
       // Check if there's local progress to migrate
       const localProgress = getLocalProgress(videoId);
-      if (localProgress) {
+      if (localProgress && localProgress.last_time_seconds > 0) {
         // Migrate local progress to Supabase
         await saveProgress(localProgress.last_time_seconds, localProgress.duration_seconds || 0, true);
         // Clear local storage after migration
@@ -84,7 +85,11 @@ export function useVideoProgress(videoId: string | null) {
     duration: number,
     forceSave = false
   ): Promise<void> => {
-    if (!videoId || duration <= 0) return;
+    if (!videoId) return;
+    
+    // Guard against invalid values
+    if (typeof currentTime !== 'number' || isNaN(currentTime)) return;
+    if (currentTime < 0) return;
 
     const now = Date.now();
     const timeDiff = Math.abs(currentTime - lastSavedTime.current);
@@ -98,10 +103,15 @@ export function useVideoProgress(videoId: string | null) {
     lastSavedTime.current = currentTime;
     lastSaveTimestamp.current = now;
 
-    const percentWatched = Math.min(100, (currentTime / duration) * 100);
+    // Compute percent only if we have valid duration
+    let percentWatched = 0;
+    if (duration > 0 && !isNaN(duration)) {
+      percentWatched = Math.min(100, (currentTime / duration) * 100);
+    }
+
     const progress: VideoProgress = {
       last_time_seconds: currentTime,
-      duration_seconds: duration,
+      duration_seconds: duration > 0 ? duration : null,
       percent_watched: percentWatched,
       updated_at: new Date().toISOString(),
     };
@@ -115,7 +125,7 @@ export function useVideoProgress(videoId: string | null) {
             user_id: user.id,
             video_id: videoId,
             last_time_seconds: currentTime,
-            duration_seconds: duration,
+            duration_seconds: duration > 0 ? duration : null,
             percent_watched: percentWatched,
             updated_at: new Date().toISOString(),
           },
@@ -131,45 +141,64 @@ export function useVideoProgress(videoId: string | null) {
     }
   }, [videoId, user, setLocalProgress]);
 
-  const markComplete = useCallback(async (duration: number): Promise<void> => {
+  // Mark video as complete - only resets if truly finished (>=95%)
+  const markComplete = useCallback(async (
+    currentTime: number,
+    duration: number
+  ): Promise<void> => {
     if (!videoId || duration <= 0) return;
 
-    const progress: VideoProgress = {
-      last_time_seconds: 0, // Reset to start for next viewing
-      duration_seconds: duration,
-      percent_watched: 100,
-      updated_at: new Date().toISOString(),
-    };
+    const percentWatched = (currentTime / duration) * 100;
+    const nearEnd = currentTime >= duration - 10;
+    const isComplete = percentWatched >= COMPLETION_THRESHOLD || nearEnd;
 
-    if (user) {
-      const { error } = await supabase
-        .from('video_progress')
-        .upsert(
-          {
-            user_id: user.id,
-            video_id: videoId,
-            last_time_seconds: 0,
-            duration_seconds: duration,
-            percent_watched: 100,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,video_id' }
-        );
+    if (isComplete) {
+      // Truly completed - reset to 0 for next viewing
+      const progress: VideoProgress = {
+        last_time_seconds: 0,
+        duration_seconds: duration,
+        percent_watched: 100,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) {
-        console.error('Error marking video complete:', error);
+      if (user) {
+        const { error } = await supabase
+          .from('video_progress')
+          .upsert(
+            {
+              user_id: user.id,
+              video_id: videoId,
+              last_time_seconds: 0,
+              duration_seconds: duration,
+              percent_watched: 100,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,video_id' }
+          );
+
+        if (error) {
+          console.error('Error marking video complete:', error);
+        }
+      } else {
+        setLocalProgress(videoId, progress);
       }
     } else {
-      setLocalProgress(videoId, progress);
+      // Not truly finished - just save current position
+      await saveProgress(currentTime, duration, true);
     }
-  }, [videoId, user, setLocalProgress]);
+  }, [videoId, user, setLocalProgress, saveProgress]);
 
+  // Explicit reset (user clicked "Start over")
   const resetProgress = useCallback(async (duration: number): Promise<void> => {
     if (!videoId) return;
 
+    // Reset refs to allow immediate new saves
+    lastSavedTime.current = 0;
+    lastSaveTimestamp.current = 0;
+
     const progress: VideoProgress = {
       last_time_seconds: 0,
-      duration_seconds: duration,
+      duration_seconds: duration > 0 ? duration : null,
       percent_watched: 0,
       updated_at: new Date().toISOString(),
     };
@@ -182,7 +211,7 @@ export function useVideoProgress(videoId: string | null) {
             user_id: user.id,
             video_id: videoId,
             last_time_seconds: 0,
-            duration_seconds: duration,
+            duration_seconds: duration > 0 ? duration : null,
             percent_watched: 0,
             updated_at: new Date().toISOString(),
           },
@@ -202,7 +231,7 @@ export function useVideoProgress(videoId: string | null) {
     if (!user || !videoId) return;
 
     const localProgress = getLocalProgress(videoId);
-    if (localProgress) {
+    if (localProgress && localProgress.last_time_seconds > 0) {
       // Check if Supabase already has progress
       supabase
         .from('video_progress')
@@ -211,7 +240,7 @@ export function useVideoProgress(videoId: string | null) {
         .eq('video_id', videoId)
         .maybeSingle()
         .then(({ data }) => {
-          if (!data && localProgress.last_time_seconds > 0) {
+          if (!data) {
             // No Supabase progress, migrate local
             saveProgress(localProgress.last_time_seconds, localProgress.duration_seconds || 0, true);
             localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}${videoId}`);

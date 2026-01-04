@@ -79,7 +79,7 @@ export function VimeoPlayer({
   const [showResumeToast, setShowResumeToast] = useState(false);
   const [resumeTime, setResumeTime] = useState(0);
   const durationRef = useRef<number>(0);
-  const hasRestoredRef = useRef(false);
+  const currentTimeRef = useRef<number>(0);
   const isMountedRef = useRef(true);
 
   const { fetchProgress, saveProgress, markComplete, resetProgress } = useVideoProgress(videoId);
@@ -87,9 +87,10 @@ export function VimeoPlayer({
   // Handle start over action
   const handleStartOver = useCallback(async () => {
     setShowResumeToast(false);
-    if (playerRef.current && durationRef.current > 0) {
+    if (playerRef.current) {
       await resetProgress(durationRef.current);
       await playerRef.current.setCurrentTime(0);
+      currentTimeRef.current = 0;
       playerRef.current.play();
     }
   }, [resetProgress]);
@@ -97,7 +98,6 @@ export function VimeoPlayer({
   // Initialize player
   useEffect(() => {
     isMountedRef.current = true;
-    hasRestoredRef.current = false;
 
     const initPlayer = async () => {
       try {
@@ -119,23 +119,28 @@ export function VimeoPlayer({
             // Fetch saved progress
             const progress = await fetchProgress();
 
-            if (
-              progress &&
-              progress.last_time_seconds > 5 &&
-              progress.last_time_seconds < duration - 5
-            ) {
-              // Resume from saved position
-              await player.setCurrentTime(progress.last_time_seconds);
-              setResumeTime(progress.last_time_seconds);
-              setShowResumeToast(true);
-              hasRestoredRef.current = true;
-              
-              // Auto-hide toast after 5 seconds
-              setTimeout(() => {
-                if (isMountedRef.current) {
-                  setShowResumeToast(false);
-                }
-              }, 5000);
+            if (progress) {
+              const lastTime = progress.last_time_seconds;
+              const nearEnd = duration > 0 && lastTime >= duration - 10;
+              const alreadyComplete = progress.percent_watched >= 95;
+
+              // Only resume if:
+              // - lastTime > 5 seconds
+              // - Not near the end (would indicate completion)
+              // - Not already marked complete
+              if (lastTime > 5 && !nearEnd && !alreadyComplete) {
+                await player.setCurrentTime(lastTime);
+                currentTimeRef.current = lastTime;
+                setResumeTime(lastTime);
+                setShowResumeToast(true);
+                
+                // Auto-hide toast after 5 seconds
+                setTimeout(() => {
+                  if (isMountedRef.current) {
+                    setShowResumeToast(false);
+                  }
+                }, 5000);
+              }
             }
 
             setIsReady(true);
@@ -149,6 +154,10 @@ export function VimeoPlayer({
         player.on('timeupdate', async (data: unknown) => {
           if (!isMountedRef.current) return;
           const { seconds } = data as { seconds: number };
+          
+          // Track current time for unmount save
+          currentTimeRef.current = seconds;
+          
           if (durationRef.current > 0) {
             await saveProgress(seconds, durationRef.current);
           }
@@ -159,13 +168,14 @@ export function VimeoPlayer({
           onPlay?.();
         });
 
-        // Handle pause - force save
+        // Handle pause - force save current position
         player.on('pause', async () => {
           if (!isMountedRef.current) return;
           onPause?.();
           try {
             const currentTime = await player.getCurrentTime();
-            if (durationRef.current > 0) {
+            currentTimeRef.current = currentTime;
+            if (durationRef.current > 0 && currentTime > 0) {
               await saveProgress(currentTime, durationRef.current, true);
             }
           } catch (e) {
@@ -173,12 +183,19 @@ export function VimeoPlayer({
           }
         });
 
-        // Handle ended - mark complete and reset
+        // Handle ended - check if truly complete before resetting
         player.on('ended', async () => {
           if (!isMountedRef.current) return;
           onEnded?.();
-          if (durationRef.current > 0) {
-            await markComplete(durationRef.current);
+          
+          try {
+            const currentTime = await player.getCurrentTime();
+            if (durationRef.current > 0) {
+              // markComplete will check if truly finished (>=95%) before resetting
+              await markComplete(currentTime, durationRef.current);
+            }
+          } catch (e) {
+            console.error('Error on video end:', e);
           }
         });
 
@@ -189,17 +206,33 @@ export function VimeoPlayer({
 
     initPlayer();
 
+    // Save on beforeunload
+    const handleBeforeUnload = () => {
+      if (currentTimeRef.current > 0 && durationRef.current > 0) {
+        // Use sendBeacon for reliable save on page unload
+        // Fall back to sync save since we can't await
+        saveProgress(currentTimeRef.current, durationRef.current, true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Cleanup
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Force save on unmount
-      if (playerRef.current && durationRef.current > 0) {
-        playerRef.current.getCurrentTime().then((time) => {
-          saveProgress(time, durationRef.current, true);
-        }).catch(() => {});
-        
-        playerRef.current.destroy();
+      // Force save on unmount with current tracked time
+      if (currentTimeRef.current > 0 && durationRef.current > 0) {
+        saveProgress(currentTimeRef.current, durationRef.current, true);
+      }
+      
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {
+          // Player might already be destroyed
+        }
         playerRef.current = null;
       }
     };
