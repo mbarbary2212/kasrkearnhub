@@ -235,12 +235,12 @@ export default function ChapterPage() {
         {/* Chapter Progress Bar */}
         <ChapterProgressBar
           totalProgress={chapterProgress?.totalProgress || 0}
-          resourcesProgress={chapterProgress?.resourcesProgress || 0}
           practiceProgress={chapterProgress?.practiceProgress || 0}
-          resourcesCompleted={chapterProgress?.resourcesCompleted || 0}
-          resourcesTotal={chapterProgress?.resourcesTotal || 0}
+          videoProgress={chapterProgress?.videoProgress || 0}
           practiceCompleted={chapterProgress?.practiceCompleted || 0}
           practiceTotal={chapterProgress?.practiceTotal || 0}
+          videosCompleted={chapterProgress?.videosCompleted || 0}
+          videosTotal={chapterProgress?.videosTotal || 0}
           isLoading={progressLoading}
         />
 

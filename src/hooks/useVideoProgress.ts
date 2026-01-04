@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,11 +12,14 @@ interface VideoProgress {
 
 const LOCAL_STORAGE_PREFIX = 'vimeo_progress:';
 const COMPLETION_THRESHOLD = 95; // percent
+const PROGRESS_INVALIDATION_THRESHOLD = 10; // percent change to trigger invalidation
 
 export function useVideoProgress(videoId: string | null) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const lastSavedTime = useRef<number>(0);
   const lastSaveTimestamp = useRef<number>(0);
+  const lastInvalidatedPercent = useRef<number>(0);
 
   const getLocalProgress = useCallback((vid: string): VideoProgress | null => {
     try {
@@ -134,12 +138,20 @@ export function useVideoProgress(videoId: string | null) {
 
       if (error) {
         console.error('Error saving video progress:', error);
+      } else {
+        // Invalidate chapter progress queries periodically to update progress bar
+        // Only invalidate if percent changed significantly (every 10%) to avoid excessive updates
+        const percentDiff = Math.abs(percentWatched - lastInvalidatedPercent.current);
+        if (percentDiff >= PROGRESS_INVALIDATION_THRESHOLD || percentWatched >= 80) {
+          lastInvalidatedPercent.current = percentWatched;
+          queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
+        }
       }
     } else {
       // Save to localStorage
       setLocalProgress(videoId, progress);
     }
-  }, [videoId, user, setLocalProgress]);
+  }, [videoId, user, setLocalProgress, queryClient]);
 
   // Mark video as complete - only resets if truly finished (>=95%)
   const markComplete = useCallback(async (
@@ -178,6 +190,9 @@ export function useVideoProgress(videoId: string | null) {
 
         if (error) {
           console.error('Error marking video complete:', error);
+        } else {
+          // Invalidate chapter progress to update UI
+          queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
         }
       } else {
         setLocalProgress(videoId, progress);
@@ -186,7 +201,7 @@ export function useVideoProgress(videoId: string | null) {
       // Not truly finished - just save current position
       await saveProgress(currentTime, duration, true);
     }
-  }, [videoId, user, setLocalProgress, saveProgress]);
+  }, [videoId, user, setLocalProgress, saveProgress, queryClient]);
 
   // Explicit reset (user clicked "Start over")
   const resetProgress = useCallback(async (duration: number): Promise<void> => {

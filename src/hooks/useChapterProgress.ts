@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { extractVimeoId, extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
 
 /**
  * Progress Tracking System
@@ -15,11 +16,23 @@ import { useAuthContext } from '@/contexts/AuthContext';
  * - Short Answer (Essay): Model answer revealed OR marked as done
  * - Case Scenario: Full solution viewed
  * - Matching: Interaction completed
+ * - Video: Watched >= 80% of duration
  * 
- * PROGRESS CALCULATION:
- * Progress (%) = (Completed Items / Total Items) × 100
- * This reflects COVERAGE only, not performance or grades.
+ * PROGRESS CALCULATION (Weighted):
+ * - Practice Progress (60%): (Completed Practice Items / Total Practice Items) × 100
+ * - Video Progress (40%): Duration-weighted average of watch percentages
+ * - Overall Progress = 0.60 × Practice + 0.40 × Video
+ * 
+ * Edge cases:
+ * - No videos → Overall = Practice progress (no penalty)
+ * - No practice items → Overall = Video progress (no penalty)
+ * - Both empty → 0
  */
+
+// Weights for overall progress calculation
+const PRACTICE_WEIGHT = 0.60;
+const VIDEO_WEIGHT = 0.40;
+const VIDEO_COMPLETION_THRESHOLD = 80; // percent
 
 // Content types that can be tracked for progress
 export type TrackableContentType = 
@@ -33,15 +46,28 @@ export type TrackableContentType =
   | 'matching';
 
 interface ChapterProgressData {
-  totalProgress: number;
-  resourcesProgress: number;
-  practiceProgress: number;
-  completedItems: number;
-  totalItems: number;
-  resourcesCompleted: number;
-  resourcesTotal: number;
+  totalProgress: number;        // Weighted overall progress
+  practiceProgress: number;     // Practice items completion %
+  videoProgress: number;        // Video watch completion %
   practiceCompleted: number;
   practiceTotal: number;
+  videosCompleted: number;      // Videos with >= 80% watched
+  videosTotal: number;
+  // Legacy fields for backward compatibility
+  resourcesProgress: number;
+  resourcesCompleted: number;
+  resourcesTotal: number;
+  completedItems: number;
+  totalItems: number;
+}
+
+/**
+ * Extract video ID from a video URL (Vimeo, YouTube, or Google Drive)
+ */
+function extractVideoId(videoUrl: string | null | undefined): string | null {
+  if (!videoUrl) return null;
+  const normalized = normalizeVideoInput(videoUrl);
+  return extractVimeoId(normalized) || extractYouTubeId(normalized) || extractGoogleDriveId(normalized);
 }
 
 export function useChapterProgress(chapterId?: string) {
@@ -50,18 +76,24 @@ export function useChapterProgress(chapterId?: string) {
   return useQuery({
     queryKey: ['chapter-progress', chapterId, user?.id],
     queryFn: async (): Promise<ChapterProgressData> => {
+      const emptyResult: ChapterProgressData = {
+        totalProgress: 0,
+        practiceProgress: 0,
+        videoProgress: 0,
+        practiceCompleted: 0,
+        practiceTotal: 0,
+        videosCompleted: 0,
+        videosTotal: 0,
+        // Legacy fields
+        resourcesProgress: 0,
+        resourcesCompleted: 0,
+        resourcesTotal: 0,
+        completedItems: 0,
+        totalItems: 0,
+      };
+
       if (!user?.id || !chapterId) {
-        return {
-          totalProgress: 0,
-          resourcesProgress: 0,
-          practiceProgress: 0,
-          completedItems: 0,
-          totalItems: 0,
-          resourcesCompleted: 0,
-          resourcesTotal: 0,
-          practiceCompleted: 0,
-          practiceTotal: 0,
-        };
+        return emptyResult;
       }
 
       // Fetch all content items for this learning unit (chapter)
@@ -75,8 +107,9 @@ export function useChapterProgress(chapterId?: string) {
         osceRes,
         matchingRes,
         userProgressRes,
+        videoProgressRes,
       ] = await Promise.all([
-        supabase.from('lectures').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
+        supabase.from('lectures').select('id, video_url').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('resources').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('mcqs').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('essays').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
@@ -85,10 +118,11 @@ export function useChapterProgress(chapterId?: string) {
         supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
         supabase.from('user_progress').select('content_id, content_type, completed').eq('user_id', user.id),
+        supabase.from('video_progress').select('video_id, percent_watched, duration_seconds').eq('user_id', user.id),
       ]);
 
       // Count items by category
-      const lectureIds = lecturesRes.data?.map(l => l.id) || [];
+      const lectures = lecturesRes.data || [];
       const resourceIds = resourcesRes.data?.map(r => r.id) || [];
       const mcqIds = mcqsRes.data?.map(m => m.id) || [];
       const essayIds = essaysRes.data?.map(e => e.id) || [];
@@ -97,42 +131,119 @@ export function useChapterProgress(chapterId?: string) {
       const osceIds = osceRes.data?.map(o => o.id) || [];
       const matchingIds = matchingRes.data?.map(m => m.id) || [];
 
-      // Resources = lectures + documents (informational, not tracked for progress)
-      const allResourceIds = [...lectureIds, ...resourceIds];
       // Practice = all interactive items (MCQs, Essays, Practicals, Cases, OSCE, Matching)
       const allPracticeIds = [...mcqIds, ...essayIds, ...practicalIds, ...caseIds, ...osceIds, ...matchingIds];
-
-      const resourcesTotal = allResourceIds.length;
       const practiceTotal = allPracticeIds.length;
-      const totalItems = resourcesTotal + practiceTotal;
 
-      // Count completed items
+      // Count completed practice items
       const completedContentIds = new Set(
         userProgressRes.data?.filter(p => p.completed).map(p => p.content_id) || []
       );
-
-      const resourcesCompleted = allResourceIds.filter(id => completedContentIds.has(id)).length;
       const practiceCompleted = allPracticeIds.filter(id => completedContentIds.has(id)).length;
-      const completedItems = resourcesCompleted + practiceCompleted;
-
-      // Calculate percentages
-      const resourcesProgress = resourcesTotal > 0 ? Math.round((resourcesCompleted / resourcesTotal) * 100) : 0;
       const practiceProgress = practiceTotal > 0 ? Math.round((practiceCompleted / practiceTotal) * 100) : 0;
-      
-      // Progress is driven by practice items (coverage of completed interactions)
-      // Resources are informational only and don't affect the main progress score
-      const totalProgress = practiceProgress;
+
+      // --- Video Progress Calculation ---
+      // Extract video IDs from lectures that have video URLs
+      const lectureVideos = lectures
+        .filter(l => l.video_url)
+        .map(l => ({
+          lectureId: l.id,
+          videoId: extractVideoId(l.video_url),
+        }))
+        .filter(v => v.videoId !== null) as Array<{ lectureId: string; videoId: string }>;
+
+      const videosTotal = lectureVideos.length;
+
+      // Build a map of video progress
+      const videoProgressMap = new Map<string, { percent: number; duration: number | null }>();
+      videoProgressRes.data?.forEach(vp => {
+        videoProgressMap.set(vp.video_id, {
+          percent: Number(vp.percent_watched) || 0,
+          duration: vp.duration_seconds ? Number(vp.duration_seconds) : null,
+        });
+      });
+
+      // Calculate video progress using duration-weighted average if durations available
+      let videoProgress = 0;
+      let videosCompleted = 0;
+
+      if (videosTotal > 0) {
+        let totalWatchedSeconds = 0;
+        let totalDurationSeconds = 0;
+        let hasAnyDuration = false;
+
+        for (const { videoId } of lectureVideos) {
+          const progress = videoProgressMap.get(videoId);
+          const percent = progress?.percent || 0;
+          const duration = progress?.duration || null;
+
+          if (percent >= VIDEO_COMPLETION_THRESHOLD) {
+            videosCompleted++;
+          }
+
+          if (duration && duration > 0) {
+            hasAnyDuration = true;
+            totalDurationSeconds += duration;
+            // watchedSeconds = (percent / 100) * duration
+            totalWatchedSeconds += (percent / 100) * duration;
+          }
+        }
+
+        if (hasAnyDuration && totalDurationSeconds > 0) {
+          // Duration-weighted video progress
+          videoProgress = Math.round((totalWatchedSeconds / totalDurationSeconds) * 100);
+        } else {
+          // Fallback: simple average of percentages
+          const sumPercent = lectureVideos.reduce((sum, { videoId }) => {
+            const progress = videoProgressMap.get(videoId);
+            return sum + (progress?.percent || 0);
+          }, 0);
+          videoProgress = Math.round(sumPercent / videosTotal);
+        }
+
+        // Cap at 100
+        videoProgress = Math.min(100, videoProgress);
+      }
+
+      // --- Calculate Overall Weighted Progress ---
+      let totalProgress: number;
+      const hasPractice = practiceTotal > 0;
+      const hasVideos = videosTotal > 0;
+
+      if (hasPractice && hasVideos) {
+        // Both present: weighted average
+        totalProgress = Math.round(PRACTICE_WEIGHT * practiceProgress + VIDEO_WEIGHT * videoProgress);
+      } else if (hasPractice) {
+        // Only practice items, no videos: 100% practice
+        totalProgress = practiceProgress;
+      } else if (hasVideos) {
+        // Only videos, no practice: 100% videos
+        totalProgress = videoProgress;
+      } else {
+        // Neither
+        totalProgress = 0;
+      }
+
+      // Legacy fields for backward compatibility
+      const resourcesTotal = resourceIds.length + lectures.length;
+      const resourcesCompleted = resourceIds.filter(id => completedContentIds.has(id)).length 
+        + lectures.filter(l => completedContentIds.has(l.id)).length;
+      const resourcesProgress = resourcesTotal > 0 ? Math.round((resourcesCompleted / resourcesTotal) * 100) : 0;
 
       return {
         totalProgress,
-        resourcesProgress,
         practiceProgress,
-        completedItems: practiceCompleted,
-        totalItems: practiceTotal,
-        resourcesCompleted,
-        resourcesTotal,
+        videoProgress,
         practiceCompleted,
         practiceTotal,
+        videosCompleted,
+        videosTotal,
+        // Legacy fields
+        resourcesProgress,
+        resourcesCompleted,
+        resourcesTotal,
+        completedItems: practiceCompleted,
+        totalItems: practiceTotal,
       };
     },
     enabled: !!chapterId && !!user?.id,
