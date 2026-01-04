@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { useCreateOsceQuestion, useUpdateOsceQuestion, uploadOsceImage, OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OsceFormModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function OsceFormModal({
   const [answers, setAnswers] = useState<boolean[]>([true, true, true, true, true]);
   const [explanations, setExplanations] = useState<string[]>(['', '', '', '', '']);
   const [uploading, setUploading] = useState(false);
+  const [showImageReplace, setShowImageReplace] = useState(false);
 
   const isEditing = !!editingQuestion;
 
@@ -63,6 +65,7 @@ export function OsceFormModal({
         editingQuestion.explanation_4 || '',
         editingQuestion.explanation_5 || '',
       ]);
+      setShowImageReplace(false);
     } else {
       resetForm();
     }
@@ -75,6 +78,7 @@ export function OsceFormModal({
     setStatements(['', '', '', '', '']);
     setAnswers([true, true, true, true, true]);
     setExplanations(['', '', '', '', '']);
+    setShowImageReplace(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +90,7 @@ export function OsceFormModal({
         setImagePreview(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+      setShowImageReplace(false);
     }
   };
 
@@ -175,105 +180,138 @@ export function OsceFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} OSCE Question</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
-          {/* Image Upload */}
-          <div>
-            <Label>Clinical Image *</Label>
-            <div className="mt-2">
-              {imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="OSCE clinical image"
-                    className="w-full max-h-48 object-contain rounded-lg border"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => {
-                      setImageFile(null);
-                      setImagePreview('');
-                    }}
-                  >
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                  <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">Click to upload image</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* History Text */}
-          <div>
-            <Label>Clinical History *</Label>
-            <Textarea
-              value={historyText}
-              onChange={(e) => setHistoryText(e.target.value)}
-              placeholder="Enter the clinical history/scenario..."
-              rows={3}
-              className="mt-1"
-            />
-          </div>
-
-          {/* Statements */}
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Statements (5 required)</Label>
-            {[0, 1, 2, 3, 4].map((index) => (
-              <div key={index} className="space-y-2 p-3 border rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm w-6">{index + 1}.</span>
-                  <Input
-                    value={statements[index]}
-                    onChange={(e) => updateStatement(index, e.target.value)}
-                    placeholder={`Statement ${index + 1}`}
-                    className="flex-1"
-                  />
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {answers[index] ? 'True' : 'False'}
-                    </span>
-                    <Switch
-                      checked={answers[index]}
-                      onCheckedChange={(checked) => updateAnswer(index, checked)}
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="space-y-6 pr-4 pb-4">
+            {/* Image Upload */}
+            <div>
+              <Label>Clinical Image *</Label>
+              <div className="mt-2">
+                {imagePreview && !showImageReplace ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="OSCE clinical image"
+                      className="w-full max-h-48 object-contain rounded-lg border"
                     />
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      {isEditing && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setShowImageReplace(true)}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Replace
+                        </Button>
+                      )}
+                      {!isEditing && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setImageFile(null);
+                            setImagePreview('');
+                          }}
+                        >
+                          Change
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {showImageReplace && isEditing && (
+                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg mb-2">
+                        <span className="text-sm text-muted-foreground">Select a new image to replace the current one</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowImageReplace(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
+                      <span className="text-sm text-muted-foreground">
+                        {showImageReplace ? 'Click to upload new image' : 'Click to upload image'}
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-1">JPG, PNG, or WebP</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* History Text */}
+            <div>
+              <Label>Case History / Clinical Scenario *</Label>
+              <Textarea
+                value={historyText}
+                onChange={(e) => setHistoryText(e.target.value)}
+                placeholder="Enter the clinical history/scenario..."
+                rows={4}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Statements */}
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Statements (5 required)</Label>
+              {[0, 1, 2, 3, 4].map((index) => (
+                <div key={index} className="space-y-2 p-3 border rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium text-sm w-6 pt-2">{index + 1}.</span>
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={statements[index]}
+                        onChange={(e) => updateStatement(index, e.target.value)}
+                        placeholder={`Statement ${index + 1}`}
+                      />
+                      <Input
+                        value={explanations[index]}
+                        onChange={(e) => updateExplanation(index, e.target.value)}
+                        placeholder="Explanation (optional)"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <span className={`text-sm font-medium ${answers[index] ? 'text-green-600' : 'text-red-600'}`}>
+                        {answers[index] ? 'True' : 'False'}
+                      </span>
+                      <Switch
+                        checked={answers[index]}
+                        onCheckedChange={(checked) => updateAnswer(index, checked)}
+                      />
+                    </div>
                   </div>
                 </div>
-                <Input
-                  value={explanations[index]}
-                  onChange={(e) => updateExplanation(index, e.target.value)}
-                  placeholder="Explanation (optional)"
-                  className="ml-6 text-sm"
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+        </ScrollArea>
 
-          {/* Submit */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={!isValid || uploading}>
-              {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? 'Update' : 'Add'} Question
-            </Button>
-          </div>
+        {/* Submit - Fixed at bottom */}
+        <div className="flex justify-end gap-2 pt-4 border-t shrink-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={!isValid || uploading}>
+            {uploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isEditing ? 'Update' : 'Add'} Question
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

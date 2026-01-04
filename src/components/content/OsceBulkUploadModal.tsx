@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Upload, 
@@ -14,17 +13,21 @@ import {
   AlertTriangle,
   Loader2,
   Download,
+  Info,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
+import * as XLSX from 'xlsx';
 
 interface OsceBulkUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string;
+  moduleCode?: string;
+  chapterTitle?: string;
 }
 
 interface ParsedRow {
@@ -49,6 +52,8 @@ export function OsceBulkUploadModal({
   onOpenChange,
   moduleId,
   chapterId,
+  moduleCode = 'MODULE',
+  chapterTitle = 'CHAPTER',
 }: OsceBulkUploadModalProps) {
   const auth = useAuthContext();
   const queryClient = useQueryClient();
@@ -57,21 +62,26 @@ export function OsceBulkUploadModal({
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
-  const [importProgress, setImportProgress] = useState(0);
   const [importing, setImporting] = useState(false);
+
+  const storagePath = `${moduleCode}/${chapterTitle}/`;
 
   const resetState = () => {
     setStep('upload');
     setExcelFile(null);
     setZipFile(null);
     setValidationResult(null);
-    setImportProgress(0);
     setImporting(false);
   };
 
   const handleExcelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Only accept .xlsx files
+      if (!file.name.endsWith('.xlsx')) {
+        toast.error('Please upload an Excel file (.xlsx)');
+        return;
+      }
       setExcelFile(file);
     }
   };
@@ -94,6 +104,8 @@ export function OsceBulkUploadModal({
       formData.append('excel', excelFile);
       formData.append('zip', zipFile);
       formData.append('moduleId', moduleId);
+      formData.append('moduleCode', moduleCode);
+      formData.append('chapterTitle', chapterTitle);
       if (chapterId) formData.append('chapterId', chapterId);
       formData.append('validateOnly', 'true');
 
@@ -137,6 +149,8 @@ export function OsceBulkUploadModal({
       formData.append('excel', excelFile);
       formData.append('zip', zipFile);
       formData.append('moduleId', moduleId);
+      formData.append('moduleCode', moduleCode);
+      formData.append('chapterTitle', chapterTitle);
       if (chapterId) formData.append('chapterId', chapterId);
       formData.append('validateOnly', 'false');
 
@@ -173,59 +187,82 @@ export function OsceBulkUploadModal({
   };
 
   const downloadTemplate = () => {
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    
     const headers = [
       'image_filename',
-      'history_text',
-      'statement_1',
-      'answer_1',
-      'statement_2',
-      'answer_2',
-      'statement_3',
-      'answer_3',
-      'statement_4',
-      'answer_4',
-      'statement_5',
-      'answer_5',
-      'explanation_1',
-      'explanation_2',
-      'explanation_3',
-      'explanation_4',
-      'explanation_5',
+      'case_history',
+      'statement_1_text',
+      'statement_1_answer',
+      'statement_1_explanation',
+      'statement_2_text',
+      'statement_2_answer',
+      'statement_2_explanation',
+      'statement_3_text',
+      'statement_3_answer',
+      'statement_3_explanation',
+      'statement_4_text',
+      'statement_4_answer',
+      'statement_4_explanation',
+      'statement_5_text',
+      'statement_5_answer',
+      'statement_5_explanation',
     ];
     
     const exampleRow = [
-      'image1.jpg',
-      'A 45-year-old male presents with chest pain...',
+      'case_001.jpg',
+      'A 45-year-old male presents with chest pain radiating to the left arm...',
       'The patient has typical angina symptoms',
-      'T',
-      'ECG changes are diagnostic of MI',
-      'F',
-      'Troponin levels would be elevated',
-      'T',
-      'Beta-blockers are contraindicated',
-      'F',
+      'TRUE',
+      'Classic angina presents with chest pain on exertion',
+      'ECG changes are diagnostic of myocardial infarction',
+      'FALSE',
+      'ECG may be normal in early stages',
+      'Troponin levels would be elevated in acute MI',
+      'TRUE',
+      'Troponin is a sensitive marker for myocardial damage',
+      'Beta-blockers are contraindicated in this patient',
+      'FALSE',
+      'Beta-blockers are actually indicated unless contraindicated',
       'Aspirin should be given immediately',
-      'T',
-      'Explanation for statement 1',
-      'Explanation for statement 2',
-      'Explanation for statement 3',
-      'Explanation for statement 4',
-      'Explanation for statement 5',
+      'TRUE',
+      'Aspirin reduces mortality in acute coronary syndrome',
     ];
 
-    const csv = [headers.join(','), exampleRow.join(',')].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'osce_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const data = [headers, exampleRow];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Set column widths for readability
+    ws['!cols'] = [
+      { wch: 20 }, // image_filename
+      { wch: 60 }, // case_history
+      { wch: 40 }, // statement_1_text
+      { wch: 12 }, // statement_1_answer
+      { wch: 40 }, // statement_1_explanation
+      { wch: 40 }, // statement_2_text
+      { wch: 12 }, // statement_2_answer
+      { wch: 40 }, // statement_2_explanation
+      { wch: 40 }, // statement_3_text
+      { wch: 12 }, // statement_3_answer
+      { wch: 40 }, // statement_3_explanation
+      { wch: 40 }, // statement_4_text
+      { wch: 12 }, // statement_4_answer
+      { wch: 40 }, // statement_4_explanation
+      { wch: 40 }, // statement_5_text
+      { wch: 12 }, // statement_5_answer
+      { wch: 40 }, // statement_5_explanation
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'OSCE Questions');
+
+    // Download the file
+    XLSX.writeFile(wb, 'osce_template.xlsx');
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) resetState(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload OSCE Questions</DialogTitle>
         </DialogHeader>
@@ -233,21 +270,26 @@ export function OsceBulkUploadModal({
         {step === 'upload' && (
           <div className="space-y-6 pt-4">
             <Alert>
-              <AlertDescription>
-                Upload an Excel/CSV file with question data and a ZIP file containing the images.
-                Image filenames in Excel must match the files in the ZIP exactly.
+              <Info className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p><strong>Instructions:</strong></p>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  <li>Save images with the <strong>exact names</strong> written in the <code className="bg-muted px-1 rounded">image_filename</code> column.</li>
+                  <li>ZIP must contain those exact files (case-sensitive).</li>
+                  <li>Images will be uploaded to: <code className="bg-muted px-1 rounded text-xs">osce-images/{storagePath}</code></li>
+                </ul>
               </AlertDescription>
             </Alert>
 
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               <Download className="w-4 h-4 mr-2" />
-              Download CSV Template
+              Download Excel Template (.xlsx)
             </Button>
 
             {/* Excel Upload */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Step 1: Upload Excel/CSV File
+                Step 1: Upload Excel File (.xlsx)
               </label>
               <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${excelFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}>
                 {excelFile ? (
@@ -258,12 +300,12 @@ export function OsceBulkUploadModal({
                 ) : (
                   <>
                     <FileSpreadsheet className="w-8 h-8 text-muted-foreground mb-1" />
-                    <span className="text-sm text-muted-foreground">Click to upload Excel (.xlsx, .csv)</span>
+                    <span className="text-sm text-muted-foreground">Click to upload Excel (.xlsx only)</span>
                   </>
                 )}
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".xlsx"
                   onChange={handleExcelChange}
                   className="hidden"
                 />
@@ -284,7 +326,7 @@ export function OsceBulkUploadModal({
                 ) : (
                   <>
                     <FolderArchive className="w-8 h-8 text-muted-foreground mb-1" />
-                    <span className="text-sm text-muted-foreground">Click to upload ZIP file</span>
+                    <span className="text-sm text-muted-foreground">Click to upload ZIP file with images</span>
                   </>
                 )}
                 <input
@@ -314,7 +356,7 @@ export function OsceBulkUploadModal({
         {step === 'preview' && validationResult && (
           <div className="space-y-4 pt-4">
             {/* Summary */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Badge variant="default" className="text-sm">
                 <CheckCircle2 className="w-4 h-4 mr-1" />
                 Valid: {validationResult.valid.length}
@@ -337,16 +379,16 @@ export function OsceBulkUploadModal({
             {(validationResult.invalid.length > 0 || validationResult.missingImages.length > 0) && (
               <ScrollArea className="h-48 border rounded-lg p-3">
                 <div className="space-y-2">
-                  {validationResult.invalid.map((row) => (
-                    <div key={row.rowNumber} className="text-sm text-destructive flex items-start gap-2">
+                  {validationResult.invalid.map((row, idx) => (
+                    <div key={idx} className="text-sm text-destructive flex items-start gap-2">
                       <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
                       <span>Row {row.rowNumber}: {row.error}</span>
                     </div>
                   ))}
-                  {validationResult.missingImages.map((filename) => (
-                    <div key={filename} className="text-sm text-amber-600 flex items-start gap-2">
+                  {validationResult.missingImages.map((filename, idx) => (
+                    <div key={`img-${idx}`} className="text-sm text-amber-600 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>Missing image: {filename}</span>
+                      <span>Missing image in ZIP: <code className="bg-muted px-1 rounded">{filename}</code></span>
                     </div>
                   ))}
                 </div>
@@ -364,6 +406,10 @@ export function OsceBulkUploadModal({
                 <AlertDescription>
                   Ready to import {validationResult.valid.length} OSCE questions.
                   {validationResult.invalid.length > 0 && ` ${validationResult.invalid.length} rows will be skipped.`}
+                  <br />
+                  <span className="text-xs text-muted-foreground">
+                    Images will be stored at: <code className="bg-muted px-1 rounded">osce-images/{storagePath}</code>
+                  </span>
                 </AlertDescription>
               </Alert>
             )}
