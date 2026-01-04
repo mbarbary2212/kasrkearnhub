@@ -6,4 +6,8 @@ export { ChapterMockExamSection } from './ChapterMockExamSection';
 export { TestModeSelector } from './TestModeSelector';
 export { HardModeQuestion } from './HardModeQuestion';
 export { TransitionScreen } from './TransitionScreen';
+export { OsceTimedExam } from './OsceTimedExam';
+export { OsceExamQuestion } from './OsceExamQuestion';
+export { OsceExamResults } from './OsceExamResults';
+export { HardModeOsceQuestion } from './HardModeOsceQuestion';
 export type { TestMode } from './TestModeSelector';
