@@ -195,7 +195,8 @@ export default function ChapterPage() {
     mcqs: mcqs?.length || 0,
     essays: essays?.length || 0,
     cases: caseScenarios?.length || 0,
-    practical: osceQuestions?.length || 0,
+    osce: osceQuestions?.length || 0,
+    practical: 0, // Placeholder - no practicals data yet
     matching: matchingQuestions?.length || 0,
     images: 0,
   });
