@@ -48,13 +48,27 @@ export default function Auth() {
     setIsLoading(false);
   };
 
+  const ALLOWED_EMAIL_DOMAIN = '@kasralainy.edu.eg';
+
+  const isAllowedEmailDomain = (email: string): boolean => {
+    const normalizedEmail = email.toLowerCase().trim();
+    return normalizedEmail.endsWith(ALLOWED_EMAIL_DOMAIN);
+  };
+
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
+    const email = (formData.get('email') as string).toLowerCase().trim();
     const password = formData.get('password') as string;
     const name = formData.get('name') as string;
+
+    // Validate email domain for new sign-ups
+    if (!isAllowedEmailDomain(email)) {
+      toast.error('Registration is currently limited to Kasr Al-Ainy accounts (@kasralainy.edu.eg).');
+      setIsLoading(false);
+      return;
+    }
 
     const { error } = await signUp(email, password, name);
     if (error) {
@@ -489,11 +503,14 @@ export default function Auth() {
                         id="signup-email"
                         name="email"
                         type="email"
-                        placeholder="your@email.com"
+                        placeholder="your@kasralainy.edu.eg"
                         className="pl-10"
                         required
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      New registrations are limited to @kasralainy.edu.eg accounts.
+                    </p>
                   </div>
                   
                   <div className="space-y-2">
