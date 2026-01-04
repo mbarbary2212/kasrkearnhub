@@ -82,47 +82,50 @@ export function OsceQuestionCard({
       isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
     )}>
       <CardContent className="p-0">
-        {/* Image and History */}
-        <div className="flex flex-col md:flex-row gap-4 p-4 border-b">
-          {/* Image container - larger on desktop/tablet */}
-          <div className="w-full md:w-[380px] lg:w-[440px] shrink-0">
-            <div className="relative w-full max-h-[260px] md:max-h-[360px] lg:max-h-[420px] rounded-lg overflow-hidden bg-muted">
+        {/* Image and History - stacked layout */}
+        <div className="p-4 border-b space-y-4">
+          {/* Header with question number and admin actions */}
+          <div className="flex items-center justify-between">
+            <Badge variant="outline">Question {questionNumber}</Badge>
+            {isDeleted && (
+              <Badge variant="destructive">Deleted</Badge>
+            )}
+            {isAdmin && !isDeleted && (
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={onEdit}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onDelete}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            )}
+            {isAdmin && isDeleted && (
+              <Button variant="ghost" size="sm" onClick={onRestore}>
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Image container - large and centered */}
+          <div className="w-full max-w-[500px] mx-auto">
+            <div className="relative w-full max-h-[300px] md:max-h-[400px] lg:max-h-[450px] rounded-lg overflow-hidden bg-muted">
               {question.image_url ? (
                 <img
                   src={question.image_url}
                   alt="Clinical image"
-                  className="w-full h-full object-contain max-h-[260px] md:max-h-[360px] lg:max-h-[420px]"
+                  className="w-full h-full object-contain max-h-[300px] md:max-h-[400px] lg:max-h-[450px]"
                 />
               ) : (
-                <div className="flex items-center justify-center h-40 md:h-64 lg:h-80">
+                <div className="flex items-center justify-center h-48 md:h-64">
                   <ImageIcon className="w-12 h-12 text-muted-foreground" />
                 </div>
               )}
             </div>
           </div>
-          {/* History and controls */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-2">
-              <Badge variant="outline">Question {questionNumber}</Badge>
-              {isDeleted && (
-                <Badge variant="destructive">Deleted</Badge>
-              )}
-              {isAdmin && !isDeleted && (
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={onEdit}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={onDelete}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              )}
-              {isAdmin && isDeleted && (
-                <Button variant="ghost" size="sm" onClick={onRestore}>
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
+
+          {/* Clinical History - below image */}
+          <div>
             <h3 className="font-medium text-lg mb-2">Clinical History</h3>
             <p className="text-muted-foreground whitespace-pre-wrap">{question.history_text}</p>
           </div>
