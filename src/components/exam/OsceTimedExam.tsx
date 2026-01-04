@@ -42,8 +42,11 @@ interface UserOsceAnswers {
 // Transition delay between questions in hard mode (seconds)
 const HARD_MODE_TRANSITION_SECONDS = 3;
 
-// Default time per OSCE question (more time needed than MCQs)
+// Default time per OSCE question for easy mode
 const DEFAULT_SECONDS_PER_OSCE = 90;
+
+// Hard mode: 2.5 minutes (150 seconds) per OSCE question
+const HARD_MODE_SECONDS_PER_OSCE = 150;
 
 export function OsceTimedExam({
   moduleId,
@@ -314,7 +317,7 @@ export function OsceTimedExam({
             question={currentQuestion}
             questionIndex={currentIndex}
             totalQuestions={examQuestions.length}
-            secondsPerQuestion={effectiveSecondsPerQuestion}
+            secondsPerQuestion={HARD_MODE_SECONDS_PER_OSCE}
             userAnswers={currentQuestionAnswers}
             onSelectAnswer={handleSelectAnswer}
             onTimeUp={handleHardModeTimeUp}
