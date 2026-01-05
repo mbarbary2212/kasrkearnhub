@@ -14,6 +14,7 @@ import {
 import { Home, LogOut, Inbox, FileText, Shield, BarChart3, Settings } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
+import personalCoachIcon from '@/assets/personal-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 
@@ -156,7 +157,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   Home
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/progress')}>
-                  <BarChart3 className="mr-2 h-4 w-4" />
+                  <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-4 w-4 rounded" />
                   Personal Study Coach
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/account')}>
