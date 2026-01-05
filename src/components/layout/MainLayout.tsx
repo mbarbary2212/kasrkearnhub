@@ -120,9 +120,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 onClick={() => navigate('/progress')}
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 rounded-full hover:bg-primary/10 p-0.5"
+                className="h-14 w-14 rounded-full hover:bg-primary/10 p-0.5"
               >
-                <img src={studyGuideIcon} alt="Study Guide" className="h-10 w-10 rounded" />
+                <img src={studyGuideIcon} alt="Study Guide" className="h-13 w-13 rounded" />
               </Button>
             )}
 
