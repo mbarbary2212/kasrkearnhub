@@ -24,7 +24,12 @@ export function useUnreadMessages(moduleId?: string, yearId?: string) {
         .eq('pending_approval', false);
 
       // Filter announcements based on context
+      // If no moduleId/yearId provided (home page), show ALL announcements
       const filteredAnnouncements = (announcements || []).filter((a) => {
+        if (!moduleId && !yearId) {
+          // On home page, show all announcements
+          return true;
+        }
         if (a.target_type === 'all') return true;
         if (a.target_type === 'module' && a.module_id === moduleId) return true;
         if (a.target_type === 'year' && a.year_id === yearId) return true;
