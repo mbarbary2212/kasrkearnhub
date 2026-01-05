@@ -6,8 +6,14 @@ import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw, CheckCircle } from 'lucid
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
-import { useSaveQuestionAttempt, QuestionAttempt } from '@/hooks/useQuestionAttempts';
+import { useSaveQuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
+
+// Minimal attempt data needed for display
+interface McqAttemptData {
+  selected_answer: Json;
+  is_correct: boolean | null;
+}
 
 interface McqCardProps {
   mcq: Mcq;
@@ -24,7 +30,7 @@ interface McqCardProps {
   onToggleExpand?: (id: string) => void;
   isDeleted?: boolean;
   // Previous attempt data for restoring state
-  previousAttempt?: QuestionAttempt | null;
+  previousAttempt?: McqAttemptData | null;
 }
 
 export function McqCard({ 
