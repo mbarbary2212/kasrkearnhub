@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { RotateCcw, Eye, Clock, CheckCircle2, XCircle, Star, BarChart3 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RotateCcw, Filter, Clock, CheckCircle2, XCircle, Star, BarChart3, ListFilter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -43,8 +43,8 @@ interface FilterOption {
 const FILTER_OPTIONS: FilterOption[] = [
   { 
     key: 'notSeen', 
-    label: 'Not seen', 
-    icon: <Eye className="h-3.5 w-3.5" />,
+    label: 'All', 
+    icon: <ListFilter className="h-3.5 w-3.5" />,
     colorClass: 'text-muted-foreground',
   },
   { 
@@ -116,66 +116,78 @@ export function PracticeFilters({
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   return (
-    <div className="space-y-3">
-      {/* Filter Row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground mr-1">Show:</span>
-        
-        {FILTER_OPTIONS.map((option) => (
-          <label
-            key={option.key}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors text-sm",
-              filters[option.key]
-                ? "bg-secondary border-secondary-foreground/20"
-                : "bg-background border-border hover:bg-muted/50"
-            )}
-          >
-            <Checkbox
-              checked={filters[option.key]}
-              onCheckedChange={() => handleToggle(option.key)}
-              className="h-3.5 w-3.5"
-            />
-            <span className={cn("flex items-center gap-1", option.colorClass)}>
-              {option.icon}
-              {option.label}
-            </span>
-            <Badge variant="outline" className="ml-0.5 h-5 px-1.5 text-xs font-normal">
-              {counts[option.key]}
-            </Badge>
-          </label>
-        ))}
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Left side: Filter button + count */}
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Filter className="h-3.5 w-3.5" />
+              Filters
+              {activeFilterCount > 0 && activeFilterCount < 5 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3" align="start">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Show questions</span>
+                {!isDefaultFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Reset
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                {FILTER_OPTIONS.map((option) => (
+                  <label
+                    key={option.key}
+                    className="flex items-center justify-between cursor-pointer py-1 hover:bg-muted/50 px-1 rounded"
+                  >
+                    <span className={cn("flex items-center gap-2 text-sm", option.colorClass)}>
+                      {option.icon}
+                      {option.label}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{counts[option.key]}</span>
+                      <Checkbox
+                        checked={filters[option.key]}
+                        onCheckedChange={() => handleToggle(option.key)}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        {/* Reset Filters Button */}
-        {!isDefaultFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetFilters}
-            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <RotateCcw className="h-3 w-3 mr-1" />
-            Reset filters
-          </Button>
-        )}
-      </div>
-
-      {/* Status Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="text-muted-foreground">
-          Showing <span className="font-medium text-foreground">{filteredCount}</span> of {totalCount} {questionType} questions
+        <span className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{filteredCount}</span>/{totalCount}
         </span>
-        
-        {moduleSlug && (
-          <Link 
-            to={`/progress`}
-            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-          >
-            <BarChart3 className="h-3 w-3" />
-            View detailed performance in My Progress
-          </Link>
-        )}
       </div>
+
+      {/* Right side: Progress link */}
+      {moduleSlug && (
+        <Link 
+          to={`/progress`}
+          className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+        >
+          <BarChart3 className="h-3 w-3" />
+          My Progress
+        </Link>
+      )}
     </div>
   );
 }
