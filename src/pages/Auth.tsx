@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound, GraduationCap } from 'lucide-react';
+import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
@@ -560,20 +560,6 @@ export default function Auth() {
               >
                 {isStudent ? 'Faculty & Staff Login' : 'Student Login'}
               </Button>
-            </div>
-
-            {/* Personal Study Coach Section */}
-            <div className="mt-6 pt-6 border-t border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <GraduationCap className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground">Personal Study Coach</h3>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your AI-powered companion that adapts to your learning pace, tracks your progress, 
-                and guides you through your medical education journey with personalized study plans.
-              </p>
             </div>
           </CardContent>
         </Card>
