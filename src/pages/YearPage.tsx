@@ -11,6 +11,11 @@ export default function YearPage() {
   const navigate = useNavigate();
   const yearNumber = parseInt(yearId || '1', 10);
 
+  const handleGoHome = () => {
+    sessionStorage.setItem('skipAutoLogin', 'true');
+    navigate('/');
+  };
+
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
 
@@ -21,7 +26,7 @@ export default function YearPage() {
       <MainLayout>
         <div className="text-center py-12">
           <p className="text-muted-foreground">Year not found.</p>
-          <Button onClick={() => navigate('/')} className="mt-4">
+          <Button onClick={handleGoHome} className="mt-4">
             Go Home
           </Button>
         </div>
@@ -34,7 +39,7 @@ export default function YearPage() {
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" onClick={handleGoHome}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
