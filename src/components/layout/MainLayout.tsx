@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield, BarChart3 } from 'lucide-react';
 import logo from '@/assets/logo.png';
+import studyGuideIcon from '@/assets/study-guide-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 
@@ -119,9 +120,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 onClick={() => navigate('/progress')}
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 rounded-full text-primary hover:bg-primary/10"
+                className="h-11 w-11 rounded-full hover:bg-primary/10 p-1"
               >
-                <BarChart3 className="h-6 w-6" />
+                <img src={studyGuideIcon} alt="Study Guide" className="h-8 w-8 rounded" />
               </Button>
             )}
 
