@@ -17,9 +17,17 @@ export default function Home() {
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
-  // Handle auto-login to preferred year
+  // Handle auto-login to preferred year - only on fresh session, not when user explicitly navigates home
   useEffect(() => {
     if (!user || authLoading || hasCheckedAutoLogin) return;
+
+    // Check if user explicitly navigated to home (skip auto-login)
+    const skipAutoLogin = sessionStorage.getItem('skipAutoLogin');
+    if (skipAutoLogin) {
+      sessionStorage.removeItem('skipAutoLogin');
+      setHasCheckedAutoLogin(true);
+      return;
+    }
 
     const checkAutoLogin = async () => {
       try {
