@@ -492,50 +492,64 @@ export function McqList({
       {/* Actions Bar */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {/* Filters dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-3 w-3" />
-                Filters
-                {(showDuplicatesOnly || showMarkedOnly || showDeleted) && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuCheckboxItem
-                checked={showMarkedOnly}
-                onCheckedChange={setShowMarkedOnly}
-              >
-                <Star className="h-3 w-3 mr-2 text-amber-500" />
-                Marked for review ({markedIds.size})
-              </DropdownMenuCheckboxItem>
-              {isAdmin && duplicateMcqs.length > 0 && !showDeleted && (
+          {/* Practice Filters for students (not admin, not deleted view) */}
+          {!isAdmin && !showDeleted && totalQuestions > 0 && (
+            <PracticeFilters
+              filters={practiceFilters}
+              onFiltersChange={setPracticeFilters}
+              counts={statusCounts}
+              totalCount={totalQuestions}
+              filteredCount={filteredMcqs.length}
+              questionType="MCQ"
+            />
+          )}
+          
+          {/* Admin-only filters dropdown */}
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="h-3 w-3" />
+                  Filters
+                  {(showDuplicatesOnly || showMarkedOnly || showDeleted) && (
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
                 <DropdownMenuCheckboxItem
-                  checked={showDuplicatesOnly}
-                  onCheckedChange={setShowDuplicatesOnly}
+                  checked={showMarkedOnly}
+                  onCheckedChange={setShowMarkedOnly}
                 >
-                  <Copy className="h-3 w-3 mr-2" />
-                  Show duplicates only ({duplicateMcqs.length})
+                  <Star className="h-3 w-3 mr-2 text-amber-500" />
+                  Marked for review ({markedIds.size})
                 </DropdownMenuCheckboxItem>
-              )}
-              {isAdmin && showDeletedToggle && (
-                <>
-                  <DropdownMenuSeparator />
+                {duplicateMcqs.length > 0 && !showDeleted && (
                   <DropdownMenuCheckboxItem
-                    checked={showDeleted}
-                    onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
+                    checked={showDuplicatesOnly}
+                    onCheckedChange={setShowDuplicatesOnly}
                   >
-                    <Trash2 className="h-3 w-3 mr-2 text-destructive" />
-                    Show deleted ({deletedMcqs.length})
+                    <Copy className="h-3 w-3 mr-2" />
+                    Show duplicates only ({duplicateMcqs.length})
                   </DropdownMenuCheckboxItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+                {showDeletedToggle && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={showDeleted}
+                      onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
+                    >
+                      <Trash2 className="h-3 w-3 mr-2 text-destructive" />
+                      Show deleted ({deletedMcqs.length})
+                    </DropdownMenuCheckboxItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         {showAddControls && !showDeleted && (
           <div className="flex gap-2 items-center">
@@ -587,18 +601,6 @@ export function McqList({
             Showing {duplicateMcqs.length} potential duplicate(s). Review and delete as needed.
           </AlertDescription>
         </Alert>
-      )}
-
-      {/* Practice Filters for students (not admin, not deleted view) */}
-      {!isAdmin && !showDeleted && totalQuestions > 0 && (
-        <PracticeFilters
-          filters={practiceFilters}
-          onFiltersChange={setPracticeFilters}
-          counts={statusCounts}
-          totalCount={totalQuestions}
-          filteredCount={filteredMcqs.length}
-          questionType="MCQ"
-        />
       )}
 
       {/* MCQ Cards */}
