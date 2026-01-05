@@ -3,12 +3,12 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight } from 'lucide-react';
+import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
-import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnouncementAlert';
-
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 export default function Home() {
   const { user } = useAuthContext();
   const navigate = useNavigate();
@@ -151,6 +151,7 @@ function LoggedInHome() {
   const navigate = useNavigate();
   const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
+  const { data: unreadCounts } = useUnreadMessages();
 
   // Color mapping for years - using inline styles since dynamic Tailwind classes are purged
   const getYearStyle = (color: string | null): React.CSSProperties => {
@@ -170,15 +171,57 @@ function LoggedInHome() {
     return { backgroundColor: bgColor };
   };
 
+  const hasMessages = (unreadCounts?.announcements ?? 0) > 0 || (unreadCounts?.replies ?? 0) > 0;
+
+  const getTooltipText = () => {
+    const parts: string[] = [];
+    if (unreadCounts?.announcements && unreadCounts.announcements > 0) {
+      parts.push(`${unreadCounts.announcements} announcement${unreadCounts.announcements > 1 ? 's' : ''}`);
+    }
+    if (unreadCounts?.replies && unreadCounts.replies > 0) {
+      parts.push(`${unreadCounts.replies} answer${unreadCounts.replies > 1 ? 's' : ''}`);
+    }
+    return `You have ${parts.join(' and ')}`;
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Announcement Alert - shows when there are unread announcements */}
-      <HomeAnnouncementAlert />
-
       {/* Welcome Section */}
       <section className="text-center py-8">
-        <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-          Welcome back, <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
+        <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4 inline-flex items-center justify-center gap-2 flex-wrap">
+          <span>Welcome back,</span>
+          <span className="text-gradient-medical inline-flex items-center gap-2">
+            {profile?.full_name || 'Student'}
+            {hasMessages && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 ml-1">
+                      {(unreadCounts?.announcements ?? 0) > 0 && (
+                        <span className="relative inline-flex items-center justify-center w-6 h-6 bg-amber-500 rounded-full">
+                          <Megaphone className="w-3.5 h-3.5 text-white" />
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                            {unreadCounts?.announcements}
+                          </span>
+                        </span>
+                      )}
+                      {(unreadCounts?.replies ?? 0) > 0 && (
+                        <span className="relative inline-flex items-center justify-center w-6 h-6 bg-primary rounded-full">
+                          <Mail className="w-3.5 h-3.5 text-white" />
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                            {unreadCounts?.replies}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{getTooltipText()}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </span>
         </h1>
         <p className="text-lg text-muted-foreground">
           Select your academic year to continue
