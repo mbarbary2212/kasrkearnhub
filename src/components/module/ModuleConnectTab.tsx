@@ -8,23 +8,21 @@ import {
 } from 'lucide-react';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
-import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner';
+import { MessagesCard } from '@/components/connect/MessagesCard';
 
 interface ModuleConnectTabProps {
   moduleId: string;
   moduleName: string;
   moduleCode?: string;
+  yearId?: string;
 }
 
-export function ModuleConnectTab({ moduleId, moduleName, moduleCode }: ModuleConnectTabProps) {
+export function ModuleConnectTab({ moduleId, moduleName, moduleCode, yearId }: ModuleConnectTabProps) {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      {/* Announcements Banner */}
-      <AnnouncementBanner moduleId={moduleId} className="mb-4" />
-
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold mb-2">Connect</h2>
         <p className="text-muted-foreground text-sm">
@@ -32,7 +30,10 @@ export function ModuleConnectTab({ moduleId, moduleName, moduleCode }: ModuleCon
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Messages Card - Announcements + Replies */}
+        <MessagesCard moduleId={moduleId} yearId={yearId} />
+
         {/* Questions Card */}
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50"
@@ -76,7 +77,7 @@ export function ModuleConnectTab({ moduleId, moduleName, moduleCode }: ModuleCon
         </Card>
 
         {/* Discussion Card (Coming Soon) */}
-        <Card className="opacity-60 cursor-not-allowed sm:col-span-2">
+        <Card className="opacity-60 cursor-not-allowed lg:col-span-3 sm:col-span-2">
           <CardHeader className="pb-2">
             <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mb-2">
               <MessagesSquare className="w-6 h-6 text-muted-foreground" />

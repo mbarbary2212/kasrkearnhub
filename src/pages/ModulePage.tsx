@@ -176,6 +176,7 @@ export default function ModulePage() {
                 moduleId={actualModuleId}
                 moduleName={module?.name || ''}
                 moduleCode={module?.slug || ''}
+                yearId={module?.year_id}
               />
             )}
           </div>
