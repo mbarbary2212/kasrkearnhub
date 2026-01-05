@@ -186,15 +186,24 @@ function LoggedInHome() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1.5 ml-2 cursor-pointer">
+                    <span
+                      className="inline-flex items-center gap-1.5 ml-2 cursor-pointer"
+                      title="Go to your module to check your messages"
+                    >
                       {(unreadCounts?.announcements ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full"
+                          title="Go to your module to check your messages"
+                        >
                           <Megaphone className="w-3.5 h-3.5" />
                           {unreadCounts.announcements}
                         </span>
                       )}
                       {(unreadCounts?.replies ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full"
+                          title="Go to your module to check your messages"
+                        >
                           <Mail className="w-3.5 h-3.5" />
                           {unreadCounts.replies}
                         </span>
