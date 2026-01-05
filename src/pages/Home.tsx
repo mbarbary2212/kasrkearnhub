@@ -176,12 +176,12 @@ function LoggedInHome() {
   const getTooltipText = () => {
     const parts: string[] = [];
     if (unreadCounts?.announcements && unreadCounts.announcements > 0) {
-      parts.push(`${unreadCounts.announcements} announcement${unreadCounts.announcements > 1 ? 's' : ''}`);
+      parts.push(`${unreadCounts.announcements} new announcement${unreadCounts.announcements > 1 ? 's' : ''}`);
     }
     if (unreadCounts?.replies && unreadCounts.replies > 0) {
-      parts.push(`${unreadCounts.replies} answer${unreadCounts.replies > 1 ? 's' : ''}`);
+      parts.push(`${unreadCounts.replies} new answer${unreadCounts.replies > 1 ? 's' : ''}`);
     }
-    return `You have ${parts.join(' and ')}`;
+    return `You have ${parts.join(' and ')}. Go to your module to check your messages.`;
   };
 
   return (
