@@ -109,7 +109,6 @@ export function CaseScenarioDetailModal({
       <body>
         <h1>${caseItem.title}</h1>
         <div class="section">
-          <div class="section-label">Case History:</div>
           <div class="section-content">${caseItem.case_history}</div>
         </div>
         <div class="section">
@@ -177,14 +176,9 @@ export function CaseScenarioDetailModal({
 
         <ScrollArea className="flex-1 min-h-0 h-full overflow-y-auto pr-4">
           <div className="space-y-6 py-4 pb-6">
-            {/* Case History Section */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Case History
-              </h3>
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="text-foreground whitespace-pre-wrap">{caseItem.case_history}</p>
-              </div>
+            {/* Case Scenario - display without redundant "Case History" heading */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <p className="text-foreground whitespace-pre-wrap">{caseItem.case_history}</p>
             </div>
 
             {/* Questions Section */}

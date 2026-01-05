@@ -39,8 +39,8 @@ interface ParsedItem {
   status: 'pending' | 'skip';
 }
 
-const CSV_FORMAT = `title,case_history,case_questions,model_answer,rating
-"Case Title","Patient history and presentation text","Q1|Q2|Q3","Complete model answer",3`;
+const CSV_FORMAT = `title,case_scenario,questions,model_answer,rating
+"Case Title","Patient presentation and scenario text","Q1|Q2|Q3","Complete model answer",3`;
 
 export function CaseScenarioBulkUploadModal({
   open,
@@ -79,7 +79,7 @@ export function CaseScenarioBulkUploadModal({
         const values = parseCSVLine(line);
         
         if (values.length < 4) {
-          parseErrors.push({ row: i + 1, reason: 'Requires at least title, case_history, case_questions, model_answer' });
+          parseErrors.push({ row: i + 1, reason: 'Requires at least title, case_scenario, questions, model_answer' });
           continue;
         }
 

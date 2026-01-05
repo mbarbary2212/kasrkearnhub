@@ -119,7 +119,7 @@ export function CaseScenarioFormModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="case-history">Case History *</Label>
+            <Label htmlFor="case-history">Case Scenario *</Label>
             <Textarea
               id="case-history"
               value={caseHistory}
