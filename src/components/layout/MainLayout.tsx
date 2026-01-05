@@ -123,7 +123,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 size="icon"
                 className="h-[68px] w-[68px] rounded-full hover:bg-primary/10 p-0.5"
               >
-                <img src={studyGuideIcon} alt="Study Coach" className="h-16 w-16 rounded" />
+                <img src={personalCoachIcon} alt="Personal Study Coach" className="h-16 w-16 rounded" />
               </Button>
             )}
 
