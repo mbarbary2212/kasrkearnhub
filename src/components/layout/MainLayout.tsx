@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, User, MessageSquare, Inbox, HelpCircle, FileText, Key, Shield, BarChart3 } from 'lucide-react';
+import { Home, LogOut, Inbox, FileText, Shield, BarChart3, Settings } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
@@ -131,6 +131,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
                     <AvatarFallback className="gradient-medical text-primary-foreground font-semibold">
                       {getInitials(displayName)}
                     </AvatarFallback>
@@ -158,9 +159,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Personal Study Coach
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/auth?view=password')}>
-                  <Key className="mr-2 h-4 w-4" />
-                  Change Password
+                <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Account
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>

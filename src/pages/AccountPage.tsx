@@ -1,0 +1,432 @@
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import MainLayout from '@/components/layout/MainLayout';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useYears } from '@/hooks/useYears';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
+import { Camera, Key, Home, User, Loader2 } from 'lucide-react';
+import { ImageCropper } from '@/components/account/ImageCropper';
+
+export default function AccountPage() {
+  const { user, profile, isLoading: authLoading } = useAuthContext();
+  const navigate = useNavigate();
+  const { data: years, isLoading: yearsLoading } = useYears();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Form state
+  const [fullName, setFullName] = useState('');
+  const [preferredYearId, setPreferredYearId] = useState<string>('');
+  const [autoLoginToYear, setAutoLoginToYear] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Initialize form values from profile
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setAvatarUrl(profile.avatar_url || null);
+      
+      // Fetch extended profile data
+      const fetchExtendedProfile = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('preferred_year_id, auto_login_to_year')
+          .eq('id', profile.id)
+          .single();
+        
+        if (data) {
+          setPreferredYearId(data.preferred_year_id || '');
+          setAutoLoginToYear(data.auto_login_to_year || false);
+        }
+      };
+      fetchExtendedProfile();
+    }
+  }, [profile]);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    // Create object URL for cropper
+    const imageUrl = URL.createObjectURL(file);
+    setSelectedImage(imageUrl);
+    setCropperOpen(true);
+    
+    // Reset input
+    event.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropperOpen(false);
+    setIsUploadingAvatar(true);
+
+    try {
+      if (!user) throw new Error('Not authenticated');
+
+      // Delete old avatar if exists
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split('/').pop();
+        if (oldPath) {
+          await supabase.storage.from('avatars').remove([`${user.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload new avatar
+      const fileName = `avatar-${Date.now()}.jpg`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, croppedBlob, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(urlData.publicUrl);
+      toast.success('Avatar updated successfully');
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast.error(error.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (selectedImage) {
+        URL.revokeObjectURL(selectedImage);
+        setSelectedImage(null);
+      }
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName.trim() || null,
+          preferred_year_id: preferredYearId || null,
+          auto_login_to_year: autoLoginToYear,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      toast.success('Profile saved successfully');
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      toast.error(error.message || 'Failed to save profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <User className="w-7 h-7 text-primary" />
+          <h1 className="text-2xl font-heading font-bold">Account Settings</h1>
+        </div>
+
+        {/* Avatar Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Profile Picture</CardTitle>
+            <CardDescription>
+              Click on the avatar to upload a new photo
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-6">
+            <div className="relative group">
+              <Avatar 
+                className="h-24 w-24 cursor-pointer ring-2 ring-border hover:ring-primary transition-all"
+                onClick={handleAvatarClick}
+              >
+                <AvatarImage src={avatarUrl || undefined} alt={fullName} />
+                <AvatarFallback className="text-2xl gradient-medical text-primary-foreground">
+                  {getInitials(fullName)}
+                </AvatarFallback>
+              </Avatar>
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={handleAvatarClick}
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-white" />
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+            <div>
+              <p className="font-medium">{fullName || user?.email}</p>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Profile Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="preferredYear">Preferred Year</Label>
+                <Select value={preferredYearId} onValueChange={setPreferredYearId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years?.map((year) => (
+                      <SelectItem key={year.id} value={year.id}>
+                        Year {year.number} - {year.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This year will be your default when logging in
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoLogin" className="text-base">
+                    Auto-login to this year
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Skip the landing page and go directly to your preferred year
+                  </p>
+                </div>
+                <Switch
+                  id="autoLogin"
+                  checked={autoLoginToYear}
+                  onCheckedChange={setAutoLoginToYear}
+                  disabled={!preferredYearId}
+                />
+              </div>
+
+              {autoLoginToYear && preferredYearId && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted">
+                  <Home className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Tip: You can always return to the main page by clicking "Home" in the menu
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <Button 
+              onClick={handleSaveProfile} 
+              disabled={isSaving}
+              className="w-full"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Password Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={isChangingPassword || !newPassword || !confirmPassword}
+              variant="outline"
+              className="w-full"
+            >
+              {isChangingPassword ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Changing Password...
+                </>
+              ) : (
+                'Change Password'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Image Cropper Modal */}
+      {selectedImage && (
+        <ImageCropper
+          open={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            if (selectedImage) {
+              URL.revokeObjectURL(selectedImage);
+              setSelectedImage(null);
+            }
+          }}
+          imageSrc={selectedImage}
+          onCropComplete={handleCropComplete}
+        />
+      )}
+    </MainLayout>
+  );
+}

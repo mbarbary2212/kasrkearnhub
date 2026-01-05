@@ -1971,12 +1971,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auto_login_to_year: boolean | null
           avatar_url: string | null
           banned_until: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
+          preferred_year_id: string | null
           status: string
           status_reason: string | null
           status_updated_at: string | null
@@ -1984,12 +1986,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_login_to_year?: boolean | null
           avatar_url?: string | null
           banned_until?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
+          preferred_year_id?: string | null
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
@@ -1997,19 +2001,29 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_login_to_year?: boolean | null
           avatar_url?: string | null
           banned_until?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          preferred_year_id?: string | null
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
           status_updated_by?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_preferred_year_id_fkey"
+            columns: ["preferred_year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_attempts: {
         Row: {
