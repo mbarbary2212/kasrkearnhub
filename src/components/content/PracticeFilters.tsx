@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RotateCcw, Filter, Clock, CheckCircle2, XCircle, Star, BarChart3, ListFilter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
 export type QuestionStatus = 'not_seen' | 'in_progress' | 'completed' | 'incorrect' | 'starred';
+
+// Single active filter type - 'all' means show everything
+export type ActiveFilter = 'all' | 'notSeen' | 'inProgress' | 'completed' | 'incorrect' | 'starred';
 
 export interface PracticeFilterState {
   notSeen: boolean;
@@ -17,12 +19,13 @@ export interface PracticeFilterState {
   starred: boolean;
 }
 
+// Default is "All" - all filters on
 export const DEFAULT_STUDENT_FILTERS: PracticeFilterState = {
   notSeen: true,
   inProgress: true,
-  completed: false,
+  completed: true,
   incorrect: true,
-  starred: false,
+  starred: true,
 };
 
 export const ALL_FILTERS_ON: PracticeFilterState = {
@@ -34,7 +37,7 @@ export const ALL_FILTERS_ON: PracticeFilterState = {
 };
 
 interface FilterOption {
-  key: keyof PracticeFilterState;
+  key: ActiveFilter;
   label: string;
   icon: React.ReactNode;
   colorClass: string;
@@ -42,8 +45,14 @@ interface FilterOption {
 
 const FILTER_OPTIONS: FilterOption[] = [
   { 
-    key: 'notSeen', 
+    key: 'all', 
     label: 'All', 
+    icon: <ListFilter className="h-3.5 w-3.5" />,
+    colorClass: 'text-muted-foreground',
+  },
+  { 
+    key: 'notSeen', 
+    label: 'Not seen', 
     icon: <ListFilter className="h-3.5 w-3.5" />,
     colorClass: 'text-muted-foreground',
   },
@@ -73,6 +82,34 @@ const FILTER_OPTIONS: FilterOption[] = [
   },
 ];
 
+// Helper to convert PracticeFilterState to single ActiveFilter
+export function getActiveFilter(filters: PracticeFilterState): ActiveFilter {
+  const allOn = filters.notSeen && filters.inProgress && filters.completed && filters.incorrect && filters.starred;
+  if (allOn) return 'all';
+  
+  if (filters.starred && !filters.notSeen && !filters.inProgress && !filters.completed && !filters.incorrect) return 'starred';
+  if (filters.incorrect && !filters.notSeen && !filters.inProgress && !filters.completed && !filters.starred) return 'incorrect';
+  if (filters.completed && !filters.notSeen && !filters.inProgress && !filters.incorrect && !filters.starred) return 'completed';
+  if (filters.inProgress && !filters.notSeen && !filters.completed && !filters.incorrect && !filters.starred) return 'inProgress';
+  if (filters.notSeen && !filters.inProgress && !filters.completed && !filters.incorrect && !filters.starred) return 'notSeen';
+  
+  return 'all';
+}
+
+// Helper to convert ActiveFilter to PracticeFilterState
+export function filterStateFromActive(active: ActiveFilter): PracticeFilterState {
+  if (active === 'all') {
+    return { notSeen: true, inProgress: true, completed: true, incorrect: true, starred: true };
+  }
+  return {
+    notSeen: active === 'notSeen',
+    inProgress: active === 'inProgress',
+    completed: active === 'completed',
+    incorrect: active === 'incorrect',
+    starred: active === 'starred',
+  };
+}
+
 interface PracticeFiltersProps {
   filters: PracticeFilterState;
   onFiltersChange: (filters: PracticeFilterState) => void;
@@ -92,28 +129,26 @@ export function PracticeFilters({
   questionType,
   moduleSlug,
 }: PracticeFiltersProps) {
-  const isDefaultFilters = useMemo(() => {
-    return (
-      filters.notSeen === DEFAULT_STUDENT_FILTERS.notSeen &&
-      filters.inProgress === DEFAULT_STUDENT_FILTERS.inProgress &&
-      filters.completed === DEFAULT_STUDENT_FILTERS.completed &&
-      filters.incorrect === DEFAULT_STUDENT_FILTERS.incorrect &&
-      filters.starred === DEFAULT_STUDENT_FILTERS.starred
-    );
-  }, [filters]);
+  const activeFilter = useMemo(() => getActiveFilter(filters), [filters]);
 
-  const handleToggle = (key: keyof PracticeFilterState) => {
-    onFiltersChange({
-      ...filters,
-      [key]: !filters[key],
-    });
+  const isDefaultFilters = activeFilter === 'all';
+
+  const handleFilterChange = (value: ActiveFilter) => {
+    onFiltersChange(filterStateFromActive(value));
   };
 
   const handleResetFilters = () => {
     onFiltersChange(DEFAULT_STUDENT_FILTERS);
   };
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  // Get count for display
+  const getCountForFilter = (key: ActiveFilter): number => {
+    if (key === 'all') return totalCount;
+    return counts[key as keyof PracticeFilterState] || 0;
+  };
+
+  // Get current filter label
+  const currentFilterLabel = FILTER_OPTIONS.find(o => o.key === activeFilter)?.label || 'All';
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -123,12 +158,7 @@ export function PracticeFilters({
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1.5">
               <Filter className="h-3.5 w-3.5" />
-              Filters
-              {activeFilterCount > 0 && activeFilterCount < 5 && (
-                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                  {activeFilterCount}
-                </Badge>
-              )}
+              {currentFilterLabel}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3" align="start">
@@ -148,27 +178,23 @@ export function PracticeFilters({
                 )}
               </div>
               
-              <div className="space-y-2">
+              <RadioGroup value={activeFilter} onValueChange={(v) => handleFilterChange(v as ActiveFilter)}>
                 {FILTER_OPTIONS.map((option) => (
                   <label
                     key={option.key}
-                    className="flex items-center justify-between cursor-pointer py-1 hover:bg-muted/50 px-1 rounded"
+                    className="flex items-center justify-between cursor-pointer py-1.5 hover:bg-muted/50 px-1 rounded"
                   >
                     <span className={cn("flex items-center gap-2 text-sm", option.colorClass)}>
                       {option.icon}
                       {option.label}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{counts[option.key]}</span>
-                      <Checkbox
-                        checked={filters[option.key]}
-                        onCheckedChange={() => handleToggle(option.key)}
-                        className="h-4 w-4"
-                      />
+                      <span className="text-xs text-muted-foreground">{getCountForFilter(option.key)}</span>
+                      <RadioGroupItem value={option.key} className="h-4 w-4" />
                     </div>
                   </label>
                 ))}
-              </div>
+              </RadioGroup>
             </div>
           </PopoverContent>
         </Popover>
