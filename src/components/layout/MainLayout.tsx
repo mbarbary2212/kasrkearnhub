@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +30,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleLogout = async () => {
     await signOut();
+    navigate('/');
+  };
+
+  const handleGoHome = () => {
+    sessionStorage.setItem('skipAutoLogin', 'true');
     navigate('/');
   };
 
@@ -91,20 +96,20 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
             <span className="font-heading font-bold text-xl">KasrLearn</span>
-          </Link>
+          </button>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link
-              to="/"
+            <button
+              onClick={handleGoHome}
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
               Home
-            </Link>
+            </button>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -152,7 +157,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/')}>
+                <DropdownMenuItem onClick={handleGoHome}>
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
