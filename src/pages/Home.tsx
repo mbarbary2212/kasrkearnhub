@@ -186,21 +186,17 @@ function LoggedInHome() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 ml-1 cursor-pointer">
+                    <span className="inline-flex items-center gap-1.5 ml-2 cursor-pointer">
                       {(unreadCounts?.announcements ?? 0) > 0 && (
-                        <span className="relative inline-flex items-center justify-center w-6 h-6 bg-amber-500 rounded-full">
-                          <Megaphone className="w-3.5 h-3.5 text-white" />
-                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
-                            {unreadCounts.announcements}
-                          </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
+                          <Megaphone className="w-3.5 h-3.5" />
+                          {unreadCounts.announcements}
                         </span>
                       )}
                       {(unreadCounts?.replies ?? 0) > 0 && (
-                        <span className="relative inline-flex items-center justify-center w-6 h-6 bg-primary rounded-full">
-                          <Mail className="w-3.5 h-3.5 text-white" />
-                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
-                            {unreadCounts.replies}
-                          </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
+                          <Mail className="w-3.5 h-3.5" />
+                          {unreadCounts.replies}
                         </span>
                       )}
                     </span>
