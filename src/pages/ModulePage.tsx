@@ -8,6 +8,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useYearById } from '@/hooks/useYears';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
@@ -16,6 +17,8 @@ import {
   BookOpen,
   ClipboardCheck,
   MessageCircle,
+  Megaphone,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +34,9 @@ export default function ModulePage() {
   const actualModuleId = module?.id;
   const { data: year } = useYearById(module?.year_id || '');
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
+  
+  // Get unread message counts for Connect tab badges
+  const { data: unreadCounts } = useUnreadMessages(actualModuleId, module?.year_id);
   
   // Check module admin permissions
   const { canManageContent, isModuleAdmin } = useIsModuleAdmin(actualModuleId);
@@ -94,12 +100,14 @@ export default function ModulePage() {
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
+                const isConnect = section.id === 'connect';
+                
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
+                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
                       isActive 
                         ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -107,6 +115,24 @@ export default function ModulePage() {
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{section.mobileLabel}</span>
+                    
+                    {/* Connect badges */}
+                    {isConnect && (unreadCounts?.announcements || 0) + (unreadCounts?.replies || 0) > 0 && (
+                      <div className="absolute -top-1 -right-1 flex gap-0.5">
+                        {(unreadCounts?.announcements || 0) > 0 && (
+                          <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
+                            <Megaphone className="w-2.5 h-2.5 mr-0.5" />
+                            {unreadCounts.announcements}
+                          </span>
+                        )}
+                        {(unreadCounts?.replies || 0) > 0 && (
+                          <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full">
+                            <Mail className="w-2.5 h-2.5 mr-0.5" />
+                            {unreadCounts.replies}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -120,19 +146,45 @@ export default function ModulePage() {
                 {sectionNav.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
+                  const isConnect = section.id === 'connect';
+                  
                   return (
                     <button
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
                       className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        "relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
                         isActive 
                           ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{section.label}</span>
+                      <span className="flex-1">{section.label}</span>
+                      
+                      {/* Connect badges */}
+                      {isConnect && (unreadCounts?.announcements || 0) + (unreadCounts?.replies || 0) > 0 && (
+                        <div className="flex gap-1">
+                          {(unreadCounts?.announcements || 0) > 0 && (
+                            <span className={cn(
+                              "flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full",
+                              isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-destructive text-destructive-foreground"
+                            )}>
+                              <Megaphone className="w-3 h-3 mr-0.5" />
+                              {unreadCounts.announcements}
+                            </span>
+                          )}
+                          {(unreadCounts?.replies || 0) > 0 && (
+                            <span className={cn(
+                              "flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full",
+                              isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground"
+                            )}>
+                              <Mail className="w-3 h-3 mr-0.5" />
+                              {unreadCounts.replies}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
