@@ -119,9 +119,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 onClick={() => navigate('/progress')}
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-full text-primary hover:bg-primary/10"
+                className="h-11 w-11 rounded-full text-primary hover:bg-primary/10"
               >
-                <HelpCircle className="h-5 w-5" />
+                <BarChart3 className="h-6 w-6" />
               </Button>
             )}
 
