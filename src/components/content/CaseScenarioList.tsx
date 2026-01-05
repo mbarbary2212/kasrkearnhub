@@ -137,7 +137,6 @@ export default function CaseScenarioList({
       <body>
         <h1>${caseItem.title}</h1>
         <div class="section">
-          <div class="section-label">Case History:</div>
           <div class="section-content">${caseItem.case_history}</div>
         </div>
         <div class="section">
