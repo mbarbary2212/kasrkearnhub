@@ -122,7 +122,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 size="icon"
                 className="h-[68px] w-[68px] rounded-full hover:bg-primary/10 p-0.5"
               >
-                <img src={studyGuideIcon} alt="Study Guide" className="h-16 w-16 rounded" />
+                <img src={studyGuideIcon} alt="Study Coach" className="h-16 w-16 rounded" />
               </Button>
             )}
 
@@ -156,7 +156,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/progress')}>
                   <BarChart3 className="mr-2 h-4 w-4" />
-                  Personal Study Guide
+                  Personal Study Coach
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/auth?view=password')}>
                   <Key className="mr-2 h-4 w-4" />
