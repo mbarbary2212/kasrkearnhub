@@ -40,8 +40,17 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
-import { PracticeHeader } from './PracticeHeader';
+import { 
+  PracticeFilters, 
+  PracticeFilterState, 
+  DEFAULT_STUDENT_FILTERS,
+  getQuestionStatus,
+  filterByStatus,
+  countByStatus,
+  type QuestionStatus,
+} from './PracticeFilters';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -198,43 +207,68 @@ export function McqList({
     'mcq'
   );
 
-  // Create a map of question attempts for quick lookup
+  // Create a map of question attempts for quick lookup (with status info for filtering)
   const attemptMap = useMemo(() => {
-    const map = new Map<string, typeof questionAttempts[0]>();
-    questionAttempts.forEach(a => map.set(a.question_id, a));
+    const map = new Map<string, { is_correct: boolean | null; score: number | null; status: string; selected_answer: Json }>();
+    questionAttempts.forEach(a => map.set(a.question_id, {
+      is_correct: a.is_correct,
+      score: a.score,
+      status: a.status,
+      selected_answer: a.selected_answer as Json,
+    }));
     return map;
   }, [questionAttempts]);
 
-  // Calculate attempted/unattempted counts
+  // Calculate attempted/unattempted counts (for admin display)
   const attemptedIds = useMemo(() => new Set(questionAttempts.map(a => a.question_id)), [questionAttempts]);
   const totalQuestions = mcqs.length;
-  const attemptedCount = mcqs.filter(m => attemptedIds.has(m.id)).length;
-  const unattemptedCount = totalQuestions - attemptedCount;
 
-  // Show attempted toggle (default off = only show unattempted)
-  const [showAttempted, setShowAttempted] = useState(() => 
-    searchParams.get('mcq_show_attempted') === 'true'
-  );
+  // Student filter state
+  const [practiceFilters, setPracticeFilters] = useState<PracticeFilterState>(() => {
+    // Load from URL params if available
+    const savedFilters = searchParams.get('mcq_filters');
+    if (savedFilters) {
+      try {
+        return JSON.parse(savedFilters);
+      } catch {
+        return DEFAULT_STUDENT_FILTERS;
+      }
+    }
+    return DEFAULT_STUDENT_FILTERS;
+  });
 
-  // Persist show attempted to URL
+  // Persist filters to URL
   useEffect(() => {
+    if (isAdmin) return;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (showAttempted) next.set('mcq_show_attempted', 'true');
-        else next.delete('mcq_show_attempted');
+        const isDefault = JSON.stringify(practiceFilters) === JSON.stringify(DEFAULT_STUDENT_FILTERS);
+        if (isDefault) {
+          next.delete('mcq_filters');
+        } else {
+          next.set('mcq_filters', JSON.stringify(practiceFilters));
+        }
         return next;
       },
       { replace: true }
     );
-  }, [showAttempted, setSearchParams]);
+  }, [practiceFilters, setSearchParams, isAdmin]);
 
-  // Get current attempt number
-  const currentAttemptNumber = useMemo(() => {
-    if (attemptHistory.length === 0) return 1;
-    const latest = attemptHistory[attemptHistory.length - 1];
-    return latest.is_completed ? latest.attempt_number + 1 : latest.attempt_number;
-  }, [attemptHistory]);
+  // Build status map for all questions
+  const statusMap = useMemo(() => {
+    const map = new Map<string, QuestionStatus[]>();
+    mcqs.forEach(mcq => {
+      const statuses = getQuestionStatus(mcq.id, attemptMap, markedIds, 'mcq');
+      map.set(mcq.id, statuses);
+    });
+    return map;
+  }, [mcqs, attemptMap, markedIds]);
+
+  // Count questions by status
+  const statusCounts = useMemo(() => {
+    return countByStatus(statusMap, markedIds, totalQuestions);
+  }, [statusMap, markedIds, totalQuestions]);
 
   // Combine active and deleted MCQs based on showDeleted flag
   const displayMcqs = showDeleted ? deletedMcqs : mcqs;
@@ -266,15 +300,16 @@ export function McqList({
     [duplicateMcqs]
   );
 
-  // Smart practice: filter based on attempt status + other filters
+  // Smart practice: filter based on status filters + admin filters
   const filteredMcqs = useMemo(() => {
     let result = displayMcqs;
     
-    // For students: hide attempted questions by default (smart practice)
-    if (!isAdmin && !showDeleted && !showAttempted) {
-      result = result.filter(mcq => !attemptedIds.has(mcq.id));
+    // For students: use the new status-based filtering
+    if (!isAdmin && !showDeleted) {
+      result = filterByStatus(result, practiceFilters, statusMap);
     }
     
+    // Admin filters
     if (showDuplicatesOnly && !showDeleted) {
       result = result.filter(mcq => duplicateIds.has(mcq.id));
     }
@@ -282,7 +317,7 @@ export function McqList({
       result = result.filter(mcq => markedIds.has(mcq.id));
     }
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, showAttempted, attemptedIds]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, statusMap]);
 
   const handleResetAttempt = () => {
     if (!chapterId) return;
@@ -554,21 +589,15 @@ export function McqList({
         </Alert>
       )}
 
-      {/* Practice Header for students (not admin, not deleted view) */}
-      {!isAdmin && !showDeleted && chapterId && totalQuestions > 0 && (
-        <PracticeHeader
-          questionType="mcq"
-          chapterId={chapterId}
-          totalQuestions={totalQuestions}
-          attemptedCount={attemptedCount}
-          unattemptedCount={unattemptedCount}
-          currentAttemptNumber={currentAttemptNumber}
-          attemptHistory={attemptHistory}
-          percentileData={percentileData ?? null}
-          showAttempted={showAttempted}
-          onShowAttemptedChange={setShowAttempted}
-          onResetAttempt={handleResetAttempt}
-          isResetting={resetAttemptMutation.isPending}
+      {/* Practice Filters for students (not admin, not deleted view) */}
+      {!isAdmin && !showDeleted && totalQuestions > 0 && (
+        <PracticeFilters
+          filters={practiceFilters}
+          onFiltersChange={setPracticeFilters}
+          counts={statusCounts}
+          totalCount={totalQuestions}
+          filteredCount={filteredMcqs.length}
+          questionType="MCQ"
         />
       )}
 
@@ -582,11 +611,9 @@ export function McqList({
                 ? 'No marked questions. Click the star icon on any question to mark it for review.' 
                 : showDuplicatesOnly 
                   ? 'No duplicates found.' 
-                  : !isAdmin && !showAttempted && unattemptedCount === 0 && attemptedCount > 0
-                    ? 'All questions attempted! Toggle "Include attempted" to review, or reset to start a new attempt.'
-                    : isAdmin 
-                      ? 'No MCQs yet. Click "Add Question" to create one.'
-                      : 'No MCQs available yet.'}
+                  : !isAdmin
+                    ? 'No questions match your current filters. Try adjusting your filters.'
+                    : 'No MCQs yet. Click "Add Question" to create one.'}
           </p>
         </div>
       ) : (
