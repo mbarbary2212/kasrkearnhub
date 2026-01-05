@@ -180,34 +180,32 @@ function LoggedInHome() {
       <section className="text-center py-8">
         <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4 inline-flex items-center justify-center gap-2 flex-wrap">
           <span>Welcome back,</span>
-          <span className="text-gradient-medical inline-flex items-center gap-2">
-            {profile?.full_name || 'Student'}
-            {hasMessages && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1.5 ml-2 cursor-pointer">
-                      {(unreadCounts?.announcements ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
-                          <Megaphone className="w-3.5 h-3.5" />
-                          {unreadCounts.announcements}
-                        </span>
-                      )}
-                      {(unreadCounts?.replies ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
-                          <Mail className="w-3.5 h-3.5" />
-                          {unreadCounts.replies}
-                        </span>
-                      )}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Go to your module to check your messages</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </span>
+          <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
+          {hasMessages && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1.5 cursor-pointer">
+                    {(unreadCounts?.announcements ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
+                        <Megaphone className="w-3.5 h-3.5" />
+                        {unreadCounts.announcements}
+                      </span>
+                    )}
+                    {(unreadCounts?.replies ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
+                        <Mail className="w-3.5 h-3.5" />
+                        {unreadCounts.replies}
+                      </span>
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-popover-foreground">Go to your module to check your messages</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </h1>
         <p className="text-lg text-muted-foreground">
           Select your academic year to continue
