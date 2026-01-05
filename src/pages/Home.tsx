@@ -171,18 +171,8 @@ function LoggedInHome() {
     return { backgroundColor: bgColor };
   };
 
-  const hasMessages = (unreadCounts?.announcements ?? 0) > 0 || (unreadCounts?.replies ?? 0) > 0;
-
-  const getTooltipText = () => {
-    const parts: string[] = [];
-    if (unreadCounts?.announcements && unreadCounts.announcements > 0) {
-      parts.push(`${unreadCounts.announcements} new announcement${unreadCounts.announcements > 1 ? 's' : ''}`);
-    }
-    if (unreadCounts?.replies && unreadCounts.replies > 0) {
-      parts.push(`${unreadCounts.replies} new answer${unreadCounts.replies > 1 ? 's' : ''}`);
-    }
-    return `You have ${parts.join(' and ')}. Go to your module to check your messages.`;
-  };
+  const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
+  const hasMessages = totalMessages > 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -196,27 +186,27 @@ function LoggedInHome() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 ml-1">
+                    <span className="inline-flex items-center gap-1 ml-1 cursor-pointer">
                       {(unreadCounts?.announcements ?? 0) > 0 && (
                         <span className="relative inline-flex items-center justify-center w-6 h-6 bg-amber-500 rounded-full">
                           <Megaphone className="w-3.5 h-3.5 text-white" />
-                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                            {unreadCounts?.announcements}
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+                            {unreadCounts.announcements}
                           </span>
                         </span>
                       )}
                       {(unreadCounts?.replies ?? 0) > 0 && (
                         <span className="relative inline-flex items-center justify-center w-6 h-6 bg-primary rounded-full">
                           <Mail className="w-3.5 h-3.5 text-white" />
-                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                            {unreadCounts?.replies}
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+                            {unreadCounts.replies}
                           </span>
                         </span>
                       )}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{getTooltipText()}</p>
+                  <TooltipContent side="bottom">
+                    <p>Go to your module to check your messages</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
