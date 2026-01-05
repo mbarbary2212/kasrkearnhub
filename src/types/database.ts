@@ -8,6 +8,8 @@ export interface Profile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  preferred_year_id: string | null;
+  auto_login_to_year: boolean;
   created_at: string;
   updated_at: string;
 }

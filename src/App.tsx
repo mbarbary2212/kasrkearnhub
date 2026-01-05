@@ -15,6 +15,7 @@ import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import AdminInboxPage from "./pages/AdminInboxPage";
 import ProgressPage from "./pages/ProgressPage";
+import AccountPage from "./pages/AccountPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/year/:yearId" element={<YearPage />} />
             <Route path="/module/:moduleId" element={<ModulePage />} />
             <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />

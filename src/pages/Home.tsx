@@ -9,12 +9,65 @@ import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
 export default function Home() {
-  const { user } = useAuthContext();
+  const { user, profile, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
+  const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
+
+  // Handle auto-login to preferred year
+  useEffect(() => {
+    if (!user || authLoading || hasCheckedAutoLogin) return;
+
+    const checkAutoLogin = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('preferred_year_id, auto_login_to_year')
+          .eq('id', user.id)
+          .single();
+
+        if (data?.auto_login_to_year && data?.preferred_year_id) {
+          // Get the year number from the year ID
+          const { data: yearData } = await supabase
+            .from('years')
+            .select('number')
+            .eq('id', data.preferred_year_id)
+            .single();
+
+          if (yearData) {
+            navigate(`/year/${yearData.number}`, { replace: true });
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking auto-login:', error);
+      } finally {
+        setHasCheckedAutoLogin(true);
+      }
+    };
+
+    checkAutoLogin();
+  }, [user, authLoading, hasCheckedAutoLogin, navigate]);
 
   // If user is logged in, show the year selection page wrapped in MainLayout
   if (user) {
+    // Don't render until we've checked auto-login preference
+    if (!hasCheckedAutoLogin) {
+      return (
+        <MainLayout>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Skeleton className="h-8 w-64 mx-auto mb-4" />
+              <Skeleton className="h-4 w-48 mx-auto" />
+            </div>
+          </div>
+        </MainLayout>
+      );
+    }
+
     return (
       <MainLayout>
         <LoggedInHome />
