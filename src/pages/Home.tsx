@@ -3,7 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail } from 'lucide-react';
+import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail, GraduationCap } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
@@ -163,7 +163,7 @@ export default function Home() {
           </div>
 
           {/* Features Section */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
             <div className="text-center">
               <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
                 <BookOpen className="w-6 h-6 text-secondary-foreground" />
@@ -198,6 +198,15 @@ export default function Home() {
               <h3 className="font-heading font-semibold mb-2">Connect</h3>
               <p className="text-sm text-muted-foreground">
                 Your voice matters
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
+              <p className="text-sm text-muted-foreground">
+                AI-powered guidance for your learning journey
               </p>
             </div>
           </div>
