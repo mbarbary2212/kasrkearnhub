@@ -113,6 +113,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
+            {/* Study Guide Quick Access */}
+            {user && (
+              <Button
+                onClick={() => navigate('/progress')}
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full text-primary hover:bg-primary/10"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
+            )}
+
             {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -189,16 +201,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {children}
       </main>
 
-      {/* Floating Contact Us Button */}
-      {user && (
-        <Button
-          onClick={() => setInquiryOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-40"
-          size="icon"
-        >
-          <HelpCircle className="h-6 w-6" />
-        </Button>
-      )}
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
