@@ -11,6 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Home, LogOut, Inbox, FileText, Shield, BarChart3, Settings } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
@@ -122,14 +128,23 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
             {/* Study Guide Quick Access */}
             {user && (
-              <Button
-                onClick={() => navigate('/progress')}
-                variant="ghost"
-                size="icon"
-                className="h-[75px] w-[75px] rounded-full hover:bg-primary/10 p-0.5"
-              >
-                <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[70px] w-[70px] rounded" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => navigate('/progress')}
+                      variant="ghost"
+                      size="icon"
+                      className="h-[75px] w-[75px] rounded-full hover:bg-primary/10 p-0.5 transition-transform duration-200 hover:scale-110"
+                    >
+                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[70px] w-[70px] rounded" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Personal Study Coach
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {user ? (
