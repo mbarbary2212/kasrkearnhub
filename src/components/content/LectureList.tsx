@@ -32,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { VimeoPlayer } from '@/components/video/VimeoPlayer';
+import { VimeoPlayer, preloadVimeoSDK } from '@/components/video/VimeoPlayer';
 
 interface Lecture {
   id: string;
@@ -114,6 +114,17 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDuration, setEditDuration] = useState('');
   const [isEditSaving, setIsEditSaving] = useState(false);
+
+  // Pre-load Vimeo SDK if any lectures have Vimeo URLs
+  useEffect(() => {
+    const hasVimeoVideos = lectures.some((lecture) => {
+      const url = lecture.video_url || lecture.videoUrl;
+      return url && (url.includes('vimeo.com') || url.includes('player.vimeo'));
+    });
+    if (hasVimeoVideos) {
+      preloadVimeoSDK();
+    }
+  }, [lectures]);
 
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
     moduleId || '',
