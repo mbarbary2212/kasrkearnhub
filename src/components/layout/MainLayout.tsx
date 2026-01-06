@@ -102,7 +102,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
             <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
             <span className="font-heading font-bold text-xl">KasrLearn</span>
           </button>
@@ -110,7 +110,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <nav className="hidden md:flex items-center gap-6">
             <button
               onClick={handleGoHome}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-medium transition-all duration-200 hover:text-primary hover:scale-110 ${
                 location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
@@ -150,7 +150,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full transition-transform duration-200 hover:scale-110">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
                     <AvatarFallback className="gradient-medical text-primary-foreground font-semibold">
