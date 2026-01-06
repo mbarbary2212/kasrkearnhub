@@ -200,15 +200,24 @@ export default function Home() {
                 Your voice matters
               </p>
             </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <GraduationCap className="w-6 h-6 text-secondary-foreground" />
-              </div>
-              <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
-              <p className="text-sm text-muted-foreground">
-                AI-powered guidance for your learning journey
-              </p>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-center cursor-pointer">
+                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+                    </div>
+                    <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
+                    <p className="text-sm text-muted-foreground">
+                      AI-powered guidance for your learning journey
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-black text-white border-black">
+                  Personal Study Coach
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>
