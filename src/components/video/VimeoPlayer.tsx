@@ -64,6 +64,13 @@ function loadVimeoSDK(): Promise<void> {
   return vimeoSDKPromise;
 }
 
+// Export for pre-loading before user clicks play
+export function preloadVimeoSDK(): void {
+  loadVimeoSDK().catch(() => {
+    // Silently fail - will retry when player loads
+  });
+}
+
 export function VimeoPlayer({
   videoId,
   className = '',
