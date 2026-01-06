@@ -59,13 +59,14 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                     autoplay={true}
                   />
                 ) : (
-                  <div className="aspect-video w-full">
+                <div className="aspect-video w-full">
                     <iframe
-                      src={`${videoInfo.embedUrl}?autoplay=1`}
+                      src={`${videoInfo.embedUrl}?autoplay=1&rel=0&modestbranding=1`}
                       title={title || 'Video'}
                       className="w-full h-full border-0"
-                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
                     />
                   </div>
                 )
