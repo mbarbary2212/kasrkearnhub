@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, EyeOff, Pencil, Trash2, Star, RotateCcw, CheckCircle } from 'lucide-react';
+import { Pencil, Trash2, Star, RotateCcw, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
@@ -10,7 +10,7 @@ import { useSaveQuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
 
 // Minimal attempt data needed for display
-interface McqAttemptData {
+export interface McqAttemptData {
   selected_answer: Json;
   is_correct: boolean | null;
 }
@@ -26,8 +26,6 @@ interface McqCardProps {
   onRestore?: () => void;
   isMarked?: boolean;
   onToggleMark?: (id: string) => void;
-  isExpanded?: boolean;
-  onToggleExpand?: (id: string) => void;
   isDeleted?: boolean;
   // Previous attempt data for restoring state
   previousAttempt?: McqAttemptData | null;
@@ -44,8 +42,6 @@ export function McqCard({
   onRestore,
   isMarked, 
   onToggleMark, 
-  isExpanded, 
-  onToggleExpand,
   isDeleted = false,
   previousAttempt,
 }: McqCardProps) {
@@ -58,74 +54,89 @@ export function McqCard({
   }, [previousAttempt]);
 
   const [selectedKey, setSelectedKey] = useState<string | null>(initialSelectedKey);
+  // If there was a previous attempt, start with answer revealed
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(!!previousAttempt);
   const hasMarkedComplete = useRef(false);
-  const hasSavedAttempt = useRef(!!previousAttempt);
   const { markComplete } = useMarkItemComplete();
   const saveAttempt = useSaveQuestionAttempt();
-  
-  // Use controlled expand state if provided, otherwise internal state
-  // If there's a previous attempt, auto-expand to show the answer
-  const showAnswer = isExpanded ?? !!previousAttempt;
 
   const choices = mcq.choices as McqChoice[];
+  
+  // Calculate correctness
+  const isCorrect = selectedKey === mcq.correct_key;
+  const showFeedback = isSubmitted && selectedKey !== null;
 
-  // Mark as complete and save attempt when answer is shown
+  // Mark as complete when submitted
   useEffect(() => {
-    if (showAnswer && selectedKey && !hasMarkedComplete.current && !isAdmin && chapterId) {
+    if (showFeedback && !hasMarkedComplete.current && !isAdmin && chapterId) {
       markComplete(mcq.id, 'mcq', chapterId);
       hasMarkedComplete.current = true;
     }
-  }, [showAnswer, selectedKey, mcq.id, chapterId, isAdmin, markComplete]);
+  }, [showFeedback, mcq.id, chapterId, isAdmin, markComplete]);
 
-  // Auto-save attempt when user selects and reveals answer
-  useEffect(() => {
-    if (showAnswer && selectedKey && !hasSavedAttempt.current && !isAdmin && chapterId && moduleId) {
-      const isCorrect = selectedKey === mcq.correct_key;
+  const handleChoiceClick = (key: string) => {
+    if (!isSubmitted) {
+      setSelectedKey(key);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!selectedKey || isSubmitted) return;
+    
+    // Save attempt to database
+    if (chapterId && moduleId && !isAdmin) {
+      const correct = selectedKey === mcq.correct_key;
       saveAttempt.mutate({
         questionId: mcq.id,
         questionType: 'mcq',
         chapterId,
         moduleId,
         selectedAnswer: selectedKey as Json,
-        isCorrect,
+        isCorrect: correct,
       });
-      hasSavedAttempt.current = true;
     }
-  }, [showAnswer, selectedKey, mcq.id, mcq.correct_key, chapterId, moduleId, isAdmin, saveAttempt]);
+    
+    setIsSubmitted(true);
+  };
 
-  const handleChoiceClick = (key: string) => {
-    if (!showAnswer) {
-      setSelectedKey(key);
-    }
+  const handleRetry = () => {
+    // Reset to allow new attempt
+    setSelectedKey(null);
+    setIsSubmitted(false);
+    hasMarkedComplete.current = false;
   };
 
   const getChoiceStyle = (choice: McqChoice) => {
-    if (!showAnswer) {
+    if (!showFeedback) {
       return selectedKey === choice.key
         ? 'border-primary bg-primary/10'
         : 'border-border hover:border-primary/50 hover:bg-muted/50';
     }
     
-    // When showing answer
+    // When showing feedback after submit
     if (choice.key === mcq.correct_key) {
+      // Correct answer - always green
       return 'border-green-500 bg-green-500/10 text-green-700 dark:text-green-400';
     }
     if (selectedKey === choice.key && choice.key !== mcq.correct_key) {
+      // User's wrong selection - red
       return 'border-red-500 bg-red-500/10 text-red-700 dark:text-red-400';
     }
     return 'border-border opacity-60';
   };
 
-  // Check if this question was previously answered
-  const wasAttempted = !!previousAttempt;
-  const wasCorrect = previousAttempt?.is_correct;
+  // Status label for this question
+  const statusLabel = useMemo(() => {
+    if (!previousAttempt) return null;
+    return previousAttempt.is_correct ? 'Correct' : 'Attempted';
+  }, [previousAttempt]);
 
   return (
     <Card className={cn(
       "overflow-hidden",
-      wasAttempted && "ring-1 ring-offset-1",
-      wasAttempted && wasCorrect && "ring-green-300 dark:ring-green-700",
-      wasAttempted && !wasCorrect && "ring-amber-300 dark:ring-amber-700"
+      previousAttempt && "ring-1 ring-offset-1",
+      previousAttempt?.is_correct && "ring-green-300 dark:ring-green-700",
+      previousAttempt && !previousAttempt.is_correct && "ring-amber-300 dark:ring-amber-700"
     )}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
@@ -134,21 +145,21 @@ export function McqCard({
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>
-              {/* Previously answered indicator */}
-              {wasAttempted && !isAdmin && (
+              {/* Status indicator based on last attempt */}
+              {statusLabel && !isAdmin && (
                 <Badge 
                   variant="secondary" 
                   className={cn(
-                    "text-xs",
-                    wasCorrect 
+                    "text-xs gap-1",
+                    statusLabel === 'Correct' 
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                   )}
                 >
-                  {wasCorrect ? (
-                    <><CheckCircle className="h-3 w-3 mr-1" /> Correct</>
+                  {statusLabel === 'Correct' ? (
+                    <><Check className="h-3 w-3" /> Correct</>
                   ) : (
-                    'Attempted'
+                    <><X className="h-3 w-3" /> Attempted</>
                   )}
                 </Badge>
               )}
@@ -235,59 +246,85 @@ export function McqCard({
             <button
               key={choice.key}
               onClick={() => handleChoiceClick(choice.key)}
-              disabled={showAnswer}
+              disabled={isSubmitted}
               className={cn(
                 'w-full flex items-start gap-3 p-3 rounded-lg border-2 transition-all text-left',
                 getChoiceStyle(choice),
-                !showAnswer && 'cursor-pointer'
+                !isSubmitted && 'cursor-pointer'
               )}
             >
               <span className={cn(
                 'flex items-center justify-center w-7 h-7 rounded-full border-2 font-semibold text-sm shrink-0',
-                showAnswer && choice.key === mcq.correct_key
+                showFeedback && choice.key === mcq.correct_key
                   ? 'border-green-500 bg-green-500 text-white'
-                  : 'border-current'
+                  : showFeedback && selectedKey === choice.key && choice.key !== mcq.correct_key
+                    ? 'border-red-500 bg-red-500 text-white'
+                    : 'border-current'
               )}>
-                {choice.key}
+                {showFeedback && choice.key === mcq.correct_key ? (
+                  <Check className="h-4 w-4" />
+                ) : showFeedback && selectedKey === choice.key && choice.key !== mcq.correct_key ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  choice.key
+                )}
               </span>
               <span className="flex-1 pt-0.5">{choice.text}</span>
             </button>
           ))}
         </div>
 
-        {/* Show/Hide Answer Button */}
-        <div className="flex justify-center pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (onToggleExpand) {
-                onToggleExpand(mcq.id);
-              }
-              // Reset selection when collapsing
-              if (showAnswer && !wasAttempted) {
-                setSelectedKey(null);
-              }
-            }}
-            className="gap-2"
-          >
-            {showAnswer ? (
+        {/* Submit / Retry Button */}
+        <div className="flex justify-center pt-2 gap-2">
+          {!isSubmitted ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={!selectedKey}
+              className="gap-2"
+            >
+              <Check className="h-4 w-4" />
+              Submit Answer
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Try Again
+            </Button>
+          )}
+        </div>
+
+        {/* Feedback message after submit */}
+        {showFeedback && (
+          <div className={cn(
+            "p-3 rounded-lg flex items-center gap-2",
+            isCorrect 
+              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+              : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+          )}>
+            {isCorrect ? (
               <>
-                <EyeOff className="h-4 w-4" />
-                Hide Answer
+                <Check className="h-5 w-5 shrink-0" />
+                <span className="font-medium">Correct!</span>
               </>
             ) : (
               <>
-                <Eye className="h-4 w-4" />
-                Show Answer
+                <X className="h-5 w-5 shrink-0" />
+                <span className="font-medium">
+                  Incorrect. The correct answer is {mcq.correct_key}.
+                </span>
               </>
             )}
-          </Button>
-        </div>
+          </div>
+        )}
 
         {/* Explanation - shown when answer is revealed */}
-        {showAnswer && mcq.explanation && (
-          <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        {showFeedback && mcq.explanation && (
+          <div className="p-4 rounded-lg bg-muted/50 border border-border overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
             <p className="text-sm font-medium text-muted-foreground mb-1">Explanation</p>
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{mcq.explanation}</p>
           </div>

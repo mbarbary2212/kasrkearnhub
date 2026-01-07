@@ -2,37 +2,35 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { RotateCcw, Filter, Clock, CheckCircle2, XCircle, Star, BarChart3, ListFilter } from 'lucide-react';
+import { RotateCcw, Filter, CheckCircle2, XCircle, Star, BarChart3, ListFilter, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
-export type QuestionStatus = 'not_seen' | 'in_progress' | 'completed' | 'incorrect' | 'starred';
+// Simplified status model: each question has ONE status based on LAST submission
+export type QuestionStatus = 'not_seen' | 'attempted' | 'correct' | 'starred';
 
 // Single active filter type - 'all' means show everything
-export type ActiveFilter = 'all' | 'notSeen' | 'inProgress' | 'completed' | 'incorrect' | 'starred';
+export type ActiveFilter = 'all' | 'notSeen' | 'attempted' | 'correct' | 'starred';
 
 export interface PracticeFilterState {
   notSeen: boolean;
-  inProgress: boolean;
-  completed: boolean;
-  incorrect: boolean;
+  attempted: boolean;
+  correct: boolean;
   starred: boolean;
 }
 
 // Default is "All" - all filters on
 export const DEFAULT_STUDENT_FILTERS: PracticeFilterState = {
   notSeen: true,
-  inProgress: true,
-  completed: true,
-  incorrect: true,
+  attempted: true,
+  correct: true,
   starred: true,
 };
 
 export const ALL_FILTERS_ON: PracticeFilterState = {
   notSeen: true,
-  inProgress: true,
-  completed: true,
-  incorrect: true,
+  attempted: true,
+  correct: true,
   starred: true,
 };
 
@@ -53,26 +51,20 @@ const FILTER_OPTIONS: FilterOption[] = [
   { 
     key: 'notSeen', 
     label: 'Not seen', 
-    icon: <ListFilter className="h-3.5 w-3.5" />,
+    icon: <Eye className="h-3.5 w-3.5" />,
     colorClass: 'text-muted-foreground',
   },
   { 
-    key: 'inProgress', 
-    label: 'In progress', 
-    icon: <Clock className="h-3.5 w-3.5" />,
+    key: 'attempted', 
+    label: 'Attempted', 
+    icon: <XCircle className="h-3.5 w-3.5" />,
     colorClass: 'text-amber-600 dark:text-amber-400',
   },
   { 
-    key: 'completed', 
-    label: 'Completed', 
+    key: 'correct', 
+    label: 'Correct', 
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
     colorClass: 'text-green-600 dark:text-green-400',
-  },
-  { 
-    key: 'incorrect', 
-    label: 'Needs review', 
-    icon: <XCircle className="h-3.5 w-3.5" />,
-    colorClass: 'text-destructive',
   },
   { 
     key: 'starred', 
@@ -84,14 +76,13 @@ const FILTER_OPTIONS: FilterOption[] = [
 
 // Helper to convert PracticeFilterState to single ActiveFilter
 export function getActiveFilter(filters: PracticeFilterState): ActiveFilter {
-  const allOn = filters.notSeen && filters.inProgress && filters.completed && filters.incorrect && filters.starred;
+  const allOn = filters.notSeen && filters.attempted && filters.correct && filters.starred;
   if (allOn) return 'all';
   
-  if (filters.starred && !filters.notSeen && !filters.inProgress && !filters.completed && !filters.incorrect) return 'starred';
-  if (filters.incorrect && !filters.notSeen && !filters.inProgress && !filters.completed && !filters.starred) return 'incorrect';
-  if (filters.completed && !filters.notSeen && !filters.inProgress && !filters.incorrect && !filters.starred) return 'completed';
-  if (filters.inProgress && !filters.notSeen && !filters.completed && !filters.incorrect && !filters.starred) return 'inProgress';
-  if (filters.notSeen && !filters.inProgress && !filters.completed && !filters.incorrect && !filters.starred) return 'notSeen';
+  if (filters.starred && !filters.notSeen && !filters.attempted && !filters.correct) return 'starred';
+  if (filters.correct && !filters.notSeen && !filters.attempted && !filters.starred) return 'correct';
+  if (filters.attempted && !filters.notSeen && !filters.correct && !filters.starred) return 'attempted';
+  if (filters.notSeen && !filters.attempted && !filters.correct && !filters.starred) return 'notSeen';
   
   return 'all';
 }
@@ -99,13 +90,12 @@ export function getActiveFilter(filters: PracticeFilterState): ActiveFilter {
 // Helper to convert ActiveFilter to PracticeFilterState
 export function filterStateFromActive(active: ActiveFilter): PracticeFilterState {
   if (active === 'all') {
-    return { notSeen: true, inProgress: true, completed: true, incorrect: true, starred: true };
+    return { notSeen: true, attempted: true, correct: true, starred: true };
   }
   return {
     notSeen: active === 'notSeen',
-    inProgress: active === 'inProgress',
-    completed: active === 'completed',
-    incorrect: active === 'incorrect',
+    attempted: active === 'attempted',
+    correct: active === 'correct',
     starred: active === 'starred',
   };
 }
@@ -236,67 +226,77 @@ export function PracticeFilters({
 
 /**
  * Helper function to determine question status based on attempt data
+ * LAST ATTEMPT WINS model:
+ * - not_seen: never submitted
+ * - attempted: last submission was incorrect
+ * - correct: last submission was correct
+ * - starred: manual toggle (independent)
  */
 export function getQuestionStatus(
   questionId: string,
-  attemptMap: Map<string, { is_correct: boolean | null; score: number | null; status: string }>,
+  attemptMap: Map<string, { is_correct: boolean | null }>,
   starredIds: Set<string>,
-  questionType: 'mcq' | 'osce' | 'essay' | 'matching'
-): QuestionStatus[] {
-  const statuses: QuestionStatus[] = [];
-  
-  // Check if starred
-  if (starredIds.has(questionId)) {
-    statuses.push('starred');
-  }
-  
+): QuestionStatus {
   const attempt = attemptMap.get(questionId);
   
+  // Check starred first (it's independent)
+  if (starredIds.has(questionId)) {
+    return 'starred';
+  }
+  
   if (!attempt) {
-    // No attempt record = not seen
-    statuses.push('not_seen');
-    return statuses;
+    return 'not_seen';
   }
   
-  // Has attempt record
-  if (attempt.status === 'attempted' || attempt.status === 'unseen') {
-    // Partial/in-progress (shouldn't happen often for MCQ, but possible for OSCE/Essay)
-    statuses.push('in_progress');
-  } else if (attempt.status === 'correct') {
-    statuses.push('completed');
-  } else if (attempt.status === 'incorrect') {
-    // Completed but wrong
-    statuses.push('completed');
-    statuses.push('incorrect');
+  // Last attempt wins
+  if (attempt.is_correct === true) {
+    return 'correct';
   }
   
-  // For OSCE: score below threshold (e.g., < 4 out of 5) is "needs review"
-  if (questionType === 'osce' && attempt.score !== null && attempt.score < 4) {
-    if (!statuses.includes('incorrect')) {
-      statuses.push('incorrect');
-    }
-  }
-  
-  return statuses;
+  // is_correct is false or null (attempted but not correct)
+  return 'attempted';
 }
 
 /**
- * Filter questions based on filter state and their statuses
+ * Get the primary status (not including starred) for filtering purposes
+ */
+export function getPrimaryStatus(
+  questionId: string,
+  attemptMap: Map<string, { is_correct: boolean | null }>,
+): 'not_seen' | 'attempted' | 'correct' {
+  const attempt = attemptMap.get(questionId);
+  
+  if (!attempt) {
+    return 'not_seen';
+  }
+  
+  if (attempt.is_correct === true) {
+    return 'correct';
+  }
+  
+  return 'attempted';
+}
+
+/**
+ * Filter questions based on filter state
  */
 export function filterByStatus<T extends { id: string }>(
   questions: T[],
   filters: PracticeFilterState,
-  statusMap: Map<string, QuestionStatus[]>
+  attemptMap: Map<string, { is_correct: boolean | null }>,
+  starredIds: Set<string>
 ): T[] {
   return questions.filter(q => {
-    const statuses = statusMap.get(q.id) || ['not_seen'];
+    const isStarred = starredIds.has(q.id);
+    const primaryStatus = getPrimaryStatus(q.id, attemptMap);
     
-    // Question passes if ANY of its statuses match an enabled filter
-    if (filters.starred && statuses.includes('starred')) return true;
-    if (filters.notSeen && statuses.includes('not_seen')) return true;
-    if (filters.inProgress && statuses.includes('in_progress')) return true;
-    if (filters.incorrect && statuses.includes('incorrect')) return true;
-    if (filters.completed && statuses.includes('completed') && !statuses.includes('incorrect')) return true;
+    // If starred filter is on and question is starred, show it
+    if (filters.starred && isStarred) return true;
+    
+    // Otherwise check primary status
+    if (filters.notSeen && primaryStatus === 'not_seen') return true;
+    if (filters.attempted && primaryStatus === 'attempted') return true;
+    if (filters.correct && primaryStatus === 'correct') return true;
     
     return false;
   });
@@ -306,23 +306,22 @@ export function filterByStatus<T extends { id: string }>(
  * Count questions by status
  */
 export function countByStatus(
-  statusMap: Map<string, QuestionStatus[]>,
-  starredIds: Set<string>,
-  totalQuestions: number
+  questions: { id: string }[],
+  attemptMap: Map<string, { is_correct: boolean | null }>,
+  starredIds: Set<string>
 ): Record<keyof PracticeFilterState, number> {
   const counts = {
     notSeen: 0,
-    inProgress: 0,
-    completed: 0,
-    incorrect: 0,
+    attempted: 0,
+    correct: 0,
     starred: starredIds.size,
   };
   
-  statusMap.forEach((statuses) => {
-    if (statuses.includes('not_seen')) counts.notSeen++;
-    if (statuses.includes('in_progress')) counts.inProgress++;
-    if (statuses.includes('incorrect')) counts.incorrect++;
-    if (statuses.includes('completed') && !statuses.includes('incorrect')) counts.completed++;
+  questions.forEach(q => {
+    const primaryStatus = getPrimaryStatus(q.id, attemptMap);
+    if (primaryStatus === 'not_seen') counts.notSeen++;
+    else if (primaryStatus === 'attempted') counts.attempted++;
+    else if (primaryStatus === 'correct') counts.correct++;
   });
   
   return counts;
