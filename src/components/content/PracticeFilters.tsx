@@ -113,6 +113,8 @@ export function filterStateFromActive(active: ActiveFilter): PracticeFilterState
 interface PracticeFiltersProps {
   filters: PracticeFilterState;
   onFiltersChange: (filters: PracticeFilterState) => void;
+  /** Optional: resets the student's progress/attempt so counts go back to zero */
+  onResetProgress?: () => void;
   counts: Record<keyof PracticeFilterState, number>;
   totalCount: number;
   filteredCount: number;
@@ -123,6 +125,7 @@ interface PracticeFiltersProps {
 export function PracticeFilters({
   filters,
   onFiltersChange,
+  onResetProgress,
   counts,
   totalCount,
   filteredCount,
@@ -137,8 +140,11 @@ export function PracticeFilters({
     onFiltersChange(filterStateFromActive(value));
   };
 
-  const handleResetFilters = () => {
+  const handleReset = () => {
+    // Always reset back to "All" selection
     onFiltersChange(DEFAULT_STUDENT_FILTERS);
+    // If provided, also reset the student's progress/attempt (so counts reset)
+    onResetProgress?.();
   };
 
   // Get count for display
@@ -149,6 +155,12 @@ export function PracticeFilters({
 
   // Get current filter label
   const currentFilterLabel = FILTER_OPTIONS.find(o => o.key === activeFilter)?.label || 'All';
+
+  // Reset button behavior:
+  // - If onResetProgress is provided: reset progress (counts) + return to "All" selection
+  // - Otherwise: just reset selection to "All"
+  const resetLabel = onResetProgress ? 'Reset attempt' : 'Reset';
+  const isResetDisabled = !onResetProgress && isDefaultFilters;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -168,17 +180,17 @@ export function PracticeFilters({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleResetFilters}
-                  disabled={isDefaultFilters}
+                  onClick={handleReset}
+                  disabled={isResetDisabled}
                   className={cn(
                     "h-6 px-2 text-xs",
-                    isDefaultFilters 
-                      ? "text-muted-foreground/50 cursor-not-allowed" 
+                    isResetDisabled
+                      ? "text-muted-foreground/50 cursor-not-allowed"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <RotateCcw className="h-3 w-3 mr-1" />
-                  Reset
+                  {resetLabel}
                 </Button>
               </div>
               
