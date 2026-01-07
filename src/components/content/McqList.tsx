@@ -44,10 +44,8 @@ import {
   PracticeFilters, 
   PracticeFilterState, 
   DEFAULT_STUDENT_FILTERS,
-  getQuestionStatus,
   filterByStatus,
   countByStatus,
-  type QuestionStatus,
 } from './PracticeFilters';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
 import type { Json } from '@/integrations/supabase/types';
@@ -57,9 +55,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { 
   useChapterQuestionAttempts, 
-  useChapterAttemptHistory, 
   useResetChapterAttempt,
-  useChapterPercentile,
 } from '@/hooks/useQuestionAttempts';
 
 interface McqListProps {
@@ -146,7 +142,6 @@ export function McqList({
     }
   });
 
-  const [expandedMcqId, setExpandedMcqId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Persist filter states to URL params
@@ -197,30 +192,19 @@ export function McqList({
     chapterId ?? undefined, 
     'mcq'
   );
-  const { data: attemptHistory = [] } = useChapterAttemptHistory(
-    chapterId ?? undefined, 
-    'mcq'
-  );
   const resetAttemptMutation = useResetChapterAttempt();
-  const { data: percentileData } = useChapterPercentile(
-    chapterId ?? undefined, 
-    'mcq'
-  );
 
-  // Create a map of question attempts for quick lookup (with status info for filtering)
+  // Create a map of question attempts for quick lookup
+  // Only need is_correct for the new simplified model
   const attemptMap = useMemo(() => {
-    const map = new Map<string, { is_correct: boolean | null; score: number | null; status: string; selected_answer: Json }>();
+    const map = new Map<string, { is_correct: boolean | null; selected_answer: Json }>();
     questionAttempts.forEach(a => map.set(a.question_id, {
       is_correct: a.is_correct,
-      score: a.score,
-      status: a.status,
       selected_answer: a.selected_answer as Json,
     }));
     return map;
   }, [questionAttempts]);
 
-  // Calculate attempted/unattempted counts (for admin display)
-  const attemptedIds = useMemo(() => new Set(questionAttempts.map(a => a.question_id)), [questionAttempts]);
   const totalQuestions = mcqs.length;
 
   // Student filter state
@@ -255,20 +239,10 @@ export function McqList({
     );
   }, [practiceFilters, setSearchParams, isAdmin]);
 
-  // Build status map for all questions
-  const statusMap = useMemo(() => {
-    const map = new Map<string, QuestionStatus[]>();
-    mcqs.forEach(mcq => {
-      const statuses = getQuestionStatus(mcq.id, attemptMap, markedIds, 'mcq');
-      map.set(mcq.id, statuses);
-    });
-    return map;
-  }, [mcqs, attemptMap, markedIds]);
-
-  // Count questions by status
+  // Count questions by status using the new simplified model
   const statusCounts = useMemo(() => {
-    return countByStatus(statusMap, markedIds, totalQuestions);
-  }, [statusMap, markedIds, totalQuestions]);
+    return countByStatus(mcqs, attemptMap, markedIds);
+  }, [mcqs, attemptMap, markedIds]);
 
   // Combine active and deleted MCQs based on showDeleted flag
   const displayMcqs = showDeleted ? deletedMcqs : mcqs;
@@ -300,13 +274,13 @@ export function McqList({
     [duplicateMcqs]
   );
 
-  // Smart practice: filter based on status filters + admin filters
+  // Filter based on status filters + admin filters
   const filteredMcqs = useMemo(() => {
     let result = displayMcqs;
     
-    // For students: use the new status-based filtering
+    // For students: use the simplified status-based filtering
     if (!isAdmin && !showDeleted) {
-      result = filterByStatus(result, practiceFilters, statusMap);
+      result = filterByStatus(result, practiceFilters, attemptMap, markedIds);
     }
     
     // Admin filters
@@ -317,7 +291,7 @@ export function McqList({
       result = result.filter(mcq => markedIds.has(mcq.id));
     }
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, statusMap]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap]);
 
   const handleResetAttempt = () => {
     if (!chapterId) return;
@@ -478,7 +452,7 @@ export function McqList({
 
   const exactDuplicates = previewData?.filter(p => p.isExactDuplicate).length || 0;
   const possibleDuplicates = previewData?.filter(p => p.isPossibleDuplicate).length || 0;
-  const itemsToImport = previewData?.filter(p => p.status !== 'skip').length || 0;
+  const itemsToImportCount = previewData?.filter(p => p.status !== 'skip').length || 0;
 
   if (displayMcqs.length === 0 && !isAdmin) {
     return (
@@ -625,7 +599,12 @@ export function McqList({
         <div className="space-y-4">
           {filteredMcqs.map((mcq, index) => {
             const duplicateInfo = !showDeleted ? duplicateMcqs.find(d => d.mcq.id === mcq.id) : null;
-            const previousAttempt = !isAdmin ? attemptMap.get(mcq.id) : undefined;
+            const attemptData = !isAdmin ? attemptMap.get(mcq.id) : undefined;
+            const previousAttempt = attemptData ? {
+              selected_answer: attemptData.selected_answer,
+              is_correct: attemptData.is_correct,
+            } : undefined;
+            
             return (
               <div key={mcq.id} className={`relative ${showDeleted ? 'opacity-75' : ''}`}>
                 {duplicateInfo && (
@@ -657,8 +636,6 @@ export function McqList({
                   onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}
                   isMarked={markedIds.has(mcq.id)}
                   onToggleMark={toggleMark}
-                  isExpanded={expandedMcqId === mcq.id || !!previousAttempt}
-                  onToggleExpand={(id) => setExpandedMcqId(prev => prev === id ? null : id)}
                   isDeleted={showDeleted}
                   previousAttempt={previousAttempt}
                 />
@@ -877,11 +854,11 @@ export function McqList({
                 <Button 
                   onClick={handleBulkImport} 
                   className="w-full"
-                  disabled={bulkCreateMutation.isPending || itemsToImport === 0}
+                  disabled={bulkCreateMutation.isPending || itemsToImportCount === 0}
                 >
                   {bulkCreateMutation.isPending 
                     ? 'Importing...' 
-                    : `Import ${itemsToImport} Question${itemsToImport !== 1 ? 's' : ''}`
+                    : `Import ${itemsToImportCount} Question${itemsToImportCount !== 1 ? 's' : ''}`
                   }
                 </Button>
               </div>
@@ -913,7 +890,7 @@ export function McqList({
               the question (set <code>is_deleted=true</code>). You can restore it later.
               <br />
               <span className="font-medium mt-2 block text-foreground">
-                “{deletingMcq?.stem.slice(0, 100)}...”
+                "{deletingMcq?.stem.slice(0, 100)}..."
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -921,14 +898,13 @@ export function McqList({
             <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
-                // Prevent Radix from auto-closing the dialog before the mutation completes.
                 e.preventDefault();
                 handleDelete();
               }}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -945,7 +921,7 @@ export function McqList({
           <AlertDialogHeader>
             <AlertDialogTitle>Restore MCQ?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will restore the deleted question and make it visible again.
+              This will restore the question and make it visible to students again.
               <br />
               <span className="font-medium mt-2 block text-foreground">
                 "{restoringMcq?.stem.slice(0, 100)}..."
@@ -960,9 +936,9 @@ export function McqList({
                 handleRestore();
               }}
               disabled={restoreMutation.isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
+              {restoreMutation.isPending ? 'Restoring...' : 'Restore'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
