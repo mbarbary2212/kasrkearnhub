@@ -17,7 +17,16 @@ interface LearningHubOverviewProps {
 
 export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNavigate }: LearningHubOverviewProps) {
   // Fetch needs practice data for the selected module
-  const { mcqNeedsPractice, osceNeedsPractice } = useNeedsPractice(moduleId);
+  const { 
+    mcqNeedsPractice, 
+    osceNeedsPractice,
+    videosToComplete,
+    starredFlashcards,
+    matchingToComplete,
+    essaysToReview,
+    casesToReview,
+    counts,
+  } = useNeedsPractice(moduleId);
 
   if (!moduleSelected) {
     return (
@@ -56,6 +65,12 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
       <DashboardNeedsPractice
         mcqNeedsPractice={mcqNeedsPractice}
         osceNeedsPractice={osceNeedsPractice}
+        videosToComplete={videosToComplete}
+        starredFlashcards={starredFlashcards}
+        matchingToComplete={matchingToComplete}
+        essaysToReview={essaysToReview}
+        casesToReview={casesToReview}
+        counts={counts}
         onNavigate={onNavigate}
       />
 
