@@ -641,9 +641,9 @@ export default function AdminPage() {
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="mcq-analytics" className="gap-2">
+              <TabsTrigger value="question-analytics" className="gap-2">
                 <Activity className="w-4 h-4" />
-                MCQ Analytics
+                Question Analytics
               </TabsTrigger>
             )}
             <TabsTrigger value="help" className="gap-2">
