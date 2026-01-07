@@ -135,9 +135,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       onClick={() => navigate('/progress')}
                       variant="ghost"
                       size="icon"
-                      className="h-[75px] w-[75px] rounded-full hover:bg-primary/10 p-0.5 transition-transform duration-200 hover:scale-110"
+                      className="h-[50px] w-[50px] rounded-lg hover:bg-primary/10 p-0 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
-                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[70px] w-[70px] rounded" />
+                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-full w-full object-cover object-top rounded-lg" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
@@ -177,7 +177,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   Home
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/progress')}>
-                  <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-4 w-4 rounded" />
+                  <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-5 w-5 object-cover object-top rounded" />
                   Personal Study Coach
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/account')}>
