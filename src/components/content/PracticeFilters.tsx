@@ -58,7 +58,7 @@ const FILTER_OPTIONS: FilterOption[] = [
   },
   { 
     key: 'inProgress', 
-    label: 'Answered', 
+    label: 'In progress', 
     icon: <Clock className="h-3.5 w-3.5" />,
     colorClass: 'text-amber-600 dark:text-amber-400',
   },
@@ -258,12 +258,11 @@ export function getQuestionStatus(
     return statuses;
   }
   
-  // Has attempt record = student has answered (selected an answer)
-  // "in_progress" now means "answered" - any question with an attempt record
-  statuses.push('in_progress');
-  
-  // Check if they also pressed "show answer" (completed)
-  if (attempt.status === 'correct') {
+  // Has attempt record
+  if (attempt.status === 'attempted' || attempt.status === 'unseen') {
+    // Partial/in-progress (shouldn't happen often for MCQ, but possible for OSCE/Essay)
+    statuses.push('in_progress');
+  } else if (attempt.status === 'correct') {
     statuses.push('completed');
   } else if (attempt.status === 'incorrect') {
     // Completed but wrong
