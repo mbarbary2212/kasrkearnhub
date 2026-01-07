@@ -107,13 +107,14 @@ export function OsceQuestionCard({
         }
       });
       
+      // OSCE is "Correct" if score >= 4/5, "Attempted" if <= 3/5
       saveAttempt.mutate({
         questionId: question.id,
         questionType: 'osce',
         chapterId,
         moduleId,
         selectedAnswer: selectedAnswer as unknown as Json,
-        isCorrect: currentScore === 5,
+        isCorrect: currentScore >= 4, // 4/5 or 5/5 = Correct
         score: currentScore,
       });
       hasSavedAttempt.current = true;
@@ -146,9 +147,14 @@ export function OsceQuestionCard({
   const allAnswered = Object.values(answers).every(a => a !== null);
   const isDeleted = question.is_deleted;
 
-  // Status based on last attempt
+  // Status based on last attempt (4/5+ = Correct, <=3/5 = Attempted)
   const statusLabel = useMemo(() => {
     if (!previousAttempt) return null;
+    // Use score directly if available, otherwise fall back to is_correct
+    const attemptScore = previousAttempt.score;
+    if (attemptScore !== null && attemptScore !== undefined) {
+      return attemptScore >= 4 ? 'Correct' : 'Attempted';
+    }
     return previousAttempt.is_correct ? 'Correct' : 'Attempted';
   }, [previousAttempt]);
 

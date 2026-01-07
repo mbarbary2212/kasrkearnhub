@@ -16,7 +16,7 @@ interface LearningHubTabsProps {
   selectedYearName: string;
   selectedYearId?: string;
   selectedModuleId?: string | null;
-  onNavigate: (moduleId: string, chapterId: string) => void;
+  onNavigate: (moduleId: string, chapterId: string, tab?: string) => void;
 }
 
 export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
@@ -47,6 +47,7 @@ export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYe
         <LearningHubOverview 
           dashboard={dashboard} 
           moduleSelected={moduleSelected}
+          moduleId={selectedModuleId || undefined}
           onNavigate={onNavigate}
         />
       </TabsContent>

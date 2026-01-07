@@ -229,8 +229,9 @@ export function StudentDashboard() {
           selectedYearName={selectedYear?.name || ''}
           selectedYearId={selectedYearId}
           selectedModuleId={selectedModuleId || undefined}
-          onNavigate={(moduleId, chapterId) => {
-            navigate(`/module/${moduleId}/chapter/${chapterId}`);
+          onNavigate={(moduleId, chapterId, tab) => {
+            const tabParam = tab ? `?tab=${tab}` : '';
+            navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
           }}
         />
       ) : (

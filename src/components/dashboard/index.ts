@@ -12,3 +12,4 @@ export { DashboardTodayPlan } from './DashboardTodayPlan';
 export { DashboardInsights } from './DashboardInsights';
 export { DashboardProgressMap } from './DashboardProgressMap';
 export { DashboardWeeklySummary } from './DashboardWeeklySummary';
+export { DashboardNeedsPractice } from './DashboardNeedsPractice';
