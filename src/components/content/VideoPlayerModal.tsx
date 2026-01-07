@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play } from 'lucide-react';
 import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
 import { VimeoPlayer } from '@/components/video/VimeoPlayer';
+import { VideoLoadWatchdog } from '@/components/video/VideoLoadWatchdog';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -14,23 +15,50 @@ interface VideoPlayerModalProps {
 
 export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: VideoPlayerModalProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
+  
   // Normalize the video URL to handle iframe embed codes
   const normalizedUrl = normalizeVideoInput(videoUrl);
   const videoInfo = getVideoInfo(normalizedUrl);
 
-  // Reset playing state when modal closes or video changes
+  // Reset states when modal closes or video changes
   useEffect(() => {
     if (!isOpen) {
       setIsPlaying(false);
+      setIsPlayerReady(false);
+      setPlayerKey(0);
     }
   }, [isOpen, videoUrl]);
 
   const handlePlay = () => {
     setIsPlaying(true);
+    setIsPlayerReady(false);
   };
+
+  const handlePlayerReady = useCallback(() => {
+    setIsPlayerReady(true);
+  }, []);
+
+  // Retry handler - force remount player with new key
+  const handleRetry = useCallback(() => {
+    setPlayerKey((k) => k + 1);
+    setIsPlayerReady(false);
+  }, []);
 
   // Check if this is a Vimeo video
   const isVimeo = videoInfo.source === 'vimeo' && videoInfo.id;
+  
+  // Build external URL for "Open in new tab"
+  const getExternalUrl = () => {
+    if (isVimeo) {
+      return `https://vimeo.com/${videoInfo.id}`;
+    }
+    if (videoInfo.source === 'youtube' && videoInfo.id) {
+      return `https://www.youtube.com/watch?v=${videoInfo.id}`;
+    }
+    return normalizedUrl || undefined;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -53,23 +81,29 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
           <div className="w-full bg-muted">
             {videoInfo.embedUrl ? (
               isPlaying ? (
-                isVimeo ? (
-                  <VimeoPlayer
-                    videoId={videoInfo.id!}
-                    autoplay={true}
-                  />
-                ) : (
-                <div className="aspect-video w-full">
-                    <iframe
-                      src={`${videoInfo.embedUrl}?autoplay=1&rel=0&modestbranding=1`}
-                      title={title || 'Video'}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      referrerPolicy="strict-origin-when-cross-origin"
+                <VideoLoadWatchdog
+                  videoKey={`${videoInfo.id}-${playerKey}`}
+                  isReady={isPlayerReady}
+                  timeoutMs={6000}
+                  externalUrl={getExternalUrl()}
+                  onRetry={handleRetry}
+                >
+                  {isVimeo ? (
+                    <VimeoPlayer
+                      key={playerKey}
+                      videoId={videoInfo.id!}
+                      autoplay={true}
+                      onReady={handlePlayerReady}
                     />
-                  </div>
-                )
+                  ) : (
+                    <IframePlayer
+                      key={playerKey}
+                      embedUrl={videoInfo.embedUrl}
+                      title={title}
+                      onReady={handlePlayerReady}
+                    />
+                  )}
+                </VideoLoadWatchdog>
               ) : (
                 <button
                   onClick={handlePlay}
@@ -112,5 +146,37 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Iframe player wrapper with load detection
+ */
+interface IframePlayerProps {
+  embedUrl: string;
+  title?: string;
+  onReady?: () => void;
+}
+
+function IframePlayer({ embedUrl, title, onReady }: IframePlayerProps) {
+  const handleLoad = useCallback(() => {
+    // Delay slightly to ensure iframe content is actually ready
+    setTimeout(() => {
+      onReady?.();
+    }, 500);
+  }, [onReady]);
+
+  return (
+    <div className="aspect-video w-full">
+      <iframe
+        src={`${embedUrl}?autoplay=1&rel=0&modestbranding=1`}
+        title={title || 'Video'}
+        className="w-full h-full border-0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        onLoad={handleLoad}
+      />
+    </div>
   );
 }
