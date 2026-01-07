@@ -1229,6 +1229,144 @@ export type Database = {
           },
         ]
       }
+      mcq_analytics: {
+        Row: {
+          avg_time_seconds: number | null
+          chapter_id: string | null
+          correct_count: number
+          created_at: string
+          discrimination_index: number | null
+          distractor_analysis: Json
+          facility_index: number | null
+          flag_reasons: string[] | null
+          flag_severity: string | null
+          id: string
+          is_flagged: boolean
+          last_calculated_at: string
+          max_time_seconds: number | null
+          mcq_id: string
+          min_time_seconds: number | null
+          module_id: string
+          total_attempts: number
+          updated_at: string
+        }
+        Insert: {
+          avg_time_seconds?: number | null
+          chapter_id?: string | null
+          correct_count?: number
+          created_at?: string
+          discrimination_index?: number | null
+          distractor_analysis?: Json
+          facility_index?: number | null
+          flag_reasons?: string[] | null
+          flag_severity?: string | null
+          id?: string
+          is_flagged?: boolean
+          last_calculated_at?: string
+          max_time_seconds?: number | null
+          mcq_id: string
+          min_time_seconds?: number | null
+          module_id: string
+          total_attempts?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_time_seconds?: number | null
+          chapter_id?: string | null
+          correct_count?: number
+          created_at?: string
+          discrimination_index?: number | null
+          distractor_analysis?: Json
+          facility_index?: number | null
+          flag_reasons?: string[] | null
+          flag_severity?: string | null
+          id?: string
+          is_flagged?: boolean
+          last_calculated_at?: string
+          max_time_seconds?: number | null
+          mcq_id?: string
+          min_time_seconds?: number | null
+          module_id?: string
+          total_attempts?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_analytics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcq_analytics_mcq_id_fkey"
+            columns: ["mcq_id"]
+            isOneToOne: true
+            referencedRelation: "mcqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcq_analytics_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcq_analytics_reports: {
+        Row: {
+          avg_facility_index: number | null
+          flagged_count: number
+          generated_at: string
+          generated_for: string
+          health_score: number | null
+          id: string
+          is_read: boolean
+          module_id: string
+          read_at: string | null
+          report_data: Json
+          report_type: string
+          total_mcqs: number
+        }
+        Insert: {
+          avg_facility_index?: number | null
+          flagged_count?: number
+          generated_at?: string
+          generated_for: string
+          health_score?: number | null
+          id?: string
+          is_read?: boolean
+          module_id: string
+          read_at?: string | null
+          report_data?: Json
+          report_type?: string
+          total_mcqs?: number
+        }
+        Update: {
+          avg_facility_index?: number | null
+          flagged_count?: number
+          generated_at?: string
+          generated_for?: string
+          health_score?: number | null
+          id?: string
+          is_read?: boolean
+          module_id?: string
+          read_at?: string | null
+          report_data?: Json
+          report_type?: string
+          total_mcqs?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_analytics_reports_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcq_attempts: {
         Row: {
           answers: Json | null
