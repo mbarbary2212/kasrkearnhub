@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +25,13 @@ interface FlagResult {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
+const severityPriority = { low: 0, medium: 1, high: 2, critical: 3 } as const;
+type Severity = keyof typeof severityPriority;
+
+function upgradeSeverity(current: Severity, next: Severity): Severity {
+  return severityPriority[next] > severityPriority[current] ? next : current;
+}
+
 function calculateFlags(
   facilityIndex: number | null,
   discriminationIndex: number | null,
@@ -34,7 +40,7 @@ function calculateFlags(
   totalAttempts: number
 ): FlagResult {
   const reasons: string[] = [];
-  let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  let severity: Severity = 'low';
 
   if (totalAttempts < MIN_ATTEMPTS_FOR_ANALYSIS) {
     return { reasons: [], severity: 'low' };
@@ -44,13 +50,13 @@ function calculateFlags(
   if (facilityIndex !== null) {
     if (facilityIndex === 0) {
       reasons.push(`No correct answers (0% correct) - verify answer key`);
-      severity = 'critical';
+      severity = upgradeSeverity(severity, 'critical');
     } else if (facilityIndex < FACILITY_TOO_HARD) {
       reasons.push(`Too difficult (${Math.round(facilityIndex * 100)}% correct)`);
-      if (severity !== 'critical') severity = 'high';
+      severity = upgradeSeverity(severity, 'high');
     } else if (facilityIndex > FACILITY_TOO_EASY) {
       reasons.push(`Too easy (${Math.round(facilityIndex * 100)}% correct)`);
-      if (severity === 'low') severity = 'medium';
+      severity = upgradeSeverity(severity, 'medium');
     }
   }
 
@@ -58,10 +64,10 @@ function calculateFlags(
   if (discriminationIndex !== null) {
     if (discriminationIndex < 0) {
       reasons.push(`Negative discrimination (D=${discriminationIndex.toFixed(2)}) - low performers do better`);
-      if (severity !== 'critical') severity = 'high';
+      severity = upgradeSeverity(severity, 'high');
     } else if (discriminationIndex < DISCRIMINATION_POOR) {
       reasons.push(`Poor discrimination (D=${discriminationIndex.toFixed(2)})`);
-      if (severity === 'low') severity = 'medium';
+      severity = upgradeSeverity(severity, 'medium');
     }
   }
 
@@ -75,17 +81,16 @@ function calculateFlags(
     const count = distractorAnalysis[key];
     if (count === 0) {
       reasons.push(`Option ${key} never selected (ineffective distractor)`);
-      if (severity === 'low') severity = 'low';
     } else if (count > correctCount && totalAttempts >= MIN_ATTEMPTS_FOR_ANALYSIS) {
       reasons.push(`Option ${key} selected more than correct answer (${count} vs ${correctCount})`);
-      if (severity !== 'critical') severity = 'high';
+      severity = upgradeSeverity(severity, 'high');
     }
   }
 
   return { reasons, severity: reasons.length > 0 ? severity : 'low' };
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -290,8 +295,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Error calculating MCQ analytics:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
