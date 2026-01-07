@@ -165,17 +165,21 @@ export function PracticeFilters({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Show questions</span>
-                {!isDefaultFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleResetFilters}
-                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Reset
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetFilters}
+                  disabled={isDefaultFilters}
+                  className={cn(
+                    "h-6 px-2 text-xs",
+                    isDefaultFilters 
+                      ? "text-muted-foreground/50 cursor-not-allowed" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Reset
+                </Button>
               </div>
               
               <RadioGroup value={activeFilter} onValueChange={(v) => handleFilterChange(v as ActiveFilter)}>
