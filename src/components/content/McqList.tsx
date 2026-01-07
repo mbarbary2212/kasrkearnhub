@@ -499,6 +499,7 @@ export function McqList({
             <PracticeFilters
               filters={practiceFilters}
               onFiltersChange={setPracticeFilters}
+              onResetProgress={chapterId ? handleResetAttempt : undefined}
               counts={statusCounts}
               totalCount={totalQuestions}
               filteredCount={filteredMcqs.length}
