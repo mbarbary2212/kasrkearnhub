@@ -4,15 +4,21 @@ import { DashboardTodayPlan } from './DashboardTodayPlan';
 import { DashboardInsights } from './DashboardInsights';
 import { DashboardProgressMap } from './DashboardProgressMap';
 import { DashboardWeeklySummary } from './DashboardWeeklySummary';
+import { DashboardNeedsPractice } from './DashboardNeedsPractice';
 import { Card, CardContent } from '@/components/ui/card';
+import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
   moduleSelected: boolean;
-  onNavigate: (moduleId: string, chapterId: string) => void;
+  moduleId?: string;
+  onNavigate: (moduleId: string, chapterId: string, tab?: string) => void;
 }
 
-export function LearningHubOverview({ dashboard, moduleSelected, onNavigate }: LearningHubOverviewProps) {
+export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNavigate }: LearningHubOverviewProps) {
+  // Fetch needs practice data for the selected module
+  const { mcqNeedsPractice, osceNeedsPractice } = useNeedsPractice(moduleId);
+
   if (!moduleSelected) {
     return (
       <Card>
@@ -44,6 +50,13 @@ export function LearningHubOverview({ dashboard, moduleSelected, onNavigate }: L
             onNavigate(moduleId, chapterId);
           }
         }}
+      />
+
+      {/* Personal Study Coach: Needs Practice */}
+      <DashboardNeedsPractice
+        mcqNeedsPractice={mcqNeedsPractice}
+        osceNeedsPractice={osceNeedsPractice}
+        onNavigate={onNavigate}
       />
 
       {/* Learning Insights */}
