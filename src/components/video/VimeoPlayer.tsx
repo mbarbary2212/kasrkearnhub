@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useVideoProgress } from '@/hooks/useVideoProgress';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
+import { logDiagnostic } from '@/lib/stabilityGuards';
 
 interface VimeoPlayerProps {
   videoId: string;
@@ -12,6 +12,7 @@ interface VimeoPlayerProps {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  onError?: (error: Error) => void;
 }
 
 declare global {
@@ -79,6 +80,7 @@ export function VimeoPlayer({
   onPlay,
   onPause,
   onEnded,
+  onError,
 }: VimeoPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<VimeoPlayerInstance | null>(null);
@@ -154,7 +156,16 @@ export function VimeoPlayer({
             onReady?.();
           } catch (e) {
             console.error('Error during player load:', e);
+            logDiagnostic('video', 'Vimeo player load error', { videoId, error: String(e) });
+            onError?.(e instanceof Error ? e : new Error(String(e)));
           }
+        });
+
+        // Handle player error
+        player.on('error', (data: unknown) => {
+          const errorData = data as { message?: string; name?: string } | undefined;
+          logDiagnostic('video', 'Vimeo player error event', { videoId, error: errorData });
+          onError?.(new Error(errorData?.message || 'Vimeo player error'));
         });
 
         // Handle timeupdate for progress saving
@@ -208,6 +219,8 @@ export function VimeoPlayer({
 
       } catch (error) {
         console.error('Error initializing Vimeo player:', error);
+        logDiagnostic('video', 'Vimeo SDK init failed', { videoId, error: String(error) });
+        onError?.(error instanceof Error ? error : new Error(String(error)));
       }
     };
 
