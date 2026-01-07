@@ -5,6 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -15,8 +16,12 @@ import {
   Users,
   TrendingUp,
   BarChart3,
-  Lightbulb
+  Lightbulb,
+  Copy,
+  ExternalLink,
+  Hash
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   type McqWithAnalytics,
   getFacilityStatus,
@@ -38,6 +43,18 @@ export function McqAnalyticsDetailModal({
   const mcq = analytics.mcq;
   const facilityStatus = getFacilityStatus(analytics.facility_index);
   const discStatus = getDiscriminationStatus(analytics.discrimination_index);
+
+  // Short question ID for display (first 8 chars of UUID)
+  const shortId = analytics.mcq_id.slice(0, 8).toUpperCase();
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(analytics.mcq_id);
+      toast.success("Question ID copied to clipboard");
+    } catch {
+      toast.error("Failed to copy ID");
+    }
+  };
 
   // Calculate max selections for bar scaling
   const maxSelections = Math.max(
@@ -99,18 +116,39 @@ export function McqAnalyticsDetailModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Question Analytics
-            {analytics.is_flagged && (
-              <Badge className={getSeverityBadgeColor(analytics.flag_severity)}>
-                {analytics.flag_severity}
-              </Badge>
-            )}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Question Analytics
+              {analytics.is_flagged && (
+                <Badge className={getSeverityBadgeColor(analytics.flag_severity)}>
+                  {analytics.flag_severity}
+                </Badge>
+              )}
+            </DialogTitle>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Question ID Badge */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="font-mono text-xs px-2 py-1">
+                <Hash className="h-3 w-3 mr-1" />
+                {shortId}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                onClick={handleCopyId}
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Copy Full ID
+              </Button>
+            </div>
+          </div>
+
           {/* Question Display */}
           <Card>
             <CardHeader className="pb-2">

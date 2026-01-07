@@ -158,6 +158,56 @@ export function useModuleAnalyticsSummary(moduleId?: string) {
   });
 }
 
+export function useChapterAnalyticsSummary(chapterId?: string) {
+  return useQuery({
+    queryKey: ["mcq-analytics", "chapter-summary", chapterId],
+    queryFn: async () => {
+      if (!chapterId) return null;
+
+      const { data, error } = await supabase
+        .from("mcq_analytics")
+        .select("facility_index, is_flagged, flag_severity, total_attempts")
+        .eq("chapter_id", chapterId);
+
+      if (error) throw error;
+
+      const analytics = data || [];
+      const totalMcqs = analytics.length;
+      const flaggedCount = analytics.filter(a => a.is_flagged).length;
+      const criticalCount = analytics.filter(a => a.flag_severity === 'critical').length;
+      const highCount = analytics.filter(a => a.flag_severity === 'high').length;
+      
+      const facilitiesWithData = analytics
+        .filter(a => a.facility_index !== null)
+        .map(a => a.facility_index as number);
+      
+      const avgFacility = facilitiesWithData.length > 0
+        ? facilitiesWithData.reduce((a, b) => a + b, 0) / facilitiesWithData.length
+        : null;
+
+      const totalAttempts = analytics.reduce((sum, a) => sum + a.total_attempts, 0);
+
+      const healthScore = totalMcqs > 0
+        ? Math.max(0, Math.min(100, Math.round(
+            100 - ((criticalCount * 10 + highCount * 5 + (flaggedCount - criticalCount - highCount) * 2) / totalMcqs * 100)
+          )))
+        : 100;
+
+      return {
+        totalMcqs,
+        flaggedCount,
+        criticalCount,
+        highCount,
+        avgFacility,
+        totalAttempts,
+        healthScore,
+        analyzedCount: analytics.filter(a => a.total_attempts >= 10).length,
+      };
+    },
+    enabled: !!chapterId,
+  });
+}
+
 export function useCalculateMcqAnalytics() {
   const queryClient = useQueryClient();
 
