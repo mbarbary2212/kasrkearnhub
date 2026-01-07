@@ -135,9 +135,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       onClick={() => navigate('/progress')}
                       variant="ghost"
                       size="icon"
-                      className="h-14 w-14 rounded-lg hover:bg-primary/10 p-0 overflow-hidden transition-transform duration-200 hover:scale-110 -mt-1"
+                      className="h-11 w-11 rounded-lg hover:bg-primary/10 p-0 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
-                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[200%] w-full object-cover object-[center_15%] rounded-lg" />
+                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[180%] w-full object-cover object-[center_18%] rounded-lg" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
