@@ -20,7 +20,7 @@ import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
-import { McqAnalyticsDashboard } from '@/components/analytics/McqAnalyticsDashboard';
+import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 
@@ -1217,10 +1217,10 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* MCQ Analytics Tab */}
+          {/* Question Analytics Tab */}
           {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="mcq-analytics">
-              <McqAnalyticsDashboard 
+            <TabsContent value="question-analytics">
+              <QuestionAnalyticsTabs 
                 modules={modules} 
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
