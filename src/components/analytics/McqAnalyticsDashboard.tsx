@@ -39,25 +39,45 @@ import {
   type McqWithAnalytics,
 } from "@/hooks/useMcqAnalytics";
 import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
+import { useAuthContext } from "@/contexts/AuthContext";
 
-interface McqAnalyticsDashboardProps {
-  moduleId: string;
-  moduleName?: string;
+interface Module {
+  id: string;
+  name: string;
+  year_id?: string;
+}
+
+export interface McqAnalyticsDashboardProps {
+  modules: Module[];
+  moduleAdminModuleIds?: string[];
 }
 
 type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data';
 
-export function McqAnalyticsDashboard({ moduleId, moduleName }: McqAnalyticsDashboardProps) {
+export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds }: McqAnalyticsDashboardProps) {
+  const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
+  const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [selectedMcq, setSelectedMcq] = useState<McqWithAnalytics | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
   
-  const { data: analytics, isLoading } = useModuleMcqAnalytics(moduleId);
-  const { data: summary, isLoading: summaryLoading } = useModuleAnalyticsSummary(moduleId);
+  // Filter modules based on admin access
+  const accessibleModules = (isSuperAdmin || isPlatformAdmin)
+    ? modules
+    : modules.filter(m => moduleAdminModuleIds?.includes(m.id));
+
+  const selectedModule = accessibleModules.find(m => m.id === selectedModuleId);
+  
+  const { data: analytics, isLoading } = useModuleMcqAnalytics(selectedModuleId || '');
+  const { data: summary, isLoading: summaryLoading } = useModuleAnalyticsSummary(selectedModuleId || '');
   const calculateMutation = useCalculateMcqAnalytics();
 
   const handleRecalculate = async () => {
+    if (!selectedModuleId) {
+      toast.error("Please select a module first");
+      return;
+    }
     try {
-      const result = await calculateMutation.mutateAsync({ moduleId });
+      const result = await calculateMutation.mutateAsync({ moduleId: selectedModuleId });
       toast.success(`Analyzed ${result.processed} MCQs, ${result.flagged} flagged`);
     } catch (error) {
       toast.error("Failed to calculate analytics");
@@ -81,41 +101,62 @@ export function McqAnalyticsDashboard({ moduleId, moduleName }: McqAnalyticsDash
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">MCQ Analytics</h2>
-          {moduleName && (
-            <p className="text-muted-foreground">{moduleName}</p>
-          )}
+          <p className="text-muted-foreground">Psychometric analysis of MCQ performance</p>
         </div>
-        <Button
-          onClick={handleRecalculate}
-          disabled={calculateMutation.isPending}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${calculateMutation.isPending ? 'animate-spin' : ''}`} />
-          {calculateMutation.isPending ? "Calculating..." : "Recalculate All"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={selectedModuleId} onValueChange={setSelectedModuleId}>
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Select a module" />
+            </SelectTrigger>
+            <SelectContent>
+              {accessibleModules.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleRecalculate}
+            disabled={calculateMutation.isPending || !selectedModuleId}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${calculateMutation.isPending ? 'animate-spin' : ''}`} />
+            {calculateMutation.isPending ? "Calculating..." : "Recalculate"}
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {!selectedModuleId ? (
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total MCQs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summaryLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">{summary?.totalMcqs || 0}</span>
-              </div>
-            )}
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Select a module to view MCQ analytics</p>
           </CardContent>
         </Card>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total MCQs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {summaryLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    <span className="text-2xl font-bold">{summary?.totalMcqs || 0}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
         <Card>
           <CardHeader className="pb-2">
@@ -326,6 +367,8 @@ export function McqAnalyticsDashboard({ moduleId, moduleName }: McqAnalyticsDash
           open={!!selectedMcq}
           onClose={() => setSelectedMcq(null)}
         />
+      )}
+        </>
       )}
     </div>
   );
