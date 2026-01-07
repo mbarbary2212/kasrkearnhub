@@ -2,18 +2,14 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { 
-  CheckCircle2, 
-  XCircle, 
-  Eye, 
-  EyeOff, 
+  Check, 
+  X, 
   Edit, 
   Trash2, 
   RotateCcw,
   Image as ImageIcon,
-  CheckCircle,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OsceQuestion } from '@/hooks/useOsceQuestions';
@@ -32,6 +28,9 @@ interface OsceQuestionCardProps {
   onRestore?: () => void;
   // Previous attempt data for restoring state
   previousAttempt?: QuestionAttempt | null;
+  // Starred support
+  isStarred?: boolean;
+  onToggleStar?: (id: string) => void;
 }
 
 export function OsceQuestionCard({
@@ -44,6 +43,8 @@ export function OsceQuestionCard({
   onDelete,
   onRestore,
   previousAttempt,
+  isStarred = false,
+  onToggleStar,
 }: OsceQuestionCardProps) {
   // Restore previous answers if available
   const initialAnswers = useMemo(() => {
@@ -62,7 +63,6 @@ export function OsceQuestionCard({
 
   const [answers, setAnswers] = useState<Record<number, boolean | null>>(initialAnswers);
   const [submitted, setSubmitted] = useState(!!previousAttempt);
-  const [showExplanations, setShowExplanations] = useState(false);
   const hasMarkedComplete = useRef(!!previousAttempt);
   const hasSavedAttempt = useRef(!!previousAttempt);
   const { markComplete } = useMarkItemComplete();
@@ -76,6 +76,18 @@ export function OsceQuestionCard({
     { text: question.statement_5, correct: question.answer_5, explanation: question.explanation_5 },
   ];
 
+  // Calculate score
+  const getScore = () => {
+    let correct = 0;
+    statements.forEach((s, i) => {
+      if (answers[i + 1] === s.correct) correct++;
+    });
+    return correct;
+  };
+
+  const score = submitted ? getScore() : 0;
+  const isAllCorrect = score === 5;
+
   // Mark as complete when submitted (all T/F statements answered)
   useEffect(() => {
     if (submitted && !hasMarkedComplete.current && !isAdmin && chapterId) {
@@ -87,7 +99,7 @@ export function OsceQuestionCard({
   // Auto-save attempt when submitted
   useEffect(() => {
     if (submitted && !hasSavedAttempt.current && !isAdmin && chapterId && moduleId) {
-      const score = getScore();
+      const currentScore = getScore();
       const selectedAnswer: Record<string, boolean> = {};
       Object.entries(answers).forEach(([key, value]) => {
         if (value !== null) {
@@ -101,16 +113,22 @@ export function OsceQuestionCard({
         chapterId,
         moduleId,
         selectedAnswer: selectedAnswer as unknown as Json,
-        isCorrect: score === 5,
-        score,
+        isCorrect: currentScore === 5,
+        score: currentScore,
       });
       hasSavedAttempt.current = true;
     }
   }, [submitted, answers, question.id, chapterId, moduleId, isAdmin, saveAttempt]);
 
   const handleAnswerChange = (index: number, value: boolean) => {
-    if (submitted) return;
-    setAnswers(prev => ({ ...prev, [index + 1]: value }));
+    if (submitted) {
+      // Reset to try again mode if user changes an answer after submission
+      setAnswers(prev => ({ ...prev, [index + 1]: value }));
+      setSubmitted(false);
+      hasSavedAttempt.current = false;
+    } else {
+      setAnswers(prev => ({ ...prev, [index + 1]: value }));
+    }
   };
 
   const handleSubmit = () => {
@@ -122,35 +140,32 @@ export function OsceQuestionCard({
   const handleReset = () => {
     setAnswers({ 1: null, 2: null, 3: null, 4: null, 5: null });
     setSubmitted(false);
-    setShowExplanations(false);
-    // Note: We don't reset hasMarkedComplete - once completed, it stays completed
-    // But we do allow re-saving for practice purposes
     hasSavedAttempt.current = false;
-  };
-
-  const getScore = () => {
-    let correct = 0;
-    statements.forEach((s, i) => {
-      if (answers[i + 1] === s.correct) correct++;
-    });
-    return correct;
   };
 
   const allAnswered = Object.values(answers).every(a => a !== null);
   const isDeleted = question.is_deleted;
 
-  // Check if this question was previously answered
-  const wasAttempted = !!previousAttempt;
-  const previousScore = previousAttempt?.score ?? null;
-  const wasAllCorrect = previousScore === 5;
+  // Status based on last attempt
+  const statusLabel = useMemo(() => {
+    if (!previousAttempt) return null;
+    return previousAttempt.is_correct ? 'Correct' : 'Attempted';
+  }, [previousAttempt]);
+
+  // Score badge color
+  const getScoreBadgeVariant = (s: number) => {
+    if (s === 5) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    if (s >= 3) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+  };
 
   return (
     <Card className={cn(
       "overflow-hidden",
       isDeleted && "opacity-60 border-destructive/30 bg-destructive/5",
-      wasAttempted && !isDeleted && "ring-1 ring-offset-1",
-      wasAttempted && wasAllCorrect && !isDeleted && "ring-green-300 dark:ring-green-700",
-      wasAttempted && !wasAllCorrect && !isDeleted && "ring-amber-300 dark:ring-amber-700"
+      previousAttempt && !isDeleted && "ring-1 ring-offset-1",
+      previousAttempt && previousAttempt.is_correct && !isDeleted && "ring-green-300 dark:ring-green-700",
+      previousAttempt && !previousAttempt.is_correct && !isDeleted && "ring-amber-300 dark:ring-amber-700"
     )}>
       <CardContent className="p-0">
         {/* Image and History - stacked layout */}
@@ -159,23 +174,45 @@ export function OsceQuestionCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline">Question {questionNumber}</Badge>
-              {/* Previously answered indicator */}
-              {wasAttempted && !isAdmin && !isDeleted && (
+              {/* Status indicator based on last attempt */}
+              {statusLabel && !isAdmin && !isDeleted && (
                 <Badge 
                   variant="secondary" 
                   className={cn(
-                    "text-xs",
-                    wasAllCorrect 
+                    "text-xs gap-1",
+                    statusLabel === 'Correct' 
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                   )}
                 >
-                  {wasAllCorrect ? (
-                    <><CheckCircle className="h-3 w-3 mr-1" /> 5/5</>
+                  {statusLabel === 'Correct' ? (
+                    <><Check className="h-3 w-3" /> Correct</>
                   ) : (
-                    `${previousScore}/5`
+                    <><X className="h-3 w-3" /> Attempted</>
                   )}
                 </Badge>
+              )}
+              {/* Score badge for previously attempted */}
+              {previousAttempt && previousAttempt.score !== null && !isAdmin && !isDeleted && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn("text-xs", getScoreBadgeVariant(previousAttempt.score))}
+                >
+                  {previousAttempt.score}/5
+                </Badge>
+              )}
+              {/* Star toggle */}
+              {onToggleStar && !isAdmin && (
+                <button
+                  onClick={() => onToggleStar(question.id)}
+                  className={cn(
+                    'p-1 rounded-full transition-colors hover:bg-muted',
+                    isStarred ? 'text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
+                  )}
+                  title={isStarred ? 'Remove star' : 'Star for review'}
+                >
+                  <Star className={cn('h-4 w-4', isStarred && 'fill-current')} />
+                </button>
               )}
             </div>
             {isDeleted && (
@@ -228,74 +265,87 @@ export function OsceQuestionCard({
           
           {statements.map((statement, index) => {
             const userAnswer = answers[index + 1];
-            const isCorrect = userAnswer === statement.correct;
+            const isCorrectAnswer = userAnswer === statement.correct;
+            const showFeedback = submitted && userAnswer !== null;
             
             return (
               <div 
                 key={index}
                 className={cn(
-                  "p-3 rounded-lg border transition-colors",
-                  submitted && isCorrect && "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800",
-                  submitted && !isCorrect && userAnswer !== null && "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800"
+                  "p-3 rounded-lg border-2 transition-colors",
+                  showFeedback && isCorrectAnswer && "border-green-500 bg-green-500/10",
+                  showFeedback && !isCorrectAnswer && "border-red-500 bg-red-500/10",
+                  !showFeedback && "border-border"
                 )}
               >
                 <div className="flex items-start gap-3">
                   <span className="font-medium text-muted-foreground">{index + 1}.</span>
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-2">
                     <p className="mb-2">{statement.text}</p>
                     
-                    <div className="flex items-center gap-4">
-                      <RadioGroup
-                        value={userAnswer === null ? undefined : userAnswer.toString()}
-                        onValueChange={(value) => handleAnswerChange(index, value === 'true')}
-                        className="flex gap-4"
-                        disabled={submitted}
+                    <div className="flex items-center gap-4 flex-wrap">
+                      {/* True button */}
+                      <button
+                        onClick={() => handleAnswerChange(index, true)}
+                        className={cn(
+                          "px-4 py-2 rounded-lg border-2 font-medium transition-all flex items-center gap-2",
+                          !submitted && userAnswer === true && "border-primary bg-primary/10 text-primary",
+                          !submitted && userAnswer !== true && "border-border hover:border-primary/50 hover:bg-muted/50",
+                          submitted && statement.correct === true && "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400",
+                          submitted && userAnswer === true && statement.correct !== true && "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400",
+                          submitted && userAnswer !== true && statement.correct !== true && "border-border opacity-60"
+                        )}
                       >
-                        <div className="flex items-center gap-1">
-                          <RadioGroupItem value="true" id={`q${question.id}-s${index}-true`} />
-                          <Label 
-                            htmlFor={`q${question.id}-s${index}-true`}
-                            className={cn(
-                              "cursor-pointer",
-                              submitted && statement.correct && "text-green-600 font-medium"
-                            )}
-                          >
-                            True
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <RadioGroupItem value="false" id={`q${question.id}-s${index}-false`} />
-                          <Label 
-                            htmlFor={`q${question.id}-s${index}-false`}
-                            className={cn(
-                              "cursor-pointer",
-                              submitted && !statement.correct && "text-green-600 font-medium"
-                            )}
-                          >
-                            False
-                          </Label>
-                        </div>
-                      </RadioGroup>
+                        True
+                        {submitted && statement.correct === true && (
+                          <Check className="h-4 w-4 text-green-600" />
+                        )}
+                        {submitted && userAnswer === true && statement.correct !== true && (
+                          <X className="h-4 w-4 text-red-600" />
+                        )}
+                      </button>
+                      
+                      {/* False button */}
+                      <button
+                        onClick={() => handleAnswerChange(index, false)}
+                        className={cn(
+                          "px-4 py-2 rounded-lg border-2 font-medium transition-all flex items-center gap-2",
+                          !submitted && userAnswer === false && "border-primary bg-primary/10 text-primary",
+                          !submitted && userAnswer !== false && "border-border hover:border-primary/50 hover:bg-muted/50",
+                          submitted && statement.correct === false && "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400",
+                          submitted && userAnswer === false && statement.correct !== false && "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400",
+                          submitted && userAnswer !== false && statement.correct !== false && "border-border opacity-60"
+                        )}
+                      >
+                        False
+                        {submitted && statement.correct === false && (
+                          <Check className="h-4 w-4 text-green-600" />
+                        )}
+                        {submitted && userAnswer === false && statement.correct !== false && (
+                          <X className="h-4 w-4 text-red-600" />
+                        )}
+                      </button>
 
-                      {submitted && (
-                        isCorrect ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        ) : userAnswer !== null ? (
-                          <XCircle className="w-5 h-5 text-red-600" />
-                        ) : null
+                      {/* Result icon for accessibility */}
+                      {showFeedback && (
+                        <span className={cn(
+                          "flex items-center gap-1 text-sm font-medium",
+                          isCorrectAnswer ? "text-green-600" : "text-red-600"
+                        )}>
+                          {isCorrectAnswer ? (
+                            <><Check className="h-5 w-5" /> Correct</>
+                          ) : (
+                            <><X className="h-5 w-5" /> Incorrect</>
+                          )}
+                        </span>
                       )}
                     </div>
 
-                    {/* Explanation - show after submission when toggled */}
-                    {submitted && showExplanations && (
-                      <p className="mt-2 text-sm text-muted-foreground bg-muted p-2 rounded">
-                        <strong>Explanation:</strong>{' '}
-                        {statement.explanation ? (
-                          statement.explanation
-                        ) : (
-                          <span className="italic text-muted-foreground/70">No explanation provided.</span>
-                        )}
-                      </p>
+                    {/* Explanation - shown automatically after submission */}
+                    {submitted && statement.explanation && (
+                      <div className="mt-2 p-2 rounded bg-muted text-sm">
+                        <strong>Explanation:</strong> {statement.explanation}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -305,20 +355,31 @@ export function OsceQuestionCard({
         </div>
 
         {/* Actions */}
-        <div className="p-4 border-t flex items-center justify-between">
+        <div className="p-4 border-t flex items-center justify-between flex-wrap gap-2">
           {submitted ? (
             <>
               <div className="flex items-center gap-2">
-                <Badge variant={getScore() >= 4 ? "default" : getScore() >= 3 ? "secondary" : "destructive"}>
-                  Score: {getScore()}/5
+                {/* Score badge with color coding */}
+                <Badge 
+                  variant="secondary"
+                  className={cn("text-sm", getScoreBadgeVariant(score))}
+                >
+                  Score: {score}/5
                 </Badge>
-                <Button variant="ghost" size="sm" onClick={() => setShowExplanations(!showExplanations)}>
-                  {showExplanations ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-                  {showExplanations ? 'Hide' : 'Show'} Explanations
-                </Button>
+                {/* Feedback message */}
+                <span className={cn(
+                  "text-sm font-medium flex items-center gap-1",
+                  isAllCorrect ? "text-green-600" : "text-amber-600"
+                )}>
+                  {isAllCorrect ? (
+                    <><Check className="h-4 w-4" /> All Correct!</>
+                  ) : (
+                    <><X className="h-4 w-4" /> {5 - score} incorrect</>
+                  )}
+                </span>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw className="w-4 h-4 mr-1" />
+              <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
+                <RotateCcw className="w-4 h-4" />
                 Try Again
               </Button>
             </>
@@ -327,8 +388,9 @@ export function OsceQuestionCard({
               <span className="text-sm text-muted-foreground">
                 {Object.values(answers).filter(a => a !== null).length}/5 answered
               </span>
-              <Button onClick={handleSubmit} disabled={!allAnswered}>
-                Submit Answers
+              <Button onClick={handleSubmit} disabled={!allAnswered} className="gap-2">
+                <Check className="h-4 w-4" />
+                Submit OSCE
               </Button>
             </>
           )}
