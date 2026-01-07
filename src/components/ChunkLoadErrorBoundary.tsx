@@ -103,12 +103,53 @@ function isChunkLoadError(error: Error): boolean {
   );
 }
 
+// Helper to extract error message from various reason types
+function getErrorMessage(reason: unknown): string {
+  if (reason instanceof Error) {
+    return reason.message || '';
+  }
+  if (typeof reason === 'string') {
+    return reason;
+  }
+  if (reason && typeof reason === 'object') {
+    // Handle object with message property
+    if ('message' in reason && typeof (reason as { message: unknown }).message === 'string') {
+      return (reason as { message: string }).message;
+    }
+  }
+  // Fallback to string conversion
+  return String(reason || '');
+}
+
+// Helper to check if a filename looks like a chunk asset
+function isChunkAssetFilename(filename: string | undefined): boolean {
+  if (!filename) return false;
+  // Match hashed JS/CSS chunk files
+  return /\.[a-f0-9]{8,}\.js$/i.test(filename) || 
+         /\.[a-f0-9]{8,}\.css$/i.test(filename) ||
+         /chunk.*\.js$/i.test(filename) ||
+         /assets\/.*\.js$/i.test(filename);
+}
+
 // Global handler for unhandled promise rejections (catches lazy load failures)
 export function setupChunkErrorHandler() {
   window.addEventListener('unhandledrejection', (event) => {
-    const error = event.reason;
-    if (error instanceof Error && isChunkLoadError(error)) {
-      console.warn('[ChunkErrorHandler] Caught unhandled chunk load error');
+    const reason = event.reason;
+    const message = getErrorMessage(reason);
+    
+    // Check if it's an Error instance with chunk load error
+    const isErrorInstance = reason instanceof Error && isChunkLoadError(reason);
+    
+    // Also check string/object messages directly
+    const isChunkMessage = 
+      message.includes('Failed to fetch dynamically imported module') ||
+      message.includes('Loading chunk') ||
+      message.includes('ChunkLoadError') ||
+      message.includes('Importing a module script failed') ||
+      message.includes('error loading dynamically imported module');
+    
+    if (isErrorInstance || isChunkMessage) {
+      console.warn('[ChunkErrorHandler] Caught unhandled chunk load error:', message);
       
       const hasAutoReloaded = sessionStorage.getItem(AUTO_RELOAD_KEY);
       if (!hasAutoReloaded) {
@@ -119,13 +160,31 @@ export function setupChunkErrorHandler() {
     }
   });
 
-  // Also handle regular errors
+  // Also handle regular errors (including Safari "Script error." cases)
   window.addEventListener('error', (event) => {
-    if (event.message && (
-      event.message.includes('Failed to fetch dynamically imported module') ||
-      event.message.includes('Loading chunk')
-    )) {
-      console.warn('[ChunkErrorHandler] Caught chunk load error via error event');
+    const message = event.message || '';
+    const filename = event.filename || '';
+    
+    // Direct chunk load error messages
+    const isChunkMessage = 
+      message.includes('Failed to fetch dynamically imported module') ||
+      message.includes('Loading chunk') ||
+      message.includes('ChunkLoadError') ||
+      message.includes('Importing a module script failed');
+    
+    // Safari "Script error." with chunk asset filename
+    const isSafariScriptError = 
+      message === 'Script error.' && isChunkAssetFilename(filename);
+    
+    // Generic script error where filename indicates a chunk asset failed
+    const isChunkAssetError = 
+      isChunkAssetFilename(filename) && (
+        message.toLowerCase().includes('error') ||
+        message.toLowerCase().includes('failed')
+      );
+    
+    if (isChunkMessage || isSafariScriptError || isChunkAssetError) {
+      console.warn('[ChunkErrorHandler] Caught chunk load error via error event:', { message, filename });
       
       const hasAutoReloaded = sessionStorage.getItem(AUTO_RELOAD_KEY);
       if (!hasAutoReloaded) {
