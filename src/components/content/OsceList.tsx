@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -6,7 +7,14 @@ import { Plus, Upload, AlertCircle } from 'lucide-react';
 import { OsceQuestionCard } from './OsceQuestionCard';
 import { OsceFormModal } from './OsceFormModal';
 import { OsceBulkUploadModal } from './OsceBulkUploadModal';
-import { PracticeHeader } from './PracticeHeader';
+import { 
+  PracticeFilters, 
+  PracticeFilterState, 
+  DEFAULT_STUDENT_FILTERS,
+  filterByStatus,
+  countByStatus,
+  getActiveFilter,
+} from './PracticeFilters';
 import { 
   OsceQuestion, 
   useDeleteOsceQuestion, 
@@ -24,9 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   useChapterQuestionAttempts, 
-  useChapterAttemptHistory, 
   useResetChapterAttempt,
-  useChapterPercentile,
 } from '@/hooks/useQuestionAttempts';
 
 interface OsceListProps {
@@ -34,6 +40,7 @@ interface OsceListProps {
   deletedQuestions?: OsceQuestion[];
   moduleId: string;
   chapterId?: string;
+  moduleSlug?: string;
   moduleCode?: string;
   chapterTitle?: string;
   isAdmin?: boolean;
@@ -47,6 +54,7 @@ export function OsceList({
   deletedQuestions = [],
   moduleId,
   chapterId,
+  moduleSlug,
   moduleCode,
   chapterTitle,
   isAdmin = false,
@@ -54,11 +62,11 @@ export function OsceList({
   showDeleted = false,
   onShowDeletedChange,
 }: OsceListProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showAttempted, setShowAttempted] = useState(false);
 
   const deleteQuestion = useDeleteOsceQuestion();
   const restoreQuestion = useRestoreOsceQuestion();
@@ -68,49 +76,101 @@ export function OsceList({
     chapterId, 
     'osce'
   );
-  const { data: attemptHistory = [] } = useChapterAttemptHistory(
-    chapterId, 
-    'osce'
-  );
   const resetAttemptMutation = useResetChapterAttempt();
-  const { data: percentileData } = useChapterPercentile(
-    chapterId, 
-    'osce'
-  );
 
   // Create a map of question attempts for quick lookup
   const attemptMap = useMemo(() => {
+    const map = new Map<string, { is_correct: boolean | null }>();
+    questionAttempts.forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
+    return map;
+  }, [questionAttempts]);
+
+  // Full attempt map for card display
+  const fullAttemptMap = useMemo(() => {
     const map = new Map<string, typeof questionAttempts[0]>();
     questionAttempts.forEach(a => map.set(a.question_id, a));
     return map;
   }, [questionAttempts]);
 
-  // Calculate attempted/unattempted counts
-  const attemptedIds = useMemo(() => new Set(questionAttempts.map(a => a.question_id)), [questionAttempts]);
-  const totalQuestions = questions.length;
-  const attemptedCount = questions.filter(q => attemptedIds.has(q.id)).length;
-  const unattemptedCount = totalQuestions - attemptedCount;
-
-  // Get current attempt number
-  const currentAttemptNumber = useMemo(() => {
-    if (attemptHistory.length === 0) return 1;
-    const latest = attemptHistory[attemptHistory.length - 1];
-    return latest.is_completed ? latest.attempt_number + 1 : latest.attempt_number;
-  }, [attemptHistory]);
-
-  // Smart practice: filter based on attempt status
-  const displayQuestions = useMemo(() => {
-    let result = showDeleted 
-      ? [...questions, ...deletedQuestions]
-      : questions;
-
-    // For students: hide attempted questions by default (smart practice)
-    if (!isAdmin && !showDeleted && !showAttempted) {
-      result = result.filter(q => !attemptedIds.has(q.id));
+  // Starred questions - stored in localStorage
+  const [starredIds, setStarredIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const stored = localStorage.getItem(`osce_starred_${chapterId}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
     }
+  });
 
-    return result;
-  }, [questions, deletedQuestions, showDeleted, isAdmin, showAttempted, attemptedIds]);
+  // Persist starred to localStorage
+  useEffect(() => {
+    if (chapterId) {
+      localStorage.setItem(`osce_starred_${chapterId}`, JSON.stringify([...starredIds]));
+    }
+  }, [starredIds, chapterId]);
+
+  const toggleStar = useCallback((id: string) => {
+    setStarredIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Practice filters - sync with URL
+  const [practiceFilters, setPracticeFilters] = useState<PracticeFilterState>(() => {
+    if (isAdmin) return DEFAULT_STUDENT_FILTERS;
+    try {
+      const param = searchParams.get('osce_filters');
+      if (param) {
+        return JSON.parse(param);
+      }
+    } catch {}
+    return DEFAULT_STUDENT_FILTERS;
+  });
+
+  // Sync filters to URL
+  useEffect(() => {
+    if (isAdmin) return;
+    
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev);
+        const activeFilter = getActiveFilter(practiceFilters);
+        if (activeFilter === 'all') {
+          next.delete('osce_filters');
+        } else {
+          next.set('osce_filters', JSON.stringify(practiceFilters));
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  }, [practiceFilters, setSearchParams, isAdmin]);
+
+  // Calculate counts for filters
+  const filterCounts = useMemo(() => {
+    return countByStatus(questions, attemptMap, starredIds);
+  }, [questions, attemptMap, starredIds]);
+
+  // Filter questions based on current filters
+  const filteredQuestions = useMemo(() => {
+    if (isAdmin) return questions;
+    return filterByStatus(questions, practiceFilters, attemptMap, starredIds);
+  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin]);
+
+  // Display questions (include deleted if toggle is on)
+  const displayQuestions = useMemo(() => {
+    if (showDeleted) {
+      return [...filteredQuestions, ...deletedQuestions];
+    }
+    return filteredQuestions;
+  }, [filteredQuestions, deletedQuestions, showDeleted]);
 
   const handleEdit = (question: OsceQuestion) => {
     setEditingQuestion(question);
@@ -135,11 +195,11 @@ export function OsceList({
     });
   };
 
-  const handleResetAttempt = () => {
+  const handleResetProgress = () => {
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'osce' });
-    // Also reset filter to show all questions again
-    setShowAttempted(true);
+    // Also clear starred
+    setStarredIds(new Set());
   };
 
   if (questions.length === 0 && !isAdmin) {
@@ -187,21 +247,17 @@ export function OsceList({
         </div>
       )}
 
-      {/* Practice Header for students */}
-      {!isAdmin && !showDeleted && chapterId && totalQuestions > 0 && (
-        <PracticeHeader
+      {/* Practice Filters for students (MCQ-style) */}
+      {!isAdmin && !showDeleted && chapterId && questions.length > 0 && (
+        <PracticeFilters
+          filters={practiceFilters}
+          onFiltersChange={setPracticeFilters}
+          onResetProgress={handleResetProgress}
+          counts={filterCounts}
+          totalCount={questions.length}
+          filteredCount={filteredQuestions.length}
           questionType="osce"
-          chapterId={chapterId}
-          totalQuestions={totalQuestions}
-          attemptedCount={attemptedCount}
-          unattemptedCount={unattemptedCount}
-          currentAttemptNumber={currentAttemptNumber}
-          attemptHistory={attemptHistory}
-          percentileData={percentileData ?? null}
-          showAttempted={showAttempted}
-          onShowAttemptedChange={setShowAttempted}
-          onResetAttempt={handleResetAttempt}
-          isResetting={resetAttemptMutation.isPending}
+          moduleSlug={moduleSlug}
         />
       )}
 
@@ -211,8 +267,8 @@ export function OsceList({
           <p>
             {showDeleted
               ? 'No deleted questions.'
-              : !isAdmin && !showAttempted && unattemptedCount === 0 && attemptedCount > 0
-                ? 'All questions attempted! Toggle "Include attempted" to review, or reset to start a new attempt.'
+              : !isAdmin && filteredQuestions.length === 0 && questions.length > 0
+                ? 'No questions match your filter. Try changing the filter or reset your progress.'
                 : isAdmin
                   ? 'No OSCE questions yet. Add your first question.'
                   : 'No OSCE questions available yet.'}
@@ -221,7 +277,7 @@ export function OsceList({
       ) : (
         <div className="space-y-6">
           {displayQuestions.map((question, index) => {
-            const previousAttempt = !isAdmin ? attemptMap.get(question.id) : undefined;
+            const previousAttempt = !isAdmin ? fullAttemptMap.get(question.id) : undefined;
             return (
               <OsceQuestionCard
                 key={question.id}
@@ -234,6 +290,8 @@ export function OsceList({
                 onDelete={() => setDeleteConfirmId(question.id)}
                 onRestore={() => handleRestore(question)}
                 previousAttempt={previousAttempt}
+                isStarred={starredIds.has(question.id)}
+                onToggleStar={toggleStar}
               />
             );
           })}
