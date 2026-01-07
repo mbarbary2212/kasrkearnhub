@@ -322,6 +322,8 @@ export function McqList({
   const handleResetAttempt = () => {
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' });
+    // Also reset filters to default so all questions are visible again
+    setPracticeFilters(DEFAULT_STUDENT_FILTERS);
   };
 
   const toggleMark = useCallback((id: string) => {

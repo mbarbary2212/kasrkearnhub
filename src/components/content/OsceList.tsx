@@ -138,6 +138,8 @@ export function OsceList({
   const handleResetAttempt = () => {
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'osce' });
+    // Also reset filter to show all questions again
+    setShowAttempted(true);
   };
 
   if (questions.length === 0 && !isAdmin) {
