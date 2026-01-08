@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FileText, 
@@ -21,6 +20,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 interface AdminHelpFile {
   id: string;
@@ -34,14 +34,269 @@ interface AdminHelpFile {
   created_at: string;
 }
 
-const TEMPLATE_TYPES = [
-  { value: 'mcq', label: 'MCQs' },
-  { value: 'matching', label: 'Matching Questions' },
-  { value: 'essay', label: 'Short Answer / Essay' },
-  { value: 'case_scenario', label: 'Case Scenarios' },
-  { value: 'osce', label: 'OSCE' },
-  { value: 'flashcard', label: 'Flashcards' },
+// Built-in template definitions
+interface BuiltInTemplate {
+  id: string;
+  title: string;
+  description: string;
+  format: 'csv' | 'xlsx';
+  icon: 'spreadsheet' | 'file';
+}
+
+const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
+  {
+    id: 'mcq',
+    title: 'MCQ Template',
+    description: 'Multiple choice questions with 5 options (A-E)',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'osce',
+    title: 'OSCE Template',
+    description: 'Image-based questions with 5 True/False statements',
+    format: 'xlsx',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'case_scenario',
+    title: 'Case Scenarios Template',
+    description: 'Clinical case scenarios with questions and model answers',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'matching',
+    title: 'Matching Questions Template',
+    description: 'Match items from Column A to Column B',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'flashcard',
+    title: 'Flashcards Template',
+    description: 'Front and back flashcard content',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'table',
+    title: 'Key Tables Template',
+    description: 'Study tables with headers and rows',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'algorithm',
+    title: 'Algorithms Template',
+    description: 'Step-by-step clinical algorithms',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'exam_tip',
+    title: 'Exam Tips Template',
+    description: 'Quick tips and mnemonics for exams',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
 ];
+
+// Template generation functions
+function generateCsvContent(headers: string[], rows: string[][]): string {
+  const escapeField = (field: string) => {
+    if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+      return `"${field.replace(/"/g, '""')}"`;
+    }
+    return field;
+  };
+  
+  const headerLine = headers.map(escapeField).join(',');
+  const dataLines = rows.map(row => row.map(escapeField).join(','));
+  
+  return [headerLine, ...dataLines].join('\n');
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadXlsx(filename: string, sheetData: any[][], sheetName: string = 'Sheet1') {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  
+  // Set column widths
+  const colWidths = sheetData[0].map((_, i) => ({
+    wch: Math.max(...sheetData.map(row => String(row[i] || '').length), 15)
+  }));
+  ws['!cols'] = colWidths;
+  
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+
+function generateTemplateDownload(templateId: string) {
+  switch (templateId) {
+    case 'mcq':
+      downloadCsv('mcq_template.csv', generateCsvContent(
+        ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty'],
+        [
+          [
+            'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
+            'Acute myocardial infarction',
+            'Gastroesophageal reflux disease',
+            'Costochondritis',
+            'Pulmonary embolism',
+            'Aortic dissection',
+            'A',
+            'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
+            'medium'
+          ],
+          [
+            'Which of the following is the first-line treatment for hypertension in a diabetic patient?',
+            'Beta-blockers',
+            'ACE inhibitors',
+            'Calcium channel blockers',
+            'Thiazide diuretics',
+            'Alpha-blockers',
+            'B',
+            'ACE inhibitors are first-line in diabetic patients due to their renoprotective effects.',
+            'easy'
+          ]
+        ]
+      ));
+      break;
+      
+    case 'osce':
+      downloadXlsx('osce_template.xlsx', [
+        ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5'],
+        [
+          'chest_xray_001.jpg',
+          'A 65-year-old male presents with progressive dyspnea and chronic cough. He has a 40-pack-year smoking history.',
+          'The image shows hyperinflation of the lungs',
+          'TRUE',
+          'Hyperinflation is a classic finding in COPD/emphysema.',
+          'There is evidence of consolidation in the right lower lobe',
+          'FALSE',
+          'No consolidation is visible in this image.',
+          'The heart size is enlarged',
+          'FALSE',
+          'The heart appears normal in size.',
+          'Flattening of the diaphragm is present',
+          'TRUE',
+          'Diaphragmatic flattening indicates air trapping.',
+          'This is consistent with pneumonia',
+          'FALSE',
+          'The findings are more consistent with COPD/emphysema.'
+        ]
+      ], 'OSCE Questions');
+      break;
+      
+    case 'case_scenario':
+      downloadCsv('case_scenarios_template.csv', generateCsvContent(
+        ['title', 'case_history', 'case_questions', 'model_answer', 'rating'],
+        [
+          [
+            'Acute Chest Pain Assessment',
+            'A 55-year-old male presents to the emergency department with crushing substernal chest pain that started 2 hours ago. The pain radiates to his left arm and jaw. He is diaphoretic and appears anxious. His vital signs show: BP 150/95 mmHg, HR 110 bpm, RR 22/min, SpO2 96% on room air. He has a history of hypertension and type 2 diabetes.',
+            'What is your differential diagnosis?|What initial investigations would you order?|Outline your immediate management plan.',
+            'Differential diagnosis includes: 1) Acute coronary syndrome (STEMI/NSTEMI), 2) Aortic dissection, 3) Pulmonary embolism, 4) Pericarditis. Initial investigations: 12-lead ECG, Troponin levels, Chest X-ray, CBC, BMP, Coagulation studies. Immediate management: Oxygen therapy, IV access, Aspirin 300mg, Sublingual GTN, Morphine for pain, Continuous cardiac monitoring.',
+            '4'
+          ]
+        ]
+      ));
+      break;
+      
+    case 'matching':
+      downloadCsv('matching_questions_template.csv', generateCsvContent(
+        ['instruction', 'item_a_1', 'item_a_2', 'item_a_3', 'item_a_4', 'item_b_1', 'item_b_2', 'item_b_3', 'item_b_4', 'match_1', 'match_2', 'match_3', 'match_4', 'explanation', 'difficulty', 'show_explanation'],
+        [
+          [
+            'Match each drug with its mechanism of action',
+            'Aspirin',
+            'Metformin',
+            'Lisinopril',
+            'Omeprazole',
+            'ACE inhibitor',
+            'Proton pump inhibitor',
+            'COX inhibitor',
+            'Biguanide',
+            '3',
+            '4',
+            '1',
+            '2',
+            'Aspirin inhibits COX, Metformin is a biguanide that reduces hepatic glucose production, Lisinopril is an ACE inhibitor, and Omeprazole is a proton pump inhibitor.',
+            'easy',
+            'TRUE'
+          ]
+        ]
+      ));
+      break;
+      
+    case 'flashcard':
+      downloadCsv('flashcards_template.csv', generateCsvContent(
+        ['front', 'back'],
+        [
+          ['What is the powerhouse of the cell?', 'The mitochondria - responsible for cellular respiration and ATP production.'],
+          ['What are the 4 chambers of the heart?', 'Right atrium, Right ventricle, Left atrium, Left ventricle'],
+          ['What is the normal range for blood glucose (fasting)?', '70-100 mg/dL (3.9-5.6 mmol/L)']
+        ]
+      ));
+      break;
+      
+    case 'table':
+      downloadCsv('tables_template.csv', generateCsvContent(
+        ['title', 'headers', 'row1', 'row2', 'row3'],
+        [
+          [
+            'Blood Cell Types and Functions',
+            'Cell Type|Normal Count|Primary Function',
+            'Red Blood Cells (RBC)|4.5-5.5 million/μL|Oxygen transport via hemoglobin',
+            'White Blood Cells (WBC)|4,000-11,000/μL|Immune defense and inflammation',
+            'Platelets|150,000-400,000/μL|Blood clotting and hemostasis'
+          ]
+        ]
+      ));
+      break;
+      
+    case 'algorithm':
+      downloadCsv('algorithms_template.csv', generateCsvContent(
+        ['title', 'steps'],
+        [
+          [
+            'Basic Life Support (BLS) Algorithm',
+            'Check responsiveness::Tap shoulders and shout "Are you okay?"|Call for help::Activate emergency response system and get AED|Open airway::Head tilt-chin lift maneuver|Check breathing::Look, listen, feel for 10 seconds|Start CPR::30 compressions : 2 breaths, rate 100-120/min|Apply AED::Follow voice prompts when available'
+          ]
+        ]
+      ));
+      break;
+      
+    case 'exam_tip':
+      downloadCsv('exam_tips_template.csv', generateCsvContent(
+        ['title', 'tips'],
+        [
+          [
+            'Cardiology High-Yield Tips',
+            'Always check ECG in any patient with chest pain|Remember MONA for ACS: Morphine, Oxygen, Nitrates, Aspirin|Beta-blockers are contraindicated in acute decompensated heart failure|Troponin rises 4-6 hours after MI onset|STEMI requires emergent reperfusion within 90 minutes'
+          ]
+        ]
+      ));
+      break;
+      
+    default:
+      toast.error('Unknown template type');
+  }
+  
+  toast.success('Template downloaded successfully');
+}
 
 export function HelpTemplatesTab() {
   const { user, isPlatformAdmin } = useAuthContext();
@@ -49,21 +304,19 @@ export function HelpTemplatesTab() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadForm, setUploadForm] = useState({
-    category: 'guide' as 'guide' | 'template',
     title: '',
     description: '',
-    template_type: '',
     file: null as File | null,
   });
 
-  // Fetch help files
+  // Fetch help files (only guides now, templates are built-in)
   const { data: helpFiles, isLoading } = useQuery({
     queryKey: ['admin-help-files'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_help_files')
         .select('*')
-        .order('category')
+        .eq('category', 'guide')
         .order('display_order');
       
       if (error) throw error;
@@ -103,18 +356,12 @@ export function HelpTemplatesTab() {
       return;
     }
 
-    if (uploadForm.category === 'template' && !uploadForm.template_type) {
-      toast.error('Please select a template type');
-      return;
-    }
-
     setUploading(true);
     try {
       // Upload file to storage
-      const fileExt = uploadForm.file.name.split('.').pop();
-      const fileName = `${uploadForm.category}/${Date.now()}_${uploadForm.file.name}`;
+      const fileName = `guide/${Date.now()}_${uploadForm.file.name}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('admin-templates')
         .upload(fileName, uploadForm.file);
 
@@ -126,7 +373,7 @@ export function HelpTemplatesTab() {
         .getPublicUrl(fileName);
 
       // Get current max display_order
-      const existingFiles = helpFiles?.filter(f => f.category === uploadForm.category) || [];
+      const existingFiles = helpFiles || [];
       const maxOrder = existingFiles.length > 0 
         ? Math.max(...existingFiles.map(f => f.display_order)) + 1 
         : 0;
@@ -135,12 +382,12 @@ export function HelpTemplatesTab() {
       const { error: insertError } = await supabase
         .from('admin_help_files')
         .insert({
-          category: uploadForm.category,
+          category: 'guide',
           title: uploadForm.title,
           description: uploadForm.description || null,
           file_url: publicUrl,
           file_name: uploadForm.file.name,
-          template_type: uploadForm.category === 'template' ? uploadForm.template_type : null,
+          template_type: null,
           display_order: maxOrder,
           created_by: user?.id,
         });
@@ -148,13 +395,11 @@ export function HelpTemplatesTab() {
       if (insertError) throw insertError;
 
       queryClient.invalidateQueries({ queryKey: ['admin-help-files'] });
-      toast.success('File uploaded successfully');
+      toast.success('Guide uploaded successfully');
       setUploadDialogOpen(false);
       setUploadForm({
-        category: 'guide',
         title: '',
         description: '',
-        template_type: '',
         file: null,
       });
     } catch (error) {
@@ -169,8 +414,7 @@ export function HelpTemplatesTab() {
     window.open(file.file_url, '_blank');
   };
 
-  const guides = helpFiles?.filter(f => f.category === 'guide') || [];
-  const templates = helpFiles?.filter(f => f.category === 'template') || [];
+  const guides = helpFiles || [];
 
   if (isLoading) {
     return (
@@ -196,7 +440,7 @@ export function HelpTemplatesTab() {
         {isPlatformAdmin && (
           <Button onClick={() => setUploadDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Upload File
+            Upload Guide
           </Button>
         )}
       </div>
@@ -216,7 +460,7 @@ export function HelpTemplatesTab() {
           {guides.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No guides uploaded yet.
-              {isPlatformAdmin && ' Click "Upload File" to add one.'}
+              {isPlatformAdmin && ' Click "Upload Guide" to add one.'}
             </p>
           ) : (
             <div className="space-y-3">
@@ -261,127 +505,69 @@ export function HelpTemplatesTab() {
         </CardContent>
       </Card>
 
-      {/* Excel Templates Section */}
+      {/* Built-in Bulk Upload Templates Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
-            Excel Templates
+            Bulk Upload Templates
           </CardTitle>
           <CardDescription>
-            Downloadable templates for bulk content upload.
+            Download templates with the correct format for bulk content uploads. Each template includes example data.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {templates.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No templates uploaded yet.
-              {isPlatformAdmin && ' Click "Upload File" to add one.'}
-            </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {templates.map((file) => {
-                const templateType = TEMPLATE_TYPES.find(t => t.value === file.template_type);
-                return (
-                  <div key={file.id} className="flex flex-col p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                        <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      {isPlatformAdmin && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this template?')) {
-                              deleteMutation.mutate(file);
-                            }
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{file.title}</p>
-                      {templateType && (
-                        <span className="inline-block px-2 py-0.5 text-xs bg-secondary rounded mt-1">
-                          {templateType.label}
-                        </span>
-                      )}
-                      {file.description && (
-                        <p className="text-sm text-muted-foreground mt-2">{file.description}</p>
-                      )}
-                    </div>
-                    <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => handleDownload(file)}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {BUILTIN_TEMPLATES.map((template) => (
+              <div 
+                key={template.id} 
+                className="flex flex-col p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                    <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <span className="text-xs px-2 py-0.5 bg-secondary rounded-full font-medium">
+                    .{template.format}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{template.title}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {template.description}
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 w-full" 
+                  onClick={() => generateTemplateDownload(template.id)}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Upload Dialog */}
+      {/* Upload Dialog - Now only for Guides */}
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload File</DialogTitle>
+            <DialogTitle>Upload Guide</DialogTitle>
             <DialogDescription>
-              Add a new guide or template for admins to download.
+              Add a new documentation guide for admins to reference.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Category *</Label>
-              <Select
-                value={uploadForm.category}
-                onValueChange={(value: 'guide' | 'template') => 
-                  setUploadForm(prev => ({ ...prev, category: value, template_type: '' }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="guide">Guide (PDF/Document)</SelectItem>
-                  <SelectItem value="template">Excel Template</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {uploadForm.category === 'template' && (
-              <div className="space-y-2">
-                <Label>Template Type *</Label>
-                <Select
-                  value={uploadForm.template_type}
-                  onValueChange={(value) => setUploadForm(prev => ({ ...prev, template_type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select template type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TEMPLATE_TYPES.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label>Title *</Label>
               <Input
                 value={uploadForm.title}
                 onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g., Admin CSV Preparation Guide"
+                placeholder="e.g., Admin Content Preparation Guide"
               />
             </div>
 
@@ -390,7 +576,7 @@ export function HelpTemplatesTab() {
               <Textarea
                 value={uploadForm.description}
                 onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of the file..."
+                placeholder="Brief description of the guide..."
                 rows={2}
               />
             </div>
@@ -402,7 +588,7 @@ export function HelpTemplatesTab() {
                   type="file"
                   id="file-upload"
                   className="hidden"
-                  accept={uploadForm.category === 'template' ? '.xlsx,.xls,.csv' : '.pdf,.doc,.docx'}
+                  accept=".pdf,.doc,.docx"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -418,11 +604,7 @@ export function HelpTemplatesTab() {
                     <p className="text-sm text-muted-foreground">
                       Click to select a file
                       <br />
-                      <span className="text-xs">
-                        {uploadForm.category === 'template' 
-                          ? 'Accepts: .xlsx, .xls, .csv' 
-                          : 'Accepts: .pdf, .doc, .docx'}
-                      </span>
+                      <span className="text-xs">Accepts: .pdf, .doc, .docx</span>
                     </p>
                   )}
                 </label>
