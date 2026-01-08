@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search, Plus, Table2, GitBranch, Lightbulb, Image, FileText } from 'lucide-react';
+import { Search, Plus, Table2, Lightbulb, Image, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,9 +43,9 @@ interface ResourcesTabContentProps {
 }
 
 // Flashcards removed - now a top-level tab
+// Algorithms removed - now under Clinical Tools tab
 const STUDY_RESOURCE_TYPES: { type: StudyResourceType; label: string; icon: React.ReactNode }[] = [
   { type: 'table', label: 'Tables', icon: <Table2 className="w-4 h-4" /> },
-  { type: 'algorithm', label: 'Algorithms', icon: <GitBranch className="w-4 h-4" /> },
   { type: 'exam_tip', label: 'Exam Tips', icon: <Lightbulb className="w-4 h-4" /> },
   { type: 'key_image', label: 'Images', icon: <Image className="w-4 h-4" /> },
 ];
@@ -199,7 +199,7 @@ export function ResourcesTabContent({
               {icon}
               <span className="text-xs sm:text-sm">{label}</span>
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {filteredResourcesByType[type].length}
+                {filteredResourcesByType[type]?.length || 0}
               </Badge>
             </TabsTrigger>
           ))}
@@ -261,13 +261,13 @@ export function ResourcesTabContent({
             {/* Use special renderer for tables, standard for others */}
             {type === 'table' ? (
               <TableResourceView
-                resources={filteredResourcesByType[type]}
+                resources={filteredResourcesByType[type] || []}
                 canManage={canManageContent}
                 onEdit={handleEdit}
               />
             ) : (
               <StudyResourceTypeSection
-                resources={filteredResourcesByType[type]}
+                resources={filteredResourcesByType[type] || []}
                 resourceType={type}
                 canManage={canManageContent}
                 onEdit={handleEdit}
