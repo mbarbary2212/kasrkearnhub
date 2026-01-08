@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, FileText, Shield, BarChart3, Settings } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
 import personalCoachIcon from '@/assets/personal-coach-icon.png';
@@ -126,22 +126,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Guide Quick Access */}
+            {/* Imhotep Icon - Role-aware: Admin Panel for admins, Study Coach for students */}
             {user && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => navigate('/progress')}
+                      onClick={() => navigate(isAdmin ? '/admin' : '/progress')}
                       variant="ghost"
                       size="icon"
                       className="h-11 w-11 rounded-lg hover:bg-primary/10 p-0 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
-                      <img src={personalCoachIcon} alt="Personal Study Coach" className="h-[180%] w-full object-cover object-[center_18%] rounded-lg" />
+                      <img src={personalCoachIcon} alt={isAdmin ? "Admin Panel" : "Personal Study Coach"} className="h-[180%] w-full object-cover object-[center_18%] rounded-lg" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    Personal Study Coach
+                    {isAdmin ? 'Admin Panel' : 'Personal Study Coach'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -176,10 +176,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/progress')}>
-                  <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-5 w-5 object-cover object-top rounded" />
-                  Personal Study Coach
-                </DropdownMenuItem>
+                {/* Only show Personal Study Coach for non-admins */}
+                {!isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate('/progress')}>
+                    <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-5 w-5 object-cover object-top rounded" />
+                    Personal Study Coach
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/account')}>
                   <Settings className="mr-2 h-4 w-4" />
                   Account
@@ -190,10 +193,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
                       <Inbox className="mr-2 h-4 w-4" />
                       Feedback & Inquiries
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin?tab=help')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Help & Templates
                     </DropdownMenuItem>
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
