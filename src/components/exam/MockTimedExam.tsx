@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModuleChapter } from '@/hooks/useChapters';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface MockTimedExamProps {
   moduleId: string;
@@ -64,6 +66,7 @@ export function MockTimedExam({
   onComplete,
   secondsPerQuestion: propSecondsPerQuestion,
 }: MockTimedExamProps) {
+  const { user } = useAuthContext();
   const createAttempt = useCreateMockExamAttempt();
   const submitExam = useSubmitMockExam();
 
@@ -87,6 +90,39 @@ export function MockTimedExam({
   
   // Calculate exam parameters
   const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? settings?.seconds_per_question ?? 60;
+
+  // Save individual question attempts to question_attempts table for analytics
+  const saveQuestionAttempts = useCallback(async (
+    questions: Mcq[],
+    answers: Record<string, string>
+  ) => {
+    if (!user?.id) return;
+
+    const attemptsToInsert = questions.map(q => {
+      const selectedAnswer = answers[q.id] || null;
+      const isCorrect = selectedAnswer === q.correct_key;
+      return {
+        user_id: user.id,
+        question_id: q.id,
+        question_type: 'mcq' as const,
+        chapter_id: q.chapter_id,
+        module_id: moduleId,
+        attempt_number: 1, // Timed exams are standalone attempts
+        selected_answer: selectedAnswer,
+        status: selectedAnswer ? (isCorrect ? 'correct' : 'incorrect') : 'attempted',
+        is_correct: selectedAnswer ? isCorrect : null,
+        score: isCorrect ? 1 : 0,
+      };
+    });
+
+    try {
+      await supabase
+        .from('question_attempts')
+        .insert(attemptsToInsert as never);
+    } catch (error) {
+      console.error('Error saving question attempts:', error);
+    }
+  }, [user?.id, moduleId]);
 
   // Handler for going back - supports both modes
   const handleGoBack = () => {
@@ -167,6 +203,9 @@ export function MockTimedExam({
     const duration = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
 
     try {
+      // Save individual question attempts for analytics
+      await saveQuestionAttempts(examQuestions, userAnswers);
+      
       await submitExam.mutateAsync({
         attemptId,
         userAnswers,
@@ -192,6 +231,9 @@ export function MockTimedExam({
       : Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
 
     try {
+      // Save individual question attempts for analytics
+      await saveQuestionAttempts(examQuestions, userAnswers);
+      
       await submitExam.mutateAsync({
         attemptId,
         userAnswers,

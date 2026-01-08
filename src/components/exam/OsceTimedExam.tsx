@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface OsceTimedExamProps {
   moduleId: string;
@@ -52,6 +54,7 @@ export function OsceTimedExam({
   onComplete,
   secondsPerQuestion: propSecondsPerQuestion,
 }: OsceTimedExamProps) {
+  const { user } = useAuthContext();
   const [phase, setPhase] = useState<ExamPhase>('select-mode');
   const [testMode, setTestMode] = useState<TestMode>('easy');
   const [examQuestions, setExamQuestions] = useState<OsceQuestion[]>([]);
@@ -67,6 +70,54 @@ export function OsceTimedExam({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const effectiveSecondsPerQuestion = propSecondsPerQuestion ?? SECONDS_PER_OSCE;
+
+  // Save individual OSCE question attempts to question_attempts table for analytics
+  const saveOsceAttempts = useCallback(async (
+    questions: OsceQuestion[],
+    answers: UserOsceAnswers
+  ) => {
+    if (!user?.id) return;
+
+    const attemptsToInsert = questions.map(q => {
+      const questionAnswers = answers[q.id] || {};
+      const correctAnswers: Record<number, boolean> = {
+        1: q.answer_1,
+        2: q.answer_2,
+        3: q.answer_3,
+        4: q.answer_4,
+        5: q.answer_5,
+      };
+      
+      // Calculate score for this question (0-5)
+      let questionScore = 0;
+      for (let i = 1; i <= 5; i++) {
+        if (questionAnswers[i] === correctAnswers[i]) {
+          questionScore++;
+        }
+      }
+
+      return {
+        user_id: user.id,
+        question_id: q.id,
+        question_type: 'osce' as const,
+        chapter_id: q.chapter_id,
+        module_id: moduleId,
+        attempt_number: 1, // Timed exams are standalone attempts
+        selected_answer: questionAnswers,
+        status: Object.keys(questionAnswers).length > 0 ? (questionScore === 5 ? 'correct' : 'incorrect') : 'attempted',
+        is_correct: questionScore === 5,
+        score: questionScore,
+      };
+    });
+
+    try {
+      await supabase
+        .from('question_attempts')
+        .insert(attemptsToInsert as never);
+    } catch (error) {
+      console.error('Error saving OSCE attempts:', error);
+    }
+  }, [user?.id, moduleId]);
 
   // Handler for going back
   const handleGoBack = () => {
@@ -143,6 +194,9 @@ export function OsceTimedExam({
     const score = calculateScore();
     const duration = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
 
+    // Save individual OSCE question attempts for analytics
+    await saveOsceAttempts(examQuestions, userAnswers);
+
     setFinalScore(score);
     setFinalDuration(duration);
     setPhase('completed');
@@ -157,6 +211,9 @@ export function OsceTimedExam({
     const duration = testMode === 'easy' 
       ? examQuestions.length * effectiveSecondsPerQuestion
       : Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+
+    // Save individual OSCE question attempts for analytics
+    await saveOsceAttempts(examQuestions, userAnswers);
 
     setFinalScore(score);
     setFinalDuration(duration);
