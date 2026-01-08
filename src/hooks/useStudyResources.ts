@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type StudyResourceType = 'flashcard' | 'table' | 'algorithm' | 'exam_tip' | 'key_image';
+export type StudyResourceType = 
+  | 'flashcard' 
+  | 'table' 
+  | 'algorithm' 
+  | 'exam_tip' 
+  | 'key_image'
+  | 'mind_map'
+  | 'clinical_case_worked';
 
 export interface FlashcardContent {
   front: string;
@@ -27,7 +34,32 @@ export interface KeyImageContent {
   labels?: string[];
 }
 
-export type ResourceContent = FlashcardContent | TableContent | AlgorithmContent | ExamTipContent | KeyImageContent;
+// NEW: Mind Map content - visual PDF/image uploads
+export interface MindMapContent {
+  imageUrl: string;
+  description?: string;
+}
+
+// NEW: Clinical Case Worked Solutions - structured 8-section format
+export interface ClinicalCaseWorkedContent {
+  history: string;
+  clinical_examination: string;
+  provisional_diagnosis: string;
+  differential_diagnosis: string[];
+  investigations: { test: string; justification: string }[];
+  final_diagnosis: string;
+  management_plan: string;
+  key_learning_points: string[];
+}
+
+export type ResourceContent = 
+  | FlashcardContent 
+  | TableContent 
+  | AlgorithmContent 
+  | ExamTipContent 
+  | KeyImageContent
+  | MindMapContent
+  | ClinicalCaseWorkedContent;
 
 export interface StudyResource {
   id: string;

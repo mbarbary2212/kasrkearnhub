@@ -9,13 +9,15 @@ import {
   Image,
   Link2,
   LucideIcon,
+  GitBranch,
+  ClipboardList,
 } from 'lucide-react';
 
 // Unified tab configuration for the entire app
 // Every topic/chapter uses the same structure regardless of department or year
 
-// Resource tab types
-export type ResourceTabId = 'lectures' | 'flashcards' | 'documents';
+// Resource tab types - UPDATED with new sections
+export type ResourceTabId = 'lectures' | 'flashcards' | 'documents' | 'clinical_tools' | 'worked_cases';
 
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
@@ -28,10 +30,13 @@ export interface TabConfig {
 }
 
 // Standard Resources tabs - same for all modules/departments
+// Updated: Added Visual Clinical Tools and Worked Cases
 export const RESOURCES_TABS: TabConfig[] = [
   { id: 'lectures', label: 'Videos', icon: Video },
   { id: 'flashcards', label: 'Flashcards', icon: Layers },
   { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'clinical_tools', label: 'Clinical Tools', icon: GitBranch },
+  { id: 'worked_cases', label: 'Worked Cases', icon: ClipboardList },
 ];
 
 // Standard Practice tabs - same for all modules/departments
@@ -54,6 +59,8 @@ export function createResourceTabs(counts: {
   lectures?: number;
   flashcards?: number;
   documents?: number;
+  clinical_tools?: number;
+  worked_cases?: number;
 }): TabWithCount[] {
   return RESOURCES_TABS.map(tab => ({
     ...tab,
