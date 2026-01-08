@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { VimeoPlayer } from '@/components/video/VimeoPlayer';
+import { VideoLoadWatchdog } from '@/components/video/VideoLoadWatchdog';
 
 interface Lecture {
   id: string;
@@ -114,6 +115,14 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDuration, setEditDuration] = useState('');
   const [isEditSaving, setIsEditSaving] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
+
+  const handleSelectLecture = useCallback((lecture: Lecture) => {
+    setSelectedLecture(lecture);
+    setIsPlayerReady(false);
+    setPlayerKey(prev => prev + 1);
+  }, []);
 
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
     moduleId || '',
@@ -192,7 +201,7 @@ export function LectureList({
           return (
             <button
               key={lecture.id}
-              onClick={() => isValid && setSelectedLecture(lecture)}
+              onClick={() => isValid && handleSelectLecture(lecture)}
               disabled={!isValid}
               className="w-full flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -281,28 +290,51 @@ export function LectureList({
       </div>
 
       {/* Video Player Modal */}
-      <Dialog open={!!selectedLecture} onOpenChange={(open) => !open && setSelectedLecture(null)}>
+      <Dialog 
+        open={!!selectedLecture} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedLecture(null);
+            setIsPlayerReady(false);
+            setPlayerKey(0);
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2">
             <DialogTitle className="pr-8">{selectedLecture?.title}</DialogTitle>
           </DialogHeader>
           <div className="w-full bg-black">
-            {isVimeoVideo && vimeoId ? (
-              <VimeoPlayer
-                videoId={vimeoId}
-                autoplay={true}
-              />
-            ) : embedUrl ? (
-              <div className="aspect-video w-full">
-                <iframe
-                  src={embedUrl}
-                  title={selectedLecture?.title}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+            <VideoLoadWatchdog
+              videoKey={`lecture-${selectedLecture?.id}-${playerKey}`}
+              isReady={isPlayerReady}
+              timeoutMs={6000}
+              onRetry={() => {
+                setPlayerKey(k => k + 1);
+                setIsPlayerReady(false);
+              }}
+            >
+              {isVimeoVideo && vimeoId ? (
+                <VimeoPlayer
+                  key={playerKey}
+                  videoId={vimeoId}
+                  autoplay={true}
+                  onReady={() => setIsPlayerReady(true)}
                 />
-              </div>
-            ) : null}
+              ) : embedUrl ? (
+                <div className="aspect-video w-full">
+                  <iframe
+                    key={playerKey}
+                    src={embedUrl}
+                    title={selectedLecture?.title}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    onLoad={() => setTimeout(() => setIsPlayerReady(true), 500)}
+                  />
+                </div>
+              ) : null}
+            </VideoLoadWatchdog>
           </div>
         </DialogContent>
       </Dialog>
