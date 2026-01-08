@@ -31,7 +31,9 @@ import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs } from '@/hooks/useStudyResources';
+import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
+import { WorkedCasesSection } from '@/components/study/WorkedCasesSection';
+import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { useQueryClient } from '@tanstack/react-query';
@@ -135,10 +137,15 @@ export default function ChapterPage() {
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
+  const algorithms = studyResources?.filter(r => r.resource_type === 'algorithm') || [];
+  const mindMaps = studyResources?.filter(r => r.resource_type === 'mind_map') || [];
+  const workedCases = studyResources?.filter(r => r.resource_type === 'clinical_case_worked') || [];
   
-  // Count non-flashcard study resources (tables, algorithms, exam tips, images) for Documents tab
-  const nonFlashcardStudyResources = studyResources?.filter(r => r.resource_type !== 'flashcard') || [];
-  const documentsCount = (resources?.length || 0) + nonFlashcardStudyResources.length;
+  // Count non-flashcard study resources (tables, exam tips, images) for Documents tab - algorithms moved out
+  const documentStudyResources = studyResources?.filter(r => 
+    r.resource_type === 'table' || r.resource_type === 'exam_tip' || r.resource_type === 'key_image'
+  ) || [];
+  const documentsCount = (resources?.length || 0) + documentStudyResources.length;
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -189,6 +196,8 @@ export default function ChapterPage() {
     lectures: lectures?.length || 0,
     flashcards: flashcards.length,
     documents: documentsCount,
+    clinical_tools: algorithms.length + mindMaps.length,
+    worked_cases: workedCases.length,
   });
 
   const allPracticeTabs = createPracticeTabs({
@@ -410,6 +419,40 @@ export default function ChapterPage() {
                     isSuperAdmin={auth.isSuperAdmin}
                   />
                 )}
+
+                {/* Clinical Tools Content */}
+                {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
+                  <ClinicalToolsSection
+                    algorithms={algorithms}
+                    mindMaps={mindMaps}
+                    canManage={canManageContent}
+                    onEdit={handleEditFlashcard}
+                    onAdd={(type) => {
+                      setEditingFlashcard(null);
+                      guardAdd(() => {
+                        setFlashcardFormOpen(true);
+                        // Set the resource type for the modal
+                        (window as any).__pendingResourceType = type;
+                      });
+                    }}
+                    onBulkUpload={(type) => guardAdd(() => setFlashcardBulkOpen(true))}
+                    chapterId={chapterId}
+                  />
+                )}
+
+                {/* Worked Cases Content */}
+                {resourcesTab === 'worked_cases' && chapterId && moduleId && (
+                  <WorkedCasesSection
+                    resources={workedCases}
+                    canManage={canManageContent}
+                    onEdit={handleEditFlashcard}
+                    onAdd={() => guardAdd(() => {
+                      setEditingFlashcard(null);
+                      (window as any).__pendingResourceType = 'clinical_case_worked';
+                      setFlashcardFormOpen(true);
+                    })}
+                  />
+                )}
               </div>
             )}
 
@@ -627,10 +670,13 @@ export default function ChapterPage() {
           <>
             <StudyResourceFormModal
               open={flashcardFormOpen}
-              onOpenChange={setFlashcardFormOpen}
+              onOpenChange={(open) => {
+                setFlashcardFormOpen(open);
+                if (!open) delete (window as any).__pendingResourceType;
+              }}
               chapterId={chapterId}
               moduleId={moduleId}
-              resourceType="flashcard"
+              resourceType={(window as any).__pendingResourceType || editingFlashcard?.resource_type || 'flashcard'}
               resource={editingFlashcard}
             />
             <StudyBulkUploadModal

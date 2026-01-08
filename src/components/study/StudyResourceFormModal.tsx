@@ -19,6 +19,8 @@ import {
   AlgorithmContent,
   ExamTipContent,
   KeyImageContent,
+  MindMapContent,
+  ClinicalCaseWorkedContent,
   useCreateStudyResource,
   useUpdateStudyResource,
 } from '@/hooks/useStudyResources';
@@ -26,6 +28,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
+import { MindMapForm } from './MindMapForm';
+import { WorkedCaseForm } from './WorkedCaseForm';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -42,6 +46,8 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   algorithm: 'Algorithm',
   exam_tip: 'Exam Tip',
   key_image: 'Key Image',
+  mind_map: 'Mind Map',
+  clinical_case_worked: 'Worked Case',
 };
 
 export function StudyResourceFormModal({
@@ -194,6 +200,22 @@ export function StudyResourceFormModal({
             />
           )}
 
+          {resourceType === 'mind_map' && (
+            <MindMapForm
+              content={content as MindMapContent}
+              onChange={(c) => setContent(c)}
+              onUpload={handleImageUpload}
+              uploading={uploading}
+            />
+          )}
+
+          {resourceType === 'clinical_case_worked' && (
+            <WorkedCaseForm
+              content={content as ClinicalCaseWorkedContent}
+              onChange={(c) => setContent(c)}
+            />
+          )}
+
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -223,6 +245,19 @@ function getDefaultContent(type: StudyResourceType): ResourceContent {
       return { tips: [''] };
     case 'key_image':
       return { imageUrl: '', caption: '', labels: [] };
+    case 'mind_map':
+      return { imageUrl: '', description: '' };
+    case 'clinical_case_worked':
+      return {
+        history: '',
+        clinical_examination: '',
+        provisional_diagnosis: '',
+        differential_diagnosis: [''],
+        investigations: [{ test: '', justification: '' }],
+        final_diagnosis: '',
+        management_plan: '',
+        key_learning_points: [''],
+      };
   }
 }
 

@@ -50,6 +50,8 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   algorithm: 'Algorithms',
   exam_tip: 'Exam Tips',
   key_image: 'Key Images',
+  mind_map: 'Mind Maps',
+  clinical_case_worked: 'Worked Cases',
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
@@ -58,6 +60,8 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
   algorithm: 'title,steps\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc"',
   exam_tip: 'title,tips\n"Tips Title","Tip 1|Tip 2|Tip 3"',
   key_image: 'Not supported for bulk upload',
+  mind_map: 'Not supported for bulk upload',
+  clinical_case_worked: 'Not supported for bulk upload',
 };
 
 const SIMILARITY_THRESHOLD = 0.85;

@@ -64,20 +64,15 @@ export function StudyResourcesSection({
 
   // Group resources by type
   const resourcesByType = useMemo(() => {
-    const grouped: Record<StudyResourceType, StudyResource[]> = {
-      flashcard: [],
-      table: [],
-      algorithm: [],
-      exam_tip: [],
-      key_image: [],
-    };
+    const grouped: Partial<Record<StudyResourceType, StudyResource[]>> = {};
 
     if (!resources) return grouped;
 
     resources.forEach((resource) => {
-      if (grouped[resource.resource_type]) {
-        grouped[resource.resource_type].push(resource);
+      if (!grouped[resource.resource_type]) {
+        grouped[resource.resource_type] = [];
       }
+      grouped[resource.resource_type]!.push(resource);
     });
 
     return grouped;
@@ -88,20 +83,16 @@ export function StudyResourcesSection({
     if (!searchQuery.trim()) return resourcesByType;
 
     const query = searchQuery.toLowerCase();
-    const filtered: Record<StudyResourceType, StudyResource[]> = {
-      flashcard: [],
-      table: [],
-      algorithm: [],
-      exam_tip: [],
-      key_image: [],
-    };
+    const filtered: Partial<Record<StudyResourceType, StudyResource[]>> = {};
 
     Object.entries(resourcesByType).forEach(([type, items]) => {
-      filtered[type as StudyResourceType] = items.filter((r) => {
-        const titleMatch = r.title.toLowerCase().includes(query);
-        const contentStr = JSON.stringify(r.content).toLowerCase();
-        return titleMatch || contentStr.includes(query);
-      });
+      if (items) {
+        filtered[type as StudyResourceType] = items.filter((r) => {
+          const titleMatch = r.title.toLowerCase().includes(query);
+          const contentStr = JSON.stringify(r.content).toLowerCase();
+          return titleMatch || contentStr.includes(query);
+        });
+      }
     });
 
     return filtered;
