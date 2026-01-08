@@ -118,18 +118,19 @@ export function MatchingQuestionBulkUploadModal({
                   Each row should contain:
                 </p>
                 <code className="text-xs block bg-background p-2 rounded overflow-x-auto">
-                  instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty
+                  instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty,show_explanation
                 </code>
-                <p className="text-xs text-muted-foreground mt-2">
-                  • match_N is the index (1-4) of the Column B item that matches item_a_N<br />
-                  • difficulty: easy, medium, or hard (optional)
-                </p>
+                <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                  <p>• <strong>match_N:</strong> Index (1-4) of the Column B item that matches item_a_N</p>
+                  <p>• <strong>difficulty:</strong> easy, medium, or hard (optional)</p>
+                  <p>• <strong>show_explanation:</strong> true/false (optional, defaults to true)</p>
+                </div>
               </div>
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
                 <h4 className="font-medium mb-2">Example:</h4>
                 <code className="text-xs block overflow-x-auto whitespace-pre">
-{`Match the terms,Cell,Nucleus,Mitochondria,Ribosome,Powerhouse,Protein synthesis,Control center,Basic unit,2,4,3,1,Basic cell biology,easy`}
+{`Match the terms,Cell,Nucleus,Mitochondria,Ribosome,Powerhouse,Protein synthesis,Control center,Basic unit,2,4,3,1,Basic cell biology,easy,true`}
                 </code>
                 <p className="text-xs text-muted-foreground mt-2">
                   This creates: Cell→Powerhouse, Nucleus→Control center, Mitochondria→Protein synthesis, Ribosome→Basic unit

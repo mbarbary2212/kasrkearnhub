@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { AlertCircle, Check } from 'lucide-react';
+import { AlertCircle, Check, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -39,8 +39,11 @@ interface ParsedItem {
   status: 'pending' | 'skip';
 }
 
-const CSV_FORMAT = `title,case_scenario,questions,model_answer,rating
-"Case Title","Patient presentation and scenario text","Q1|Q2|Q3","Complete model answer",3`;
+const CSV_TEMPLATE = `title,scenario_text,questions,model_answer,rating
+"Chest Pain Assessment","A 55-year-old male presents with crushing substernal chest pain radiating to the left arm for the past 30 minutes. He has a history of hypertension and diabetes.","What is your differential diagnosis?|What investigations would you order?|Outline your management plan.","The differential diagnosis includes acute coronary syndrome (STEMI/NSTEMI), aortic dissection, pulmonary embolism, and pericarditis. Key investigations include ECG, cardiac enzymes, chest X-ray, and D-dimer if indicated.",3`;
+
+const CSV_FORMAT = `title,scenario_text,questions,model_answer,rating
+"Case Title","Patient presentation and clinical scenario","Q1|Q2|Q3","Complete model answer",3`;
 
 export function CaseScenarioBulkUploadModal({
   open,
@@ -79,16 +82,18 @@ export function CaseScenarioBulkUploadModal({
         const values = parseCSVLine(line);
         
         if (values.length < 4) {
-          parseErrors.push({ row: i + 1, reason: 'Requires at least title, case_scenario, questions, model_answer' });
+          parseErrors.push({ row: i + 1, reason: 'Requires at least title, scenario_text, questions, model_answer' });
           continue;
         }
 
-        const [title, case_history, case_questions, model_answer, ratingStr] = values;
+        const [title, scenario_text, case_questions, model_answer, ratingStr] = values;
 
-        if (!title || !case_history || !case_questions || !model_answer) {
-          parseErrors.push({ row: i + 1, reason: 'Missing required fields' });
+        if (!title || !scenario_text || !case_questions || !model_answer) {
+          parseErrors.push({ row: i + 1, reason: 'Missing required fields (title, scenario_text, questions, model_answer)' });
           continue;
         }
+
+        const case_history = scenario_text;
 
         const rating = ratingStr ? parseInt(ratingStr, 10) : null;
 
@@ -167,6 +172,18 @@ export function CaseScenarioBulkUploadModal({
     onOpenChange(false);
   };
 
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'case_scenarios_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -177,13 +194,21 @@ export function CaseScenarioBulkUploadModal({
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
           {/* CSV Format Example */}
           <div className="bg-muted p-3 rounded-lg">
-            <p className="text-sm font-medium mb-2">CSV Format:</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium">CSV Format:</p>
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <Download className="h-3 w-3 mr-1" />
+                Download Template
+              </Button>
+            </div>
             <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
               {CSV_FORMAT}
             </pre>
-            <p className="text-xs text-muted-foreground mt-2">
-              Use | to separate multiple questions in case_questions field.
-            </p>
+            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+              <p>• <strong>scenario_text:</strong> The patient presentation and clinical scenario</p>
+              <p>• <strong>questions:</strong> Separate multiple questions with | (pipe character)</p>
+              <p>• <strong>rating:</strong> Optional difficulty rating (1-5)</p>
+            </div>
           </div>
 
           {/* File Upload Area with Drag & Drop */}

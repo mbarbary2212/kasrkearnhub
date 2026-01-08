@@ -330,7 +330,7 @@ export function useBulkCreateMatchingQuestions() {
 
 // Parse CSV text into matching question data
 // Expected CSV format:
-// instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty
+// instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty,show_explanation
 // Where match_N is the index (1-based) of the item in column B that matches item_a_N
 export function parseMatchingQuestionsCsv(csvText: string): MatchingQuestionFormData[] {
   const lines = csvText.trim().split('\n').filter(line => line.trim());
@@ -363,7 +363,8 @@ export function parseMatchingQuestionsCsv(csvText: string): MatchingQuestionForm
       itemB1, itemB2, itemB3, itemB4,
       match1, match2, match3, match4,
       explanation,
-      difficulty
+      difficulty,
+      showExplanation
     ] = parts;
 
     // Build column A items
@@ -387,13 +388,16 @@ export function parseMatchingQuestionsCsv(csvText: string): MatchingQuestionForm
       }
     });
 
+    // Parse show_explanation - default to true if not provided or invalid
+    const showExplanationValue = showExplanation?.toLowerCase() === 'false' ? false : true;
+
     return {
       instruction: instruction || 'Match the items in Column A with the correct items in Column B',
       column_a_items: columnAItems,
       column_b_items: columnBItems,
       correct_matches: correctMatches,
       explanation: explanation || null,
-      show_explanation: true,
+      show_explanation: showExplanationValue,
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
         : null),
