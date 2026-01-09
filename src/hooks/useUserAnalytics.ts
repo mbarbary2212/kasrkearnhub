@@ -149,8 +149,6 @@ export function useUserAnalytics() {
       });
 
       return usersWithAnalytics;
-
-      return usersWithAnalytics;
     },
   });
 }
