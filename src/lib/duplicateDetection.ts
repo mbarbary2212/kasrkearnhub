@@ -91,6 +91,71 @@ export function isMcqDuplicate(
 }
 
 /**
+ * Check if two OSCE questions are duplicates
+ * Compares history text and all 5 statements
+ */
+export function isOsceDuplicate(
+  osce1: { history_text: string; statement_1: string; statement_2: string; statement_3: string; statement_4: string; statement_5: string },
+  osce2: { history_text: string; statement_1: string; statement_2: string; statement_3: string; statement_4: string; statement_5: string }
+): { isExact: boolean; similarity: number } {
+  const history1 = normalizeText(osce1.history_text);
+  const history2 = normalizeText(osce2.history_text);
+  
+  const historyMatch = history1 === history2;
+  const historySimilarity = calculateSimilarity(osce1.history_text, osce2.history_text);
+  
+  // Check all statements
+  const statements1 = [osce1.statement_1, osce1.statement_2, osce1.statement_3, osce1.statement_4, osce1.statement_5]
+    .map(s => normalizeText(s)).sort().join('|');
+  const statements2 = [osce2.statement_1, osce2.statement_2, osce2.statement_3, osce2.statement_4, osce2.statement_5]
+    .map(s => normalizeText(s)).sort().join('|');
+  const statementsMatch = statements1 === statements2;
+  
+  const isExact = historyMatch && statementsMatch;
+  
+  // Calculate overall similarity (history weighted more heavily)
+  const statementSimilarity = calculateSimilarity(statements1, statements2);
+  const similarity = (historySimilarity * 0.6) + (statementSimilarity * 0.4);
+  
+  return { isExact, similarity };
+}
+
+/**
+ * Check if two matching questions are duplicates
+ * Compares instruction and column items
+ */
+export function isMatchingDuplicate(
+  match1: { instruction: string; column_a_items: any[]; column_b_items: any[] },
+  match2: { instruction: string; column_a_items: any[]; column_b_items: any[] }
+): { isExact: boolean; similarity: number } {
+  const instruction1 = normalizeText(match1.instruction);
+  const instruction2 = normalizeText(match2.instruction);
+  
+  const instructionMatch = instruction1 === instruction2;
+  const instructionSimilarity = calculateSimilarity(match1.instruction, match2.instruction);
+  
+  // Check column A items
+  const colA1 = (match1.column_a_items || []).map((item: any) => normalizeText(typeof item === 'string' ? item : item.text || '')).sort().join('|');
+  const colA2 = (match2.column_a_items || []).map((item: any) => normalizeText(typeof item === 'string' ? item : item.text || '')).sort().join('|');
+  
+  // Check column B items
+  const colB1 = (match1.column_b_items || []).map((item: any) => normalizeText(typeof item === 'string' ? item : item.text || '')).sort().join('|');
+  const colB2 = (match2.column_b_items || []).map((item: any) => normalizeText(typeof item === 'string' ? item : item.text || '')).sort().join('|');
+  
+  const columnsMatch = colA1 === colA2 && colB1 === colB2;
+  
+  const isExact = instructionMatch && columnsMatch;
+  
+  // Calculate overall similarity
+  const colASimilarity = calculateSimilarity(colA1, colA2);
+  const colBSimilarity = calculateSimilarity(colB1, colB2);
+  const columnSimilarity = (colASimilarity + colBSimilarity) / 2;
+  const similarity = (instructionSimilarity * 0.5) + (columnSimilarity * 0.5);
+  
+  return { isExact, similarity };
+}
+
+/**
  * Check if two flashcards are duplicates
  */
 export function isFlashcardDuplicate(
