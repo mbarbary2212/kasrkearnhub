@@ -1,0 +1,257 @@
+import { useState, useMemo } from 'react';
+import { Search, Filter, ChevronDown, ChevronUp, X, CalendarDays, BarChart2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+export type SortOption = 'display_order' | 'created_at_asc' | 'created_at_desc' | 'difficulty_asc' | 'difficulty_desc';
+export type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard';
+
+export interface McqSearchFilterState {
+  search: string;
+  difficulty: DifficultyFilter;
+  sortBy: SortOption;
+}
+
+export const DEFAULT_SEARCH_FILTER: McqSearchFilterState = {
+  search: '',
+  difficulty: 'all',
+  sortBy: 'display_order',
+};
+
+interface McqSearchFilterProps {
+  filters: McqSearchFilterState;
+  onFiltersChange: (filters: McqSearchFilterState) => void;
+  totalCount: number;
+  filteredCount: number;
+  className?: string;
+}
+
+const SORT_OPTIONS: { value: SortOption; label: string; icon?: React.ReactNode }[] = [
+  { value: 'display_order', label: 'Default Order' },
+  { value: 'created_at_desc', label: 'Newest First', icon: <CalendarDays className="h-3 w-3" /> },
+  { value: 'created_at_asc', label: 'Oldest First', icon: <CalendarDays className="h-3 w-3" /> },
+  { value: 'difficulty_asc', label: 'Easy → Hard', icon: <BarChart2 className="h-3 w-3" /> },
+  { value: 'difficulty_desc', label: 'Hard → Easy', icon: <BarChart2 className="h-3 w-3" /> },
+];
+
+const DIFFICULTY_OPTIONS: { value: DifficultyFilter; label: string; color?: string }[] = [
+  { value: 'all', label: 'All Difficulties' },
+  { value: 'easy', label: 'Easy', color: 'text-green-600' },
+  { value: 'medium', label: 'Medium', color: 'text-yellow-600' },
+  { value: 'hard', label: 'Hard', color: 'text-red-600' },
+];
+
+export function McqSearchFilter({
+  filters,
+  onFiltersChange,
+  totalCount,
+  filteredCount,
+  className,
+}: McqSearchFilterProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hasActiveFilters = useMemo(() => {
+    return filters.search !== '' || 
+           filters.difficulty !== 'all' || 
+           filters.sortBy !== 'display_order';
+  }, [filters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.search) count++;
+    if (filters.difficulty !== 'all') count++;
+    if (filters.sortBy !== 'display_order') count++;
+    return count;
+  }, [filters]);
+
+  const handleSearchChange = (value: string) => {
+    onFiltersChange({ ...filters, search: value });
+  };
+
+  const handleDifficultyChange = (value: DifficultyFilter) => {
+    onFiltersChange({ ...filters, difficulty: value });
+  };
+
+  const handleSortChange = (value: SortOption) => {
+    onFiltersChange({ ...filters, sortBy: value });
+  };
+
+  const handleClearAll = () => {
+    onFiltersChange(DEFAULT_SEARCH_FILTER);
+  };
+
+  const handleClearSearch = () => {
+    onFiltersChange({ ...filters, search: '' });
+  };
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      {/* Search Bar - Always visible */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search questions..."
+            value={filters.search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-9 pr-8 h-9"
+          />
+          {filters.search && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Collapsible Filter Toggle */}
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5">
+              <Filter className="h-3.5 w-3.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {activeFilterCount}
+                </Badge>
+              )}
+              {isOpen ? (
+                <ChevronUp className="h-3.5 w-3.5 ml-1" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 ml-1" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </Collapsible>
+
+        {/* Results count */}
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          <span className="font-medium text-foreground">{filteredCount}</span>
+          /{totalCount}
+        </span>
+      </div>
+
+      {/* Collapsible Filter Panel */}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleContent>
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+            {/* Difficulty Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Difficulty:</span>
+              <Select value={filters.difficulty} onValueChange={(v) => handleDifficultyChange(v as DifficultyFilter)}>
+                <SelectTrigger className="w-[140px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DIFFICULTY_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className={opt.color}>{opt.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort By */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Sort by:</span>
+              <Select value={filters.sortBy} onValueChange={(v) => handleSortChange(v as SortOption)}>
+                <SelectTrigger className="w-[150px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="flex items-center gap-1.5">
+                        {opt.icon}
+                        {opt.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear All */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+                className="h-8 text-xs text-muted-foreground hover:text-foreground ml-auto"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear all
+              </Button>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+// Helper function to filter MCQs by search term
+export function filterMcqsBySearch<T extends { stem: string; explanation?: string | null }>(
+  mcqs: T[],
+  searchTerm: string
+): T[] {
+  if (!searchTerm.trim()) return mcqs;
+  
+  const lower = searchTerm.toLowerCase().trim();
+  return mcqs.filter(mcq => 
+    mcq.stem.toLowerCase().includes(lower) ||
+    (mcq.explanation && mcq.explanation.toLowerCase().includes(lower))
+  );
+}
+
+// Helper function to filter MCQs by difficulty
+export function filterMcqsByDifficulty<T extends { difficulty?: string | null }>(
+  mcqs: T[],
+  difficulty: DifficultyFilter
+): T[] {
+  if (difficulty === 'all') return mcqs;
+  return mcqs.filter(mcq => mcq.difficulty === difficulty);
+}
+
+// Helper function to sort MCQs
+export function sortMcqs<T extends { display_order?: number | null; created_at: string; difficulty?: string | null }>(
+  mcqs: T[],
+  sortBy: SortOption
+): T[] {
+  const sorted = [...mcqs];
+  
+  const difficultyOrder: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
+  
+  switch (sortBy) {
+    case 'display_order':
+      return sorted.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    case 'created_at_desc':
+      return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    case 'created_at_asc':
+      return sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    case 'difficulty_asc':
+      return sorted.sort((a, b) => (difficultyOrder[a.difficulty || 'medium'] || 2) - (difficultyOrder[b.difficulty || 'medium'] || 2));
+    case 'difficulty_desc':
+      return sorted.sort((a, b) => (difficultyOrder[b.difficulty || 'medium'] || 2) - (difficultyOrder[a.difficulty || 'medium'] || 2));
+    default:
+      return sorted;
+  }
+}
