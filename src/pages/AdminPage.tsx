@@ -20,6 +20,7 @@ import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
+import { DepartmentsTab } from '@/components/admin/DepartmentsTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
@@ -1072,6 +1073,9 @@ export default function AdminPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Departments Management Section */}
+                <DepartmentsTab modules={modules} years={years} />
               </div>
             </TabsContent>
           )}
