@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
+import { useBulkUploadAnalyzer } from '@/hooks/useBulkUploadAnalyzer';
 import {
   useBulkCreateMatchingQuestions,
   parseMatchingQuestionsCsv,
@@ -36,8 +38,19 @@ export function MatchingQuestionBulkUploadModal({
   const [parsedQuestions, setParsedQuestions] = useState<MatchingQuestionFormData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'input' | 'preview'>('input');
-
+  
+  const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
   const bulkCreateMutation = useBulkCreateMatchingQuestions();
+
+  // Parse CSV text into headers and rows for AI analysis
+  const parseCsvForAnalysis = useCallback(() => {
+    const lines = csvText.trim().split('\n').filter(line => line.trim());
+    if (lines.length === 0) return { headers: [], rows: [] };
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1, 4).map(line => line.split(',').map(c => c.trim()));
+    return { headers, rows };
+  }, [csvText]);
 
   const handleParse = () => {
     setError(null);
@@ -94,6 +107,14 @@ export function MatchingQuestionBulkUploadModal({
     setParsedQuestions([]);
     setStep('input');
     setError(null);
+    clearAnalysis();
+  };
+
+  const handleAnalyze = () => {
+    const { headers, rows } = parseCsvForAnalysis();
+    if (headers.length > 0) {
+      analyzeFile('matching', headers, rows);
+    }
   };
 
   return (
@@ -144,6 +165,16 @@ export function MatchingQuestionBulkUploadModal({
                 rows={10}
                 className="font-mono text-sm"
               />
+
+              {/* AI Analyzer */}
+              {csvText.trim() && (
+                <BulkUploadAnalyzer
+                  isAnalyzing={isAnalyzing}
+                  analysis={analysis}
+                  onAnalyze={handleAnalyze}
+                  disabled={!csvText.trim()}
+                />
+              )}
 
               {error && (
                 <Alert variant="destructive">
