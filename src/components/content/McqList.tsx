@@ -507,12 +507,27 @@ export function McqList({
 
   // Handler for AI analysis
   const handleAnalyze = useCallback(() => {
-    const lines = csvText.trim().split('\n').filter(line => line.trim());
-    if (lines.length === 0) return;
+    console.log('[McqList] handleAnalyze called');
+    console.log('[McqList] csvText length:', csvText.length);
+    
+    const textToAnalyze = csvText.trim();
+    if (!textToAnalyze) {
+      console.warn('[McqList] No CSV text available for analysis');
+      return;
+    }
+    
+    const lines = textToAnalyze.split('\n').filter(line => line.trim());
+    console.log('[McqList] Lines count:', lines.length);
+    
+    if (lines.length === 0) {
+      console.warn('[McqList] No valid lines found');
+      return;
+    }
     
     const headers = parseCSVLine(lines[0]);
     const sampleRows = lines.slice(1, 4).map(parseCSVLine);
     
+    console.log('[McqList] Calling analyzeFile with headers:', headers);
     analyzeFile('mcq', headers, sampleRows);
   }, [csvText, analyzeFile]);
 
@@ -934,13 +949,13 @@ The AI will parse and extract the questions automatically.`}
                 </Tabs>
               
                 {/* AI Analyzer - show when file is loaded but not yet previewed */}
-                {(csvText.trim() || fileName) && (
+                {(csvText.trim() || fileName) && !previewData && (
                   <BulkUploadAnalyzer
                     isAnalyzing={isAnalyzing}
                     analysis={analysis}
                     analyzeError={analyzeError}
                     onAnalyze={handleAnalyze}
-                    disabled={!csvText.trim()}
+                    disabled={isAnalyzing}
                   />
                 )}
               </>
