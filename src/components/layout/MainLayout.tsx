@@ -17,13 +17,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Bot } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Bot, Trophy } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
 import personalCoachIcon from '@/assets/personal-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { TutorChatPanel } from '@/components/tutor';
+import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
+import { useBadgeStats } from '@/hooks/useBadges';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -35,6 +37,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+  const { earned } = useBadgeStats();
 
   const handleLogout = async () => {
     await signOut();
@@ -149,6 +153,27 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </TooltipProvider>
             )}
 
+            {/* Achievements Trophy Icon - Available to all logged-in users */}
+            {user && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setBadgesOpen(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
+                    >
+                      <Trophy className="h-6 w-6 text-yellow-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Achievements
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {/* Imhotep Icon - Role-aware: Admin Panel for admins, Study Coach for students */}
             {user && (
               <TooltipProvider>
@@ -180,6 +205,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
+                  {/* Badge count indicator */}
+                  {earned > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-500 text-white text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                      {earned > 9 ? '9+' : earned}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
@@ -252,6 +283,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* AI Tutor Chat Panel */}
       <TutorChatPanel open={tutorOpen} onOpenChange={setTutorOpen} />
+
+      {/* Achievements Panel */}
+      <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />
     </div>
   );
 }

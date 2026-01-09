@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
+import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
@@ -42,28 +44,31 @@ const App = () => {
   return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/progress" element={<ProgressPage />} />
-            <Route path="/account" element={<AccountPage />} />
-            <Route path="/year/:yearId" element={<YearPage />} />
-            <Route path="/module/:moduleId" element={<ModulePage />} />
-            <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
-            <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
-            <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/admin/inbox" element={<AdminInboxPage />} />
-            <Route path="/feedback" element={<FeedbackPage />} />
-            <Route path="/tutor" element={<TutorPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <BadgeCelebrationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BadgeCelebration />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/progress" element={<ProgressPage />} />
+              <Route path="/account" element={<AccountPage />} />
+              <Route path="/year/:yearId" element={<YearPage />} />
+              <Route path="/module/:moduleId" element={<ModulePage />} />
+              <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
+              <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
+              <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/inbox" element={<AdminInboxPage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/tutor" element={<TutorPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </BadgeCelebrationProvider>
     </AuthProvider>
   </QueryClientProvider>
   );

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { useBadgeCelebration } from '@/contexts/BadgeCelebrationContext';
 
 export interface Badge {
   id: string;
@@ -70,6 +70,7 @@ export function useUserBadges() {
 export function useCheckBadges() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { celebrateBadge } = useBadgeCelebration();
 
   return useMutation({
     mutationFn: async (context?: { 
@@ -221,12 +222,9 @@ export function useCheckBadges() {
       if (newBadges && newBadges.length > 0) {
         queryClient.invalidateQueries({ queryKey: ['user-badges'] });
         
-        // Show toast for each new badge
+        // Trigger celebration animation for each new badge
         newBadges.forEach((badge) => {
-          toast.success(`🏆 Badge Earned: ${badge.name}`, {
-            description: badge.description,
-            duration: 5000,
-          });
+          celebrateBadge(badge);
         });
       }
     },
