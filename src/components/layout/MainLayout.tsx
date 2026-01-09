@@ -17,12 +17,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Bot } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyGuideIcon from '@/assets/study-guide-icon.png';
 import personalCoachIcon from '@/assets/personal-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
+import { TutorChatPanel } from '@/components/tutor';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -33,6 +34,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [tutorOpen, setTutorOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -124,6 +126,27 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <AdminNotificationsPopover 
                 onNavigateToAnnouncement={() => navigate('/admin?tab=announcements')}
               />
+            )}
+
+            {/* AI Tutor Icon - Available to all logged-in users */}
+            {user && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setTutorOpen(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-lg hover:bg-primary/10 transition-transform duration-200 hover:scale-110"
+                    >
+                      <Bot className="h-5 w-5 text-primary" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    MedGPT Tutor
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {/* Imhotep Icon - Role-aware: Admin Panel for admins, Study Coach for students */}
@@ -226,6 +249,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
+
+      {/* AI Tutor Chat Panel */}
+      <TutorChatPanel open={tutorOpen} onOpenChange={setTutorOpen} />
     </div>
   );
 }

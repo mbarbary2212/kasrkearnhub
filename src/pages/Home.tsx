@@ -3,7 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail, GraduationCap, Bot, Sparkles } from 'lucide-react';
+import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail, GraduationCap } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import logo from '@/assets/logo.png';
 import MainLayout from '@/components/layout/MainLayout';
@@ -289,28 +289,6 @@ function LoggedInHome() {
         <p className="text-lg text-muted-foreground">
           Select your academic year to continue
         </p>
-        
-        {/* AI Tutor Card */}
-        <Card 
-          className="mt-6 max-w-md mx-auto cursor-pointer group transition-all hover:shadow-lg hover:-translate-y-1 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
-          onClick={() => navigate('/tutor')}
-        >
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Bot className="h-8 w-8 text-primary" />
-            </div>
-            <div className="flex-1 text-left">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold">MedGPT Tutor</h3>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                AI-powered study companion for your medical journey
-              </p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-          </CardContent>
-        </Card>
       </section>
 
       {/* Year Selection */}
