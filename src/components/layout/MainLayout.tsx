@@ -109,7 +109,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Achievements Trophy Icon - Left of logo */}
+            <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
+              <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
+              <span className="font-heading font-bold text-xl">KasrLearn</span>
+            </button>
+            {/* Achievements Trophy Icon - Right of logo */}
             {user && (
               <TooltipProvider>
                 <Tooltip>
@@ -118,9 +122,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       onClick={() => setBadgesOpen(true)}
                       variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
+                      className="h-8 w-8 rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
                     >
-                      <Trophy className="h-5 w-5 text-yellow-500" />
+                      <Trophy className="h-4 w-4 text-yellow-500" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
@@ -129,10 +133,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </Tooltip>
               </TooltipProvider>
             )}
-            <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
-              <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
-              <span className="font-heading font-bold text-xl">KasrLearn</span>
-            </button>
           </div>
 
           <nav className="hidden md:flex items-center gap-6">
