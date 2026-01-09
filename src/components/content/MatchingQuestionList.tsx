@@ -16,6 +16,7 @@ import {
   sortQuestions,
 } from './QuestionSearchFilter';
 import { useDeleteMatchingQuestion, useRestoreMatchingQuestion, type MatchingQuestion } from '@/hooks/useMatchingQuestions';
+import { isMatchingDuplicate } from '@/lib/duplicateDetection';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
@@ -29,6 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+const SIMILARITY_THRESHOLD = 0.85;
 
 interface MatchingQuestionListProps {
   questions: MatchingQuestion[];
@@ -72,9 +75,98 @@ export function MatchingQuestionList({
   const [editingQuestion, setEditingQuestion] = useState<MatchingQuestion | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // Admin search/filter state
+  const [searchFilters, setSearchFilters] = useState<QuestionSearchFilterState>(DEFAULT_QUESTION_FILTER);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
   const deleteMutation = useDeleteMatchingQuestion();
   const restoreMutation = useRestoreMatchingQuestion();
+
+  // Duplicate detection for matching questions
+  const { duplicateIds, duplicateGroupMap } = useMemo(() => {
+    if (!isAdmin) return { 
+      duplicateIds: new Set<string>(),
+      duplicateGroupMap: new Map<string, string>()
+    };
+    
+    const duplicates: { question: MatchingQuestion; matchedWith: MatchingQuestion; similarity: number }[] = [];
+    const groupMap = new Map<string, string>();
+    
+    for (let i = 0; i < questions.length; i++) {
+      for (let j = i + 1; j < questions.length; j++) {
+        const result = isMatchingDuplicate(questions[i], questions[j]);
+        if (result.isExact || result.similarity >= SIMILARITY_THRESHOLD) {
+          duplicates.push({
+            question: questions[j],
+            matchedWith: questions[i],
+            similarity: result.similarity,
+          });
+          
+          const leaderI = groupMap.get(questions[i].id) || questions[i].id;
+          const leaderJ = groupMap.get(questions[j].id) || questions[j].id;
+          
+          if (leaderI !== leaderJ) {
+            groupMap.set(questions[j].id, leaderI);
+            groupMap.set(leaderJ, leaderI);
+          } else {
+            groupMap.set(questions[j].id, leaderI);
+          }
+          
+          if (!groupMap.has(questions[i].id)) {
+            groupMap.set(questions[i].id, questions[i].id);
+          }
+        }
+      }
+    }
+    
+    const ids = new Set<string>();
+    duplicates.forEach(d => {
+      ids.add(d.question.id);
+      ids.add(d.matchedWith.id);
+    });
+    
+    return { duplicateIds: ids, duplicateGroupMap: groupMap };
+  }, [questions, isAdmin]);
+
+  // Filter and sort questions
+  const filteredQuestions = useMemo(() => {
+    let result = questions;
+    
+    if (isAdmin) {
+      // Apply search filter
+      result = filterBySearch(result, searchFilters.search, ['instruction']);
+      
+      // Apply difficulty filter
+      result = filterByDifficulty(result, searchFilters.difficulty);
+      
+      // Apply duplicates filter
+      if (showDuplicatesOnly && !showDeleted) {
+        result = result.filter(q => duplicateIds.has(q.id));
+      }
+      
+      // Sort - group duplicates together if showing duplicates only
+      if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
+        result = [...result].sort((a, b) => {
+          const leaderA = duplicateGroupMap.get(a.id) || a.id;
+          const leaderB = duplicateGroupMap.get(b.id) || b.id;
+          
+          if (leaderA !== leaderB) {
+            return leaderA.localeCompare(leaderB);
+          }
+          
+          if (a.id === leaderA) return -1;
+          if (b.id === leaderA) return 1;
+          
+          return 0;
+        });
+      } else {
+        result = sortQuestions(result, searchFilters.sortBy);
+      }
+    }
+    
+    return result;
+  }, [questions, isAdmin, searchFilters, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
 
   const handleEdit = (question: MatchingQuestion) => {
     setEditingQuestion(question);
@@ -104,7 +196,7 @@ export function MatchingQuestionList({
   };
 
   // Combine active and deleted questions when showing deleted
-  const displayQuestions = showDeleted ? [...questions, ...deletedQuestions] : questions;
+  const displayQuestions = showDeleted ? [...deletedQuestions] : filteredQuestions;
 
   // For students: show nothing if no questions
   if (questions.length === 0 && !isAdmin && !showAddControls) {
@@ -120,44 +212,49 @@ export function MatchingQuestionList({
     <div className="space-y-4">
       {dialog}
       {/* Admin controls */}
-      {(showAddControls || showDeletedToggle) && (
+      {showAddControls && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          {showAddControls && (
-            <>
-              <Button
-                onClick={() =>
-                  guard(() => {
-                    setEditingQuestion(null);
-                    setShowAddModal(true);
-                  })
-                }
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Question
-              </Button>
-              <Button variant="outline" onClick={() => guard(() => setShowBulkModal(true))}>
-                <Upload className="h-4 w-4 mr-1" />
-                Bulk Import
-              </Button>
-            </>
-          )}
-
-          {/* Separate Show Deleted button - only visible to admins */}
-          {showDeletedToggle && (
-            <Button
-              variant={showDeleted ? "secondary" : "outline"}
-              size="default"
-              className={cn(
-                "gap-2",
-                showDeleted && "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
-              )}
-              onClick={() => onShowDeletedChange?.(!showDeleted)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Show deleted ({deletedQuestions.length})
-            </Button>
-          )}
+          <Button
+            onClick={() =>
+              guard(() => {
+                setEditingQuestion(null);
+                setShowAddModal(true);
+              })
+            }
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Question
+          </Button>
+          <Button variant="outline" onClick={() => guard(() => setShowBulkModal(true))}>
+            <Upload className="h-4 w-4 mr-1" />
+            Bulk Import
+          </Button>
         </div>
+      )}
+
+      {/* Admin Search and Filter Bar */}
+      {isAdmin && questions.length > 0 && (
+        <QuestionSearchFilter
+          filters={searchFilters}
+          onFiltersChange={setSearchFilters}
+          totalCount={questions.length}
+          filteredCount={displayQuestions.length}
+          questionType="Matching"
+          searchPlaceholder="Search matching questions..."
+          showDifficultyFilter={true}
+          adminFilters={{
+            showMarkedOnly: false,
+            onShowMarkedOnlyChange: () => {},
+            markedCount: 0,
+            showDuplicatesOnly,
+            onShowDuplicatesOnlyChange: setShowDuplicatesOnly,
+            duplicatesCount: duplicateIds.size,
+            showDeleted,
+            onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
+            deletedCount: deletedQuestions.length,
+            showDeletedToggle: showDeletedToggle ?? false,
+          }}
+        />
       )}
 
       {/* Empty state for admin */}

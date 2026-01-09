@@ -27,6 +27,7 @@ import {
   useDeleteOsceQuestion, 
   useRestoreOsceQuestion 
 } from '@/hooks/useOsceQuestions';
+import { isOsceDuplicate } from '@/lib/duplicateDetection';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,8 @@ import {
   useChapterQuestionAttempts, 
   useResetChapterAttempt,
 } from '@/hooks/useQuestionAttempts';
+
+const SIMILARITY_THRESHOLD = 0.85;
 
 interface OsceListProps {
   questions: OsceQuestion[];
@@ -129,6 +132,54 @@ export function OsceList({
     });
   }, []);
 
+  // Duplicate detection for OSCE questions
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  
+  const { duplicateIds, duplicateGroupMap } = useMemo(() => {
+    if (!isAdmin) return { 
+      duplicateIds: new Set<string>(),
+      duplicateGroupMap: new Map<string, string>()
+    };
+    
+    const duplicates: { question: OsceQuestion; matchedWith: OsceQuestion; similarity: number }[] = [];
+    const groupMap = new Map<string, string>();
+    
+    for (let i = 0; i < questions.length; i++) {
+      for (let j = i + 1; j < questions.length; j++) {
+        const result = isOsceDuplicate(questions[i], questions[j]);
+        if (result.isExact || result.similarity >= SIMILARITY_THRESHOLD) {
+          duplicates.push({
+            question: questions[j],
+            matchedWith: questions[i],
+            similarity: result.similarity,
+          });
+          
+          const leaderI = groupMap.get(questions[i].id) || questions[i].id;
+          const leaderJ = groupMap.get(questions[j].id) || questions[j].id;
+          
+          if (leaderI !== leaderJ) {
+            groupMap.set(questions[j].id, leaderI);
+            groupMap.set(leaderJ, leaderI);
+          } else {
+            groupMap.set(questions[j].id, leaderI);
+          }
+          
+          if (!groupMap.has(questions[i].id)) {
+            groupMap.set(questions[i].id, questions[i].id);
+          }
+        }
+      }
+    }
+    
+    const ids = new Set<string>();
+    duplicates.forEach(d => {
+      ids.add(d.question.id);
+      ids.add(d.matchedWith.id);
+    });
+    
+    return { duplicateIds: ids, duplicateGroupMap: groupMap };
+  }, [questions, isAdmin]);
+
   // Admin search/filter state
   const [searchFilters, setSearchFilters] = useState<QuestionSearchFilterState>(DEFAULT_QUESTION_FILTER);
 
@@ -175,14 +226,37 @@ export function OsceList({
     if (isAdmin) {
       // Apply admin search filters
       result = filterBySearch(result, searchFilters.search, ['history_text', 'statement_1', 'statement_2', 'statement_3', 'statement_4', 'statement_5']);
-      result = sortQuestions(result, searchFilters.sortBy);
+      
+      // Apply duplicates filter
+      if (showDuplicatesOnly && !showDeleted) {
+        result = result.filter(q => duplicateIds.has(q.id));
+      }
+      
+      // Sort - group duplicates together if showing duplicates only
+      if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
+        result = [...result].sort((a, b) => {
+          const leaderA = duplicateGroupMap.get(a.id) || a.id;
+          const leaderB = duplicateGroupMap.get(b.id) || b.id;
+          
+          if (leaderA !== leaderB) {
+            return leaderA.localeCompare(leaderB);
+          }
+          
+          if (a.id === leaderA) return -1;
+          if (b.id === leaderA) return 1;
+          
+          return 0;
+        });
+      } else {
+        result = sortQuestions(result, searchFilters.sortBy);
+      }
     } else {
       // Apply student practice filters
       result = filterByStatus(result, practiceFilters, attemptMap, starredIds);
     }
     
     return result;
-  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin, searchFilters]);
+  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin, searchFilters, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
 
   // Display questions (include deleted if toggle is on)
   const displayQuestions = useMemo(() => {
@@ -268,6 +342,9 @@ export function OsceList({
             showMarkedOnly: false,
             onShowMarkedOnlyChange: () => {},
             markedCount: starredIds.size,
+            showDuplicatesOnly,
+            onShowDuplicatesOnlyChange: setShowDuplicatesOnly,
+            duplicatesCount: duplicateIds.size,
             showDeleted,
             onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
             deletedCount: deletedQuestions.length,
