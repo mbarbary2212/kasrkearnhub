@@ -597,39 +597,11 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto">
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="students" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <GraduationCap className="w-4 h-4" />
-                Students
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="topic-admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <FileText className="w-4 h-4" />
-              Topic Admins
-            </TabsTrigger>
-            {isSuperAdmin && (
-              <TabsTrigger value="admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Building2 className="w-4 h-4" />
-                Module Admins
-              </TabsTrigger>
-            )}
-            {isSuperAdmin && (
-              <TabsTrigger value="platform-admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Shield className="w-4 h-4" />
-                Platform Admins
-              </TabsTrigger>
-            )}
-            {isPlatformAdmin && (
-              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Settings className="w-4 h-4" />
-                Settings
-              </TabsTrigger>
-            )}
             {(isSuperAdmin || isPlatformAdmin) && (
               <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Layers className="w-4 h-4" />
@@ -642,16 +614,16 @@ export default function AdminPage() {
                 Announcements
               </TabsTrigger>
             )}
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <BarChart3 className="w-4 h-4" />
-                User Analytics
-              </TabsTrigger>
-            )}
             {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
               <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Activity className="w-4 h-4" />
                 Question Analytics
+              </TabsTrigger>
+            )}
+            {isPlatformAdmin && (
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Settings className="w-4 h-4" />
+                Settings
               </TabsTrigger>
             )}
             <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
@@ -660,159 +632,76 @@ export default function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Users Tab */}
+          {/* Users Tab with Sub-tabs */}
           <TabsContent value="users">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
                   User Management
                 </CardTitle>
                 <CardDescription>
-                  View and manage user roles.
+                  Manage users, roles, and permissions.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by name or email..."
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                {users.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No users found</p>
-                ) : (
-                  <div className="space-y-4">
-                    {users
-                      .filter(u => {
-                        if (!userSearch.trim()) return true;
-                        const search = userSearch.toLowerCase();
-                        return (
-                          u.email.toLowerCase().includes(search) ||
-                          (u.full_name?.toLowerCase().includes(search) ?? false)
-                        );
-                      })
-                      .map((u) => (
-                      <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                            <span className="font-semibold text-secondary-foreground">
-                              {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{u.full_name || 'No name'}</p>
-                            <p className="text-sm text-muted-foreground">{u.email}</p>
-                            {u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {u.moduleAssignments.map(a => (
-                                  <Badge key={a.id} variant="outline" className="text-xs">
-                                    {getModuleName(a.module_id)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={ROLE_COLORS[u.role]}>
-                            {ROLE_LABELS[u.role]}
-                          </Badge>
-                          {u.id === user?.id ? (
-                            <Badge variant="outline">You</Badge>
-                          ) : (
-                            <>
-                              <Select
-                                value={u.role}
-                                onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}
-                              >
-                                <SelectTrigger className="w-44">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getAvailableRoles().map(role => (
-                                    <SelectItem key={role} value={role}>
-                                      {ROLE_LABELS[role]}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {isSuperAdmin && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleSendPasswordReset(u.email)}
-                                  title="Send password reset email"
-                                >
-                                  <Mail className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <Tabs defaultValue="directory" className="space-y-4">
+                  <TabsList className="bg-muted/50">
+                    <TabsTrigger value="directory" className="data-[state=active]:bg-background">
+                      Directory
+                    </TabsTrigger>
+                    {(isSuperAdmin || isPlatformAdmin) && (
+                      <TabsTrigger value="students" className="data-[state=active]:bg-background">
+                        Students
+                      </TabsTrigger>
+                    )}
+                    <TabsTrigger value="topic-admins" className="data-[state=active]:bg-background">
+                      Topic Admins
+                    </TabsTrigger>
+                    {isSuperAdmin && (
+                      <TabsTrigger value="module-admins" className="data-[state=active]:bg-background">
+                        Module Admins
+                      </TabsTrigger>
+                    )}
+                    {isSuperAdmin && (
+                      <TabsTrigger value="platform-admins" className="data-[state=active]:bg-background">
+                        Platform Admins
+                      </TabsTrigger>
+                    )}
+                    {(isSuperAdmin || isPlatformAdmin) && (
+                      <TabsTrigger value="analytics" className="data-[state=active]:bg-background">
+                        Analytics
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
 
-          {/* Students Tab - Super Admin & Platform Admin */}
-          {(isSuperAdmin || isPlatformAdmin) && (
-            <TabsContent value="students">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    Student Users
-                  </CardTitle>
-                  <CardDescription>
-                    Search and view student accounts.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        placeholder="Search by name or email..."
-                        value={studentSearch}
-                        onChange={(e) => setStudentSearch(e.target.value)}
-                        className="pl-10"
-                      />
+                  {/* Directory Sub-tab */}
+                  <TabsContent value="directory" className="mt-4">
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by name or email..."
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  {(() => {
-                    const studentUsers = users.filter(u => u.role === 'student');
-                    const filteredStudents = studentUsers.filter(u => {
-                      if (!studentSearch.trim()) return true;
-                      const search = studentSearch.toLowerCase();
-                      return (
-                        u.full_name?.toLowerCase().includes(search) ||
-                        u.email.toLowerCase().includes(search)
-                      );
-                    });
-                    
-                    if (filteredStudents.length === 0) {
-                      return (
-                        <p className="text-muted-foreground text-center py-8">
-                          {studentSearch ? 'No students found matching your search' : 'No students found'}
-                        </p>
-                      );
-                    }
-                    
-                    return (
-                      <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Showing {filteredStudents.length} of {studentUsers.length} students
-                        </p>
-                        {filteredStudents.slice(0, 50).map((u) => (
+                    {users.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">No users found</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {users
+                          .filter(u => {
+                            if (!userSearch.trim()) return true;
+                            const search = userSearch.toLowerCase();
+                            return (
+                              u.email.toLowerCase().includes(search) ||
+                              (u.full_name?.toLowerCase().includes(search) ?? false)
+                            );
+                          })
+                          .map((u) => (
                           <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
@@ -823,226 +712,305 @@ export default function AdminPage() {
                               <div>
                                 <p className="font-medium">{u.full_name || 'No name'}</p>
                                 <p className="text-sm text-muted-foreground">{u.email}</p>
+                                {u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {u.moduleAssignments.map(a => (
+                                      <Badge key={a.id} variant="outline" className="text-xs">
+                                        {getModuleName(a.module_id)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className={ROLE_COLORS.student}>
-                                {ROLE_LABELS.student}
+                              <Badge className={ROLE_COLORS[u.role]}>
+                                {ROLE_LABELS[u.role]}
                               </Badge>
-                              {isSuperAdmin && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleSendPasswordReset(u.email)}
-                                  title="Send password reset email"
-                                >
-                                  <Mail className="w-4 h-4" />
-                                </Button>
+                              {u.id === user?.id ? (
+                                <Badge variant="outline">You</Badge>
+                              ) : (
+                                <>
+                                  <Select
+                                    value={u.role}
+                                    onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}
+                                  >
+                                    <SelectTrigger className="w-44">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {getAvailableRoles().map(role => (
+                                        <SelectItem key={role} value={role}>
+                                          {ROLE_LABELS[role]}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {isSuperAdmin && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleSendPasswordReset(u.email)}
+                                      title="Send password reset email"
+                                    >
+                                      <Mail className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
                         ))}
-                        {filteredStudents.length > 50 && (
-                          <p className="text-sm text-muted-foreground text-center py-2">
-                            Showing first 50 results. Refine your search to see more.
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Students Sub-tab */}
+                  {(isSuperAdmin || isPlatformAdmin) && (
+                    <TabsContent value="students" className="mt-4">
+                      <div className="mb-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                          <Input
+                            placeholder="Search by name or email..."
+                            value={studentSearch}
+                            onChange={(e) => setStudentSearch(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const studentUsers = users.filter(u => u.role === 'student');
+                        const filteredStudents = studentUsers.filter(u => {
+                          if (!studentSearch.trim()) return true;
+                          const search = studentSearch.toLowerCase();
+                          return (
+                            u.full_name?.toLowerCase().includes(search) ||
+                            u.email.toLowerCase().includes(search)
+                          );
+                        });
+                        
+                        if (filteredStudents.length === 0) {
+                          return (
+                            <p className="text-muted-foreground text-center py-8">
+                              {studentSearch ? 'No students found matching your search' : 'No students found'}
+                            </p>
+                          );
+                        }
+                        
+                        return (
+                          <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Showing {filteredStudents.length} of {studentUsers.length} students
+                            </p>
+                            {filteredStudents.slice(0, 50).map((u) => (
+                              <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                                    <span className="font-semibold text-secondary-foreground">
+                                      {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{u.full_name || 'No name'}</p>
+                                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge className={ROLE_COLORS.student}>
+                                    {ROLE_LABELS.student}
+                                  </Badge>
+                                  {isSuperAdmin && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleSendPasswordReset(u.email)}
+                                      title="Send password reset email"
+                                    >
+                                      <Mail className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {filteredStudents.length > 50 && (
+                              <p className="text-sm text-muted-foreground text-center py-2">
+                                Showing first 50 results. Refine your search to see more.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TabsContent>
+                  )}
+
+                  {/* Topic Admins Sub-tab */}
+                  <TabsContent value="topic-admins" className="mt-4">
+                    <TopicAdminsTab users={users} modules={modules} years={years} />
+                  </TabsContent>
+
+                  {/* Module Admins Sub-tab */}
+                  {isSuperAdmin && (
+                    <TabsContent value="module-admins" className="mt-4">
+                      <div className="space-y-6">
+                        {users.filter(u => u.role === 'department_admin').length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            No module admins assigned. Change a user's role to "Module Admin" first.
                           </p>
+                        ) : (
+                          users
+                            .filter(u => u.role === 'department_admin')
+                            .map(u => (
+                              <div key={u.id} className="border rounded-lg p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium">{u.full_name || u.email}</p>
+                                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                                  </div>
+                                  <Badge className={ROLE_COLORS.department_admin}>
+                                    Module Admin
+                                  </Badge>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Assigned Modules:</p>
+                                  {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {years.map(year => {
+                                        const yearAssignments = u.moduleAssignments?.filter(a => {
+                                          const mod = modules.find(m => m.id === a.module_id);
+                                          return mod?.year_id === year.id;
+                                        }) || [];
+                                        
+                                        if (yearAssignments.length === 0) return null;
+                                        
+                                        return (
+                                          <div key={year.id} className="space-y-1">
+                                            <p className="text-xs text-muted-foreground">{year.name}</p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {yearAssignments.map(a => (
+                                                <Badge key={a.id} variant="secondary" className="gap-1">
+                                                  {getModuleName(a.module_id)}
+                                                  <button
+                                                    onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
+                                                    className="ml-1 hover:text-destructive"
+                                                  >
+                                                    <Trash2 className="w-3 h-3" />
+                                                  </button>
+                                                </Badge>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No modules assigned</p>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <Select
+                                    value={selectedUser === u.id ? selectedModule : ''}
+                                    onValueChange={(value) => {
+                                      setSelectedUser(u.id);
+                                      setSelectedModule(value);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-72">
+                                      <SelectValue placeholder="Select module to assign" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {years.map(year => {
+                                        const yearModules = modules
+                                          .filter(m => m.year_id === year.id)
+                                          .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
+                                          .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                                        
+                                        if (yearModules.length === 0) return null;
+                                        
+                                        return (
+                                          <div key={year.id}>
+                                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                                              {year.name}
+                                            </div>
+                                            {yearModules.map(m => (
+                                              <SelectItem key={m.id} value={m.id}>
+                                                {m.name}
+                                              </SelectItem>
+                                            ))}
+                                          </div>
+                                        );
+                                      })}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    onClick={() => {
+                                      if (selectedUser === u.id && selectedModule) {
+                                        handleAssignModule(u.id, selectedModule);
+                                      }
+                                    }}
+                                    disabled={selectedUser !== u.id || !selectedModule}
+                                  >
+                                    Assign
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
                         )}
                       </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                    </TabsContent>
+                  )}
 
-          {/* Curriculum Tab - Super Admin & Platform Admin */}
+                  {/* Platform Admins Sub-tab */}
+                  {isSuperAdmin && (
+                    <TabsContent value="platform-admins" className="mt-4">
+                      <div className="space-y-4">
+                        {users.filter(u => u.role === 'platform_admin').length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
+                          </p>
+                        ) : (
+                          users
+                            .filter(u => u.role === 'platform_admin')
+                            .map(u => (
+                              <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                                    <span className="font-semibold text-secondary-foreground">
+                                      {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{u.full_name || 'No name'}</p>
+                                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                                  </div>
+                                </div>
+                                <Badge className={ROLE_COLORS.platform_admin}>
+                                  Platform Admin
+                                </Badge>
+                              </div>
+                            ))
+                        )}
+                      </div>
+                    </TabsContent>
+                  )}
+
+                  {/* User Analytics Sub-tab */}
+                  {(isSuperAdmin || isPlatformAdmin) && (
+                    <TabsContent value="analytics" className="mt-4">
+                      <UserAnalyticsTab />
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Curriculum Tab */}
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="curriculum">
               <CurriculumTab modules={modules} years={years} setModules={setModules} />
-            </TabsContent>
-          )}
-
-          {/* Module Admins Tab */}
-          {isSuperAdmin && (
-            <TabsContent value="admins">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5" />
-                    Module Admin Assignments
-                  </CardTitle>
-                  <CardDescription>
-                    Assign module admins to specific modules. Each admin can only manage content within their assigned modules.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {users.filter(u => u.role === 'department_admin').length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">
-                        No module admins assigned. Change a user's role to "Module Admin" first.
-                      </p>
-                    ) : (
-                      users
-                        .filter(u => u.role === 'department_admin')
-                        .map(u => (
-                          <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{u.full_name || u.email}</p>
-                                <p className="text-sm text-muted-foreground">{u.email}</p>
-                              </div>
-                              <Badge className={ROLE_COLORS.department_admin}>
-                                Module Admin
-                              </Badge>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium">Assigned Modules:</p>
-                              {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
-                                <div className="space-y-2">
-                                  {years.map(year => {
-                                    const yearAssignments = u.moduleAssignments?.filter(a => {
-                                      const mod = modules.find(m => m.id === a.module_id);
-                                      return mod?.year_id === year.id;
-                                    }) || [];
-                                    
-                                    if (yearAssignments.length === 0) return null;
-                                    
-                                    return (
-                                      <div key={year.id} className="space-y-1">
-                                        <p className="text-xs text-muted-foreground">{year.name}</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {yearAssignments.map(a => (
-                                            <Badge key={a.id} variant="secondary" className="gap-1">
-                                              {getModuleName(a.module_id)}
-                                              <button
-                                                onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
-                                                className="ml-1 hover:text-destructive"
-                                              >
-                                                <Trash2 className="w-3 h-3" />
-                                              </button>
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">No modules assigned</p>
-                              )}
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Select
-                                value={selectedUser === u.id ? selectedModule : ''}
-                                onValueChange={(value) => {
-                                  setSelectedUser(u.id);
-                                  setSelectedModule(value);
-                                }}
-                              >
-                                <SelectTrigger className="w-72">
-                                  <SelectValue placeholder="Select module to assign" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {years.map(year => {
-                                    const yearModules = modules
-                                      .filter(m => m.year_id === year.id)
-                                      .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
-                                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-                                    
-                                    if (yearModules.length === 0) return null;
-                                    
-                                    return (
-                                      <div key={year.id}>
-                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                                          {year.name}
-                                        </div>
-                                        {yearModules.map(m => (
-                                          <SelectItem key={m.id} value={m.id}>
-                                            {m.name}
-                                          </SelectItem>
-                                        ))}
-                                      </div>
-                                    );
-                                  })}</SelectContent>
-                              </Select>
-                              <Button
-                                onClick={() => {
-                                  if (selectedUser === u.id && selectedModule) {
-                                    handleAssignModule(u.id, selectedModule);
-                                  }
-                                }}
-                                disabled={selectedUser !== u.id || !selectedModule}
-                              >
-                                Assign
-                              </Button>
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-
-          {/* Platform Admins Tab - Super Admin Only */}
-          {isSuperAdmin && (
-            <TabsContent value="platform-admins">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Platform Admin Management
-                  </CardTitle>
-                  <CardDescription>
-                    View and manage platform admins. Platform admins have access to all modules and can manage content platform-wide.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {users.filter(u => u.role === 'platform_admin').length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">
-                        No platform admins assigned. Change a user's role to "Platform Admin" in the Users tab.
-                      </p>
-                    ) : (
-                      users
-                        .filter(u => u.role === 'platform_admin')
-                        .map(u => (
-                          <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                                <span className="font-semibold text-secondary-foreground">
-                                  {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-medium">{u.full_name || 'No name'}</p>
-                                <p className="text-sm text-muted-foreground">{u.email}</p>
-                              </div>
-                            </div>
-                            <Badge className={ROLE_COLORS.platform_admin}>
-                              Platform Admin
-                            </Badge>
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-
-          {/* Topic Admins Tab */}
-          <TabsContent value="topic-admins">
-            <TopicAdminsTab users={users} modules={modules} years={years} />
-          </TabsContent>
-
-          {/* Settings Tab - Platform Admin only */}
-          {isPlatformAdmin && (
-            <TabsContent value="settings">
-              <PlatformSettingsTab />
             </TabsContent>
           )}
 
@@ -1057,26 +1025,6 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* User Analytics Tab - Platform Admin & Super Admin */}
-          {(isSuperAdmin || isPlatformAdmin) && (
-            <TabsContent value="analytics">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    User Analytics & Management
-                  </CardTitle>
-                  <CardDescription>
-                    View user activity, session analytics, and manage user access.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <UserAnalyticsTab />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-
           {/* Question Analytics Tab */}
           {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="question-analytics">
@@ -1084,6 +1032,13 @@ export default function AdminPage() {
                 modules={modules} 
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
+            </TabsContent>
+          )}
+
+          {/* Settings Tab */}
+          {isPlatformAdmin && (
+            <TabsContent value="settings">
+              <PlatformSettingsTab />
             </TabsContent>
           )}
 
