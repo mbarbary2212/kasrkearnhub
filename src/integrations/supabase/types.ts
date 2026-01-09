@@ -2618,6 +2618,236 @@ export type Database = {
           },
         ]
       }
+      study_group_invites: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          invited_by: string
+          invited_user_id: string
+          message: string | null
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          invited_by: string
+          invited_user_id: string
+          message?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          invited_by?: string
+          invited_user_id?: string
+          message?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_group_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_edited: boolean | null
+          moderation_reason: string | null
+          moderation_scores: Json | null
+          moderation_status: string | null
+          parent_id: string | null
+          thread_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          moderation_reason?: string | null
+          moderation_scores?: Json | null
+          moderation_status?: string | null
+          parent_id?: string | null
+          thread_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          moderation_reason?: string | null
+          moderation_scores?: Json | null
+          moderation_status?: string | null
+          parent_id?: string | null
+          thread_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "study_group_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_group_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "study_group_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_group_threads: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          group_id: string
+          id: string
+          is_locked: boolean | null
+          is_pinned: boolean | null
+          last_activity_at: string | null
+          reply_count: number | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          group_id: string
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          reply_count?: number | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          group_id?: string
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          reply_count?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_threads_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_groups: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          module_id: string | null
+          name: string
+          privacy_type: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          module_id?: string | null
+          name: string
+          privacy_type?: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          module_id?: string | null
+          name?: string
+          privacy_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_groups_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_plan_baseline: {
         Row: {
           baseline_completed_percent: number
@@ -3436,6 +3666,14 @@ export type Database = {
       }
       is_department_admin: {
         Args: { _department_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_admin: {
+        Args: { check_group_id: string; check_user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { check_group_id: string; check_user_id: string }
         Returns: boolean
       }
       is_module_admin: {
