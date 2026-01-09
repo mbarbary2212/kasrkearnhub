@@ -411,7 +411,7 @@ export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps
 
         {/* Departments Sub-tab */}
         <TabsContent value="departments">
-          <DepartmentsCrudSection />
+          <DepartmentsCrudSection years={years} />
         </TabsContent>
 
         {/* Dept Assignments Sub-tab */}

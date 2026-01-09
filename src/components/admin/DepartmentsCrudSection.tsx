@@ -13,6 +13,7 @@ import { Department, DepartmentCategory } from '@/types/database';
 import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from '@/hooks/useDepartments';
 import { useAllModuleDepartments } from '@/hooks/useModuleDepartments';
 import { useAuthContext } from '@/contexts/AuthContext';
+import type { Year } from '@/types/curriculum';
 
 const LUCIDE_ICONS = [
   'BookOpen', 'Heart', 'Brain', 'Stethoscope', 'Pill', 'Syringe', 'Activity',
@@ -42,7 +43,11 @@ const defaultFormData: DepartmentFormData = {
   display_order: 0,
 };
 
-export function DepartmentsCrudSection() {
+interface DepartmentsCrudSectionProps {
+  years: Year[];
+}
+
+export function DepartmentsCrudSection({ years }: DepartmentsCrudSectionProps) {
   const { isSuperAdmin } = useAuthContext();
   const { data: departments = [], isLoading: loadingDepts } = useDepartments();
   const { data: allModuleDepts = [] } = useAllModuleDepartments();
@@ -56,12 +61,16 @@ export function DepartmentsCrudSection() {
   const [deptForm, setDeptForm] = useState<DepartmentFormData>(defaultFormData);
   const [deptSearch, setDeptSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | DepartmentCategory>('all');
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
 
   const filteredDepts = departments.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(deptSearch.toLowerCase()) ||
       (d.name_ar && d.name_ar.includes(deptSearch));
     const matchesCategory = categoryFilter === 'all' || d.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    // Filter by year - check if department serves the selected year
+    const matchesYear = selectedYearFilter === 'all' || 
+      d.years.includes(parseInt(selectedYearFilter));
+    return matchesSearch && matchesCategory && matchesYear;
   });
 
   const handleCreateDept = async () => {
@@ -298,6 +307,30 @@ export function DepartmentsCrudSection() {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Year Filter Chips */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span className="text-sm font-medium text-muted-foreground">Filter by Year:</span>
+          <Button
+            variant={selectedYearFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedYearFilter('all')}
+            className="h-8"
+          >
+            All Years
+          </Button>
+          {years.map(year => (
+            <Button
+              key={year.id}
+              variant={selectedYearFilter === year.number.toString() ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedYearFilter(year.number.toString())}
+              className="h-8"
+            >
+              {year.name}
+            </Button>
+          ))}
+        </div>
+
         {/* Search and Filter */}
         <div className="flex gap-3 mb-4">
           <div className="relative flex-1">
