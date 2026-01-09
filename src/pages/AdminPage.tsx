@@ -607,23 +607,29 @@ export default function AdminPage() {
                 Students
               </TabsTrigger>
             )}
+            <TabsTrigger value="topic-admins" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Topic Admins
+            </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="admins" className="gap-2">
                 <Building2 className="w-4 h-4" />
                 Module Admins
               </TabsTrigger>
             )}
-            <TabsTrigger value="topic-admins" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Topic Admins
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="platform-admins" className="gap-2">
+                <Shield className="w-4 h-4" />
+                Platform Admins
+              </TabsTrigger>
+            )}
             {isPlatformAdmin && (
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
                 Settings
               </TabsTrigger>
             )}
-            {isSuperAdmin && (
+            {(isSuperAdmin || isPlatformAdmin) && (
               <TabsTrigger value="curriculum" className="gap-2">
                 <Layers className="w-4 h-4" />
                 Curriculum
@@ -848,8 +854,8 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* Curriculum Tab - Super Admin Only */}
-          {isSuperAdmin && (
+          {/* Curriculum Tab - Super Admin & Platform Admin */}
+          {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="curriculum">
               <div className="grid gap-6">
                 {/* Years Section */}
@@ -1186,6 +1192,53 @@ export default function AdminPage() {
                                 Assign
                               </Button>
                             </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Platform Admins Tab - Super Admin Only */}
+          {isSuperAdmin && (
+            <TabsContent value="platform-admins">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Platform Admin Management
+                  </CardTitle>
+                  <CardDescription>
+                    View and manage platform admins. Platform admins have access to all modules and can manage content platform-wide.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {users.filter(u => u.role === 'platform_admin').length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        No platform admins assigned. Change a user's role to "Platform Admin" in the Users tab.
+                      </p>
+                    ) : (
+                      users
+                        .filter(u => u.role === 'platform_admin')
+                        .map(u => (
+                          <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                                <span className="font-semibold text-secondary-foreground">
+                                  {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium">{u.full_name || 'No name'}</p>
+                                <p className="text-sm text-muted-foreground">{u.email}</p>
+                              </div>
+                            </div>
+                            <Badge className={ROLE_COLORS.platform_admin}>
+                              Platform Admin
+                            </Badge>
                           </div>
                         ))
                     )}
