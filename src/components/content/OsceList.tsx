@@ -1,12 +1,19 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Upload, AlertCircle } from 'lucide-react';
+import { Plus, Upload, AlertCircle, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OsceQuestionCard } from './OsceQuestionCard';
 import { OsceFormModal } from './OsceFormModal';
 import { OsceBulkUploadModal } from './OsceBulkUploadModal';
+import { 
+  QuestionSearchFilter,
+  QuestionSearchFilterState,
+  DEFAULT_QUESTION_FILTER,
+  filterBySearch,
+  sortQuestions,
+} from './QuestionSearchFilter';
 import { 
   PracticeFilters, 
   PracticeFilterState, 
@@ -122,7 +129,10 @@ export function OsceList({
     });
   }, []);
 
-  // Practice filters - sync with URL
+  // Admin search/filter state
+  const [searchFilters, setSearchFilters] = useState<QuestionSearchFilterState>(DEFAULT_QUESTION_FILTER);
+
+  // Practice filters - sync with URL (for students)
   const [practiceFilters, setPracticeFilters] = useState<PracticeFilterState>(() => {
     if (isAdmin) return DEFAULT_STUDENT_FILTERS;
     try {
@@ -160,14 +170,24 @@ export function OsceList({
 
   // Filter questions based on current filters
   const filteredQuestions = useMemo(() => {
-    if (isAdmin) return questions;
-    return filterByStatus(questions, practiceFilters, attemptMap, starredIds);
-  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin]);
+    let result = questions;
+    
+    if (isAdmin) {
+      // Apply admin search filters
+      result = filterBySearch(result, searchFilters.search, ['history_text', 'statement_1', 'statement_2', 'statement_3', 'statement_4', 'statement_5']);
+      result = sortQuestions(result, searchFilters.sortBy);
+    } else {
+      // Apply student practice filters
+      result = filterByStatus(result, practiceFilters, attemptMap, starredIds);
+    }
+    
+    return result;
+  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin, searchFilters]);
 
   // Display questions (include deleted if toggle is on)
   const displayQuestions = useMemo(() => {
     if (showDeleted) {
-      return [...filteredQuestions, ...deletedQuestions];
+      return [...deletedQuestions];
     }
     return filteredQuestions;
   }, [filteredQuestions, deletedQuestions, showDeleted]);
@@ -231,20 +251,29 @@ export function OsceList({
               Bulk Upload
             </Button>
           </div>
-
-          {showDeletedToggle && deletedQuestions.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="show-deleted-osce"
-                checked={showDeleted}
-                onCheckedChange={onShowDeletedChange}
-              />
-              <Label htmlFor="show-deleted-osce" className="text-sm">
-                Show deleted ({deletedQuestions.length})
-              </Label>
-            </div>
-          )}
         </div>
+      )}
+
+      {/* Admin Search and Filter Bar */}
+      {isAdmin && questions.length > 0 && (
+        <QuestionSearchFilter
+          filters={searchFilters}
+          onFiltersChange={setSearchFilters}
+          totalCount={questions.length}
+          filteredCount={displayQuestions.length}
+          questionType="OSCE"
+          searchPlaceholder="Search OSCE questions..."
+          showDifficultyFilter={false}
+          adminFilters={{
+            showMarkedOnly: false,
+            onShowMarkedOnlyChange: () => {},
+            markedCount: starredIds.size,
+            showDeleted,
+            onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
+            deletedCount: deletedQuestions.length,
+            showDeletedToggle,
+          }}
+        />
       )}
 
       {/* Practice Filters for students (MCQ-style) */}
@@ -259,6 +288,16 @@ export function OsceList({
           questionType="osce"
           moduleSlug={moduleSlug}
         />
+      )}
+
+      {/* Deleted Alert */}
+      {showDeleted && (
+        <Alert className="border-destructive/50 bg-destructive/5">
+          <Trash2 className="h-4 w-4 text-destructive" />
+          <AlertDescription>
+            Showing {deletedQuestions.length} deleted question(s). Click "Restore" to recover.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Questions List */}

@@ -1,9 +1,10 @@
 /**
- * Header-based CSV parser for MCQ bulk imports
+ * Header-based CSV parser for bulk imports
  * Detects column mappings dynamically and applies auto-corrections
  */
 
 import type { McqFormData, McqChoice } from '@/hooks/useMcqs';
+import type { MatchingQuestionFormData, MatchItem } from '@/hooks/useMatchingQuestions';
 
 // Column name mappings for auto-detection (lowercase normalized)
 const COLUMN_MAPPINGS: Record<string, string> = {
@@ -366,4 +367,254 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
     errors,
     columnMapping: columnNameMap,
   };
+}
+
+// ============================================
+// MATCHING QUESTION PARSER
+// ============================================
+
+// Column mappings for matching questions
+const MATCHING_COLUMN_MAPPINGS: Record<string, string> = {
+  // Instruction variations
+  'instruction': 'instruction',
+  'instructions': 'instruction',
+  'prompt': 'instruction',
+  'question': 'instruction',
+  
+  // Column A items
+  'item_a_1': 'item_a_1',
+  'itema1': 'item_a_1',
+  'a1': 'item_a_1',
+  'column_a_1': 'item_a_1',
+  'item_a_2': 'item_a_2',
+  'itema2': 'item_a_2',
+  'a2': 'item_a_2',
+  'column_a_2': 'item_a_2',
+  'item_a_3': 'item_a_3',
+  'itema3': 'item_a_3',
+  'a3': 'item_a_3',
+  'column_a_3': 'item_a_3',
+  'item_a_4': 'item_a_4',
+  'itema4': 'item_a_4',
+  'a4': 'item_a_4',
+  'column_a_4': 'item_a_4',
+  
+  // Column B items
+  'item_b_1': 'item_b_1',
+  'itemb1': 'item_b_1',
+  'b1': 'item_b_1',
+  'column_b_1': 'item_b_1',
+  'item_b_2': 'item_b_2',
+  'itemb2': 'item_b_2',
+  'b2': 'item_b_2',
+  'column_b_2': 'item_b_2',
+  'item_b_3': 'item_b_3',
+  'itemb3': 'item_b_3',
+  'b3': 'item_b_3',
+  'column_b_3': 'item_b_3',
+  'item_b_4': 'item_b_4',
+  'itemb4': 'item_b_4',
+  'b4': 'item_b_4',
+  'column_b_4': 'item_b_4',
+  
+  // Match mappings
+  'match_1': 'match_1',
+  'match1': 'match_1',
+  'answer_1': 'match_1',
+  'match_2': 'match_2',
+  'match2': 'match_2',
+  'answer_2': 'match_2',
+  'match_3': 'match_3',
+  'match3': 'match_3',
+  'answer_3': 'match_3',
+  'match_4': 'match_4',
+  'match4': 'match_4',
+  'answer_4': 'match_4',
+  
+  // Other fields
+  'explanation': 'explanation',
+  'difficulty': 'difficulty',
+  'show_explanation': 'show_explanation',
+  'showexplanation': 'show_explanation',
+};
+
+export interface MatchingParseResult {
+  questions: MatchingQuestionFormData[];
+  corrections: ParseCorrection[];
+  errors: string[];
+}
+
+// Check if the first row is a header for matching questions
+function isMatchingHeaderRow(firstLine: string): boolean {
+  const lower = firstLine.toLowerCase();
+  const headerKeywords = [
+    'instruction', 'item_a', 'itema', 'item_b', 'itemb', 'match_', 
+    'column_a', 'column_b', 'difficulty', 'explanation'
+  ];
+  return headerKeywords.some(keyword => lower.includes(keyword));
+}
+
+// Build column mapping for matching questions
+function buildMatchingColumnMapping(headers: string[]): { 
+  mapping: Record<string, number>;
+  corrections: ParseCorrection[];
+} {
+  const mapping: Record<string, number> = {};
+  const corrections: ParseCorrection[] = [];
+  
+  headers.forEach((header, index) => {
+    const normalized = normalizeColumnName(header);
+    const targetColumn = MATCHING_COLUMN_MAPPINGS[normalized];
+    
+    if (targetColumn) {
+      if (!mapping[targetColumn]) {
+        mapping[targetColumn] = index;
+        
+        if (normalized !== targetColumn.replace(/_/g, '')) {
+          corrections.push({
+            type: 'column_mapped',
+            originalValue: header,
+            correctedValue: targetColumn,
+            column: header,
+            message: `Column "${header}" → "${targetColumn}"`
+          });
+        }
+      }
+    }
+  });
+  
+  return { mapping, corrections };
+}
+
+// Parse matching questions CSV with smart detection
+export function parseSmartMatchingCsv(csvText: string): MatchingParseResult {
+  const lines = csvText.trim().split('\n').filter(line => line.trim());
+  const corrections: ParseCorrection[] = [];
+  const errors: string[] = [];
+  
+  if (lines.length === 0) {
+    return { questions: [], corrections: [], errors: ['CSV file is empty'] };
+  }
+  
+  const hasHeader = isMatchingHeaderRow(lines[0]);
+  let columnMapping: Record<string, number> = {};
+  let startIndex = 0;
+  
+  if (hasHeader) {
+    const headers = parseCSVLine(lines[0]);
+    const mappingResult = buildMatchingColumnMapping(headers);
+    columnMapping = mappingResult.mapping;
+    corrections.push(...mappingResult.corrections);
+    corrections.push({
+      type: 'header_skipped',
+      message: 'Header row detected and skipped'
+    });
+    startIndex = 1;
+  } else {
+    // Fallback to positional parsing
+    columnMapping = {
+      'instruction': 0,
+      'item_a_1': 1,
+      'item_a_2': 2,
+      'item_a_3': 3,
+      'item_a_4': 4,
+      'item_b_1': 5,
+      'item_b_2': 6,
+      'item_b_3': 7,
+      'item_b_4': 8,
+      'match_1': 9,
+      'match_2': 10,
+      'match_3': 11,
+      'match_4': 12,
+      'explanation': 13,
+      'difficulty': 14,
+      'show_explanation': 15,
+    };
+  }
+  
+  const questions: MatchingQuestionFormData[] = [];
+  
+  for (let i = startIndex; i < lines.length; i++) {
+    const parts = parseCSVLine(lines[i]);
+    const rowIndex = i - startIndex;
+    
+    if (parts.length === 0) continue;
+    
+    const getValue = (column: string): string => {
+      const index = columnMapping[column];
+      return index !== undefined ? (parts[index] || '').trim() : '';
+    };
+    
+    const instruction = getValue('instruction') || 'Match the items in Column A with the correct items in Column B';
+    
+    // Build column A items
+    const columnAItems: MatchItem[] = [];
+    ['item_a_1', 'item_a_2', 'item_a_3', 'item_a_4'].forEach((col, idx) => {
+      const text = getValue(col);
+      if (text) {
+        columnAItems.push({ id: `a${idx + 1}`, text });
+      }
+    });
+    
+    // Build column B items
+    const columnBItems: MatchItem[] = [];
+    ['item_b_1', 'item_b_2', 'item_b_3', 'item_b_4'].forEach((col, idx) => {
+      const text = getValue(col);
+      if (text) {
+        columnBItems.push({ id: `b${idx + 1}`, text });
+      }
+    });
+    
+    // Skip rows with insufficient items
+    if (columnAItems.length < 2 || columnBItems.length < 2) continue;
+    
+    // Build correct matches with correction tracking
+    const correctMatches: Record<string, string> = {};
+    ['match_1', 'match_2', 'match_3', 'match_4'].forEach((col, idx) => {
+      if (idx >= columnAItems.length) return;
+      
+      const matchValue = getValue(col);
+      let matchIndex = parseInt(matchValue, 10);
+      
+      // Check if it's a letter (A, B, C, D) and convert
+      if (isNaN(matchIndex) && /^[A-Da-d]$/.test(matchValue)) {
+        const letterMap: Record<string, number> = { 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+        matchIndex = letterMap[matchValue];
+        corrections.push({
+          type: 'correct_key_converted',
+          originalValue: matchValue,
+          correctedValue: String(matchIndex),
+          row: rowIndex + 1,
+          message: `Row ${rowIndex + 1}: Match "${matchValue}" → "${matchIndex}" (letter to number)`
+        });
+      }
+      
+      if (matchIndex > 0 && matchIndex <= columnBItems.length) {
+        correctMatches[columnAItems[idx].id] = `b${matchIndex}`;
+      }
+    });
+    
+    // Parse other fields
+    const explanation = getValue('explanation') || null;
+    const difficultyRaw = getValue('difficulty')?.toLowerCase();
+    const difficulty: 'easy' | 'medium' | 'hard' | null = 
+      ['easy', 'medium', 'hard'].includes(difficultyRaw) 
+        ? difficultyRaw as 'easy' | 'medium' | 'hard' 
+        : null;
+    
+    const showExplanationRaw = getValue('show_explanation')?.toLowerCase();
+    const showExplanation = showExplanationRaw !== 'false';
+    
+    questions.push({
+      instruction,
+      column_a_items: columnAItems,
+      column_b_items: columnBItems,
+      correct_matches: correctMatches,
+      explanation,
+      show_explanation: showExplanation,
+      difficulty,
+    });
+  }
+  
+  return { questions, corrections, errors };
 }

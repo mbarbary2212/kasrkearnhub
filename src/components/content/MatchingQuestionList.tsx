@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Link2, Trash2, RotateCcw } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Upload, Link2, Trash2, RotateCcw, Star, Copy } from 'lucide-react';
 import { MatchingQuestionCard } from './MatchingQuestionCard';
 import { MatchingQuestionFormModal } from './MatchingQuestionFormModal';
 import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadModal';
+import { 
+  QuestionSearchFilter,
+  QuestionSearchFilterState,
+  DEFAULT_QUESTION_FILTER,
+  filterBySearch,
+  filterByDifficulty,
+  sortQuestions,
+} from './QuestionSearchFilter';
 import { useDeleteMatchingQuestion, useRestoreMatchingQuestion, type MatchingQuestion } from '@/hooks/useMatchingQuestions';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
@@ -83,15 +92,11 @@ export function MatchingQuestionList({
   };
 
   const handleRestore = async (question: MatchingQuestion) => {
-    try {
-      await restoreMutation.mutateAsync({
-        id: question.id,
-        moduleId,
-        chapterId,
-      });
-    } catch (error) {
-      toast.error('Failed to restore question');
-    }
+    await restoreMutation.mutateAsync({
+      id: question.id,
+      moduleId,
+      chapterId,
+    });
   };
 
   const handleToggleExpand = (id: string) => {
