@@ -196,7 +196,7 @@ export function McqList({
   const bulkCreateMutation = useBulkCreateMcqs();
   
   // AI Analyzer for bulk upload
-  const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
+  const { isAnalyzing, analysis, analyzeError, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
 
   // Search and filter state (for both admin and students)
   const [searchFilters, setSearchFilters] = useState<McqSearchFilterState>(DEFAULT_SEARCH_FILTER);
@@ -938,8 +938,9 @@ The AI will parse and extract the questions automatically.`}
                   <BulkUploadAnalyzer
                     isAnalyzing={isAnalyzing}
                     analysis={analysis}
+                    analyzeError={analyzeError}
                     onAnalyze={handleAnalyze}
-                    disabled={!csvText.trim() && !fileName}
+                    disabled={!csvText.trim()}
                   />
                 )}
               </>

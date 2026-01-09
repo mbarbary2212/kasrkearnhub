@@ -12,6 +12,8 @@ interface BulkUploadAnalyzerProps {
   disabled?: boolean;
   /** Show auto-correction info banner */
   showAutoCorrectionNote?: boolean;
+  /** Error message from analysis */
+  analyzeError?: string | null;
 }
 
 function getConfidenceBadge(confidence: MappingSuggestion['confidence']) {
@@ -46,13 +48,22 @@ export function BulkUploadAnalyzer({
   onAnalyze, 
   disabled,
   showAutoCorrectionNote = true,
+  analyzeError,
 }: BulkUploadAnalyzerProps) {
+  
+  const handleClick = () => {
+    console.log('[BulkUploadAnalyzer] Analyze button clicked');
+    console.log('[BulkUploadAnalyzer] isAnalyzing:', isAnalyzing);
+    console.log('[BulkUploadAnalyzer] disabled:', disabled);
+    onAnalyze();
+  };
+
   if (isAnalyzing) {
     return (
       <Alert className="bg-primary/5 border-primary/20">
         <Loader2 className="h-4 w-4 animate-spin" />
         <AlertDescription className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
+          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
           AI is analyzing your file structure...
         </AlertDescription>
       </Alert>
@@ -62,6 +73,16 @@ export function BulkUploadAnalyzer({
   if (!analysis) {
     return (
       <div className="space-y-3">
+        {/* Error display */}
+        {analyzeError && (
+          <Alert variant="destructive" className="py-2">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              <strong>Analysis failed:</strong> {analyzeError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* Auto-correction info banner */}
         {showAutoCorrectionNote && (
           <Alert className="bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
@@ -89,14 +110,23 @@ export function BulkUploadAnalyzer({
         )}
         
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          onClick={onAnalyze}
-          disabled={disabled}
-          className="gap-2"
+          onClick={handleClick}
+          disabled={disabled || isAnalyzing}
+          className="gap-2 bg-green-600 hover:bg-green-700 text-white"
         >
-          <Sparkles className="h-4 w-4" />
-          Analyze with AI
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Analyze with AI
+            </>
+          )}
         </Button>
       </div>
     );
@@ -141,7 +171,7 @@ export function BulkUploadAnalyzer({
         )}
 
         {/* Mapping Suggestions */}
-        {analysis.mappingSuggestions.length > 0 && (
+        {analysis.mappingSuggestions && analysis.mappingSuggestions.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Column Mappings</h4>
             <div className="space-y-1">
@@ -158,7 +188,7 @@ export function BulkUploadAnalyzer({
         )}
 
         {/* Issues */}
-        {analysis.issues.length > 0 && (
+        {analysis.issues && analysis.issues.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Issues</h4>
             <div className="space-y-1">
