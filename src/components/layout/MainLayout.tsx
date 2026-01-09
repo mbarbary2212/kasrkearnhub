@@ -137,9 +137,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       onClick={() => setTutorOpen(true)}
                       variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-lg hover:bg-primary/10 transition-transform duration-200 hover:scale-110"
+                      className="h-11 w-11 rounded-lg bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
                     >
-                      <Bot className="h-5 w-5 text-primary" />
+                      <Bot className="h-6 w-6 text-primary" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
