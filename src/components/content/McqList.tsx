@@ -33,6 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { McqCard } from './McqCard';
 import { McqFormModal } from './McqFormModal';
+import { CsvCorrectionPreview } from './CsvCorrectionPreview';
 import { 
   PracticeFilters, 
   PracticeFilterState, 
@@ -40,7 +41,8 @@ import {
   filterByStatus,
   countByStatus,
 } from './PracticeFilters';
-import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, parseMcqCsv, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { parseSmartMcqCsv, type ParseCorrection } from '@/lib/csvParser';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
@@ -116,6 +118,7 @@ export function McqList({
   const [previewData, setPreviewData] = useState<DuplicateResult<McqFormData>[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [parseCorrections, setParseCorrections] = useState<ParseCorrection[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Initialize filter states from URL params
@@ -420,7 +423,8 @@ export function McqList({
 
   const handlePreviewCsv = () => {
     if (!csvText.trim()) return;
-    const parsed = parseMcqCsv(csvText);
+    const { mcqs: parsed, corrections } = parseSmartMcqCsv(csvText);
+    setParseCorrections(corrections);
     const withDuplicates = processWithDuplicateDetection(parsed);
     setPreviewData(withDuplicates);
   };
@@ -442,7 +446,8 @@ export function McqList({
           return;
         }
         
-        const parsed = parseMcqCsv(text);
+        const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+        setParseCorrections(corrections);
         
         if (parsed.length === 0) {
           setFileError('No valid MCQs found in the file. Check the format.');
@@ -469,6 +474,7 @@ export function McqList({
     setPreviewData(null);
     setFileName(null);
     setFileError(null);
+    setParseCorrections([]);
     clearAnalysis();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -779,6 +785,7 @@ export function McqList({
                       setFileName(file.name);
                       setFileError(null);
                       setPreviewData(null);
+                      setParseCorrections([]);
                       const reader = new FileReader();
                       reader.onload = (event) => {
                         try {
@@ -788,7 +795,8 @@ export function McqList({
                             return;
                           }
                           
-                          const parsed = parseMcqCsv(text);
+                          const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+                          setParseCorrections(corrections);
                           
                           if (parsed.length === 0) {
                             setFileError('No valid MCQs found in the file. Check the format.');
@@ -872,6 +880,11 @@ export function McqList({
                     Start Over
                   </Button>
                 </div>
+
+                {/* Auto-corrections applied preview */}
+                {parseCorrections.length > 0 && (
+                  <CsvCorrectionPreview corrections={parseCorrections} />
+                )}
 
                 {/* Duplicate Summary */}
                 {(exactDuplicates > 0 || possibleDuplicates > 0) && (
