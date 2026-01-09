@@ -42,7 +42,9 @@ import {
   countByStatus,
 } from './PracticeFilters';
 import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData } from '@/hooks/useMcqs';
-import { parseSmartMcqCsv, type ParseCorrection } from '@/lib/csvParser';
+import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
+import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
+import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
@@ -772,9 +774,10 @@ export function McqList({
             {!previewData ? (
               <>
               <Tabs defaultValue="upload" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="upload">Upload CSV File</TabsTrigger>
-                  <TabsTrigger value="paste">Paste CSV Content</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="upload">Upload CSV</TabsTrigger>
+                  <TabsTrigger value="paste">Paste CSV</TabsTrigger>
+                  <TabsTrigger value="raw">Paste Raw Text (AI)</TabsTrigger>
                 </TabsList>
                 
                 {/* File Upload Tab */}
@@ -853,8 +856,78 @@ export function McqList({
                     className="w-full"
                     disabled={!csvText.trim()}
                   >
-                    Preview Import
+                  Preview Import
                   </Button>
+                </TabsContent>
+
+                {/* Raw Text AI Parsing Tab */}
+                <TabsContent value="raw" className="space-y-4 mt-4">
+                  <Alert className="border-primary/30 bg-primary/5">
+                    <AlertCircle className="h-4 w-4 text-primary" />
+                    <AlertDescription>
+                      Paste unformatted text from PDFs or documents. AI will extract MCQs automatically.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2">
+                    <Label>Paste raw question text</Label>
+                    <Textarea
+                      value={csvText}
+                      onChange={(e) => {
+                        setCsvText(e.target.value);
+                        setPreviewData(null);
+                        setFileName(null);
+                        setFileError(null);
+                      }}
+                      rows={10}
+                      placeholder={`Paste your questions here, e.g.:
+
+1. What is the capital of France?
+a) London
+b) Paris
+c) Berlin
+d) Madrid
+e) Rome
+Answer: B
+
+The AI will parse and extract the questions automatically.`}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={async () => {
+                      if (!csvText.trim()) return;
+                      setFileError(null);
+                      // Try AI parsing via edge function
+                      const { data, error } = await supabase.functions.invoke('process-mcq-content', {
+                        body: { action: 'parse', rawText: csvText }
+                      });
+                      if (error || data?.error) {
+                        setFileError(data?.error || error?.message || 'AI parsing failed');
+                        return;
+                      }
+                      if (!data.mcqs || data.mcqs.length === 0) {
+                        setFileError('No MCQs could be extracted from the text');
+                        return;
+                      }
+                      const withDuplicates = processWithDuplicateDetection(data.mcqs);
+                      setPreviewData(withDuplicates);
+                      setParseCorrections([{ type: 'column_mapped', message: `AI extracted ${data.mcqs.length} questions from raw text` }]);
+                    }}
+                    variant="secondary" 
+                    className="w-full gap-2"
+                    disabled={!csvText.trim()}
+                  >
+                    <ShieldAlert className="h-4 w-4" />
+                    Parse with AI
+                  </Button>
+
+                  {fileError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{fileError}</AlertDescription>
+                    </Alert>
+                  )}
                 </TabsContent>
                 </Tabs>
               
