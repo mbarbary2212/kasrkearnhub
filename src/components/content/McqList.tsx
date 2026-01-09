@@ -57,6 +57,8 @@ import {
   useChapterQuestionAttempts, 
   useResetChapterAttempt,
 } from '@/hooks/useQuestionAttempts';
+import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
+import { useBulkUploadAnalyzer } from '@/hooks/useBulkUploadAnalyzer';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -186,6 +188,9 @@ export function McqList({
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+  
+  // AI Analyzer for bulk upload
+  const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
 
   // Question attempt tracking hooks (for students)
   const { data: questionAttempts = [] } = useChapterQuestionAttempts(
@@ -404,10 +409,42 @@ export function McqList({
     setPreviewData(null);
     setFileName(null);
     setFileError(null);
+    clearAnalysis();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  // Helper to parse CSV line for analysis
+  const parseCSVLine = (line: string): string[] => {
+    const parts: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        parts.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    parts.push(current.trim());
+    return parts;
+  };
+
+  // Handler for AI analysis
+  const handleAnalyze = useCallback(() => {
+    const lines = csvText.trim().split('\n').filter(line => line.trim());
+    if (lines.length === 0) return;
+    
+    const headers = parseCSVLine(lines[0]);
+    const sampleRows = lines.slice(1, 4).map(parseCSVLine);
+    
+    analyzeFile('mcq', headers, sampleRows);
+  }, [csvText, analyzeFile]);
 
   const toggleItemStatus = (index: number) => {
     if (!previewData) return;
@@ -691,6 +728,7 @@ export function McqList({
             </div>
 
             {!previewData ? (
+              <>
               <Tabs defaultValue="upload" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="upload">Upload CSV File</TabsTrigger>
@@ -774,7 +812,18 @@ export function McqList({
                     Preview Import
                   </Button>
                 </TabsContent>
-              </Tabs>
+                </Tabs>
+              
+                {/* AI Analyzer - show when file is loaded but not yet previewed */}
+                {(csvText.trim() || fileName) && (
+                  <BulkUploadAnalyzer
+                    isAnalyzing={isAnalyzing}
+                    analysis={analysis}
+                    onAnalyze={handleAnalyze}
+                    disabled={!csvText.trim() && !fileName}
+                  />
+                )}
+              </>
             ) : (
               /* Preview Section with Duplicate Detection */
               <div className="space-y-3">
