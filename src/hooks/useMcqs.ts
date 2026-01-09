@@ -306,9 +306,33 @@ export function useBulkCreateMcqs() {
 // Parse CSV text into MCQ data
 export function parseMcqCsv(csvText: string): McqFormData[] {
   const lines = csvText.trim().split('\n').filter(line => line.trim());
+  if (lines.length === 0) return [];
   
-  // Skip header row if it looks like a header
-  const startIndex = lines[0]?.toLowerCase().includes('stem') ? 1 : 0;
+  // Detect header row - check for common header keywords
+  const firstLineLower = lines[0].toLowerCase();
+  const headerKeywords = ['stem', 'question', 'correct_key', 'answer_key', 'choice_a', 'choicea', 'option_a', 'explanation', 'difficulty'];
+  const isHeader = headerKeywords.some(keyword => firstLineLower.includes(keyword));
+  
+  const startIndex = isHeader ? 1 : 0;
+  
+  // Helper to normalize correct_key values (handle numeric like "3" -> "C")
+  const normalizeCorrectKey = (value: string): string => {
+    const trimmed = (value || '').trim().toUpperCase();
+    
+    // If already a letter A-E, return as-is
+    if (/^[A-E]$/.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // Convert numeric to letter (1=A, 2=B, 3=C, 4=D, 5=E)
+    const numericMap: Record<string, string> = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' };
+    if (numericMap[trimmed]) {
+      return numericMap[trimmed];
+    }
+    
+    // Default to A if unrecognized
+    return 'A';
+  };
   
   return lines.slice(startIndex).map(line => {
     // Handle quoted CSV values
@@ -340,7 +364,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
         { key: 'D' as const, text: choiceD || '' },
         { key: 'E' as const, text: choiceE || '' },
       ],
-      correct_key: (correctKey || 'A').toUpperCase(),
+      correct_key: normalizeCorrectKey(correctKey),
       explanation: explanation || null,
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
