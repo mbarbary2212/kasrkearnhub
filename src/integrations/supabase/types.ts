@@ -259,6 +259,42 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          category: string
+          code: string
+          created_at: string | null
+          description: string
+          icon_name: string
+          id: string
+          name: string
+          threshold: number | null
+          tier: number
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string | null
+          description: string
+          icon_name?: string
+          id?: string
+          name: string
+          threshold?: number | null
+          tier?: number
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string | null
+          description?: string
+          icon_name?: string
+          id?: string
+          name?: string
+          threshold?: number | null
+          tier?: number
+        }
+        Relationships: []
+      }
       case_scenarios: {
         Row: {
           case_history: string
@@ -2811,6 +2847,38 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
             referencedColumns: ["id"]
           },
         ]

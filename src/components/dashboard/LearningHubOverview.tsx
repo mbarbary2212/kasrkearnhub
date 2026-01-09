@@ -5,9 +5,11 @@ import { DashboardInsights } from './DashboardInsights';
 import { DashboardProgressMap } from './DashboardProgressMap';
 import { DashboardWeeklySummary } from './DashboardWeeklySummary';
 import { DashboardNeedsPractice } from './DashboardNeedsPractice';
+import { BadgesSection } from './BadgesSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
-
+import { useCheckBadges } from '@/hooks/useBadges';
+import { useEffect } from 'react';
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
   moduleSelected: boolean;
@@ -27,6 +29,15 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
     casesToReview,
     counts,
   } = useNeedsPractice(moduleId);
+
+  // Check for badge eligibility on dashboard load
+  const { mutate: checkBadges } = useCheckBadges();
+  
+  useEffect(() => {
+    if (moduleSelected && dashboard.coveragePercent > 0) {
+      checkBadges({ moduleProgress: dashboard.coveragePercent });
+    }
+  }, [moduleSelected, dashboard.coveragePercent, checkBadges]);
 
   if (!moduleSelected) {
     return (
@@ -94,6 +105,9 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         weeklyChaptersAdvanced={dashboard.weeklyChaptersAdvanced}
         hasRealAccuracyData={dashboard.hasRealAccuracyData}
       />
+
+      {/* Achievements / Badges */}
+      <BadgesSection compact />
     </>
   );
 }
