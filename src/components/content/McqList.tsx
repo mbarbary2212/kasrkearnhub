@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Filter, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -25,13 +25,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -538,53 +531,6 @@ export function McqList({
               questionType="MCQ"
             />
           )}
-          
-          {/* Admin-only filters dropdown */}
-          {isAdmin && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Filter className="h-3 w-3" />
-                  Filters
-                  {(showDuplicatesOnly || showMarkedOnly || showDeleted) && (
-                    <Badge variant="secondary" className="ml-1 text-xs">
-                      {(showDuplicatesOnly ? 1 : 0) + (showMarkedOnly ? 1 : 0) + (showDeleted ? 1 : 0)}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuCheckboxItem
-                  checked={showMarkedOnly}
-                  onCheckedChange={setShowMarkedOnly}
-                >
-                  <Star className="h-3 w-3 mr-2 text-amber-500" />
-                  Marked for review ({markedIds.size})
-                </DropdownMenuCheckboxItem>
-                {duplicateMcqs.length > 0 && !showDeleted && (
-                  <DropdownMenuCheckboxItem
-                    checked={showDuplicatesOnly}
-                    onCheckedChange={setShowDuplicatesOnly}
-                  >
-                    <Copy className="h-3 w-3 mr-2" />
-                    Show duplicates only ({duplicateMcqs.length})
-                  </DropdownMenuCheckboxItem>
-                )}
-                {showDeletedToggle && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem
-                      checked={showDeleted}
-                      onCheckedChange={(checked) => onShowDeletedChange?.(!!checked)}
-                    >
-                      <Trash2 className="h-3 w-3 mr-2 text-destructive" />
-                      Show deleted ({deletedMcqs.length})
-                    </DropdownMenuCheckboxItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
         {showAddControls && !showDeleted && (
           <div className="flex gap-2 items-center">
@@ -625,6 +571,18 @@ export function McqList({
           onFiltersChange={setSearchFilters}
           totalCount={totalQuestions}
           filteredCount={filteredMcqs.length}
+          adminFilters={isAdmin ? {
+            showMarkedOnly,
+            onShowMarkedOnlyChange: setShowMarkedOnly,
+            markedCount: markedIds.size,
+            showDuplicatesOnly,
+            onShowDuplicatesOnlyChange: setShowDuplicatesOnly,
+            duplicatesCount: duplicateMcqs.length,
+            showDeleted,
+            onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
+            deletedCount: deletedMcqs.length,
+            showDeletedToggle,
+          } : undefined}
         />
       )}
 

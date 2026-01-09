@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Search, Filter, ChevronDown, ChevronUp, X, CalendarDays, BarChart2 } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, X, CalendarDays, BarChart2, Star, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import {
   Collapsible,
   CollapsibleContent,
@@ -32,12 +34,28 @@ export const DEFAULT_SEARCH_FILTER: McqSearchFilterState = {
   sortBy: 'display_order',
 };
 
+// Admin-specific filter options
+export interface AdminFilterOptions {
+  showMarkedOnly: boolean;
+  onShowMarkedOnlyChange: (value: boolean) => void;
+  markedCount: number;
+  showDuplicatesOnly: boolean;
+  onShowDuplicatesOnlyChange: (value: boolean) => void;
+  duplicatesCount: number;
+  showDeleted: boolean;
+  onShowDeletedChange: (value: boolean) => void;
+  deletedCount: number;
+  showDeletedToggle: boolean;
+}
+
 interface McqSearchFilterProps {
   filters: McqSearchFilterState;
   onFiltersChange: (filters: McqSearchFilterState) => void;
   totalCount: number;
   filteredCount: number;
   className?: string;
+  /** Admin-specific filters - if provided, shows admin filter options */
+  adminFilters?: AdminFilterOptions;
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string; icon?: React.ReactNode }[] = [
@@ -61,22 +79,39 @@ export function McqSearchFilter({
   totalCount,
   filteredCount,
   className,
+  adminFilters,
 }: McqSearchFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const hasActiveFilters = useMemo(() => {
-    return filters.search !== '' || 
+    const hasSearchFilters = filters.search !== '' || 
            filters.difficulty !== 'all' || 
            filters.sortBy !== 'display_order';
-  }, [filters]);
+    
+    const hasAdminFilters = adminFilters ? (
+      adminFilters.showMarkedOnly || 
+      adminFilters.showDuplicatesOnly || 
+      adminFilters.showDeleted
+    ) : false;
+    
+    return hasSearchFilters || hasAdminFilters;
+  }, [filters, adminFilters]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.search) count++;
     if (filters.difficulty !== 'all') count++;
     if (filters.sortBy !== 'display_order') count++;
+    
+    // Count admin filters
+    if (adminFilters) {
+      if (adminFilters.showMarkedOnly) count++;
+      if (adminFilters.showDuplicatesOnly) count++;
+      if (adminFilters.showDeleted) count++;
+    }
+    
     return count;
-  }, [filters]);
+  }, [filters, adminFilters]);
 
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, search: value });
@@ -92,6 +127,14 @@ export function McqSearchFilter({
 
   const handleClearAll = () => {
     onFiltersChange(DEFAULT_SEARCH_FILTER);
+    // Also clear admin filters if present
+    if (adminFilters) {
+      adminFilters.onShowMarkedOnlyChange(false);
+      adminFilters.onShowDuplicatesOnlyChange(false);
+      if (adminFilters.showDeletedToggle) {
+        adminFilters.onShowDeletedChange(false);
+      }
+    }
   };
 
   const handleClearSearch = () => {
@@ -188,6 +231,47 @@ export function McqSearchFilter({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Admin-only filters */}
+            {adminFilters && (
+              <>
+                <Separator orientation="vertical" className="h-6" />
+                
+                {/* Marked for review */}
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Checkbox
+                    checked={adminFilters.showMarkedOnly}
+                    onCheckedChange={(checked) => adminFilters.onShowMarkedOnlyChange(!!checked)}
+                  />
+                  <Star className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Marked ({adminFilters.markedCount})</span>
+                </label>
+
+                {/* Show duplicates */}
+                {adminFilters.duplicatesCount > 0 && !adminFilters.showDeleted && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={adminFilters.showDuplicatesOnly}
+                      onCheckedChange={(checked) => adminFilters.onShowDuplicatesOnlyChange(!!checked)}
+                    />
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Duplicates ({adminFilters.duplicatesCount})</span>
+                  </label>
+                )}
+
+                {/* Show deleted */}
+                {adminFilters.showDeletedToggle && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={adminFilters.showDeleted}
+                      onCheckedChange={(checked) => adminFilters.onShowDeletedChange(!!checked)}
+                    />
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    <span>Deleted ({adminFilters.deletedCount})</span>
+                  </label>
+                )}
+              </>
+            )}
 
             {/* Clear All */}
             {hasActiveFilters && (
