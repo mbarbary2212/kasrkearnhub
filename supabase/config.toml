@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.moderate-message]
 verify_jwt = false
+
+[functions.med-tutor-chat]
+verify_jwt = false
+
+[functions.analyze-bulk-upload]
+verify_jwt = false

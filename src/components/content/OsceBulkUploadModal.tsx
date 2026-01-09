@@ -6,6 +6,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
+import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
+import { useBulkUploadAnalyzer } from '@/hooks/useBulkUploadAnalyzer';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -59,6 +61,7 @@ export function OsceBulkUploadModal({
 }: OsceBulkUploadModalProps) {
   const auth = useAuthContext();
   const queryClient = useQueryClient();
+  const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
 
   const [step, setStep] = useState<'excel' | 'images' | 'review' | 'importing'>('excel');
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -66,6 +69,8 @@ export function OsceBulkUploadModal({
   const [uploadedImages, setUploadedImages] = useState<Map<string, File>>(new Map());
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
+  const [parsedRows, setParsedRows] = useState<string[][]>([]);
 
   const storagePath = `${moduleCode}/${chapterTitle}/`;
 
@@ -76,6 +81,9 @@ export function OsceBulkUploadModal({
     setUploadedImages(new Map());
     setImporting(false);
     setImportProgress(0);
+    setParsedHeaders([]);
+    setParsedRows([]);
+    clearAnalysis();
   };
 
   // Parse Excel file locally
@@ -170,6 +178,19 @@ export function OsceBulkUploadModal({
   const handleExcelSelect = useCallback(async (file: File) => {
     try {
       setExcelFile(file);
+      
+      // Parse Excel to get headers and sample rows for AI analysis
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as string[][];
+      
+      if (allRows.length > 0) {
+        setParsedHeaders(allRows[0] as string[]);
+        setParsedRows(allRows.slice(1, 4) as string[][]); // First 3 data rows
+      }
+      
       const result = await parseExcelFile(file);
       setExcelValidation(result);
       
@@ -437,6 +458,16 @@ export function OsceBulkUploadModal({
               fileName={excelFile?.name}
               maxSizeMB={20}
             />
+
+            {/* AI Analyzer */}
+            {excelFile && parsedHeaders.length > 0 && (
+              <BulkUploadAnalyzer
+                isAnalyzing={isAnalyzing}
+                analysis={analysis}
+                onAnalyze={() => analyzeFile('osce', parsedHeaders, parsedRows)}
+                disabled={!excelFile}
+              />
+            )}
 
             {/* Excel validation results */}
             {excelValidation && (
