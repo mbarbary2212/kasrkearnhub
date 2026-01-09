@@ -1,10 +1,85 @@
 /**
  * Header-based CSV parser for bulk imports
  * Detects column mappings dynamically and applies auto-corrections
+ * Includes data sanitization (HTML/Markdown stripping)
  */
 
 import type { McqFormData, McqChoice } from '@/hooks/useMcqs';
 import type { MatchingQuestionFormData, MatchItem } from '@/hooks/useMatchingQuestions';
+
+// ============================================
+// DATA SANITIZATION UTILITIES
+// ============================================
+
+/**
+ * Strip HTML tags and Markdown formatting from text
+ */
+export function stripHtmlAndMarkdown(text: string): string {
+  if (!text || typeof text !== 'string') return '';
+  
+  let result = text;
+  
+  // Strip HTML tags
+  result = result.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  result = result
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Strip Markdown bold/italic
+  result = result.replace(/\*\*([^*]+)\*\*/g, '$1'); // **bold**
+  result = result.replace(/\*([^*]+)\*/g, '$1');     // *italic*
+  result = result.replace(/__([^_]+)__/g, '$1');     // __bold__
+  result = result.replace(/_([^_]+)_/g, '$1');       // _italic_
+  
+  // Strip Markdown headers
+  result = result.replace(/^#{1,6}\s*/gm, '');
+  
+  // Strip Markdown links [text](url) -> text
+  result = result.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  
+  // Strip Markdown images ![alt](url) -> alt
+  result = result.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  
+  // Strip backticks for inline code
+  result = result.replace(/`([^`]+)`/g, '$1');
+  
+  // Strip code blocks
+  result = result.replace(/```[\s\S]*?```/g, '');
+  
+  // Collapse multiple spaces to one
+  result = result.replace(/\s+/g, ' ');
+  
+  // Trim
+  result = result.trim();
+  
+  return result;
+}
+
+/**
+ * Sanitize a complete MCQ object
+ */
+export function sanitizeMcq(mcq: McqFormData): McqFormData {
+  return {
+    stem: stripHtmlAndMarkdown(mcq.stem),
+    choices: mcq.choices.map(c => ({
+      key: c.key,
+      text: stripHtmlAndMarkdown(c.text)
+    })),
+    correct_key: mcq.correct_key,
+    explanation: mcq.explanation ? stripHtmlAndMarkdown(mcq.explanation) : null,
+    difficulty: mcq.difficulty
+  };
+}
+
+// ============================================
+// COLUMN MAPPINGS
+// ============================================
 
 // Column name mappings for auto-detection (lowercase normalized)
 const COLUMN_MAPPINGS: Record<string, string> = {
@@ -92,7 +167,7 @@ const COLUMN_MAPPINGS: Record<string, string> = {
 };
 
 export interface ParseCorrection {
-  type: 'column_mapped' | 'correct_key_converted' | 'header_skipped' | 'whitespace_trimmed';
+  type: 'column_mapped' | 'correct_key_converted' | 'header_skipped' | 'whitespace_trimmed' | 'html_stripped';
   originalValue?: string;
   correctedValue?: string;
   row?: number;
@@ -144,7 +219,7 @@ function normalizeColumnName(name: string): string {
   return name.toLowerCase().replace(/[\s_-]+/g, '_').replace(/[^a-z0-9_]/g, '');
 }
 
-// Resolve correct key from various formats
+// Resolve correct key from various formats (advanced normalization)
 function resolveCorrectKey(
   value: string, 
   choices: McqChoice[],
@@ -185,21 +260,68 @@ function resolveCorrectKey(
     };
   }
   
-  // If text, find matching choice
+  // Check for patterns like "Option B", "Answer: C", "Choice D", "The correct answer is A"
+  const letterPatterns = [
+    /\b(?:option|choice|answer)\s*:?\s*([A-Ea-e])\b/i,
+    /\b([A-Ea-e])\s*(?:is correct|is the answer)/i,
+    /correct\s*(?:answer\s*)?(?:is\s*)?:?\s*([A-Ea-e])\b/i,
+    /\b([A-Ea-e])\b/  // Last resort: any single letter A-E
+  ];
+  
+  for (const pattern of letterPatterns) {
+    const match = trimmed.match(pattern);
+    if (match && match[1]) {
+      const extracted = match[1].toUpperCase();
+      return {
+        key: extracted,
+        correction: {
+          type: 'correct_key_converted',
+          originalValue: trimmed.substring(0, 40) + (trimmed.length > 40 ? '...' : ''),
+          correctedValue: extracted,
+          row: rowIndex + 1,
+          message: `Row ${rowIndex + 1}: Extracted answer key "${extracted}" from "${trimmed.substring(0, 30)}..."`
+        }
+      };
+    }
+  }
+  
+  // If text, find matching choice by exact or partial match
   if (trimmed.length > 1) {
-    const matchingChoice = choices.find(c => 
-      c.text.toLowerCase().trim() === trimmed.toLowerCase()
+    const lowerTrimmed = trimmed.toLowerCase();
+    
+    // Try exact match first
+    const exactMatch = choices.find(c => 
+      c.text.toLowerCase().trim() === lowerTrimmed
     );
     
-    if (matchingChoice) {
+    if (exactMatch) {
       return {
-        key: matchingChoice.key,
+        key: exactMatch.key,
         correction: {
           type: 'correct_key_converted',
           originalValue: trimmed.substring(0, 30) + (trimmed.length > 30 ? '...' : ''),
-          correctedValue: matchingChoice.key,
+          correctedValue: exactMatch.key,
           row: rowIndex + 1,
-          message: `Row ${rowIndex + 1}: Answer key matched to choice "${matchingChoice.key}"`
+          message: `Row ${rowIndex + 1}: Answer key matched to choice "${exactMatch.key}" (exact)`
+        }
+      };
+    }
+    
+    // Try partial match (answer text contains choice or vice versa)
+    const partialMatch = choices.find(c => {
+      const choiceLower = c.text.toLowerCase().trim();
+      return lowerTrimmed.includes(choiceLower) || choiceLower.includes(lowerTrimmed);
+    });
+    
+    if (partialMatch) {
+      return {
+        key: partialMatch.key,
+        correction: {
+          type: 'correct_key_converted',
+          originalValue: trimmed.substring(0, 30) + (trimmed.length > 30 ? '...' : ''),
+          correctedValue: partialMatch.key,
+          row: rowIndex + 1,
+          message: `Row ${rowIndex + 1}: Answer key matched to choice "${partialMatch.key}" (partial)`
         }
       };
     }
@@ -320,18 +442,30 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
       return index !== undefined ? (parts[index] || '').trim() : '';
     };
     
-    const stem = getValue('stem');
+    const stemRaw = getValue('stem');
     
     // Skip rows with no stem or stems that are just numbers (likely row numbers)
-    if (!stem || /^\d+$/.test(stem)) continue;
+    if (!stemRaw || /^\d+$/.test(stemRaw)) continue;
+    
+    // Apply sanitization to all text fields
+    const stem = stripHtmlAndMarkdown(stemRaw);
     
     const choices: McqChoice[] = [
-      { key: 'A', text: getValue('choice_a') },
-      { key: 'B', text: getValue('choice_b') },
-      { key: 'C', text: getValue('choice_c') },
-      { key: 'D', text: getValue('choice_d') },
-      { key: 'E', text: getValue('choice_e') },
+      { key: 'A', text: stripHtmlAndMarkdown(getValue('choice_a')) },
+      { key: 'B', text: stripHtmlAndMarkdown(getValue('choice_b')) },
+      { key: 'C', text: stripHtmlAndMarkdown(getValue('choice_c')) },
+      { key: 'D', text: stripHtmlAndMarkdown(getValue('choice_d')) },
+      { key: 'E', text: stripHtmlAndMarkdown(getValue('choice_e')) },
     ];
+    
+    // Check if any HTML/Markdown was stripped
+    const stemHadFormatting = stemRaw !== stem;
+    if (stemHadFormatting && !corrections.some(c => c.type === 'html_stripped')) {
+      corrections.push({
+        type: 'html_stripped',
+        message: 'HTML tags and Markdown formatting were stripped from content'
+      });
+    }
     
     // Resolve correct key with potential correction
     const correctKeyRaw = getValue('correct_key');
@@ -345,7 +479,8 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
       corrections.push(keyCorrection);
     }
     
-    const explanation = getValue('explanation') || null;
+    const explanationRaw = getValue('explanation');
+    const explanation = explanationRaw ? stripHtmlAndMarkdown(explanationRaw) : null;
     const difficultyRaw = getValue('difficulty')?.toLowerCase();
     const difficulty: 'easy' | 'medium' | 'hard' | null = 
       ['easy', 'medium', 'hard'].includes(difficultyRaw) 
