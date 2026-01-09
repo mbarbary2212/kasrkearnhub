@@ -172,6 +172,7 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [studentSearch, setStudentSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
@@ -665,11 +666,31 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name or email..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
                 {users.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No users found</p>
                 ) : (
                   <div className="space-y-4">
-                    {users.map((u) => (
+                    {users
+                      .filter(u => {
+                        if (!userSearch.trim()) return true;
+                        const search = userSearch.toLowerCase();
+                        return (
+                          u.email.toLowerCase().includes(search) ||
+                          (u.full_name?.toLowerCase().includes(search) ?? false)
+                        );
+                      })
+                      .map((u) => (
                       <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
