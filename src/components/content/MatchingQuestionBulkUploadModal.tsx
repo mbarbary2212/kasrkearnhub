@@ -12,12 +12,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
+import { CsvCorrectionPreview } from './CsvCorrectionPreview';
 import { useBulkUploadAnalyzer } from '@/hooks/useBulkUploadAnalyzer';
 import {
   useBulkCreateMatchingQuestions,
-  parseMatchingQuestionsCsv,
   type MatchingQuestionFormData,
 } from '@/hooks/useMatchingQuestions';
+import { parseSmartMatchingCsv, type ParseCorrection } from '@/lib/csvParser';
 
 interface MatchingQuestionBulkUploadModalProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function MatchingQuestionBulkUploadModal({
 }: MatchingQuestionBulkUploadModalProps) {
   const [csvText, setCsvText] = useState('');
   const [parsedQuestions, setParsedQuestions] = useState<MatchingQuestionFormData[]>([]);
+  const [parseCorrections, setParseCorrections] = useState<ParseCorrection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'input' | 'preview'>('input');
   
@@ -55,7 +57,9 @@ export function MatchingQuestionBulkUploadModal({
   const handleParse = () => {
     setError(null);
     try {
-      const questions = parseMatchingQuestionsCsv(csvText);
+      const { questions, corrections } = parseSmartMatchingCsv(csvText);
+      setParseCorrections(corrections);
+      
       if (questions.length === 0) {
         setError('No valid questions found in CSV');
         return;
@@ -105,6 +109,7 @@ export function MatchingQuestionBulkUploadModal({
     onOpenChange(false);
     setCsvText('');
     setParsedQuestions([]);
+    setParseCorrections([]);
     setStep('input');
     setError(null);
     clearAnalysis();
@@ -204,6 +209,11 @@ export function MatchingQuestionBulkUploadModal({
                   {parsedQuestions.length} matching question(s) ready to import
                 </AlertDescription>
               </Alert>
+
+              {/* Auto-corrections applied preview */}
+              {parseCorrections.length > 0 && (
+                <CsvCorrectionPreview corrections={parseCorrections} />
+              )}
 
               <div className="max-h-96 overflow-y-auto space-y-4">
                 {parsedQuestions.map((q, i) => (
