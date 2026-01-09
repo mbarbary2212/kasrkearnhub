@@ -20,7 +20,7 @@ import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
-import { DepartmentsTab } from '@/components/admin/DepartmentsTab';
+import { CurriculumTab } from '@/components/admin/CurriculumTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
@@ -598,63 +598,63 @@ export default function AdminPage() {
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="students" className="gap-2">
+              <TabsTrigger value="students" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <GraduationCap className="w-4 h-4" />
                 Students
               </TabsTrigger>
             )}
-            <TabsTrigger value="topic-admins" className="gap-2">
+            <TabsTrigger value="topic-admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <FileText className="w-4 h-4" />
               Topic Admins
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="admins" className="gap-2">
+              <TabsTrigger value="admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Building2 className="w-4 h-4" />
                 Module Admins
               </TabsTrigger>
             )}
             {isSuperAdmin && (
-              <TabsTrigger value="platform-admins" className="gap-2">
+              <TabsTrigger value="platform-admins" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Shield className="w-4 h-4" />
                 Platform Admins
               </TabsTrigger>
             )}
             {isPlatformAdmin && (
-              <TabsTrigger value="settings" className="gap-2">
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="w-4 h-4" />
                 Settings
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="curriculum" className="gap-2">
+              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Layers className="w-4 h-4" />
                 Curriculum
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="announcements" className="gap-2">
+              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Megaphone className="w-4 h-4" />
                 Announcements
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="analytics" className="gap-2">
+              <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <BarChart3 className="w-4 h-4" />
                 User Analytics
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="question-analytics" className="gap-2">
+              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Activity className="w-4 h-4" />
                 Question Analytics
               </TabsTrigger>
             )}
-            <TabsTrigger value="help" className="gap-2">
+            <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
             </TabsTrigger>
@@ -858,225 +858,7 @@ export default function AdminPage() {
           {/* Curriculum Tab - Super Admin & Platform Admin */}
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="curriculum">
-              <div className="grid gap-6">
-                {/* Years Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      Academic Years
-                    </CardTitle>
-                    <CardDescription>
-                      Years are pre-configured. Manage modules within each year below.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                      {years.map((year) => (
-                        <div key={year.id} className={`p-4 rounded-lg border-2 ${year.is_active ? 'border-primary' : 'border-muted'}`}>
-                          <div className={`w-10 h-10 ${year.color || 'bg-primary'} rounded-lg flex items-center justify-center mb-2`}>
-                            <span className="text-lg font-bold text-primary-foreground">{year.number}</span>
-                          </div>
-                          <p className="font-medium">{year.name}</p>
-                          <p className="text-sm text-muted-foreground">{year.subtitle}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {modules.filter(m => m.year_id === year.id).length} modules
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Modules Section */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <BookOpen className="w-5 h-5" />
-                          Modules
-                        </CardTitle>
-                        <CardDescription>
-                          Create and manage modules for each academic year.
-                        </CardDescription>
-                      </div>
-                      <Dialog open={showModuleDialog} onOpenChange={(open) => {
-                        setShowModuleDialog(open);
-                        if (!open) {
-                          setEditingModule(null);
-                          resetModuleForm();
-                        }
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Module
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>{editingModule ? 'Edit Module' : 'Create New Module'}</DialogTitle>
-                            <DialogDescription>
-                              {editingModule ? 'Update module details.' : 'Add a new module to the curriculum.'}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            {!editingModule && (
-                              <div className="space-y-2">
-                                <Label>Year *</Label>
-                                <Select
-                                  value={moduleForm.year_id}
-                                  onValueChange={(value) => setModuleForm(prev => ({ ...prev, year_id: value }))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select year" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {years.map(year => (
-                                      <SelectItem key={year.id} value={year.id}>
-                                        {year.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                            <div className="space-y-2">
-                              <Label>Name *</Label>
-                              <Input
-                                value={moduleForm.name}
-                                onChange={(e) => setModuleForm(prev => ({ 
-                                  ...prev, 
-                                  name: e.target.value,
-                                  slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-                                }))}
-                                placeholder="e.g., Cardiovascular System"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Arabic Name</Label>
-                              <Input
-                                value={moduleForm.name_ar}
-                                onChange={(e) => setModuleForm(prev => ({ ...prev, name_ar: e.target.value }))}
-                                placeholder="الاسم بالعربية"
-                                dir="rtl"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Slug *</Label>
-                              <Input
-                                value={moduleForm.slug}
-                                onChange={(e) => setModuleForm(prev => ({ ...prev, slug: e.target.value }))}
-                                placeholder="cardiovascular-system"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Description</Label>
-                              <Input
-                                value={moduleForm.description}
-                                onChange={(e) => setModuleForm(prev => ({ ...prev, description: e.target.value }))}
-                                placeholder="Module description"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Page Count</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={moduleForm.page_count}
-                                onChange={(e) => setModuleForm(prev => ({ ...prev, page_count: e.target.value }))}
-                                placeholder="Total pages in module books"
-                              />
-                              <p className="text-xs text-muted-foreground">Used for auto-calculating workload. Higher pages = heavier workload.</p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Workload Level Override</Label>
-                              <Select
-                                value={moduleForm.workload_level || 'auto'}
-                                onValueChange={(value) => setModuleForm(prev => ({ ...prev, workload_level: value === 'auto' ? '' : value as 'light' | 'medium' | 'heavy' | 'heavy_plus' }))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Auto-calculate from pages" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="auto">Auto-calculate from pages</SelectItem>
-                                  <SelectItem value="light">Light</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="heavy">Heavy</SelectItem>
-                                  <SelectItem value="heavy_plus">Heavy+</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <p className="text-xs text-muted-foreground">Override to manually set workload, or leave empty to auto-calculate based on page count.</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={moduleForm.is_published}
-                                onCheckedChange={(checked) => setModuleForm(prev => ({ ...prev, is_published: checked }))}
-                              />
-                              <Label>Published (visible to students)</Label>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setShowModuleDialog(false)}>Cancel</Button>
-                            <Button onClick={editingModule ? handleUpdateModule : handleCreateModule}>
-                              {editingModule ? 'Update' : 'Create'}
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {years.map((year) => {
-                      const yearModules = modules.filter(m => m.year_id === year.id);
-                      if (yearModules.length === 0) return null;
-                      
-                      return (
-                        <div key={year.id} className="mb-6 last:mb-0">
-                          <h3 className="font-medium text-sm text-muted-foreground mb-3">{year.name}</h3>
-                          <div className="space-y-2">
-                            {yearModules.map((module) => (
-                              <div key={module.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 ${year.color || 'bg-primary'} rounded flex items-center justify-center`}>
-                                    <BookOpen className="w-4 h-4 text-primary-foreground" />
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{module.name}</p>
-                                    {module.description && (
-                                      <p className="text-sm text-muted-foreground">{module.description}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={module.is_published ? 'default' : 'secondary'}>
-                                    {module.is_published ? 'Published' : 'Draft'}
-                                  </Badge>
-                                  <Button variant="ghost" size="icon" onClick={() => openEditModule(module)}>
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteModule(module.id)}>
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {modules.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">
-                        No modules created yet. Click "Add Module" to create one.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Departments Management Section */}
-                <DepartmentsTab modules={modules} years={years} />
-              </div>
+              <CurriculumTab modules={modules} years={years} setModules={setModules} />
             </TabsContent>
           )}
 
