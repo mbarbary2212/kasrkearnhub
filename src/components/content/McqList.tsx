@@ -59,6 +59,14 @@ import {
 } from '@/hooks/useQuestionAttempts';
 import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
 import { useBulkUploadAnalyzer } from '@/hooks/useBulkUploadAnalyzer';
+import { 
+  McqSearchFilter, 
+  McqSearchFilterState, 
+  DEFAULT_SEARCH_FILTER,
+  filterMcqsBySearch,
+  filterMcqsByDifficulty,
+  sortMcqs,
+} from './McqSearchFilter';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -192,6 +200,9 @@ export function McqList({
   // AI Analyzer for bulk upload
   const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
 
+  // Search and filter state (for both admin and students)
+  const [searchFilters, setSearchFilters] = useState<McqSearchFilterState>(DEFAULT_SEARCH_FILTER);
+
   // Question attempt tracking hooks (for students)
   const { data: questionAttempts = [] } = useChapterQuestionAttempts(
     chapterId ?? undefined, 
@@ -279,7 +290,7 @@ export function McqList({
     [duplicateMcqs]
   );
 
-  // Filter based on status filters + admin filters
+  // Filter based on status filters + admin filters + search/sort
   const filteredMcqs = useMemo(() => {
     let result = displayMcqs;
     
@@ -295,8 +306,18 @@ export function McqList({
     if (showMarkedOnly) {
       result = result.filter(mcq => markedIds.has(mcq.id));
     }
+    
+    // Apply search filter (for both admin and students)
+    result = filterMcqsBySearch(result, searchFilters.search);
+    
+    // Apply difficulty filter (for both admin and students)
+    result = filterMcqsByDifficulty(result, searchFilters.difficulty);
+    
+    // Apply sorting
+    result = sortMcqs(result, searchFilters.sortBy);
+    
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
 
   const handleResetAttempt = () => {
     if (!chapterId) return;
@@ -597,6 +618,16 @@ export function McqList({
         )}
       </div>
 
+      {/* Search and Filter Bar - visible when there are questions */}
+      {totalQuestions > 0 && (
+        <McqSearchFilter
+          filters={searchFilters}
+          onFiltersChange={setSearchFilters}
+          totalCount={totalQuestions}
+          filteredCount={filteredMcqs.length}
+        />
+      )}
+
       {/* Deleted Items Alert */}
       {showDeleted && (
         <Alert className="border-destructive/50 bg-destructive/5">
@@ -606,6 +637,7 @@ export function McqList({
           </AlertDescription>
         </Alert>
       )}
+
 
       {/* Duplicate Alert */}
       {isAdmin && showDuplicatesOnly && !showDeleted && duplicateMcqs.length > 0 && (
