@@ -448,17 +448,19 @@ export function McqList({
           return;
         }
         
+        // Set csvText early so AI analysis works even if parsing fails
+        setCsvText(text);
+        
         const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
         setParseCorrections(corrections);
         
         if (parsed.length === 0) {
           setFileError('No valid MCQs found in the file. Check the format.');
-          return;
+          // Don't return - allow AI analysis to help with format issues
+        } else {
+          const withDuplicates = processWithDuplicateDetection(parsed);
+          setPreviewData(withDuplicates);
         }
-        
-        const withDuplicates = processWithDuplicateDetection(parsed);
-        setPreviewData(withDuplicates);
-        setCsvText(text);
       } catch (err) {
         setFileError('Failed to parse CSV file');
       }
