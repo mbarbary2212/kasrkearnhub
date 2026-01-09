@@ -32,7 +32,7 @@ import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
-import { WorkedCasesSection } from '@/components/study/WorkedCasesSection';
+import { MindMapViewer } from '@/components/study/MindMapViewer';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
@@ -195,9 +195,9 @@ export default function ChapterPage() {
   const resourcesTabs = createResourceTabs({
     lectures: lectures?.length || 0,
     flashcards: flashcards.length,
+    mind_maps: mindMaps.length,
     documents: documentsCount,
-    clinical_tools: algorithms.length + mindMaps.length,
-    worked_cases: workedCases.length,
+    clinical_tools: algorithms.length + workedCases.length,
   });
 
   const allPracticeTabs = createPracticeTabs({
@@ -420,11 +420,46 @@ export default function ChapterPage() {
                   />
                 )}
 
+                {/* Mind Maps Content */}
+                {resourcesTab === 'mind_maps' && chapterId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              (window as any).__pendingResourceType = 'mind_map';
+                              setFlashcardFormOpen(true);
+                            })
+                          }
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Mind Map
+                        </Button>
+                      </div>
+                    )}
+                    {studyResourcesLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <MindMapViewer
+                        resources={mindMaps}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Clinical Tools Content */}
                 {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
                   <ClinicalToolsSection
                     algorithms={algorithms}
-                    mindMaps={mindMaps}
+                    workedCases={workedCases}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
                     onAdd={(type) => {
@@ -437,20 +472,6 @@ export default function ChapterPage() {
                     }}
                     onBulkUpload={(type) => guardAdd(() => setFlashcardBulkOpen(true))}
                     chapterId={chapterId}
-                  />
-                )}
-
-                {/* Worked Cases Content */}
-                {resourcesTab === 'worked_cases' && chapterId && moduleId && (
-                  <WorkedCasesSection
-                    resources={workedCases}
-                    canManage={canManageContent}
-                    onEdit={handleEditFlashcard}
-                    onAdd={() => guardAdd(() => {
-                      setEditingFlashcard(null);
-                      (window as any).__pendingResourceType = 'clinical_case_worked';
-                      setFlashcardFormOpen(true);
-                    })}
                   />
                 )}
               </div>
