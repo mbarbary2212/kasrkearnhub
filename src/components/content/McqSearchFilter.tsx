@@ -247,12 +247,18 @@ export function McqSearchFilter({
                   <span>Marked ({adminFilters.markedCount})</span>
                 </label>
 
-                {/* Show duplicates */}
-                {adminFilters.duplicatesCount > 0 && !adminFilters.showDeleted && (
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                {/* Show duplicates - always visible so admin knows it exists */}
+                {!adminFilters.showDeleted && (
+                  <label 
+                    className={cn(
+                      "flex items-center gap-2 text-sm",
+                      adminFilters.duplicatesCount > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                    )}
+                  >
                     <Checkbox
                       checked={adminFilters.showDuplicatesOnly}
                       onCheckedChange={(checked) => adminFilters.onShowDuplicatesOnlyChange(!!checked)}
+                      disabled={adminFilters.duplicatesCount === 0}
                     />
                     <Copy className="h-3.5 w-3.5" />
                     <span>Duplicates ({adminFilters.duplicatesCount})</span>
