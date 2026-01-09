@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Plus, Upload, GitBranch, Network } from 'lucide-react';
+import { Plus, Upload, GitBranch, ClipboardList } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StudyResource, StudyResourceType } from '@/hooks/useStudyResources';
 import { StudyResourceTypeSection } from './StudyResourceTypeSection';
-import { MindMapViewer } from './MindMapViewer';
+import { WorkedCaseCard } from './WorkedCaseCard';
 
 interface ClinicalToolsSectionProps {
   algorithms: StudyResource[];
-  mindMaps: StudyResource[];
+  workedCases: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
   onAdd?: (type: StudyResourceType) => void;
@@ -17,15 +17,15 @@ interface ClinicalToolsSectionProps {
   chapterId: string;
 }
 
-// Types that belong to Visual Clinical Tools
-const CLINICAL_TOOLS_TYPES: { type: StudyResourceType; label: string; icon: React.ReactNode }[] = [
+// Types that belong to Clinical Tools - Algorithms and Worked Cases
+const CLINICAL_TOOLS_TYPES: { type: StudyResourceType | 'clinical_case_worked'; label: string; icon: React.ReactNode }[] = [
   { type: 'algorithm', label: 'Algorithms', icon: <GitBranch className="w-4 h-4" /> },
-  { type: 'mind_map', label: 'Mind Maps', icon: <Network className="w-4 h-4" /> },
+  { type: 'clinical_case_worked', label: 'Worked Cases', icon: <ClipboardList className="w-4 h-4" /> },
 ];
 
 export function ClinicalToolsSection({
   algorithms,
-  mindMaps,
+  workedCases,
   canManage = false,
   onEdit,
   onAdd,
@@ -37,7 +37,7 @@ export function ClinicalToolsSection({
       <Tabs defaultValue="algorithm" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
           {CLINICAL_TOOLS_TYPES.map(({ type, label, icon }) => {
-            const count = type === 'algorithm' ? algorithms.length : mindMaps.length;
+            const count = type === 'algorithm' ? algorithms.length : workedCases.length;
             return (
               <TabsTrigger
                 key={type}
@@ -85,25 +85,36 @@ export function ClinicalToolsSection({
           />
         </TabsContent>
 
-        {/* Mind Maps Content */}
-        <TabsContent value="mind_map" className="mt-4">
+        {/* Worked Cases Content */}
+        <TabsContent value="clinical_case_worked" className="mt-4">
           {canManage && (
             <div className="flex gap-2 mb-4">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onAdd?.('mind_map')}
+                onClick={() => onAdd?.('clinical_case_worked')}
               >
                 <Plus className="w-3 h-3 mr-1" />
-                Add Mind Map
+                Add Worked Case
               </Button>
             </div>
           )}
-          <MindMapViewer
-            resources={mindMaps}
-            canManage={canManage}
-            onEdit={onEdit}
-          />
+          {workedCases.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No worked cases available yet.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {workedCases.map((resource) => (
+                <WorkedCaseCard
+                  key={resource.id}
+                  resource={resource}
+                  canManage={canManage}
+                  onEdit={onEdit}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
