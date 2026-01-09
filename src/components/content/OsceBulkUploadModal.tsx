@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -166,15 +167,7 @@ export function OsceBulkUploadModal({
     };
   };
 
-  const handleExcelChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.xlsx')) {
-      toast.error('Please upload an Excel file (.xlsx)');
-      return;
-    }
-
+  const handleExcelSelect = useCallback(async (file: File) => {
     try {
       setExcelFile(file);
       const result = await parseExcelFile(file);
@@ -190,22 +183,16 @@ export function OsceBulkUploadModal({
       setExcelFile(null);
       setExcelValidation(null);
     }
-  };
+  }, []);
 
-  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newImages = new Map(uploadedImages);
-    
-    for (const file of Array.from(files)) {
-      // Use exact filename (case-sensitive)
+  const handleImageSelect = useCallback((file: File) => {
+    setUploadedImages(prev => {
+      const newImages = new Map(prev);
       newImages.set(file.name, file);
-    }
-    
-    setUploadedImages(newImages);
-    toast.success(`Added ${files.length} image(s)`);
-  };
+      return newImages;
+    });
+    toast.success(`Added image: ${file.name}`);
+  }, []);
 
   const removeImage = (filename: string) => {
     const newImages = new Map(uploadedImages);
@@ -442,27 +429,14 @@ export function OsceBulkUploadModal({
               Download Excel Template (.xlsx)
             </Button>
 
-            <div>
-              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${excelFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}`}>
-                {excelFile ? (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>{excelFile.name}</span>
-                  </div>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="w-8 h-8 text-muted-foreground mb-1" />
-                    <span className="text-sm text-muted-foreground">Click to upload Excel (.xlsx only)</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept=".xlsx"
-                  onChange={handleExcelChange}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            <DragDropZone
+              id="osce-excel-upload"
+              onFileSelect={handleExcelSelect}
+              accept=".xlsx"
+              acceptedTypes={['.xlsx']}
+              fileName={excelFile?.name}
+              maxSizeMB={20}
+            />
 
             {/* Excel validation results */}
             {excelValidation && (
@@ -525,19 +499,17 @@ export function OsceBulkUploadModal({
             </Alert>
 
             {/* Image upload area */}
-            <div>
-              <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <ImageIcon className="w-8 h-8 text-muted-foreground mb-1" />
-                <span className="text-sm text-muted-foreground">Click to select images (can select multiple)</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImagesChange}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            <DragDropZone
+              id="osce-image-upload"
+              onFileSelect={handleImageSelect}
+              accept="image/*"
+              acceptedTypes={['.jpg', '.jpeg', '.png', '.gif', '.webp']}
+              fileName={uploadedImages.size > 0 ? `${uploadedImages.size} image(s) uploaded` : undefined}
+              maxSizeMB={20}
+            />
+            <p className="text-xs text-muted-foreground -mt-2">
+              Drop images one at a time, or click to browse and select multiple
+            </p>
 
             {/* Required images checklist */}
             <div className="space-y-2">
