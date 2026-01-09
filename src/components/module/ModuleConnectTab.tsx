@@ -9,6 +9,7 @@ import {
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
 import { MessagesCard } from '@/components/connect/MessagesCard';
+import { DiscussionSection } from '@/components/discussion';
 
 interface ModuleConnectTabProps {
   moduleId: string;
@@ -20,6 +21,21 @@ interface ModuleConnectTabProps {
 export function ModuleConnectTab({ moduleId, moduleName, moduleCode, yearId }: ModuleConnectTabProps) {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [showDiscussion, setShowDiscussion] = useState(false);
+
+  if (showDiscussion) {
+    return (
+      <div className="space-y-4">
+        <button 
+          onClick={() => setShowDiscussion(false)}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          ← Back to Connect
+        </button>
+        <DiscussionSection moduleId={moduleId} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -76,20 +92,23 @@ export function ModuleConnectTab({ moduleId, moduleName, moduleCode, yearId }: M
           </CardContent>
         </Card>
 
-        {/* Discussion Card (Coming Soon) */}
-        <Card className="opacity-60 cursor-not-allowed lg:col-span-3 sm:col-span-2">
+        {/* Discussion Card - Now Active */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 lg:col-span-3 sm:col-span-2"
+          onClick={() => setShowDiscussion(true)}
+        >
           <CardHeader className="pb-2">
-            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mb-2">
-              <MessagesSquare className="w-6 h-6 text-muted-foreground" />
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-2">
+              <MessagesSquare className="w-6 h-6 text-primary" />
             </div>
-            <CardTitle className="text-lg text-muted-foreground">Discussion Forum</CardTitle>
+            <CardTitle className="text-lg">Discussion Forum</CardTitle>
             <CardDescription>
               Connect with peers and discuss module topics
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center text-sm text-muted-foreground font-medium">
-              Coming Soon
+            <div className="flex items-center text-sm text-primary font-medium">
+              Join Discussion <ChevronRight className="w-4 h-4 ml-1" />
             </div>
           </CardContent>
         </Card>
