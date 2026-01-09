@@ -593,6 +593,196 @@ export type Database = {
         }
         Relationships: []
       }
+      discussion_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_edited: boolean | null
+          moderation_reason: string | null
+          moderation_scores: Json | null
+          moderation_status: string | null
+          parent_id: string | null
+          thread_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          moderation_reason?: string | null
+          moderation_scores?: Json | null
+          moderation_status?: string | null
+          parent_id?: string | null
+          thread_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          moderation_reason?: string | null
+          moderation_scores?: Json | null
+          moderation_status?: string | null
+          parent_id?: string | null
+          thread_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          id: string
+          message_id: string
+          reason: string
+          reported_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          message_id: string
+          reason: string
+          reported_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          message_id?: string
+          reason?: string
+          reported_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_threads: {
+        Row: {
+          chapter_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_locked: boolean | null
+          is_pinned: boolean | null
+          last_activity_at: string | null
+          module_id: string | null
+          reply_count: number | null
+          title: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          module_id?: string | null
+          reply_count?: number | null
+          title: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          module_id?: string | null
+          reply_count?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_threads_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_threads_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussion_warnings: {
+        Row: {
+          created_at: string | null
+          id: string
+          issued_by: string | null
+          message_id: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          issued_by?: string | null
+          message_id?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          issued_by?: string | null
+          message_id?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussion_warnings_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       essays: {
         Row: {
           chapter_id: string | null
@@ -3232,6 +3422,7 @@ export type Database = {
           status: string
         }[]
       }
+      get_user_warning_count: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
