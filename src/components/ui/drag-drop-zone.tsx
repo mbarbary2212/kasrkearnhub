@@ -50,6 +50,13 @@ export function DragDropZone({
     onFileSelect(file);
   }, [validateFile, onFileSelect]);
 
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragError(null);
+  }, []);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -92,6 +99,7 @@ export function DragDropZone({
   return (
     <div className="space-y-2">
       <div
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
