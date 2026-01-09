@@ -108,10 +108,32 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
-            <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
-            <span className="font-heading font-bold text-xl">KasrLearn</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Achievements Trophy Icon - Left of logo */}
+            {user && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setBadgesOpen(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
+                    >
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Achievements
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
+              <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
+              <span className="font-heading font-bold text-xl">KasrLearn</span>
+            </button>
+          </div>
 
           <nav className="hidden md:flex items-center gap-6">
             <button
@@ -153,26 +175,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </TooltipProvider>
             )}
 
-            {/* Achievements Trophy Icon - Available to all logged-in users */}
-            {user && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => setBadgesOpen(true)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
-                    >
-                      <Trophy className="h-6 w-6 text-yellow-500" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    Achievements
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
 
             {/* Imhotep Icon - Role-aware: Admin Panel for admins, Study Coach for students */}
             {user && (
