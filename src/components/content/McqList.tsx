@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -509,10 +510,12 @@ export function McqList({
   const handleAnalyze = useCallback(() => {
     console.log('[McqList] handleAnalyze called');
     console.log('[McqList] csvText length:', csvText.length);
+    console.log('[McqList] fileName:', fileName);
     
     const textToAnalyze = csvText.trim();
     if (!textToAnalyze) {
       console.warn('[McqList] No CSV text available for analysis');
+      toast.error('No file content to analyze. Please select a file first.');
       return;
     }
     
@@ -521,15 +524,25 @@ export function McqList({
     
     if (lines.length === 0) {
       console.warn('[McqList] No valid lines found');
+      toast.error('File appears to be empty. Please check your file.');
+      return;
+    }
+    
+    if (lines.length < 2) {
+      console.warn('[McqList] Only header row found, no data rows');
+      toast.error('File has no data rows. At least one data row is required.');
       return;
     }
     
     const headers = parseCSVLine(lines[0]);
-    const sampleRows = lines.slice(1, 4).map(parseCSVLine);
+    const sampleRows = lines.slice(1, Math.min(5, lines.length)).map(parseCSVLine);
     
-    console.log('[McqList] Calling analyzeFile with headers:', headers);
+    console.log('[McqList] Headers:', headers);
+    console.log('[McqList] Sample rows:', sampleRows.length);
+    console.log('[McqList] Calling analyzeFile...');
+    
     analyzeFile('mcq', headers, sampleRows);
-  }, [csvText, analyzeFile]);
+  }, [csvText, fileName, analyzeFile]);
 
   const toggleItemStatus = (index: number) => {
     if (!previewData) return;

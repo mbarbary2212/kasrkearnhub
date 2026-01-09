@@ -17,10 +17,15 @@ const TEMPLATE_SCHEMAS = {
     required: ["stem", "choice_a", "choice_b", "choice_c", "choice_d", "correct_key"],
     optional: ["choice_e", "explanation", "difficulty"],
     aliases: {
+      // Question/Stem variations
       "question": "stem",
       "question_text": "stem", 
       "question_data": "stem",
+      "questiondata": "stem",
       "q": "stem",
+      "text": "stem",
+      "prompt": "stem",
+      // Choice variations
       "a": "choice_a",
       "b": "choice_b", 
       "c": "choice_c",
@@ -31,10 +36,25 @@ const TEMPLATE_SCHEMAS = {
       "option_c": "choice_c",
       "option_d": "choice_d",
       "option_e": "choice_e",
+      "optiona": "choice_a",
+      "optionb": "choice_b",
+      "optionc": "choice_c",
+      "optiond": "choice_d",
+      "optione": "choice_e",
+      "answer_a": "choice_a",
+      "answer_b": "choice_b",
+      "answer_c": "choice_c",
+      "answer_d": "choice_d",
+      "answer_e": "choice_e",
+      // Answer key variations
       "answer": "correct_key",
       "correct_answer": "correct_key",
       "correct": "correct_key",
       "key": "correct_key",
+      "the_key": "correct_key",
+      "thekey": "correct_key",
+      "ans": "correct_key",
+      "right_answer": "correct_key",
     },
     description: "MCQ bulk upload template",
   },
@@ -77,7 +97,7 @@ const TEMPLATE_SCHEMAS = {
   },
 };
 
-const SYSTEM_PROMPT = `You are an Admin Co-Pilot for medical faculty. Your job is to analyze uploaded CSV/Excel files and help map columns to the correct database schema.
+const SYSTEM_PROMPT = `You are an Admin Co-Pilot (Surgical Data Architect) for medical faculty. Your job is to analyze uploaded CSV/Excel files and help map columns to the correct database schema.
 
 ## Your Responsibilities:
 1. **Column Analysis**: Examine the headers and sample data from uploaded files
@@ -85,12 +105,25 @@ const SYSTEM_PROMPT = `You are an Admin Co-Pilot for medical faculty. Your job i
 3. **Quality Check**: Identify potential issues with the data (missing values, wrong formats, etc.)
 4. **Clear Guidance**: Provide actionable suggestions for fixing issues
 
-## Auto-Correction Notice:
+## Critical Mapping Rules:
+- **Question_Data** → maps to **stem** (the question text)
+- **The_Key** → maps to **correct_key** (the answer letter)
+- Strip ALL HTML tags (<b>, <span>, <p>, <br>, etc.) and Markdown formatting (**, *, etc.) from text fields
+- For answer keys, extract ONLY the single letter (A-E), even if cell contains:
+  - "The answer is A" → extract "A"
+  - "Option 2" → convert to "B" 
+  - "1" → convert to "A"
+  - "Answer: C" → extract "C"
+  - "B is correct" → extract "B"
+
+## Auto-Correction Notice (tell user these are automatic):
 The system automatically handles these corrections during import:
-- Numeric answer keys (1,2,3,4,5) are converted to letters (A,B,C,D,E)
-- HTML tags and Markdown formatting are stripped from text
-- Whitespace is trimmed and normalized
-- Header rows are automatically detected and skipped
+- Numeric answer keys (1,2,3,4,5) → converted to letters (A,B,C,D,E)
+- HTML tags (<b>, <span>, <br>, etc.) → stripped from all text
+- Markdown formatting (**, *, etc.) → stripped from all text
+- Whitespace → trimmed and normalized
+- Header rows → automatically detected and skipped
+- Answer phrases like "The answer is A" → extracted to just "A"
 
 ## Response Format:
 Always respond with a valid JSON object (no markdown code blocks):
@@ -105,7 +138,7 @@ Always respond with a valid JSON object (no markdown code blocks):
   "summary": "Human-readable summary of the analysis"
 }
 
-Be helpful and specific. If columns can be automatically mapped, do so with high confidence.
+Be helpful and specific. If columns can be automatically mapped (even with different names), provide high confidence mappings.
 Consider common column name variations and aliases when mapping.`;
 
 serve(async (req) => {
@@ -164,26 +197,32 @@ serve(async (req) => {
 
     const prompt = `Analyze this bulk upload file for ${schema.description}.
 
-## Required Columns:
+## Required Database Columns:
 ${schema.required.join(", ")}
 
-## Optional Columns:
+## Optional Database Columns:
 ${schema.optional.join(", ")}
 
-## Common Aliases (these map automatically):
-${Object.entries(schema.aliases || {}).map(([k, v]) => `${k} → ${v}`).join(", ")}
+## Known Column Aliases (auto-mapped):
+${Object.entries(schema.aliases || {}).map(([k, v]) => `"${k}" → "${v}"`).join(", ")}
 
-## File Headers (normalized to lowercase):
-${headers.map(h => h.toLowerCase().trim()).join(", ")}
+## Uploaded File Headers (as-is):
+${headers.join(", ")}
 
-## Sample Data (first 3 rows):
-${(sampleRows || []).slice(0, 3).map((row, i) => `Row ${i + 1}: ${row.join(" | ")}`).join("\n")}
+## Uploaded File Headers (normalized lowercase):
+${headers.map(h => h.toLowerCase().trim().replace(/\s+/g, '_')).join(", ")}
 
-Analyze the file and provide mapping suggestions. Check if:
-1. All required columns are present (exact match or similar names)
-2. The data format looks correct (answer keys should be A-E or 1-5)
-3. There are any quality issues in the sample data
-4. Consider common aliases and variations in column names
+## Sample Data (first rows):
+${(sampleRows || []).slice(0, 4).map((row, i) => `Row ${i + 1}: ${row.map(cell => '"' + cell + '"').join(" | ")}`).join("\n")}
+
+## Your Analysis Tasks:
+1. Map each uploaded column to the correct database column (use aliases if applicable)
+2. Check if "Question_Data" or similar should map to "stem"
+3. Check if "The_Key" or similar should map to "correct_key"
+4. Verify answer key format - extract single letters (A-E) from phrases like "The answer is A"
+5. Note if HTML tags or Markdown are present in the data (they'll be stripped automatically)
+6. List any missing required columns
+7. Assess overall data quality
 
 Respond with ONLY a valid JSON object (no markdown formatting, no code blocks).`;
 
