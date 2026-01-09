@@ -256,11 +256,17 @@ export function McqList({
   // Combine active and deleted MCQs based on showDeleted flag
   const displayMcqs = showDeleted ? deletedMcqs : mcqs;
 
-  // Find duplicates in existing MCQs
-  const duplicateMcqs = useMemo(() => {
-    if (!isAdmin) return [];
+  // Find duplicates in existing MCQs and build groupings
+  const { duplicateMcqs, duplicateIds, duplicateGroupMap } = useMemo(() => {
+    if (!isAdmin) return { 
+      duplicateMcqs: [] as { mcq: Mcq; matchedWith: Mcq; similarity: number }[], 
+      duplicateIds: new Set<string>(),
+      duplicateGroupMap: new Map<string, string>()
+    };
     
     const duplicates: { mcq: Mcq; matchedWith: Mcq; similarity: number }[] = [];
+    // Map each MCQ id to its "group leader" (the first MCQ in a duplicate group)
+    const groupMap = new Map<string, string>();
     
     for (let i = 0; i < mcqs.length; i++) {
       for (let j = i + 1; j < mcqs.length; j++) {
@@ -271,17 +277,37 @@ export function McqList({
             matchedWith: mcqs[i],
             similarity: result.similarity,
           });
+          
+          // Build group mapping - find the ultimate leader
+          const leaderI = groupMap.get(mcqs[i].id) || mcqs[i].id;
+          const leaderJ = groupMap.get(mcqs[j].id) || mcqs[j].id;
+          
+          // If they have different leaders, unify them
+          if (leaderI !== leaderJ) {
+            // Make leaderI the canonical leader
+            groupMap.set(mcqs[j].id, leaderI);
+            groupMap.set(leaderJ, leaderI);
+          } else {
+            groupMap.set(mcqs[j].id, leaderI);
+          }
+          
+          // Ensure the leader points to itself
+          if (!groupMap.has(mcqs[i].id)) {
+            groupMap.set(mcqs[i].id, mcqs[i].id);
+          }
         }
       }
     }
     
-    return duplicates;
+    // Get all IDs involved in duplicates (both the duplicate and its match)
+    const ids = new Set<string>();
+    duplicates.forEach(d => {
+      ids.add(d.mcq.id);
+      ids.add(d.matchedWith.id);
+    });
+    
+    return { duplicateMcqs: duplicates, duplicateIds: ids, duplicateGroupMap: groupMap };
   }, [mcqs, isAdmin]);
-
-  const duplicateIds = useMemo(() => 
-    new Set(duplicateMcqs.map(d => d.mcq.id)),
-    [duplicateMcqs]
-  );
 
   // Filter based on status filters + admin filters + search/sort
   const filteredMcqs = useMemo(() => {
@@ -306,11 +332,31 @@ export function McqList({
     // Apply difficulty filter (for both admin and students)
     result = filterMcqsByDifficulty(result, searchFilters.difficulty);
     
-    // Apply sorting
-    result = sortMcqs(result, searchFilters.sortBy);
+    // Apply sorting - but if duplicates filter is on, group by similarity instead
+    if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
+      // Sort by group leader, then by similarity within group
+      result = [...result].sort((a, b) => {
+        const leaderA = duplicateGroupMap.get(a.id) || a.id;
+        const leaderB = duplicateGroupMap.get(b.id) || b.id;
+        
+        // Sort by group leader first
+        if (leaderA !== leaderB) {
+          return leaderA.localeCompare(leaderB);
+        }
+        
+        // Within the same group, put the leader first, then others
+        if (a.id === leaderA) return -1;
+        if (b.id === leaderA) return 1;
+        
+        // Otherwise maintain order
+        return 0;
+      });
+    } else {
+      result = sortMcqs(result, searchFilters.sortBy);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
 
   const handleResetAttempt = () => {
     if (!chapterId) return;
