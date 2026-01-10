@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractVimeoId } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractVimeoIdAndHash } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
@@ -186,8 +186,8 @@ export function LectureList({
 
   const videoUrl = selectedLecture?.video_url || selectedLecture?.videoUrl;
   const normalizedVideoUrl = normalizeVideoInput(videoUrl);
-  const vimeoId = extractVimeoId(normalizedVideoUrl);
-  const isVimeoVideo = !!vimeoId;
+  const vimeoInfo = extractVimeoIdAndHash(normalizedVideoUrl);
+  const isVimeoVideo = !!vimeoInfo?.id;
   const embedUrl = isVimeoVideo ? null : buildAutoplayUrl(videoUrl);
 
   return (
@@ -314,10 +314,11 @@ export function LectureList({
                 setIsPlayerReady(false);
               }}
             >
-              {isVimeoVideo && vimeoId ? (
+              {isVimeoVideo && vimeoInfo?.id ? (
                 <VimeoPlayer
                   key={playerKey}
-                  videoId={vimeoId}
+                  videoId={vimeoInfo.id}
+                  privacyHash={vimeoInfo.hash}
                   autoplay={true}
                   onReady={() => setIsPlayerReady(true)}
                 />
