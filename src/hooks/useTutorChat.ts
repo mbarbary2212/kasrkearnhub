@@ -6,7 +6,7 @@ export interface Message {
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
 
 export function useTutorChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,9 +30,21 @@ export function useTutorChat() {
       body: JSON.stringify({ messages: userMessages }),
     });
 
+    // Check if the response is a blocked message (JSON response)
+    const contentType = resp.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await resp.json();
+      if (data.blocked) {
+        toast.warning(data.message || 'Your message could not be processed.');
+        return;
+      }
+      if (data.error) {
+        throw new Error(data.error);
+      }
+    }
+
     if (!resp.ok) {
-      const error = await resp.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `Error: ${resp.status}`);
+      throw new Error(`Error: ${resp.status}`);
     }
 
     if (!resp.body) throw new Error('No response body');
