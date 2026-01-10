@@ -85,31 +85,63 @@ export function extractGoogleDriveId(url: string | null | undefined): string | n
 
   return null;
 }
+/**
+ * Vimeo video info with optional privacy hash for unlisted videos
+ */
+export interface VimeoVideoInfo {
+  id: string;
+  hash: string | null;
+}
 
 /**
  * Extract Vimeo video ID from various URL formats
  */
 export function extractVimeoId(url: string | null | undefined): string | null {
+  const info = extractVimeoIdAndHash(url);
+  return info?.id || null;
+}
+
+/**
+ * Extract Vimeo video ID AND privacy hash from various URL formats
+ * The privacy hash (?h=xxx or /xxx after video ID) is required for unlisted/private videos
+ */
+export function extractVimeoIdAndHash(url: string | null | undefined): VimeoVideoInfo | null {
   if (!url) return null;
   
-  const patterns = [
-    // https://vimeo.com/VIDEO_ID
-    /vimeo\.com\/(\d+)/,
-    // https://player.vimeo.com/video/VIDEO_ID
-    /player\.vimeo\.com\/video\/(\d+)/,
-    // https://vimeo.com/channels/CHANNEL/VIDEO_ID
-    /vimeo\.com\/channels\/[^\/]+\/(\d+)/,
-    // https://vimeo.com/groups/GROUP/videos/VIDEO_ID
-    /vimeo\.com\/groups\/[^\/]+\/videos\/(\d+)/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
+  // Pattern 1: Query param format - vimeo.com/123456?h=abc123 or player.vimeo.com/video/123456?h=abc123
+  const queryMatch = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)(?:[?&]h=([a-zA-Z0-9]+))?/);
+  if (queryMatch && queryMatch[1]) {
+    return {
+      id: queryMatch[1],
+      hash: queryMatch[2] || extractHashFromPath(url, queryMatch[1]) || null
+    };
+  }
+  
+  // Pattern 2: Channels/groups format
+  const channelMatch = url.match(/vimeo\.com\/(?:channels|groups)\/[^\/]+\/(?:videos\/)?(\d+)/);
+  if (channelMatch && channelMatch[1]) {
+    return {
+      id: channelMatch[1],
+      hash: null
+    };
   }
 
+  return null;
+}
+
+/**
+ * Extract privacy hash from path format: vimeo.com/123456/abc123
+ */
+function extractHashFromPath(url: string, videoId: string): string | null {
+  // Look for pattern: /VIDEO_ID/HASH where HASH is alphanumeric
+  const pathMatch = url.match(new RegExp(`/${videoId}/([a-zA-Z0-9]+)(?:[?#]|$)`));
+  if (pathMatch && pathMatch[1]) {
+    // Make sure it's not another path segment like 'video' or 'embed'
+    const hash = pathMatch[1];
+    if (!['video', 'embed', 'player', 'channels', 'groups'].includes(hash.toLowerCase())) {
+      return hash;
+    }
+  }
   return null;
 }
 
@@ -163,10 +195,37 @@ export function getGoogleDriveThumbnail(fileId: string): string {
 }
 
 /**
- * Get Vimeo embed URL from video ID
+ * Get Vimeo embed URL from video ID with optional privacy hash
+ * @param videoId - The Vimeo video ID
+ * @param hash - Optional privacy hash for unlisted videos
+ * @param options - Additional embed options
  */
-export function getVimeoEmbedUrl(videoId: string): string {
-  return `https://player.vimeo.com/video/${videoId}`;
+export function getVimeoEmbedUrl(
+  videoId: string, 
+  hash?: string | null,
+  options?: { autoplay?: boolean; muted?: boolean }
+): string {
+  const params = new URLSearchParams();
+  
+  // Add privacy hash first if present (required for unlisted videos)
+  if (hash) {
+    params.set('h', hash);
+  }
+  
+  // Add playback options
+  if (options?.autoplay) {
+    params.set('autoplay', '1');
+  }
+  if (options?.muted) {
+    params.set('muted', '1');
+  }
+  
+  // Always add these for better mobile support
+  params.set('playsinline', '1');
+  params.set('dnt', '1'); // Do not track
+  
+  const queryString = params.toString();
+  return `https://player.vimeo.com/video/${videoId}${queryString ? `?${queryString}` : ''}`;
 }
 
 /**
@@ -207,25 +266,21 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
   }
   
   if (source === 'vimeo') {
-    const id = extractVimeoId(url);
-    // For Vimeo, preserve the original embed URL if it's already a player URL
-    // This keeps query parameters like app_id which may be needed for private videos
-    let embedUrl: string | null = null;
-    if (id) {
-      if (url && url.includes('player.vimeo.com')) {
-        // Already an embed URL, use it as-is (preserves query params)
-        embedUrl = url;
-      } else {
-        // Regular Vimeo URL, build embed URL
-        embedUrl = getVimeoEmbedUrl(id);
-      }
-    }
+    const vimeoInfo = extractVimeoIdAndHash(url);
+    const id = vimeoInfo?.id || null;
+    const hash = vimeoInfo?.hash || null;
+    
+    // Build embed URL with privacy hash if present
+    const embedUrl = id ? getVimeoEmbedUrl(id, hash) : null;
+    
     return {
       source,
       id,
       embedUrl,
       thumbnailUrl: id ? getVimeoThumbnail(id) : null,
-    };
+      // Expose hash for components that need it
+      vimeoHash: hash,
+    } as VideoInfo & { vimeoHash?: string | null };
   }
   
   return {

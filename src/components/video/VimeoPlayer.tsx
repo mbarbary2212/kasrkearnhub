@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useVideoProgress } from '@/hooks/useVideoProgress';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Play } from 'lucide-react';
 import { logDiagnostic } from '@/lib/stabilityGuards';
 
 interface VimeoPlayerProps {
   videoId: string;
+  /** Privacy hash for unlisted/private videos (the ?h= parameter) */
+  privacyHash?: string | null;
   className?: string;
   autoplay?: boolean;
   onReady?: () => void;
@@ -74,6 +76,7 @@ export function preloadVimeoSDK(): void {
 
 export function VimeoPlayer({
   videoId,
+  privacyHash,
   className = '',
   autoplay = false,
   onReady,
@@ -86,6 +89,7 @@ export function VimeoPlayer({
   const playerRef = useRef<VimeoPlayerInstance | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [showResumeToast, setShowResumeToast] = useState(false);
+  const [showTapToPlay, setShowTapToPlay] = useState(false);
   const [resumeTime, setResumeTime] = useState(0);
   const durationRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
@@ -161,11 +165,19 @@ export function VimeoPlayer({
           }
         });
 
-        // Handle player error
+        // Handle player error - detect autoplay failures
         player.on('error', (data: unknown) => {
           const errorData = data as { message?: string; name?: string } | undefined;
           logDiagnostic('video', 'Vimeo player error event', { videoId, error: errorData });
-          onError?.(new Error(errorData?.message || 'Vimeo player error'));
+          
+          // Check if this is an autoplay error (NotAllowedError)
+          if (errorData?.name === 'NotAllowedError' || errorData?.message?.includes('autoplay')) {
+            if (isMountedRef.current && autoplay) {
+              setShowTapToPlay(true);
+            }
+          } else {
+            onError?.(new Error(errorData?.message || 'Vimeo player error'));
+          }
         });
 
         // Handle timeupdate for progress saving
@@ -258,8 +270,29 @@ export function VimeoPlayer({
     };
   }, [videoId, fetchProgress, saveProgress, markComplete, onReady, onPlay, onPause, onEnded]);
 
-  // Build embed URL with necessary parameters
-  const embedUrl = `https://player.vimeo.com/video/${videoId}?${autoplay ? 'autoplay=1&' : ''}playsinline=1&dnt=1`;
+  // Build embed URL with privacy hash and necessary parameters
+  // Use URLSearchParams to properly construct query string
+  const buildEmbedUrl = () => {
+    const params = new URLSearchParams();
+    
+    // Privacy hash MUST be first for unlisted videos
+    if (privacyHash) {
+      params.set('h', privacyHash);
+    }
+    
+    if (autoplay) {
+      params.set('autoplay', '1');
+      // Muted required for autoplay on mobile browsers
+      params.set('muted', '1');
+    }
+    
+    params.set('playsinline', '1');
+    params.set('dnt', '1');
+    
+    return `https://player.vimeo.com/video/${videoId}?${params.toString()}`;
+  };
+  
+  const embedUrl = buildEmbedUrl();
 
   return (
     <div className={`relative w-full ${className}`}>
@@ -274,8 +307,28 @@ export function VimeoPlayer({
         />
       </div>
 
+      {/* Tap to play overlay for mobile autoplay failures */}
+      {showTapToPlay && (
+        <button
+          onClick={() => {
+            setShowTapToPlay(false);
+            if (playerRef.current) {
+              playerRef.current.play().catch(() => {
+                // If play still fails, user may need to interact directly with iframe
+              });
+            }
+          }}
+          className="absolute inset-0 flex items-center justify-center bg-black/40 transition-colors hover:bg-black/50"
+          aria-label="Tap to play video"
+        >
+          <div className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center transition-colors shadow-lg">
+            <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
+          </div>
+        </button>
+      )}
+
       {/* Resume toast */}
-      {showResumeToast && (
+      {showResumeToast && !showTapToPlay && (
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2 p-3 bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg animate-in slide-in-from-bottom-2 duration-300">
           <span className="text-sm text-foreground">
             Resuming from {formatTime(resumeTime)}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play } from 'lucide-react';
-import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
+import { getVideoInfo, normalizeVideoInput, extractVimeoIdAndHash } from '@/lib/video';
 import { VimeoPlayer } from '@/components/video/VimeoPlayer';
 import { VideoLoadWatchdog } from '@/components/video/VideoLoadWatchdog';
 
@@ -21,6 +21,9 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   // Normalize the video URL to handle iframe embed codes
   const normalizedUrl = normalizeVideoInput(videoUrl);
   const videoInfo = getVideoInfo(normalizedUrl);
+  
+  // Extract Vimeo info with privacy hash
+  const vimeoInfo = extractVimeoIdAndHash(normalizedUrl);
 
   // Reset states when modal closes or video changes
   useEffect(() => {
@@ -47,12 +50,13 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   }, []);
 
   // Check if this is a Vimeo video
-  const isVimeo = videoInfo.source === 'vimeo' && videoInfo.id;
+  const isVimeo = vimeoInfo?.id && videoInfo.source === 'vimeo';
   
-  // Build external URL for "Open in new tab"
+  // Build external URL for "Open in new tab" - include privacy hash if present
   const getExternalUrl = () => {
-    if (isVimeo) {
-      return `https://vimeo.com/${videoInfo.id}`;
+    if (isVimeo && vimeoInfo) {
+      const baseUrl = `https://vimeo.com/${vimeoInfo.id}`;
+      return vimeoInfo.hash ? `${baseUrl}/${vimeoInfo.hash}` : baseUrl;
     }
     if (videoInfo.source === 'youtube' && videoInfo.id) {
       return `https://www.youtube.com/watch?v=${videoInfo.id}`;
@@ -88,10 +92,11 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                   externalUrl={getExternalUrl()}
                   onRetry={handleRetry}
                 >
-                  {isVimeo ? (
+                  {isVimeo && vimeoInfo ? (
                     <VimeoPlayer
                       key={playerKey}
-                      videoId={videoInfo.id!}
+                      videoId={vimeoInfo.id}
+                      privacyHash={vimeoInfo.hash}
                       autoplay={true}
                       onReady={handlePlayerReady}
                     />
