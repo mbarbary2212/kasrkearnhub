@@ -9,6 +9,7 @@ export interface VideoInfo {
   id: string | null;
   embedUrl: string | null;
   thumbnailUrl: string | null;
+  vimeoHash?: string | null;
 }
 
 /**
@@ -107,27 +108,45 @@ export function extractVimeoId(url: string | null | undefined): string | null {
  */
 export function extractVimeoIdAndHash(url: string | null | undefined): VimeoVideoInfo | null {
   if (!url) return null;
-  
-  // Pattern 1: Query param format - vimeo.com/123456?h=abc123 or player.vimeo.com/video/123456?h=abc123
-  const queryMatch = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)(?:[?&]h=([a-zA-Z0-9]+))?/);
-  if (queryMatch && queryMatch[1]) {
-    return {
-      id: queryMatch[1],
-      hash: queryMatch[2] || extractHashFromPath(url, queryMatch[1]) || null
-    };
+
+  const u = url.trim();
+
+  // Match ID first from common Vimeo/player URLs
+  const idMatch = u.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+  if (idMatch?.[1]) {
+    const id = idMatch[1];
+
+    // Prefer reading ?h= from query params reliably
+    let hash: string | null = null;
+    try {
+      const parsed = new URL(u);
+      hash = parsed.searchParams.get('h');
+    } catch {
+      const hMatch = u.match(/[?&]h=([a-zA-Z0-9]+)/);
+      hash = hMatch?.[1] || null;
+    }
+
+    // If no query hash, try the /id/hash path format
+    if (!hash) hash = extractHashFromPath(u, id);
+
+    return { id, hash: hash || null };
   }
-  
-  // Pattern 2: Channels/groups format
-  const channelMatch = url.match(/vimeo\.com\/(?:channels|groups)\/[^\/]+\/(?:videos\/)?(\d+)/);
-  if (channelMatch && channelMatch[1]) {
-    return {
-      id: channelMatch[1],
-      hash: null
-    };
+
+  // Channels/groups format
+  const channelMatch = u.match(/vimeo\.com\/(?:channels|groups)\/[^\/]+\/(?:videos\/)?(\d+)/);
+  if (channelMatch?.[1]) {
+    return { id: channelMatch[1], hash: null };
+  }
+
+  // Fallback: any vimeo.com/<digits>
+  const anyMatch = u.match(/vimeo\.com\/(\d+)/);
+  if (anyMatch?.[1]) {
+    return { id: anyMatch[1], hash: extractHashFromPath(u, anyMatch[1]) };
   }
 
   return null;
 }
+
 
 /**
  * Extract privacy hash from path format: vimeo.com/123456/abc123
@@ -281,7 +300,6 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
       thumbnailUrl: id ? getVimeoThumbnail(id) : null,
       // Expose hash for components that need it
       vimeoHash: hash,
-    } as VideoInfo & { vimeoHash?: string | null };
   }
   
   return {
