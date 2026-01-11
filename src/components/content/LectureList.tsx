@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractVimeoIdAndHash } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
@@ -32,8 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { VimeoPlayer } from '@/components/video/VimeoPlayer';
-import { VideoLoadWatchdog } from '@/components/video/VideoLoadWatchdog';
 
 interface Lecture {
   id: string;
@@ -117,13 +115,11 @@ export function LectureList({
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
-  const [hasVideoError, setHasVideoError] = useState(false);
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
-    setHasVideoError(false);
   }, []);
 
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
@@ -188,8 +184,7 @@ export function LectureList({
 
   const videoUrl = selectedLecture?.video_url || selectedLecture?.videoUrl;
   const normalizedVideoUrl = normalizeVideoInput(videoUrl);
-  const vimeoInfo = extractVimeoIdAndHash(normalizedVideoUrl);
-  const isVimeoVideo = !!vimeoInfo?.id;
+  const isVimeoVideo = isVimeoUrl(normalizedVideoUrl);
   const embedUrl = isVimeoVideo ? null : buildAutoplayUrl(videoUrl);
 
   return (
@@ -299,7 +294,6 @@ export function LectureList({
             setSelectedLecture(null);
             setIsPlayerReady(false);
             setPlayerKey(0);
-            setHasVideoError(false);
           }
         }}
       >
@@ -308,41 +302,53 @@ export function LectureList({
             <DialogTitle className="pr-8">{selectedLecture?.title}</DialogTitle>
           </DialogHeader>
           <div className="w-full bg-black">
-            <VideoLoadWatchdog
-              videoKey={`lecture-${selectedLecture?.id}-${playerKey}`}
-              isReady={isPlayerReady}
-              timeoutMs={5000}
-              hasError={hasVideoError}
-              onRetry={() => {
-                setPlayerKey(k => k + 1);
-                setIsPlayerReady(false);
-                setHasVideoError(false);
-              }}
-            >
-              {isVimeoVideo && vimeoInfo?.id ? (
-                <VimeoPlayer
-                  key={playerKey}
-                  videoId={vimeoInfo.id}
-                  privacyHash={vimeoInfo.hash}
-                  autoplay={true}
-                  onReady={() => setIsPlayerReady(true)}
-                  onLoadError={() => setHasVideoError(true)}
-                />
-              ) : embedUrl ? (
-                <div className="aspect-video w-full">
-                  <iframe
-                    key={playerKey}
-                    src={embedUrl}
-                    title={selectedLecture?.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    onLoad={() => setTimeout(() => setIsPlayerReady(true), 500)}
-                  />
+            {/* Vimeo - show unsupported message */}
+            {isVimeoVideo ? (
+              <div className="w-full aspect-video flex items-center justify-center bg-muted">
+                <div className="text-center space-y-4 p-6 max-w-sm">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-background flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-foreground">
+                      Vimeo Not Supported
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Vimeo video playback is temporarily unavailable. Please use YouTube or Google Drive links.
+                    </p>
+                  </div>
                 </div>
-              ) : null}
-            </VideoLoadWatchdog>
+              </div>
+            ) : embedUrl ? (
+              <div className="aspect-video w-full">
+                <iframe
+                  key={playerKey}
+                  src={embedUrl}
+                  title={selectedLecture?.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  onLoad={() => setTimeout(() => setIsPlayerReady(true), 500)}
+                />
+              </div>
+            ) : (
+              <div className="w-full aspect-video flex items-center justify-center bg-muted">
+                <div className="text-center space-y-4 p-6 max-w-sm">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-background flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-foreground">
+                      Video Source Not Supported
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Please use YouTube or Google Drive links for video playback.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -381,11 +387,11 @@ export function LectureList({
                 id="edit-video-url"
                 value={editVideoUrl}
                 onChange={(e) => setEditVideoUrl(e.target.value)}
-                placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)"
+                placeholder="YouTube or Google Drive link (or paste iframe code)"
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Supports YouTube, Vimeo, and Google Drive. You can paste iframe embed codes too.
+                Supports YouTube and Google Drive. Vimeo support coming soon.
               </p>
             </div>
             <div>

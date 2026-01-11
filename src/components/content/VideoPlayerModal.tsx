@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { X, Play } from 'lucide-react';
-import { getVideoInfo, normalizeVideoInput, extractVimeoIdAndHash } from '@/lib/video';
-import { VimeoPlayer } from '@/components/video/VimeoPlayer';
-import { VideoLoadWatchdog } from '@/components/video/VideoLoadWatchdog';
+import { X, Play, AlertCircle } from 'lucide-react';
+import { getVideoInfo, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -17,14 +15,13 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
-  const [hasVideoError, setHasVideoError] = useState(false);
   
   // Normalize the video URL to handle iframe embed codes
   const normalizedUrl = normalizeVideoInput(videoUrl);
   const videoInfo = getVideoInfo(normalizedUrl);
   
-  // Extract Vimeo info with privacy hash
-  const vimeoInfo = extractVimeoIdAndHash(normalizedUrl);
+  // Check if this is a Vimeo URL (unsupported for now)
+  const isVimeo = isVimeoUrl(normalizedUrl);
 
   // Reset states when modal closes or video changes
   useEffect(() => {
@@ -32,7 +29,6 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
       setIsPlaying(false);
       setIsPlayerReady(false);
       setPlayerKey(0);
-      setHasVideoError(false);
     }
   }, [isOpen, videoUrl]);
 
@@ -45,22 +41,8 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
     setIsPlayerReady(true);
   }, []);
 
-  // Retry handler - force remount player with new key
-  const handleRetry = useCallback(() => {
-    setPlayerKey((k) => k + 1);
-    setIsPlayerReady(false);
-    setHasVideoError(false);
-  }, []);
-
-  // Check if this is a Vimeo video
-  const isVimeo = vimeoInfo?.id && videoInfo.source === 'vimeo';
-  
-  // Build external URL for "Open in new tab" - include privacy hash if present
+  // Build external URL for "Open in new tab"
   const getExternalUrl = () => {
-    if (isVimeo && vimeoInfo) {
-      const baseUrl = `https://vimeo.com/${vimeoInfo.id}`;
-      return vimeoInfo.hash ? `${baseUrl}/${vimeoInfo.hash}` : baseUrl;
-    }
     if (videoInfo.source === 'youtube' && videoInfo.id) {
       return `https://www.youtube.com/watch?v=${videoInfo.id}`;
     }
@@ -86,33 +68,31 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
 
           {/* Video container with 16:9 aspect ratio */}
           <div className="w-full bg-muted">
-            {videoInfo.embedUrl ? (
+            {/* Vimeo - show unsupported message */}
+            {isVimeo ? (
+              <div className="w-full aspect-video flex items-center justify-center">
+                <div className="text-center space-y-4 p-6 max-w-sm">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-foreground">
+                      Vimeo Not Supported
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Vimeo video playback is temporarily unavailable. Please use YouTube or Google Drive links.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : videoInfo.embedUrl ? (
               isPlaying ? (
-                <VideoLoadWatchdog
-                  videoKey={`${videoInfo.id}-${playerKey}`}
-                  isReady={isPlayerReady}
-                  timeoutMs={5000}
-                  hasError={hasVideoError}
-                  onRetry={handleRetry}
-                >
-                  {isVimeo && vimeoInfo ? (
-                    <VimeoPlayer
-                      key={playerKey}
-                      videoId={vimeoInfo.id}
-                      privacyHash={vimeoInfo.hash}
-                      autoplay={true}
-                      onReady={handlePlayerReady}
-                      onLoadError={() => setHasVideoError(true)}
-                    />
-                  ) : (
-                    <IframePlayer
-                      key={playerKey}
-                      embedUrl={videoInfo.embedUrl}
-                      title={title}
-                      onReady={handlePlayerReady}
-                    />
-                  )}
-                </VideoLoadWatchdog>
+                <IframePlayer
+                  key={playerKey}
+                  embedUrl={videoInfo.embedUrl}
+                  title={title}
+                  onReady={handlePlayerReady}
+                />
               ) : (
                 <button
                   onClick={handlePlay}
@@ -140,8 +120,20 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                 </button>
               )
             ) : (
-              <div className="w-full aspect-video flex items-center justify-center text-muted-foreground">
-                <p>Video link is invalid or unsupported</p>
+              <div className="w-full aspect-video flex items-center justify-center">
+                <div className="text-center space-y-4 p-6 max-w-sm">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-foreground">
+                      Video Source Not Supported
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Please use YouTube or Google Drive links for video playback.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

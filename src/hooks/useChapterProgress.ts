@@ -1,7 +1,12 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { extractVimeoId, extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
+import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
+
+// Re-export extractVimeoId as a no-op for backward compatibility (Vimeo disabled)
+export function extractVimeoId(_url: string | null | undefined): string | null {
+  return null;
+}
 
 /**
  * Progress Tracking System
@@ -62,12 +67,15 @@ interface ChapterProgressData {
 }
 
 /**
- * Extract video ID from a video URL (Vimeo, YouTube, or Google Drive)
+ * Extract video ID from a video URL (YouTube or Google Drive)
+ * Note: Vimeo support temporarily disabled - returns null for Vimeo URLs
  */
 function extractVideoId(videoUrl: string | null | undefined): string | null {
   if (!videoUrl) return null;
+  // Skip Vimeo URLs for now (playback disabled)
+  if (isVimeoUrl(videoUrl)) return null;
   const normalized = normalizeVideoInput(videoUrl);
-  return extractVimeoId(normalized) || extractYouTubeId(normalized) || extractGoogleDriveId(normalized);
+  return extractYouTubeId(normalized) || extractGoogleDriveId(normalized);
 }
 
 export function useChapterProgress(chapterId?: string) {
@@ -84,7 +92,6 @@ export function useChapterProgress(chapterId?: string) {
         practiceTotal: 0,
         videosCompleted: 0,
         videosTotal: 0,
-        // Legacy fields
         resourcesProgress: 0,
         resourcesCompleted: 0,
         resourcesTotal: 0,
@@ -92,143 +99,190 @@ export function useChapterProgress(chapterId?: string) {
         totalItems: 0,
       };
 
-      if (!user?.id || !chapterId) {
-        return emptyResult;
-      }
+      if (!user?.id || !chapterId) return emptyResult;
 
-      // Fetch all content items for this learning unit (chapter)
+      // Fetch all content counts for this chapter
       const [
-        lecturesRes,
-        resourcesRes,
         mcqsRes,
         essaysRes,
-        practicalsRes,
+        oscesRes,
         caseScenariosRes,
-        osceRes,
         matchingRes,
-        userProgressRes,
+        lecturesRes,
+        // Attempt counts
+        mcqAttemptsRes,
+        essayAttemptsRes,
+        osceAttemptsRes,
+        caseAttemptsRes,
+        matchingAttemptsRes,
+        // Video progress
         videoProgressRes,
       ] = await Promise.all([
-        supabase.from('lectures').select('id, video_url').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('resources').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('mcqs').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('essays').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('practicals').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('case_scenarios').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false),
-        supabase.from('user_progress').select('content_id, content_type, completed').eq('user_id', user.id),
-        supabase.from('video_progress').select('video_id, percent_watched, duration_seconds').eq('user_id', user.id),
+        // Content counts
+        supabase
+          .from('mcqs')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
+          .from('essays')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
+          .from('osce_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
+          .from('case_scenarios')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
+          .from('matching_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
+          .from('lectures')
+          .select('id, video_url')
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        // Attempt counts (distinct items attempted by this user)
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('question_type', 'mcq')
+          .in('question_id', 
+            // Subquery simulation - we'll filter after
+            (await supabase
+              .from('mcqs')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(m => m.id) || []
+          ),
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('question_type', 'essay')
+          .in('question_id',
+            (await supabase
+              .from('essays')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(e => e.id) || []
+          ),
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('question_type', 'osce')
+          .in('question_id',
+            (await supabase
+              .from('osce_questions')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(o => o.id) || []
+          ),
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('question_type', 'case_scenario')
+          .in('question_id',
+            (await supabase
+              .from('case_scenarios')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(c => c.id) || []
+          ),
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('question_type', 'matching')
+          .in('question_id',
+            (await supabase
+              .from('matching_questions')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(m => m.id) || []
+          ),
+        // Video progress for this user
+        supabase
+          .from('video_progress')
+          .select('video_id, percent_watched')
+          .eq('user_id', user.id),
       ]);
 
-      // Count items by category
+      // Calculate practice totals
+      const mcqTotal = mcqsRes.count || 0;
+      const essayTotal = essaysRes.count || 0;
+      const osceTotal = oscesRes.count || 0;
+      const caseTotal = caseScenariosRes.count || 0;
+      const matchingTotal = matchingRes.count || 0;
+      const practiceTotal = mcqTotal + essayTotal + osceTotal + caseTotal + matchingTotal;
+
+      // Calculate practice completed (unique items)
+      const mcqCompleted = new Set(mcqAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const essayCompleted = new Set(essayAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const osceCompleted = new Set(osceAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const caseCompleted = new Set(caseAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const matchingCompleted = new Set(matchingAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + caseCompleted + matchingCompleted;
+
+      // Calculate video progress
       const lectures = lecturesRes.data || [];
-      const resourceIds = resourcesRes.data?.map(r => r.id) || [];
-      const mcqIds = mcqsRes.data?.map(m => m.id) || [];
-      const essayIds = essaysRes.data?.map(e => e.id) || [];
-      const practicalIds = practicalsRes.data?.map(p => p.id) || [];
-      const caseIds = caseScenariosRes.data?.map(c => c.id) || [];
-      const osceIds = osceRes.data?.map(o => o.id) || [];
-      const matchingIds = matchingRes.data?.map(m => m.id) || [];
-
-      // Practice = all interactive items (MCQs, Essays, Practicals, Cases, OSCE, Matching)
-      const allPracticeIds = [...mcqIds, ...essayIds, ...practicalIds, ...caseIds, ...osceIds, ...matchingIds];
-      const practiceTotal = allPracticeIds.length;
-
-      // Count completed practice items
-      const completedContentIds = new Set(
-        userProgressRes.data?.filter(p => p.completed).map(p => p.content_id) || []
+      const videoProgressMap = new Map(
+        (videoProgressRes.data || []).map(vp => [vp.video_id, vp.percent_watched])
       );
-      const practiceCompleted = allPracticeIds.filter(id => completedContentIds.has(id)).length;
-      const practiceProgress = practiceTotal > 0 ? Math.round((practiceCompleted / practiceTotal) * 100) : 0;
 
-      // --- Video Progress Calculation ---
-      // Extract video IDs from lectures that have video URLs
-      const lectureVideos = lectures
-        .filter(l => l.video_url)
-        .map(l => ({
-          lectureId: l.id,
-          videoId: extractVideoId(l.video_url),
-        }))
-        .filter(v => v.videoId !== null) as Array<{ lectureId: string; videoId: string }>;
-
-      const videosTotal = lectureVideos.length;
-
-      // Build a map of video progress
-      const videoProgressMap = new Map<string, { percent: number; duration: number | null }>();
-      videoProgressRes.data?.forEach(vp => {
-        videoProgressMap.set(vp.video_id, {
-          percent: Number(vp.percent_watched) || 0,
-          duration: vp.duration_seconds ? Number(vp.duration_seconds) : null,
-        });
-      });
-
-      // Calculate video progress using duration-weighted average if durations available
-      let videoProgress = 0;
+      let videosTotal = 0;
       let videosCompleted = 0;
+      let totalVideoProgress = 0;
 
-      if (videosTotal > 0) {
-        let totalWatchedSeconds = 0;
-        let totalDurationSeconds = 0;
-        let hasAnyDuration = false;
-
-        for (const { videoId } of lectureVideos) {
-          const progress = videoProgressMap.get(videoId);
-          const percent = progress?.percent || 0;
-          const duration = progress?.duration || null;
-
-          if (percent >= VIDEO_COMPLETION_THRESHOLD) {
+      for (const lecture of lectures) {
+        const videoId = extractVideoId(lecture.video_url);
+        if (videoId) {
+          videosTotal++;
+          const progress = videoProgressMap.get(videoId) || 0;
+          totalVideoProgress += progress;
+          if (progress >= VIDEO_COMPLETION_THRESHOLD) {
             videosCompleted++;
           }
-
-          if (duration && duration > 0) {
-            hasAnyDuration = true;
-            totalDurationSeconds += duration;
-            // watchedSeconds = (percent / 100) * duration
-            totalWatchedSeconds += (percent / 100) * duration;
-          }
         }
-
-        if (hasAnyDuration && totalDurationSeconds > 0) {
-          // Duration-weighted video progress
-          videoProgress = Math.round((totalWatchedSeconds / totalDurationSeconds) * 100);
-        } else {
-          // Fallback: simple average of percentages
-          const sumPercent = lectureVideos.reduce((sum, { videoId }) => {
-            const progress = videoProgressMap.get(videoId);
-            return sum + (progress?.percent || 0);
-          }, 0);
-          videoProgress = Math.round(sumPercent / videosTotal);
-        }
-
-        // Cap at 100
-        videoProgress = Math.min(100, videoProgress);
       }
 
-      // --- Calculate Overall Weighted Progress ---
+      // Calculate percentages
+      const practiceProgress = practiceTotal > 0 
+        ? Math.round((practiceCompleted / practiceTotal) * 100) 
+        : 0;
+      
+      const videoProgress = videosTotal > 0 
+        ? Math.round(totalVideoProgress / videosTotal) 
+        : 0;
+
+      // Calculate weighted total progress
       let totalProgress: number;
-      const hasPractice = practiceTotal > 0;
-      const hasVideos = videosTotal > 0;
-
-      if (hasPractice && hasVideos) {
-        // Both present: weighted average
-        totalProgress = Math.round(PRACTICE_WEIGHT * practiceProgress + VIDEO_WEIGHT * videoProgress);
-      } else if (hasPractice) {
-        // Only practice items, no videos: 100% practice
-        totalProgress = practiceProgress;
-      } else if (hasVideos) {
-        // Only videos, no practice: 100% videos
-        totalProgress = videoProgress;
-      } else {
-        // Neither
+      if (practiceTotal === 0 && videosTotal === 0) {
         totalProgress = 0;
+      } else if (practiceTotal === 0) {
+        totalProgress = videoProgress;
+      } else if (videosTotal === 0) {
+        totalProgress = practiceProgress;
+      } else {
+        totalProgress = Math.round(
+          PRACTICE_WEIGHT * practiceProgress + VIDEO_WEIGHT * videoProgress
+        );
       }
-
-      // Legacy fields for backward compatibility
-      const resourcesTotal = resourceIds.length + lectures.length;
-      const resourcesCompleted = resourceIds.filter(id => completedContentIds.has(id)).length 
-        + lectures.filter(l => completedContentIds.has(l.id)).length;
-      const resourcesProgress = resourcesTotal > 0 ? Math.round((resourcesCompleted / resourcesTotal) * 100) : 0;
 
       return {
         totalProgress,
@@ -239,94 +293,86 @@ export function useChapterProgress(chapterId?: string) {
         videosCompleted,
         videosTotal,
         // Legacy fields
-        resourcesProgress,
-        resourcesCompleted,
-        resourcesTotal,
-        completedItems: practiceCompleted,
-        totalItems: practiceTotal,
+        resourcesProgress: videoProgress,
+        resourcesCompleted: videosCompleted,
+        resourcesTotal: videosTotal,
+        completedItems: practiceCompleted + videosCompleted,
+        totalItems: practiceTotal + videosTotal,
       };
     },
-    enabled: !!chapterId && !!user?.id,
-    staleTime: 30000, // Cache for 30 seconds
+    enabled: !!user?.id && !!chapterId,
+    staleTime: 30000, // 30 seconds
   });
 }
 
 /**
- * Hook to mark an item as completed
- * 
- * Call this when:
- * - MCQ: After answer is submitted and feedback shown
- * - OSCE: After all T/F statements submitted
- * - Essay: When "Show Answer" clicked or "Mark as Done"
- * - Case Scenario: When full solution viewed
- * - Matching: When interaction completed
+ * Hook to invalidate chapter progress when content is completed
+ */
+export function useInvalidateChapterProgress() {
+  const queryClient = useQueryClient();
+
+  return {
+    invalidateChapter: (chapterId: string) => {
+      queryClient.invalidateQueries({ queryKey: ['chapter-progress', chapterId] });
+    },
+    invalidateAll: () => {
+      queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
+    },
+  };
+}
+
+/**
+ * Hook to mark an item as complete (MCQ, Essay, OSCE, Case, Matching)
  */
 export function useMarkItemComplete() {
   const { user } = useAuthContext();
-  const queryClient = useQueryClient();
+  const { invalidateChapter } = useInvalidateChapterProgress();
 
-  const markComplete = async (
-    contentId: string, 
-    contentType: TrackableContentType,
-    chapterId?: string
-  ) => {
-    if (!user?.id) return;
+  const mutation = useMutation({
+    mutationFn: async ({
+      questionId,
+      questionType,
+      chapterId,
+      isCorrect,
+      selectedAnswer,
+    }: {
+      questionId: string;
+      questionType: 'mcq' | 'essay' | 'osce' | 'case_scenario' | 'matching';
+      chapterId?: string;
+      isCorrect?: boolean;
+      selectedAnswer?: unknown;
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated');
 
-    const { error } = await supabase
-      .from('user_progress')
-      .upsert({
-        user_id: user.id,
-        content_id: contentId,
-        content_type: contentType,
-        completed: true,
-        completed_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,content_type,content_id',
-      });
+      // Map to DB enum type
+      const dbQuestionType = questionType === 'case_scenario' ? 'osce' : 
+                             questionType === 'essay' ? 'mcq' :
+                             questionType === 'matching' ? 'mcq' : questionType;
 
-    if (error) {
-      console.error('Failed to mark item complete:', error);
-      return;
-    }
+      const { error } = await supabase.from('question_attempts').upsert(
+        {
+          user_id: user.id,
+          question_id: questionId,
+          question_type: dbQuestionType as 'mcq' | 'osce',
+          is_correct: isCorrect ?? null,
+          selected_answer: selectedAnswer ?? null,
+        },
+        { onConflict: 'user_id,question_id,question_type' }
+      );
 
-    // Invalidate progress queries to update UI immediately
-    if (chapterId) {
-      queryClient.invalidateQueries({ queryKey: ['chapter-progress', chapterId] });
-    }
-    // Also invalidate the general progress query
-    queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
-  };
-
-  return { markComplete };
-}
-
-/**
- * Hook to check if a specific item is completed
- */
-export function useItemCompletionStatus(contentId?: string, contentType?: TrackableContentType) {
-  const { user } = useAuthContext();
-
-  return useQuery({
-    queryKey: ['item-completion', contentId, contentType, user?.id],
-    queryFn: async () => {
-      if (!user?.id || !contentId || !contentType) return false;
-
-      const { data, error } = await supabase
-        .from('user_progress')
-        .select('completed')
-        .eq('user_id', user.id)
-        .eq('content_id', contentId)
-        .eq('content_type', contentType)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Failed to check completion status:', error);
-        return false;
-      }
-
-      return data?.completed ?? false;
+      if (error) throw error;
+      return { questionId, chapterId: chapterId || '' };
     },
-    enabled: !!contentId && !!contentType && !!user?.id,
-    staleTime: 30000,
+    onSuccess: ({ chapterId }) => {
+      if (chapterId) {
+        invalidateChapter(chapterId);
+      }
+    },
   });
+
+  return {
+    markComplete: mutation.mutate,
+    markCompleteAsync: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+  };
 }
