@@ -17,6 +17,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
+  const [hasVideoError, setHasVideoError] = useState(false);
   
   // Normalize the video URL to handle iframe embed codes
   const normalizedUrl = normalizeVideoInput(videoUrl);
@@ -31,6 +32,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
       setIsPlaying(false);
       setIsPlayerReady(false);
       setPlayerKey(0);
+      setHasVideoError(false);
     }
   }, [isOpen, videoUrl]);
 
@@ -47,6 +49,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   const handleRetry = useCallback(() => {
     setPlayerKey((k) => k + 1);
     setIsPlayerReady(false);
+    setHasVideoError(false);
   }, []);
 
   // Check if this is a Vimeo video
@@ -88,8 +91,8 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                 <VideoLoadWatchdog
                   videoKey={`${videoInfo.id}-${playerKey}`}
                   isReady={isPlayerReady}
-                  timeoutMs={6000}
-                  externalUrl={getExternalUrl()}
+                  timeoutMs={5000}
+                  hasError={hasVideoError}
                   onRetry={handleRetry}
                 >
                   {isVimeo && vimeoInfo ? (
@@ -99,6 +102,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
                       privacyHash={vimeoInfo.hash}
                       autoplay={true}
                       onReady={handlePlayerReady}
+                      onLoadError={() => setHasVideoError(true)}
                     />
                   ) : (
                     <IframePlayer

@@ -8,10 +8,12 @@ interface VideoLoadWatchdogProps {
   videoKey: string;
   /** Whether the video player has signaled it's ready */
   isReady: boolean;
-  /** Timeout in milliseconds before showing error (default: 6000) */
+  /** Timeout in milliseconds before showing error (default: 5000) */
   timeoutMs?: number;
   /** URL to open in new tab */
   externalUrl?: string;
+  /** Signal that a load error occurred (403/404/etc) - triggers immediate retry UI */
+  hasError?: boolean;
   /** Callback to trigger retry (remount) */
   onRetry: () => void;
   /** The video player component */
@@ -26,8 +28,9 @@ interface VideoLoadWatchdogProps {
 export function VideoLoadWatchdog({
   videoKey,
   isReady,
-  timeoutMs = 6000,
+  timeoutMs = 5000,
   externalUrl,
+  hasError = false,
   onRetry,
   children,
 }: VideoLoadWatchdogProps) {
@@ -38,6 +41,17 @@ export function VideoLoadWatchdog({
   useEffect(() => {
     setHasTimedOut(false);
   }, [videoKey, retryCount]);
+
+  // Immediately trigger error state when hasError prop is set
+  useEffect(() => {
+    if (hasError && !isReady) {
+      setHasTimedOut(true);
+      logDiagnostic('video', 'Video load error detected via hasError prop', {
+        videoKey,
+        retryCount,
+      });
+    }
+  }, [hasError, isReady, videoKey, retryCount]);
 
   // Start watchdog timer
   useEffect(() => {

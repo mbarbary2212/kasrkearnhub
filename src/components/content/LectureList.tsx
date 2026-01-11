@@ -117,11 +117,13 @@ export function LectureList({
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
+  const [hasVideoError, setHasVideoError] = useState(false);
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
+    setHasVideoError(false);
   }, []);
 
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
@@ -297,6 +299,7 @@ export function LectureList({
             setSelectedLecture(null);
             setIsPlayerReady(false);
             setPlayerKey(0);
+            setHasVideoError(false);
           }
         }}
       >
@@ -308,10 +311,12 @@ export function LectureList({
             <VideoLoadWatchdog
               videoKey={`lecture-${selectedLecture?.id}-${playerKey}`}
               isReady={isPlayerReady}
-              timeoutMs={6000}
+              timeoutMs={5000}
+              hasError={hasVideoError}
               onRetry={() => {
                 setPlayerKey(k => k + 1);
                 setIsPlayerReady(false);
+                setHasVideoError(false);
               }}
             >
               {isVimeoVideo && vimeoInfo?.id ? (
@@ -321,6 +326,7 @@ export function LectureList({
                   privacyHash={vimeoInfo.hash}
                   autoplay={true}
                   onReady={() => setIsPlayerReady(true)}
+                  onLoadError={() => setHasVideoError(true)}
                 />
               ) : embedUrl ? (
                 <div className="aspect-video w-full">
@@ -331,6 +337,7 @@ export function LectureList({
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
                     onLoad={() => setTimeout(() => setIsPlayerReady(true), 500)}
                   />
                 </div>

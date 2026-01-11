@@ -213,10 +213,11 @@ export function getVimeoEmbedUrl(
   }
   
   // Add playback options
+  // CRITICAL: Always add muted=1 when autoplay=1 to comply with browser policies
   if (options?.autoplay) {
     params.set('autoplay', '1');
-  }
-  if (options?.muted) {
+    params.set('muted', '1');
+  } else if (options?.muted) {
     params.set('muted', '1');
   }
   
