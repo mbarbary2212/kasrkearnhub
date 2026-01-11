@@ -2,7 +2,7 @@
  * Video utility functions for YouTube, Google Drive, and Vimeo
  */
 
-export type VideoSource = 'youtube' | 'googledrive' | 'vimeo' | 'unknown';
+export type VideoSource = "youtube" | "googledrive" | "vimeo" | "unknown";
 
 export interface VideoInfo {
   source: VideoSource;
@@ -18,17 +18,17 @@ export interface VideoInfo {
  */
 export function normalizeVideoInput(input: string | null | undefined): string | null {
   if (!input) return null;
-  
+
   // Check if input contains an iframe tag
-  if (input.includes('<iframe')) {
+  if (input.includes("<iframe")) {
     // Extract src attribute from iframe
     const srcMatch = input.match(/src=["']([^"']+)["']/);
     if (srcMatch && srcMatch[1]) {
       // Decode HTML entities like &amp; to &
-      return srcMatch[1].replace(/&amp;/g, '&');
+      return srcMatch[1].replace(/&amp;/g, "&");
     }
   }
-  
+
   // Return trimmed input as-is (it might be a direct URL)
   return input.trim();
 }
@@ -38,7 +38,7 @@ export function normalizeVideoInput(input: string | null | undefined): string | 
  */
 export function extractYouTubeId(url: string | null | undefined): string | null {
   if (!url) return null;
-  
+
   const patterns = [
     // Standard watch URL: https://www.youtube.com/watch?v=VIDEO_ID
     /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
@@ -65,7 +65,7 @@ export function extractYouTubeId(url: string | null | undefined): string | null 
  */
 export function extractGoogleDriveId(url: string | null | undefined): string | null {
   if (!url) return null;
-  
+
   const patterns = [
     // https://drive.google.com/file/d/FILE_ID/view
     /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
@@ -120,7 +120,7 @@ export function extractVimeoIdAndHash(url: string | null | undefined): VimeoVide
     let hash: string | null = null;
     try {
       const parsed = new URL(u);
-      hash = parsed.searchParams.get('h');
+      hash = parsed.searchParams.get("h");
     } catch {
       const hMatch = u.match(/[?&]h=([a-zA-Z0-9]+)/);
       hash = hMatch?.[1] || null;
@@ -147,7 +147,6 @@ export function extractVimeoIdAndHash(url: string | null | undefined): VimeoVide
   return null;
 }
 
-
 /**
  * Extract privacy hash from path format: vimeo.com/123456/abc123
  */
@@ -157,7 +156,7 @@ function extractHashFromPath(url: string, videoId: string): string | null {
   if (pathMatch && pathMatch[1]) {
     // Make sure it's not another path segment like 'video' or 'embed'
     const hash = pathMatch[1];
-    if (!['video', 'embed', 'player', 'channels', 'groups'].includes(hash.toLowerCase())) {
+    if (!["video", "embed", "player", "channels", "groups"].includes(hash.toLowerCase())) {
       return hash;
     }
   }
@@ -168,13 +167,13 @@ function extractHashFromPath(url: string, videoId: string): string | null {
  * Detect the video source from URL
  */
 export function detectVideoSource(url: string | null | undefined): VideoSource {
-  if (!url) return 'unknown';
-  
-  if (extractYouTubeId(url)) return 'youtube';
-  if (extractGoogleDriveId(url)) return 'googledrive';
-  if (extractVimeoId(url)) return 'vimeo';
-  
-  return 'unknown';
+  if (!url) return "unknown";
+
+  if (extractYouTubeId(url)) return "youtube";
+  if (extractGoogleDriveId(url)) return "googledrive";
+  if (extractVimeoId(url)) return "vimeo";
+
+  return "unknown";
 }
 
 /**
@@ -194,13 +193,16 @@ export function getGoogleDriveEmbedUrl(fileId: string): string {
 /**
  * Get YouTube thumbnail URL from video ID
  */
-export function getYouTubeThumbnail(videoId: string, quality: 'default' | 'mq' | 'hq' | 'sd' | 'maxres' = 'hq'): string {
+export function getYouTubeThumbnail(
+  videoId: string,
+  quality: "default" | "mq" | "hq" | "sd" | "maxres" = "hq",
+): string {
   const qualityMap = {
-    default: 'default',
-    mq: 'mqdefault',
-    hq: 'hqdefault',
-    sd: 'sddefault',
-    maxres: 'maxresdefault',
+    default: "default",
+    mq: "mqdefault",
+    hq: "hqdefault",
+    sd: "sddefault",
+    maxres: "maxresdefault",
   };
   return `https://img.youtube.com/vi/${videoId}/${qualityMap[quality]}.jpg`;
 }
@@ -220,32 +222,32 @@ export function getGoogleDriveThumbnail(fileId: string): string {
  * @param options - Additional embed options
  */
 export function getVimeoEmbedUrl(
-  videoId: string, 
+  videoId: string,
   hash?: string | null,
-  options?: { autoplay?: boolean; muted?: boolean }
+  options?: { autoplay?: boolean; muted?: boolean },
 ): string {
   const params = new URLSearchParams();
-  
+
   // Add privacy hash first if present (required for unlisted videos)
   if (hash) {
-    params.set('h', hash);
+    params.set("h", hash);
   }
-  
+
   // Add playback options
   // CRITICAL: Always add muted=1 when autoplay=1 to comply with browser policies
   if (options?.autoplay) {
-    params.set('autoplay', '1');
-    params.set('muted', '1');
+    params.set("autoplay", "1");
+    params.set("muted", "1");
   } else if (options?.muted) {
-    params.set('muted', '1');
+    params.set("muted", "1");
   }
-  
+
   // Always add these for better mobile support
-  params.set('playsinline', '1');
-  params.set('dnt', '1'); // Do not track
-  
+  params.set("playsinline", "1");
+  params.set("dnt", "1"); // Do not track
+
   const queryString = params.toString();
-  return `https://player.vimeo.com/video/${videoId}${queryString ? `?${queryString}` : ''}`;
+  return `https://player.vimeo.com/video/${videoId}${queryString ? `?${queryString}` : ""}`;
 }
 
 /**
@@ -264,8 +266,8 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
   // Normalize input first to handle iframe embed codes
   const url = normalizeVideoInput(input);
   const source = detectVideoSource(url);
-  
-  if (source === 'youtube') {
+
+  if (source === "youtube") {
     const id = extractYouTubeId(url);
     return {
       source,
@@ -274,8 +276,8 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
       thumbnailUrl: id ? getYouTubeThumbnail(id) : null,
     };
   }
-  
-  if (source === 'googledrive') {
+
+  if (source === "googledrive") {
     const id = extractGoogleDriveId(url);
     return {
       source,
@@ -284,15 +286,15 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
       thumbnailUrl: id ? getGoogleDriveThumbnail(id) : null,
     };
   }
-  
-  if (source === 'vimeo') {
+
+  if (source === "vimeo") {
     const vimeoInfo = extractVimeoIdAndHash(url);
     const id = vimeoInfo?.id || null;
     const hash = vimeoInfo?.hash || null;
-    
+
     // Build embed URL with privacy hash if present
     const embedUrl = id ? getVimeoEmbedUrl(id, hash) : null;
-    
+
     return {
       source,
       id,
@@ -300,10 +302,11 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
       thumbnailUrl: id ? getVimeoThumbnail(id) : null,
       // Expose hash for components that need it
       vimeoHash: hash,
+    };
   }
-  
+
   return {
-    source: 'unknown',
+    source: "unknown",
     id: null,
     embedUrl: null,
     thumbnailUrl: null,
@@ -316,7 +319,7 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
  */
 export function isValidVideoUrl(input: string | null | undefined): boolean {
   const url = normalizeVideoInput(input);
-  return detectVideoSource(url) !== 'unknown';
+  return detectVideoSource(url) !== "unknown";
 }
 
 /**
