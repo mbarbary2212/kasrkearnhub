@@ -1,2 +1,3 @@
-export { VimeoPlayer } from './VimeoPlayer';
+// Video components
+// Note: VimeoPlayer temporarily removed - will be rewritten
 export { VideoLoadWatchdog } from './VideoLoadWatchdog';

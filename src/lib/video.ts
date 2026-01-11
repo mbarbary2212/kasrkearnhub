@@ -1,15 +1,15 @@
 /**
- * Video utility functions for YouTube, Google Drive, and Vimeo
+ * Video utility functions for YouTube and Google Drive
+ * Note: Vimeo support temporarily disabled - will be rewritten
  */
 
-export type VideoSource = "youtube" | "googledrive" | "vimeo" | "unknown";
+export type VideoSource = "youtube" | "googledrive" | "unknown";
 
 export interface VideoInfo {
   source: VideoSource;
   id: string | null;
   embedUrl: string | null;
   thumbnailUrl: string | null;
-  vimeoHash?: string | null;
 }
 
 /**
@@ -86,92 +86,26 @@ export function extractGoogleDriveId(url: string | null | undefined): string | n
 
   return null;
 }
-/**
- * Vimeo video info with optional privacy hash for unlisted videos
- */
-export interface VimeoVideoInfo {
-  id: string;
-  hash: string | null;
-}
 
 /**
- * Extract Vimeo video ID from various URL formats
+ * Check if URL is a Vimeo URL (for detection only, playback disabled)
+ * Used to show "unsupported" message instead of treating as unknown
  */
-export function extractVimeoId(url: string | null | undefined): string | null {
-  const info = extractVimeoIdAndHash(url);
-  return info?.id || null;
-}
-
-/**
- * Extract Vimeo video ID AND privacy hash from various URL formats
- * The privacy hash (?h=xxx or /xxx after video ID) is required for unlisted/private videos
- */
-export function extractVimeoIdAndHash(url: string | null | undefined): VimeoVideoInfo | null {
-  if (!url) return null;
-
-  const u = url.trim();
-
-  // Match ID first from common Vimeo/player URLs
-  const idMatch = u.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
-  if (idMatch?.[1]) {
-    const id = idMatch[1];
-
-    // Prefer reading ?h= from query params reliably
-    let hash: string | null = null;
-    try {
-      const parsed = new URL(u);
-      hash = parsed.searchParams.get("h");
-    } catch {
-      const hMatch = u.match(/[?&]h=([a-zA-Z0-9]+)/);
-      hash = hMatch?.[1] || null;
-    }
-
-    // If no query hash, try the /id/hash path format
-    if (!hash) hash = extractHashFromPath(u, id);
-
-    return { id, hash: hash || null };
-  }
-
-  // Channels/groups format
-  const channelMatch = u.match(/vimeo\.com\/(?:channels|groups)\/[^\/]+\/(?:videos\/)?(\d+)/);
-  if (channelMatch?.[1]) {
-    return { id: channelMatch[1], hash: null };
-  }
-
-  // Fallback: any vimeo.com/<digits>
-  const anyMatch = u.match(/vimeo\.com\/(\d+)/);
-  if (anyMatch?.[1]) {
-    return { id: anyMatch[1], hash: extractHashFromPath(u, anyMatch[1]) };
-  }
-
-  return null;
-}
-
-/**
- * Extract privacy hash from path format: vimeo.com/123456/abc123
- */
-function extractHashFromPath(url: string, videoId: string): string | null {
-  // Look for pattern: /VIDEO_ID/HASH where HASH is alphanumeric
-  const pathMatch = url.match(new RegExp(`/${videoId}/([a-zA-Z0-9]+)(?:[?#]|$)`));
-  if (pathMatch && pathMatch[1]) {
-    // Make sure it's not another path segment like 'video' or 'embed'
-    const hash = pathMatch[1];
-    if (!["video", "embed", "player", "channels", "groups"].includes(hash.toLowerCase())) {
-      return hash;
-    }
-  }
-  return null;
+export function isVimeoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const u = url.trim().toLowerCase();
+  return u.includes('vimeo.com') || u.includes('player.vimeo.com');
 }
 
 /**
  * Detect the video source from URL
+ * Note: Vimeo URLs return 'unknown' (playback temporarily disabled)
  */
 export function detectVideoSource(url: string | null | undefined): VideoSource {
   if (!url) return "unknown";
 
   if (extractYouTubeId(url)) return "youtube";
   if (extractGoogleDriveId(url)) return "googledrive";
-  if (extractVimeoId(url)) return "vimeo";
 
   return "unknown";
 }
@@ -216,51 +150,8 @@ export function getGoogleDriveThumbnail(fileId: string): string {
 }
 
 /**
- * Get Vimeo embed URL from video ID with optional privacy hash
- * @param videoId - The Vimeo video ID
- * @param hash - Optional privacy hash for unlisted videos
- * @param options - Additional embed options
- */
-export function getVimeoEmbedUrl(
-  videoId: string,
-  hash?: string | null,
-  options?: { autoplay?: boolean; muted?: boolean },
-): string {
-  const params = new URLSearchParams();
-
-  // Add privacy hash first if present (required for unlisted videos)
-  if (hash) {
-    params.set("h", hash);
-  }
-
-  // Add playback options
-  // CRITICAL: Always add muted=1 when autoplay=1 to comply with browser policies
-  if (options?.autoplay) {
-    params.set("autoplay", "1");
-    params.set("muted", "1");
-  } else if (options?.muted) {
-    params.set("muted", "1");
-  }
-
-  // Always add these for better mobile support
-  params.set("playsinline", "1");
-  params.set("dnt", "1"); // Do not track
-
-  const queryString = params.toString();
-  return `https://player.vimeo.com/video/${videoId}${queryString ? `?${queryString}` : ""}`;
-}
-
-/**
- * Get Vimeo thumbnail URL from video ID
- * Uses vumbnail.com service for easy thumbnail access
- */
-export function getVimeoThumbnail(videoId: string): string {
-  return `https://vumbnail.com/${videoId}.jpg`;
-}
-
-/**
  * Get complete video info from URL or iframe embed code
- * For Vimeo, preserves query parameters from embed URLs to support private videos
+ * Returns source 'unknown' for Vimeo and other unsupported sources
  */
 export function getVideoInfo(input: string | null | undefined): VideoInfo {
   // Normalize input first to handle iframe embed codes
@@ -287,24 +178,6 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
     };
   }
 
-  if (source === "vimeo") {
-    const vimeoInfo = extractVimeoIdAndHash(url);
-    const id = vimeoInfo?.id || null;
-    const hash = vimeoInfo?.hash || null;
-
-    // Build embed URL with privacy hash if present
-    const embedUrl = id ? getVimeoEmbedUrl(id, hash) : null;
-
-    return {
-      source,
-      id,
-      embedUrl,
-      thumbnailUrl: id ? getVimeoThumbnail(id) : null,
-      // Expose hash for components that need it
-      vimeoHash: hash,
-    };
-  }
-
   return {
     source: "unknown",
     id: null,
@@ -314,12 +187,19 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
 }
 
 /**
- * Check if a URL is a valid video URL (YouTube, Google Drive, or Vimeo)
+ * Check if a URL is a valid supported video URL (YouTube or Google Drive)
  * Also handles iframe embed codes
+ * Note: Returns true for Vimeo URLs to allow saving (playback shows unsupported message)
  */
 export function isValidVideoUrl(input: string | null | undefined): boolean {
   const url = normalizeVideoInput(input);
-  return detectVideoSource(url) !== "unknown";
+  const source = detectVideoSource(url);
+  // Allow YouTube, Google Drive, and Vimeo URLs to be saved
+  // Vimeo will show "unsupported" message during playback
+  if (source !== "unknown") return true;
+  // Also allow Vimeo URLs to be saved
+  if (isVimeoUrl(url)) return true;
+  return false;
 }
 
 /**
@@ -334,11 +214,4 @@ export function isValidYouTubeUrl(url: string | null | undefined): boolean {
  */
 export function isValidGoogleDriveUrl(url: string | null | undefined): boolean {
   return extractGoogleDriveId(url) !== null;
-}
-
-/**
- * Check if a URL is a valid Vimeo URL
- */
-export function isValidVimeoUrl(url: string | null | undefined): boolean {
-  return extractVimeoId(url) !== null;
 }
