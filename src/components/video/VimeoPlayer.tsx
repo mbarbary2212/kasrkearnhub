@@ -15,6 +15,8 @@ interface VimeoPlayerProps {
   onPause?: () => void;
   onEnded?: () => void;
   onError?: (error: Error) => void;
+  /** Called when a load error occurs (403/404/private video) to trigger watchdog */
+  onLoadError?: () => void;
 }
 
 declare global {
@@ -84,6 +86,7 @@ export function VimeoPlayer({
   onPause,
   onEnded,
   onError,
+  onLoadError,
 }: VimeoPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<VimeoPlayerInstance | null>(null);
@@ -165,13 +168,27 @@ export function VimeoPlayer({
           }
         });
 
-        // Handle player error - detect autoplay failures
+        // Handle player error - detect autoplay failures and HTTP errors
         player.on('error', (data: unknown) => {
           const errorData = data as { message?: string; name?: string } | undefined;
           logDiagnostic('video', 'Vimeo player error event', { videoId, error: errorData });
           
+          const errorMessage = errorData?.message?.toLowerCase() || '';
+          
+          // Check for HTTP errors (403/404) or access denied - trigger watchdog
+          if (errorMessage.includes('403') || 
+              errorMessage.includes('404') ||
+              errorMessage.includes('not found') ||
+              errorMessage.includes('private') ||
+              errorMessage.includes('privacy') ||
+              errorMessage.includes('forbidden')) {
+            onLoadError?.();
+            onError?.(new Error(errorData?.message || 'Video access denied'));
+            return;
+          }
+          
           // Check if this is an autoplay error (NotAllowedError)
-          if (errorData?.name === 'NotAllowedError' || errorData?.message?.includes('autoplay')) {
+          if (errorData?.name === 'NotAllowedError' || errorMessage.includes('autoplay')) {
             if (isMountedRef.current && autoplay) {
               setShowTapToPlay(true);
             }
@@ -302,8 +319,9 @@ export function VimeoPlayer({
           src={embedUrl}
           title="Vimeo video player"
           className="w-full h-full border-0"
-          allow="autoplay; fullscreen; picture-in-picture"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
         />
       </div>
 
