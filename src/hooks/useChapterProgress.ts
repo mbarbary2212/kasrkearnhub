@@ -168,7 +168,7 @@ export function useChapterProgress(chapterId?: string) {
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('question_type', 'essay')
+          .eq('question_type', 'mcq')
           .in('question_id',
             (await supabase
               .from('essays')
@@ -194,7 +194,7 @@ export function useChapterProgress(chapterId?: string) {
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('question_type', 'case_scenario')
+          .eq('question_type', 'osce')
           .in('question_id',
             (await supabase
               .from('case_scenarios')
@@ -207,7 +207,7 @@ export function useChapterProgress(chapterId?: string) {
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('question_type', 'matching')
+          .eq('question_type', 'mcq')
           .in('question_id',
             (await supabase
               .from('matching_questions')
@@ -323,6 +323,8 @@ export function useInvalidateChapterProgress() {
 
 /**
  * Hook to mark an item as complete (MCQ, Essay, OSCE, Case, Matching)
+ * 
+ * Provides a simple API: markComplete(questionId, questionType, chapterId)
  */
 export function useMarkItemComplete() {
   const { user } = useAuthContext();
@@ -344,18 +346,17 @@ export function useMarkItemComplete() {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // Map to DB enum type
-      const dbQuestionType = questionType === 'case_scenario' ? 'osce' : 
-                             questionType === 'essay' ? 'mcq' :
-                             questionType === 'matching' ? 'mcq' : questionType;
+      // Map to DB enum type (question_attempts table only supports 'mcq' | 'osce')
+      const dbQuestionType: 'mcq' | 'osce' = 
+        questionType === 'osce' || questionType === 'case_scenario' ? 'osce' : 'mcq';
 
       const { error } = await supabase.from('question_attempts').upsert(
         {
           user_id: user.id,
           question_id: questionId,
-          question_type: dbQuestionType as 'mcq' | 'osce',
+          question_type: dbQuestionType,
           is_correct: isCorrect ?? null,
-          selected_answer: selectedAnswer ?? null,
+          selected_answer: (selectedAnswer ?? null) as import('@/integrations/supabase/types').Json,
         },
         { onConflict: 'user_id,question_id,question_type' }
       );
@@ -370,8 +371,17 @@ export function useMarkItemComplete() {
     },
   });
 
+  // Wrapper function that accepts simple arguments for backward compatibility
+  const markComplete = (
+    questionId: string,
+    questionType: 'mcq' | 'essay' | 'osce' | 'case_scenario' | 'matching',
+    chapterId?: string
+  ) => {
+    mutation.mutate({ questionId, questionType, chapterId });
+  };
+
   return {
-    markComplete: mutation.mutate,
+    markComplete,
     markCompleteAsync: mutation.mutateAsync,
     isLoading: mutation.isPending,
   };
