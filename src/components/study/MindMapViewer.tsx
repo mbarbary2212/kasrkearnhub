@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Edit2, Trash2, ExternalLink, Network, ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react';
+import { Edit2, Trash2, ExternalLink, Network, ZoomIn, ZoomOut, Maximize2, RotateCcw, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -36,6 +36,31 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const handleFitToScreen = useCallback(() => {
     setZoom(1);
   }, []);
+
+  const handlePrint = useCallback(() => {
+    if (!fullscreenResource) return;
+    const imageUrl = (fullscreenResource.content as MindMapContent).imageUrl;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${fullscreenResource.title}</title>
+            <style>
+              body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+              img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+              @media print { body { margin: 0; } img { max-width: 100%; max-height: 100%; } }
+            </style>
+          </head>
+          <body>
+            <img src="${imageUrl}" alt="${fullscreenResource.title}" onload="window.print(); window.close();" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  }, [fullscreenResource]);
 
   const openFullscreen = useCallback((resource: StudyResource) => {
     setFullscreenResource(resource);
@@ -166,6 +191,15 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                   title="Fit to screen"
                 >
                   <RotateCcw className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={handlePrint}
+                  title="Print"
+                >
+                  <Printer className="w-4 h-4" />
                 </Button>
               </div>
             </div>
