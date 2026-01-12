@@ -1,27 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Plus, Upload, AlertCircle, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OsceQuestionCard } from './OsceQuestionCard';
 import { OsceFormModal } from './OsceFormModal';
 import { OsceBulkUploadModal } from './OsceBulkUploadModal';
 import { 
-  QuestionSearchFilter,
-  QuestionSearchFilterState,
-  DEFAULT_QUESTION_FILTER,
+  UnifiedQuestionFilter,
+  UnifiedFilterState,
+  DEFAULT_UNIFIED_FILTER,
   filterBySearch,
-  sortQuestions,
-} from './QuestionSearchFilter';
-import { 
-  PracticeFilters, 
-  PracticeFilterState, 
-  DEFAULT_STUDENT_FILTERS,
   filterByStatus,
+  sortItems,
   countByStatus,
-  getActiveFilter,
-} from './PracticeFilters';
+} from './UnifiedQuestionFilter';
 import { 
   OsceQuestion, 
   useDeleteOsceQuestion, 
@@ -180,42 +173,11 @@ export function OsceList({
     return { duplicateIds: ids, duplicateGroupMap: groupMap };
   }, [questions, isAdmin]);
 
-  // Admin search/filter state
-  const [searchFilters, setSearchFilters] = useState<QuestionSearchFilterState>(DEFAULT_QUESTION_FILTER);
+  // Unified filter state
+  const [filters, setFilters] = useState<UnifiedFilterState>(DEFAULT_UNIFIED_FILTER);
 
-  // Practice filters - sync with URL (for students)
-  const [practiceFilters, setPracticeFilters] = useState<PracticeFilterState>(() => {
-    if (isAdmin) return DEFAULT_STUDENT_FILTERS;
-    try {
-      const param = searchParams.get('osce_filters');
-      if (param) {
-        return JSON.parse(param);
-      }
-    } catch {}
-    return DEFAULT_STUDENT_FILTERS;
-  });
-
-  // Sync filters to URL
-  useEffect(() => {
-    if (isAdmin) return;
-    
-    setSearchParams(
-      prev => {
-        const next = new URLSearchParams(prev);
-        const activeFilter = getActiveFilter(practiceFilters);
-        if (activeFilter === 'all') {
-          next.delete('osce_filters');
-        } else {
-          next.set('osce_filters', JSON.stringify(practiceFilters));
-        }
-        return next;
-      },
-      { replace: true }
-    );
-  }, [practiceFilters, setSearchParams, isAdmin]);
-
-  // Calculate counts for filters
-  const filterCounts = useMemo(() => {
+  // Calculate counts for status filters
+  const statusCounts = useMemo(() => {
     return countByStatus(questions, attemptMap, starredIds);
   }, [questions, attemptMap, starredIds]);
 
@@ -223,40 +185,40 @@ export function OsceList({
   const filteredQuestions = useMemo(() => {
     let result = questions;
     
-    if (isAdmin) {
-      // Apply admin search filters
-      result = filterBySearch(result, searchFilters.search, ['history_text', 'statement_1', 'statement_2', 'statement_3', 'statement_4', 'statement_5']);
-      
-      // Apply duplicates filter
-      if (showDuplicatesOnly && !showDeleted) {
-        result = result.filter(q => duplicateIds.has(q.id));
-      }
-      
-      // Sort - group duplicates together if showing duplicates only
-      if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
-        result = [...result].sort((a, b) => {
-          const leaderA = duplicateGroupMap.get(a.id) || a.id;
-          const leaderB = duplicateGroupMap.get(b.id) || b.id;
-          
-          if (leaderA !== leaderB) {
-            return leaderA.localeCompare(leaderB);
-          }
-          
-          if (a.id === leaderA) return -1;
-          if (b.id === leaderA) return 1;
-          
-          return 0;
-        });
-      } else {
-        result = sortQuestions(result, searchFilters.sortBy);
-      }
+    // Apply search filter
+    result = filterBySearch(result, filters.search, ['history_text', 'statement_1', 'statement_2', 'statement_3', 'statement_4', 'statement_5'] as (keyof OsceQuestion)[]);
+    
+    // Apply status filter (for students)
+    if (!isAdmin && filters.status !== 'all') {
+      result = filterByStatus(result, filters.status, attemptMap, starredIds);
+    }
+    
+    // Apply duplicates filter (admin only)
+    if (isAdmin && showDuplicatesOnly && !showDeleted) {
+      result = result.filter(q => duplicateIds.has(q.id));
+    }
+    
+    // Sort - group duplicates together if showing duplicates only
+    if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
+      result = [...result].sort((a, b) => {
+        const leaderA = duplicateGroupMap.get(a.id) || a.id;
+        const leaderB = duplicateGroupMap.get(b.id) || b.id;
+        
+        if (leaderA !== leaderB) {
+          return leaderA.localeCompare(leaderB);
+        }
+        
+        if (a.id === leaderA) return -1;
+        if (b.id === leaderA) return 1;
+        
+        return 0;
+      });
     } else {
-      // Apply student practice filters
-      result = filterByStatus(result, practiceFilters, attemptMap, starredIds);
+      result = sortItems(result, filters.sortBy);
     }
     
     return result;
-  }, [questions, practiceFilters, attemptMap, starredIds, isAdmin, searchFilters, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
+  }, [questions, filters, attemptMap, starredIds, isAdmin, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
 
   // Display questions (include deleted if toggle is on)
   const displayQuestions = useMemo(() => {
@@ -292,8 +254,9 @@ export function OsceList({
   const handleResetProgress = () => {
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'osce' });
-    // Also clear starred
+    // Also clear starred and reset filter status
     setStarredIds(new Set());
+    setFilters(prev => ({ ...prev, status: 'all' }));
   };
 
   if (questions.length === 0 && !isAdmin) {
@@ -328,17 +291,20 @@ export function OsceList({
         </div>
       )}
 
-      {/* Admin Search and Filter Bar */}
-      {isAdmin && questions.length > 0 && (
-        <QuestionSearchFilter
-          filters={searchFilters}
-          onFiltersChange={setSearchFilters}
+      {/* Unified Search and Filter Bar */}
+      {questions.length > 0 && (
+        <UnifiedQuestionFilter
+          filters={filters}
+          onFiltersChange={setFilters}
           totalCount={questions.length}
           filteredCount={displayQuestions.length}
           questionType="OSCE"
           searchPlaceholder="Search OSCE questions..."
           showDifficultyFilter={false}
-          adminFilters={{
+          showStatusFilter={!isAdmin && !!chapterId}
+          statusCounts={statusCounts}
+          onResetProgress={chapterId ? handleResetProgress : undefined}
+          adminFilters={isAdmin ? {
             showMarkedOnly: false,
             onShowMarkedOnlyChange: () => {},
             markedCount: starredIds.size,
@@ -349,21 +315,7 @@ export function OsceList({
             onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
             deletedCount: deletedQuestions.length,
             showDeletedToggle,
-          }}
-        />
-      )}
-
-      {/* Practice Filters for students (MCQ-style) */}
-      {!isAdmin && !showDeleted && chapterId && questions.length > 0 && (
-        <PracticeFilters
-          filters={practiceFilters}
-          onFiltersChange={setPracticeFilters}
-          onResetProgress={handleResetProgress}
-          counts={filterCounts}
-          totalCount={questions.length}
-          filteredCount={filteredQuestions.length}
-          questionType="osce"
-          moduleSlug={moduleSlug}
+          } : undefined}
         />
       )}
 
