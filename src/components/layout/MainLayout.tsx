@@ -1,7 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useCoachContext } from '@/contexts/CoachContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -25,7 +24,8 @@ import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
-import { cn } from '@/lib/utils';
+import { CoachFAB } from '@/components/coach';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -33,12 +33,12 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin } = useAuthContext();
-  const { shouldPulse, dismissPulse } = useCoachContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
+  const isMobile = useIsMobile();
 
   const handleLogout = async () => {
     await signOut();
@@ -154,22 +154,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Coach Icon - Navigates to Coach page OR Admin Panel */}
-            {user && (
+            {/* Study Coach Icon - Only on mobile (navigates to Coach page) */}
+            {user && isMobile && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       onClick={() => {
-                        dismissPulse();
                         navigate(isAdmin ? '/admin' : '/progress');
                       }}
                       variant="ghost"
                       size="icon"
-                      className={cn(
-                        "h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110",
-                        shouldPulse && "animate-pulse ring-2 ring-primary/50"
-                      )}
+                      className="h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
                       <img 
                         src={studyCoachIcon} 
@@ -273,6 +269,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Achievements Panel */}
       <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />
+
+      {/* Coach FAB - Desktop/Tablet only */}
+      <CoachFAB />
     </div>
   );
 }
