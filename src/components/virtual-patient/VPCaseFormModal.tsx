@@ -178,12 +178,15 @@ export function VPCaseFormModal({
             {/* Chapter Selection */}
             <div>
               <Label>Chapter (optional)</Label>
-              <Select value={selectedChapterId} onValueChange={setSelectedChapterId}>
+              <Select 
+                value={selectedChapterId || "none"} 
+                onValueChange={(v) => setSelectedChapterId(v === "none" ? "" : v)}
+              >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select chapter" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No specific chapter</SelectItem>
+                  <SelectItem value="none">No specific chapter</SelectItem>
                   {chapters?.map((ch) => (
                     <SelectItem key={ch.id} value={ch.id}>
                       Chapter {ch.chapter_number}: {ch.title}
