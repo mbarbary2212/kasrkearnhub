@@ -3,18 +3,20 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Upload, Link2, Trash2, RotateCcw, Star, Copy } from 'lucide-react';
+import { Plus, Upload, Link2, Trash2, RotateCcw } from 'lucide-react';
 import { MatchingQuestionCard } from './MatchingQuestionCard';
 import { MatchingQuestionFormModal } from './MatchingQuestionFormModal';
 import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadModal';
 import { 
-  QuestionSearchFilter,
-  QuestionSearchFilterState,
-  DEFAULT_QUESTION_FILTER,
+  UnifiedQuestionFilter,
+  UnifiedFilterState,
+  DEFAULT_UNIFIED_FILTER,
   filterBySearch,
   filterByDifficulty,
-  sortQuestions,
-} from './QuestionSearchFilter';
+  filterByStatus,
+  sortItems,
+  countByStatus,
+} from './UnifiedQuestionFilter';
 import { useDeleteMatchingQuestion, useRestoreMatchingQuestion, type MatchingQuestion } from '@/hooks/useMatchingQuestions';
 import { isMatchingDuplicate } from '@/lib/duplicateDetection';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { 
+  useChapterQuestionAttempts, 
+  useResetChapterAttempt,
+} from '@/hooks/useQuestionAttempts';
 
 const SIMILARITY_THRESHOLD = 0.85;
 
@@ -76,12 +82,61 @@ export function MatchingQuestionList({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
-  // Admin search/filter state
-  const [searchFilters, setSearchFilters] = useState<QuestionSearchFilterState>(DEFAULT_QUESTION_FILTER);
+  // Unified filter state
+  const [filters, setFilters] = useState<UnifiedFilterState>(DEFAULT_UNIFIED_FILTER);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
   const deleteMutation = useDeleteMatchingQuestion();
   const restoreMutation = useRestoreMatchingQuestion();
+
+  // Question attempt tracking hooks (for students)
+  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
+    chapterId ?? undefined, 
+    'mcq' // Matching uses 'mcq' type in DB
+  );
+  const resetAttemptMutation = useResetChapterAttempt();
+
+  // Create a map of question attempts for quick lookup
+  const attemptMap = useMemo(() => {
+    const map = new Map<string, { is_correct: boolean | null }>();
+    questionAttempts.forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
+    return map;
+  }, [questionAttempts]);
+
+  // Starred questions - stored in localStorage
+  const [starredIds, setStarredIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const stored = localStorage.getItem(`matching_starred_${chapterId}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Persist starred to localStorage
+  useEffect(() => {
+    if (chapterId) {
+      localStorage.setItem(`matching_starred_${chapterId}`, JSON.stringify([...starredIds]));
+    }
+  }, [starredIds, chapterId]);
+
+  const toggleStar = useCallback((id: string) => {
+    setStarredIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Calculate counts for status filters
+  const statusCounts = useMemo(() => {
+    return countByStatus(questions, attemptMap, starredIds);
+  }, [questions, attemptMap, starredIds]);
 
   // Duplicate detection for matching questions
   const { duplicateIds, duplicateGroupMap } = useMemo(() => {
@@ -133,40 +188,50 @@ export function MatchingQuestionList({
   const filteredQuestions = useMemo(() => {
     let result = questions;
     
-    if (isAdmin) {
-      // Apply search filter
-      result = filterBySearch(result, searchFilters.search, ['instruction']);
-      
-      // Apply difficulty filter
-      result = filterByDifficulty(result, searchFilters.difficulty);
-      
-      // Apply duplicates filter
-      if (showDuplicatesOnly && !showDeleted) {
-        result = result.filter(q => duplicateIds.has(q.id));
-      }
-      
-      // Sort - group duplicates together if showing duplicates only
-      if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
-        result = [...result].sort((a, b) => {
-          const leaderA = duplicateGroupMap.get(a.id) || a.id;
-          const leaderB = duplicateGroupMap.get(b.id) || b.id;
-          
-          if (leaderA !== leaderB) {
-            return leaderA.localeCompare(leaderB);
-          }
-          
-          if (a.id === leaderA) return -1;
-          if (b.id === leaderA) return 1;
-          
-          return 0;
-        });
-      } else {
-        result = sortQuestions(result, searchFilters.sortBy);
-      }
+    // Apply search filter
+    result = filterBySearch(result, filters.search, ['instruction'] as (keyof MatchingQuestion)[]);
+    
+    // Apply difficulty filter
+    result = filterByDifficulty(result, filters.difficulty);
+    
+    // Apply status filter (for students)
+    if (!isAdmin && filters.status !== 'all') {
+      result = filterByStatus(result, filters.status, attemptMap, starredIds);
+    }
+    
+    // Apply duplicates filter (admin only)
+    if (isAdmin && showDuplicatesOnly && !showDeleted) {
+      result = result.filter(q => duplicateIds.has(q.id));
+    }
+    
+    // Sort - group duplicates together if showing duplicates only
+    if (showDuplicatesOnly && duplicateGroupMap.size > 0) {
+      result = [...result].sort((a, b) => {
+        const leaderA = duplicateGroupMap.get(a.id) || a.id;
+        const leaderB = duplicateGroupMap.get(b.id) || b.id;
+        
+        if (leaderA !== leaderB) {
+          return leaderA.localeCompare(leaderB);
+        }
+        
+        if (a.id === leaderA) return -1;
+        if (b.id === leaderA) return 1;
+        
+        return 0;
+      });
+    } else {
+      result = sortItems(result, filters.sortBy);
     }
     
     return result;
-  }, [questions, isAdmin, searchFilters, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
+  }, [questions, filters, attemptMap, starredIds, isAdmin, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
+
+  const handleResetProgress = () => {
+    if (!chapterId) return;
+    resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' }); // Matching uses 'mcq' type
+    setStarredIds(new Set());
+    setFilters(prev => ({ ...prev, status: 'all' }));
+  };
 
   const handleEdit = (question: MatchingQuestion) => {
     setEditingQuestion(question);
@@ -232,20 +297,23 @@ export function MatchingQuestionList({
         </div>
       )}
 
-      {/* Admin Search and Filter Bar */}
-      {isAdmin && questions.length > 0 && (
-        <QuestionSearchFilter
-          filters={searchFilters}
-          onFiltersChange={setSearchFilters}
+      {/* Unified Search and Filter Bar */}
+      {questions.length > 0 && (
+        <UnifiedQuestionFilter
+          filters={filters}
+          onFiltersChange={setFilters}
           totalCount={questions.length}
           filteredCount={displayQuestions.length}
           questionType="Matching"
           searchPlaceholder="Search matching questions..."
           showDifficultyFilter={true}
-          adminFilters={{
+          showStatusFilter={!isAdmin && !!chapterId}
+          statusCounts={statusCounts}
+          onResetProgress={chapterId ? handleResetProgress : undefined}
+          adminFilters={isAdmin ? {
             showMarkedOnly: false,
             onShowMarkedOnlyChange: () => {},
-            markedCount: 0,
+            markedCount: starredIds.size,
             showDuplicatesOnly,
             onShowDuplicatesOnlyChange: setShowDuplicatesOnly,
             duplicatesCount: duplicateIds.size,
@@ -253,7 +321,7 @@ export function MatchingQuestionList({
             onShowDeletedChange: (checked) => onShowDeletedChange?.(checked),
             deletedCount: deletedQuestions.length,
             showDeletedToggle: showDeletedToggle ?? false,
-          }}
+          } : undefined}
         />
       )}
 
