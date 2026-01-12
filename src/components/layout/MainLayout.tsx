@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useCoachContext } from '@/contexts/CoachContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -17,15 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Bot, Trophy } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap } from 'lucide-react';
 import logo from '@/assets/logo.png';
-import studyGuideIcon from '@/assets/study-guide-icon.png';
-import personalCoachIcon from '@/assets/personal-coach-icon.png';
+import studyCoachIcon from '@/assets/study-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
-import { TutorChatPanel } from '@/components/tutor';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
+import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -33,10 +33,10 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin } = useAuthContext();
+  const { shouldPulse, dismissPulse } = useCoachContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
-  const [tutorOpen, setTutorOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
 
@@ -154,44 +154,32 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* AI Tutor Icon - Available to all logged-in users */}
+            {/* Study Coach Icon - Navigates to Coach page OR Admin Panel */}
             {user && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => setTutorOpen(true)}
+                      onClick={() => {
+                        dismissPulse();
+                        navigate(isAdmin ? '/admin' : '/progress');
+                      }}
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11 rounded-lg bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
+                      className={cn(
+                        "h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110",
+                        shouldPulse && "animate-pulse ring-2 ring-primary/50"
+                      )}
                     >
-                      <Bot className="h-6 w-6 text-primary" />
+                      <img 
+                        src={studyCoachIcon} 
+                        alt={isAdmin ? "Admin Panel" : "Study Coach"} 
+                        className="h-full w-full object-contain rounded-full" 
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    MedGPT Tutor
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-
-            {/* Imhotep Icon - Role-aware: Admin Panel for admins, Study Coach for students */}
-            {user && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => navigate(isAdmin ? '/admin' : '/progress')}
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 rounded-lg hover:bg-primary/10 p-0 overflow-hidden transition-transform duration-200 hover:scale-110"
-                    >
-                      <img src={personalCoachIcon} alt={isAdmin ? "Admin Panel" : "Personal Study Coach"} className="h-[180%] w-full object-cover object-[center_18%] rounded-lg" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    {isAdmin ? 'Admin Panel' : 'Personal Study Coach'}
+                    {isAdmin ? 'Admin Panel' : 'Study Coach'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -232,11 +220,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                {/* Only show Personal Study Coach for non-admins */}
+                {/* Only show Study Coach for non-admins */}
                 {!isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/progress')}>
-                    <img src={personalCoachIcon} alt="Personal Study Coach" className="mr-2 h-5 w-5 object-cover object-top rounded" />
-                    Personal Study Coach
+                    <GraduationCap className="mr-2 h-4 w-4" />
+                    Study Coach
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => navigate('/account')}>
@@ -282,9 +270,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
-
-      {/* AI Tutor Chat Panel */}
-      <TutorChatPanel open={tutorOpen} onOpenChange={setTutorOpen} />
 
       {/* Achievements Panel */}
       <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />

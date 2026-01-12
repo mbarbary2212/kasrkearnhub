@@ -1,0 +1,379 @@
+import { useEffect, useCallback, useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { 
+  Send, 
+  Loader2, 
+  User, 
+  Sparkles, 
+  BookOpen, 
+  Stethoscope, 
+  Brain, 
+  X,
+  AlertCircle,
+  GraduationCap,
+} from 'lucide-react';
+import { useCoachContext, useCoachPrompt, type QuestionContext } from '@/contexts/CoachContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
+import studyCoachIcon from '@/assets/study-coach-icon.png';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`;
+
+const SUGGESTED_QUESTIONS = [
+  { icon: BookOpen, text: "Explain this concept in simpler terms", category: "Understanding" },
+  { icon: Stethoscope, text: "What are the clinical implications?", category: "Clinical" },
+  { icon: Brain, text: "How can I remember this better?", category: "Memory" },
+];
+
+export function AskCoachPanel() {
+  const isMobile = useIsMobile();
+  const { 
+    askCoachOpen, 
+    closeAskCoach, 
+    studyContext, 
+    performance, 
+    initialCoachMessage 
+  } = useCoachContext();
+  const { generatePrompt } = useCoachPrompt();
+  
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const hasInjectedContext = useRef(false);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Reset when panel closes
+  useEffect(() => {
+    if (!askCoachOpen) {
+      setMessages([]);
+      setInput('');
+      hasInjectedContext.current = false;
+    }
+  }, [askCoachOpen]);
+
+  // Auto-send initial context when opening with a question
+  useEffect(() => {
+    if (askCoachOpen && initialCoachMessage && !hasInjectedContext.current) {
+      hasInjectedContext.current = true;
+      handleSend(initialCoachMessage);
+    }
+  }, [askCoachOpen, initialCoachMessage]);
+
+  const streamChat = useCallback(async (userMessages: Message[], contextPrompt: string | null) => {
+    const systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
+    
+    const resp = await fetch(CHAT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ 
+        messages: userMessages,
+        context: systemContext,
+      }),
+    });
+
+    const contentType = resp.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await resp.json();
+      if (data.blocked) {
+        toast.warning(data.message || 'Your message could not be processed.');
+        return;
+      }
+      if (data.error) {
+        throw new Error(data.error);
+      }
+    }
+
+    if (!resp.ok) {
+      throw new Error(`Error: ${resp.status}`);
+    }
+
+    if (!resp.body) throw new Error('No response body');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let textBuffer = '';
+    let assistantContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      textBuffer += decoder.decode(value, { stream: true });
+
+      let newlineIndex: number;
+      while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+        let line = textBuffer.slice(0, newlineIndex);
+        textBuffer = textBuffer.slice(newlineIndex + 1);
+
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        if (line.startsWith(':') || line.trim() === '') continue;
+        if (!line.startsWith('data: ')) continue;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === '[DONE]') break;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) {
+            assistantContent += content;
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'assistant') {
+                return prev.map((m, i) => 
+                  i === prev.length - 1 ? { ...m, content: assistantContent } : m
+                );
+              }
+              return [...prev, { role: 'assistant', content: assistantContent }];
+            });
+          }
+        } catch {
+          textBuffer = line + '\n' + textBuffer;
+          break;
+        }
+      }
+    }
+  }, []);
+
+  const handleSend = useCallback(async (text?: string) => {
+    const messageText = text || input.trim();
+    if (!messageText || isLoading) return;
+
+    const userMsg: Message = { role: 'user', content: messageText };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const contextPrompt = generatePrompt();
+      await streamChat(newMessages, contextPrompt);
+    } catch (error) {
+      console.error('Coach chat error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to get response');
+      setMessages(messages);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, isLoading, messages, streamChat, generatePrompt]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  // Build contextual header
+  const getContextHeader = () => {
+    if (!studyContext) return null;
+    const parts: string[] = [];
+    if (studyContext.moduleName) parts.push(studyContext.moduleName);
+    if (studyContext.chapterName) parts.push(studyContext.chapterName);
+    return parts.length > 0 ? parts.join(' • ') : null;
+  };
+
+  const contextHeader = getContextHeader();
+
+  return (
+    <Sheet open={askCoachOpen} onOpenChange={(open) => !open && closeAskCoach()}>
+      <SheetContent 
+        side={isMobile ? "bottom" : "right"} 
+        className={`flex flex-col p-0 ${
+          isMobile 
+            ? 'h-[90vh] rounded-t-2xl' 
+            : 'w-[420px] sm:w-[460px] sm:max-w-[460px]'
+        }`}
+      >
+        {/* Header */}
+        <SheetHeader className="px-4 py-3 border-b bg-card/50 backdrop-blur-sm flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border-2 border-primary/20">
+                <AvatarImage src={studyCoachIcon} alt="Study Coach" />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  <GraduationCap className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <SheetTitle className="text-base font-semibold">Study Coach</SheetTitle>
+                {contextHeader && (
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {contextHeader}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={closeAskCoach}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </SheetHeader>
+
+        {/* Performance Warning */}
+        {performance.needsIntervention && messages.length === 0 && (
+          <div className="mx-4 mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              You seem to be having some difficulty. Don't worry – I'm here to help you understand the material better.
+            </p>
+          </div>
+        )}
+
+        {/* Chat Area */}
+        <ScrollArea className="flex-1 p-4" ref={scrollRef as React.RefObject<HTMLDivElement>}>
+          <div className="space-y-4">
+            {messages.length === 0 ? (
+              <div className="py-6 text-center space-y-5">
+                <div className="space-y-3">
+                  <div className="inline-flex p-3 rounded-full bg-primary/10">
+                    <Sparkles className="h-7 w-7 text-primary" />
+                  </div>
+                  <h2 className="text-lg font-semibold">How can I help?</h2>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                    {studyContext?.question 
+                      ? "I can see you're working on a question. Ask me anything about it!"
+                      : studyContext?.resource
+                      ? "I can help you understand this material better."
+                      : "I'm here to guide your studies."}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Quick actions:</p>
+                  <div className="flex flex-col gap-2">
+                    {studyContext?.question && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-auto py-2 px-3 text-left justify-start bg-primary/5"
+                        onClick={() => handleSend("Help me understand this question")}
+                      >
+                        <GraduationCap className="h-3.5 w-3.5 mr-2 shrink-0 text-primary" />
+                        <span className="text-xs">Help me with this question</span>
+                      </Button>
+                    )}
+                    {SUGGESTED_QUESTIONS.map((q, i) => (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        size="sm"
+                        className="h-auto py-2 px-3 text-left justify-start"
+                        onClick={() => handleSend(q.text)}
+                      >
+                        <q.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        <span className="text-xs line-clamp-1">{q.text}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              messages.map((msg: Message, i: number) => (
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <Avatar className="h-7 w-7 shrink-0">
+                      <AvatarImage src={studyCoachIcon} alt="Coach" className="object-cover" />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        <GraduationCap className="h-3.5 w-3.5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <Card
+                    className={`max-w-[85%] p-3 ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                  >
+                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm">
+                      {msg.content}
+                    </div>
+                  </Card>
+                  {msg.role === 'user' && (
+                    <Avatar className="h-7 w-7 shrink-0">
+                      <AvatarFallback className="bg-secondary">
+                        <User className="h-3.5 w-3.5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))
+            )}
+            {isLoading && messages[messages.length - 1]?.role === 'user' && (
+              <div className="flex gap-2">
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarImage src={studyCoachIcon} alt="Coach" className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    <GraduationCap className="h-3.5 w-3.5" />
+                  </AvatarFallback>
+                </Avatar>
+                <Card className="bg-muted p-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </Card>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Input Area */}
+        <div className="border-t bg-card/50 backdrop-blur-sm p-3 flex-shrink-0">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask your Study Coach..."
+              className="min-h-[44px] max-h-24 resize-none text-sm"
+              rows={1}
+              disabled={isLoading}
+            />
+            <Button
+              onClick={() => handleSend()}
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="h-11 w-11 shrink-0"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2 text-center">
+            Powered by AI • Study aid only
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

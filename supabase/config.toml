@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.chat-with-moderation]
 verify_jwt = false
+
+[functions.coach-chat]
+verify_jwt = false
