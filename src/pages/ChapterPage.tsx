@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,8 @@ import {
   PracticeTabId,
 } from '@/config/tabConfig';
 import { ChapterMockExamSection } from '@/components/exam';
+import { AskCoachButton } from '@/components/coach';
+import { useCoachContext } from '@/contexts/CoachContext';
 import { 
   ArrowLeft, 
   FileText, 
@@ -69,6 +71,7 @@ export default function ChapterPage() {
   const queryClient = useQueryClient();
   const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, chapterId });
   const deleteStudyResource = useDeleteStudyResource();
+  const { setStudyContext } = useCoachContext();
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -171,6 +174,19 @@ export default function ChapterPage() {
     await queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
   }, [queryClient, chapterId]);
 
+  // Update Coach context when page loads or section changes
+  useEffect(() => {
+    if (module && chapter) {
+      setStudyContext({
+        pageType: activeSection === 'resources' ? 'resource' : activeSection === 'practice' ? 'practice' : 'test',
+        moduleId: module.id,
+        moduleName: module.name,
+        chapterId: chapter.id,
+        chapterName: chapter.title,
+      });
+    }
+  }, [module, chapter, activeSection, setStudyContext]);
+
   if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
@@ -239,6 +255,19 @@ export default function ChapterPage() {
               </>
             )}
           </div>
+          {/* Ask Coach Button - visible in Resources and Practice sections */}
+          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+            <AskCoachButton 
+              variant="header"
+              context={{
+                pageType: activeSection === 'resources' ? 'resource' : 'practice',
+                moduleId: module?.id,
+                moduleName: module?.name,
+                chapterId: chapter?.id,
+                chapterName: chapter?.title,
+              }}
+            />
+          )}
         </div>
 
         {/* Chapter Progress Bar */}

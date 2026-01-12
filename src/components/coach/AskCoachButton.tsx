@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { useCoachContext, type QuestionContext, type ResourceContext, type StudyContext } from '@/contexts/CoachContext';
-import { GraduationCap, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import studyCoachIcon from '@/assets/study-coach-icon.png';
 
 interface AskCoachButtonProps {
   // Context to inject when button is clicked
@@ -10,7 +11,7 @@ interface AskCoachButtonProps {
   resource?: ResourceContext;
   
   // Styling
-  variant?: 'default' | 'chip' | 'icon';
+  variant?: 'default' | 'chip' | 'header' | 'icon';
   className?: string;
   
   // Initial message to send
@@ -21,7 +22,7 @@ export function AskCoachButton({
   context,
   question,
   resource,
-  variant = 'chip',
+  variant = 'header',
   className,
   initialMessage,
 }: AskCoachButtonProps) {
@@ -49,13 +50,17 @@ export function AskCoachButton({
         size="icon"
         onClick={handleClick}
         className={cn(
-          "h-8 w-8 rounded-full",
-          shouldPulse && "animate-pulse",
+          "h-9 w-9 rounded-full p-0.5 overflow-hidden",
+          shouldPulse && "animate-pulse ring-2 ring-primary/50",
           className
         )}
         title="Ask Study Coach"
       >
-        <GraduationCap className="h-4 w-4" />
+        <img 
+          src={studyCoachIcon} 
+          alt="Ask Coach" 
+          className="h-full w-full object-contain rounded-full" 
+        />
       </Button>
     );
   }
@@ -79,6 +84,36 @@ export function AskCoachButton({
     );
   }
 
+  // Header variant - prominent button for page headers
+  if (variant === 'header') {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        className={cn(
+          "gap-2 px-3 h-9",
+          "bg-gradient-to-r from-primary/10 to-primary/5",
+          "hover:from-primary/20 hover:to-primary/10",
+          "border-primary/30 hover:border-primary/50",
+          "text-primary font-medium",
+          "shadow-sm hover:shadow-md",
+          "transition-all duration-200",
+          shouldPulse && "animate-pulse ring-2 ring-primary/40",
+          className
+        )}
+      >
+        <img 
+          src={studyCoachIcon} 
+          alt="" 
+          className="h-5 w-5 object-contain rounded-full" 
+        />
+        <span>Ask Coach</span>
+      </Button>
+    );
+  }
+
+  // Default variant - standard button
   return (
     <Button
       variant="outline"
@@ -89,7 +124,11 @@ export function AskCoachButton({
         className
       )}
     >
-      <GraduationCap className="h-4 w-4" />
+      <img 
+        src={studyCoachIcon} 
+        alt="" 
+        className="h-5 w-5 object-contain rounded-full" 
+      />
       <span>Ask Study Coach</span>
     </Button>
   );
