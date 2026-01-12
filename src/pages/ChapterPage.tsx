@@ -20,6 +20,7 @@ import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBu
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
+import { VirtualPatientList, VPAdminList } from '@/components/virtual-patient';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -28,6 +29,7 @@ import {
 import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
+import { useVirtualPatientCases } from '@/hooks/useVirtualPatient';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -59,6 +61,7 @@ import {
   Image,
   ClipboardCheck,
   FlaskConical,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -129,7 +132,11 @@ export default function ChapterPage() {
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
+  const { data: vpCases, isLoading: vpLoading } = useVirtualPatientCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
+  
+  // Filter VP cases by chapter
+  const chapterVpCases = (vpCases || []).filter(c => c.chapter_id === chapterId);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
@@ -221,9 +228,10 @@ export default function ChapterPage() {
     essays: essays?.length || 0,
     cases: caseScenarios?.length || 0,
     osce: osceQuestions?.length || 0,
-    practical: 0, // Placeholder - no practicals data yet
+    practical: 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
+    virtual_patient: chapterVpCases.length,
   });
 
   // Admin sees all tabs; students see filtered based on setting
@@ -685,6 +693,21 @@ export default function ChapterPage() {
                       <Image className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <p className="text-muted-foreground">Image questions coming soon.</p>
+                  </div>
+                )}
+
+                {/* Virtual Patient Content */}
+                {practiceTab === 'virtual_patient' && moduleId && chapterId && (
+                  <div>
+                    {canManageContent ? (
+                      <VPAdminList moduleId={moduleId} chapterId={chapterId} />
+                    ) : vpLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <VirtualPatientList moduleId={moduleId} chapterId={chapterId} />
+                    )}
                   </div>
                 )}
               </div>
