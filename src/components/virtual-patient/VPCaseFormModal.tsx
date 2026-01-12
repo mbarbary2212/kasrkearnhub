@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -18,12 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Info, AlertCircle } from 'lucide-react';
 import { VPCase, VPCaseFormData, VPLevel } from '@/types/virtualPatient';
 import { useCreateVirtualPatientCase, useUpdateVirtualPatientCase } from '@/hooks/useVirtualPatient';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
+
+const MIN_STAGES_TO_PUBLISH = 3;
 
 interface VPCaseFormModalProps {
   open: boolean;
@@ -56,6 +65,10 @@ export function VPCaseFormModal({
   const { data: chapters } = useModuleChapters(moduleId);
   const createCase = useCreateVirtualPatientCase();
   const updateCase = useUpdateVirtualPatientCase();
+
+  // Check if case can be published (editing mode only)
+  const currentStageCount = vpCase?.stage_count || 0;
+  const canPublish = currentStageCount >= MIN_STAGES_TO_PUBLISH;
 
   useEffect(() => {
     if (vpCase) {
@@ -104,9 +117,23 @@ export function VPCaseFormModal({
     }
   };
 
+  const handlePublishedChange = (checked: boolean) => {
+    if (checked && isEditing && !canPublish) {
+      toast.error(`Add at least ${MIN_STAGES_TO_PUBLISH} stages before publishing`);
+      return;
+    }
+    setIsPublished(checked);
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !introText.trim()) {
       toast.error('Please fill in title and introduction');
+      return;
+    }
+
+    // Prevent publishing if not enough stages
+    if (isPublished && isEditing && !canPublish) {
+      toast.error(`Add at least ${MIN_STAGES_TO_PUBLISH} stages before publishing`);
       return;
     }
 
@@ -118,20 +145,22 @@ export function VPCaseFormModal({
       level,
       estimated_minutes: estimatedMinutes,
       tags,
-      is_published: isPublished,
+      is_published: isEditing ? isPublished : false, // New cases always start unpublished
     };
 
     try {
       if (isEditing && vpCase) {
         await updateCase.mutateAsync({ id: vpCase.id, data: formData });
         toast.success('Case updated');
+        onOpenChange(false);
         onSuccess?.(vpCase.id);
       } else {
         const result = await createCase.mutateAsync(formData);
-        toast.success('Case created');
+        toast.success('Case created! Now add stages to build your case.');
+        onOpenChange(false);
+        // Auto-open builder after creation
         onSuccess?.(result.id);
       }
-      onOpenChange(false);
     } catch (error) {
       console.error('Failed to save case:', error);
       toast.error('Failed to save case');
@@ -150,6 +179,17 @@ export function VPCaseFormModal({
 
         <ScrollArea className="flex-1 overflow-y-auto">
           <div className="space-y-4 pr-4 pb-4">
+            {/* Step 1 Helper for new cases */}
+            {!isEditing && (
+              <Alert className="bg-primary/5 border-primary/20">
+                <Info className="w-4 h-4 text-primary" />
+                <AlertDescription className="text-sm">
+                  <strong>Step 1 of 2:</strong> This creates the case header only. 
+                  Next, you will add stages (questions) to build the scenario.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Title */}
             <div>
               <Label htmlFor="title">Title *</Label>
@@ -254,16 +294,46 @@ export function VPCaseFormModal({
               )}
             </div>
 
-            {/* Published Toggle */}
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <Label>Published</Label>
-                <p className="text-sm text-muted-foreground">
-                  Only published cases are visible to students
-                </p>
+            {/* Published Toggle - Only show in edit mode */}
+            {isEditing && (
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label>Published</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Only published cases are visible to students
+                  </p>
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Switch 
+                          checked={isPublished} 
+                          onCheckedChange={handlePublishedChange}
+                          disabled={!canPublish && !isPublished}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    {!canPublish && (
+                      <TooltipContent>
+                        <p>Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              <Switch checked={isPublished} onCheckedChange={setIsPublished} />
-            </div>
+            )}
+
+            {/* Warning if trying to publish without enough stages */}
+            {isEditing && !canPublish && (
+              <Alert variant="destructive" className="bg-destructive/10">
+                <AlertCircle className="w-4 h-4" />
+                <AlertDescription className="text-sm">
+                  This case has {currentStageCount} stage{currentStageCount !== 1 ? 's' : ''}. 
+                  Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </ScrollArea>
 
@@ -273,7 +343,7 @@ export function VPCaseFormModal({
           </Button>
           <Button onClick={handleSubmit} disabled={!isValid || isLoading}>
             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isEditing ? 'Update' : 'Create'} Case
+            {isEditing ? 'Update Case' : 'Create Case & Add Stages →'}
           </Button>
         </div>
       </DialogContent>

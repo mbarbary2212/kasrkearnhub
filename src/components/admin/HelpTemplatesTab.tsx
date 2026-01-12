@@ -39,7 +39,7 @@ interface BuiltInTemplate {
   id: string;
   title: string;
   description: string;
-  format: 'csv' | 'xlsx';
+  format: 'csv' | 'xlsx' | 'txt';
   icon: 'spreadsheet' | 'file';
 }
 
@@ -100,6 +100,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     format: 'csv',
     icon: 'spreadsheet',
   },
+  {
+    id: 'virtual_patient',
+    title: 'Virtual Patient Template',
+    description: 'Copy/paste template for quick stage building',
+    format: 'txt',
+    icon: 'file',
+  },
 ];
 
 // Template generation functions
@@ -142,6 +149,89 @@ function downloadXlsx(filename: string, sheetData: any[][], sheetName: string = 
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   XLSX.writeFile(wb, filename);
 }
+
+function downloadTxt(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadVirtualPatientTemplate() {
+  const template = `# Virtual Patient (Linear) – Copy/Paste Template
+# ================================================
+#
+# WORKFLOW:
+# 1. Create Case: Click "Add Case" to create the case header (title, intro, difficulty)
+# 2. Build Stages: Click "Build Stages" and use "Quick Build (Paste Template)" 
+#    to paste this template and create all stages at once
+#
+# TEMPLATE FORMAT:
+# - Each stage starts with "STAGE N:" where N is the stage number
+# - TYPE: mcq | multi_select | short_answer
+# - PATIENT_INFO: (optional) New information revealed at this stage
+# - PROMPT: The question or instruction for the student
+# - CHOICES: (A) option (B) option (C) option (D) option
+# - CORRECT: A (for mcq) or A,C (for multi_select) or text (for short_answer)
+# - EXPLANATION: (optional) Why this is correct
+# - TEACHING_POINTS: (optional) Key learning points, each on a line starting with -
+#
+# ================================================
+
+STAGE 1:
+TYPE: mcq
+PATIENT_INFO: A 45-year-old woman presents with a painless lump in her right breast that she noticed 2 weeks ago. She has no family history of breast cancer.
+PROMPT: What is the most appropriate first step in management?
+CHOICES: (A) Reassure and observe (B) Order mammography (C) Perform fine needle aspiration (D) Refer for surgical excision
+CORRECT: B
+EXPLANATION: Mammography is the first-line imaging for breast lumps in women over 40. It helps characterize the lesion and guides further management.
+TEACHING_POINTS:
+- Triple assessment for breast lumps: clinical examination, imaging, and tissue sampling
+- Mammography is preferred for women ≥40; ultrasound is preferred for women <40
+- Never reassure without proper workup for a new breast lump
+
+STAGE 2:
+TYPE: mcq
+PATIENT_INFO: Mammography shows a 2cm irregular mass with microcalcifications (BIRADS 4).
+PROMPT: What is the next appropriate step?
+CHOICES: (A) Repeat mammography in 6 months (B) MRI of the breast (C) Core needle biopsy (D) Surgical excision
+CORRECT: C
+EXPLANATION: BIRADS 4 lesions have a 2-95% malignancy rate and require tissue diagnosis. Core needle biopsy provides histological diagnosis before definitive treatment.
+TEACHING_POINTS:
+- BIRADS 4 requires tissue diagnosis
+- Core biopsy is preferred over FNA for solid masses (provides architecture)
+- MRI is not routinely used for initial diagnosis
+
+STAGE 3:
+TYPE: multi_select
+PATIENT_INFO: Biopsy reveals invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
+PROMPT: Which of the following are appropriate components of the treatment plan? Select all that apply.
+CHOICES: (A) Breast-conserving surgery (B) Sentinel lymph node biopsy (C) Adjuvant endocrine therapy (D) Trastuzumab (E) Radiation therapy
+CORRECT: A,B,C,E
+EXPLANATION: This ER+/HER2- cancer is suitable for breast-conserving surgery with sentinel node biopsy, followed by radiation and endocrine therapy. Trastuzumab is only indicated for HER2+ tumors.
+TEACHING_POINTS:
+- ER+ tumors benefit from endocrine therapy (tamoxifen or aromatase inhibitors)
+- HER2+ tumors require anti-HER2 therapy (trastuzumab)
+- Breast-conserving surgery + radiation has equivalent survival to mastectomy for early-stage cancer
+
+STAGE 4:
+TYPE: short_answer
+PROMPT: The patient asks about her prognosis. What factors would you discuss that influence breast cancer prognosis?
+CORRECT: Key prognostic factors include: tumor size, lymph node status, histological grade, hormone receptor status (ER/PR), HER2 status, Ki-67 proliferation index, and presence of lymphovascular invasion. Molecular profiling (e.g., Oncotype DX) can also predict recurrence risk and guide chemotherapy decisions.
+EXPLANATION: Understanding prognostic factors helps guide treatment intensity and patient counseling.
+TEACHING_POINTS:
+- Lymph node status is the strongest prognostic factor
+- Gene expression profiling can guide adjuvant therapy decisions
+- Stage at diagnosis remains the most important determinant of survival`;
+
+  downloadTxt('virtual_patient_template.txt', template);
+}
+
 
 function generateTemplateDownload(templateId: string) {
   switch (templateId) {
@@ -289,6 +379,10 @@ function generateTemplateDownload(templateId: string) {
           ]
         ]
       ));
+      break;
+      
+    case 'virtual_patient':
+      downloadVirtualPatientTemplate();
       break;
       
     default:

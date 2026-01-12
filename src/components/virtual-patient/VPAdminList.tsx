@@ -4,6 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,6 +30,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { VPCase } from '@/types/virtualPatient';
 import { useVirtualPatientCases, useDeleteVirtualPatientCase } from '@/hooks/useVirtualPatient';
@@ -42,6 +49,8 @@ const levelColors = {
   intermediate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   advanced: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
+
+const MIN_STAGES_TO_PUBLISH = 3;
 
 export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
   const { data: cases, isLoading } = useVirtualPatientCases(moduleId, true);
@@ -75,6 +84,7 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
   };
 
   const handleCaseCreated = (caseId: string) => {
+    // Auto-open builder after case creation
     setSelectedCaseId(caseId);
     setBuilderOpen(true);
   };
@@ -89,6 +99,53 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
       console.error('Failed to delete case:', error);
       toast.error('Failed to delete case');
     }
+  };
+
+  // Helper to get status badge
+  const getStatusBadge = (vpCase: VPCase) => {
+    const stageCount = vpCase.stage_count || 0;
+    
+    if (stageCount === 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="destructive" className="text-xs gap-1">
+                <AlertCircle className="w-3 h-3" />
+                INCOMPLETE
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>No stages added. Build the case to add stages.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    if (stageCount < MIN_STAGES_TO_PUBLISH && !vpCase.is_published) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-xs gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
+                <AlertCircle className="w-3 h-3" />
+                {stageCount} stage{stageCount !== 1 ? 's' : ''}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    if (!vpCase.is_published) {
+      return <Badge variant="secondary" className="text-xs">DRAFT</Badge>;
+    }
+    
+    return null;
   };
 
   if (isLoading) {
@@ -136,68 +193,83 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCases.map((vpCase) => (
-            <Card key={vpCase.id} className={cn(!vpCase.is_published && "opacity-75 border-dashed")}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {vpCase.is_published ? (
-                        <Eye className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-muted-foreground" />
-                      )}
-                      <Badge variant="outline" className={cn("text-xs", levelColors[vpCase.level])}>
-                        {vpCase.level}
-                      </Badge>
+          {filteredCases.map((vpCase) => {
+            const stageCount = vpCase.stage_count || 0;
+            const isIncomplete = stageCount === 0;
+            
+            return (
+              <Card 
+                key={vpCase.id} 
+                className={cn(
+                  !vpCase.is_published && "opacity-90",
+                  isIncomplete && "border-destructive/50 border-dashed"
+                )}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {vpCase.is_published ? (
+                          <Eye className="w-4 h-4 text-green-600 shrink-0" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
+                        )}
+                        <Badge variant="outline" className={cn("text-xs", levelColors[vpCase.level])}>
+                          {vpCase.level}
+                        </Badge>
+                        {getStatusBadge(vpCase)}
+                      </div>
+                      <CardTitle className="text-base line-clamp-1">{vpCase.title}</CardTitle>
                     </div>
-                    <CardTitle className="text-base line-clamp-1">{vpCase.title}</CardTitle>
                   </div>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  {vpCase.intro_text}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1">
-                    <Layers className="w-4 h-4" />
-                    <span>{vpCase.stage_count || 0} stages</span>
+                  <CardDescription className="line-clamp-2">
+                    {vpCase.intro_text}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    <div className={cn(
+                      "flex items-center gap-1",
+                      isIncomplete && "text-destructive"
+                    )}>
+                      <Layers className="w-4 h-4" />
+                      <span>{stageCount} stage{stageCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{vpCase.estimated_minutes} min</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span>{vpCase.estimated_minutes} min</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleOpenBuilder(vpCase.id)}
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    Build Stages
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleEditCase(vpCase)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setDeleteConfirm(vpCase)}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={isIncomplete ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleOpenBuilder(vpCase.id)}
+                    >
+                      <Settings className="w-4 h-4 mr-1" />
+                      {isIncomplete ? 'Build Stages' : 'Edit Stages'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEditCase(vpCase)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeleteConfirm(vpCase)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

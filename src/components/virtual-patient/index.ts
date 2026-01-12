@@ -4,3 +4,4 @@ export { VPCaseFormModal } from './VPCaseFormModal';
 export { VPStageFormModal } from './VPStageFormModal';
 export { VPCaseBuilderModal } from './VPCaseBuilderModal';
 export { VPAdminList } from './VPAdminList';
+export { VPQuickBuildModal } from './VPQuickBuildModal';
