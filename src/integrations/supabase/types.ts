@@ -3462,6 +3462,188 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_patient_attempts: {
+        Row: {
+          case_id: string
+          completed_at: string | null
+          correct_count: number
+          created_at: string
+          id: string
+          is_completed: boolean
+          score: number
+          stage_answers: Json
+          started_at: string
+          time_taken_seconds: number | null
+          total_stages: number
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          completed_at?: string | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          score?: number
+          stage_answers?: Json
+          started_at?: string
+          time_taken_seconds?: number | null
+          total_stages: number
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          completed_at?: string | null
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          score?: number
+          stage_answers?: Json
+          started_at?: string
+          time_taken_seconds?: number | null
+          total_stages?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_patient_attempts_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virtual_patient_cases: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          created_by: string | null
+          estimated_minutes: number
+          id: string
+          intro_text: string
+          is_deleted: boolean
+          is_published: boolean
+          level: string
+          module_id: string | null
+          tags: string[] | null
+          title: string
+          topic_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_minutes?: number
+          id?: string
+          intro_text: string
+          is_deleted?: boolean
+          is_published?: boolean
+          level?: string
+          module_id?: string | null
+          tags?: string[] | null
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_minutes?: number
+          id?: string
+          intro_text?: string
+          is_deleted?: boolean
+          is_published?: boolean
+          level?: string
+          module_id?: string | null
+          tags?: string[] | null
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_patient_cases_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virtual_patient_stages: {
+        Row: {
+          case_id: string
+          choices: Json | null
+          correct_answer: Json
+          created_at: string
+          explanation: string | null
+          id: string
+          patient_info: string | null
+          prompt: string
+          stage_order: number
+          stage_type: string
+          teaching_points: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          case_id: string
+          choices?: Json | null
+          correct_answer: Json
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          patient_info?: string | null
+          prompt: string
+          stage_order: number
+          stage_type?: string
+          teaching_points?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          choices?: Json | null
+          correct_answer?: Json
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          patient_info?: string | null
+          prompt?: string
+          stage_order?: number
+          stage_type?: string
+          teaching_points?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_patient_stages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       years: {
         Row: {
           color: string | null

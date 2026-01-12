@@ -11,6 +11,7 @@ import {
   LucideIcon,
   GitBranch,
   Network,
+  User,
 } from 'lucide-react';
 
 // Unified tab configuration for the entire app
@@ -21,7 +22,7 @@ export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'documents
 
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
-export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images';
+export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images' | 'virtual_patient';
 
 export interface TabConfig {
   id: string;
@@ -48,6 +49,7 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'practical', label: 'Practical', icon: Stethoscope },
   { id: 'matching', label: 'Matching', icon: Link2 },
   { id: 'images', label: 'Image Questions', icon: Image },
+  { id: 'virtual_patient', label: 'Virtual Patient', icon: User },
 ];
 
 // Helper to add counts to tabs
@@ -76,6 +78,7 @@ export function createPracticeTabs(counts: {
   practical?: number;
   matching?: number;
   images?: number;
+  virtual_patient?: number;
 }): TabWithCount[] {
   return PRACTICE_TABS.map(tab => ({
     ...tab,
