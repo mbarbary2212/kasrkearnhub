@@ -1,13 +1,7 @@
 import { useState } from 'react';
-import { FileText, ExternalLink, Settings2, Pencil, Trash2, MessageSquare, FileIcon } from 'lucide-react';
+import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +33,7 @@ interface ResourceListProps {
   canDelete?: boolean;
   showFeedback?: boolean;
   compact?: boolean;
+  onEdit?: (resource: Resource) => void;
 }
 
 // Check if a URL is a PDF (by extension or resource_type)
@@ -56,6 +51,7 @@ export default function ResourceList({
   canDelete = false,
   showFeedback = true,
   compact = false,
+  onEdit,
 }: ResourceListProps) {
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useContentDelete(
     'resources',
@@ -89,7 +85,13 @@ export default function ResourceList({
       <>
         <div className="space-y-0.5 border rounded-lg divide-y">
           {resources.map((resource) => (
-            <div key={resource.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors group">
+            <div 
+              key={resource.id} 
+              className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors group ${
+                (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => handleResourceClick(resource)}
+            >
               <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium truncate block">{resource.title}</span>
@@ -117,39 +119,38 @@ export default function ResourceList({
                   </Button>
                 )}
                 {canManage && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100">
-                        <Settings2 className="h-3.5 w-3.5" />
+                  <>
+                    {canEdit && onEdit && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 w-7 p-0"
+                        onClick={() => onEdit(resource)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[160px] z-[50]">
-                      {canEdit && (
-                        <DropdownMenuItem className="gap-2 text-sm">
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem
-                          onClick={() => askDelete(resource.id, resource.title)}
-                          className="gap-2 text-destructive focus:text-destructive text-sm"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                      {showFeedback && (
-                        <DropdownMenuItem
-                          onClick={() => setFeedbackItem(resource)}
-                          className="gap-2 text-sm"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Feedback
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                    {canDelete && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => askDelete(resource.id, resource.title)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+                {showFeedback && (
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => setFeedbackItem(resource)}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  </Button>
                 )}
               </div>
             </div>
@@ -209,7 +210,13 @@ export default function ResourceList({
     <>
       <div className="space-y-3">
         {resources.map((resource) => (
-          <Card key={resource.id} className="hover:shadow-md transition-shadow">
+          <Card 
+            key={resource.id} 
+            className={`hover:shadow-md transition-shadow ${
+              (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
+            }`}
+            onClick={() => handleResourceClick(resource)}
+          >
             <CardContent className="flex items-center gap-4 p-4">
               <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
                 <FileText className="w-6 h-6 text-secondary-foreground" />
@@ -241,40 +248,36 @@ export default function ResourceList({
                   </Button>
                 )}
                 {canManage && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="gap-2">
-                        <Settings2 className="h-4 w-4" />
-                        Manage
+                  <>
+                    {canEdit && onEdit && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => onEdit(resource)}
+                      >
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[180px] z-[50]">
-                      {canEdit && (
-                        <DropdownMenuItem className="gap-2">
-                          <Pencil className="h-4 w-4" />
-                          Edit resource
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem
-                          onClick={() => askDelete(resource.id, resource.title)}
-                          className="gap-2 text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete resource
-                        </DropdownMenuItem>
-                      )}
-                      {showFeedback && (
-                        <DropdownMenuItem
-                          onClick={() => setFeedbackItem(resource)}
-                          className="gap-2"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Give feedback
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                    {canDelete && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => askDelete(resource.id, resource.title)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </>
+                )}
+                {showFeedback && (
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setFeedbackItem(resource)}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
             </CardContent>
