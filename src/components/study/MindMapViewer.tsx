@@ -127,7 +127,10 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
 
       {/* Fullscreen Modal */}
       <Dialog open={!!fullscreenResource} onOpenChange={() => setFullscreenResource(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-4 flex flex-col">
+        <DialogContent 
+          className="max-w-[95vw] max-h-[95vh] p-4 flex flex-col"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between gap-4 pr-8">
               <DialogTitle className="truncate">{fullscreenResource?.title}</DialogTitle>
@@ -168,18 +171,32 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             </div>
           </DialogHeader>
           {fullscreenResource && (
-            <div className="flex-1 overflow-auto flex items-center justify-center min-h-0 mt-2">
-              <img
-                src={(fullscreenResource.content as MindMapContent).imageUrl}
-                alt={fullscreenResource.title}
-                className="object-contain transition-transform duration-200"
-                style={{ 
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'center center',
-                  maxWidth: zoom <= 1 ? '100%' : 'none',
-                  maxHeight: zoom <= 1 ? '75vh' : 'none'
+            <div 
+              className="flex-1 min-h-0 mt-2 overflow-auto"
+              style={{ 
+                cursor: zoom > 1 ? 'grab' : 'default'
+              }}
+            >
+              <div 
+                className="min-w-full min-h-full flex items-center justify-center"
+                style={{
+                  width: zoom > 1 ? `${zoom * 100}%` : '100%',
+                  height: zoom > 1 ? `${zoom * 100}%` : '100%',
                 }}
-              />
+              >
+                <img
+                  src={(fullscreenResource.content as MindMapContent).imageUrl}
+                  alt={fullscreenResource.title}
+                  className="object-contain"
+                  style={{ 
+                    width: `${zoom * 100}%`,
+                    height: 'auto',
+                    maxWidth: 'none',
+                    maxHeight: zoom <= 1 ? '75vh' : 'none'
+                  }}
+                  draggable={false}
+                />
+              </div>
             </div>
           )}
         </DialogContent>
