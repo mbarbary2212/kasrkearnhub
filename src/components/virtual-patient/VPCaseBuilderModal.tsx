@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,9 @@ import {
   CheckSquare,
   MessageSquare,
   Settings,
+  FileText,
+  Layers,
+  X,
 } from 'lucide-react';
 import { VPCase, VPStage, VPStageType } from '@/types/virtualPatient';
 import { 
@@ -38,6 +42,7 @@ import {
 } from '@/hooks/useVirtualPatient';
 import { VPCaseFormModal } from './VPCaseFormModal';
 import { VPStageFormModal } from './VPStageFormModal';
+import { VPQuickBuildModal } from './VPQuickBuildModal';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -157,6 +162,7 @@ export function VPCaseBuilderModal({
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [stageFormOpen, setStageFormOpen] = useState(false);
+  const [quickBuildOpen, setQuickBuildOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<VPStage | null>(null);
   const [deleteConfirmStage, setDeleteConfirmStage] = useState<VPStage | null>(null);
 
@@ -209,6 +215,10 @@ export function VPCaseBuilderModal({
       console.error('Failed to delete stage:', error);
       toast.error('Failed to delete stage');
     }
+  };
+
+  const handleSkipForNow = () => {
+    onOpenChange(false);
   };
 
   const stages = vpCase?.stages || [];
@@ -280,22 +290,48 @@ export function VPCaseBuilderModal({
                     <h4 className="font-medium">
                       Stages ({stages.length})
                     </h4>
-                    <Button size="sm" onClick={handleAddStage}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Stage
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setQuickBuildOpen(true)}
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        Quick Build
+                      </Button>
+                      <Button size="sm" onClick={handleAddStage}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Stage
+                      </Button>
+                    </div>
                   </div>
 
                   {stages.length === 0 ? (
-                    <div className="text-center py-8 border rounded-lg border-dashed">
-                      <p className="text-muted-foreground mb-4">
-                        No stages added yet. Add your first stage to build the case.
-                      </p>
-                      <Button onClick={handleAddStage}>
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add First Stage
-                      </Button>
-                    </div>
+                    <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
+                      <CardHeader className="text-center pb-2">
+                        <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                          <Layers className="w-8 h-8 text-primary" />
+                        </div>
+                        <CardTitle className="text-lg">Now Add Stage 1</CardTitle>
+                        <CardDescription className="text-base">
+                          Stages are the steps of the scenario: history, exam, investigations, diagnosis, management.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex flex-col gap-3">
+                        <Button onClick={handleAddStage} className="w-full">
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add First Stage
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setQuickBuildOpen(true)} 
+                          className="w-full"
+                        >
+                          <FileText className="w-4 h-4 mr-1" />
+                          Quick Build (Paste Template)
+                        </Button>
+                      </CardContent>
+                    </Card>
                   ) : (
                     <DndContext
                       sensors={sensors}
@@ -328,9 +364,17 @@ export function VPCaseBuilderModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex justify-between gap-2 pt-4 border-t">
+            {stages.length === 0 ? (
+              <Button variant="ghost" size="sm" onClick={handleSkipForNow} className="text-muted-foreground">
+                <X className="w-4 h-4 mr-1" />
+                Skip for now
+              </Button>
+            ) : (
+              <div />
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+              {stages.length === 0 ? 'Close' : 'Done'}
             </Button>
           </div>
         </DialogContent>
@@ -354,6 +398,14 @@ export function VPCaseBuilderModal({
         caseId={caseId}
         stageOrder={editingStage?.stage_order || nextStageOrder}
         stage={editingStage}
+      />
+
+      {/* Quick Build Modal */}
+      <VPQuickBuildModal
+        open={quickBuildOpen}
+        onOpenChange={setQuickBuildOpen}
+        caseId={caseId}
+        currentStageCount={stages.length}
       />
 
       {/* Delete Confirmation */}
