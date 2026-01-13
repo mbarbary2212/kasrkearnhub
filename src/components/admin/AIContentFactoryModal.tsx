@@ -274,10 +274,15 @@ export function AIContentFactoryModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['mcqs'] });
+      // Invalidate all MCQ queries (module and chapter level)
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] });
+      if (chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] });
+      }
       queryClient.invalidateQueries({ queryKey: ['flashcards'] });
       queryClient.invalidateQueries({ queryKey: ['case-scenarios'] });
       queryClient.invalidateQueries({ queryKey: ['essays'] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-flashcards'] });
       toast.success('Content approved and saved!');
       handleClose();
     },
