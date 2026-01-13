@@ -34,10 +34,28 @@ export interface KeyImageContent {
   labels?: string[];
 }
 
-// NEW: Mind Map content - visual PDF/image uploads
+// Mind Map content - supports both uploaded images/PDFs and AI-generated node structures
+export interface MindMapNode {
+  id: string | number;
+  label: string;
+  parent_id?: string | number | null;
+  color?: string;
+}
+
+export interface MindMapConnection {
+  from: string | number;
+  to: string | number;
+  label?: string;
+}
+
 export interface MindMapContent {
-  imageUrl: string;
+  // Original format (uploaded images)
+  imageUrl?: string;
   description?: string;
+  // AI-generated format (structured nodes)
+  central_concept?: string;
+  nodes?: MindMapNode[];
+  connections?: MindMapConnection[];
 }
 
 // NEW: Clinical Case Worked Solutions - structured 8-section format

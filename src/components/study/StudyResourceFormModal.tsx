@@ -246,7 +246,7 @@ function getDefaultContent(type: StudyResourceType): ResourceContent {
     case 'key_image':
       return { imageUrl: '', caption: '', labels: [] };
     case 'mind_map':
-      return { imageUrl: '', description: '' };
+      return { imageUrl: '', description: '', central_concept: '', nodes: [] };
     case 'clinical_case_worked':
       return {
         history: '',
