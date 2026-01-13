@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Sparkles, 
   FileText, 
@@ -18,7 +19,9 @@ import {
   BookOpen,
   HelpCircle,
   ClipboardList,
-  Layers
+  Layers,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +56,8 @@ const CONTENT_TYPES = [
   { value: 'essay', label: 'Essay Questions', icon: BookOpen, description: 'Create essay/short answer questions' },
 ];
 
+type ProgressState = 'idle' | 'preparing' | 'generating' | 'saving' | 'complete' | 'error';
+
 export function AIContentFactoryModal({ 
   open, 
   onOpenChange, 
@@ -68,6 +73,8 @@ export function AIContentFactoryModal({
   const [additionalInstructions, setAdditionalInstructions] = useState('');
   const [generatedContent, setGeneratedContent] = useState<any>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [progressState, setProgressState] = useState<ProgressState>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
@@ -107,10 +114,78 @@ export function AIContentFactoryModal({
     }
   }, [selectedDoc, prefilledModuleId]);
 
+  // Get fresh session with retry logic
+  const getValidSession = useCallback(async () => {
+    // First try to get current session
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (session?.access_token) {
+      return session;
+    }
+
+    // If no session, try to refresh
+    console.log('No active session, attempting refresh...');
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError) {
+      console.error('Session refresh failed:', refreshError);
+      throw new Error('Session expired. Please sign in again.');
+    }
+    
+    if (!refreshData.session?.access_token) {
+      throw new Error('Session expired. Please sign in again.');
+    }
+
+    return refreshData.session;
+  }, []);
+
+  // Invoke edge function with proper auth and retry
+  const invokeWithAuth = useCallback(async (payload: any, retryCount = 0): Promise<any> => {
+    const session = await getValidSession();
+    
+    const { data, error } = await supabase.functions.invoke('generate-content-from-pdf', {
+      body: payload,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error) {
+      const errorMsg = error.message || '';
+      
+      // Check for auth-related errors
+      if (errorMsg.includes('Unauthorized') || errorMsg.includes('session') || 
+          errorMsg.includes('401') || errorMsg.includes('403')) {
+        // Try refresh and retry once
+        if (retryCount === 0) {
+          console.log('Auth error, refreshing session and retrying...');
+          await supabase.auth.refreshSession();
+          return invokeWithAuth(payload, 1);
+        }
+        throw new Error('Your session has expired. Please refresh the page and sign in again.');
+      }
+
+      // Retry on transient failures (network, 5xx)
+      if (retryCount === 0 && (errorMsg.includes('network') || errorMsg.includes('500') || 
+          errorMsg.includes('502') || errorMsg.includes('503'))) {
+        console.log('Transient error, retrying once...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return invokeWithAuth(payload, 1);
+      }
+
+      throw error;
+    }
+
+    return data;
+  }, [getValidSession]);
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedDocId) throw new Error('Please select a source document');
       if (!moduleId) throw new Error('Please select a target module');
+
+      setProgressState('preparing');
+      setErrorMessage(null);
 
       // Create job record for audit
       const { data: job, error: jobError } = await supabase
@@ -133,28 +208,26 @@ export function AIContentFactoryModal({
       if (jobError) throw jobError;
       setJobId(job.id);
 
-      // Call edge function for AI generation
-      // Note: The edge function should handle PDF text extraction and AI generation
-      // For safety, it treats PDF content as DATA only and validates output
-      const { data, error } = await supabase.functions.invoke('generate-content-from-pdf', {
-        body: {
-          job_id: job.id,
-          document_id: selectedDocId,
-          content_type: contentType,
-          module_id: moduleId,
-          chapter_id: chapterId || null,
-          quantity: parseInt(quantity),
-          additional_instructions: additionalInstructions || null,
-        },
+      setProgressState('generating');
+
+      // Call edge function with proper auth
+      const data = await invokeWithAuth({
+        job_id: job.id,
+        document_id: selectedDocId,
+        content_type: contentType,
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        quantity: parseInt(quantity),
+        additional_instructions: additionalInstructions || null,
       });
 
-      if (error) {
+      if (data.error) {
         // Update job status on error
         await supabase
           .from('ai_generation_jobs')
-          .update({ status: 'failed', error_message: error.message })
+          .update({ status: 'failed', error_message: data.error })
           .eq('id', job.id);
-        throw error;
+        throw new Error(data.error);
       }
 
       // Update job with results
@@ -167,6 +240,7 @@ export function AIContentFactoryModal({
         })
         .eq('id', job.id);
 
+      setProgressState('complete');
       return data.content;
     },
     onSuccess: (content) => {
@@ -175,13 +249,23 @@ export function AIContentFactoryModal({
     },
     onError: (error: Error) => {
       console.error('Generation error:', error);
-      toast.error(`Generation failed: ${error.message}`);
+      setProgressState('error');
+      setErrorMessage(error.message);
+      
+      // Show appropriate toast based on error type
+      if (error.message.includes('session') || error.message.includes('sign in')) {
+        toast.error('Session expired. Please refresh the page and sign in again.');
+      } else {
+        toast.error(`Generation failed: ${error.message}`);
+      }
     },
   });
 
   const approveMutation = useMutation({
     mutationFn: async () => {
       if (!generatedContent || !jobId) throw new Error('No content to approve');
+      
+      setProgressState('saving');
       
       // Handle both array and object formats from AI
       let contentArray: any[];
@@ -230,10 +314,14 @@ export function AIContentFactoryModal({
 
         if (mcqError) throw mcqError;
       } else if (contentType === 'flashcard') {
-        // Flashcards are stored in study_resources table, not a separate flashcards table
+        // Flashcards are stored in study_resources table
+        if (!chapterId) {
+          throw new Error('Chapter is required for flashcards');
+        }
+        
         const flashcardsToInsert = contentArray.map((item, idx) => ({
           module_id: moduleId,
-          chapter_id: chapterId!,
+          chapter_id: chapterId,
           resource_type: 'flashcard' as const,
           title: (item.front?.substring(0, 50) || 'Flashcard') as string,
           content: { front: item.front, back: item.back },
@@ -297,6 +385,7 @@ export function AIContentFactoryModal({
 
       if (error) throw error;
 
+      setProgressState('complete');
       return true;
     },
     onSuccess: () => {
@@ -306,7 +395,7 @@ export function AIContentFactoryModal({
       if (chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] });
       }
-      // Flashcards are stored in study_resources, not a separate table
+      // Flashcards are stored in study_resources
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] });
       // Case scenarios and essays
@@ -318,6 +407,8 @@ export function AIContentFactoryModal({
       handleClose();
     },
     onError: (error: Error) => {
+      setProgressState('error');
+      setErrorMessage(error.message);
       toast.error(`Approval failed: ${error.message}`);
     },
   });
@@ -331,7 +422,27 @@ export function AIContentFactoryModal({
     setAdditionalInstructions('');
     setGeneratedContent(null);
     setJobId(null);
+    setProgressState('idle');
+    setErrorMessage(null);
     onOpenChange(false);
+  };
+
+  const handleRetry = () => {
+    setProgressState('idle');
+    setErrorMessage(null);
+    setGeneratedContent(null);
+    setJobId(null);
+  };
+
+  const getProgressLabel = () => {
+    switch (progressState) {
+      case 'preparing': return 'Preparing request...';
+      case 'generating': return 'Generating content with AI...';
+      case 'saving': return 'Saving to chapter...';
+      case 'complete': return 'Complete!';
+      case 'error': return 'Error occurred';
+      default: return '';
+    }
   };
 
   return (
@@ -357,6 +468,34 @@ export function AIContentFactoryModal({
             </span>
           </div>
         </div>
+
+        {/* Progress Indicator */}
+        {progressState !== 'idle' && progressState !== 'complete' && (
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            {progressState === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-destructive" />
+            ) : (
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            )}
+            <span className={progressState === 'error' ? 'text-destructive' : 'text-muted-foreground'}>
+              {getProgressLabel()}
+            </span>
+          </div>
+        )}
+
+        {/* Error Alert with Retry */}
+        {errorMessage && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{errorMessage}</span>
+              <Button variant="outline" size="sm" onClick={handleRetry} className="ml-4">
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <ScrollArea className="flex-1 min-h-0 pr-4">
           {!generatedContent ? (
@@ -426,7 +565,9 @@ export function AIContentFactoryModal({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Target Chapter (Optional)</Label>
+                  <Label>
+                    Target Chapter {contentType === 'flashcard' ? '*' : '(Optional)'}
+                  </Label>
                   <Select value={chapterId} onValueChange={setChapterId} disabled={!moduleId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select chapter" />
@@ -521,13 +662,13 @@ export function AIContentFactoryModal({
           {!generatedContent ? (
             <Button
               onClick={() => generateMutation.mutate()}
-              disabled={!selectedDocId || !moduleId || generateMutation.isPending}
+              disabled={!selectedDocId || !moduleId || generateMutation.isPending || (contentType === 'flashcard' && !chapterId)}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             >
               {generateMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
+                  {getProgressLabel() || 'Generating...'}
                 </>
               ) : (
                 <>
@@ -552,7 +693,7 @@ export function AIContentFactoryModal({
                 {approveMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Approving...
+                    {getProgressLabel() || 'Saving...'}
                   </>
                 ) : (
                   <>

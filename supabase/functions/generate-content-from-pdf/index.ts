@@ -51,76 +51,145 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
     if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "AI service not configured" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
-    // Get auth header and verify admin
-    const authHeader = req.headers.get("Authorization");
-    console.log("Auth header present:", !!authHeader);
+    // Get auth header
+    const authHeader = req.headers.get("Authorization") ?? "";
+    console.log("Auth header present:", !!authHeader, "Starts with Bearer:", authHeader.startsWith("Bearer "));
     
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
+    if (!authHeader.startsWith("Bearer ")) {
+      console.error("Missing or invalid Authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - missing auth token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verify the user from the JWT
-    const token = authHeader.replace("Bearer ", "");
-    console.log("Token extracted, length:", token.length);
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Create user client with ANON key for user verification (this is correct approach)
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the user from the JWT using the user client
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     
     console.log("User verification result:", user?.id || "no user", "Error:", userError?.message || "none");
     
     if (userError || !user) {
-      throw new Error(`Unauthorized: ${userError?.message || 'No user found'}`);
+      console.error("User verification failed:", userError?.message);
+      return new Response(
+        JSON.stringify({ error: `Unauthorized - ${userError?.message || 'session expired'}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
     }
 
-    // Verify user is admin
-    const { data: roleData } = await supabase
+    // Create service client for privileged operations (bypasses RLS)
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user is admin using service client
+    const { data: roleData, error: roleError } = await serviceClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (!roleData || !['platform_admin', 'super_admin'].includes(roleData.role)) {
-      throw new Error("Only admins can use AI content generation");
+    console.log("Role check for user", user.id, ":", roleData?.role || "no role", "Error:", roleError?.message || "none");
+
+    if (roleError || !roleData || !['platform_admin', 'super_admin', 'department_admin', 'admin'].includes(roleData.role)) {
+      console.error("User not authorized:", roleData?.role);
+      return new Response(
+        JSON.stringify({ error: "Forbidden - admin access required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
     }
 
     const body: GenerateRequest = await req.json();
     const { job_id, document_id, content_type, module_id, chapter_id, quantity, additional_instructions } = body;
 
+    console.log("Processing request:", { job_id, document_id, content_type, module_id, chapter_id, quantity });
+
     // Validate inputs
     if (!job_id || !document_id || !content_type || !module_id) {
-      throw new Error("Missing required fields");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
 
     if (quantity < 1 || quantity > 20) {
-      throw new Error("Quantity must be between 1 and 20");
+      return new Response(
+        JSON.stringify({ error: "Quantity must be between 1 and 20" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
 
-    // Get document metadata
-    const { data: doc, error: docError } = await supabase
+    // Validate module exists
+    const { data: moduleCheck, error: moduleError } = await serviceClient
+      .from('modules')
+      .select('id')
+      .eq('id', module_id)
+      .single();
+
+    if (moduleError || !moduleCheck) {
+      return new Response(
+        JSON.stringify({ error: "Invalid module ID" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    // Validate chapter exists if provided
+    if (chapter_id) {
+      const { data: chapterCheck, error: chapterError } = await serviceClient
+        .from('module_chapters')
+        .select('id')
+        .eq('id', chapter_id)
+        .eq('module_id', module_id)
+        .single();
+
+      if (chapterError || !chapterCheck) {
+        return new Response(
+          JSON.stringify({ error: "Invalid chapter ID or chapter does not belong to module" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
+
+    // Get document metadata using service client
+    const { data: doc, error: docError } = await serviceClient
       .from('admin_documents')
       .select('storage_path, title')
       .eq('id', document_id)
       .single();
 
     if (docError || !doc) {
-      throw new Error("Document not found");
+      console.error("Document not found:", docError?.message);
+      return new Response(
+        JSON.stringify({ error: "Document not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+      );
     }
 
-    // Get signed URL for the PDF
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    // Get signed URL for the PDF using service client
+    const { data: signedUrlData, error: signedUrlError } = await serviceClient.storage
       .from('admin-pdfs')
       .createSignedUrl(doc.storage_path, 300);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
-      throw new Error("Could not access document");
+      console.error("Could not access document:", signedUrlError?.message);
+      return new Response(
+        JSON.stringify({ error: "Could not access document" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
     // For now, we'll use a placeholder for PDF text extraction
@@ -129,7 +198,7 @@ serve(async (req) => {
     const pdfTextPlaceholder = `[PDF Content from: ${doc.title}]\n\nNote: In production, this would be extracted text from the PDF. The AI should generate content based on medical education best practices for the specified module/chapter.`;
 
     // Get module and chapter info for context
-    const { data: moduleData } = await supabase
+    const { data: moduleData } = await serviceClient
       .from('modules')
       .select('name, description')
       .eq('id', module_id)
@@ -137,7 +206,7 @@ serve(async (req) => {
 
     let chapterData = null;
     if (chapter_id) {
-      const { data } = await supabase
+      const { data } = await serviceClient
         .from('module_chapters')
         .select('title, chapter_number')
         .eq('id', chapter_id)
@@ -174,6 +243,8 @@ ${pdfTextPlaceholder}
 
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;
 
+    console.log("Calling AI Gateway for content generation...");
+
     // Call Lovable AI Gateway
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -195,32 +266,62 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
       console.error("Lovable AI Gateway error:", aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 429 }
+        );
       }
       if (aiResponse.status === 402) {
-        throw new Error("AI credits exhausted. Please add credits to your workspace.");
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add credits to your workspace." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 }
+        );
       }
-      throw new Error(`AI Gateway error: ${aiResponse.status}`);
+      return new Response(
+        JSON.stringify({ error: `AI Gateway error: ${aiResponse.status}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
     const aiResult = await aiResponse.json();
     const generatedText = aiResult.choices?.[0]?.message?.content;
 
     if (!generatedText) {
-      throw new Error("No content generated");
+      console.error("No content generated from AI");
+      return new Response(
+        JSON.stringify({ error: "No content generated" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
+
+    console.log("AI response received, parsing JSON...");
 
     // Parse and validate the JSON response
     let parsedContent;
     try {
-      const parsed = JSON.parse(generatedText);
+      // Clean the response - remove markdown code blocks if present
+      let cleanedText = generatedText.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.slice(7);
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.slice(3);
+      }
+      if (cleanedText.endsWith('```')) {
+        cleanedText = cleanedText.slice(0, -3);
+      }
+      cleanedText = cleanedText.trim();
+
+      const parsed = JSON.parse(cleanedText);
       // Handle both array format and object with items/questions property
       parsedContent = Array.isArray(parsed) 
         ? parsed 
         : (parsed.items || parsed.questions || parsed.flashcards || parsed.cases || parsed.essays || [parsed]);
     } catch (parseError) {
-      console.error("JSON parse error:", parseError, "Content:", generatedText);
-      throw new Error("AI generated invalid JSON");
+      console.error("JSON parse error:", parseError, "Content:", generatedText.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: "AI generated invalid JSON format" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
     // Validate each item has required fields based on content type
@@ -235,13 +336,17 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
     for (const item of parsedContent) {
       for (const field of fields) {
         if (!(field in item)) {
-          throw new Error(`Generated content missing required field: ${field}`);
+          console.error(`Generated content missing required field: ${field}`);
+          return new Response(
+            JSON.stringify({ error: `Generated content missing required field: ${field}` }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
         }
       }
     }
 
     // Log successful generation
-    console.log(`Generated ${parsedContent.length} ${content_type} items for job ${job_id}`);
+    console.log(`Successfully generated ${parsedContent.length} ${content_type} items for job ${job_id}`);
 
     return new Response(
       JSON.stringify({ 
@@ -261,7 +366,7 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
       JSON.stringify({ error: errorMessage }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: 500,
       }
     );
   }
