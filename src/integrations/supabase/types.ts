@@ -3982,6 +3982,10 @@ export type Database = {
         Args: { _chapter_id: string; _user_id: string }
         Returns: boolean
       }
+      is_chapter_admin_for: {
+        Args: { _chapter_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_department_admin: {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
@@ -4008,6 +4012,10 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_topic_admin: {
+        Args: { _topic_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_topic_admin_for: {
         Args: { _topic_id: string; _user_id: string }
         Returns: boolean
       }
