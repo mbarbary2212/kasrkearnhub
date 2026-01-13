@@ -52,10 +52,10 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!openaiKey) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!lovableApiKey) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // Get auth header and verify admin
@@ -168,32 +168,36 @@ ${pdfTextPlaceholder}
 
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;
 
-    // Call OpenAI
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call Lovable AI Gateway
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openaiKey}`,
+        "Authorization": `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 4000,
-        response_format: { type: "json_object" },
       }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error("OpenAI API error:", errorText);
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("Lovable AI Gateway error:", aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again later.");
+      }
+      if (aiResponse.status === 402) {
+        throw new Error("AI credits exhausted. Please add credits to your workspace.");
+      }
+      throw new Error(`AI Gateway error: ${aiResponse.status}`);
     }
 
-    const aiResult = await openaiResponse.json();
+    const aiResult = await aiResponse.json();
     const generatedText = aiResult.choices?.[0]?.message?.content;
 
     if (!generatedText) {
