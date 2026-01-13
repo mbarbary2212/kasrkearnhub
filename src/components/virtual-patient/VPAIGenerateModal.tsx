@@ -223,18 +223,22 @@ export function VPAIGenerateModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            Generate Case with AI
-          </DialogTitle>
-          <DialogDescription>
-            AI will generate a draft case for your review. You must approve before it's created.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0">
+        {/* Fixed Header */}
+        <div className="shrink-0 px-6 pt-6 pb-4 border-b bg-background">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Generate Case with AI
+            </DialogTitle>
+            <DialogDescription>
+              AI will generate a draft case for your review. You must approve before it's created.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-6">
           {!generatedCase ? (
             // Generation Form
             <ScrollArea className="flex-1">
@@ -431,8 +435,8 @@ export function VPAIGenerateModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-between gap-2 pt-4 border-t">
+        {/* Sticky Footer */}
+        <div className="shrink-0 flex justify-between gap-2 px-6 py-4 border-t bg-background z-10">
           {!generatedCase ? (
             <>
               <Button variant="outline" onClick={() => handleClose(false)}>
