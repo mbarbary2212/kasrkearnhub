@@ -21,6 +21,7 @@ import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
 import { CurriculumTab } from '@/components/admin/CurriculumTab';
+import { PDFLibraryTab } from '@/components/admin/PDFLibraryTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
@@ -626,6 +627,12 @@ export default function AdminPage() {
                 Settings
               </TabsTrigger>
             )}
+            {isPlatformAdmin && (
+              <TabsTrigger value="pdf-library" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <FileText className="w-4 h-4" />
+                PDF Library
+              </TabsTrigger>
+            )}
             <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
@@ -1039,6 +1046,13 @@ export default function AdminPage() {
           {isPlatformAdmin && (
             <TabsContent value="settings">
               <PlatformSettingsTab />
+            </TabsContent>
+          )}
+
+          {/* PDF Library Tab */}
+          {isPlatformAdmin && (
+            <TabsContent value="pdf-library">
+              <PDFLibraryTab />
             </TabsContent>
           )}
 
