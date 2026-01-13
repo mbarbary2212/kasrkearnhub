@@ -10,10 +10,16 @@ import {
 } from '@/components/ui/dialog';
 import { StudyResource, MindMapContent } from '@/hooks/useStudyResources';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
+import { MindMapNodeRenderer } from './MindMapNodeRenderer';
 
 const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 3;
+
+// Check if mind map is AI-generated (has nodes) vs image-based
+function isNodeBasedMindMap(content: MindMapContent): boolean {
+  return !content.imageUrl && Array.isArray(content.nodes) && content.nodes.length > 0;
+}
 
 interface MindMapViewerProps {
   resources: StudyResource[];
@@ -86,6 +92,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
         {resources.map((resource) => {
           const content = resource.content as MindMapContent;
           const isPdf = content.imageUrl?.toLowerCase().endsWith('.pdf');
+          const isNodeBased = isNodeBasedMindMap(content);
 
           return (
             <Card key={resource.id} className="overflow-hidden group">
@@ -117,6 +124,44 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                     <ExternalLink className="w-5 h-5 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">View PDF</span>
                   </a>
+                ) : isNodeBased ? (
+                  <div 
+                    className="relative h-32 bg-muted/50 rounded-lg overflow-hidden cursor-pointer hover:bg-muted/70 transition-colors"
+                    onClick={() => openFullscreen(resource)}
+                  >
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+                      <div 
+                        className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium text-center truncate max-w-full"
+                      >
+                        {content.central_concept || 'Mind Map'}
+                      </div>
+                      <div className="flex gap-1 mt-2 flex-wrap justify-center">
+                        {(content.nodes || []).slice(0, 3).map((node, idx) => (
+                          <div 
+                            key={node.id}
+                            className="px-1.5 py-0.5 rounded text-white text-[10px] truncate max-w-[60px]"
+                            style={{ backgroundColor: node.color || `hsl(${(idx * 60 + 217) % 360}, 70%, 50%)` }}
+                          >
+                            {node.label}
+                          </div>
+                        ))}
+                        {(content.nodes?.length || 0) > 3 && (
+                          <span className="text-[10px] text-muted-foreground">+{content.nodes!.length - 3} more</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openFullscreen(resource);
+                      }}
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 ) : content.imageUrl ? (
                   <div className="relative">
                     <img
@@ -204,35 +249,54 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
               </div>
             </div>
           </DialogHeader>
-          {fullscreenResource && (
-            <div 
-              className="flex-1 min-h-0 mt-2 overflow-auto"
-              style={{ 
-                cursor: zoom > 1 ? 'grab' : 'default'
-              }}
-            >
+          {fullscreenResource && (() => {
+            const fsContent = fullscreenResource.content as MindMapContent;
+            const fsIsNodeBased = isNodeBasedMindMap(fsContent);
+            
+            return (
               <div 
-                className="min-w-full min-h-full flex items-center justify-center"
-                style={{
-                  width: zoom > 1 ? `${zoom * 100}%` : '100%',
-                  height: zoom > 1 ? `${zoom * 100}%` : '100%',
+                className="flex-1 min-h-0 mt-2 overflow-auto"
+                style={{ 
+                  cursor: zoom > 1 ? 'grab' : 'default'
                 }}
               >
-                <img
-                  src={(fullscreenResource.content as MindMapContent).imageUrl}
-                  alt={fullscreenResource.title}
-                  className="object-contain"
-                  style={{ 
-                    width: `${zoom * 100}%`,
-                    height: 'auto',
-                    maxWidth: 'none',
-                    maxHeight: zoom <= 1 ? '75vh' : 'none'
+                <div 
+                  className="min-w-full min-h-full flex items-center justify-center"
+                  style={{
+                    width: zoom > 1 ? `${zoom * 100}%` : '100%',
+                    height: zoom > 1 ? `${zoom * 100}%` : '100%',
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'top center',
                   }}
-                  draggable={false}
-                />
+                >
+                  {fsIsNodeBased ? (
+                    <MindMapNodeRenderer
+                      centralConcept={fsContent.central_concept || fullscreenResource.title}
+                      nodes={fsContent.nodes || []}
+                      connections={fsContent.connections}
+                      className="min-w-max"
+                    />
+                  ) : fsContent.imageUrl ? (
+                    <img
+                      src={fsContent.imageUrl}
+                      alt={fullscreenResource.title}
+                      className="object-contain"
+                      style={{ 
+                        maxWidth: '100%',
+                        maxHeight: zoom <= 1 ? '75vh' : 'none'
+                      }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="text-center text-muted-foreground p-8">
+                      <Network className="w-12 h-12 mx-auto mb-2" />
+                      <p>No content to display</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>
