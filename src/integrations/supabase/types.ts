@@ -41,6 +41,85 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_documents: {
+        Row: {
+          chapter_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          doc_type: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          is_deleted: boolean | null
+          mime_type: string
+          module_id: string | null
+          storage_bucket: string
+          storage_path: string
+          tags: string[] | null
+          title: string
+          topic_id: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          doc_type?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          is_deleted?: boolean | null
+          mime_type: string
+          module_id?: string | null
+          storage_bucket?: string
+          storage_path: string
+          tags?: string[] | null
+          title: string
+          topic_id?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          doc_type?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          is_deleted?: boolean | null
+          mime_type?: string
+          module_id?: string | null
+          storage_bucket?: string
+          storage_path?: string
+          tags?: string[] | null
+          title?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_documents_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_documents_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_documents_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_help_files: {
         Row: {
           category: string
