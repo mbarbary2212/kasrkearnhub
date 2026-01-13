@@ -207,6 +207,59 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generation_jobs: {
+        Row: {
+          admin_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string | null
+          document_id: string | null
+          error_message: string | null
+          id: string
+          input_metadata: Json | null
+          job_type: string
+          output_data: Json | null
+          status: string
+        }
+        Insert: {
+          admin_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          error_message?: string | null
+          id?: string
+          input_metadata?: Json | null
+          job_type: string
+          output_data?: Json | null
+          status?: string
+        }
+        Update: {
+          admin_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          error_message?: string | null
+          id?: string
+          input_metadata?: Json | null
+          job_type?: string
+          output_data?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "admin_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
