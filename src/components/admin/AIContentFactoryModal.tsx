@@ -66,7 +66,7 @@ export function AIContentFactoryModal({
   const [chapterId, setChapterId] = useState(prefilledChapterId || '');
   const [quantity, setQuantity] = useState('5');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
-  const [generatedContent, setGeneratedContent] = useState<any[] | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<any>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
   const { user } = useAuthContext();
@@ -182,11 +182,19 @@ export function AIContentFactoryModal({
   const approveMutation = useMutation({
     mutationFn: async () => {
       if (!generatedContent || !jobId) throw new Error('No content to approve');
-      if (!Array.isArray(generatedContent)) throw new Error('Invalid content format');
+      
+      // Handle both array and object formats from AI
+      const contentArray = Array.isArray(generatedContent) 
+        ? generatedContent 
+        : (generatedContent.items || generatedContent.questions || generatedContent.flashcards || generatedContent.cases || generatedContent.essays || [generatedContent]);
+      
+      if (!Array.isArray(contentArray) || contentArray.length === 0) {
+        throw new Error('Invalid content format - expected array of items');
+      }
 
       // Insert approved content into production tables based on content_type
       if (contentType === 'mcq') {
-        const mcqsToInsert = generatedContent.map((item, idx) => ({
+        const mcqsToInsert = contentArray.map((item, idx) => ({
           module_id: moduleId,
           chapter_id: chapterId || null,
           stem: item.stem,
@@ -205,23 +213,25 @@ export function AIContentFactoryModal({
 
         if (mcqError) throw mcqError;
       } else if (contentType === 'flashcard') {
-        const flashcardsToInsert = generatedContent.map((item, idx) => ({
+        // Flashcards are stored in study_resources table, not a separate flashcards table
+        const flashcardsToInsert = contentArray.map((item, idx) => ({
           module_id: moduleId,
-          chapter_id: chapterId || null,
-          front: item.front,
-          back: item.back,
+          chapter_id: chapterId!,
+          resource_type: 'flashcard' as const,
+          title: (item.front?.substring(0, 50) || 'Flashcard') as string,
+          content: { front: item.front, back: item.back },
           display_order: idx,
           created_by: user?.id,
           is_deleted: false,
         }));
 
         const { error: flashcardError } = await supabase
-          .from('flashcards')
+          .from('study_resources')
           .insert(flashcardsToInsert);
 
         if (flashcardError) throw flashcardError;
       } else if (contentType === 'case_scenario') {
-        const casesToInsert = generatedContent.map((item, idx) => ({
+        const casesToInsert = contentArray.map((item, idx) => ({
           module_id: moduleId,
           chapter_id: chapterId || null,
           title: item.title,
@@ -239,7 +249,7 @@ export function AIContentFactoryModal({
 
         if (caseError) throw caseError;
       } else if (contentType === 'essay') {
-        const essaysToInsert = generatedContent.map((item, idx) => ({
+        const essaysToInsert = contentArray.map((item, idx) => ({
           module_id: moduleId,
           chapter_id: chapterId || null,
           title: item.title,
@@ -274,15 +284,19 @@ export function AIContentFactoryModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] });
-      // Invalidate all MCQ queries (module and chapter level)
+      // Invalidate MCQ queries with correct key structure
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] });
       if (chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] });
       }
-      queryClient.invalidateQueries({ queryKey: ['flashcards'] });
-      queryClient.invalidateQueries({ queryKey: ['case-scenarios'] });
+      // Flashcards are stored in study_resources, not a separate table
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] });
+      // Case scenarios and essays
+      queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'chapter', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'module', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['essays'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-flashcards'] });
       toast.success('Content approved and saved!');
       handleClose();
     },
