@@ -502,23 +502,23 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
                 className="pl-9"
               />
             </div>
-            <Select value={filterModule} onValueChange={setFilterModule}>
+            <Select value={filterModule || 'all'} onValueChange={(v) => setFilterModule(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Modules" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Modules</SelectItem>
+                <SelectItem value="all">All Modules</SelectItem>
                 {availableModules?.map(m => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterDocType} onValueChange={setFilterDocType}>
+            <Select value={filterDocType || 'all'} onValueChange={(v) => setFilterDocType(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 {DOC_TYPES.map(type => (
                   <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                 ))}
