@@ -24,6 +24,8 @@ import {
   Home,
   AlertCircle,
   FileText,
+  Check,
+  X,
 } from 'lucide-react';
 import { 
   useVirtualPatientCase, 
@@ -31,7 +33,8 @@ import {
   useSubmitStageAnswer,
   useCompleteVirtualPatientAttempt,
 } from '@/hooks/useVirtualPatient';
-import { VPStage, StageAnswer } from '@/types/virtualPatient';
+import { VPStage, StageAnswer, VPRubricResult } from '@/types/virtualPatient';
+import { gradeWithRubric, gradeExactMatch } from '@/lib/rubricMarking';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCoachContext } from '@/contexts/CoachContext';
@@ -107,25 +110,31 @@ export default function VirtualPatientRunner() {
     }
   };
 
-  const checkAnswer = (stage: VPStage, answer: string | string[]): boolean => {
+  const checkAnswer = (stage: VPStage, answer: string | string[]): { isCorrect: boolean; rubricResult?: VPRubricResult } => {
     if (stage.stage_type === 'mcq') {
-      return answer === stage.correct_answer;
+      return { isCorrect: answer === stage.correct_answer };
     } else if (stage.stage_type === 'multi_select') {
       const correct = stage.correct_answer as string[];
       const userAns = answer as string[];
-      return correct.length === userAns.length && 
+      const isCorrect = correct.length === userAns.length && 
              correct.every(c => userAns.includes(c));
+      return { isCorrect };
     } else {
-      // Short answer - simple check (could be enhanced with AI)
-      return (answer as string).toLowerCase().trim() === 
-             (stage.correct_answer as string).toLowerCase().trim();
+      // Short answer - use rubric if available, otherwise exact match
+      if (stage.rubric && stage.rubric.required_concepts.length > 0) {
+        const rubricResult = gradeWithRubric(answer as string, stage.rubric);
+        return { isCorrect: rubricResult.is_correct, rubricResult };
+      } else {
+        const isCorrect = gradeExactMatch(answer as string, stage.correct_answer as string);
+        return { isCorrect };
+      }
     }
   };
 
   const handleSubmitAnswer = async () => {
     if (!currentStage || !attemptId) return;
 
-    const isCorrect = checkAnswer(currentStage, userAnswer);
+    const { isCorrect, rubricResult } = checkAnswer(currentStage, userAnswer);
     const timeTaken = stageStartTime ? Math.floor((Date.now() - stageStartTime) / 1000) : 0;
 
     const stageAnswer: StageAnswer = {
@@ -133,6 +142,7 @@ export default function VirtualPatientRunner() {
       user_answer: userAnswer,
       is_correct: isCorrect,
       time_taken_seconds: timeTaken,
+      rubric_result: rubricResult,
     };
 
     try {
@@ -474,6 +484,43 @@ export default function VirtualPatientRunner() {
                     : stageAnswer?.user_answer}
                 </p>
               </div>
+
+              {/* Rubric feedback for short answer */}
+              {currentStage.stage_type === 'short_answer' && stageAnswer?.rubric_result && (
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium">Concept Analysis:</p>
+                  <div className="text-sm space-y-1">
+                    {stageAnswer.rubric_result.matched_required.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <span className="text-green-700 dark:text-green-400">
+                          Found: {stageAnswer.rubric_result.matched_required.join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    {stageAnswer.rubric_result.missing_required.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                        <span className="text-red-700 dark:text-red-400">
+                          Missing: {stageAnswer.rubric_result.missing_required.join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    {stageAnswer.rubric_result.matched_optional.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                        <span className="text-blue-700 dark:text-blue-400">
+                          Bonus: {stageAnswer.rubric_result.matched_optional.join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Score: {Math.round(stageAnswer.rubric_result.score * 100)}% 
+                      (≥60% required to pass)
+                    </p>
+                  </div>
+                </div>
+              )}
               {!isCorrect && (
                 <div>
                   <p className="text-sm font-medium mb-1">Correct answer:</p>

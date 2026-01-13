@@ -1,8 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { VPCase, VPStage, VPAttempt, VPCaseFormData, VPStageFormData, StageAnswer } from '@/types/virtualPatient';
+import { VPCase, VPStage, VPAttempt, VPCaseFormData, VPStageFormData, StageAnswer, VPRubric } from '@/types/virtualPatient';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Json } from '@/integrations/supabase/types';
+
+// Helper to parse stage data from DB
+function parseStageData(s: any): VPStage {
+  return {
+    ...s,
+    choices: (s.choices as unknown as { key: string; text: string }[]) || [],
+    correct_answer: s.correct_answer as unknown as string | string[],
+    teaching_points: s.teaching_points || [],
+    rubric: s.rubric ? (s.rubric as unknown as VPRubric) : null,
+  };
+}
 
 // Fetch all cases for a module (student view - published only)
 export function useVirtualPatientCases(moduleId?: string, includeUnpublished = false) {
@@ -84,12 +95,8 @@ export function useVirtualPatientCase(caseId?: string) {
 
       return {
         ...caseData,
-        stages: (stages || []).map(s => ({
-          ...s,
-          choices: (s.choices as unknown as { key: string; text: string }[]) || [],
-          correct_answer: s.correct_answer as unknown as string | string[],
-          teaching_points: s.teaching_points || [],
-        })),
+        stages: (stages || []).map(parseStageData),
+        stage_count: stages?.length || 0,
       } as VPCase;
     },
     enabled: !!caseId,
@@ -108,12 +115,7 @@ export function useVirtualPatientStages(caseId?: string) {
         .order('stage_order', { ascending: true });
 
       if (error) throw error;
-      return (data || []).map(s => ({
-        ...s,
-        choices: (s.choices as unknown as { key: string; text: string }[]) || [],
-        correct_answer: s.correct_answer as unknown as string | string[],
-        teaching_points: s.teaching_points || [],
-      })) as VPStage[];
+      return (data || []).map(parseStageData) as VPStage[];
     },
     enabled: !!caseId,
   });
@@ -211,6 +213,7 @@ export function useCreateVirtualPatientStage() {
           correct_answer: data.correct_answer as unknown as Json,
           explanation: data.explanation || null,
           teaching_points: data.teaching_points || [],
+          rubric: data.rubric ? (data.rubric as unknown as Json) : null,
         })
         .select()
         .single();
@@ -219,8 +222,10 @@ export function useCreateVirtualPatientStage() {
       return result;
     },
     onSuccess: (_, variables) => {
+      // Force immediate refetch for instant UI update
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
@@ -243,6 +248,7 @@ export function useUpdateVirtualPatientStage() {
       if (data.correct_answer !== undefined) updateData.correct_answer = data.correct_answer as unknown as Json;
       if (data.explanation !== undefined) updateData.explanation = data.explanation;
       if (data.teaching_points !== undefined) updateData.teaching_points = data.teaching_points;
+      if (data.rubric !== undefined) updateData.rubric = data.rubric ? (data.rubric as unknown as Json) : null;
 
       const { data: result, error } = await supabase
         .from('virtual_patient_stages')
@@ -255,8 +261,10 @@ export function useUpdateVirtualPatientStage() {
       return result;
     },
     onSuccess: (_, variables) => {
+      // Force immediate refetch for instant UI update
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
@@ -276,8 +284,10 @@ export function useDeleteVirtualPatientStage() {
       return { id, caseId };
     },
     onSuccess: (_, variables) => {
+      // Force immediate refetch for instant UI update
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
@@ -300,8 +310,10 @@ export function useReorderVirtualPatientStages() {
       return { caseId };
     },
     onSuccess: (_, variables) => {
+      // Force immediate refetch for instant UI update
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }

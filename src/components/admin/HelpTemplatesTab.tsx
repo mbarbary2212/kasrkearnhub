@@ -176,10 +176,14 @@ function downloadVirtualPatientTemplate() {
 # - TYPE: mcq | multi_select | short_answer
 # - PATIENT_INFO: (optional) New information revealed at this stage
 # - PROMPT: The question or instruction for the student
-# - CHOICES: (A) option (B) option (C) option (D) option
+# - CHOICES: (A) option (B) option (C) option (D) option (for mcq/multi_select)
 # - CORRECT: A (for mcq) or A,C (for multi_select) or text (for short_answer)
 # - EXPLANATION: (optional) Why this is correct
 # - TEACHING_POINTS: (optional) Key learning points, each on a line starting with -
+#
+# FOR SHORT ANSWER (Rubric-Based Grading):
+# - RUBRIC_REQUIRED: Concepts the student MUST mention (60% needed to pass)
+# - RUBRIC_OPTIONAL: Bonus concepts (not required but good to mention)
 #
 # ================================================
 
@@ -208,26 +212,25 @@ TEACHING_POINTS:
 - MRI is not routinely used for initial diagnosis
 
 STAGE 3:
-TYPE: multi_select
-PATIENT_INFO: Biopsy reveals invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
-PROMPT: Which of the following are appropriate components of the treatment plan? Select all that apply.
-CHOICES: (A) Breast-conserving surgery (B) Sentinel lymph node biopsy (C) Adjuvant endocrine therapy (D) Trastuzumab (E) Radiation therapy
-CORRECT: A,B,C,E
-EXPLANATION: This ER+/HER2- cancer is suitable for breast-conserving surgery with sentinel node biopsy, followed by radiation and endocrine therapy. Trastuzumab is only indicated for HER2+ tumors.
-TEACHING_POINTS:
-- ER+ tumors benefit from endocrine therapy (tamoxifen or aromatase inhibitors)
-- HER2+ tumors require anti-HER2 therapy (trastuzumab)
-- Breast-conserving surgery + radiation has equivalent survival to mastectomy for early-stage cancer
-
-STAGE 4:
 TYPE: short_answer
-PROMPT: The patient asks about her prognosis. What factors would you discuss that influence breast cancer prognosis?
-CORRECT: Key prognostic factors include: tumor size, lymph node status, histological grade, hormone receptor status (ER/PR), HER2 status, Ki-67 proliferation index, and presence of lymphovascular invasion. Molecular profiling (e.g., Oncotype DX) can also predict recurrence risk and guide chemotherapy decisions.
-EXPLANATION: Understanding prognostic factors helps guide treatment intensity and patient counseling.
+PATIENT_INFO: Biopsy reveals invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
+PROMPT: Outline the components of triple assessment for a breast lump.
+RUBRIC_REQUIRED:
+- clinical examination
+- imaging
+- biopsy
+- tissue sampling
+RUBRIC_OPTIONAL:
+- mammography
+- ultrasound
+- core needle biopsy
+- fine needle aspiration
+CORRECT: Triple assessment includes: 1) Clinical examination (history and physical), 2) Imaging (mammography for women ≥40, ultrasound for women <40), and 3) Tissue sampling (core biopsy or FNA).
+EXPLANATION: Triple assessment is the gold standard approach for evaluating any breast lump. All three components are necessary to accurately diagnose breast pathology.
 TEACHING_POINTS:
-- Lymph node status is the strongest prognostic factor
-- Gene expression profiling can guide adjuvant therapy decisions
-- Stage at diagnosis remains the most important determinant of survival`;
+- All suspicious breast lumps require triple assessment
+- Clinical examination alone is insufficient
+- Tissue diagnosis is mandatory before treatment planning`;
 
   downloadTxt('virtual_patient_template.txt', template);
 }
