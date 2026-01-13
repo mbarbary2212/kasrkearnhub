@@ -184,12 +184,29 @@ export function AIContentFactoryModal({
       if (!generatedContent || !jobId) throw new Error('No content to approve');
       
       // Handle both array and object formats from AI
-      const contentArray = Array.isArray(generatedContent) 
-        ? generatedContent 
-        : (generatedContent.items || generatedContent.questions || generatedContent.flashcards || generatedContent.cases || generatedContent.essays || [generatedContent]);
+      let contentArray: any[];
       
-      if (!Array.isArray(contentArray) || contentArray.length === 0) {
-        throw new Error('Invalid content format - expected array of items');
+      if (Array.isArray(generatedContent)) {
+        contentArray = generatedContent;
+      } else if (generatedContent.items && Array.isArray(generatedContent.items)) {
+        contentArray = generatedContent.items;
+      } else if (generatedContent.questions && Array.isArray(generatedContent.questions)) {
+        contentArray = generatedContent.questions;
+      } else if (generatedContent.flashcards && Array.isArray(generatedContent.flashcards)) {
+        contentArray = generatedContent.flashcards;
+      } else if (generatedContent.cases && Array.isArray(generatedContent.cases)) {
+        contentArray = generatedContent.cases;
+      } else if (generatedContent.essays && Array.isArray(generatedContent.essays)) {
+        contentArray = generatedContent.essays;
+      } else if (generatedContent.stem || generatedContent.front || generatedContent.title || generatedContent.question) {
+        // Single item object - wrap in array
+        contentArray = [generatedContent];
+      } else {
+        throw new Error('Invalid content format - expected array of items or single item');
+      }
+      
+      if (contentArray.length === 0) {
+        throw new Error('No content items to approve');
       }
 
       // Insert approved content into production tables based on content_type
