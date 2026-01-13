@@ -3977,6 +3977,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_any_module_admin: { Args: { _user_id: string }; Returns: boolean }
       is_chapter_admin: {
         Args: { _chapter_id: string; _user_id: string }
         Returns: boolean
@@ -3994,6 +3995,10 @@ export type Database = {
         Returns: boolean
       }
       is_module_admin: {
+        Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_module_admin_for: {
         Args: { _module_id: string; _user_id: string }
         Returns: boolean
       }
