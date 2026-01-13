@@ -30,11 +30,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const DOC_TYPES = [
+  { value: 'book_pdf', label: 'Book PDF' },
   { value: 'chapter_pdf', label: 'Chapter PDF' },
-  { value: 'reference', label: 'Reference Material' },
-  { value: 'exam_paper', label: 'Past Exam Paper' },
-  { value: 'guideline', label: 'Clinical Guideline' },
-  { value: 'other', label: 'Other' },
+  { value: 'lecture_pdf', label: 'Lecture PDF' },
 ];
 
 function formatFileSize(bytes: number | null): string {
@@ -322,6 +320,21 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
     }
   };
 
+  const handleDownload = async () => {
+    const url = await getSignedUrl(doc.storage_path);
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.file_name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast.error('Failed to generate download link');
+    }
+  };
+
   const handleCopyLink = async () => {
     const url = await getSignedUrl(doc.storage_path);
     if (url) {
@@ -388,6 +401,10 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
           <Button size="sm" variant="outline" onClick={handlePreview}>
             <ExternalLink className="w-3 h-3 mr-1" />
             Preview
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleDownload}>
+            <Download className="w-3 h-3 mr-1" />
+            Download
           </Button>
           <Button size="sm" variant="outline" onClick={handleCopyLink}>
             <Copy className="w-3 h-3 mr-1" />
