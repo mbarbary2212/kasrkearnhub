@@ -250,31 +250,55 @@ export function VPQuickBuildModal({
     short_answer: 'Short Answer',
   };
 
+  const canCreate = parseResult && parseResult.stages.length > 0 && !hasErrors && !isCreating;
+
+  const CreateButton = ({ className = '' }: { className?: string }) => (
+    <Button
+      onClick={handleCreate}
+      disabled={!canCreate}
+      className={className}
+    >
+      {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+      Create {parseResult?.stages.length || 0} Stage{parseResult?.stages.length !== 1 ? 's' : ''}
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Quick Build from Template
-          </DialogTitle>
-          <DialogDescription>
-            Paste your template text below to quickly create multiple stages. 
-            Each stage should follow the format shown in Help & Templates.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden p-0">
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b bg-background">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Quick Build from Template
+              </DialogTitle>
+              {/* Safety fallback: Top-right Create button */}
+              {canCreate && (
+                <CreateButton className="hidden sm:flex" />
+              )}
+            </div>
+            <DialogDescription>
+              Paste your template text below to quickly create multiple stages. 
+              Each stage should follow the format shown in Help & Templates.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
-          {/* Input Side */}
-          <div className="flex flex-col gap-2">
-            <Label>Paste Template Text</Label>
-            <Textarea
-              value={templateText}
-              onChange={(e) => {
-                setTemplateText(e.target.value);
-                setParseResult(null);
-              }}
-              placeholder={`STAGE 1:
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full min-h-[400px]">
+            {/* Input Side */}
+            <div className="flex flex-col gap-2">
+              <Label>Paste Template Text</Label>
+              <Textarea
+                value={templateText}
+                onChange={(e) => {
+                  setTemplateText(e.target.value);
+                  setParseResult(null);
+                }}
+                placeholder={`STAGE 1:
 TYPE: mcq
 PATIENT_INFO: The patient reports...
 PROMPT: What is your next step?
@@ -288,99 +312,97 @@ TEACHING_POINTS:
 STAGE 2:
 TYPE: multi_select
 ...`}
-              className="flex-1 font-mono text-sm resize-none"
-            />
-            <Button onClick={handlePreview} disabled={!templateText.trim()}>
-              <Eye className="w-4 h-4 mr-2" />
-              Preview Stages
-            </Button>
-          </div>
+                className="flex-1 font-mono text-sm resize-none min-h-[200px]"
+              />
+              <Button onClick={handlePreview} disabled={!templateText.trim()}>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview Stages
+              </Button>
+            </div>
 
-          {/* Preview Side */}
-          <div className="flex flex-col gap-2">
-            <Label>Preview</Label>
-            <ScrollArea className="flex-1 border rounded-lg p-3">
-              {!parseResult ? (
-                <div className="text-center text-muted-foreground py-8">
-                  Paste template and click "Preview Stages" to see parsed content
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {parseResult.errors.length > 0 && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="w-4 h-4" />
-                      <AlertDescription>
-                        {parseResult.errors.map((e, i) => (
-                          <div key={i}>{e}</div>
-                        ))}
-                      </AlertDescription>
-                    </Alert>
-                  )}
+            {/* Preview Side */}
+            <div className="flex flex-col gap-2">
+              <Label>Preview</Label>
+              <div className="flex-1 border rounded-lg p-3 overflow-auto min-h-[200px] max-h-[50vh]">
+                {!parseResult ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Paste template and click "Preview Stages" to see parsed content
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {parseResult.errors.length > 0 && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="w-4 h-4" />
+                        <AlertDescription>
+                          {parseResult.errors.map((e, i) => (
+                            <div key={i}>{e}</div>
+                          ))}
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-                  {parseResult.stages.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-4">
-                      No stages parsed
-                    </div>
-                  ) : (
-                    parseResult.stages.map((stage) => (
-                      <div key={stage.stageNumber} className="border rounded-lg p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          {stage.errors.length === 0 ? (
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 text-destructive" />
-                          )}
-                          <Badge variant="outline">Stage {stage.stageNumber}</Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {stageTypeLabels[stage.type]}
-                          </Badge>
-                        </div>
-
-                        {stage.errors.length > 0 && (
-                          <div className="text-sm text-destructive">
-                            {stage.errors.map((e, i) => (
-                              <div key={i}>• {e}</div>
-                            ))}
-                          </div>
-                        )}
-
-                        <p className="text-sm font-medium line-clamp-2">{stage.prompt || '(no prompt)'}</p>
-
-                        {stage.choices.length > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            {stage.choices.length} choices • Correct: {
-                              Array.isArray(stage.correctAnswer) 
-                                ? stage.correctAnswer.join(', ') 
-                                : stage.correctAnswer
-                            }
-                          </div>
-                        )}
-
-                        {stage.teachingPoints.length > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            {stage.teachingPoints.length} teaching point(s)
-                          </div>
-                        )}
+                    {parseResult.stages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-4">
+                        No stages parsed
                       </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </ScrollArea>
+                    ) : (
+                      parseResult.stages.map((stage) => (
+                        <div key={stage.stageNumber} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            {stage.errors.length === 0 ? (
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-destructive" />
+                            )}
+                            <Badge variant="outline">Stage {stage.stageNumber}</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {stageTypeLabels[stage.type]}
+                            </Badge>
+                          </div>
+
+                          {stage.errors.length > 0 && (
+                            <div className="text-sm text-destructive">
+                              {stage.errors.map((e, i) => (
+                                <div key={i}>• {e}</div>
+                              ))}
+                            </div>
+                          )}
+
+                          <p className="text-sm font-medium line-clamp-2">{stage.prompt || '(no prompt)'}</p>
+
+                          {stage.choices.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {stage.choices.length} choices • Correct: {
+                                Array.isArray(stage.correctAnswer) 
+                                  ? stage.correctAnswer.join(', ') 
+                                  : stage.correctAnswer
+                              }
+                            </div>
+                          )}
+
+                          {stage.teachingPoints.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {stage.teachingPoints.length} teaching point(s)
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={!parseResult || parseResult.stages.length === 0 || hasErrors || isCreating}
-          >
-            {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Create {parseResult?.stages.length || 0} Stage{parseResult?.stages.length !== 1 ? 's' : ''}
-          </Button>
+        {/* Fixed/Sticky Footer */}
+        <div className="flex-shrink-0 px-6 py-4 border-t bg-background z-10">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <CreateButton />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
