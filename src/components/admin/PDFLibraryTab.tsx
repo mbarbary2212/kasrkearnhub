@@ -426,6 +426,8 @@ export function PDFLibraryTab({ onOpenAIFactory }: PDFLibraryTabProps) {
   const [search, setSearch] = useState('');
   const [filterModule, setFilterModule] = useState<string>('');
   const [filterDocType, setFilterDocType] = useState<string>('');
+  const [aiFactoryOpen, setAiFactoryOpen] = useState(false);
+  const [selectedDocForAI, setSelectedDocForAI] = useState<AdminDocument | null>(null);
 
   const { data: documents, isLoading } = useAdminDocuments({
     search: search || undefined,
@@ -438,100 +440,138 @@ export function PDFLibraryTab({ onOpenAIFactory }: PDFLibraryTabProps) {
     if (onOpenAIFactory) {
       onOpenAIFactory(doc.id, doc.module_id || undefined, doc.chapter_id || undefined);
     } else {
-      toast.info('AI Content Factory integration coming soon!');
+      // Use built-in AI factory modal
+      setSelectedDocForAI(doc);
+      setAiFactoryOpen(true);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              PDF Library
-            </CardTitle>
-            <CardDescription>
-              Manage PDF documents for AI-powered content generation.
-            </CardDescription>
-          </div>
-          <Button onClick={() => setUploadOpen(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload PDF
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by title or tags..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={filterModule} onValueChange={setFilterModule}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Modules" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Modules</SelectItem>
-              {modules?.map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterDocType} onValueChange={setFilterDocType}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              {DOC_TYPES.map(type => (
-                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Document List */}
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map(i => (
-              <Skeleton key={i} className="h-40" />
-            ))}
-          </div>
-        ) : documents?.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-lg mb-1">No documents yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Upload your first PDF to start building your AI content library.
-            </p>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                PDF Library
+              </CardTitle>
+              <CardDescription>
+                Manage PDF documents for AI-powered content generation.
+              </CardDescription>
+            </div>
             <Button onClick={() => setUploadOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />
               Upload PDF
             </Button>
           </div>
-        ) : (
-          <ScrollArea className="h-[calc(100vh-400px)] min-h-[400px]">
+        </CardHeader>
+        <CardContent>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 mb-6">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by title or tags..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterModule} onValueChange={setFilterModule}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Modules" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Modules</SelectItem>
+                {modules?.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterDocType} onValueChange={setFilterDocType}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                {DOC_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Document List */}
+          {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {documents?.map(doc => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={doc}
-                  onUseAsAISource={handleUseAsAISource}
-                />
+              {[1, 2, 3, 4].map(i => (
+                <Skeleton key={i} className="h-40" />
               ))}
             </div>
-          </ScrollArea>
-        )}
-      </CardContent>
+          ) : documents?.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-medium text-lg mb-1">No documents yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Upload your first PDF to start building your AI content library.
+              </p>
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload PDF
+              </Button>
+            </div>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-400px)] min-h-[400px]">
+              <div className="grid gap-4 md:grid-cols-2">
+                {documents?.map(doc => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={doc}
+                    onUseAsAISource={handleUseAsAISource}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
 
-      <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
-    </Card>
+        <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
+      </Card>
+
+      {/* Lazy-load AI Content Factory Modal */}
+      {aiFactoryOpen && (
+        <AIContentFactoryModalLazy
+          open={aiFactoryOpen}
+          onOpenChange={(open) => {
+            setAiFactoryOpen(open);
+            if (!open) setSelectedDocForAI(null);
+          }}
+          documentId={selectedDocForAI?.id}
+          prefilledModuleId={selectedDocForAI?.module_id || undefined}
+          prefilledChapterId={selectedDocForAI?.chapter_id || undefined}
+        />
+      )}
+    </>
   );
+}
+
+// Lazy wrapper for AI Content Factory Modal
+function AIContentFactoryModalLazy(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  documentId?: string;
+  prefilledModuleId?: string;
+  prefilledChapterId?: string;
+}) {
+  const [Component, setComponent] = useState<React.ComponentType<typeof props> | null>(null);
+
+  useState(() => {
+    import('./AIContentFactoryModal').then(mod => {
+      setComponent(() => mod.AIContentFactoryModal);
+    });
+  });
+
+  if (!Component) return null;
+  return <Component {...props} />;
 }
