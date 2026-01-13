@@ -117,21 +117,6 @@ export function VPStageFormModal({
     setRubricOptional('');
   };
 
-  const resetForm = () => {
-    setStageType('mcq');
-    setPrompt('');
-    setPatientInfo('');
-    setChoices([
-      { key: 'A', text: '' },
-      { key: 'B', text: '' },
-      { key: 'C', text: '' },
-      { key: 'D', text: '' },
-    ]);
-    setCorrectAnswer('A');
-    setExplanation('');
-    setTeachingPoints([]);
-    setTeachingPointInput('');
-  };
 
   const handleStageTypeChange = (type: VPStageType) => {
     setStageType(type);

@@ -31,11 +31,13 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { VPCase } from '@/types/virtualPatient';
 import { useVirtualPatientCases, useDeleteVirtualPatientCase } from '@/hooks/useVirtualPatient';
 import { VPCaseFormModal } from './VPCaseFormModal';
 import { VPCaseBuilderModal } from './VPCaseBuilderModal';
+import { VPAIGenerateModal } from './VPAIGenerateModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -58,6 +60,7 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<VPCase | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<VPCase | null>(null);
@@ -165,15 +168,21 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header with Add Button */}
-      <div className="flex justify-between items-center">
+      {/* Header with Add Buttons */}
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
         </p>
-        <Button size="sm" onClick={handleCreateCase}>
-          <Plus className="w-4 h-4 mr-1" />
-          Add Case
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-1" />
+            Generate with AI
+          </Button>
+          <Button size="sm" onClick={handleCreateCase}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Case
+          </Button>
+        </div>
       </div>
 
       {/* Cases Grid */}
@@ -184,12 +193,18 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
           </div>
           <h3 className="font-medium mb-1">No Virtual Patient Cases</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first virtual patient case to get started.
+            Create your first virtual patient case, or let AI generate one for you.
           </p>
-          <Button onClick={handleCreateCase}>
-            <Plus className="w-4 h-4 mr-1" />
-            Create Case
-          </Button>
+          <div className="flex justify-center gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setAiGenerateOpen(true)}>
+              <Sparkles className="w-4 h-4 mr-1" />
+              Generate with AI
+            </Button>
+            <Button onClick={handleCreateCase}>
+              <Plus className="w-4 h-4 mr-1" />
+              Create Manually
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -292,6 +307,15 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
           moduleId={moduleId}
         />
       )}
+
+      {/* AI Generate Modal */}
+      <VPAIGenerateModal
+        open={aiGenerateOpen}
+        onOpenChange={setAiGenerateOpen}
+        moduleId={moduleId}
+        chapterId={chapterId}
+        onCaseCreated={handleCaseCreated}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
