@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { 
   Sparkles, 
   FileText, 
@@ -21,7 +22,13 @@ import {
   ClipboardList,
   Layers,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Image,
+  ArrowLeftRight,
+  UserRound,
+  Network,
+  Stethoscope,
+  GraduationCap
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,11 +56,28 @@ interface AIContentFactoryModalProps {
   prefilledChapterId?: string;
 }
 
-const CONTENT_TYPES = [
-  { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Generate multiple choice questions' },
-  { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Create study flashcards' },
-  { value: 'case_scenario', label: 'Case Scenarios', icon: ClipboardList, description: 'Generate clinical case scenarios' },
-  { value: 'essay', label: 'Essay Questions', icon: BookOpen, description: 'Create essay/short answer questions' },
+interface ContentTypeOption {
+  value: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  category: 'practice' | 'resources';
+  requiresChapter?: boolean;
+}
+
+const CONTENT_TYPES: ContentTypeOption[] = [
+  // Practice Types
+  { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Multiple choice questions (A-E)', category: 'practice' },
+  { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
+  { value: 'case_scenario', label: 'Case Scenarios', icon: ClipboardList, description: 'Clinical case-based learning', category: 'practice' },
+  { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
+  { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
+  { value: 'virtual_patient', label: 'Virtual Patient', icon: UserRound, description: 'Multi-stage case with MCQ/short-answer stages', category: 'practice' },
+  
+  // Resource Types
+  { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
+  { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
+  { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
 ];
 
 type ProgressState = 'idle' | 'preparing' | 'generating' | 'saving' | 'complete' | 'error';
@@ -75,11 +99,15 @@ export function AIContentFactoryModal({
   const [jobId, setJobId] = useState<string | null>(null);
   const [progressState, setProgressState] = useState<ProgressState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [socraticMode, setSocraticMode] = useState(false);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(moduleId || undefined);
+
+  const selectedContentType = CONTENT_TYPES.find(t => t.value === contentType);
+  const requiresChapter = selectedContentType?.requiresChapter ?? false;
 
   // Fetch available documents
   const { data: documents } = useQuery({
@@ -116,14 +144,12 @@ export function AIContentFactoryModal({
 
   // Get fresh session with retry logic
   const getValidSession = useCallback(async () => {
-    // First try to get current session
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (session?.access_token) {
       return session;
     }
 
-    // If no session, try to refresh
     console.log('No active session, attempting refresh...');
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
@@ -154,14 +180,12 @@ export function AIContentFactoryModal({
       if (error) {
         const errorMsg = error.message || '';
 
-        // Check for auth-related errors
         if (
           errorMsg.includes('Unauthorized') ||
           errorMsg.includes('session') ||
           errorMsg.includes('401') ||
           errorMsg.includes('403')
         ) {
-          // Try refresh and retry once
           if (retryCount === 0) {
             console.log('Auth error, refreshing session and retrying...');
             await supabase.auth.refreshSession();
@@ -170,7 +194,6 @@ export function AIContentFactoryModal({
           throw new Error('Your session has expired. Please refresh the page and sign in again.');
         }
 
-        // Retry on transient failures (network, 5xx)
         if (
           retryCount === 0 &&
           (errorMsg.includes('network') ||
@@ -195,6 +218,7 @@ export function AIContentFactoryModal({
     mutationFn: async () => {
       if (!selectedDocId) throw new Error('Please select a source document');
       if (!moduleId) throw new Error('Please select a target module');
+      if (requiresChapter && !chapterId) throw new Error(`Please select a chapter (required for ${selectedContentType?.label})`);
 
       setProgressState('preparing');
       setErrorMessage(null);
@@ -208,6 +232,7 @@ export function AIContentFactoryModal({
         chapter_id: chapterId || null,
         quantity: parseInt(quantity),
         additional_instructions: additionalInstructions || null,
+        socratic_mode: socraticMode,
       });
 
       if (data?.error) {
@@ -251,7 +276,6 @@ export function AIContentFactoryModal({
 
       setProgressState('saving');
 
-      // Validate payload shape before calling server-side approval
       const items =
         generatedContent &&
         typeof generatedContent === 'object' &&
@@ -279,7 +303,6 @@ export function AIContentFactoryModal({
       return data;
     },
     onSuccess: async () => {
-      // Ensure immediate UI update after approval
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] }),
         queryClient.invalidateQueries({ queryKey: ['mcqs'] }),
@@ -296,9 +319,11 @@ export function AIContentFactoryModal({
         queryClient.invalidateQueries({ queryKey: ['essays'] }),
         queryClient.invalidateQueries({ queryKey: ['chapter-content', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['module-content', moduleId] }),
+        queryClient.invalidateQueries({ queryKey: ['osce-questions'] }),
+        queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
       ]);
 
-      // Force refetch for the most visible lists
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ['ai_generation_jobs'] }),
         queryClient.refetchQueries({ queryKey: ['chapter-content', chapterId] }),
@@ -326,6 +351,7 @@ export function AIContentFactoryModal({
     setJobId(null);
     setProgressState('idle');
     setErrorMessage(null);
+    setSocraticMode(false);
     onOpenChange(false);
   };
 
@@ -345,6 +371,85 @@ export function AIContentFactoryModal({
       case 'error': return 'Error occurred';
       default: return '';
     }
+  };
+
+  const practiceTypes = CONTENT_TYPES.filter(t => t.category === 'practice');
+  const resourceTypes = CONTENT_TYPES.filter(t => t.category === 'resources');
+
+  // Render preview based on content type
+  const renderPreviewItem = (item: any, idx: number) => {
+    const typeLabel = contentType.toUpperCase().replace('_', ' ');
+    
+    if (contentType === 'mcq') {
+      return (
+        <Card key={idx}>
+          <CardContent className="p-4 space-y-2">
+            <Badge variant="secondary">{typeLabel} #{idx + 1}</Badge>
+            <p className="font-medium">{item.stem}</p>
+            <div className="grid gap-1 text-sm">
+              {Object.entries(item.choices || {}).map(([key, val]) => (
+                <div key={key} className={`flex gap-2 ${key === item.correct_key ? 'text-green-600 font-medium' : ''}`}>
+                  <span>{key}.</span>
+                  <span>{String(val)}</span>
+                  {key === item.correct_key && <CheckCircle2 className="w-4 h-4" />}
+                </div>
+              ))}
+            </div>
+            {item.explanation && <p className="text-muted-foreground text-sm mt-2">{item.explanation}</p>}
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    if (contentType === 'virtual_patient') {
+      return (
+        <Card key={idx}>
+          <CardContent className="p-4 space-y-2">
+            <Badge variant="secondary">Virtual Patient #{idx + 1}</Badge>
+            <p className="font-medium">{item.title}</p>
+            <p className="text-sm text-muted-foreground">{item.intro_text?.substring(0, 200)}...</p>
+            <div className="flex gap-2 flex-wrap mt-2">
+              <Badge variant="outline">{item.level}</Badge>
+              <Badge variant="outline">{item.estimated_minutes} min</Badge>
+              <Badge variant="outline">{item.stages?.length || 0} stages</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    if (contentType === 'osce') {
+      return (
+        <Card key={idx}>
+          <CardContent className="p-4 space-y-2">
+            <Badge variant="secondary">OSCE #{idx + 1}</Badge>
+            <p className="text-sm">{item.history_text?.substring(0, 150)}...</p>
+            <div className="space-y-1 text-sm">
+              {[1, 2, 3, 4, 5].map(n => item[`statement_${n}`] && (
+                <div key={n} className="flex items-center gap-2">
+                  <Badge variant={item[`answer_${n}`] ? 'default' : 'destructive'} className="text-xs">
+                    {item[`answer_${n}`] ? 'T' : 'F'}
+                  </Badge>
+                  <span>{item[`statement_${n}`]}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    // Fallback: JSON display
+    return (
+      <Card key={idx}>
+        <CardContent className="p-4">
+          <Badge className="mb-2">{typeLabel} #{idx + 1}</Badge>
+          <pre className="text-sm whitespace-pre-wrap">
+            {JSON.stringify(item, null, 2)}
+          </pre>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -427,25 +532,55 @@ export function AIContentFactoryModal({
                 )}
               </div>
 
-              {/* Content Type */}
-              <div className="space-y-2">
-                <Label>Content Type *</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {CONTENT_TYPES.map(type => (
+              {/* Content Type - Practice */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4" />
+                  Practice Content
+                </Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {practiceTypes.map(type => (
                     <button
                       key={type.value}
                       onClick={() => setContentType(type.value)}
                       className={`p-3 rounded-lg border text-left transition-all ${
                         contentType === type.value
-                          ? 'border-primary bg-primary/5'
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <type.icon className="w-4 h-4" />
-                        <span className="font-medium text-sm">{type.label}</span>
+                        <type.icon className="w-4 h-4 shrink-0" />
+                        <span className="font-medium text-sm truncate">{type.label}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{type.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Type - Resources */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Study Resources
+                </Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {resourceTypes.map(type => (
+                    <button
+                      key={type.value}
+                      onClick={() => setContentType(type.value)}
+                      className={`p-3 rounded-lg border text-left transition-all ${
+                        contentType === type.value
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <type.icon className="w-4 h-4 shrink-0" />
+                        <span className="font-medium text-sm truncate">{type.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{type.description}</p>
                     </button>
                   ))}
                 </div>
@@ -468,7 +603,7 @@ export function AIContentFactoryModal({
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Target Chapter {contentType === 'flashcard' ? '*' : '(Optional)'}
+                    Target Chapter {requiresChapter ? '*' : '(Optional)'}
                   </Label>
                   <Select value={chapterId} onValueChange={setChapterId} disabled={!moduleId}>
                     <SelectTrigger>
@@ -483,24 +618,46 @@ export function AIContentFactoryModal({
                 </div>
               </div>
 
-              {/* Quantity */}
-              <div className="space-y-2">
-                <Label>Number of Items</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">Maximum 20 items per generation</p>
+              {/* Quantity & Socratic Mode */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Number of Items</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={contentType === 'virtual_patient' ? '5' : '20'}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum {contentType === 'virtual_patient' ? '5' : '20'} items per generation
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Socratic Mode
+                  </Label>
+                  <div className="flex items-center gap-3 h-10">
+                    <Switch
+                      checked={socraticMode}
+                      onCheckedChange={setSocraticMode}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {socraticMode ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Uses guided-discovery questions in explanations
+                  </p>
+                </div>
               </div>
 
               {/* Additional Instructions */}
               <div className="space-y-2">
                 <Label>Additional Instructions (Optional)</Label>
                 <Textarea
-                  placeholder="e.g., Focus on pharmacology topics, include clinical scenarios..."
+                  placeholder="e.g., Focus on pharmacology topics, include clinical scenarios, target beginner level..."
                   value={additionalInstructions}
                   onChange={(e) => setAdditionalInstructions(e.target.value)}
                   rows={3}
@@ -513,6 +670,7 @@ export function AIContentFactoryModal({
               <div className="flex items-center gap-2 text-green-600">
                 <CheckCircle2 className="w-5 h-5" />
                 <span className="font-medium">Content Generated Successfully</span>
+                <Badge variant="outline" className="ml-2">{generatedContent?.items?.length || 0} items</Badge>
               </div>
               
               <Tabs defaultValue="preview">
@@ -522,24 +680,18 @@ export function AIContentFactoryModal({
                 </TabsList>
                 <TabsContent value="preview" className="mt-4">
                   <div className="space-y-3">
-                    {Array.isArray(generatedContent) ? generatedContent.map((item, idx) => (
-                      <Card key={idx}>
-                        <CardContent className="p-4">
-                          <Badge className="mb-2">{contentType.toUpperCase()} #{idx + 1}</Badge>
-                          <pre className="text-sm whitespace-pre-wrap">
-                            {JSON.stringify(item, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
-                    )) : (
-                      <Card>
-                        <CardContent className="p-4">
-                          <pre className="text-sm whitespace-pre-wrap">
-                            {JSON.stringify(generatedContent, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
-                    )}
+                    {Array.isArray(generatedContent?.items) 
+                      ? generatedContent.items.map((item: any, idx: number) => renderPreviewItem(item, idx))
+                      : (
+                        <Card>
+                          <CardContent className="p-4">
+                            <pre className="text-sm whitespace-pre-wrap">
+                              {JSON.stringify(generatedContent, null, 2)}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      )
+                    }
                   </div>
                 </TabsContent>
                 <TabsContent value="raw" className="mt-4">
@@ -564,7 +716,7 @@ export function AIContentFactoryModal({
           {!generatedContent ? (
             <Button
               onClick={() => generateMutation.mutate()}
-              disabled={!selectedDocId || !moduleId || generateMutation.isPending || (contentType === 'flashcard' && !chapterId)}
+              disabled={!selectedDocId || !moduleId || generateMutation.isPending || (requiresChapter && !chapterId)}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             >
               {generateMutation.isPending ? (

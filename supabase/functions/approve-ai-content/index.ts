@@ -13,7 +13,16 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-type ContentType = "mcq" | "flashcard" | "case_scenario" | "essay";
+type ContentType =
+  | "mcq"
+  | "flashcard"
+  | "case_scenario"
+  | "essay"
+  | "osce"
+  | "matching"
+  | "virtual_patient"
+  | "mind_map"
+  | "worked_case";
 
 function ensureArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
@@ -203,6 +212,168 @@ serve(async (req) => {
       }));
 
       const { error } = await serviceClient.from("essays").insert(essaysToInsert);
+      if (error) throw error;
+    } else if (contentType === "osce") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for OSCE questions", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const osceToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        history_text: item.history_text,
+        statement_1: item.statement_1,
+        answer_1: item.answer_1,
+        explanation_1: item.explanation_1 || null,
+        statement_2: item.statement_2 || null,
+        answer_2: item.answer_2 ?? null,
+        explanation_2: item.explanation_2 || null,
+        statement_3: item.statement_3 || null,
+        answer_3: item.answer_3 ?? null,
+        explanation_3: item.explanation_3 || null,
+        statement_4: item.statement_4 || null,
+        answer_4: item.answer_4 ?? null,
+        explanation_4: item.explanation_4 || null,
+        statement_5: item.statement_5 || null,
+        answer_5: item.answer_5 ?? null,
+        explanation_5: item.explanation_5 || null,
+        difficulty: item.difficulty || "medium",
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("osce_questions")
+        .insert(osceToInsert);
+      if (error) throw error;
+    } else if (contentType === "matching") {
+      const matchingToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        instruction: item.instruction,
+        column_a_items: item.column_a_items,
+        column_b_items: item.column_b_items,
+        correct_matches: item.correct_matches,
+        explanation: item.explanation || null,
+        difficulty: item.difficulty || "medium",
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("matching_questions")
+        .insert(matchingToInsert);
+      if (error) throw error;
+    } else if (contentType === "virtual_patient") {
+      // Virtual Patient: Insert case first, then stages
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        
+        const { data: vpCase, error: caseError } = await serviceClient
+          .from("virtual_patient_cases")
+          .insert({
+            title: item.title,
+            intro_text: item.intro_text,
+            module_id: moduleId,
+            chapter_id: chapterId,
+            level: item.level || "intermediate",
+            estimated_minutes: item.estimated_minutes || 15,
+            tags: item.tags || [],
+            is_published: false,
+            is_deleted: false,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+
+        if (caseError || !vpCase) {
+          console.error("Failed to insert VP case:", caseError?.message);
+          throw caseError || new Error("Failed to create virtual patient case");
+        }
+
+        // Insert stages
+        const stages = ensureArray(item.stages);
+        if (stages.length > 0) {
+          const stagesToInsert = stages.map((stage: any, stageIdx: number) => ({
+            case_id: vpCase.id,
+            stage_order: stage.stage_order || stageIdx + 1,
+            stage_type: stage.stage_type || "mcq",
+            prompt: stage.prompt,
+            patient_info: stage.patient_info || null,
+            choices: stage.choices || [],
+            correct_answer: stage.correct_answer,
+            explanation: stage.explanation || null,
+            teaching_points: stage.teaching_points || [],
+            rubric: stage.rubric || null,
+          }));
+
+          const { error: stagesError } = await serviceClient
+            .from("virtual_patient_stages")
+            .insert(stagesToInsert);
+
+          if (stagesError) {
+            console.error("Failed to insert VP stages:", stagesError.message);
+            throw stagesError;
+          }
+        }
+      }
+    } else if (contentType === "mind_map") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for mind maps", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const mindMapsToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        resource_type: "mind_map",
+        title: item.title,
+        content: {
+          central_concept: item.central_concept,
+          nodes: item.nodes,
+        },
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("study_resources")
+        .insert(mindMapsToInsert);
+      if (error) throw error;
+    } else if (contentType === "worked_case") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for worked cases", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const workedCasesToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        resource_type: "worked_case",
+        title: item.title,
+        content: {
+          case_summary: item.case_summary,
+          steps: item.steps,
+          learning_objectives: item.learning_objectives,
+        },
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("study_resources")
+        .insert(workedCasesToInsert);
       if (error) throw error;
     } else {
       return jsonResponse(
