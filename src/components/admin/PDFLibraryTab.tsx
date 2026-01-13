@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -436,9 +436,10 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
 
 interface PDFLibraryTabProps {
   onOpenAIFactory?: (documentId: string, moduleId?: string, chapterId?: string) => void;
+  moduleAdminModuleIds?: string[];
 }
 
-export function PDFLibraryTab({ onOpenAIFactory }: PDFLibraryTabProps) {
+export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibraryTabProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterModule, setFilterModule] = useState<string>('');
@@ -450,8 +451,14 @@ export function PDFLibraryTab({ onOpenAIFactory }: PDFLibraryTabProps) {
     search: search || undefined,
     module_id: filterModule || undefined,
     doc_type: filterDocType || undefined,
+    module_ids: moduleAdminModuleIds,
   });
   const { data: modules } = useModules();
+  
+  // Filter modules for module admins
+  const availableModules = moduleAdminModuleIds?.length 
+    ? modules?.filter(m => moduleAdminModuleIds.includes(m.id))
+    : modules;
 
   const handleUseAsAISource = (doc: AdminDocument) => {
     if (onOpenAIFactory) {
@@ -501,7 +508,7 @@ export function PDFLibraryTab({ onOpenAIFactory }: PDFLibraryTabProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Modules</SelectItem>
-                {modules?.map(m => (
+                {availableModules?.map(m => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -583,11 +590,11 @@ function AIContentFactoryModalLazy(props: {
 }) {
   const [Component, setComponent] = useState<React.ComponentType<typeof props> | null>(null);
 
-  useState(() => {
+  useEffect(() => {
     import('./AIContentFactoryModal').then(mod => {
       setComponent(() => mod.AIContentFactoryModal);
     });
-  });
+  }, []);
 
   if (!Component) return null;
   return <Component {...props} />;

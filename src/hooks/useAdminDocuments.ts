@@ -40,8 +40,9 @@ export function useAdminDocuments(filters?: {
   module_id?: string;
   chapter_id?: string;
   doc_type?: string;
+  module_ids?: string[]; // For module admins - filter to their modules only
 }) {
-  const { isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const { isPlatformAdmin, isSuperAdmin, isModuleAdmin } = useAuthContext();
 
   return useQuery({
     queryKey: ['admin-documents', filters],
@@ -55,6 +56,11 @@ export function useAdminDocuments(filters?: {
         `)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
+
+      // For module admins, filter to only their assigned modules
+      if (filters?.module_ids && filters.module_ids.length > 0 && !isSuperAdmin && !isPlatformAdmin) {
+        query = query.in('module_id', filters.module_ids);
+      }
 
       if (filters?.module_id) {
         query = query.eq('module_id', filters.module_id);
@@ -73,7 +79,7 @@ export function useAdminDocuments(filters?: {
       if (error) throw error;
       return data as AdminDocument[];
     },
-    enabled: isPlatformAdmin || isSuperAdmin,
+    enabled: isPlatformAdmin || isSuperAdmin || isModuleAdmin,
   });
 }
 

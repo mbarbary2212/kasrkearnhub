@@ -627,7 +627,7 @@ export default function AdminPage() {
                 Settings
               </TabsTrigger>
             )}
-            {isPlatformAdmin && (
+            {(isPlatformAdmin || isModuleAdmin) && (
               <TabsTrigger value="pdf-library" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <FileText className="w-4 h-4" />
                 PDF Library
@@ -1050,9 +1050,9 @@ export default function AdminPage() {
           )}
 
           {/* PDF Library Tab */}
-          {isPlatformAdmin && (
+          {(isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="pdf-library">
-              <PDFLibraryTab />
+              <PDFLibraryTab moduleAdminModuleIds={moduleAdminModuleIds} />
             </TabsContent>
           )}
 
