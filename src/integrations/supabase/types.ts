@@ -3601,6 +3601,7 @@ export type Database = {
           id: string
           patient_info: string | null
           prompt: string
+          rubric: Json | null
           stage_order: number
           stage_type: string
           teaching_points: string[] | null
@@ -3615,6 +3616,7 @@ export type Database = {
           id?: string
           patient_info?: string | null
           prompt: string
+          rubric?: Json | null
           stage_order: number
           stage_type?: string
           teaching_points?: string[] | null
@@ -3629,6 +3631,7 @@ export type Database = {
           id?: string
           patient_info?: string | null
           prompt?: string
+          rubric?: Json | null
           stage_order?: number
           stage_type?: string
           teaching_points?: string[] | null
