@@ -60,18 +60,24 @@ serve(async (req) => {
 
     // Get auth header and verify admin
     const authHeader = req.headers.get("Authorization");
+    console.log("Auth header present:", !!authHeader);
+    
     if (!authHeader) {
-      throw new Error("No authorization header");
+      throw new Error("No authorization header provided");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Verify the user from the JWT
     const token = authHeader.replace("Bearer ", "");
+    console.log("Token extracted, length:", token.length);
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
+    console.log("User verification result:", user?.id || "no user", "Error:", userError?.message || "none");
+    
     if (userError || !user) {
-      throw new Error("Unauthorized");
+      throw new Error(`Unauthorized: ${userError?.message || 'No user found'}`);
     }
 
     // Verify user is admin
