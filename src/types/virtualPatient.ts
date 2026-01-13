@@ -8,6 +8,22 @@ export interface VPChoice {
   text: string;
 }
 
+// Rubric structure for short-answer marking
+export interface VPRubric {
+  required_concepts: string[];
+  optional_concepts: string[];
+  pass_threshold?: number; // Default 0.6 (60%)
+}
+
+// Result of rubric-based marking
+export interface VPRubricResult {
+  is_correct: boolean;
+  score: number; // 0-1
+  matched_required: string[];
+  missing_required: string[];
+  matched_optional: string[];
+}
+
 export interface VPCase {
   id: string;
   title: string;
@@ -43,6 +59,7 @@ export interface VPStage {
   correct_answer: string | string[]; // Single key for MCQ, array for multi-select, text for short_answer
   explanation: string | null;
   teaching_points: string[];
+  rubric: VPRubric | null; // For short_answer grading
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +86,7 @@ export interface StageAnswer {
   user_answer: string | string[];
   is_correct: boolean;
   time_taken_seconds?: number;
+  rubric_result?: VPRubricResult; // For short_answer stages
 }
 
 // Form types for admin builder
@@ -93,4 +111,5 @@ export interface VPStageFormData {
   correct_answer: string | string[];
   explanation?: string;
   teaching_points: string[];
+  rubric?: VPRubric | null; // For short_answer grading
 }

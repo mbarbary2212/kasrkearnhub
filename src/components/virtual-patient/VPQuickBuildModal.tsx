@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertCircle,
@@ -19,9 +18,10 @@ import {
   FileText,
   Eye,
 } from 'lucide-react';
-import { VPStageFormData, VPStageType, VPChoice } from '@/types/virtualPatient';
+import { VPStageFormData, VPStageType, VPChoice, VPRubric } from '@/types/virtualPatient';
 import { useCreateVirtualPatientStage } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface VPQuickBuildModalProps {
   open: boolean;
@@ -40,6 +40,7 @@ interface ParsedStage {
   correctAnswer: string | string[];
   explanation?: string;
   teachingPoints: string[];
+  rubric?: VPRubric;
   errors: string[];
 }
 
@@ -67,12 +68,16 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     
     // Extract fields using regex
     const typeMatch = block.match(/TYPE:\s*(mcq|multi_select|short_answer)/i);
-    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:)|$)/is);
-    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:)|$)/is);
-    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:)|$)/is);
-    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:)|$)/is);
-    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:)|$)/is);
-    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)$/is);
+    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)(?=\n(?:RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    
+    // Rubric fields for short_answer
+    const rubricRequiredMatch = block.match(/RUBRIC_REQUIRED:\s*(.+?)(?=\n(?:RUBRIC_OPTIONAL:|STAGE\s+\d+:)|$)/is);
+    const rubricOptionalMatch = block.match(/RUBRIC_OPTIONAL:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
 
     // Determine type (default to mcq)
     let type: VPStageType = 'mcq';
@@ -117,14 +122,14 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     // Parse correct answer
     let correctAnswer: string | string[] = '';
     if (correctMatch) {
-      const correctText = correctMatch[1].trim().toUpperCase();
+      const correctText = correctMatch[1].trim();
       if (type === 'mcq') {
-        correctAnswer = correctText.charAt(0);
+        correctAnswer = correctText.charAt(0).toUpperCase();
         if (!choices.find(c => c.key === correctAnswer)) {
           errors.push(`Correct answer "${correctAnswer}" not found in choices`);
         }
       } else if (type === 'multi_select') {
-        correctAnswer = correctText.split(/[,\s]+/).filter(k => k.match(/^[A-H]$/));
+        correctAnswer = correctText.toUpperCase().split(/[,\s]+/).filter(k => k.match(/^[A-H]$/));
         if (correctAnswer.length === 0) {
           errors.push('Multi-select requires at least one correct answer');
         }
@@ -135,10 +140,28 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
         });
       } else {
         // short_answer - the correct field is the model answer
-        correctAnswer = correctMatch[1].trim();
+        correctAnswer = correctText;
       }
     } else if (type !== 'short_answer') {
       errors.push('Missing CORRECT field');
+    }
+
+    // Parse rubric for short_answer
+    let rubric: VPRubric | undefined;
+    if (type === 'short_answer') {
+      const requiredConcepts = rubricRequiredMatch 
+        ? parseBulletList(rubricRequiredMatch[1]) 
+        : [];
+      const optionalConcepts = rubricOptionalMatch 
+        ? parseBulletList(rubricOptionalMatch[1]) 
+        : [];
+      
+      if (requiredConcepts.length > 0 || optionalConcepts.length > 0) {
+        rubric = {
+          required_concepts: requiredConcepts,
+          optional_concepts: optionalConcepts,
+        };
+      }
     }
 
     // Parse explanation
@@ -148,14 +171,8 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     const teachingPoints: string[] = [];
     if (teachingPointsMatch) {
       const tpText = teachingPointsMatch[1];
-      // Split by "- " or newlines
-      const points = tpText.split(/(?:^|\n)\s*-\s*/).filter(p => p.trim());
-      points.forEach(p => {
-        const trimmed = p.trim();
-        if (trimmed) {
-          teachingPoints.push(trimmed);
-        }
-      });
+      const points = parseBulletList(tpText);
+      teachingPoints.push(...points);
     }
 
     stages.push({
@@ -167,11 +184,20 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
       correctAnswer,
       explanation,
       teachingPoints,
+      rubric,
       errors,
     });
   });
 
   return { stages, errors: globalErrors };
+}
+
+// Helper to parse bullet-pointed or line-separated lists
+function parseBulletList(text: string): string[] {
+  return text
+    .split(/(?:^|\n)\s*[-•*]\s*|\n/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
 }
 
 export function VPQuickBuildModal({
@@ -184,8 +210,10 @@ export function VPQuickBuildModal({
   const [templateText, setTemplateText] = useState('');
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [creationProgress, setCreationProgress] = useState(0);
   
   const createStage = useCreateVirtualPatientStage();
+  const queryClient = useQueryClient();
 
   const handlePreview = () => {
     const result = parseTemplate(templateText, currentStageCount);
@@ -203,6 +231,8 @@ export function VPQuickBuildModal({
     }
 
     setIsCreating(true);
+    setCreationProgress(0);
+    
     try {
       // Create stages one by one in order
       for (let i = 0; i < parseResult.stages.length; i++) {
@@ -216,26 +246,37 @@ export function VPQuickBuildModal({
           correct_answer: stage.correctAnswer,
           explanation: stage.explanation,
           teaching_points: stage.teachingPoints,
+          rubric: stage.rubric || null,
         };
         await createStage.mutateAsync({ caseId, data: formData });
+        setCreationProgress(Math.round(((i + 1) / parseResult.stages.length) * 100));
       }
+
+      // Force immediate cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
 
       toast.success(`${parseResult.stages.length} stages created successfully`);
       setTemplateText('');
       setParseResult(null);
+      setCreationProgress(0);
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error('Failed to create stages:', error);
-      toast.error('Failed to create stages');
+      toast.error('Failed to create stages. Please try again.');
     } finally {
       setIsCreating(false);
+      setCreationProgress(0);
     }
   };
 
   const handleClose = () => {
+    if (isCreating) return; // Prevent closing while creating
     setTemplateText('');
     setParseResult(null);
+    setCreationProgress(0);
     onOpenChange(false);
   };
 
@@ -258,8 +299,14 @@ export function VPQuickBuildModal({
       disabled={!canCreate}
       className={className}
     >
-      {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-      Create {parseResult?.stages.length || 0} Stage{parseResult?.stages.length !== 1 ? 's' : ''}
+      {isCreating ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Creating... {creationProgress}%
+        </>
+      ) : (
+        <>Create {parseResult?.stages.length || 0} Stage{parseResult?.stages.length !== 1 ? 's' : ''}</>
+      )}
     </Button>
   );
 
@@ -281,7 +328,7 @@ export function VPQuickBuildModal({
             </div>
             <DialogDescription>
               Paste your template text below to quickly create multiple stages. 
-              Each stage should follow the format shown in Help & Templates.
+              Use RUBRIC_REQUIRED and RUBRIC_OPTIONAL for short-answer grading.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -310,11 +357,19 @@ TEACHING_POINTS:
 - Point 2
 
 STAGE 2:
-TYPE: multi_select
-...`}
+TYPE: short_answer
+PROMPT: Outline the components of triple assessment
+RUBRIC_REQUIRED:
+- clinical examination
+- imaging
+- biopsy
+RUBRIC_OPTIONAL:
+- MDT discussion
+EXPLANATION: All components are essential...`}
                 className="flex-1 font-mono text-sm resize-none min-h-[200px]"
+                disabled={isCreating}
               />
-              <Button onClick={handlePreview} disabled={!templateText.trim()}>
+              <Button onClick={handlePreview} disabled={!templateText.trim() || isCreating}>
                 <Eye className="w-4 h-4 mr-2" />
                 Preview Stages
               </Button>
@@ -380,6 +435,19 @@ TYPE: multi_select
                             </div>
                           )}
 
+                          {stage.rubric && (
+                            <div className="text-xs text-muted-foreground">
+                              <span className="text-green-600">
+                                {stage.rubric.required_concepts.length} required concepts
+                              </span>
+                              {stage.rubric.optional_concepts.length > 0 && (
+                                <span className="ml-2 text-blue-600">
+                                  + {stage.rubric.optional_concepts.length} optional
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           {stage.teachingPoints.length > 0 && (
                             <div className="text-xs text-muted-foreground">
                               {stage.teachingPoints.length} teaching point(s)
@@ -398,7 +466,7 @@ TYPE: multi_select
         {/* Fixed/Sticky Footer */}
         <div className="flex-shrink-0 px-6 py-4 border-t bg-background z-10">
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
+            <Button variant="outline" onClick={handleClose} disabled={isCreating}>
               Cancel
             </Button>
             <CreateButton />

@@ -19,10 +19,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Plus, X, Trash2 } from 'lucide-react';
-import { VPStage, VPStageFormData, VPStageType, VPChoice } from '@/types/virtualPatient';
+import { Loader2, Plus, X, Trash2, HelpCircle } from 'lucide-react';
+import { VPStage, VPStageFormData, VPStageType, VPChoice, VPRubric } from '@/types/virtualPatient';
 import { useCreateVirtualPatientStage, useUpdateVirtualPatientStage } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
+import { parseConcepts } from '@/lib/rubricMarking';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface VPStageFormModalProps {
   open: boolean;
@@ -42,6 +50,7 @@ export function VPStageFormModal({
   stage,
 }: VPStageFormModalProps) {
   const isEditing = !!stage;
+  const queryClient = useQueryClient();
 
   const [stageType, setStageType] = useState<VPStageType>('mcq');
   const [prompt, setPrompt] = useState('');
@@ -56,6 +65,9 @@ export function VPStageFormModal({
   const [explanation, setExplanation] = useState('');
   const [teachingPoints, setTeachingPoints] = useState<string[]>([]);
   const [teachingPointInput, setTeachingPointInput] = useState('');
+  // Rubric fields for short_answer
+  const [rubricRequired, setRubricRequired] = useState('');
+  const [rubricOptional, setRubricOptional] = useState('');
 
   const createStage = useCreateVirtualPatientStage();
   const updateStage = useUpdateVirtualPatientStage();
@@ -74,10 +86,36 @@ export function VPStageFormModal({
       setCorrectAnswer(stage.correct_answer);
       setExplanation(stage.explanation || '');
       setTeachingPoints(stage.teaching_points || []);
+      // Load rubric
+      if (stage.rubric) {
+        setRubricRequired(stage.rubric.required_concepts.join('\n'));
+        setRubricOptional(stage.rubric.optional_concepts.join('\n'));
+      } else {
+        setRubricRequired('');
+        setRubricOptional('');
+      }
     } else {
       resetForm();
     }
   }, [stage, open]);
+
+  const resetForm = () => {
+    setStageType('mcq');
+    setPrompt('');
+    setPatientInfo('');
+    setChoices([
+      { key: 'A', text: '' },
+      { key: 'B', text: '' },
+      { key: 'C', text: '' },
+      { key: 'D', text: '' },
+    ]);
+    setCorrectAnswer('A');
+    setExplanation('');
+    setTeachingPoints([]);
+    setTeachingPointInput('');
+    setRubricRequired('');
+    setRubricOptional('');
+  };
 
   const resetForm = () => {
     setStageType('mcq');
@@ -176,6 +214,19 @@ export function VPStageFormModal({
       }
     }
 
+    // Build rubric for short_answer
+    let rubric: VPRubric | null = null;
+    if (stageType === 'short_answer') {
+      const requiredConcepts = parseConcepts(rubricRequired);
+      const optionalConcepts = parseConcepts(rubricOptional);
+      if (requiredConcepts.length > 0 || optionalConcepts.length > 0) {
+        rubric = {
+          required_concepts: requiredConcepts,
+          optional_concepts: optionalConcepts,
+        };
+      }
+    }
+
     const formData: VPStageFormData = {
       stage_order: isEditing ? stage!.stage_order : stageOrder,
       stage_type: stageType,
@@ -185,16 +236,20 @@ export function VPStageFormModal({
       correct_answer: correctAnswer,
       explanation: explanation.trim() || undefined,
       teaching_points: teachingPoints,
+      rubric,
     };
 
     try {
       if (isEditing && stage) {
         await updateStage.mutateAsync({ id: stage.id, caseId, data: formData });
-        toast.success('Stage updated');
+        toast.success('Stage updated successfully');
       } else {
         await createStage.mutateAsync({ caseId, data: formData });
-        toast.success('Stage added');
+        toast.success('Stage added successfully');
       }
+      // Force immediate refetch
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save stage:', error);
@@ -318,18 +373,64 @@ export function VPStageFormModal({
               </div>
             )}
 
-            {/* Short Answer Correct Answer */}
+            {/* Short Answer Model Answer + Rubric */}
             {stageType === 'short_answer' && (
-              <div>
-                <Label htmlFor="model-answer">Model Answer</Label>
-                <Textarea
-                  id="model-answer"
-                  value={correctAnswer as string}
-                  onChange={(e) => setCorrectAnswer(e.target.value)}
-                  placeholder="Expected answer or key points..."
-                  rows={3}
-                  className="mt-1"
-                />
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="model-answer">Model Answer (for reference)</Label>
+                  <Textarea
+                    id="model-answer"
+                    value={correctAnswer as string}
+                    onChange={(e) => setCorrectAnswer(e.target.value)}
+                    placeholder="Expected answer or key points..."
+                    rows={2}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Rubric-Based Grading</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Students score ≥60% of required concepts to pass. Order doesn't matter, minor typos are tolerated.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="rubric-required" className="text-xs text-green-700 dark:text-green-400">
+                      Required Concepts (one per line)
+                    </Label>
+                    <Textarea
+                      id="rubric-required"
+                      value={rubricRequired}
+                      onChange={(e) => setRubricRequired(e.target.value)}
+                      placeholder="triple assessment&#10;clinical examination&#10;imaging&#10;biopsy"
+                      rows={3}
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="rubric-optional" className="text-xs text-blue-700 dark:text-blue-400">
+                      Optional Concepts (bonus, one per line)
+                    </Label>
+                    <Textarea
+                      id="rubric-optional"
+                      value={rubricOptional}
+                      onChange={(e) => setRubricOptional(e.target.value)}
+                      placeholder="MDT discussion&#10;patient counseling"
+                      rows={2}
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
