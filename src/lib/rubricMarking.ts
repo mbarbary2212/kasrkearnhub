@@ -18,16 +18,70 @@ function normalizeText(text: string): string {
 }
 
 /**
+ * Calculate Levenshtein distance between two strings.
+ * Used for fuzzy matching with minor spelling differences.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
  * Check if a concept is present in the answer.
  * Uses fuzzy matching for minor spelling differences.
+ * Also checks acceptable phrases/synonyms if provided.
  */
-function conceptPresent(answer: string, concept: string): boolean {
+function conceptPresent(
+  answer: string, 
+  concept: string, 
+  acceptablePhrases?: Record<string, string[]>
+): boolean {
   const normalizedAnswer = normalizeText(answer);
   const normalizedConcept = normalizeText(concept);
   
   // Exact match
   if (normalizedAnswer.includes(normalizedConcept)) {
     return true;
+  }
+  
+  // Check synonyms from acceptable phrases
+  if (acceptablePhrases) {
+    const synonyms = acceptablePhrases[concept.toLowerCase()] || 
+                     acceptablePhrases[normalizedConcept];
+    if (synonyms) {
+      for (const synonym of synonyms) {
+        const normalizedSynonym = normalizeText(synonym);
+        if (normalizedAnswer.includes(normalizedSynonym)) {
+          return true;
+        }
+      }
+    }
   }
   
   // Word-by-word check for multi-word concepts
@@ -40,9 +94,18 @@ function conceptPresent(answer: string, concept: string): boolean {
     }
   }
   
-  // Fuzzy matching for single words or short phrases (Levenshtein-ish)
+  // Fuzzy matching for single words or short phrases (Levenshtein)
   const answerWords = normalizedAnswer.split(' ');
   for (const answerWord of answerWords) {
+    // Only apply fuzzy matching for words > 5 chars
+    if (answerWord.length > 5 && normalizedConcept.length > 5) {
+      // Allow Levenshtein distance <= 1 for longer words
+      if (levenshteinDistance(answerWord, normalizedConcept) <= 1) {
+        return true;
+      }
+    }
+    
+    // Also check if answer word is close enough to concept
     if (answerWord.length >= 4 && normalizedConcept.length >= 4) {
       // Check if one contains most of the other
       if (answerWord.includes(normalizedConcept.slice(0, -1)) || 
@@ -68,6 +131,23 @@ function conceptPresent(answer: string, concept: string): boolean {
 }
 
 /**
+ * Check if critical omissions are addressed in the answer.
+ * Returns true if all critical omissions are mentioned.
+ */
+function criticalOmissionsAddressed(
+  answer: string,
+  criticalOmissions: string[],
+  acceptablePhrases?: Record<string, string[]>
+): boolean {
+  for (const omission of criticalOmissions) {
+    if (!conceptPresent(answer, omission, acceptablePhrases)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Grade a short-answer response against a rubric.
  * Returns detailed feedback on which concepts were matched/missing.
  */
@@ -76,6 +156,7 @@ export function gradeWithRubric(
   rubric: VPRubric
 ): VPRubricResult {
   const threshold = rubric.pass_threshold ?? DEFAULT_PASS_THRESHOLD;
+  const acceptablePhrases = rubric.acceptable_phrases;
   
   const matchedRequired: string[] = [];
   const missingRequired: string[] = [];
@@ -83,7 +164,7 @@ export function gradeWithRubric(
   
   // Check required concepts
   for (const concept of rubric.required_concepts) {
-    if (conceptPresent(answer, concept)) {
+    if (conceptPresent(answer, concept, acceptablePhrases)) {
       matchedRequired.push(concept);
     } else {
       missingRequired.push(concept);
@@ -92,7 +173,7 @@ export function gradeWithRubric(
   
   // Check optional concepts
   for (const concept of rubric.optional_concepts) {
-    if (conceptPresent(answer, concept)) {
+    if (conceptPresent(answer, concept, acceptablePhrases)) {
       matchedOptional.push(concept);
     }
   }
@@ -101,8 +182,17 @@ export function gradeWithRubric(
   const requiredCount = rubric.required_concepts.length;
   const score = requiredCount > 0 ? matchedRequired.length / requiredCount : 0;
   
+  // Check critical omissions
+  let passedCritical = true;
+  if (rubric.critical_omissions && rubric.critical_omissions.length > 0) {
+    passedCritical = criticalOmissionsAddressed(answer, rubric.critical_omissions, acceptablePhrases);
+  }
+  
+  // Pass if score >= threshold AND critical omissions are addressed
+  const is_correct = score >= threshold && passedCritical;
+  
   return {
-    is_correct: score >= threshold,
+    is_correct,
     score,
     matched_required: matchedRequired,
     missing_required: missingRequired,

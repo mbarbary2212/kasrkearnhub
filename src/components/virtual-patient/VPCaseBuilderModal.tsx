@@ -211,6 +211,7 @@ export function VPCaseBuilderModal({
       await deleteStage.mutateAsync({ id: deleteConfirmStage.id, caseId });
       toast.success('Stage deleted');
       setDeleteConfirmStage(null);
+      // Mutations now handle refetch automatically
     } catch (error) {
       console.error('Failed to delete stage:', error);
       toast.error('Failed to delete stage');

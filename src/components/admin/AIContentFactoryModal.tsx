@@ -388,21 +388,31 @@ export function AIContentFactoryModal({
       setProgressState('complete');
       return true;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] });
-      // Invalidate MCQ queries with correct key structure
-      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] });
-      if (chapterId) {
-        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] });
-      }
-      // Flashcards are stored in study_resources
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] });
-      // Case scenarios and essays
-      queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'chapter', chapterId] });
-      queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'module', moduleId] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
-      queryClient.invalidateQueries({ queryKey: ['essays'] });
+    onSuccess: async () => {
+      // Invalidate all relevant queries to ensure immediate UI update
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] }),
+        // MCQs
+        queryClient.invalidateQueries({ queryKey: ['mcqs'] }),
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] }),
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] }),
+        // Flashcards/Study resources
+        queryClient.invalidateQueries({ queryKey: ['study-resources'] }),
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] }),
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] }),
+        queryClient.invalidateQueries({ queryKey: ['flashcards'] }),
+        // Case scenarios
+        queryClient.invalidateQueries({ queryKey: ['case-scenarios'] }),
+        queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'chapter', chapterId] }),
+        queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'module', moduleId] }),
+        // Essays
+        queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
+        queryClient.invalidateQueries({ queryKey: ['essays'] }),
+        // Chapter content
+        queryClient.invalidateQueries({ queryKey: ['chapter-content', chapterId] }),
+        queryClient.invalidateQueries({ queryKey: ['module-content', moduleId] }),
+      ]);
+      
       toast.success('Content approved and saved!');
       handleClose();
     },

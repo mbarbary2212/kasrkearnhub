@@ -13,6 +13,8 @@ export interface VPRubric {
   required_concepts: string[];
   optional_concepts: string[];
   pass_threshold?: number; // Default 0.6 (60%)
+  acceptable_phrases?: Record<string, string[]>; // Concept -> synonyms mapping
+  critical_omissions?: string[]; // Must be addressed or answer fails
 }
 
 // Result of rubric-based marking

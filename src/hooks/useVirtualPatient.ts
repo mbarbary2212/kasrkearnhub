@@ -221,11 +221,16 @@ export function useCreateVirtualPatientStage() {
       if (error) throw error;
       return result;
     },
-    onSuccess: (_, variables) => {
-      // Force immediate refetch for instant UI update
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+    onSuccess: async (_, variables) => {
+      // Force immediate refetch for instant UI update - await to ensure sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
+      ]);
+      // Force refetch to ensure UI updates immediately
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
@@ -260,11 +265,14 @@ export function useUpdateVirtualPatientStage() {
       if (error) throw error;
       return result;
     },
-    onSuccess: (_, variables) => {
-      // Force immediate refetch for instant UI update
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+    onSuccess: async (_, variables) => {
+      // Force immediate refetch for instant UI update - await to ensure sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
     },
   });
 }
@@ -283,11 +291,15 @@ export function useDeleteVirtualPatientStage() {
       if (error) throw error;
       return { id, caseId };
     },
-    onSuccess: (_, variables) => {
-      // Force immediate refetch for instant UI update
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+    onSuccess: async (_, variables) => {
+      // Force immediate refetch for instant UI update - await to ensure sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
@@ -309,11 +321,14 @@ export function useReorderVirtualPatientStages() {
       await Promise.all(updates);
       return { caseId };
     },
-    onSuccess: (_, variables) => {
-      // Force immediate refetch for instant UI update
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
-      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+    onSuccess: async (_, variables) => {
+      // Force immediate refetch for instant UI update - await to ensure sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', variables.caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', variables.caseId] });
     },
   });
 }
