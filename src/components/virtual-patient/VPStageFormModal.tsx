@@ -232,9 +232,11 @@ export function VPStageFormModal({
         await createStage.mutateAsync({ caseId, data: formData });
         toast.success('Stage added successfully');
       }
-      // Force immediate refetch
+      // Force immediate refetch - mutations now handle this internally
       await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
       await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', caseId] });
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save stage:', error);

@@ -66,18 +66,20 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     const errors: string[] = [];
     const stageNum = index + 1;
     
-    // Extract fields using regex
+    // Extract fields using regex with improved patterns
     const typeMatch = block.match(/TYPE:\s*(mcq|multi_select|short_answer)/i);
-    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
-    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
-    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
-    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
-    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
-    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)(?=\n(?:RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:)|$)/is);
+    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
+    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
+    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
+    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
+    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
+    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)(?=\n(?:RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
     
     // Rubric fields for short_answer
-    const rubricRequiredMatch = block.match(/RUBRIC_REQUIRED:\s*(.+?)(?=\n(?:RUBRIC_OPTIONAL:|STAGE\s+\d+:)|$)/is);
-    const rubricOptionalMatch = block.match(/RUBRIC_OPTIONAL:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
+    const rubricRequiredMatch = block.match(/RUBRIC_REQUIRED:\s*(.+?)(?=\n(?:RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
+    const rubricOptionalMatch = block.match(/RUBRIC_OPTIONAL:\s*(.+?)(?=\n(?:RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
+    const rubricSynonymsMatch = block.match(/RUBRIC_SYNONYMS:\s*(.+?)(?=\n(?:RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
+    const rubricCriticalMatch = block.match(/RUBRIC_CRITICAL:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
 
     // Determine type (default to mcq)
     let type: VPStageType = 'mcq';
@@ -88,7 +90,7 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     // Extract prompt
     const prompt = promptMatch ? promptMatch[1].trim() : '';
     if (!prompt) {
-      errors.push('Missing PROMPT field');
+      errors.push(`Line: Missing PROMPT field`);
     }
 
     // Extract patient info
@@ -146,7 +148,7 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
       errors.push('Missing CORRECT field');
     }
 
-    // Parse rubric for short_answer
+    // Parse rubric for short_answer with extended fields
     let rubric: VPRubric | undefined;
     if (type === 'short_answer') {
       const requiredConcepts = rubricRequiredMatch 
@@ -156,10 +158,34 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
         ? parseBulletList(rubricOptionalMatch[1]) 
         : [];
       
+      // Parse synonyms (format: "concept: syn1 | syn2 | syn3" per line)
+      let acceptablePhrases: Record<string, string[]> | undefined;
+      if (rubricSynonymsMatch) {
+        acceptablePhrases = {};
+        const synLines = rubricSynonymsMatch[1].split('\n').filter(l => l.trim());
+        for (const line of synLines) {
+          const colonIdx = line.indexOf(':');
+          if (colonIdx > 0) {
+            const concept = line.substring(0, colonIdx).trim().toLowerCase();
+            const synonyms = line.substring(colonIdx + 1).split('|').map(s => s.trim()).filter(s => s);
+            if (concept && synonyms.length > 0) {
+              acceptablePhrases[concept] = synonyms;
+            }
+          }
+        }
+      }
+      
+      // Parse critical omissions
+      const criticalOmissions = rubricCriticalMatch 
+        ? parseBulletList(rubricCriticalMatch[1]) 
+        : undefined;
+      
       if (requiredConcepts.length > 0 || optionalConcepts.length > 0) {
         rubric = {
           required_concepts: requiredConcepts,
           optional_concepts: optionalConcepts,
+          ...(acceptablePhrases && Object.keys(acceptablePhrases).length > 0 && { acceptable_phrases: acceptablePhrases }),
+          ...(criticalOmissions && criticalOmissions.length > 0 && { critical_omissions: criticalOmissions }),
         };
       }
     }
@@ -252,10 +278,13 @@ export function VPQuickBuildModal({
         setCreationProgress(Math.round(((i + 1) / parseResult.stages.length) * 100));
       }
 
-      // Force immediate cache invalidation
+      // Force immediate cache invalidation AND refetch
       await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
       await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
       await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+      // Force immediate refetch to update UI
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', caseId] });
+      await queryClient.refetchQueries({ queryKey: ['virtual-patient-cases'] });
 
       toast.success(`${parseResult.stages.length} stages created successfully`);
       setTemplateText('');
@@ -436,14 +465,24 @@ EXPLANATION: All components are essential...`}
                           )}
 
                           {stage.rubric && (
-                            <div className="text-xs text-muted-foreground">
-                              <span className="text-green-600">
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <div className="text-green-600">
                                 {stage.rubric.required_concepts.length} required concepts
-                              </span>
+                              </div>
                               {stage.rubric.optional_concepts.length > 0 && (
-                                <span className="ml-2 text-blue-600">
+                                <div className="text-blue-600">
                                   + {stage.rubric.optional_concepts.length} optional
-                                </span>
+                                </div>
+                              )}
+                              {stage.rubric.acceptable_phrases && Object.keys(stage.rubric.acceptable_phrases).length > 0 && (
+                                <div className="text-purple-600">
+                                  {Object.keys(stage.rubric.acceptable_phrases).length} synonym mappings
+                                </div>
+                              )}
+                              {stage.rubric.critical_omissions && stage.rubric.critical_omissions.length > 0 && (
+                                <div className="text-orange-600">
+                                  {stage.rubric.critical_omissions.length} critical omissions
+                                </div>
                               )}
                             </div>
                           )}
