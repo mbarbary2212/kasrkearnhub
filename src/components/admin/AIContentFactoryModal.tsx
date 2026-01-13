@@ -182,9 +182,83 @@ export function AIContentFactoryModal({
   const approveMutation = useMutation({
     mutationFn: async () => {
       if (!generatedContent || !jobId) throw new Error('No content to approve');
+      if (!Array.isArray(generatedContent)) throw new Error('Invalid content format');
 
-      // Here you would insert the content into the appropriate tables
-      // This is a placeholder - actual implementation depends on content type
+      // Insert approved content into production tables based on content_type
+      if (contentType === 'mcq') {
+        const mcqsToInsert = generatedContent.map((item, idx) => ({
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          stem: item.stem,
+          choices: item.choices,
+          correct_key: item.correct_key,
+          difficulty: item.difficulty || 'medium',
+          explanation: item.explanation || null,
+          display_order: idx,
+          created_by: user?.id,
+          is_deleted: false,
+        }));
+
+        const { error: mcqError } = await supabase
+          .from('mcqs')
+          .insert(mcqsToInsert);
+
+        if (mcqError) throw mcqError;
+      } else if (contentType === 'flashcard') {
+        const flashcardsToInsert = generatedContent.map((item, idx) => ({
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          front: item.front,
+          back: item.back,
+          display_order: idx,
+          created_by: user?.id,
+          is_deleted: false,
+        }));
+
+        const { error: flashcardError } = await supabase
+          .from('flashcards')
+          .insert(flashcardsToInsert);
+
+        if (flashcardError) throw flashcardError;
+      } else if (contentType === 'case_scenario') {
+        const casesToInsert = generatedContent.map((item, idx) => ({
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          title: item.title,
+          case_history: item.case_history,
+          case_questions: item.case_questions,
+          model_answer: item.model_answer,
+          display_order: idx,
+          created_by: user?.id,
+          is_deleted: false,
+        }));
+
+        const { error: caseError } = await supabase
+          .from('case_scenarios')
+          .insert(casesToInsert);
+
+        if (caseError) throw caseError;
+      } else if (contentType === 'essay') {
+        const essaysToInsert = generatedContent.map((item, idx) => ({
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          title: item.title,
+          question: item.question,
+          model_answer: item.model_answer || null,
+          keywords: item.keywords || null,
+          display_order: idx,
+          created_by: user?.id,
+          is_deleted: false,
+        }));
+
+        const { error: essayError } = await supabase
+          .from('essays')
+          .insert(essaysToInsert);
+
+        if (essayError) throw essayError;
+      }
+
+      // Update job status
       const { error } = await supabase
         .from('ai_generation_jobs')
         .update({ 
@@ -196,13 +270,14 @@ export function AIContentFactoryModal({
 
       if (error) throw error;
 
-      // TODO: Insert approved content into production tables based on content_type
-      // This should be handled by another edge function or backend logic
-
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['mcqs'] });
+      queryClient.invalidateQueries({ queryKey: ['flashcards'] });
+      queryClient.invalidateQueries({ queryKey: ['case-scenarios'] });
+      queryClient.invalidateQueries({ queryKey: ['essays'] });
       toast.success('Content approved and saved!');
       handleClose();
     },
