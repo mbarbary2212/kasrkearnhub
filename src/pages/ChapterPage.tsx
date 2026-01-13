@@ -223,22 +223,31 @@ export default function ChapterPage() {
     clinical_tools: algorithms.length + workedCases.length,
   });
 
-  const allPracticeTabs = createPracticeTabs({
-    mcqs: mcqs?.length || 0,
-    essays: essays?.length || 0,
-    cases: caseScenarios?.length || 0,
-    osce: osceQuestions?.length || 0,
-    practical: 0,
-    matching: matchingQuestions?.length || 0,
-    images: 0,
-    virtual_patient: chapterVpCases.length,
-  });
+  const allPracticeTabs = useMemo(() => {
+    return createPracticeTabs({
+      mcqs: mcqs?.length || 0,
+      essays: essays?.length || 0,
+      cases: caseScenarios?.length || 0,
+      osce: osceQuestions?.length || 0,
+      practical: 0,
+      matching: matchingQuestions?.length || 0,
+      images: 0,
+      virtual_patient: chapterVpCases.length,
+    });
+  }, [
+    mcqs?.length,
+    essays?.length,
+    caseScenarios?.length,
+    osceQuestions?.length,
+    matchingQuestions?.length,
+    chapterVpCases.length,
+  ]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
     return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, mcqs, essays, caseScenarios, osceQuestions, matchingQuestions, hideEmptyTabs]);
+  }, [canManageContent, allPracticeTabs, hideEmptyTabs]);
 
   return (
     <MainLayout>
