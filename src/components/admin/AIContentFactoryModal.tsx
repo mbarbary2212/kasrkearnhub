@@ -140,44 +140,56 @@ export function AIContentFactoryModal({
   }, []);
 
   // Invoke edge function with proper auth and retry
-  const invokeWithAuth = useCallback(async (payload: any, retryCount = 0): Promise<any> => {
-    const session = await getValidSession();
-    
-    const { data, error } = await supabase.functions.invoke('generate-content-from-pdf', {
-      body: payload,
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+  const invokeWithAuth = useCallback(
+    async (functionName: string, payload: any, retryCount = 0): Promise<any> => {
+      const session = await getValidSession();
 
-    if (error) {
-      const errorMsg = error.message || '';
-      
-      // Check for auth-related errors
-      if (errorMsg.includes('Unauthorized') || errorMsg.includes('session') || 
-          errorMsg.includes('401') || errorMsg.includes('403')) {
-        // Try refresh and retry once
-        if (retryCount === 0) {
-          console.log('Auth error, refreshing session and retrying...');
-          await supabase.auth.refreshSession();
-          return invokeWithAuth(payload, 1);
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        const errorMsg = error.message || '';
+
+        // Check for auth-related errors
+        if (
+          errorMsg.includes('Unauthorized') ||
+          errorMsg.includes('session') ||
+          errorMsg.includes('401') ||
+          errorMsg.includes('403')
+        ) {
+          // Try refresh and retry once
+          if (retryCount === 0) {
+            console.log('Auth error, refreshing session and retrying...');
+            await supabase.auth.refreshSession();
+            return invokeWithAuth(functionName, payload, 1);
+          }
+          throw new Error('Your session has expired. Please refresh the page and sign in again.');
         }
-        throw new Error('Your session has expired. Please refresh the page and sign in again.');
+
+        // Retry on transient failures (network, 5xx)
+        if (
+          retryCount === 0 &&
+          (errorMsg.includes('network') ||
+            errorMsg.includes('500') ||
+            errorMsg.includes('502') ||
+            errorMsg.includes('503'))
+        ) {
+          console.log('Transient error, retrying once...');
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return invokeWithAuth(functionName, payload, 1);
+        }
+
+        throw error;
       }
 
-      // Retry on transient failures (network, 5xx)
-      if (retryCount === 0 && (errorMsg.includes('network') || errorMsg.includes('500') || 
-          errorMsg.includes('502') || errorMsg.includes('503'))) {
-        console.log('Transient error, retrying once...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return invokeWithAuth(payload, 1);
-      }
-
-      throw error;
-    }
-
-    return data;
-  }, [getValidSession]);
+      return data;
+    },
+    [getValidSession]
+  );
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -187,32 +199,9 @@ export function AIContentFactoryModal({
       setProgressState('preparing');
       setErrorMessage(null);
 
-      // Create job record for audit
-      const { data: job, error: jobError } = await supabase
-        .from('ai_generation_jobs')
-        .insert({
-          document_id: selectedDocId,
-          admin_id: user?.id,
-          job_type: contentType,
-          status: 'processing',
-          input_metadata: {
-            module_id: moduleId,
-            chapter_id: chapterId || null,
-            quantity: parseInt(quantity),
-            additional_instructions: additionalInstructions || null,
-          },
-        })
-        .select()
-        .single();
-
-      if (jobError) throw jobError;
-      setJobId(job.id);
-
       setProgressState('generating');
 
-      // Call edge function with proper auth
-      const data = await invokeWithAuth({
-        job_id: job.id,
+      const data = await invokeWithAuth('generate-content-from-pdf', {
         document_id: selectedDocId,
         content_type: contentType,
         module_id: moduleId,
@@ -221,38 +210,33 @@ export function AIContentFactoryModal({
         additional_instructions: additionalInstructions || null,
       });
 
-      if (data.error) {
-        // Update job status on error
-        await supabase
-          .from('ai_generation_jobs')
-          .update({ status: 'failed', error_message: data.error })
-          .eq('id', job.id);
+      if (data?.error) {
         throw new Error(data.error);
       }
 
-      // Update job with results
-      await supabase
-        .from('ai_generation_jobs')
-        .update({ 
-          status: 'completed', 
-          output_data: data.content,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', job.id);
+      if (!data?.job_id) {
+        throw new Error('Generation returned no job id. Please retry.');
+      }
 
+      if (!Array.isArray(data?.items)) {
+        console.error('Invalid generation payload (items is not an array):', data);
+        throw new Error('Generation produced an invalid payload. Please retry.');
+      }
+
+      setJobId(data.job_id);
+      setGeneratedContent(data);
       setProgressState('complete');
-      return data.content;
+
+      return data;
     },
-    onSuccess: (content) => {
-      setGeneratedContent(content);
+    onSuccess: () => {
       toast.success('Content generated! Review before approving.');
     },
     onError: (error: Error) => {
       console.error('Generation error:', error);
       setProgressState('error');
       setErrorMessage(error.message);
-      
-      // Show appropriate toast based on error type
+
       if (error.message.includes('session') || error.message.includes('sign in')) {
         toast.error('Session expired. Please refresh the page and sign in again.');
       } else {
@@ -263,156 +247,64 @@ export function AIContentFactoryModal({
 
   const approveMutation = useMutation({
     mutationFn: async () => {
-      if (!generatedContent || !jobId) throw new Error('No content to approve');
-      
+      if (!jobId) throw new Error('No generation job to approve');
+
       setProgressState('saving');
-      
-      // Handle both array and object formats from AI
-      let contentArray: any[];
-      
-      if (Array.isArray(generatedContent)) {
-        contentArray = generatedContent;
-      } else if (generatedContent.items && Array.isArray(generatedContent.items)) {
-        contentArray = generatedContent.items;
-      } else if (generatedContent.questions && Array.isArray(generatedContent.questions)) {
-        contentArray = generatedContent.questions;
-      } else if (generatedContent.flashcards && Array.isArray(generatedContent.flashcards)) {
-        contentArray = generatedContent.flashcards;
-      } else if (generatedContent.cases && Array.isArray(generatedContent.cases)) {
-        contentArray = generatedContent.cases;
-      } else if (generatedContent.essays && Array.isArray(generatedContent.essays)) {
-        contentArray = generatedContent.essays;
-      } else if (generatedContent.stem || generatedContent.front || generatedContent.title || generatedContent.question) {
-        // Single item object - wrap in array
-        contentArray = [generatedContent];
-      } else {
-        throw new Error('Invalid content format - expected array of items or single item');
-      }
-      
-      if (contentArray.length === 0) {
-        throw new Error('No content items to approve');
+
+      // Validate payload shape before calling server-side approval
+      const items =
+        generatedContent &&
+        typeof generatedContent === 'object' &&
+        Array.isArray((generatedContent as any).items)
+          ? ((generatedContent as any).items as any[])
+          : null;
+
+      if (!items || items.length === 0) {
+        console.error('Invalid generated payload (missing items[]):', generatedContent);
+        throw new Error('Generation produced an invalid payload. Please retry.');
       }
 
-      // Insert approved content into production tables based on content_type
-      if (contentType === 'mcq') {
-        const mcqsToInsert = contentArray.map((item, idx) => ({
-          module_id: moduleId,
-          chapter_id: chapterId || null,
-          stem: item.stem,
-          choices: item.choices,
-          correct_key: item.correct_key,
-          difficulty: item.difficulty || 'medium',
-          explanation: item.explanation || null,
-          display_order: idx,
-          created_by: user?.id,
-          is_deleted: false,
-        }));
+      const data = await invokeWithAuth('approve-ai-content', { job_id: jobId });
 
-        const { error: mcqError } = await supabase
-          .from('mcqs')
-          .insert(mcqsToInsert);
-
-        if (mcqError) throw mcqError;
-      } else if (contentType === 'flashcard') {
-        // Flashcards are stored in study_resources table
-        if (!chapterId) {
-          throw new Error('Chapter is required for flashcards');
-        }
-        
-        const flashcardsToInsert = contentArray.map((item, idx) => ({
-          module_id: moduleId,
-          chapter_id: chapterId,
-          resource_type: 'flashcard' as const,
-          title: (item.front?.substring(0, 50) || 'Flashcard') as string,
-          content: { front: item.front, back: item.back },
-          display_order: idx,
-          created_by: user?.id,
-          is_deleted: false,
-        }));
-
-        const { error: flashcardError } = await supabase
-          .from('study_resources')
-          .insert(flashcardsToInsert);
-
-        if (flashcardError) throw flashcardError;
-      } else if (contentType === 'case_scenario') {
-        const casesToInsert = contentArray.map((item, idx) => ({
-          module_id: moduleId,
-          chapter_id: chapterId || null,
-          title: item.title,
-          case_history: item.case_history,
-          case_questions: item.case_questions,
-          model_answer: item.model_answer,
-          display_order: idx,
-          created_by: user?.id,
-          is_deleted: false,
-        }));
-
-        const { error: caseError } = await supabase
-          .from('case_scenarios')
-          .insert(casesToInsert);
-
-        if (caseError) throw caseError;
-      } else if (contentType === 'essay') {
-        const essaysToInsert = contentArray.map((item, idx) => ({
-          module_id: moduleId,
-          chapter_id: chapterId || null,
-          title: item.title,
-          question: item.question,
-          model_answer: item.model_answer || null,
-          keywords: item.keywords || null,
-          display_order: idx,
-          created_by: user?.id,
-          is_deleted: false,
-        }));
-
-        const { error: essayError } = await supabase
-          .from('essays')
-          .insert(essaysToInsert);
-
-        if (essayError) throw essayError;
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      // Update job status
-      const { error } = await supabase
-        .from('ai_generation_jobs')
-        .update({ 
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user?.id,
-        })
-        .eq('id', jobId);
-
-      if (error) throw error;
+      if (!Array.isArray(data?.items)) {
+        console.error('Invalid approval payload (items is not an array):', data);
+        throw new Error('Approval returned an invalid payload. Please retry.');
+      }
 
       setProgressState('complete');
-      return true;
+      return data;
     },
     onSuccess: async () => {
-      // Invalidate all relevant queries to ensure immediate UI update
+      // Ensure immediate UI update after approval
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] }),
-        // MCQs
         queryClient.invalidateQueries({ queryKey: ['mcqs'] }),
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] }),
-        // Flashcards/Study resources
         queryClient.invalidateQueries({ queryKey: ['study-resources'] }),
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['flashcards'] }),
-        // Case scenarios
         queryClient.invalidateQueries({ queryKey: ['case-scenarios'] }),
         queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'chapter', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'module', moduleId] }),
-        // Essays
         queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['essays'] }),
-        // Chapter content
         queryClient.invalidateQueries({ queryKey: ['chapter-content', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['module-content', moduleId] }),
       ]);
-      
+
+      // Force refetch for the most visible lists
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['ai_generation_jobs'] }),
+        queryClient.refetchQueries({ queryKey: ['chapter-content', chapterId] }),
+        queryClient.refetchQueries({ queryKey: ['module-content', moduleId] }),
+      ]);
+
       toast.success('Content approved and saved!');
       handleClose();
     },
