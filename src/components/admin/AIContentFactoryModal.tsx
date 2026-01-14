@@ -31,6 +31,7 @@ import {
   GraduationCap,
   MessageCircleQuestion
 } from 'lucide-react';
+import { AIContentPreviewCard } from './AIContentPreviewCard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useModules } from '@/hooks/useModules';
@@ -380,96 +381,19 @@ export function AIContentFactoryModal({
   const practiceTypes = CONTENT_TYPES.filter(t => t.category === 'practice');
   const resourceTypes = CONTENT_TYPES.filter(t => t.category === 'resources');
 
-  // Render preview based on content type
-  const renderPreviewItem = (item: any, idx: number) => {
-    const typeLabel = contentType.toUpperCase().replace('_', ' ');
-    
-    if (contentType === 'mcq') {
-      return (
-        <Card key={idx}>
-          <CardContent className="p-4 space-y-2">
-            <Badge variant="secondary">{typeLabel} #{idx + 1}</Badge>
-            <p className="font-medium">{item.stem}</p>
-            <div className="grid gap-1 text-sm">
-              {Object.entries(item.choices || {}).map(([key, val]) => (
-                <div key={key} className={`flex gap-2 ${key === item.correct_key ? 'text-green-600 font-medium' : ''}`}>
-                  <span>{key}.</span>
-                  <span>{String(val)}</span>
-                  {key === item.correct_key && <CheckCircle2 className="w-4 h-4" />}
-                </div>
-              ))}
-            </div>
-            {item.explanation && <p className="text-muted-foreground text-sm mt-2">{item.explanation}</p>}
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    if (contentType === 'virtual_patient') {
-      return (
-        <Card key={idx}>
-          <CardContent className="p-4 space-y-2">
-            <Badge variant="secondary">Virtual Patient #{idx + 1}</Badge>
-            <p className="font-medium">{item.title}</p>
-            <p className="text-sm text-muted-foreground">{item.intro_text?.substring(0, 200)}...</p>
-            <div className="flex gap-2 flex-wrap mt-2">
-              <Badge variant="outline">{item.level}</Badge>
-              <Badge variant="outline">{item.estimated_minutes} min</Badge>
-              <Badge variant="outline">{item.stages?.length || 0} stages</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    if (contentType === 'osce') {
-      return (
-        <Card key={idx}>
-          <CardContent className="p-4 space-y-2">
-            <Badge variant="secondary">OSCE #{idx + 1}</Badge>
-            <p className="text-sm">{item.history_text?.substring(0, 150)}...</p>
-            <div className="space-y-1 text-sm">
-              {[1, 2, 3, 4, 5].map(n => item[`statement_${n}`] && (
-                <div key={n} className="flex items-center gap-2">
-                  <Badge variant={item[`answer_${n}`] ? 'default' : 'destructive'} className="text-xs">
-                    {item[`answer_${n}`] ? 'T' : 'F'}
-                  </Badge>
-                  <span>{item[`statement_${n}`]}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
+  // Handle item update from edit
+  const handleItemUpdate = (index: number, updatedItem: any) => {
+    if (!generatedContent?.items) return;
+    const updatedItems = [...generatedContent.items];
+    updatedItems[index] = updatedItem;
+    setGeneratedContent({ ...generatedContent, items: updatedItems });
+  };
 
-    if (contentType === 'guided_explanation') {
-      return (
-        <Card key={idx}>
-          <CardContent className="p-4 space-y-2">
-            <Badge variant="secondary">Guided Explanation #{idx + 1}</Badge>
-            <p className="font-medium">{item.topic}</p>
-            <p className="text-sm text-muted-foreground">{item.introduction?.substring(0, 150)}...</p>
-            <div className="flex gap-2 flex-wrap mt-2">
-              <Badge variant="outline">{item.guided_questions?.length || 0} questions</Badge>
-              <Badge variant="outline">{item.key_takeaways?.length || 0} takeaways</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    // Fallback: JSON display
-    return (
-      <Card key={idx}>
-        <CardContent className="p-4">
-          <Badge className="mb-2">{typeLabel} #{idx + 1}</Badge>
-          <pre className="text-sm whitespace-pre-wrap">
-            {JSON.stringify(item, null, 2)}
-          </pre>
-        </CardContent>
-      </Card>
-    );
+  // Handle item deletion
+  const handleItemDelete = (index: number) => {
+    if (!generatedContent?.items) return;
+    const updatedItems = generatedContent.items.filter((_: any, i: number) => i !== index);
+    setGeneratedContent({ ...generatedContent, items: updatedItems });
   };
 
   return (
@@ -700,8 +624,17 @@ export function AIContentFactoryModal({
                 </TabsList>
                 <TabsContent value="preview" className="mt-4">
                   <div className="space-y-3">
-                    {Array.isArray(generatedContent?.items) 
-                      ? generatedContent.items.map((item: any, idx: number) => renderPreviewItem(item, idx))
+                    {Array.isArray(generatedContent?.items) && generatedContent.items.length > 0
+                      ? generatedContent.items.map((item: any, idx: number) => (
+                          <AIContentPreviewCard
+                            key={idx}
+                            item={item}
+                            index={idx}
+                            contentType={contentType}
+                            onUpdate={handleItemUpdate}
+                            onDelete={handleItemDelete}
+                          />
+                        ))
                       : (
                         <Card>
                           <CardContent className="p-4">
