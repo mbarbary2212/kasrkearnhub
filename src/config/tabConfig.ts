@@ -23,7 +23,7 @@ export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'guided_ex
 
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
-export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images' | 'virtual_patient';
+export type PracticeTabId = 'mcqs' | 'essays' | 'cases' | 'osce' | 'practical' | 'matching' | 'images' | 'virtual_patient' | 'concept_check';
 
 export interface TabConfig {
   id: string;
@@ -53,6 +53,7 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'matching', label: 'Matching', icon: Link2 },
   { id: 'images', label: 'Image Questions', icon: Image },
   { id: 'virtual_patient', label: 'Virtual Patient', icon: User },
+  { id: 'concept_check', label: 'Concept Check', icon: MessageCircleQuestion },
 ];
 
 // Helper to add counts to tabs
@@ -83,6 +84,7 @@ export function createPracticeTabs(counts: {
   matching?: number;
   images?: number;
   virtual_patient?: number;
+  concept_check?: number;
 }): TabWithCount[] {
   return PRACTICE_TABS.map(tab => ({
     ...tab,

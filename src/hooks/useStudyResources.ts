@@ -74,6 +74,14 @@ export interface ClinicalCaseWorkedContent {
   key_learning_points: string[];
 }
 
+// Rubric for concept checking - same structure as VPRubric
+export interface ConceptCheckRubric {
+  required_concepts: string[];
+  optional_concepts: string[];
+  pass_threshold?: number; // Default 0.6 (60%)
+  acceptable_phrases?: Record<string, string[]>; // Concept -> synonyms mapping
+}
+
 // Guided Explanation content (Socratic method)
 export interface GuidedExplanationContent {
   topic: string;
@@ -82,6 +90,7 @@ export interface GuidedExplanationContent {
     question: string;
     hint?: string;
     reveal_answer: string;
+    rubric?: ConceptCheckRubric; // For essay grading in practice mode
   }[];
   summary: string;
   key_takeaways: string[];

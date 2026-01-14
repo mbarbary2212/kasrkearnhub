@@ -21,6 +21,7 @@ import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { VirtualPatientList, VPAdminList } from '@/components/virtual-patient';
+import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -36,8 +37,9 @@ import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
 import { MindMapViewer } from '@/components/study/MindMapViewer';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
-import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType } from '@/hooks/useStudyResources';
+import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
+import { useConceptCheckCount } from '@/hooks/useConceptCheckProgress';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -225,6 +227,9 @@ export default function ChapterPage() {
     clinical_tools: algorithms.length + workedCases.length,
   });
 
+  // Count concept check questions (guided explanations with rubrics)
+  const conceptCheckCount = useConceptCheckCount(chapterId, studyResources);
+
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
@@ -235,6 +240,7 @@ export default function ChapterPage() {
       matching: matchingQuestions?.length || 0,
       images: 0,
       virtual_patient: chapterVpCases.length,
+      concept_check: conceptCheckCount,
     });
   }, [
     mcqs?.length,
@@ -243,6 +249,7 @@ export default function ChapterPage() {
     osceQuestions?.length,
     matchingQuestions?.length,
     chapterVpCases.length,
+    conceptCheckCount,
   ]);
 
   // Admin sees all tabs; students see filtered based on setting
@@ -755,6 +762,11 @@ export default function ChapterPage() {
                       <VirtualPatientList moduleId={moduleId} chapterId={chapterId} />
                     )}
                   </div>
+                )}
+
+                {/* Concept Check Content */}
+                {practiceTab === 'concept_check' && moduleId && chapterId && (
+                  <ConceptCheckPractice chapterId={chapterId} moduleId={moduleId} />
                 )}
               </div>
             )}
