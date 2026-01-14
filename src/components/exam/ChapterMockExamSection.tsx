@@ -1,38 +1,54 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useMockExamSettings } from '@/hooks/useMockExam';
+import { useChapterStudyResources } from '@/hooks/useStudyResources';
+import { useConceptCheckCount } from '@/hooks/useConceptCheckProgress';
 import { MockTimedExam } from './MockTimedExam';
 import { OsceTimedExam } from './OsceTimedExam';
-import { FileQuestion, Stethoscope } from 'lucide-react';
+import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
+import { FileQuestion, Stethoscope, MessageCircleQuestion } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ChapterMockExamSectionProps {
   moduleId: string;
   chapterId?: string;
 }
 
-type ContentType = 'mcq' | 'osce';
+type ContentType = 'mcq' | 'osce' | 'concept_check';
 
 export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamSectionProps) {
   const [contentType, setContentType] = useState<ContentType>('mcq');
 
-  // Fetch chapter MCQs, OSCEs and settings
+  // Fetch chapter MCQs, OSCEs, study resources and settings
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
+  const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
 
-  const isLoading = mcqsLoading || osceLoading || settingsLoading;
+  const isLoading = mcqsLoading || osceLoading || settingsLoading || studyResourcesLoading;
 
   // Calculate counts
   const mcqCount = mcqs?.length || 0;
   const osceCount = osceQuestions?.length || 0;
+  const conceptCheckCount = useConceptCheckCount(chapterId, studyResources);
+  
   const hasMcqs = mcqCount > 0;
   const hasOsce = osceCount > 0;
-  const hasAnyContent = hasMcqs || hasOsce;
+  const hasConceptCheck = conceptCheckCount > 0;
+  const hasAnyContent = hasMcqs || hasOsce || hasConceptCheck;
+
+  // Count available content types for grid layout
+  const availableTypes = useMemo(() => {
+    const types: ContentType[] = [];
+    if (hasMcqs) types.push('mcq');
+    if (hasOsce) types.push('osce');
+    if (hasConceptCheck) types.push('concept_check');
+    return types;
+  }, [hasMcqs, hasOsce, hasConceptCheck]);
 
   // Settings
   const questionCount = settings ? Math.min(settings.question_count, mcqCount) : Math.min(20, mcqCount);
@@ -55,80 +71,117 @@ export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamS
           Test is not available yet for this chapter.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          No MCQ or OSCE questions have been added.
+          No MCQ, OSCE, or Concept Check questions have been added.
         </p>
       </div>
     );
   }
 
   // If only one type exists, go directly to that exam
-  if (hasMcqs && !hasOsce) {
-    return (
-      <MockTimedExam 
-        moduleId={moduleId}
-        chapterId={chapterId}
-        chapterMcqs={mcqs!}
-        onComplete={() => {}}
-        questionCount={questionCount}
-        secondsPerQuestion={secondsPerQuestion}
-      />
-    );
+  if (availableTypes.length === 1) {
+    if (hasMcqs) {
+      return (
+        <MockTimedExam 
+          moduleId={moduleId}
+          chapterId={chapterId}
+          chapterMcqs={mcqs!}
+          onComplete={() => {}}
+          questionCount={questionCount}
+          secondsPerQuestion={secondsPerQuestion}
+        />
+      );
+    }
+    if (hasOsce) {
+      return (
+        <OsceTimedExam 
+          moduleId={moduleId}
+          chapterId={chapterId}
+          osceQuestions={osceQuestions!}
+          onComplete={() => {}}
+          secondsPerQuestion={90}
+        />
+      );
+    }
+    if (hasConceptCheck) {
+      return (
+        <ConceptCheckPractice 
+          chapterId={chapterId!} 
+          moduleId={moduleId} 
+        />
+      );
+    }
   }
 
-  if (hasOsce && !hasMcqs) {
-    return (
-      <OsceTimedExam 
-        moduleId={moduleId}
-        chapterId={chapterId}
-        osceQuestions={osceQuestions!}
-        onComplete={() => {}}
-        secondsPerQuestion={90}
-      />
-    );
-  }
+  // Multiple types available - show tabs
+  const gridCols = availableTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-  // Both types available - show tabs
   return (
     <div className="space-y-6">
       {/* Content Type Tabs */}
       <Tabs value={contentType} onValueChange={(v) => setContentType(v as ContentType)}>
-        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-          <TabsTrigger value="mcq" className="gap-2">
-            <FileQuestion className="w-4 h-4" />
-            MCQ
-            <Badge variant="secondary" className="ml-1 text-xs">
-              {mcqCount}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="osce" className="gap-2">
-            <Stethoscope className="w-4 h-4" />
-            OSCE
-            <Badge variant="secondary" className="ml-1 text-xs">
-              {osceCount}
-            </Badge>
-          </TabsTrigger>
+        <TabsList className={cn("grid w-full max-w-lg mx-auto", gridCols)}>
+          {hasMcqs && (
+            <TabsTrigger value="mcq" className="gap-2">
+              <FileQuestion className="w-4 h-4" />
+              MCQ
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {mcqCount}
+              </Badge>
+            </TabsTrigger>
+          )}
+          {hasOsce && (
+            <TabsTrigger value="osce" className="gap-2">
+              <Stethoscope className="w-4 h-4" />
+              OSCE
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {osceCount}
+              </Badge>
+            </TabsTrigger>
+          )}
+          {hasConceptCheck && (
+            <TabsTrigger value="concept_check" className="gap-2">
+              <MessageCircleQuestion className="w-4 h-4" />
+              Concept Check
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {conceptCheckCount}
+              </Badge>
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="mcq" className="mt-6">
-          <MockTimedExam 
-            moduleId={moduleId}
-            chapterId={chapterId}
-            chapterMcqs={mcqs!}
-            onComplete={() => {}}
-            questionCount={questionCount}
-            secondsPerQuestion={secondsPerQuestion}
-          />
-        </TabsContent>
+        {hasMcqs && (
+          <TabsContent value="mcq" className="mt-6">
+            <MockTimedExam 
+              moduleId={moduleId}
+              chapterId={chapterId}
+              chapterMcqs={mcqs!}
+              onComplete={() => {}}
+              questionCount={questionCount}
+              secondsPerQuestion={secondsPerQuestion}
+            />
+          </TabsContent>
+        )}
 
-        <TabsContent value="osce" className="mt-6">
-          <OsceTimedExam 
-            moduleId={moduleId}
-            chapterId={chapterId}
-            osceQuestions={osceQuestions!}
-            onComplete={() => {}}
-            secondsPerQuestion={90}
-          />
-        </TabsContent>
+        {hasOsce && (
+          <TabsContent value="osce" className="mt-6">
+            <OsceTimedExam 
+              moduleId={moduleId}
+              chapterId={chapterId}
+              osceQuestions={osceQuestions!}
+              onComplete={() => {}}
+              secondsPerQuestion={90}
+            />
+          </TabsContent>
+        )}
+
+        {hasConceptCheck && (
+          <TabsContent value="concept_check" className="mt-6">
+            <ConceptCheckPractice 
+              chapterId={chapterId!} 
+              moduleId={moduleId} 
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
