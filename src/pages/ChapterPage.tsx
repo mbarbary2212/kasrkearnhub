@@ -217,15 +217,30 @@ export default function ChapterPage() {
     { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
 
-  // Use unified tab configuration
-  const resourcesTabs = createResourceTabs({
-    lectures: lectures?.length || 0,
-    flashcards: flashcards.length,
-    mind_maps: mindMaps.length,
-    guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
-    reference_materials: documentsCount,
-    clinical_tools: algorithms.length + workedCases.length,
-  });
+  // Use unified tab configuration - create all tabs first
+  const allResourcesTabs = useMemo(() => {
+    return createResourceTabs({
+      lectures: lectures?.length || 0,
+      flashcards: flashcards.length,
+      mind_maps: mindMaps.length,
+      guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
+      reference_materials: documentsCount,
+      clinical_tools: algorithms.length + workedCases.length,
+    });
+  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, algorithms.length, workedCases.length]);
+
+  // Admin sees all tabs; students see filtered based on setting
+  const resourcesTabs = useMemo(() => {
+    if (canManageContent) return allResourcesTabs;
+    return filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, allResourcesTabs, hideEmptyTabs]);
+
+  // Reset resources tab if current tab becomes hidden
+  useEffect(() => {
+    if (resourcesTabs.length > 0 && !resourcesTabs.find(t => t.id === resourcesTab)) {
+      setResourcesTab(resourcesTabs[0].id as ResourceTabId);
+    }
+  }, [resourcesTabs, resourcesTab]);
 
   // Count concept check questions (guided explanations with rubrics)
   const conceptCheckCount = useConceptCheckCount(chapterId, studyResources);
@@ -257,6 +272,13 @@ export default function ChapterPage() {
     if (canManageContent) return allPracticeTabs;
     return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
   }, [canManageContent, allPracticeTabs, hideEmptyTabs]);
+
+  // Reset practice tab if current tab becomes hidden
+  useEffect(() => {
+    if (practiceTabs.length > 0 && !practiceTabs.find(t => t.id === practiceTab)) {
+      setPracticeTab(practiceTabs[0].id as PracticeTabId);
+    }
+  }, [practiceTabs, practiceTab]);
 
   return (
     <MainLayout>

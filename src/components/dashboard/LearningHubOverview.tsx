@@ -5,11 +5,13 @@ import { DashboardInsights } from './DashboardInsights';
 import { DashboardProgressMap } from './DashboardProgressMap';
 import { DashboardWeeklySummary } from './DashboardWeeklySummary';
 import { DashboardNeedsPractice } from './DashboardNeedsPractice';
+import { DashboardTestProgress } from './DashboardTestProgress';
 import { BadgesSection } from './BadgesSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useEffect } from 'react';
+
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
   moduleSelected: boolean;
@@ -71,6 +73,9 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
           }
         }}
       />
+
+      {/* Test Performance Indicators with Coach Guidance */}
+      <DashboardTestProgress moduleId={moduleId} />
 
       {/* Personal Study Coach: Needs Practice */}
       <DashboardNeedsPractice
