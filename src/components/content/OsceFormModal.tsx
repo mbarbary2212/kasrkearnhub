@@ -113,10 +113,7 @@ export function OsceFormModal({
   };
 
   const handleSubmit = async () => {
-    // Validation
-    if (!imagePreview && !imageFile) {
-      return;
-    }
+    // Validation - image is now optional
     if (!historyText.trim()) {
       return;
     }
@@ -126,7 +123,7 @@ export function OsceFormModal({
 
     setUploading(true);
     try {
-      let imageUrl = imagePreview;
+      let imageUrl: string | null = imagePreview || null;
       
       // Upload new image if selected
       if (imageFile) {
@@ -174,8 +171,8 @@ export function OsceFormModal({
     }
   };
 
-  const isValid = (imagePreview || imageFile) && 
-    historyText.trim() && 
+  // Image is now optional - only require history and statements
+  const isValid = historyText.trim() && 
     statements.every(s => s.trim());
 
   return (
@@ -189,7 +186,7 @@ export function OsceFormModal({
           <div className="space-y-6 pr-4 pb-4">
             {/* Image Upload */}
             <div>
-              <Label>Clinical Image *</Label>
+              <Label>Clinical Image (optional)</Label>
               <div className="mt-2">
                 {imagePreview && !showImageReplace ? (
                   <div className="relative">

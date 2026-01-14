@@ -10,12 +10,14 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Star,
+  Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt, QuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
+import { AttachOsceImageModal } from './AttachOsceImageModal';
 
 interface OsceQuestionCardProps {
   question: OsceQuestion;
@@ -63,6 +65,7 @@ export function OsceQuestionCard({
 
   const [answers, setAnswers] = useState<Record<number, boolean | null>>(initialAnswers);
   const [submitted, setSubmitted] = useState(!!previousAttempt);
+  const [showAttachImageModal, setShowAttachImageModal] = useState(false);
   const hasMarkedComplete = useRef(!!previousAttempt);
   const hasSavedAttempt = useRef(!!previousAttempt);
   const { markComplete } = useMarkItemComplete();
@@ -251,8 +254,20 @@ export function OsceQuestionCard({
                   className="w-full h-full object-contain max-h-[300px] md:max-h-[400px] lg:max-h-[450px]"
                 />
               ) : (
-                <div className="flex items-center justify-center h-48 md:h-64">
+                <div className="flex flex-col items-center justify-center h-48 md:h-64 gap-3">
                   <ImageIcon className="w-12 h-12 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">No image</span>
+                  {isAdmin && moduleId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAttachImageModal(true)}
+                      className="gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Add Image
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -402,6 +417,17 @@ export function OsceQuestionCard({
           )}
         </div>
       </CardContent>
+
+      {/* Attach Image Modal */}
+      {isAdmin && moduleId && (
+        <AttachOsceImageModal
+          open={showAttachImageModal}
+          onOpenChange={setShowAttachImageModal}
+          questionId={question.id}
+          moduleId={moduleId}
+          chapterId={chapterId}
+        />
+      )}
     </Card>
   );
 }

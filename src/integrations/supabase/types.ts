@@ -2286,7 +2286,7 @@ export type Database = {
           explanation_5: string | null
           history_text: string
           id: string
-          image_url: string
+          image_url: string | null
           is_deleted: boolean
           legacy_archived: boolean
           module_id: string
@@ -2315,7 +2315,7 @@ export type Database = {
           explanation_5?: string | null
           history_text: string
           id?: string
-          image_url: string
+          image_url?: string | null
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id: string
@@ -2344,7 +2344,7 @@ export type Database = {
           explanation_5?: string | null
           history_text?: string
           id?: string
-          image_url?: string
+          image_url?: string | null
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id?: string
