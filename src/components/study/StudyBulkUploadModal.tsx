@@ -52,6 +52,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   key_image: 'Key Images',
   mind_map: 'Mind Maps',
   clinical_case_worked: 'Worked Cases',
+  guided_explanation: 'Guided Explanations',
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
@@ -62,6 +63,7 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
   key_image: 'Not supported for bulk upload',
   mind_map: 'Not supported for bulk upload',
   clinical_case_worked: 'Not supported for bulk upload',
+  guided_explanation: 'Not supported for bulk upload',
 };
 
 const SIMILARITY_THRESHOLD = 0.85;

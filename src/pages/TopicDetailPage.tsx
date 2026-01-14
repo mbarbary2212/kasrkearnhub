@@ -121,7 +121,7 @@ export default function TopicDetailPage() {
   const resourcesTabs = createResourceTabs({
     lectures: lectures?.length || 0,
     flashcards: flashcards?.length || 0,
-    documents: resources?.length || 0,
+    reference_materials: resources?.length || 0,
   });
 
   const allPracticeTabs = createPracticeTabs({
@@ -324,8 +324,8 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Documents */}
-                {resourcesTab === 'documents' && (
+                {/* Reference Materials (formerly Documents) */}
+                {resourcesTab === 'reference_materials' && (
                   <div>
                     {showAddControls && topicId && moduleId && (
                       <div className="mb-4">

@@ -54,6 +54,7 @@ const typeToKind: Record<StudyResourceType, ResourceKind> = {
   key_image: 'key_image',
   mind_map: 'mind_map',
   clinical_case_worked: 'clinical_case_worked',
+  guided_explanation: 'guided_explanation' as ResourceKind,
 };
 
 export function StudyResourceTypeSection({

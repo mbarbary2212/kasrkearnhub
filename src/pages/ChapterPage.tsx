@@ -35,6 +35,7 @@ import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModa
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
 import { MindMapViewer } from '@/components/study/MindMapViewer';
+import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useChapterMcqs } from '@/hooks/useMcqs';
@@ -219,7 +220,8 @@ export default function ChapterPage() {
     lectures: lectures?.length || 0,
     flashcards: flashcards.length,
     mind_maps: mindMaps.length,
-    documents: documentsCount,
+    guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
+    reference_materials: documentsCount,
     clinical_tools: algorithms.length + workedCases.length,
   });
 
@@ -454,8 +456,8 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Documents Content */}
-                {resourcesTab === 'documents' && chapterId && moduleId && (
+                {/* Reference Materials Content (formerly Documents) */}
+                {resourcesTab === 'reference_materials' && chapterId && moduleId && (
                   <ResourcesTabContent
                     chapterId={chapterId}
                     moduleId={moduleId}
@@ -494,6 +496,41 @@ export default function ChapterPage() {
                     ) : (
                       <MindMapViewer
                         resources={mindMaps}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Guided Explanations Content */}
+                {resourcesTab === 'guided_explanations' && chapterId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              (window as any).__pendingResourceType = 'guided_explanation';
+                              setFlashcardFormOpen(true);
+                            })
+                          }
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Guided Explanation
+                        </Button>
+                      </div>
+                    )}
+                    {studyResourcesLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+                      </div>
+                    ) : (
+                      <GuidedExplanationList
+                        resources={studyResources?.filter(r => r.resource_type === 'guided_explanation') || []}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                       />
