@@ -22,7 +22,8 @@ type ContentType =
   | "matching"
   | "virtual_patient"
   | "mind_map"
-  | "worked_case";
+  | "worked_case"
+  | "guided_explanation";
 
 function ensureArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
@@ -374,6 +375,35 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("study_resources")
         .insert(workedCasesToInsert);
+      if (error) throw error;
+    } else if (contentType === "guided_explanation") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for guided explanations", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const guidedExplanationsToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        resource_type: "guided_explanation",
+        title: item.topic,
+        content: {
+          topic: item.topic,
+          introduction: item.introduction,
+          guided_questions: item.guided_questions,
+          summary: item.summary,
+          key_takeaways: item.key_takeaways,
+        },
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("study_resources")
+        .insert(guidedExplanationsToInsert);
       if (error) throw error;
     } else {
       return jsonResponse(

@@ -28,7 +28,8 @@ import {
   UserRound,
   Network,
   Stethoscope,
-  GraduationCap
+  GraduationCap,
+  MessageCircleQuestion
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +79,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
   { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
+  { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
 ];
 
 type ProgressState = 'idle' | 'preparing' | 'generating' | 'saving' | 'complete' | 'error';
@@ -322,6 +324,8 @@ export function AIContentFactoryModal({
         queryClient.invalidateQueries({ queryKey: ['osce-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['guided-explanations'] }),
+        queryClient.invalidateQueries({ queryKey: ['guided-explanations', 'chapter', chapterId] }),
       ]);
 
       await Promise.all([
@@ -433,6 +437,22 @@ export function AIContentFactoryModal({
                   <span>{item[`statement_${n}`]}</span>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (contentType === 'guided_explanation') {
+      return (
+        <Card key={idx}>
+          <CardContent className="p-4 space-y-2">
+            <Badge variant="secondary">Guided Explanation #{idx + 1}</Badge>
+            <p className="font-medium">{item.topic}</p>
+            <p className="text-sm text-muted-foreground">{item.introduction?.substring(0, 150)}...</p>
+            <div className="flex gap-2 flex-wrap mt-2">
+              <Badge variant="outline">{item.guided_questions?.length || 0} questions</Badge>
+              <Badge variant="outline">{item.key_takeaways?.length || 0} takeaways</Badge>
             </div>
           </CardContent>
         </Card>

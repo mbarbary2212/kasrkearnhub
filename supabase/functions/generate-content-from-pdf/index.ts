@@ -15,7 +15,8 @@ type ContentType =
   | "matching"
   | "virtual_patient"
   | "mind_map"
-  | "worked_case";
+  | "worked_case"
+  | "guided_explanation";
 
 interface GenerateRequest {
   document_id: string;
@@ -97,6 +98,13 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     case_summary: "string - brief case summary",
     steps: "array of objects - [{ step_number: number, heading: string, content: string, key_points: array }]",
     learning_objectives: "array of strings - learning objectives covered",
+  },
+  guided_explanation: {
+    topic: "string - main topic being explained",
+    introduction: "string - sets context for guided discovery learning",
+    guided_questions: "array of objects - [{ question: string, hint: string (optional), reveal_answer: string }]",
+    summary: "string - synthesis of what was learned",
+    key_takeaways: "array of strings - main points to remember",
   },
 };
 
@@ -272,7 +280,7 @@ serve(async (req) => {
   }
 
   // Types that require chapter_id
-  const requiresChapter = ["flashcard", "osce", "mind_map", "worked_case"];
+  const requiresChapter = ["flashcard", "osce", "mind_map", "worked_case", "guided_explanation"];
   if (requiresChapter.includes(content_type) && !chapter_id) {
     return jsonResponse(
       { error: `Chapter is required for ${content_type}`, items: [], warnings: [] },
@@ -466,6 +474,7 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
           parsed?.virtual_patients ||
           parsed?.mind_maps ||
           parsed?.worked_cases ||
+          parsed?.guided_explanations ||
           (parsed ? [parsed] : []);
 
       items = Array.isArray(normalized) ? normalized : [];
@@ -497,6 +506,7 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
       virtual_patient: ["title", "intro_text", "level", "stages"],
       mind_map: ["title", "central_concept", "nodes"],
       worked_case: ["title", "case_summary", "steps"],
+      guided_explanation: ["topic", "introduction", "guided_questions", "summary", "key_takeaways"],
     };
 
     const fields = requiredFields[content_type];
