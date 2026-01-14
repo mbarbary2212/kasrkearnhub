@@ -102,7 +102,16 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
   guided_explanation: {
     topic: "string - main topic being explained",
     introduction: "string - sets context for guided discovery learning",
-    guided_questions: "array of objects - [{ question: string, hint: string (optional), reveal_answer: string }]",
+    guided_questions: `array of objects - [{
+      question: string,
+      hint: string (optional),
+      reveal_answer: string,
+      rubric: {
+        required_concepts: ["concept1", "concept2", ...] - key concepts student must mention,
+        optional_concepts: ["bonus1", "bonus2"] - bonus concepts for extra credit,
+        pass_threshold: 0.6 - percentage of required concepts needed to pass (default 60%)
+      }
+    }]`,
     summary: "string - synthesis of what was learned",
     key_takeaways: "array of strings - main points to remember",
   },

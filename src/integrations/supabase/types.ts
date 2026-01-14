@@ -4064,7 +4064,7 @@ export type Database = {
       feedback_severity: "normal" | "urgent" | "extreme"
       feedback_status: "new" | "in_review" | "closed"
       mcq_difficulty: "easy" | "medium" | "hard"
-      practice_question_type: "mcq" | "osce"
+      practice_question_type: "mcq" | "osce" | "guided_explanation"
       question_attempt_status: "unseen" | "attempted" | "correct" | "incorrect"
       study_resource_type:
         | "flashcard"
@@ -4233,7 +4233,7 @@ export const Constants = {
       feedback_severity: ["normal", "urgent", "extreme"],
       feedback_status: ["new", "in_review", "closed"],
       mcq_difficulty: ["easy", "medium", "hard"],
-      practice_question_type: ["mcq", "osce"],
+      practice_question_type: ["mcq", "osce", "guided_explanation"],
       question_attempt_status: ["unseen", "attempted", "correct", "incorrect"],
       study_resource_type: [
         "flashcard",
