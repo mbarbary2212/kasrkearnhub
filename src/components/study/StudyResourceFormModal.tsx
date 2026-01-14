@@ -21,6 +21,7 @@ import {
   KeyImageContent,
   MindMapContent,
   ClinicalCaseWorkedContent,
+  GuidedExplanationContent,
   useCreateStudyResource,
   useUpdateStudyResource,
 } from '@/hooks/useStudyResources';
@@ -30,6 +31,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { MindMapForm } from './MindMapForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
+import { GuidedExplanationForm } from './GuidedExplanationForm';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -48,6 +50,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   key_image: 'Key Image',
   mind_map: 'Mind Map',
   clinical_case_worked: 'Worked Case',
+  guided_explanation: 'Guided Explanation',
 };
 
 export function StudyResourceFormModal({
@@ -216,6 +219,13 @@ export function StudyResourceFormModal({
             />
           )}
 
+          {resourceType === 'guided_explanation' && (
+            <GuidedExplanationForm
+              content={content as GuidedExplanationContent}
+              onChange={(c) => setContent(c)}
+            />
+          )}
+
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -257,6 +267,14 @@ function getDefaultContent(type: StudyResourceType): ResourceContent {
         final_diagnosis: '',
         management_plan: '',
         key_learning_points: [''],
+      };
+    case 'guided_explanation':
+      return {
+        topic: '',
+        introduction: '',
+        guided_questions: [{ question: '', hint: '', reveal_answer: '' }],
+        summary: '',
+        key_takeaways: [''],
       };
   }
 }

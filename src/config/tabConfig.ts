@@ -12,13 +12,14 @@ import {
   GitBranch,
   Network,
   User,
+  MessageCircleQuestion,
 } from 'lucide-react';
 
 // Unified tab configuration for the entire app
 // Every topic/chapter uses the same structure regardless of department or year
 
-// Resource tab types - Mind Maps now a main tab, Worked Cases moved under Clinical Tools
-export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'documents' | 'clinical_tools';
+// Resource tab types - includes Guided Explanations (Socratic method)
+export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'guided_explanations' | 'reference_materials' | 'clinical_tools';
 
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
@@ -31,12 +32,14 @@ export interface TabConfig {
 }
 
 // Standard Resources tabs - same for all modules/departments
-// Mind Maps is now a main tab, Worked Cases moved under Clinical Tools
+// Guided Explanations uses Socratic method for discovery learning
+// Documents renamed to Reference Materials for clarity
 export const RESOURCES_TABS: TabConfig[] = [
   { id: 'lectures', label: 'Videos', icon: Video },
   { id: 'flashcards', label: 'Flashcards', icon: Layers },
   { id: 'mind_maps', label: 'Mind Maps', icon: Network },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'guided_explanations', label: 'Guided Explanations', icon: MessageCircleQuestion },
+  { id: 'reference_materials', label: 'Reference Materials', icon: FileText },
   { id: 'clinical_tools', label: 'Clinical Tools', icon: GitBranch },
 ];
 
@@ -61,7 +64,8 @@ export function createResourceTabs(counts: {
   lectures?: number;
   flashcards?: number;
   mind_maps?: number;
-  documents?: number;
+  guided_explanations?: number;
+  reference_materials?: number;
   clinical_tools?: number;
 }): TabWithCount[] {
   return RESOURCES_TABS.map(tab => ({

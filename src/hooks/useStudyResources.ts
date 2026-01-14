@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
+// Resource types for study materials
 export type StudyResourceType = 
   | 'flashcard' 
   | 'table' 
@@ -8,8 +10,10 @@ export type StudyResourceType =
   | 'exam_tip' 
   | 'key_image'
   | 'mind_map'
-  | 'clinical_case_worked';
+  | 'clinical_case_worked'
+  | 'guided_explanation';
 
+// Content interfaces for different resource types
 export interface FlashcardContent {
   front: string;
   back: string;
@@ -31,10 +35,10 @@ export interface ExamTipContent {
 export interface KeyImageContent {
   imageUrl: string;
   caption: string;
-  labels?: string[];
+  labels: string[];
 }
 
-// Mind Map content - supports both uploaded images/PDFs and AI-generated node structures
+// Mind Map types - support both image-based and node-based formats
 export interface MindMapNode {
   id: string | number;
   label: string;
@@ -52,13 +56,13 @@ export interface MindMapContent {
   // Original format (uploaded images)
   imageUrl?: string;
   description?: string;
+  
   // AI-generated format (structured nodes)
   central_concept?: string;
   nodes?: MindMapNode[];
   connections?: MindMapConnection[];
 }
 
-// NEW: Clinical Case Worked Solutions - structured 8-section format
 export interface ClinicalCaseWorkedContent {
   history: string;
   clinical_examination: string;
@@ -70,14 +74,28 @@ export interface ClinicalCaseWorkedContent {
   key_learning_points: string[];
 }
 
+// Guided Explanation content (Socratic method)
+export interface GuidedExplanationContent {
+  topic: string;
+  introduction: string;
+  guided_questions: {
+    question: string;
+    hint?: string;
+    reveal_answer: string;
+  }[];
+  summary: string;
+  key_takeaways: string[];
+}
+
 export type ResourceContent = 
   | FlashcardContent 
   | TableContent 
   | AlgorithmContent 
   | ExamTipContent 
-  | KeyImageContent
+  | KeyImageContent 
   | MindMapContent
-  | ClinicalCaseWorkedContent;
+  | ClinicalCaseWorkedContent
+  | GuidedExplanationContent;
 
 export interface StudyResource {
   id: string;
@@ -87,11 +105,10 @@ export interface StudyResource {
   title: string;
   content: ResourceContent;
   display_order: number | null;
-  is_deleted: boolean;
   created_at: string | null;
   created_by: string | null;
-  updated_at: string | null;
   updated_by: string | null;
+  is_deleted: boolean;
 }
 
 export interface StudyResourceInsert {
@@ -137,7 +154,8 @@ export function useChapterStudyResourcesByType(chapterId?: string, resourceType?
         .from('study_resources')
         .select('*')
         .eq('chapter_id', chapterId!)
-        .eq('resource_type', resourceType!)
+        // Cast to any to support extended resource types not yet in DB schema
+        .eq('resource_type', resourceType as any)
         .eq('is_deleted', false)
         .order('display_order');
       
