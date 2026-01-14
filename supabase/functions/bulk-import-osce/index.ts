@@ -15,6 +15,7 @@ interface ParsedRow {
   explanations: string[];
   error?: string;
   imageFound?: boolean;
+  hasImage?: boolean;
 }
 
 // Parse Excel file using xlsx library
@@ -133,15 +134,16 @@ Deno.serve(async (req: Request) => {
     // Parse form data
     const formData = await req.formData();
     const excelFile = formData.get('excel') as File;
-    const zipFile = formData.get('zip') as File;
+    const zipFile = formData.get('zip') as File | null; // ZIP is now optional
     const moduleId = formData.get('moduleId') as string;
     const moduleCode = formData.get('moduleCode') as string || 'module';
     const chapterTitle = formData.get('chapterTitle') as string || 'chapter';
     const chapterId = formData.get('chapterId') as string | null;
     const validateOnly = formData.get('validateOnly') === 'true';
+    const skipImages = formData.get('skipImages') === 'true';
 
-    if (!excelFile || !zipFile || !moduleId) {
-      return new Response(JSON.stringify({ error: 'Missing required files or moduleId' }), {
+    if (!excelFile || !moduleId) {
+      return new Response(JSON.stringify({ error: 'Missing required excel file or moduleId' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -154,24 +156,27 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Processing bulk OSCE import for module ${moduleId}, chapter ${chapterId}`);
     console.log(`Storage path: ${storagePath}`);
-    console.log(`Excel file: ${excelFile.name}, ZIP file: ${zipFile.name}`);
+    console.log(`Excel file: ${excelFile.name}, ZIP file: ${zipFile?.name || 'none'}, skipImages: ${skipImages}`);
 
     // Parse Excel file
     const excelRows = await parseExcel(excelFile);
     
     console.log(`Found ${excelRows.length} data rows in Excel`);
 
-    // Parse ZIP file
-    const zipBuffer = await zipFile.arrayBuffer();
-    const zipFiles = await parseZip(zipBuffer);
+    // Parse ZIP file if provided
+    let zipFiles = new Map<string, Uint8Array>();
+    let zipFileNames = new Map<string, string>();
     
-    // Build case-insensitive lookup for ZIP files
-    const zipFileNames = new Map<string, string>();
-    for (const [filename] of zipFiles) {
-      zipFileNames.set(filename.toLowerCase(), filename);
+    if (zipFile && !skipImages) {
+      const zipBuffer = await zipFile.arrayBuffer();
+      zipFiles = await parseZip(zipBuffer);
+      
+      // Build case-insensitive lookup for ZIP files
+      for (const [filename] of zipFiles) {
+        zipFileNames.set(filename.toLowerCase(), filename);
+      }
+      console.log(`Found ${zipFileNames.size} images in ZIP`);
     }
-
-    console.log(`Found ${zipFileNames.size} images in ZIP`);
 
     // Parse rows
     const parsedRows: ParsedRow[] = [];
@@ -208,10 +213,9 @@ Deno.serve(async (req: Request) => {
         String(row['statement_5_explanation'] || '').trim(),
       ];
 
-      // Validate
+      // Validate - image_filename is now OPTIONAL
       const errors: string[] = [];
 
-      if (!imageFilename) errors.push('Missing image_filename');
       if (!historyText) errors.push('Missing case_history');
       
       statements.forEach((s, idx) => {
@@ -230,10 +234,18 @@ Deno.serve(async (req: Request) => {
         }
       });
 
-      // Check if image exists in ZIP (case-insensitive)
-      const imageFound = zipFileNames.has(imageFilename.toLowerCase());
-      if (!imageFound && imageFilename) {
-        missingImages.push(imageFilename);
+      // Check if image exists in ZIP (only if image was specified and not skipping)
+      const hasImage = !!imageFilename;
+      let imageFound = false;
+      
+      if (hasImage && !skipImages && zipFileNames.size > 0) {
+        imageFound = zipFileNames.has(imageFilename.toLowerCase());
+        if (!imageFound) {
+          missingImages.push(imageFilename);
+        }
+      } else if (!hasImage || skipImages) {
+        // No image required or skipping images
+        imageFound = true; // Consider "found" since not needed
       }
 
       parsedRows.push({
@@ -245,12 +257,18 @@ Deno.serve(async (req: Request) => {
         explanations,
         error: errors.length > 0 ? errors.join('; ') : undefined,
         imageFound,
+        hasImage,
       });
     }
 
-    // Separate valid and invalid
-    const valid = parsedRows.filter(r => !r.error && r.imageFound);
-    const invalid = parsedRows.filter(r => r.error || !r.imageFound);
+    // Valid rows: no errors AND (no image needed OR image found OR skipping images)
+    const valid = parsedRows.filter(r => {
+      if (r.error) return false;
+      if (skipImages) return true;
+      if (!r.hasImage) return true;
+      return r.imageFound;
+    });
+    const invalid = parsedRows.filter(r => !valid.includes(r));
 
     console.log(`Validation result: ${valid.length} valid, ${invalid.length} invalid`);
 
@@ -259,12 +277,13 @@ Deno.serve(async (req: Request) => {
         valid: valid.map(r => ({
           rowNumber: r.rowNumber,
           imageFilename: r.imageFilename,
+          hasImage: r.hasImage,
           historyText: r.historyText.substring(0, 50) + (r.historyText.length > 50 ? '...' : ''),
         })),
         invalid: invalid.map(r => ({
           rowNumber: r.rowNumber,
           imageFilename: r.imageFilename,
-          error: r.error || (!r.imageFound ? 'Image not found in ZIP' : undefined),
+          error: r.error || (!r.imageFound && r.hasImage ? 'Image not found in ZIP' : undefined),
         })),
         missingImages: [...new Set(missingImages)],
       }), {
@@ -281,45 +300,46 @@ Deno.serve(async (req: Request) => {
     }
 
     let importedCount = 0;
+    let importedWithImage = 0;
+    let importedWithoutImage = 0;
 
     for (const row of valid) {
       try {
-        // Find the actual filename in ZIP (case-insensitive lookup)
-        const actualFilename = zipFileNames.get(row.imageFilename.toLowerCase());
-        if (!actualFilename) {
-          console.error(`Could not find image ${row.imageFilename} in ZIP`);
-          continue;
+        let publicUrl: string | null = null;
+
+        // Only upload image if specified and not skipping
+        if (row.hasImage && !skipImages && zipFileNames.size > 0) {
+          const actualFilename = zipFileNames.get(row.imageFilename.toLowerCase());
+          if (actualFilename) {
+            const imageData = zipFiles.get(actualFilename);
+            if (imageData) {
+              // Upload image to storage with structured path
+              const ext = row.imageFilename.split('.').pop()?.toLowerCase() || 'jpg';
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substring(2, 8);
+              const newFilename = `${timestamp}-${randomSuffix}.${ext}`;
+              const fullStoragePath = `${storagePath}/${newFilename}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from('osce-images')
+                .upload(fullStoragePath, imageData, {
+                  contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+                });
+
+              if (uploadError) {
+                console.error(`Failed to upload image for row ${row.rowNumber}:`, uploadError);
+                // Continue without image
+              } else {
+                const { data: { publicUrl: url } } = supabase.storage
+                  .from('osce-images')
+                  .getPublicUrl(fullStoragePath);
+                publicUrl = url;
+              }
+            }
+          }
         }
 
-        const imageData = zipFiles.get(actualFilename);
-        if (!imageData) {
-          console.error(`Could not read image data for ${row.imageFilename}`);
-          continue;
-        }
-
-        // Upload image to storage with structured path
-        const ext = row.imageFilename.split('.').pop()?.toLowerCase() || 'jpg';
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 8);
-        const newFilename = `${timestamp}-${randomSuffix}.${ext}`;
-        const fullStoragePath = `${storagePath}/${newFilename}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('osce-images')
-          .upload(fullStoragePath, imageData, {
-            contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-          });
-
-        if (uploadError) {
-          console.error(`Failed to upload image for row ${row.rowNumber}:`, uploadError);
-          continue;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('osce-images')
-          .getPublicUrl(fullStoragePath);
-
-        // Insert OSCE question
+        // Insert OSCE question (image_url can be null)
         const { error: insertError } = await supabase.from('osce_questions').insert({
           module_id: moduleId,
           chapter_id: chapterId || null,
@@ -350,16 +370,23 @@ Deno.serve(async (req: Request) => {
         }
 
         importedCount++;
+        if (publicUrl) {
+          importedWithImage++;
+        } else {
+          importedWithoutImage++;
+        }
       } catch (err) {
         console.error(`Error processing row ${row.rowNumber}:`, err);
       }
     }
 
-    console.log(`Successfully imported ${importedCount} OSCE questions`);
+    console.log(`Successfully imported ${importedCount} OSCE questions (${importedWithImage} with images, ${importedWithoutImage} without)`);
 
     return new Response(JSON.stringify({
       success: true,
       importedCount,
+      importedWithImage,
+      importedWithoutImage,
       skippedCount: valid.length - importedCount,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

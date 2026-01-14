@@ -19,6 +19,7 @@ import {
   Download,
   Info,
   Trash2,
+  SkipForward,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -43,6 +44,7 @@ interface ParsedRow {
   answers: boolean[];
   explanations: string[];
   error?: string;
+  hasImage?: boolean;
 }
 
 interface ExcelValidationResult {
@@ -71,6 +73,7 @@ export function OsceBulkUploadModal({
   const [importProgress, setImportProgress] = useState(0);
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
   const [parsedRows, setParsedRows] = useState<string[][]>([]);
+  const [skipImagesStep, setSkipImagesStep] = useState(false);
 
   const storagePath = `${moduleCode}/${chapterTitle}/`;
 
@@ -84,6 +87,7 @@ export function OsceBulkUploadModal({
     setParsedHeaders([]);
     setParsedRows([]);
     clearAnalysis();
+    setSkipImagesStep(false);
   };
 
   // Parse Excel file locally
@@ -128,10 +132,9 @@ export function OsceBulkUploadModal({
         String(row['explanation_5'] || row['statement_5_explanation'] || '').trim(),
       ];
 
-      // Validate
+      // Validate - image_filename is now OPTIONAL
       const errors: string[] = [];
 
-      if (!imageFilename) errors.push('Missing image_filename');
       if (!historyText) errors.push('Missing case_history');
       
       statements.forEach((s, idx) => {
@@ -150,6 +153,7 @@ export function OsceBulkUploadModal({
         }
       });
 
+      // Only add to required images if image_filename is provided
       if (imageFilename) {
         requiredImages.add(imageFilename);
       }
@@ -162,6 +166,7 @@ export function OsceBulkUploadModal({
         answers,
         explanations,
         error: errors.length > 0 ? errors.join('; ') : undefined,
+        hasImage: !!imageFilename,
       });
     }
 
@@ -221,7 +226,7 @@ export function OsceBulkUploadModal({
     setUploadedImages(newImages);
   };
 
-  // Check which images are missing
+  // Check which images are missing (only for rows that have image_filename specified)
   const missingImages = useMemo(() => {
     if (!excelValidation) return [];
     return excelValidation.requiredImages.filter(
@@ -229,9 +234,28 @@ export function OsceBulkUploadModal({
     );
   }, [excelValidation, uploadedImages]);
 
+  // Count of questions with images
+  const questionsWithImages = useMemo(() => {
+    if (!excelValidation) return 0;
+    return excelValidation.valid.filter(r => r.hasImage).length;
+  }, [excelValidation]);
+
+  const questionsWithoutImages = useMemo(() => {
+    if (!excelValidation) return 0;
+    return excelValidation.valid.filter(r => !r.hasImage).length;
+  }, [excelValidation]);
+
+  // Can proceed if:
+  // 1. All required images are uploaded, OR
+  // 2. User chose to skip images
   const canProceedToReview = excelValidation && 
     excelValidation.valid.length > 0 && 
-    missingImages.length === 0;
+    (missingImages.length === 0 || skipImagesStep);
+
+  const handleSkipImages = () => {
+    setSkipImagesStep(true);
+    setStep('review');
+  };
 
   const handleImport = async () => {
     if (!excelValidation || !canProceedToReview) return;
@@ -258,36 +282,38 @@ export function OsceBulkUploadModal({
         const row = validRows[i];
         
         try {
-          // Get the image file
-          const imageFile = uploadedImages.get(row.imageFilename);
-          if (!imageFile) {
-            console.error(`Image not found: ${row.imageFilename}`);
-            continue;
+          let publicUrl: string | null = null;
+
+          // Only upload image if filename was specified and image exists
+          if (row.imageFilename && !skipImagesStep) {
+            const imageFile = uploadedImages.get(row.imageFilename);
+            if (imageFile) {
+              // Upload image to storage
+              const ext = row.imageFilename.split('.').pop()?.toLowerCase() || 'jpg';
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substring(2, 8);
+              const newFilename = `${timestamp}-${randomSuffix}.${ext}`;
+              const fullStoragePath = `${storageBasePath}/${newFilename}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from('osce-images')
+                .upload(fullStoragePath, imageFile, {
+                  contentType: imageFile.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+                });
+
+              if (uploadError) {
+                console.error(`Failed to upload image for row ${row.rowNumber}:`, uploadError);
+                // Continue without image
+              } else {
+                const { data: { publicUrl: url } } = supabase.storage
+                  .from('osce-images')
+                  .getPublicUrl(fullStoragePath);
+                publicUrl = url;
+              }
+            }
           }
 
-          // Upload image to storage
-          const ext = row.imageFilename.split('.').pop()?.toLowerCase() || 'jpg';
-          const timestamp = Date.now();
-          const randomSuffix = Math.random().toString(36).substring(2, 8);
-          const newFilename = `${timestamp}-${randomSuffix}.${ext}`;
-          const fullStoragePath = `${storageBasePath}/${newFilename}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('osce-images')
-            .upload(fullStoragePath, imageFile, {
-              contentType: imageFile.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-            });
-
-          if (uploadError) {
-            console.error(`Failed to upload image for row ${row.rowNumber}:`, uploadError);
-            continue;
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('osce-images')
-            .getPublicUrl(fullStoragePath);
-
-          // Insert OSCE question
+          // Insert OSCE question (image_url can be null)
           const { error: insertError } = await supabase.from('osce_questions').insert({
             module_id: moduleId,
             chapter_id: chapterId || null,
@@ -361,7 +387,8 @@ export function OsceBulkUploadModal({
       'explanation_5',
     ];
     
-    const exampleRow = [
+    // Example with image
+    const exampleRowWithImage = [
       'case_001.jpg',
       'A 45-year-old male presents with chest pain radiating to the left arm...',
       'The patient has typical angina symptoms',
@@ -381,7 +408,28 @@ export function OsceBulkUploadModal({
       'Aspirin reduces mortality in acute coronary syndrome',
     ];
 
-    const data = [headers, exampleRow];
+    // Example without image (image_filename is optional)
+    const exampleRowWithoutImage = [
+      '', // Empty = no image required
+      'A 28-year-old woman presents with fatigue and pallor...',
+      'Iron deficiency is the most common cause of anemia',
+      'TRUE',
+      'Vitamin B12 deficiency causes microcytic anemia',
+      'FALSE',
+      'Reticulocyte count helps assess bone marrow response',
+      'TRUE',
+      'Hemolysis can be excluded with normal LDH',
+      'FALSE',
+      'Ferritin is the best initial test for iron stores',
+      'TRUE',
+      'Iron deficiency is common especially in women',
+      'B12 deficiency causes macrocytic anemia',
+      'Reticulocytes indicate bone marrow response',
+      'LDH can be elevated in hemolysis',
+      'Ferritin reflects total body iron stores',
+    ];
+
+    const data = [headers, exampleRowWithImage, exampleRowWithoutImage];
     const ws = XLSX.utils.aoa_to_sheet(data);
 
     ws['!cols'] = [
@@ -440,7 +488,7 @@ export function OsceBulkUploadModal({
                 <ul className="list-disc pl-5 text-sm space-y-1">
                   <li>Download the template and fill in your questions</li>
                   <li>Each row = 1 OSCE question with 5 True/False statements</li>
-                  <li><code className="bg-muted px-1 rounded">image_filename</code> must match the exact filename you'll upload</li>
+                  <li><code className="bg-muted px-1 rounded">image_filename</code> is <strong>optional</strong>. Leave blank for questions without images.</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -483,10 +531,17 @@ export function OsceBulkUploadModal({
                       Invalid: {excelValidation.invalid.length}
                     </Badge>
                   )}
-                  <Badge variant="secondary">
-                    <ImageIcon className="w-3 h-3 mr-1" />
-                    Images needed: {excelValidation.requiredImages.length}
-                  </Badge>
+                  {questionsWithImages > 0 && (
+                    <Badge variant="secondary">
+                      <ImageIcon className="w-3 h-3 mr-1" />
+                      With images: {questionsWithImages}
+                    </Badge>
+                  )}
+                  {questionsWithoutImages > 0 && (
+                    <Badge variant="outline">
+                      No image: {questionsWithoutImages}
+                    </Badge>
+                  )}
                 </div>
 
                 {excelValidation.invalid.length > 0 && (
@@ -507,10 +562,20 @@ export function OsceBulkUploadModal({
                 Cancel
               </Button>
               <Button 
-                onClick={() => setStep('images')} 
+                onClick={() => {
+                  // If no images required, skip to review
+                  if (excelValidation && excelValidation.requiredImages.length === 0) {
+                    setSkipImagesStep(true);
+                    setStep('review');
+                  } else {
+                    setStep('images');
+                  }
+                }} 
                 disabled={!excelValidation || excelValidation.valid.length === 0}
               >
-                Next: Upload Images
+                {excelValidation && excelValidation.requiredImages.length === 0 
+                  ? 'Next: Review & Import' 
+                  : 'Next: Upload Images'}
               </Button>
             </div>
           </div>
@@ -522,12 +587,35 @@ export function OsceBulkUploadModal({
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <p><strong>Step 2: Upload images for each question</strong></p>
+                <p><strong>Step 2: Upload images for questions that require them</strong></p>
                 <p className="text-sm mt-1">
                   Images will be stored at: <code className="bg-muted px-1 rounded text-xs">osce-images/{storagePath}</code>
                 </p>
+                {questionsWithoutImages > 0 && (
+                  <p className="text-sm mt-1 text-muted-foreground">
+                    Note: {questionsWithoutImages} question(s) have no image specified and will be imported without images.
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
+
+            {/* Skip images option */}
+            {excelValidation.requiredImages.length > 0 && (
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <SkipForward className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-sm">Skip images for now?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Import questions without images. You can add images later.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleSkipImages}>
+                  Skip & Import
+                </Button>
+              </div>
+            )}
 
             {/* Image upload area */}
             <DragDropZone
@@ -543,51 +631,53 @@ export function OsceBulkUploadModal({
             </p>
 
             {/* Required images checklist */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Required images ({uploadedImages.size}/{excelValidation.requiredImages.length}):
-              </p>
-              <ScrollArea className="h-48 border rounded-lg p-2">
-                {excelValidation.requiredImages.map((filename) => {
-                  const isUploaded = uploadedImages.has(filename);
-                  return (
-                    <div 
-                      key={filename} 
-                      className={`flex items-center justify-between py-1 px-2 rounded mb-1 ${
-                        isUploaded ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50 dark:bg-amber-950/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {isUploaded ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+            {excelValidation.requiredImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  Required images ({uploadedImages.size}/{excelValidation.requiredImages.length}):
+                </p>
+                <ScrollArea className="h-48 border rounded-lg p-2">
+                  {excelValidation.requiredImages.map((filename) => {
+                    const isUploaded = uploadedImages.has(filename);
+                    return (
+                      <div 
+                        key={filename} 
+                        className={`flex items-center justify-between py-1 px-2 rounded mb-1 ${
+                          isUploaded ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50 dark:bg-amber-950/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isUploaded ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                          )}
+                          <span className={`text-sm ${isUploaded ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                            {filename}
+                          </span>
+                        </div>
+                        {isUploaded && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => removeImage(filename)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         )}
-                        <span className={`text-sm ${isUploaded ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                          {filename}
-                        </span>
                       </div>
-                      {isUploaded && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => removeImage(filename)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </ScrollArea>
-            </div>
+                    );
+                  })}
+                </ScrollArea>
+              </div>
+            )}
 
-            {missingImages.length > 0 && (
-              <Alert variant="destructive">
+            {missingImages.length > 0 && !skipImagesStep && (
+              <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  {missingImages.length} image(s) still missing. Upload all required images to proceed.
+                  {missingImages.length} image(s) not yet uploaded. Upload them or click "Skip & Import" to proceed without.
                 </AlertDescription>
               </Alert>
             )}
@@ -617,6 +707,11 @@ export function OsceBulkUploadModal({
                   {excelValidation.valid.length} OSCE questions will be created.
                   {excelValidation.invalid.length > 0 && ` ${excelValidation.invalid.length} invalid rows will be skipped.`}
                 </p>
+                {skipImagesStep && missingImages.length > 0 && (
+                  <p className="text-sm mt-1 text-amber-600 dark:text-amber-400">
+                    ⚠️ {missingImages.length} questions will be imported without images. You can add images later.
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
 
@@ -624,9 +719,23 @@ export function OsceBulkUploadModal({
               {excelValidation.valid.map((row, idx) => (
                 <div key={idx} className="flex items-start gap-2 mb-2 pb-2 border-b last:border-0">
                   <Badge variant="outline" className="shrink-0">#{idx + 1}</Badge>
-                  <div className="text-sm">
-                    <p className="font-medium">{row.imageFilename}</p>
-                    <p className="text-muted-foreground line-clamp-1">
+                  <div className="text-sm flex-1">
+                    <div className="flex items-center gap-2">
+                      {row.hasImage ? (
+                        uploadedImages.has(row.imageFilename) ? (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <ImageIcon className="w-3 h-3" /> {row.imageFilename}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs gap-1 text-amber-600">
+                            <AlertTriangle className="w-3 h-3" /> No image
+                          </Badge>
+                        )
+                      ) : (
+                        <Badge variant="outline" className="text-xs">No image</Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground line-clamp-1 mt-1">
                       {row.historyText.substring(0, 80)}...
                     </p>
                   </div>
@@ -635,7 +744,7 @@ export function OsceBulkUploadModal({
             </ScrollArea>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setStep('images')}>
+              <Button variant="outline" onClick={() => setStep(excelValidation.requiredImages.length > 0 ? 'images' : 'excel')}>
                 Back
               </Button>
               <Button onClick={handleImport} disabled={importing}>
