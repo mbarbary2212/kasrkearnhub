@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   Edit2, 
   Trash2, 
@@ -219,14 +219,16 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   
   const reorderMutation = useReorderStudyResources();
 
-  // Initialize expanded folders and local resources when resources change
-  useMemo(() => {
+  // Sync local resources and expanded folders when resources prop changes
+  useEffect(() => {
+    setLocalResources(resources);
+    
+    // Initialize expanded folders with all folders expanded
     const folders = new Set<string>();
     resources.forEach(r => {
       folders.add(r.folder || 'Uncategorized');
     });
     setExpandedFolders(folders);
-    setLocalResources(resources);
   }, [resources]);
 
   const sensors = useSensors(
