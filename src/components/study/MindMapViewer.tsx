@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   Edit2, 
   Trash2, 
@@ -9,9 +9,6 @@ import {
   Maximize2, 
   RotateCcw, 
   Printer,
-  Folder,
-  ChevronDown,
-  ChevronRight,
   GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,11 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { StudyResource, MindMapContent, useReorderStudyResources } from '@/hooks/useStudyResources';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MindMapNodeRenderer } from './MindMapNodeRenderer';
@@ -214,22 +206,14 @@ interface MindMapViewerProps {
 export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapViewerProps) {
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [localResources, setLocalResources] = useState<StudyResource[]>([]);
+  const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
   
   const reorderMutation = useReorderStudyResources();
 
-  // Sync local resources and expanded folders when resources prop changes
-  useEffect(() => {
+  // Sync local resources when resources prop changes
+  if (resources !== localResources && JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
     setLocalResources(resources);
-    
-    // Initialize expanded folders with all folders expanded
-    const folders = new Set<string>();
-    resources.forEach(r => {
-      folders.add(r.folder || 'Uncategorized');
-    });
-    setExpandedFolders(folders);
-  }, [resources]);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -241,22 +225,6 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  // Group resources by folder
-  const groupedByFolder = useMemo(() => {
-    const groups: Record<string, StudyResource[]> = {};
-    localResources.forEach(r => {
-      const folder = r.folder || 'Uncategorized';
-      if (!groups[folder]) groups[folder] = [];
-      groups[folder].push(r);
-    });
-    // Sort: named folders first alphabetically, then Uncategorized
-    return Object.entries(groups).sort(([a], [b]) => {
-      if (a === 'Uncategorized') return 1;
-      if (b === 'Uncategorized') return -1;
-      return a.localeCompare(b);
-    });
-  }, [localResources]);
 
   const handleZoomIn = useCallback(() => {
     setZoom(z => Math.min(z + ZOOM_STEP, MAX_ZOOM));
@@ -304,40 +272,23 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
     requestResourceDelete('mind_map', resource.id, resource.title);
   }, []);
 
-  const toggleFolder = useCallback((folder: string) => {
-    setExpandedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(folder)) {
-        next.delete(folder);
-      } else {
-        next.add(folder);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent, folderItems: StudyResource[]) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over || active.id === over.id) return;
 
-    const oldIndex = folderItems.findIndex(r => r.id === active.id);
-    const newIndex = folderItems.findIndex(r => r.id === over.id);
+    const oldIndex = localResources.findIndex(r => r.id === active.id);
+    const newIndex = localResources.findIndex(r => r.id === over.id);
 
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // Reorder within folder
-    const reorderedItems = arrayMove(folderItems, oldIndex, newIndex);
+    const reorderedItems = arrayMove(localResources, oldIndex, newIndex);
     
     // Update local state immediately for optimistic UI
-    setLocalResources(prev => {
-      const folder = folderItems[0]?.folder || null;
-      const otherItems = prev.filter(r => (r.folder || null) !== folder);
-      return [...otherItems, ...reorderedItems];
-    });
+    setLocalResources(reorderedItems);
 
     // Persist to database
-    const chapterId = folderItems[0]?.chapter_id;
+    const chapterId = localResources[0]?.chapter_id;
     if (chapterId) {
       const updates = reorderedItems.map((r, idx) => ({
         id: r.id,
@@ -354,7 +305,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
         }
       );
     }
-  }, [resources, reorderMutation]);
+  }, [localResources, resources, reorderMutation]);
 
   if (resources.length === 0) {
     return (
@@ -365,16 +316,12 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
     );
   }
 
-  // Check if we have any folders - if only one group and it's Uncategorized, show flat grid
-  const hasRealFolders = groupedByFolder.length > 1 || 
-    (groupedByFolder.length === 1 && groupedByFolder[0][0] !== 'Uncategorized');
-
-  const renderGrid = (items: StudyResource[]) => {
+  const renderGrid = () => {
     if (!canManage) {
       // Non-admin: no drag and drop
       return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map(resource => (
+          {localResources.map(resource => (
             <MindMapCardInner
               key={resource.id}
               resource={resource}
@@ -393,11 +340,11 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        onDragEnd={(event) => handleDragEnd(event, items)}
+        onDragEnd={handleDragEnd}
       >
-        <SortableContext items={items.map(r => r.id)} strategy={rectSortingStrategy}>
+        <SortableContext items={localResources.map(r => r.id)} strategy={rectSortingStrategy}>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map(resource => (
+            {localResources.map(resource => (
               <SortableMindMapCard
                 key={resource.id}
                 id={resource.id}
@@ -414,41 +361,13 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
     );
   };
 
+  const fullscreenContent = fullscreenResource?.content as MindMapContent | null;
+  const isNodeBased = fullscreenContent && isNodeBasedMindMap(fullscreenContent);
+  const isPdf = fullscreenContent?.imageUrl?.toLowerCase().endsWith('.pdf');
+
   return (
     <>
-      {!hasRealFolders ? (
-        // Flat grid (backwards compatible)
-        renderGrid(groupedByFolder[0][1])
-      ) : (
-        // Folder sections with collapsible UI
-        <div className="space-y-4">
-          {groupedByFolder.map(([folder, items]) => (
-            <Collapsible
-              key={folder}
-              open={expandedFolders.has(folder)}
-              onOpenChange={() => toggleFolder(folder)}
-            >
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-accent rounded-lg transition-colors">
-                {expandedFolders.has(folder) ? (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                )}
-                <Folder className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">{folder}</span>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {items.length}
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-2 pl-6">
-                  {renderGrid(items)}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </div>
-      )}
+      {renderGrid()}
 
       {/* Fullscreen Modal */}
       <Dialog open={!!fullscreenResource} onOpenChange={() => setFullscreenResource(null)}>
@@ -492,66 +411,80 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                 >
                   <RotateCcw className="w-4 h-4" />
                 </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={handlePrint}
-                  title="Print"
-                >
-                  <Printer className="w-4 h-4" />
-                </Button>
+                {!isNodeBased && !isPdf && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={handlePrint}
+                    title="Print"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </DialogHeader>
-          {fullscreenResource && (() => {
-            const fsContent = fullscreenResource.content as MindMapContent;
-            const fsIsNodeBased = isNodeBasedMindMap(fsContent);
-            
-            return (
-              <div 
-                className="flex-1 min-h-0 mt-2 overflow-auto"
-                style={{ 
-                  cursor: zoom > 1 ? 'grab' : 'default'
-                }}
-              >
-                <div 
-                  className="min-w-full min-h-full flex items-center justify-center"
-                  style={{
-                    width: zoom > 1 ? `${zoom * 100}%` : '100%',
-                    height: zoom > 1 ? `${zoom * 100}%` : '100%',
-                    transform: `scale(${zoom})`,
-                    transformOrigin: 'top center',
-                  }}
-                >
-                  {fsIsNodeBased ? (
+          
+          <div 
+            className="flex-1 overflow-auto flex items-center justify-center bg-muted/30 rounded-lg mt-4"
+            style={{ minHeight: '60vh' }}
+          >
+            {fullscreenContent && (
+              <>
+                {isPdf ? (
+                  <div className="text-center p-8">
+                    <p className="text-muted-foreground mb-4">PDF files open in a new tab</p>
+                    <Button asChild>
+                      <a href={fullscreenContent.imageUrl} target="_blank" rel="noopener noreferrer">
+                        Open PDF
+                      </a>
+                    </Button>
+                  </div>
+                ) : isNodeBased ? (
+                  <div 
+                    style={{ 
+                      transform: `scale(${zoom})`, 
+                      transformOrigin: 'center center',
+                      transition: 'transform 0.2s ease-out',
+                      width: '100%',
+                      maxWidth: '1200px',
+                    }}
+                  >
                     <MindMapNodeRenderer
-                      centralConcept={fsContent.central_concept || fullscreenResource.title}
-                      nodes={fsContent.nodes || []}
-                      connections={fsContent.connections}
-                      className="min-w-max"
+                      centralConcept={fullscreenContent.central_concept || 'Mind Map'}
+                      nodes={fullscreenContent.nodes || []}
+                      connections={fullscreenContent.connections}
                     />
-                  ) : fsContent.imageUrl ? (
-                    <img
-                      src={fsContent.imageUrl}
-                      alt={fullscreenResource.title}
-                      className="object-contain"
-                      style={{ 
-                        maxWidth: '100%',
-                        maxHeight: zoom <= 1 ? '75vh' : 'none'
-                      }}
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="text-center text-muted-foreground p-8">
-                      <Network className="w-12 h-12 mx-auto mb-2" />
-                      <p>No content to display</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+                  </div>
+                ) : fullscreenContent.imageUrl ? (
+                  <img
+                    src={fullscreenContent.imageUrl}
+                    alt={fullscreenResource?.title}
+                    style={{ 
+                      transform: `scale(${zoom})`, 
+                      transformOrigin: 'center center',
+                      transition: 'transform 0.2s ease-out',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                    }}
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    <Network className="w-16 h-16 mx-auto mb-2" />
+                    <p>No content available</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          {fullscreenContent?.description && (
+            <p className="text-sm text-muted-foreground mt-4 text-center">
+              {fullscreenContent.description}
+            </p>
+          )}
         </DialogContent>
       </Dialog>
     </>
