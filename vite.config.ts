@@ -18,5 +18,6 @@ export default defineConfig(({ mode }) => ({
   // Define build-time constants for version tracking
   define: {
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
   },
 }));
