@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { StudyResource, MindMapContent, useReorderStudyResources } from '@/hooks/useStudyResources';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MindMapNodeRenderer } from './MindMapNodeRenderer';
 import {
@@ -219,6 +220,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const isMobile = useIsMobile();
   
   const reorderMutation = useReorderStudyResources();
 
@@ -490,15 +492,17 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                     <Download className="w-4 h-4" />
                   </Button>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={handleFullscreenToggle}
-                  title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </Button>
+                {!isMobile && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={handleFullscreenToggle}
+                    title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+                  >
+                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </Button>
+                )}
               </div>
             </div>
           </DialogHeader>
@@ -511,7 +515,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
               <>
                 {isPdf ? (
                   <iframe
-                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+                    src={`${fullscreenContent.imageUrl}#toolbar=1&navpanes=0&scrollbar=1`}
                     className="w-full h-full border-0 bg-white rounded"
                     style={{ minHeight: 'calc(80vh - 100px)' }}
                     title={fullscreenResource?.title}
