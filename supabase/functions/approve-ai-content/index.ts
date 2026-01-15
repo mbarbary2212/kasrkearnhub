@@ -29,6 +29,75 @@ function ensureArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
+// ============================================
+// NORMALIZATION FUNCTIONS
+// Ensure data formats match database expectations
+// ============================================
+
+function normalizeMcqChoices(item: any): any {
+  // Convert object format {A: "text", B: "text"} to array format [{key: "A", text: "text"}, ...]
+  if (item.choices && !Array.isArray(item.choices) && typeof item.choices === 'object') {
+    const keysOrder = ['A', 'B', 'C', 'D', 'E'];
+    item.choices = keysOrder
+      .filter(k => item.choices[k] !== undefined)
+      .map(k => ({ key: k, text: item.choices[k] }));
+  }
+  
+  // Ensure exactly 5 choices
+  if (Array.isArray(item.choices)) {
+    // Remove duplicates and invalid entries
+    const seen = new Set();
+    item.choices = item.choices.filter((c: any) => {
+      if (!c.key || !c.text || seen.has(c.key)) return false;
+      seen.add(c.key);
+      return true;
+    });
+
+    // Pad to 5 choices if needed
+    const existingKeys = item.choices.map((c: any) => c.key);
+    const allKeys = ['A', 'B', 'C', 'D', 'E'];
+    for (const k of allKeys) {
+      if (!existingKeys.includes(k) && item.choices.length < 5) {
+        item.choices.push({ key: k, text: `[Option ${k}]` });
+      }
+    }
+    // Sort by key
+    item.choices.sort((a: any, b: any) => a.key.localeCompare(b.key));
+    // Trim to exactly 5
+    item.choices = item.choices.slice(0, 5);
+  }
+
+  return item;
+}
+
+function normalizeOsceAnswers(item: any): any {
+  // Convert string "true"/"false" to boolean
+  for (let i = 1; i <= 5; i++) {
+    const ansKey = `answer_${i}`;
+    if (item[ansKey] === 'true') item[ansKey] = true;
+    else if (item[ansKey] === 'false') item[ansKey] = false;
+    else if (typeof item[ansKey] !== 'boolean') item[ansKey] = false;
+  }
+  return item;
+}
+
+function normalizeVpStageChoices(stage: any): any {
+  // Convert object format to array format for VP stage choices
+  if (stage.choices && !Array.isArray(stage.choices) && typeof stage.choices === 'object') {
+    const keys = Object.keys(stage.choices).sort();
+    stage.choices = keys.map(k => ({ key: k, text: stage.choices[k] }));
+  }
+  // Ensure teaching_points is an array
+  if (!Array.isArray(stage.teaching_points)) {
+    stage.teaching_points = stage.teaching_points ? [stage.teaching_points] : [];
+  }
+  return stage;
+}
+
+// ============================================
+// MAIN HANDLER
+// ============================================
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,7 +110,7 @@ serve(async (req) => {
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return jsonResponse(
-      { error: "Unauthorized: Auth session missing!", items: [], warnings: [] },
+      { error: "Unauthorized: Auth session missing!", step: "auth", items: [], warnings: [] },
       401
     );
   }
@@ -58,6 +127,7 @@ serve(async (req) => {
     return jsonResponse(
       {
         error: `Unauthorized: ${userError?.message || "session expired"}`,
+        step: "auth",
         items: [],
         warnings: [],
       },
@@ -77,7 +147,7 @@ serve(async (req) => {
 
   if (!roleData || !["platform_admin", "super_admin", "department_admin", "admin"].includes(roleData.role)) {
     return jsonResponse(
-      { error: "Forbidden - admin access required", items: [], warnings: [] },
+      { error: "Forbidden - admin access required", step: "auth", items: [], warnings: [] },
       403
     );
   }
@@ -86,83 +156,122 @@ serve(async (req) => {
   try {
     body = await req.json();
   } catch {
-    return jsonResponse({ error: "Invalid JSON body", items: [], warnings: [] }, 400);
+    return jsonResponse({ error: "Invalid JSON body", step: "parse", items: [], warnings: [] }, 400);
   }
 
   const jobId = body?.job_id;
   if (!jobId) {
-    return jsonResponse({ error: "Missing job_id", items: [], warnings: [] }, 400);
+    return jsonResponse({ error: "Missing job_id", step: "validation", items: [], warnings: [] }, 400);
   }
 
   // Load job (service role)
   const { data: job, error: jobError } = await serviceClient
     .from("ai_generation_jobs")
-    .select("id, status, job_type, document_id, input_metadata, output_data")
+    .select("id, status, job_type, document_id, input_metadata, output_data, error_message")
     .eq("id", jobId)
     .single();
 
   if (jobError || !job) {
-    return jsonResponse({ error: "Job not found", items: [], warnings: [] }, 404);
+    return jsonResponse({ error: "Job not found", step: "job_load", items: [], warnings: [] }, 404);
   }
 
   const contentType = job.job_type as ContentType;
   const inputMetadata = (job.input_metadata ?? {}) as any;
+  const output = (job.output_data ?? {}) as any;
 
   const moduleId = inputMetadata.module_id as string | undefined;
   const chapterId = (inputMetadata.chapter_id as string | null | undefined) ?? null;
+  const testMode = inputMetadata.test_mode || output.test_mode || false;
 
   if (!moduleId) {
     return jsonResponse(
-      { error: "Job input_metadata is missing module_id", items: [], warnings: [] },
+      { error: "Job input_metadata is missing module_id", step: "validation", items: [], warnings: [] },
       400
     );
   }
 
   // Validate output payload shape
-  const output = (job.output_data ?? {}) as any;
   const items = ensureArray(output.items);
 
   if (items.length === 0) {
-    console.error("approve-ai-content: job output_data.items invalid or empty:", output);
+    console.error(`[${jobId}] approve-ai-content: job output_data.items invalid or empty:`, output);
     return jsonResponse(
-      { error: "Generation produced an invalid payload. Please retry.", items: [], warnings: [] },
+      { error: "Generation produced an invalid payload (no items). Please retry generation.", step: "validation", items: [], warnings: [] },
       400
     );
   }
 
   // If already approved, treat as idempotent read
   if (job.status === "approved") {
+    console.log(`[${jobId}] Job already approved, returning success`);
     return jsonResponse({
       job_id: jobId,
       content_type: contentType,
       inserted_count: 0,
       items: [],
       warnings: ["Job already approved"],
+      test_mode: testMode,
+    });
+  }
+
+  // TEST MODE: Don't insert into real tables
+  if (testMode) {
+    console.log(`[${jobId}] TEST MODE - skipping database insertion`);
+    
+    // Update job status to approved (test)
+    await serviceClient
+      .from("ai_generation_jobs")
+      .update({
+        status: "approved",
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+      })
+      .eq("id", jobId);
+
+    return jsonResponse({
+      job_id: jobId,
+      content_type: contentType,
+      inserted_count: items.length,
+      items: [],
+      warnings: ["TEST MODE: Content validated but not saved to curriculum"],
+      test_mode: true,
     });
   }
 
   // Insert into target tables
   try {
+    console.log(`[${jobId}] Inserting ${items.length} ${contentType} items...`);
+
     if (contentType === "mcq") {
-      const mcqsToInsert = items.map((item: any, idx: number) => ({
-        module_id: moduleId,
-        chapter_id: chapterId,
-        stem: item.stem,
-        choices: item.choices,
-        correct_key: item.correct_key,
-        difficulty: item.difficulty || "medium",
-        explanation: item.explanation || null,
-        display_order: idx,
-        created_by: user.id,
-        is_deleted: false,
-      }));
+      const mcqsToInsert = items.map((item: any, idx: number) => {
+        // Normalize choices format
+        const normalized = normalizeMcqChoices(item);
+        
+        return {
+          module_id: moduleId,
+          chapter_id: chapterId,
+          stem: normalized.stem,
+          choices: normalized.choices,
+          correct_key: normalized.correct_key,
+          difficulty: normalized.difficulty || "medium",
+          explanation: normalized.explanation || null,
+          display_order: idx,
+          created_by: user.id,
+          is_deleted: false,
+        };
+      });
+
+      console.log(`[${jobId}] MCQ sample choices format:`, JSON.stringify(mcqsToInsert[0]?.choices));
 
       const { error } = await serviceClient.from("mcqs").insert(mcqsToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] MCQ insert error:`, error.message, error.details, error.hint);
+        throw new Error(`Failed to insert MCQs: ${error.message}`);
+      }
     } else if (contentType === "flashcard") {
       if (!chapterId) {
         return jsonResponse(
-          { error: "Chapter is required for flashcards", items: [], warnings: [] },
+          { error: "Chapter is required for flashcards", step: "validation", items: [], warnings: [] },
           400
         );
       }
@@ -181,7 +290,10 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("study_resources")
         .insert(flashcardsToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Flashcard insert error:`, error.message);
+        throw new Error(`Failed to insert flashcards: ${error.message}`);
+      }
     } else if (contentType === "case_scenario") {
       const casesToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
@@ -198,7 +310,10 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("case_scenarios")
         .insert(casesToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Case scenario insert error:`, error.message);
+        throw new Error(`Failed to insert case scenarios: ${error.message}`);
+      }
     } else if (contentType === "essay") {
       const essaysToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
@@ -206,59 +321,70 @@ serve(async (req) => {
         title: item.title,
         question: item.question,
         model_answer: item.model_answer || null,
-        keywords: item.keywords || null,
+        keywords: Array.isArray(item.keywords) ? item.keywords : null,
         display_order: idx,
         created_by: user.id,
         is_deleted: false,
       }));
 
       const { error } = await serviceClient.from("essays").insert(essaysToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Essay insert error:`, error.message);
+        throw new Error(`Failed to insert essays: ${error.message}`);
+      }
     } else if (contentType === "osce") {
       if (!chapterId) {
         return jsonResponse(
-          { error: "Chapter is required for OSCE questions", items: [], warnings: [] },
+          { error: "Chapter is required for OSCE questions", step: "validation", items: [], warnings: [] },
           400
         );
       }
 
-      const osceToInsert = items.map((item: any, idx: number) => ({
-        module_id: moduleId,
-        chapter_id: chapterId,
-        history_text: item.history_text,
-        statement_1: item.statement_1,
-        answer_1: item.answer_1,
-        explanation_1: item.explanation_1 || null,
-        statement_2: item.statement_2 || null,
-        answer_2: item.answer_2 ?? null,
-        explanation_2: item.explanation_2 || null,
-        statement_3: item.statement_3 || null,
-        answer_3: item.answer_3 ?? null,
-        explanation_3: item.explanation_3 || null,
-        statement_4: item.statement_4 || null,
-        answer_4: item.answer_4 ?? null,
-        explanation_4: item.explanation_4 || null,
-        statement_5: item.statement_5 || null,
-        answer_5: item.answer_5 ?? null,
-        explanation_5: item.explanation_5 || null,
-        difficulty: item.difficulty || "medium",
-        display_order: idx,
-        created_by: user.id,
-        is_deleted: false,
-      }));
+      const osceToInsert = items.map((item: any, idx: number) => {
+        // Normalize boolean answers
+        const normalized = normalizeOsceAnswers(item);
+        
+        return {
+          module_id: moduleId,
+          chapter_id: chapterId,
+          history_text: normalized.history_text,
+          statement_1: normalized.statement_1,
+          answer_1: normalized.answer_1,
+          explanation_1: normalized.explanation_1 || null,
+          statement_2: normalized.statement_2 || null,
+          answer_2: normalized.answer_2 ?? null,
+          explanation_2: normalized.explanation_2 || null,
+          statement_3: normalized.statement_3 || null,
+          answer_3: normalized.answer_3 ?? null,
+          explanation_3: normalized.explanation_3 || null,
+          statement_4: normalized.statement_4 || null,
+          answer_4: normalized.answer_4 ?? null,
+          explanation_4: normalized.explanation_4 || null,
+          statement_5: normalized.statement_5 || null,
+          answer_5: normalized.answer_5 ?? null,
+          explanation_5: normalized.explanation_5 || null,
+          difficulty: normalized.difficulty || "medium",
+          display_order: idx,
+          created_by: user.id,
+          is_deleted: false,
+        };
+      });
 
       const { error } = await serviceClient
         .from("osce_questions")
         .insert(osceToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] OSCE insert error:`, error.message);
+        throw new Error(`Failed to insert OSCE questions: ${error.message}`);
+      }
     } else if (contentType === "matching") {
       const matchingToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
         instruction: item.instruction,
-        column_a_items: item.column_a_items,
-        column_b_items: item.column_b_items,
-        correct_matches: item.correct_matches,
+        column_a_items: ensureArray(item.column_a_items),
+        column_b_items: ensureArray(item.column_b_items),
+        correct_matches: item.correct_matches || {},
         explanation: item.explanation || null,
         difficulty: item.difficulty || "medium",
         display_order: idx,
@@ -269,7 +395,10 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("matching_questions")
         .insert(matchingToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Matching insert error:`, error.message);
+        throw new Error(`Failed to insert matching questions: ${error.message}`);
+      }
     } else if (contentType === "virtual_patient") {
       // Virtual Patient: Insert case first, then stages
       for (let idx = 0; idx < items.length; idx++) {
@@ -284,7 +413,7 @@ serve(async (req) => {
             chapter_id: chapterId,
             level: item.level || "intermediate",
             estimated_minutes: item.estimated_minutes || 15,
-            tags: item.tags || [],
+            tags: Array.isArray(item.tags) ? item.tags : [],
             is_published: false,
             is_deleted: false,
             created_by: user.id,
@@ -293,40 +422,45 @@ serve(async (req) => {
           .single();
 
         if (caseError || !vpCase) {
-          console.error("Failed to insert VP case:", caseError?.message);
-          throw caseError || new Error("Failed to create virtual patient case");
+          console.error(`[${jobId}] VP case insert error:`, caseError?.message);
+          throw new Error(`Failed to create virtual patient case #${idx + 1}: ${caseError?.message}`);
         }
 
         // Insert stages
         const stages = ensureArray(item.stages);
         if (stages.length > 0) {
-          const stagesToInsert = stages.map((stage: any, stageIdx: number) => ({
-            case_id: vpCase.id,
-            stage_order: stage.stage_order || stageIdx + 1,
-            stage_type: stage.stage_type || "mcq",
-            prompt: stage.prompt,
-            patient_info: stage.patient_info || null,
-            choices: stage.choices || [],
-            correct_answer: stage.correct_answer,
-            explanation: stage.explanation || null,
-            teaching_points: stage.teaching_points || [],
-            rubric: stage.rubric || null,
-          }));
+          const stagesToInsert = stages.map((stage: any, stageIdx: number) => {
+            // Normalize stage choices
+            const normalized = normalizeVpStageChoices(stage);
+            
+            return {
+              case_id: vpCase.id,
+              stage_order: normalized.stage_order || stageIdx + 1,
+              stage_type: normalized.stage_type || "mcq",
+              prompt: normalized.prompt,
+              patient_info: normalized.patient_info || null,
+              choices: ensureArray(normalized.choices),
+              correct_answer: normalized.correct_answer,
+              explanation: normalized.explanation || null,
+              teaching_points: ensureArray(normalized.teaching_points),
+              rubric: normalized.rubric || null,
+            };
+          });
 
           const { error: stagesError } = await serviceClient
             .from("virtual_patient_stages")
             .insert(stagesToInsert);
 
           if (stagesError) {
-            console.error("Failed to insert VP stages:", stagesError.message);
-            throw stagesError;
+            console.error(`[${jobId}] VP stages insert error:`, stagesError.message);
+            throw new Error(`Failed to insert stages for VP case #${idx + 1}: ${stagesError.message}`);
           }
         }
       }
     } else if (contentType === "mind_map") {
       if (!chapterId) {
         return jsonResponse(
-          { error: "Chapter is required for mind maps", items: [], warnings: [] },
+          { error: "Chapter is required for mind maps", step: "validation", items: [], warnings: [] },
           400
         );
       }
@@ -338,7 +472,7 @@ serve(async (req) => {
         title: item.title,
         content: {
           central_concept: item.central_concept,
-          nodes: item.nodes,
+          nodes: ensureArray(item.nodes),
         },
         display_order: idx,
         created_by: user.id,
@@ -348,11 +482,14 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("study_resources")
         .insert(mindMapsToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Mind map insert error:`, error.message);
+        throw new Error(`Failed to insert mind maps: ${error.message}`);
+      }
     } else if (contentType === "worked_case") {
       if (!chapterId) {
         return jsonResponse(
-          { error: "Chapter is required for worked cases", items: [], warnings: [] },
+          { error: "Chapter is required for worked cases", step: "validation", items: [], warnings: [] },
           400
         );
       }
@@ -364,8 +501,8 @@ serve(async (req) => {
         title: item.title,
         content: {
           case_summary: item.case_summary,
-          steps: item.steps,
-          learning_objectives: item.learning_objectives,
+          steps: ensureArray(item.steps),
+          learning_objectives: ensureArray(item.learning_objectives),
         },
         display_order: idx,
         created_by: user.id,
@@ -375,11 +512,14 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("study_resources")
         .insert(workedCasesToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Worked case insert error:`, error.message);
+        throw new Error(`Failed to insert worked cases: ${error.message}`);
+      }
     } else if (contentType === "guided_explanation") {
       if (!chapterId) {
         return jsonResponse(
-          { error: "Chapter is required for guided explanations", items: [], warnings: [] },
+          { error: "Chapter is required for guided explanations", step: "validation", items: [], warnings: [] },
           400
         );
       }
@@ -392,9 +532,9 @@ serve(async (req) => {
         content: {
           topic: item.topic,
           introduction: item.introduction,
-          guided_questions: item.guided_questions,
+          guided_questions: ensureArray(item.guided_questions),
           summary: item.summary,
-          key_takeaways: item.key_takeaways,
+          key_takeaways: ensureArray(item.key_takeaways),
         },
         display_order: idx,
         created_by: user.id,
@@ -404,10 +544,13 @@ serve(async (req) => {
       const { error } = await serviceClient
         .from("study_resources")
         .insert(guidedExplanationsToInsert);
-      if (error) throw error;
+      if (error) {
+        console.error(`[${jobId}] Guided explanation insert error:`, error.message);
+        throw new Error(`Failed to insert guided explanations: ${error.message}`);
+      }
     } else {
       return jsonResponse(
-        { error: `Unsupported content type: ${contentType}`, items: [], warnings: [] },
+        { error: `Unsupported content type: ${contentType}`, step: "insert", items: [], warnings: [] },
         400
       );
     }
@@ -422,7 +565,12 @@ serve(async (req) => {
       })
       .eq("id", jobId);
 
-    if (approveError) throw approveError;
+    if (approveError) {
+      console.error(`[${jobId}] Failed to update job status:`, approveError.message);
+      // Content was inserted, but status update failed - not critical
+    }
+
+    console.log(`[${jobId}] Successfully inserted ${items.length} ${contentType} items`);
 
     return jsonResponse({
       job_id: jobId,
@@ -430,10 +578,27 @@ serve(async (req) => {
       inserted_count: items.length,
       items: [],
       warnings: [],
+      test_mode: false,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("approve-ai-content error:", e);
-    return jsonResponse({ error: msg, items: [], warnings: [] }, 500);
+    console.error(`[${jobId}] approve-ai-content error:`, e);
+    
+    // Update job with error
+    await serviceClient
+      .from("ai_generation_jobs")
+      .update({
+        status: "failed",
+        error_message: `[approval] ${msg}`,
+      })
+      .eq("id", jobId);
+
+    return jsonResponse({ 
+      error: msg, 
+      step: "insert", 
+      job_id: jobId,
+      items: [], 
+      warnings: [] 
+    }, 500);
   }
 });
