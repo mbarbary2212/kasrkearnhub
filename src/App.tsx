@@ -9,7 +9,6 @@ import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { AskCoachPanel } from "@/components/coach";
-import { useUpdateChecker } from "@/hooks/useUpdateChecker";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
@@ -26,12 +25,6 @@ import VirtualPatientPage from "./pages/VirtualPatientPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-// Component that runs update checker inside providers
-function UpdateCheckerRunner() {
-  useUpdateChecker();
-  return null;
-}
 
 const App = () => {
   // Prevent browser from opening dropped files in new tabs
@@ -60,7 +53,6 @@ const App = () => {
             <Sonner />
             <BadgeCelebration />
             <AskCoachPanel />
-            <UpdateCheckerRunner />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Home />} />
