@@ -470,20 +470,21 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
           </DialogHeader>
           
           <div 
-            className="flex-1 overflow-auto flex items-center justify-center bg-muted/30 rounded-lg mt-4"
+            className="flex-1 overflow-auto bg-muted/30 rounded-lg mt-4"
             style={{ minHeight: '60vh' }}
           >
             {fullscreenContent && (
               <>
                 {isPdf ? (
                   <iframe
-                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-                    className="w-full h-full border-0 bg-white rounded"
+                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1&zoom=${Math.round(zoom * 100)}`}
+                    className="border-0 bg-white rounded"
                     style={{
+                      width: `${100 / zoom}%`,
+                      height: `${100 / zoom}%`,
                       transform: `scale(${zoom})`,
-                      transformOrigin: 'top center',
-                      transition: 'transform 0.2s ease-out',
-                      minHeight: 'calc(80vh - 100px)',
+                      transformOrigin: 'top left',
+                      transition: 'all 0.2s ease-out',
                     }}
                     title={fullscreenResource?.title}
                   />
