@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   Edit2, 
   Trash2, 
@@ -7,6 +7,7 @@ import {
   ZoomIn, 
   ZoomOut, 
   Maximize2, 
+  Minimize2,
   RotateCcw, 
   Printer,
   Download,
@@ -217,8 +218,27 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const reorderMutation = useReorderStudyResources();
+
+  // Handle fullscreen toggle
+  const handleFullscreenToggle = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  // Listen for fullscreen changes (e.g., user presses Escape)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Sync local resources when resources prop changes
   if (resources !== localResources && JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
@@ -459,17 +479,26 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                     <Printer className="w-4 h-4" />
                   </Button>
                 )}
-                {isPdf && (
+                {!isNodeBased && fullscreenContent?.imageUrl && (
                   <Button
                     size="icon"
                     variant="outline"
                     className="h-8 w-8"
                     onClick={handleDownload}
-                    title="Download PDF"
+                    title={isPdf ? "Download PDF" : "Download image"}
                   >
                     <Download className="w-4 h-4" />
                   </Button>
                 )}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={handleFullscreenToggle}
+                  title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </Button>
               </div>
             </div>
           </DialogHeader>
@@ -482,7 +511,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
               <>
                 {isPdf ? (
                   <iframe
-                    src={`${fullscreenContent.imageUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1`}
                     className="w-full h-full border-0 bg-white rounded"
                     style={{ minHeight: 'calc(80vh - 100px)' }}
                     title={fullscreenResource?.title}
