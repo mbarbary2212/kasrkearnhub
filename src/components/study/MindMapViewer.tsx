@@ -411,38 +411,43 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             <div className="flex items-center justify-between gap-4 pr-8">
               <DialogTitle className="truncate">{fullscreenResource?.title}</DialogTitle>
               <div className="flex items-center gap-1">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={handleZoomOut}
-                  disabled={zoom <= MIN_ZOOM}
-                  title="Zoom out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground w-14 text-center tabular-nums">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={handleZoomIn}
-                  disabled={zoom >= MAX_ZOOM}
-                  title="Zoom in"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8 ml-1"
-                  onClick={handleFitToScreen}
-                  title="Fit to screen"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
+                {/* Only show zoom controls for images and node-based mind maps, NOT PDFs */}
+                {!isPdf && (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                      onClick={handleZoomOut}
+                      disabled={zoom <= MIN_ZOOM}
+                      title="Zoom out"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground w-14 text-center tabular-nums">
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                      onClick={handleZoomIn}
+                      disabled={zoom >= MAX_ZOOM}
+                      title="Zoom in"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 ml-1"
+                      onClick={handleFitToScreen}
+                      title="Fit to screen"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
                 {!isNodeBased && (
                   <Button
                     size="icon"
@@ -477,15 +482,9 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
               <>
                 {isPdf ? (
                   <iframe
-                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1&zoom=${Math.round(zoom * 100)}`}
-                    className="border-0 bg-white rounded"
-                    style={{
-                      width: `${100 / zoom}%`,
-                      height: `${100 / zoom}%`,
-                      transform: `scale(${zoom})`,
-                      transformOrigin: 'top left',
-                      transition: 'all 0.2s ease-out',
-                    }}
+                    src={`${fullscreenContent.imageUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                    className="w-full h-full border-0 bg-white rounded"
+                    style={{ minHeight: 'calc(80vh - 100px)' }}
                     title={fullscreenResource?.title}
                   />
                 ) : isNodeBased ? (
