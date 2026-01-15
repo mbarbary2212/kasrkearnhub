@@ -1,10 +1,17 @@
 import { useState } from 'react';
-import { Upload, Network, Image } from 'lucide-react';
+import { Upload, Network, Image, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MindMapContent, MindMapNode } from '@/hooks/useStudyResources';
 import { MindMapEditor, MindMapStructuredContent } from './MindMapEditor';
 import { MindMapNodeRenderer } from './MindMapNodeRenderer';
@@ -14,6 +21,9 @@ interface MindMapFormProps {
   onChange: (c: MindMapContent) => void;
   onUpload: (file: File) => void;
   uploading: boolean;
+  folder?: string;
+  onFolderChange?: (folder: string) => void;
+  existingFolders?: string[];
 }
 
 // Detect if content has structured nodes vs image
@@ -30,12 +40,16 @@ export function MindMapForm({
   onChange,
   onUpload,
   uploading,
+  folder = '',
+  onFolderChange,
+  existingFolders = [],
 }: MindMapFormProps) {
   // Determine initial mode based on content
   const [mode, setMode] = useState<'image' | 'editor'>(() => {
     if (hasNodes(content)) return 'editor';
     return 'image';
   });
+  const [newFolderMode, setNewFolderMode] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,6 +76,56 @@ export function MindMapForm({
 
   return (
     <div className="space-y-4">
+      {/* Folder field */}
+      {onFolderChange && (
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Folder className="w-4 h-4" />
+            Folder (optional)
+          </Label>
+          {!newFolderMode ? (
+            <div className="flex gap-2">
+              <Select value={folder} onValueChange={onFolderChange}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select folder or leave empty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No folder</SelectItem>
+                  {existingFolders.map(f => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => setNewFolderMode(true)}
+              >
+                New
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={folder}
+                onChange={e => onFolderChange(e.target.value)}
+                placeholder="Enter new folder name"
+                className="flex-1"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => setNewFolderMode(false)}
+              >
+                Select
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       <Tabs value={mode} onValueChange={handleModeChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="image" className="gap-2">

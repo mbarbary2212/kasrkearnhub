@@ -118,6 +118,7 @@ export interface StudyResource {
   created_by: string | null;
   updated_by: string | null;
   is_deleted: boolean;
+  folder?: string | null;
 }
 
 export interface StudyResourceInsert {
@@ -128,6 +129,7 @@ export interface StudyResourceInsert {
   content: ResourceContent;
   display_order?: number;
   created_by?: string;
+  folder?: string | null;
 }
 
 // Fetch study resources for a chapter (optionally include deleted)
@@ -281,6 +283,7 @@ export function useCreateStudyResource() {
         content: resource.content,
         display_order: resource.display_order,
         created_by: userData.user?.id,
+        folder: resource.folder,
       };
       
       const { data, error } = await supabase
@@ -294,6 +297,7 @@ export function useCreateStudyResource() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
+      queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data.chapter_id] });
     },
   });
 }
@@ -313,6 +317,7 @@ export function useBulkCreateStudyResources() {
         content: r.content,
         display_order: r.display_order,
         created_by: userData.user?.id,
+        folder: r.folder,
       }));
       
       const { data, error } = await supabase
@@ -326,8 +331,32 @@ export function useBulkCreateStudyResources() {
     onSuccess: (data) => {
       if (data.length > 0) {
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data[0].chapter_id] });
+        queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data[0].chapter_id] });
       }
     },
+  });
+}
+
+// Fetch unique folders for a chapter and resource type
+export function useChapterStudyResourceFolders(chapterId?: string, resourceType?: StudyResourceType) {
+  return useQuery({
+    queryKey: ['study-resource-folders', chapterId, resourceType],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('study_resources')
+        .select('folder')
+        .eq('chapter_id', chapterId!)
+        .eq('resource_type', resourceType as never)
+        .eq('is_deleted', false)
+        .not('folder', 'is', null);
+      
+      if (error) throw error;
+      
+      // Return unique folders
+      const folders = data?.map(r => r.folder).filter(Boolean) as string[];
+      return [...new Set(folders)];
+    },
+    enabled: !!chapterId && !!resourceType,
   });
 }
 

@@ -32,6 +32,7 @@ import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { MindMapForm } from './MindMapForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
 import { GuidedExplanationForm } from './GuidedExplanationForm';
+import { useChapterStudyResourceFolders } from '@/hooks/useStudyResources';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -68,6 +69,9 @@ export function StudyResourceFormModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<ResourceContent>(getDefaultContent(resourceType));
   const [uploading, setUploading] = useState(false);
+  const [folder, setFolder] = useState('');
+
+  const { data: existingFolders = [] } = useChapterStudyResourceFolders(chapterId, 'mind_map');
 
   const isEditing = !!resource;
 
@@ -75,9 +79,11 @@ export function StudyResourceFormModal({
     if (resource) {
       setTitle(resource.title);
       setContent(resource.content);
+      setFolder(resource.folder || '');
     } else {
       setTitle('');
       setContent(getDefaultContent(resourceType));
+      setFolder('');
     }
   }, [resource, resourceType, open]);
 
@@ -93,6 +99,7 @@ export function StudyResourceFormModal({
           id: resource.id,
           title,
           content,
+          folder: resourceType === 'mind_map' ? (folder || null) : undefined,
         });
         toast.success('Resource updated');
       } else {
@@ -102,6 +109,7 @@ export function StudyResourceFormModal({
           resource_type: resourceType,
           title,
           content,
+          folder: resourceType === 'mind_map' ? (folder || null) : null,
         });
         toast.success('Resource created');
       }
@@ -209,6 +217,9 @@ export function StudyResourceFormModal({
               onChange={(c) => setContent(c)}
               onUpload={handleImageUpload}
               uploading={uploading}
+              folder={folder}
+              onFolderChange={setFolder}
+              existingFolders={existingFolders}
             />
           )}
 

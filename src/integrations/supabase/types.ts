@@ -3205,6 +3205,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           display_order: number | null
+          folder: string | null
           id: string
           is_deleted: boolean | null
           module_id: string
@@ -3219,6 +3220,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
+          folder?: string | null
           id?: string
           is_deleted?: boolean | null
           module_id: string
@@ -3233,6 +3235,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
+          folder?: string | null
           id?: string
           is_deleted?: boolean | null
           module_id?: string
