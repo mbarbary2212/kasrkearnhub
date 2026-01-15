@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, X, Check, AlertCircle, Folder, FileText } from 'lucide-react';
+import { Upload, X, Check, AlertCircle, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,18 +8,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulkCreateStudyResources, useChapterStudyResourceFolders } from '@/hooks/useStudyResources';
+import { useBulkCreateStudyResources } from '@/hooks/useStudyResources';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +25,6 @@ interface MindMapBulkUploadModalProps {
 interface UploadItem {
   file: File;
   title: string;
-  folder: string;
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
   url?: string;
@@ -57,13 +48,10 @@ export function MindMapBulkUploadModal({
   moduleId,
 }: MindMapBulkUploadModalProps) {
   const [items, setItems] = useState<UploadItem[]>([]);
-  const [globalFolder, setGlobalFolder] = useState('');
-  const [newFolderName, setNewFolderName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  const { data: existingFolders = [] } = useChapterStudyResourceFolders(chapterId, 'mind_map');
   const bulkCreate = useBulkCreateStudyResources();
 
   const handleFilesSelected = useCallback((files: File[]) => {
@@ -77,12 +65,11 @@ export function MindMapBulkUploadModal({
     const newItems: UploadItem[] = pdfFiles.map(file => ({
       file,
       title: generateTitleFromFilename(file.name),
-      folder: globalFolder,
       status: 'pending',
     }));
 
     setItems(prev => [...prev, ...newItems]);
-  }, [globalFolder]);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -113,31 +100,8 @@ export function MindMapBulkUploadModal({
     ));
   };
 
-  const updateItemFolder = (index: number, folder: string) => {
-    setItems(prev => prev.map((item, i) => 
-      i === index ? { ...item, folder } : item
-    ));
-  };
-
   const removeItem = (index: number) => {
     setItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const applyGlobalFolder = () => {
-    const folderToApply = newFolderName || globalFolder;
-    if (!folderToApply) return;
-    
-    setItems(prev => prev.map(item => ({
-      ...item,
-      folder: folderToApply,
-    })));
-    
-    if (newFolderName) {
-      setGlobalFolder(newFolderName);
-      setNewFolderName('');
-    }
-    
-    toast.success(`Applied folder "${folderToApply}" to all items`);
   };
 
   const handleUploadAll = async () => {
@@ -147,7 +111,7 @@ export function MindMapBulkUploadModal({
     setProgress({ current: 0, total: items.length });
 
     const uploadedItems: UploadItem[] = [...items];
-    const successfulResources: { title: string; url: string; folder: string | null }[] = [];
+    const successfulResources: { title: string; url: string }[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -174,7 +138,6 @@ export function MindMapBulkUploadModal({
         successfulResources.push({
           title: item.title,
           url: publicUrl,
-          folder: item.folder || null,
         });
       } catch (error) {
         uploadedItems[i] = { 
@@ -198,7 +161,7 @@ export function MindMapBulkUploadModal({
             resource_type: 'mind_map' as const,
             title: r.title,
             content: { imageUrl: r.url, description: '' },
-            folder: r.folder,
+            folder: null,
           }))
         );
         
@@ -223,8 +186,6 @@ export function MindMapBulkUploadModal({
   const handleClose = () => {
     if (!uploading) {
       setItems([]);
-      setGlobalFolder('');
-      setNewFolderName('');
       onOpenChange(false);
     }
   };
@@ -278,43 +239,6 @@ export function MindMapBulkUploadModal({
             </div>
           )}
 
-          {/* Global folder assignment */}
-          {items.length > 0 && !uploading && (
-            <div className="flex items-end gap-2 p-3 bg-muted/50 rounded-lg">
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs">Apply folder to all</Label>
-                <Select value={globalFolder} onValueChange={setGlobalFolder}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Select folder" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No folder</SelectItem>
-                    {existingFolders.map(f => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs">Or create new</Label>
-                <Input
-                  value={newFolderName}
-                  onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="New folder name"
-                  className="h-8"
-                />
-              </div>
-              <Button 
-                size="sm" 
-                variant="secondary"
-                onClick={applyGlobalFolder}
-                disabled={!globalFolder && !newFolderName}
-              >
-                Apply
-              </Button>
-            </div>
-          )}
-
           {/* Progress bar */}
           {uploading && (
             <div className="space-y-2">
@@ -361,43 +285,20 @@ export function MindMapBulkUploadModal({
                         <p className="text-sm font-medium truncate">{item.title}</p>
                       )}
                       
-                      {item.folder && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Folder className="w-3 h-3" />
-                          {item.folder}
-                        </div>
-                      )}
-                      
                       {item.error && (
                         <p className="text-xs text-red-600">{item.error}</p>
                       )}
                     </div>
 
                     {item.status === 'pending' && !uploading && (
-                      <div className="flex items-center gap-1">
-                        <Select 
-                          value={item.folder} 
-                          onValueChange={v => updateItemFolder(index, v)}
-                        >
-                          <SelectTrigger className="h-7 w-28 text-xs">
-                            <SelectValue placeholder="Folder" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None</SelectItem>
-                            {[...existingFolders, ...(newFolderName && !existingFolders.includes(newFolderName) ? [newFolderName] : [])].map(f => (
-                              <SelectItem key={f} value={f}>{f}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => removeItem(index)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => removeItem(index)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
                     )}
                   </div>
                 ))}
