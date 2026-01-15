@@ -11,7 +11,6 @@ import {
   Printer,
   Download,
   GripVertical,
-  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -477,31 +476,17 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             {fullscreenContent && (
               <>
                 {isPdf ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center">
-                    <object 
-                      data={fullscreenContent.imageUrl}
-                      type="application/pdf"
-                      className="w-full h-full border-0 bg-white rounded"
-                      style={{
-                        transform: `scale(${zoom})`,
-                        transformOrigin: 'top center',
-                        transition: 'transform 0.2s ease-out',
-                        minHeight: 'calc(80vh - 100px)',
-                      }}
-                    >
-                      {/* Fallback if object tag doesn't work */}
-                      <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
-                        <FileText className="w-16 h-16 text-muted-foreground" />
-                        <p className="text-muted-foreground text-center">
-                          Unable to display PDF inline. Click below to view.
-                        </p>
-                        <Button onClick={handleDownload}>
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Open PDF in New Tab
-                        </Button>
-                      </div>
-                    </object>
-                  </div>
+                  <iframe
+                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+                    className="w-full h-full border-0 bg-white rounded"
+                    style={{
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top center',
+                      transition: 'transform 0.2s ease-out',
+                      minHeight: 'calc(80vh - 100px)',
+                    }}
+                    title={fullscreenResource?.title}
+                  />
                 ) : isNodeBased ? (
                   <div 
                     style={{ 
