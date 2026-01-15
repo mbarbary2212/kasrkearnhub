@@ -36,6 +36,7 @@ import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModa
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
 import { MindMapViewer } from '@/components/study/MindMapViewer';
+import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
@@ -117,6 +118,7 @@ export default function ChapterPage() {
   // State for Flashcard modals
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
+  const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
@@ -516,6 +518,14 @@ export default function ChapterPage() {
                           <Plus className="w-3 h-3 mr-1" />
                           Add Mind Map
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => guardAdd(() => setMindMapBulkOpen(true))}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Bulk Upload PDFs
+                        </Button>
                       </div>
                     )}
                     {studyResourcesLoading ? (
@@ -838,6 +848,12 @@ export default function ChapterPage() {
               chapterId={chapterId}
               moduleId={moduleId}
               resourceType="flashcard"
+            />
+            <MindMapBulkUploadModal
+              open={mindMapBulkOpen}
+              onOpenChange={setMindMapBulkOpen}
+              chapterId={chapterId}
+              moduleId={moduleId}
             />
           </>
         )}
