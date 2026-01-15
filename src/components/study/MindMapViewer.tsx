@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   Edit2, 
   Trash2, 
@@ -12,6 +12,9 @@ import {
   Printer,
   Download,
   GripVertical,
+  Pencil,
+  Undo2,
+  Eraser,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +47,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ReactSketchCanvas, ReactSketchCanvasRef } from 'react-sketch-canvas';
 
 const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.25;
@@ -220,6 +224,9 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [strokeColor, setStrokeColor] = useState('#ef4444');
+  const canvasRef = useRef<ReactSketchCanvasRef>(null);
   const isMobile = useIsMobile();
   
   const reorderMutation = useReorderStudyResources();
@@ -320,6 +327,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const openFullscreen = useCallback((resource: StudyResource) => {
     setFullscreenResource(resource);
     setZoom(1);
+    setIsDrawingMode(false);
   }, []);
 
   const handleDelete = useCallback((resource: StudyResource) => {
@@ -426,15 +434,19 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
       {/* Fullscreen Modal */}
       <Dialog open={!!fullscreenResource} onOpenChange={() => setFullscreenResource(null)}>
         <DialogContent 
-          className="max-w-[95vw] max-h-[95vh] p-4 flex flex-col"
+          className={cn(
+            "max-w-[95vw] max-h-[95vh] flex flex-col",
+            isPdf ? "p-2" : "p-4"
+          )}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
-          <DialogHeader className="flex-shrink-0">
-            <div className="flex items-center justify-between gap-4 pr-8">
-              <DialogTitle className="truncate">{fullscreenResource?.title}</DialogTitle>
-              <div className="flex items-center gap-1">
-                {/* Only show zoom controls for images and node-based mind maps, NOT PDFs */}
-                {!isPdf && (
+          {/* Only show header for non-PDF files */}
+          {!isPdf && (
+            <DialogHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between gap-4 pr-8">
+                <DialogTitle className="truncate">{fullscreenResource?.title}</DialogTitle>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {/* Zoom controls for images and node-based */}
                   <>
                     <Button
                       size="icon"
@@ -462,54 +474,115 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                     <Button
                       size="icon"
                       variant="outline"
-                      className="h-8 w-8 ml-1"
+                      className="h-8 w-8"
                       onClick={handleFitToScreen}
                       title="Fit to screen"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </Button>
                   </>
-                )}
-                {!isNodeBased && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                    onClick={handlePrint}
-                    title="Print"
-                  >
-                    <Printer className="w-4 h-4" />
-                  </Button>
-                )}
-                {!isNodeBased && fullscreenContent?.imageUrl && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                    onClick={handleDownload}
-                    title={isPdf ? "Download PDF" : "Download image"}
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                )}
-                {!isMobile && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                    onClick={handleFullscreenToggle}
-                    title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-                  >
-                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </Button>
-                )}
+                  
+                  {/* Drawing controls - only for images (not node-based) */}
+                  {!isNodeBased && fullscreenContent?.imageUrl && (
+                    <>
+                      <div className="w-px h-6 bg-border mx-1" />
+                      <Button
+                        size="icon"
+                        variant={isDrawingMode ? "default" : "outline"}
+                        className="h-8 w-8"
+                        onClick={() => setIsDrawingMode(!isDrawingMode)}
+                        title={isDrawingMode ? "Exit drawing mode" : "Draw on image"}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      {isDrawingMode && (
+                        <>
+                          <input 
+                            type="color" 
+                            value={strokeColor} 
+                            onChange={(e) => setStrokeColor(e.target.value)}
+                            className="h-8 w-8 cursor-pointer border rounded bg-background"
+                            title="Pen color"
+                          />
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8"
+                            onClick={() => canvasRef.current?.undo()}
+                            title="Undo"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8"
+                            onClick={() => canvasRef.current?.clearCanvas()}
+                            title="Clear drawing"
+                          >
+                            <Eraser className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Print & Download - only for images */}
+                  {!isNodeBased && (
+                    <>
+                      <div className="w-px h-6 bg-border mx-1" />
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        onClick={handlePrint}
+                        title="Print"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                  {!isNodeBased && fullscreenContent?.imageUrl && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                      onClick={handleDownload}
+                      title="Download image"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {!isMobile && (
+                    <>
+                      <div className="w-px h-6 bg-border mx-1" />
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        onClick={handleFullscreenToggle}
+                        title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+                      >
+                        {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </DialogHeader>
+            </DialogHeader>
+          )}
+          
+          {/* Hidden title for PDF accessibility */}
+          {isPdf && (
+            <DialogTitle className="sr-only">{fullscreenResource?.title}</DialogTitle>
+          )}
           
           <div 
-            className="flex-1 overflow-auto bg-muted/30 rounded-lg mt-4"
-            style={{ minHeight: '60vh' }}
+            className={cn(
+              "flex-1 overflow-auto rounded-lg",
+              isPdf ? "bg-white" : "bg-muted/30 mt-4"
+            )}
+            style={{ minHeight: isPdf ? 'calc(95vh - 40px)' : '60vh' }}
           >
             {fullscreenContent && (
               <>
@@ -517,40 +590,73 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                   <iframe
                     src={`${fullscreenContent.imageUrl}#toolbar=1&navpanes=0&scrollbar=1`}
                     className="w-full h-full border-0 bg-white rounded"
-                    style={{ minHeight: 'calc(80vh - 100px)' }}
+                    style={{ minHeight: 'calc(95vh - 40px)' }}
                     title={fullscreenResource?.title}
                   />
                 ) : isNodeBased ? (
                   <div 
-                    style={{ 
-                      transform: `scale(${zoom})`, 
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.2s ease-out',
-                      width: '100%',
-                      maxWidth: '1200px',
-                    }}
+                    className="flex items-center justify-center p-4"
+                    style={{ minHeight: '60vh' }}
                   >
-                    <MindMapNodeRenderer
-                      centralConcept={fullscreenContent.central_concept || 'Mind Map'}
-                      nodes={fullscreenContent.nodes || []}
-                      connections={fullscreenContent.connections}
-                    />
+                    <div
+                      style={{ 
+                        transform: `scale(${zoom})`, 
+                        transformOrigin: 'center center',
+                        transition: 'transform 0.2s ease-out',
+                        width: '100%',
+                        maxWidth: '1200px',
+                      }}
+                    >
+                      <MindMapNodeRenderer
+                        centralConcept={fullscreenContent.central_concept || 'Mind Map'}
+                        nodes={fullscreenContent.nodes || []}
+                        connections={fullscreenContent.connections}
+                      />
+                    </div>
                   </div>
                 ) : fullscreenContent.imageUrl ? (
-                  <img
-                    src={fullscreenContent.imageUrl}
-                    alt={fullscreenResource?.title}
-                    style={{ 
-                      transform: `scale(${zoom})`, 
-                      transformOrigin: 'center center',
-                      transition: 'transform 0.2s ease-out',
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                    }}
-                  />
+                  <div 
+                    className="relative flex items-center justify-center p-4" 
+                    style={{ minHeight: '60vh' }}
+                  >
+                    {isDrawingMode ? (
+                      <div 
+                        style={{ 
+                          transform: `scale(${zoom})`,
+                          transformOrigin: 'center center',
+                          transition: 'transform 0.2s ease-out',
+                          width: '100%',
+                          height: '70vh',
+                        }}
+                      >
+                        <ReactSketchCanvas
+                          ref={canvasRef}
+                          width="100%"
+                          height="100%"
+                          strokeWidth={3}
+                          strokeColor={strokeColor}
+                          backgroundImage={fullscreenContent.imageUrl}
+                          preserveBackgroundImageAspectRatio="xMidYMid meet"
+                          canvasColor="transparent"
+                        />
+                      </div>
+                    ) : (
+                      <img
+                        src={fullscreenContent.imageUrl}
+                        alt={fullscreenResource?.title}
+                        style={{ 
+                          transform: `scale(${zoom})`, 
+                          transformOrigin: 'center center',
+                          transition: 'transform 0.2s ease-out',
+                          maxWidth: '100%',
+                          maxHeight: '75vh',
+                          objectFit: 'contain',
+                        }}
+                      />
+                    )}
+                  </div>
                 ) : (
-                  <div className="text-center text-muted-foreground">
+                  <div className="text-center text-muted-foreground p-8">
                     <Network className="w-16 h-16 mx-auto mb-2" />
                     <p>No content available</p>
                   </div>
@@ -559,7 +665,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             )}
           </div>
           
-          {fullscreenContent?.description && (
+          {fullscreenContent?.description && !isPdf && (
             <p className="text-sm text-muted-foreground mt-4 text-center">
               {fullscreenContent.description}
             </p>
