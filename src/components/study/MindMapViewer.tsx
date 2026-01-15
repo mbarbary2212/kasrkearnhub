@@ -438,6 +438,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             "max-w-[95vw] max-h-[95vh] flex flex-col",
             isPdf ? "p-2" : "p-4"
           )}
+          closeClassName={isPdf ? "text-white bg-black/50 hover:bg-black/70 rounded-full p-1" : undefined}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           {/* Only show header for non-PDF files */}
