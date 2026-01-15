@@ -2,13 +2,14 @@ import { useState, useCallback } from 'react';
 import { 
   Edit2, 
   Trash2, 
-  ExternalLink, 
+  FileText, 
   Network, 
   ZoomIn, 
   ZoomOut, 
   Maximize2, 
   RotateCcw, 
   Printer,
+  Download,
   GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -96,15 +97,24 @@ function MindMapCardInner({
       </CardHeader>
       <CardContent className="p-3 pt-0">
         {isPdf ? (
-          <a
-            href={content.imageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-32 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+          <div 
+            className="flex flex-col items-center justify-center gap-2 h-32 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer relative group"
+            onClick={() => onFullscreen(resource)}
           >
-            <ExternalLink className="w-5 h-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">View PDF</span>
-          </a>
+            <FileText className="w-10 h-10 text-primary" />
+            <span className="text-sm text-muted-foreground">Click to view</span>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="absolute bottom-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFullscreen(resource);
+              }}
+            >
+              <Maximize2 className="w-3 h-3" />
+            </Button>
+          </div>
         ) : isNodeBased ? (
           <div 
             className="relative h-32 bg-muted/50 rounded-lg overflow-hidden cursor-pointer hover:bg-muted/70 transition-colors"
@@ -240,26 +250,48 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
 
   const handlePrint = useCallback(() => {
     if (!fullscreenResource) return;
-    const imageUrl = (fullscreenResource.content as MindMapContent).imageUrl;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${fullscreenResource.title}</title>
-            <style>
-              body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-              img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-              @media print { body { margin: 0; } img { max-width: 100%; max-height: 100%; } }
-            </style>
-          </head>
-          <body>
-            <img src="${imageUrl}" alt="${fullscreenResource.title}" onload="window.print(); window.close();" />
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
+    const content = fullscreenResource.content as MindMapContent;
+    const imageUrl = content.imageUrl;
+    const isPdfFile = imageUrl?.toLowerCase().endsWith('.pdf');
+    
+    if (isPdfFile && imageUrl) {
+      // For PDFs, open in new window and trigger print
+      const printWindow = window.open(imageUrl, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          setTimeout(() => printWindow.print(), 500);
+        };
+      }
+    } else {
+      // For images, use existing print logic
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${fullscreenResource.title}</title>
+              <style>
+                body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+                @media print { body { margin: 0; } img { max-width: 100%; max-height: 100%; } }
+              </style>
+            </head>
+            <body>
+              <img src="${imageUrl}" alt="${fullscreenResource.title}" onload="window.print(); window.close();" />
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    }
+  }, [fullscreenResource]);
+  
+  const handleDownload = useCallback(() => {
+    if (!fullscreenResource) return;
+    const content = fullscreenResource.content as MindMapContent;
+    if (content.imageUrl) {
+      window.open(content.imageUrl, '_blank');
     }
   }, [fullscreenResource]);
 
@@ -411,7 +443,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                 >
                   <RotateCcw className="w-4 h-4" />
                 </Button>
-                {!isNodeBased && !isPdf && (
+                {!isNodeBased && (
                   <Button
                     size="icon"
                     variant="outline"
@@ -420,6 +452,17 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
                     title="Print"
                   >
                     <Printer className="w-4 h-4" />
+                  </Button>
+                )}
+                {isPdf && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={handleDownload}
+                    title="Download PDF"
+                  >
+                    <Download className="w-4 h-4" />
                   </Button>
                 )}
               </div>
@@ -433,14 +476,17 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
             {fullscreenContent && (
               <>
                 {isPdf ? (
-                  <div className="text-center p-8">
-                    <p className="text-muted-foreground mb-4">PDF files open in a new tab</p>
-                    <Button asChild>
-                      <a href={fullscreenContent.imageUrl} target="_blank" rel="noopener noreferrer">
-                        Open PDF
-                      </a>
-                    </Button>
-                  </div>
+                  <iframe
+                    src={`${fullscreenContent.imageUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+                    className="w-full h-full border-0 bg-white rounded"
+                    style={{
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top center',
+                      transition: 'transform 0.2s ease-out',
+                      minHeight: 'calc(80vh - 100px)',
+                    }}
+                    title={fullscreenResource?.title}
+                  />
                 ) : isNodeBased ? (
                   <div 
                     style={{ 
