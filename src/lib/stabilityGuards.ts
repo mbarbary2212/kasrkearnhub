@@ -107,6 +107,26 @@ export function checkAppVersion(): { changed: boolean; previousVersion: string |
 }
 
 /**
+ * Check if a newer version is available (non-blocking, no auto-reload)
+ * Returns true if version has changed since last check
+ */
+export function hasNewerVersion(): boolean {
+  try {
+    const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
+    return storedVersion !== null && storedVersion !== APP_VERSION;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get current app version string
+ */
+export function getAppVersion(): string {
+  return APP_VERSION;
+}
+
+/**
  * Clear any local storage items that might cause issues after version change
  */
 function clearStaleCachedState(): void {

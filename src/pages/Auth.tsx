@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,11 @@ export default function Auth() {
   const view = searchParams.get('view');
   const [isLoading, setIsLoading] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [autoSubmitPending, setAutoSubmitPending] = useState(false);
+  const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const { signIn, signUp, signOut, resetPassword, updatePassword, user, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
 
@@ -31,12 +36,70 @@ export default function Auth() {
     }
   }, [mode, view, user]);
 
+  // Cleanup auto-submit timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSubmitTimeoutRef.current) {
+        clearTimeout(autoSubmitTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-submit when both fields are filled (triggered by biometric autofill)
+  const triggerAutoSubmit = useCallback(() => {
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+    }
+    
+    setAutoSubmitPending(true);
+    
+    autoSubmitTimeoutRef.current = setTimeout(() => {
+      if (formRef.current && !isLoading) {
+        formRef.current.requestSubmit();
+      }
+      setAutoSubmitPending(false);
+    }, 600); // 600ms delay to allow user to cancel
+  }, [isLoading]);
+
+  // Cancel auto-submit if user interacts
+  const cancelAutoSubmit = useCallback(() => {
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+      setAutoSubmitPending(false);
+    }
+  }, []);
+
+  // Handle password change - detect autofill
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLoginPassword(value);
+    
+    // Check if this looks like autofill (password filled rapidly while email exists)
+    // Autofill typically fills both fields at once
+    if (value.length >= 6 && loginEmail.length > 3) {
+      triggerAutoSubmit();
+    }
+  }, [loginEmail, triggerAutoSubmit]);
+
+  // Handle email change
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLoginEmail(value);
+    
+    // If password already filled and email is being autofilled
+    if (loginPassword.length >= 6 && value.length > 3) {
+      triggerAutoSubmit();
+    }
+  }, [loginPassword, triggerAutoSubmit]);
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    cancelAutoSubmit();
     setIsLoading(true);
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    
+    // Use state values instead of form data for controlled inputs
+    const email = loginEmail || (new FormData(e.currentTarget).get('email') as string);
+    const password = loginPassword || (new FormData(e.currentTarget).get('password') as string);
 
     const { error } = await signIn(email, password);
     if (error) {
@@ -421,7 +484,7 @@ export default function Auth() {
               </TabsList>
               
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form ref={formRef} onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="login-email">Email</Label>
                     <div className="relative">
@@ -433,6 +496,9 @@ export default function Auth() {
                         placeholder="your@email.com"
                         className="pl-10"
                         required
+                        value={loginEmail}
+                        onChange={handleEmailChange}
+                        onFocus={cancelAutoSubmit}
                       />
                     </div>
                   </div>
@@ -458,9 +524,19 @@ export default function Auth() {
                         placeholder="••••••••"
                         className="pl-10"
                         required
+                        value={loginPassword}
+                        onChange={handlePasswordChange}
+                        onFocus={cancelAutoSubmit}
                       />
                     </div>
                   </div>
+                  
+                  {autoSubmitPending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Signing in...</span>
+                    </div>
+                  )}
                   
                   <Button 
                     type="submit" 
