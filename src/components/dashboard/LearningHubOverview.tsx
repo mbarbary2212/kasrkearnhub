@@ -62,6 +62,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         chaptersStarted={dashboard.chaptersStarted}
         chaptersTotal={dashboard.chaptersTotal}
         studyStreak={dashboard.studyStreak}
+        readinessResult={dashboard.readinessResult}
       />
 
       {/* Today's Suggested Plan */}
