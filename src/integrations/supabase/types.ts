@@ -2750,6 +2750,62 @@ export type Database = {
           },
         ]
       }
+      student_readiness_cache: {
+        Row: {
+          cap_type: string | null
+          consistency_score: number
+          coverage_score: number
+          created_at: string
+          exam_readiness: number
+          id: string
+          improvement_score: number
+          last_calculated_at: string
+          module_id: string
+          performance_score: number
+          raw_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cap_type?: string | null
+          consistency_score?: number
+          coverage_score?: number
+          created_at?: string
+          exam_readiness?: number
+          id?: string
+          improvement_score?: number
+          last_calculated_at?: string
+          module_id: string
+          performance_score?: number
+          raw_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cap_type?: string | null
+          consistency_score?: number
+          coverage_score?: number
+          created_at?: string
+          exam_readiness?: number
+          id?: string
+          improvement_score?: number
+          last_calculated_at?: string
+          module_id?: string
+          performance_score?: number
+          raw_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_readiness_cache_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_group_invites: {
         Row: {
           created_at: string
