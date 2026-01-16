@@ -1,12 +1,18 @@
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, BookOpen, Calendar, Info } from 'lucide-react';
+import { TrendingUp, BookOpen, Calendar, Info, AlertTriangle } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { 
+  type ReadinessResult, 
+  getCapMessage,
+  READINESS_WEIGHTS,
+} from '@/lib/readinessCalculator';
 
 interface DashboardStatusStripProps {
   examReadiness: number;
@@ -16,6 +22,7 @@ interface DashboardStatusStripProps {
   chaptersStarted: number;
   chaptersTotal: number;
   studyStreak: number;
+  readinessResult?: ReadinessResult;
 }
 
 export function DashboardStatusStrip({
@@ -26,7 +33,11 @@ export function DashboardStatusStrip({
   chaptersStarted,
   chaptersTotal,
   studyStreak,
+  readinessResult,
 }: DashboardStatusStripProps) {
+  const capMessage = readinessResult?.cap ? getCapMessage(readinessResult.cap) : null;
+  const hasDetailedBreakdown = !!readinessResult;
+
   return (
     <Card className="p-4 md:p-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -45,11 +56,40 @@ export function DashboardStatusStrip({
                   <TooltipTrigger asChild>
                     <Info className="w-4 h-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-sm">
-                      Readiness reflects preparedness, not grades. 
-                      Accuracy will be added once MCQ attempt tracking is enabled.
-                    </p>
+                  <TooltipContent className="max-w-xs p-3">
+                    {hasDetailedBreakdown ? (
+                      <div className="space-y-2 text-sm">
+                        <p className="font-medium">Readiness Breakdown:</p>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span>Coverage ({Math.round(READINESS_WEIGHTS.coverage * 100)}%)</span>
+                            <span className="font-mono">{readinessResult.components.coverage}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Performance ({Math.round(READINESS_WEIGHTS.performance * 100)}%)</span>
+                            <span className="font-mono">{readinessResult.components.performance}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Improvement ({Math.round(READINESS_WEIGHTS.improvement * 100)}%)</span>
+                            <span className="font-mono">{readinessResult.components.improvement}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Consistency ({Math.round(READINESS_WEIGHTS.consistency * 100)}%)</span>
+                            <span className="font-mono">{readinessResult.components.consistency}%</span>
+                          </div>
+                        </div>
+                        {capMessage && (
+                          <div className="flex items-start gap-1.5 pt-2 border-t text-xs text-amber-600 dark:text-amber-400">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span>{capMessage}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm">
+                        Readiness reflects preparedness based on coverage, performance, improvement, and consistency.
+                      </p>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -57,9 +97,16 @@ export function DashboardStatusStrip({
             <p className="text-xs text-muted-foreground mt-0.5">
               Exam Readiness
             </p>
-            <p className="text-xs text-muted-foreground/70">
-              Based on coverage and consistency (not grades)
-            </p>
+            {capMessage ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Capped
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground/70">
+                Based on coverage, performance & consistency
+              </p>
+            )}
           </div>
         </div>
 

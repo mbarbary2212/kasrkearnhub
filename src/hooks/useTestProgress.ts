@@ -1,18 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { startOfWeek, subWeeks } from 'date-fns';
+import { MIN_ATTEMPTS_FOR_IMPROVEMENT } from '@/lib/readinessCalculator';
 
 export interface TestProgressData {
   mcq: {
     accuracy: number;
     attempts: number;
-    weeklyChange: number;
+    weeklyChange: number; // Kept for backward compatibility (derived from attempt-based data)
+    // Attempt-based improvement data
+    recentAttempts: { correct: number; total: number }[];
+    priorAttempts: { correct: number; total: number }[];
   };
   osce: {
     avgScore: number;
     attempts: number;
-    weeklyChange: number;
+    weeklyChange: number; // Kept for backward compatibility (derived from attempt-based data)
+    // Attempt-based improvement data
+    recentScores: number[];
+    priorScores: number[];
   };
   conceptCheck: {
     passRate: number;
@@ -22,8 +28,13 @@ export interface TestProgressData {
   hasAnyAttempts: boolean;
 }
 
+// Number of recent attempts to use for improvement calculation
+const RECENT_MCQ_ATTEMPTS = 10;
+const RECENT_OSCE_ATTEMPTS = 5;
+
 /**
  * Hook to fetch test/assessment progress for the dashboard
+ * Enhanced with attempt-based improvement data for the unified readiness system.
  */
 export function useTestProgress(moduleId?: string) {
   const { user } = useAuthContext();
@@ -39,7 +50,8 @@ export function useTestProgress(moduleId?: string) {
       let query = supabase
         .from('question_attempts')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }); // Most recent first
 
       // If moduleId provided, we need to filter by chapters in that module
       let chapterIds: string[] = [];
@@ -62,31 +74,36 @@ export function useTestProgress(moduleId?: string) {
         return getEmptyProgress();
       }
 
-      // Calculate dates for weekly comparison
-      const now = new Date();
-      const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const lastWeekStart = subWeeks(thisWeekStart, 1);
-
       // Filter and calculate MCQ stats
       const mcqAttempts = attempts.filter(a => a.question_type === 'mcq');
       const mcqCorrect = mcqAttempts.filter(a => a.is_correct).length;
       const mcqAccuracy = mcqAttempts.length > 0 ? (mcqCorrect / mcqAttempts.length) * 100 : 0;
 
-      // Calculate MCQ weekly change
-      const mcqThisWeek = mcqAttempts.filter(a => new Date(a.created_at) >= thisWeekStart);
-      const mcqLastWeek = mcqAttempts.filter(a => {
-        const date = new Date(a.created_at);
-        return date >= lastWeekStart && date < thisWeekStart;
-      });
-      const mcqThisWeekAccuracy = mcqThisWeek.length > 0
-        ? (mcqThisWeek.filter(a => a.is_correct).length / mcqThisWeek.length) * 100
-        : 0;
-      const mcqLastWeekAccuracy = mcqLastWeek.length > 0
-        ? (mcqLastWeek.filter(a => a.is_correct).length / mcqLastWeek.length) * 100
-        : 0;
-      const mcqWeeklyChange = mcqThisWeek.length > 0 && mcqLastWeek.length > 0
-        ? mcqThisWeekAccuracy - mcqLastWeekAccuracy
-        : 0;
+      // Calculate MCQ attempt-based improvement data
+      // Group attempts into "recent" and "prior" batches
+      const recentMcqAttempts = mcqAttempts.slice(0, RECENT_MCQ_ATTEMPTS);
+      const priorMcqAttempts = mcqAttempts.slice(RECENT_MCQ_ATTEMPTS, RECENT_MCQ_ATTEMPTS * 2);
+
+      // Convert to the format expected by readinessCalculator
+      const mcqRecentData = recentMcqAttempts.map(a => ({
+        correct: a.is_correct ? 1 : 0,
+        total: 1,
+      }));
+      const mcqPriorData = priorMcqAttempts.map(a => ({
+        correct: a.is_correct ? 1 : 0,
+        total: 1,
+      }));
+
+      // Calculate MCQ weeklyChange from attempt-based data for backward compatibility
+      let mcqWeeklyChange = 0;
+      if (recentMcqAttempts.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.mcq && 
+          priorMcqAttempts.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.mcq) {
+        const recentCorrect = recentMcqAttempts.filter(a => a.is_correct).length;
+        const priorCorrect = priorMcqAttempts.filter(a => a.is_correct).length;
+        const recentAccuracy = (recentCorrect / recentMcqAttempts.length) * 100;
+        const priorAccuracy = (priorCorrect / priorMcqAttempts.length) * 100;
+        mcqWeeklyChange = Math.round(recentAccuracy - priorAccuracy);
+      }
 
       // Filter and calculate OSCE stats
       const osceAttempts = attempts.filter(a => a.question_type === 'osce');
@@ -100,21 +117,25 @@ export function useTestProgress(moduleId?: string) {
         ? osceScores.reduce((sum, s) => sum + s, 0) / osceScores.length
         : 0;
 
-      // Calculate OSCE weekly change
-      const osceThisWeek = osceAttempts.filter(a => new Date(a.created_at) >= thisWeekStart);
-      const osceLastWeek = osceAttempts.filter(a => {
-        const date = new Date(a.created_at);
-        return date >= lastWeekStart && date < thisWeekStart;
-      });
-      const getAvgOsceScore = (arr: typeof osceAttempts) => {
-        const scores = arr
-          .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
-          .filter(s => s > 0);
-        return scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
-      };
-      const osceWeeklyChange = osceThisWeek.length > 0 && osceLastWeek.length > 0
-        ? getAvgOsceScore(osceThisWeek) - getAvgOsceScore(osceLastWeek)
-        : 0;
+      // Calculate OSCE attempt-based improvement data
+      const recentOsceAttempts = osceAttempts.slice(0, RECENT_OSCE_ATTEMPTS);
+      const priorOsceAttempts = osceAttempts.slice(RECENT_OSCE_ATTEMPTS, RECENT_OSCE_ATTEMPTS * 2);
+
+      const osceRecentScores = recentOsceAttempts
+        .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
+        .filter(s => s > 0);
+      const oscePriorScores = priorOsceAttempts
+        .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
+        .filter(s => s > 0);
+
+      // Calculate OSCE weeklyChange from attempt-based data for backward compatibility
+      let osceWeeklyChange = 0;
+      if (osceRecentScores.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.osce && 
+          oscePriorScores.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.osce) {
+        const recentAvg = osceRecentScores.reduce((sum, s) => sum + s, 0) / osceRecentScores.length;
+        const priorAvg = oscePriorScores.reduce((sum, s) => sum + s, 0) / oscePriorScores.length;
+        osceWeeklyChange = Number((recentAvg - priorAvg).toFixed(1));
+      }
 
       // Filter and calculate Concept Check stats
       const conceptCheckAttempts = attempts.filter(a => a.question_type === 'guided_explanation');
@@ -128,12 +149,16 @@ export function useTestProgress(moduleId?: string) {
         mcq: {
           accuracy: Math.round(mcqAccuracy),
           attempts: mcqAttempts.length,
-          weeklyChange: Math.round(mcqWeeklyChange),
+          weeklyChange: mcqWeeklyChange,
+          recentAttempts: mcqRecentData,
+          priorAttempts: mcqPriorData,
         },
         osce: {
           avgScore: Number(osceAvgScore.toFixed(1)),
           attempts: osceAttempts.length,
-          weeklyChange: Number(osceWeeklyChange.toFixed(1)),
+          weeklyChange: osceWeeklyChange,
+          recentScores: osceRecentScores,
+          priorScores: oscePriorScores,
         },
         conceptCheck: {
           passRate: Math.round(conceptCheckPassRate),
@@ -150,8 +175,20 @@ export function useTestProgress(moduleId?: string) {
 
 function getEmptyProgress(): TestProgressData {
   return {
-    mcq: { accuracy: 0, attempts: 0, weeklyChange: 0 },
-    osce: { avgScore: 0, attempts: 0, weeklyChange: 0 },
+    mcq: { 
+      accuracy: 0, 
+      attempts: 0, 
+      weeklyChange: 0,
+      recentAttempts: [], 
+      priorAttempts: [] 
+    },
+    osce: { 
+      avgScore: 0, 
+      attempts: 0, 
+      weeklyChange: 0,
+      recentScores: [], 
+      priorScores: [] 
+    },
     conceptCheck: { passRate: 0, passed: 0, total: 0 },
     hasAnyAttempts: false,
   };
