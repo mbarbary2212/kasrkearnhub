@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GraduationCap, Video, ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { GraduationCap, Video, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -9,6 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { type MasteryLevel } from '@/lib/readinessCalculator';
 
 interface ChapterProgressBarProps {
   totalProgress: number;
@@ -20,11 +22,32 @@ interface ChapterProgressBarProps {
   videosTotal: number;
   isLoading?: boolean;
   showBreakdown?: boolean;
+  // Mastery indicator props
+  masteryLevel?: MasteryLevel;
+  masteryLabel?: string;
   // Legacy props for backward compatibility
   resourcesProgress?: number;
   resourcesCompleted?: number;
   resourcesTotal?: number;
 }
+
+const masteryConfig: Record<MasteryLevel, { icon: typeof CheckCircle2; color: string; bgColor: string }> = {
+  mastered: { 
+    icon: CheckCircle2, 
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-900/30',
+  },
+  needs_improvement: { 
+    icon: AlertCircle, 
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+  },
+  not_attempted: { 
+    icon: Circle, 
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted',
+  },
+};
 
 export function ChapterProgressBar({
   totalProgress,
@@ -36,6 +59,8 @@ export function ChapterProgressBar({
   videosTotal,
   isLoading = false,
   showBreakdown = true,
+  masteryLevel,
+  masteryLabel,
 }: ChapterProgressBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -53,6 +78,8 @@ export function ChapterProgressBar({
   const hasPractice = practiceTotal > 0;
   const hasVideos = videosTotal > 0;
   const hasBreakdownContent = showBreakdown && hasContent && (hasPractice || hasVideos);
+  const showMastery = masteryLevel && masteryLevel !== 'not_attempted';
+  const config = masteryLevel ? masteryConfig[masteryLevel] : null;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -60,7 +87,19 @@ export function ChapterProgressBar({
         {/* Main Progress Bar - Overall */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span className="font-medium">Your progress in this chapter</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Your progress in this chapter</span>
+              {/* Mastery Badge */}
+              {showMastery && config && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn("text-xs px-1.5 py-0 gap-1", config.bgColor, config.color)}
+                >
+                  <config.icon className="w-3 h-3" />
+                  {masteryLabel || (masteryLevel === 'mastered' ? 'Good' : 'Review')}
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span className={cn(
                 "font-semibold",
@@ -100,7 +139,7 @@ export function ChapterProgressBar({
             <div className="space-y-3 pt-2 border-t border-border/50">
               <p className="text-xs text-muted-foreground/80">
                 Overall Progress is based on Practice completion (60%) and Video watching (40%). 
-                It is not based on grades.
+                {showMastery && ' The mastery badge shows your performance quality on completed items.'}
               </p>
               
               <div className="space-y-2">

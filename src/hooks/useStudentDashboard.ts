@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import {
+  calculatePerformance,
+  calculateImprovement,
+  calculateReadiness,
+  getEmptyReadinessResult,
+  type ReadinessResult,
+  type ReadinessComponents,
+} from '@/lib/readinessCalculator';
 
 export interface ChapterStatus {
   id: string;
@@ -40,6 +48,11 @@ export interface DashboardData {
   chaptersTotal: number;
   studyStreak: number;
   consistencyScore: number;
+  
+  // Enhanced readiness data
+  readinessResult: ReadinessResult;
+  performanceScore: number;
+  improvementScore: number;
   
   // Weekly stats
   weeklyTimeMinutes: number;
@@ -117,6 +130,8 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         caseScenariosRes,
         lecturesRes,
         yearRes,
+        // Fetch question attempts for performance calculation
+        questionAttemptsRes,
       ] = await Promise.all([
         chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
@@ -126,6 +141,12 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         supabase.from('case_scenarios').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
+        // Get question attempts for this user
+        supabase
+          .from('question_attempts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
       ]);
 
       const chapters = chaptersRes.data || [];
@@ -135,6 +156,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
       const practicals = practicalsRes.data || [];
       const caseScenarios = caseScenariosRes.data || [];
       const lectures = lecturesRes.data || [];
+      const questionAttempts = questionAttemptsRes.data || [];
 
       // Create module lookup
       const moduleMap = new Map(modules.map(m => [m.id, m.name]));
@@ -208,9 +230,86 @@ export function useStudentDashboard(filters?: DashboardFilters) {
       
       // Calculate consistency score (0-100) based on recent activity
       const consistencyScore = calculateConsistencyScore(userProgress, contentIds);
+
+      // ============================================================================
+      // NEW: Calculate Performance Score using unified readiness calculator
+      // ============================================================================
       
-      // Exam Readiness = 0.7 * Coverage% + 0.3 * ConsistencyScore
-      const examReadiness = Math.round(0.7 * coveragePercent + 0.3 * consistencyScore);
+      // MCQ stats
+      const mcqAttempts = questionAttempts.filter(a => a.question_type === 'mcq');
+      const mcqCorrect = mcqAttempts.filter(a => a.is_correct).length;
+      const mcqAccuracy = mcqAttempts.length > 0 ? (mcqCorrect / mcqAttempts.length) * 100 : 0;
+
+      // OSCE stats
+      const osceAttempts = questionAttempts.filter(a => a.question_type === 'osce');
+      const osceScores = osceAttempts
+        .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
+        .filter(s => s > 0);
+      const osceAvgScore = osceScores.length > 0
+        ? osceScores.reduce((sum, s) => sum + s, 0) / osceScores.length
+        : 0;
+
+      // Concept Check stats
+      const conceptCheckAttempts = questionAttempts.filter(a => a.question_type === 'guided_explanation');
+      const conceptCheckPassed = conceptCheckAttempts.filter(a => a.is_correct).length;
+      const conceptCheckTotal = conceptCheckAttempts.length;
+      const conceptCheckPassRate = conceptCheckTotal > 0
+        ? (conceptCheckPassed / conceptCheckTotal) * 100
+        : 0;
+
+      // Calculate performance score
+      const performanceScore = calculatePerformance({
+        mcq: { accuracy: mcqAccuracy, attempts: mcqAttempts.length },
+        osce: { avgScore: osceAvgScore, attempts: osceAttempts.length },
+        conceptCheck: { passRate: conceptCheckPassRate, total: conceptCheckTotal },
+      });
+
+      // ============================================================================
+      // NEW: Calculate Improvement Score using attempt-based data
+      // ============================================================================
+      
+      const RECENT_MCQ_ATTEMPTS = 10;
+      const RECENT_OSCE_ATTEMPTS = 5;
+
+      const recentMcqAttempts = mcqAttempts.slice(0, RECENT_MCQ_ATTEMPTS);
+      const priorMcqAttempts = mcqAttempts.slice(RECENT_MCQ_ATTEMPTS, RECENT_MCQ_ATTEMPTS * 2);
+      
+      const mcqRecentData = recentMcqAttempts.map(a => ({
+        correct: a.is_correct ? 1 : 0,
+        total: 1,
+      }));
+      const mcqPriorData = priorMcqAttempts.map(a => ({
+        correct: a.is_correct ? 1 : 0,
+        total: 1,
+      }));
+
+      const osceRecentScores = osceAttempts.slice(0, RECENT_OSCE_ATTEMPTS)
+        .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
+        .filter(s => s > 0);
+      const oscePriorScores = osceAttempts.slice(RECENT_OSCE_ATTEMPTS, RECENT_OSCE_ATTEMPTS * 2)
+        .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
+        .filter(s => s > 0);
+
+      const improvementScore = calculateImprovement({
+        mcqRecent: mcqRecentData,
+        mcqPrior: mcqPriorData,
+        osceRecent: osceRecentScores,
+        oscePrior: oscePriorScores,
+      });
+
+      // ============================================================================
+      // NEW: Calculate Final Readiness using unified formula with caps
+      // ============================================================================
+      
+      const readinessComponents: ReadinessComponents = {
+        coverage: coveragePercent,
+        performance: performanceScore,
+        improvement: improvementScore,
+        consistency: consistencyScore,
+      };
+
+      const readinessResult = calculateReadiness(readinessComponents);
+      const examReadiness = readinessResult.examReadiness;
 
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -251,6 +350,9 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         ? moduleMap.get(filters.moduleId) 
         : undefined;
 
+      // Determine if we have real accuracy data
+      const hasRealAccuracyData = mcqAttempts.length > 0 || osceAttempts.length > 0;
+
       return {
         examReadiness,
         coveragePercent,
@@ -260,9 +362,12 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         chaptersTotal,
         studyStreak,
         consistencyScore,
+        readinessResult,
+        performanceScore,
+        improvementScore,
         weeklyTimeMinutes,
         weeklyChaptersAdvanced,
-        hasRealAccuracyData: false, // No MCQ attempt tracking yet
+        hasRealAccuracyData,
         chapters: chapterStatuses,
         insights,
         suggestions,
@@ -285,6 +390,9 @@ function getEmptyDashboard(): DashboardData {
     chaptersTotal: 0,
     studyStreak: 0,
     consistencyScore: 0,
+    readinessResult: getEmptyReadinessResult(),
+    performanceScore: 0,
+    improvementScore: 50,
     weeklyTimeMinutes: 0,
     weeklyChaptersAdvanced: 0,
     hasRealAccuracyData: false,
