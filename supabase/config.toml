@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.approve-ai-content]
 verify_jwt = false
+
+[functions.cache-readiness]
+verify_jwt = false
