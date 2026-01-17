@@ -19,7 +19,6 @@ import { MatchingQuestionList } from '@/components/content/MatchingQuestionList'
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
-import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -37,7 +36,6 @@ import { MindMapViewer } from '@/components/study/MindMapViewer';
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { useConceptCheckCount } from '@/hooks/useConceptCheckProgress';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -238,9 +236,6 @@ export default function ChapterPage() {
     }
   }, [resourcesTabs, resourcesTab]);
 
-  // Count concept check questions (guided explanations with rubrics)
-  const conceptCheckCount = useConceptCheckCount(chapterId, studyResources);
-
   const allPracticeTabs = useMemo(() => {
     // Unified clinical cases count = cases from virtual_patient_cases table
     const clinicalCasesCount = chapterClinicalCases.length;
@@ -252,7 +247,6 @@ export default function ChapterPage() {
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
-      concept_check: conceptCheckCount,
     });
   }, [
     mcqs?.length,
@@ -260,7 +254,6 @@ export default function ChapterPage() {
     chapterClinicalCases.length,
     osceQuestions?.length,
     matchingQuestions?.length,
-    conceptCheckCount,
   ]);
 
   // Admin sees all tabs; students see filtered based on setting
@@ -772,10 +765,6 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Concept Check Content */}
-                {practiceTab === 'concept_check' && moduleId && chapterId && (
-                  <ConceptCheckPractice chapterId={chapterId} moduleId={moduleId} />
-                )}
               </div>
             )}
 
