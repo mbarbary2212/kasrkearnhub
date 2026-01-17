@@ -20,6 +20,7 @@ import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBu
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
+import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { VirtualPatientList, VPAdminList } from '@/components/virtual-patient';
 import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
 import { 
@@ -293,14 +294,21 @@ export default function ChapterPage() {
           <div className="flex-1">
             {(moduleLoading || chapterLoading) ? (
               <>
-                <Skeleton className="h-5 w-48 mb-2" />
-                <Skeleton className="h-8 w-96" />
+                <Skeleton className="hidden md:block h-5 w-48 mb-2" />
+                <Skeleton className="h-8 w-96 max-w-full" />
               </>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground">{module?.name}</p>
-                <h1 className="text-2xl font-heading font-semibold">
-                  Chapter {chapter?.chapter_number}: {chapter?.title}
+                {/* Desktop: Full two-line header */}
+                <div className="hidden md:block">
+                  <p className="text-sm text-muted-foreground">{module?.name}</p>
+                  <h1 className="text-2xl font-heading font-semibold">
+                    Chapter {chapter?.chapter_number}: {chapter?.title}
+                  </h1>
+                </div>
+                {/* Mobile: Just the chapter title, smaller */}
+                <h1 className="md:hidden text-lg font-heading font-semibold line-clamp-1">
+                  {chapter?.title}
                 </h1>
               </>
             )}
@@ -336,7 +344,7 @@ export default function ChapterPage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs (only on small screens) */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-muted/30 rounded-lg p-1.5">
+            <nav className="flex gap-1.5 bg-muted/50 border border-border/50 rounded-xl p-1.5 shadow-sm">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -345,7 +353,7 @@ export default function ChapterPage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-colors",
                       isActive 
                         ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -394,8 +402,15 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
-                {/* Sub-tabs for Resources */}
-                <div className="flex gap-2 flex-wrap">
+                {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={resourcesTabs}
+                    activeTab={resourcesTab}
+                    onTabChange={(tab) => handleResourcesTabChange(tab as ResourceTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
                   {resourcesTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = resourcesTab === tab.id;
@@ -602,8 +617,15 @@ export default function ChapterPage() {
             {/* Practice Section */}
             {activeSection === 'practice' && (
               <div className="space-y-4">
-                {/* Sub-tabs for Practice */}
-                <div className="flex gap-2 flex-wrap">
+                {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={practiceTabs}
+                    activeTab={practiceTab}
+                    onTabChange={(tab) => setPracticeTab(tab as PracticeTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
                   {practiceTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = practiceTab === tab.id;
