@@ -34,15 +34,15 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { VPCase, VPStage, VPStageType } from '@/types/virtualPatient';
+import { ClinicalCase, ClinicalCaseStage, CaseStageType } from '@/types/clinicalCase';
 import { 
-  useVirtualPatientCase, 
-  useDeleteVirtualPatientStage,
-  useReorderVirtualPatientStages,
-} from '@/hooks/useVirtualPatient';
-import { VPCaseFormModal } from './VPCaseFormModal';
-import { VPStageFormModal } from './VPStageFormModal';
-import { VPQuickBuildModal } from './VPQuickBuildModal';
+  useClinicalCase, 
+  useDeleteClinicalCaseStage,
+  useReorderClinicalCaseStages,
+} from '@/hooks/useClinicalCases';
+import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
+import { ClinicalCaseStageFormModal } from './ClinicalCaseStageFormModal';
+import { ClinicalCaseQuickBuildModal } from './ClinicalCaseQuickBuildModal';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -63,23 +63,25 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 
-interface VPCaseBuilderModalProps {
+interface ClinicalCaseBuilderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   caseId: string;
   moduleId: string;
 }
 
-const stageTypeIcons: Record<VPStageType, typeof HelpCircle> = {
+const stageTypeIcons: Record<CaseStageType, typeof HelpCircle> = {
   mcq: HelpCircle,
   multi_select: CheckSquare,
   short_answer: MessageSquare,
+  read_only: FileText,
 };
 
-const stageTypeLabels: Record<VPStageType, string> = {
+const stageTypeLabels: Record<CaseStageType, string> = {
   mcq: 'Single Choice',
   multi_select: 'Multi-select',
   short_answer: 'Short Answer',
+  read_only: 'Read Only',
 };
 
 function SortableStageItem({
@@ -87,7 +89,7 @@ function SortableStageItem({
   onEdit,
   onDelete,
 }: {
-  stage: VPStage;
+  stage: ClinicalCaseStage;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -150,21 +152,21 @@ function SortableStageItem({
   );
 }
 
-export function VPCaseBuilderModal({
+export function ClinicalCaseBuilderModal({
   open,
   onOpenChange,
   caseId,
   moduleId,
-}: VPCaseBuilderModalProps) {
-  const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
-  const deleteStage = useDeleteVirtualPatientStage();
-  const reorderStages = useReorderVirtualPatientStages();
+}: ClinicalCaseBuilderModalProps) {
+  const { data: clinicalCase, isLoading } = useClinicalCase(caseId);
+  const deleteStage = useDeleteClinicalCaseStage();
+  const reorderStages = useReorderClinicalCaseStages();
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [stageFormOpen, setStageFormOpen] = useState(false);
   const [quickBuildOpen, setQuickBuildOpen] = useState(false);
-  const [editingStage, setEditingStage] = useState<VPStage | null>(null);
-  const [deleteConfirmStage, setDeleteConfirmStage] = useState<VPStage | null>(null);
+  const [editingStage, setEditingStage] = useState<ClinicalCaseStage | null>(null);
+  const [deleteConfirmStage, setDeleteConfirmStage] = useState<ClinicalCaseStage | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -175,13 +177,13 @@ export function VPCaseBuilderModal({
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !vpCase?.stages) return;
+    if (!over || active.id === over.id || !clinicalCase?.stages) return;
 
-    const oldIndex = vpCase.stages.findIndex(s => s.id === active.id);
-    const newIndex = vpCase.stages.findIndex(s => s.id === over.id);
+    const oldIndex = clinicalCase.stages.findIndex(s => s.id === active.id);
+    const newIndex = clinicalCase.stages.findIndex(s => s.id === over.id);
 
     if (oldIndex !== newIndex) {
-      const newOrder = arrayMove(vpCase.stages, oldIndex, newIndex);
+      const newOrder = arrayMove(clinicalCase.stages, oldIndex, newIndex);
       try {
         await reorderStages.mutateAsync({
           caseId,
@@ -200,7 +202,7 @@ export function VPCaseBuilderModal({
     setStageFormOpen(true);
   };
 
-  const handleEditStage = (stage: VPStage) => {
+  const handleEditStage = (stage: ClinicalCaseStage) => {
     setEditingStage(stage);
     setStageFormOpen(true);
   };
@@ -222,7 +224,7 @@ export function VPCaseBuilderModal({
     onOpenChange(false);
   };
 
-  const stages = vpCase?.stages || [];
+  const stages = clinicalCase?.stages || [];
   const nextStageOrder = stages.length + 1;
 
   return (
@@ -230,9 +232,9 @@ export function VPCaseBuilderModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
               Case Builder
-              {vpCase && !vpCase.is_published && (
+              {clinicalCase && !clinicalCase.is_published && (
                 <Badge variant="secondary">Draft</Badge>
               )}
             </DialogTitle>
@@ -242,24 +244,24 @@ export function VPCaseBuilderModal({
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
-          ) : vpCase ? (
+          ) : clinicalCase ? (
             <ScrollArea className="flex-1 overflow-y-auto">
               <div className="space-y-6 pr-4 pb-4">
                 {/* Case Info Section */}
                 <div className="p-4 border rounded-lg bg-muted/30">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold text-lg">{vpCase.title}</h3>
+                      <h3 className="font-semibold text-lg">{clinicalCase.title}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="capitalize">
-                          {vpCase.level}
+                          {clinicalCase.level}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                          ~{vpCase.estimated_minutes} min
+                          ~{clinicalCase.estimated_minutes} min
                         </span>
-                        {vpCase.chapter && (
+                        {clinicalCase.chapter && (
                           <span className="text-sm text-muted-foreground">
-                            • Chapter {vpCase.chapter.chapter_number}
+                            • Chapter {clinicalCase.chapter.chapter_number}
                           </span>
                         )}
                       </div>
@@ -270,11 +272,11 @@ export function VPCaseBuilderModal({
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {vpCase.intro_text}
+                    {clinicalCase.intro_text}
                   </p>
-                  {vpCase.tags.length > 0 && (
+                  {clinicalCase.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {vpCase.tags.map((tag) => (
+                      {clinicalCase.tags.map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tag}
                         </Badge>
@@ -382,18 +384,18 @@ export function VPCaseBuilderModal({
       </Dialog>
 
       {/* Case Form Modal */}
-      {vpCase && (
-        <VPCaseFormModal
+      {clinicalCase && (
+        <ClinicalCaseFormModal
           open={caseFormOpen}
           onOpenChange={setCaseFormOpen}
           moduleId={moduleId}
-          chapterId={vpCase.chapter_id || undefined}
-          vpCase={vpCase}
+          chapterId={clinicalCase.chapter_id || undefined}
+          clinicalCase={clinicalCase}
         />
       )}
 
       {/* Stage Form Modal */}
-      <VPStageFormModal
+      <ClinicalCaseStageFormModal
         open={stageFormOpen}
         onOpenChange={setStageFormOpen}
         caseId={caseId}
@@ -402,7 +404,7 @@ export function VPCaseBuilderModal({
       />
 
       {/* Quick Build Modal */}
-      <VPQuickBuildModal
+      <ClinicalCaseQuickBuildModal
         open={quickBuildOpen}
         onOpenChange={setQuickBuildOpen}
         caseId={caseId}

@@ -128,21 +128,18 @@ export default function ChapterPage() {
   const { data: deletedEssays } = useChapterEssays(chapterId, true);
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId);
   const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true);
-  const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(chapterId);
-  const { data: deletedCaseScenarios } = useChapterCaseScenarios(chapterId, true);
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
-  const { data: vpCases, isLoading: vpLoading } = useVirtualPatientCases(moduleId, canManageContent);
+  const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   
-  // Filter VP cases by chapter
-  const chapterVpCases = (vpCases || []).filter(c => c.chapter_id === chapterId);
+  // Filter clinical cases by chapter
+  const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
-  const deletedOnlyCases = (deletedCaseScenarios || []).filter(c => c.is_deleted);
   const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
   const deletedOnlyOsce = (deletedOsceQuestions || []).filter(q => q.is_deleted);
@@ -695,41 +692,17 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Cases Content */}
-                    {practiceTab === 'cases' && (
-                      <div>
-                        {showAddControls && chapterId && moduleId && (
-                          <div className="mb-4 flex gap-2">
-                            <Button size="sm" onClick={() => guardAdd(() => setCaseFormOpen(true))}>
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add Case
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => guardAdd(() => setCaseBulkUploadOpen(true))}
-                            >
-                              <Upload className="w-4 h-4 mr-1" />
-                              Bulk Upload
-                            </Button>
-                          </div>
-                        )}
-                    {caseScenariosLoading ? (
+                {/* Clinical Cases Content */}
+                {practiceTab === 'clinical_cases' && moduleId && chapterId && (
+                  <div>
+                    {canManageContent ? (
+                      <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
+                    ) : clinicalCasesLoading ? (
                       <div className="space-y-3">
                         {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
                       </div>
                     ) : (
-                      <CaseScenarioList
-                        cases={caseScenarios || []}
-                        deletedCases={deletedOnlyCases}
-                        moduleId={moduleId}
-                        chapterId={chapterId}
-                        canEdit={canManageContent}
-                        canDelete={canManageContent}
-                        showDeletedToggle={canManageContent}
-                        showDeleted={showDeletedCases}
-                        onShowDeletedChange={setShowDeletedCases}
-                      />
+                      <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
                     )}
                   </div>
                 )}
@@ -799,21 +772,6 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Virtual Patient Content */}
-                {practiceTab === 'virtual_patient' && moduleId && chapterId && (
-                  <div>
-                    {canManageContent ? (
-                      <VPAdminList moduleId={moduleId} chapterId={chapterId} />
-                    ) : vpLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
-                    ) : (
-                      <VirtualPatientList moduleId={moduleId} chapterId={chapterId} />
-                    )}
-                  </div>
-                )}
-
                 {/* Concept Check Content */}
                 {practiceTab === 'concept_check' && moduleId && chapterId && (
                   <ConceptCheckPractice chapterId={chapterId} moduleId={moduleId} />
@@ -827,24 +785,6 @@ export default function ChapterPage() {
             )}
           </div>
         </div>
-
-        {/* Case Scenario Modals */}
-        {chapterId && moduleId && (
-          <>
-            <CaseScenarioFormModal
-              open={caseFormOpen}
-              onOpenChange={setCaseFormOpen}
-              moduleId={moduleId}
-              chapterId={chapterId}
-            />
-            <CaseScenarioBulkUploadModal
-              open={caseBulkUploadOpen}
-              onOpenChange={setCaseBulkUploadOpen}
-              moduleId={moduleId}
-              chapterId={chapterId}
-            />
-          </>
-        )}
 
         {/* Flashcard Modals */}
         {chapterId && moduleId && (

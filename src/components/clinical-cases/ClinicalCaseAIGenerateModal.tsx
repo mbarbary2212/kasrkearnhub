@@ -34,11 +34,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { VPStageType, VPLevel, VPRubric } from '@/types/virtualPatient';
-import { useCreateVirtualPatientCase, useCreateVirtualPatientStage } from '@/hooks/useVirtualPatient';
+import { CaseStageType, CaseLevel, CaseRubric } from '@/types/clinicalCase';
+import { useCreateClinicalCase, useCreateClinicalCaseStage } from '@/hooks/useClinicalCases';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface VPAIGenerateModalProps {
+interface ClinicalCaseAIGenerateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleId: string;
@@ -50,14 +50,14 @@ interface VPAIGenerateModalProps {
 
 interface GeneratedStage {
   stage_order: number;
-  stage_type: VPStageType;
+  stage_type: CaseStageType;
   prompt: string;
   patient_info: string | null;
   choices: { key: string; text: string }[];
   correct_answer: string | string[];
   explanation: string | null;
   teaching_points: string[];
-  rubric: VPRubric | null;
+  rubric: CaseRubric | null;
 }
 
 interface GeneratedCase {
@@ -68,19 +68,21 @@ interface GeneratedCase {
   stages: GeneratedStage[];
 }
 
-const stageTypeIcons: Record<VPStageType, typeof HelpCircle> = {
+const stageTypeIcons: Record<CaseStageType, typeof HelpCircle> = {
   mcq: HelpCircle,
   multi_select: CheckSquare,
   short_answer: MessageSquare,
+  read_only: Eye,
 };
 
-const stageTypeLabels: Record<VPStageType, string> = {
+const stageTypeLabels: Record<CaseStageType, string> = {
   mcq: 'Single Choice',
   multi_select: 'Multi-select',
   short_answer: 'Short Answer',
+  read_only: 'Read Only',
 };
 
-export function VPAIGenerateModal({
+export function ClinicalCaseAIGenerateModal({
   open,
   onOpenChange,
   moduleId,
@@ -88,14 +90,14 @@ export function VPAIGenerateModal({
   chapterId,
   chapterTitle,
   onCaseCreated,
-}: VPAIGenerateModalProps) {
+}: ClinicalCaseAIGenerateModalProps) {
   const queryClient = useQueryClient();
-  const createCase = useCreateVirtualPatientCase();
-  const createStage = useCreateVirtualPatientStage();
+  const createCase = useCreateClinicalCase();
+  const createStage = useCreateClinicalCaseStage();
 
   // Generation parameters
   const [topic, setTopic] = useState('');
-  const [difficulty, setDifficulty] = useState<VPLevel>('intermediate');
+  const [difficulty, setDifficulty] = useState<CaseLevel>('intermediate');
   const [scenarioType, setScenarioType] = useState('diagnosis');
   const [stageCount, setStageCount] = useState(5);
   const [learningObjectives, setLearningObjectives] = useState('');
@@ -159,6 +161,7 @@ export function VPAIGenerateModal({
         intro_text: generatedCase.intro_text,
         module_id: moduleId,
         chapter_id: chapterId,
+        case_mode: 'practice_case',
         level: difficulty,
         estimated_minutes: generatedCase.estimated_minutes || 10,
         tags: generatedCase.tags || [],
@@ -184,8 +187,8 @@ export function VPAIGenerateModal({
       }
 
       // Force refresh all caches
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseResult.id] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-case', caseResult.id] });
 
       toast.success(`Case "${generatedCase.title}" created with ${generatedCase.stages.length} stages!`);
       
@@ -266,7 +269,7 @@ export function VPAIGenerateModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Difficulty Level</Label>
-                    <Select value={difficulty} onValueChange={(v) => setDifficulty(v as VPLevel)}>
+                    <Select value={difficulty} onValueChange={(v) => setDifficulty(v as CaseLevel)}>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>

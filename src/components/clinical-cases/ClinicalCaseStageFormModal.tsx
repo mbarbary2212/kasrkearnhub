@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Plus, X, Trash2, HelpCircle } from 'lucide-react';
-import { VPStage, VPStageFormData, VPStageType, VPChoice, VPRubric } from '@/types/virtualPatient';
-import { useCreateVirtualPatientStage, useUpdateVirtualPatientStage } from '@/hooks/useVirtualPatient';
+import { ClinicalCaseStage, ClinicalCaseStageFormData, CaseStageType, CaseChoice, CaseRubric } from '@/types/clinicalCase';
+import { useCreateClinicalCaseStage, useUpdateClinicalCaseStage } from '@/hooks/useClinicalCases';
 import { toast } from 'sonner';
 import { parseConcepts } from '@/lib/rubricMarking';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,30 +32,30 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-interface VPStageFormModalProps {
+interface ClinicalCaseStageFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   caseId: string;
   stageOrder: number;
-  stage?: VPStage | null;
+  stage?: ClinicalCaseStage | null;
 }
 
 const CHOICE_KEYS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-export function VPStageFormModal({
+export function ClinicalCaseStageFormModal({
   open,
   onOpenChange,
   caseId,
   stageOrder,
   stage,
-}: VPStageFormModalProps) {
+}: ClinicalCaseStageFormModalProps) {
   const isEditing = !!stage;
   const queryClient = useQueryClient();
 
-  const [stageType, setStageType] = useState<VPStageType>('mcq');
+  const [stageType, setStageType] = useState<CaseStageType>('mcq');
   const [prompt, setPrompt] = useState('');
   const [patientInfo, setPatientInfo] = useState('');
-  const [choices, setChoices] = useState<VPChoice[]>([
+  const [choices, setChoices] = useState<CaseChoice[]>([
     { key: 'A', text: '' },
     { key: 'B', text: '' },
     { key: 'C', text: '' },
@@ -69,8 +69,8 @@ export function VPStageFormModal({
   const [rubricRequired, setRubricRequired] = useState('');
   const [rubricOptional, setRubricOptional] = useState('');
 
-  const createStage = useCreateVirtualPatientStage();
-  const updateStage = useUpdateVirtualPatientStage();
+  const createStage = useCreateClinicalCaseStage();
+  const updateStage = useUpdateClinicalCaseStage();
 
   useEffect(() => {
     if (stage) {
@@ -118,7 +118,7 @@ export function VPStageFormModal({
   };
 
 
-  const handleStageTypeChange = (type: VPStageType) => {
+  const handleStageTypeChange = (type: CaseStageType) => {
     setStageType(type);
     if (type === 'mcq') {
       setCorrectAnswer('A');
@@ -200,7 +200,7 @@ export function VPStageFormModal({
     }
 
     // Build rubric for short_answer
-    let rubric: VPRubric | null = null;
+    let rubric: CaseRubric | null = null;
     if (stageType === 'short_answer') {
       const requiredConcepts = parseConcepts(rubricRequired);
       const optionalConcepts = parseConcepts(rubricOptional);
@@ -212,7 +212,7 @@ export function VPStageFormModal({
       }
     }
 
-    const formData: VPStageFormData = {
+    const formData: ClinicalCaseStageFormData = {
       stage_order: isEditing ? stage!.stage_order : stageOrder,
       stage_type: stageType,
       prompt: prompt.trim(),
@@ -233,10 +233,10 @@ export function VPStageFormModal({
         toast.success('Stage added successfully');
       }
       // Force immediate refetch - mutations now handle this internally
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
-      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-case', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      await queryClient.refetchQueries({ queryKey: ['clinical-case', caseId] });
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save stage:', error);
@@ -266,7 +266,7 @@ export function VPStageFormModal({
             {/* Stage Type */}
             <div>
               <Label>Question Type</Label>
-              <Select value={stageType} onValueChange={(v) => handleStageTypeChange(v as VPStageType)}>
+              <Select value={stageType} onValueChange={(v) => handleStageTypeChange(v as CaseStageType)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>

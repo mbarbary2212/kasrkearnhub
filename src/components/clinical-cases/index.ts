@@ -5,3 +5,5 @@ export { ClinicalCaseAdminList } from './ClinicalCaseAdminList';
 export { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 export { ClinicalCaseBuilderModal } from './ClinicalCaseBuilderModal';
 export { ClinicalCaseStageFormModal } from './ClinicalCaseStageFormModal';
+export { ClinicalCaseQuickBuildModal } from './ClinicalCaseQuickBuildModal';
+export { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
