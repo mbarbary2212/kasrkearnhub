@@ -2,21 +2,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  User, 
+  Stethoscope, 
   Clock, 
   Layers, 
   CheckCircle2, 
   ChevronRight,
   Play,
   Trophy,
+  BookOpen,
+  User,
 } from 'lucide-react';
-import { VPCase } from '@/types/virtualPatient';
-import { useVirtualPatientAttempts } from '@/hooks/useVirtualPatient';
+import { ClinicalCase } from '@/types/clinicalCase';
+import { useClinicalCaseAttempts } from '@/hooks/useClinicalCases';
 import { cn } from '@/lib/utils';
 
-interface VirtualPatientCardProps {
-  vpCase: VPCase;
+interface ClinicalCaseCardProps {
+  clinicalCase: ClinicalCase;
   onStart: (caseId: string) => void;
   isLoading?: boolean;
 }
@@ -27,14 +30,29 @@ const LEVEL_COLORS = {
   advanced: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatientCardProps) {
-  const { data: attempts } = useVirtualPatientAttempts(vpCase.id);
+const MODE_BADGES = {
+  read_case: { label: 'Read', icon: BookOpen, className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  practice_case: { label: 'Practice', icon: Play, className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  branched_case: { label: 'Branched', icon: Layers, className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+};
+
+export function ClinicalCaseCard({ clinicalCase, onStart, isLoading }: ClinicalCaseCardProps) {
+  const { data: attempts } = useClinicalCaseAttempts(clinicalCase.id);
   
   const completedAttempts = attempts?.filter(a => a.is_completed) || [];
   const bestScore = completedAttempts.length > 0 
     ? Math.max(...completedAttempts.map(a => a.score))
     : null;
   const hasCompleted = completedAttempts.length > 0;
+  
+  const isReadCase = clinicalCase.case_mode === 'read_case';
+  const modeBadge = MODE_BADGES[clinicalCase.case_mode || 'practice_case'];
+  const ModeIcon = modeBadge.icon;
+
+  // Patient avatar/thumbnail
+  const patientInitials = clinicalCase.patient_name 
+    ? clinicalCase.patient_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : null;
 
   return (
     <Card className={cn(
@@ -43,22 +61,35 @@ export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatien
     )}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
+          {/* Patient Avatar or Default Icon */}
           <div className={cn(
-            "w-12 h-12 rounded-xl flex items-center justify-center",
+            "w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden",
             hasCompleted 
               ? "bg-green-100 dark:bg-green-900/30" 
               : "bg-primary/10"
           )}>
-            {hasCompleted ? (
+            {clinicalCase.patient_image_url ? (
+              <Avatar className="w-12 h-12 rounded-xl">
+                <AvatarImage src={clinicalCase.patient_image_url} alt={clinicalCase.patient_name || 'Patient'} />
+                <AvatarFallback className="rounded-xl bg-primary/10">
+                  {patientInitials || <User className="w-6 h-6 text-primary" />}
+                </AvatarFallback>
+              </Avatar>
+            ) : hasCompleted ? (
               <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
             ) : (
-              <User className="w-6 h-6 text-primary" />
+              <Stethoscope className="w-6 h-6 text-primary" />
             )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <Badge className={LEVEL_COLORS[vpCase.level]} variant="secondary">
-                {vpCase.level.charAt(0).toUpperCase() + vpCase.level.slice(1)}
+              {/* Case Mode Badge */}
+              <Badge className={cn("gap-1", modeBadge.className)} variant="secondary">
+                <ModeIcon className="w-3 h-3" />
+                {modeBadge.label}
+              </Badge>
+              <Badge className={LEVEL_COLORS[clinicalCase.level]} variant="secondary">
+                {clinicalCase.level.charAt(0).toUpperCase() + clinicalCase.level.slice(1)}
               </Badge>
               {hasCompleted && bestScore !== null && (
                 <Badge variant="outline" className="gap-1">
@@ -68,11 +99,19 @@ export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatien
               )}
             </div>
             <CardTitle className="text-base line-clamp-2 group-hover:text-primary transition-colors">
-              {vpCase.title}
+              {clinicalCase.title}
             </CardTitle>
-            {vpCase.chapter && (
+            {/* Patient demographics */}
+            {(clinicalCase.patient_name || clinicalCase.patient_age) && (
               <CardDescription className="text-xs mt-1">
-                Ch. {vpCase.chapter.chapter_number}: {vpCase.chapter.title}
+                {clinicalCase.patient_name}
+                {clinicalCase.patient_age && `, ${clinicalCase.patient_age} y/o`}
+                {clinicalCase.patient_gender && ` ${clinicalCase.patient_gender}`}
+              </CardDescription>
+            )}
+            {clinicalCase.chapter && !clinicalCase.patient_name && (
+              <CardDescription className="text-xs mt-1">
+                Ch. {clinicalCase.chapter.chapter_number}: {clinicalCase.chapter.title}
               </CardDescription>
             )}
           </div>
@@ -80,17 +119,19 @@ export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatien
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground line-clamp-2">
-          {vpCase.intro_text}
+          {clinicalCase.intro_text}
         </p>
         
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5" />
-            {vpCase.stage_count || 0} stages
-          </span>
+          {!isReadCase && (
+            <span className="flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5" />
+              {clinicalCase.stage_count || 0} stages
+            </span>
+          )}
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            ~{vpCase.estimated_minutes} min
+            ~{clinicalCase.estimated_minutes} min
           </span>
           {completedAttempts.length > 0 && (
             <span className="flex items-center gap-1">
@@ -101,13 +142,22 @@ export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatien
         </div>
 
         <Button 
-          onClick={() => onStart(vpCase.id)} 
+          onClick={() => onStart(clinicalCase.id)} 
           className="w-full gap-2"
           disabled={isLoading}
           variant={hasCompleted ? "outline" : "default"}
         >
-          <Play className="w-4 h-4" />
-          {hasCompleted ? 'Retry Case' : 'Start Case'}
+          {isReadCase ? (
+            <>
+              <BookOpen className="w-4 h-4" />
+              {hasCompleted ? 'Review Case' : 'Read Case'}
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              {hasCompleted ? 'Retry Case' : 'Start Case'}
+            </>
+          )}
           <ChevronRight className="w-4 h-4 ml-auto" />
         </Button>
       </CardContent>
@@ -115,7 +165,7 @@ export function VirtualPatientCard({ vpCase, onStart, isLoading }: VirtualPatien
   );
 }
 
-export function VirtualPatientCardSkeleton() {
+export function ClinicalCaseCardSkeleton() {
   return (
     <Card>
       <CardHeader className="pb-3">

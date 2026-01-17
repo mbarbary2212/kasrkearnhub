@@ -1,26 +1,30 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { VirtualPatientCard, VirtualPatientCardSkeleton } from './VirtualPatientCard';
-import { useVirtualPatientCases } from '@/hooks/useVirtualPatient';
-import { User, Search, Filter } from 'lucide-react';
+import { ClinicalCaseCard, ClinicalCaseCardSkeleton } from './ClinicalCaseCard';
+import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { Stethoscope, Search, Filter, BookOpen, Play } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { CaseMode, CASE_MODE_TABS } from '@/types/clinicalCase';
+import { Badge } from '@/components/ui/badge';
 
-interface VirtualPatientListProps {
+interface ClinicalCaseListProps {
   moduleId?: string;
   chapterId?: string;
 }
 
-export function VirtualPatientList({ moduleId, chapterId }: VirtualPatientListProps) {
+export function ClinicalCaseList({ moduleId, chapterId }: ClinicalCaseListProps) {
   const navigate = useNavigate();
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const canSeeUnpublished = isAdmin || isTeacher || isPlatformAdmin || isSuperAdmin;
   
-  const { data: cases, isLoading } = useVirtualPatientCases(moduleId, canSeeUnpublished);
-  
+  const [modeFilter, setModeFilter] = useState<CaseMode | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  
+  const { data: cases, isLoading } = useClinicalCases(moduleId, canSeeUnpublished, modeFilter);
 
   // Filter cases
   const filteredCases = (cases || []).filter(c => {
@@ -42,12 +46,23 @@ export function VirtualPatientList({ moduleId, chapterId }: VirtualPatientListPr
   });
 
   const handleStartCase = (caseId: string) => {
-    navigate(`/virtual-patient/${caseId}`);
+    navigate(`/clinical-case/${caseId}`);
   };
 
   if (isLoading) {
     return (
       <div className="space-y-4">
+        {/* Mode Tabs */}
+        <Tabs value={modeFilter} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+            {CASE_MODE_TABS.map(tab => (
+              <TabsTrigger key={tab.id} value={tab.id} disabled>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <Input placeholder="Search cases..." className="h-9" disabled />
@@ -60,7 +75,7 @@ export function VirtualPatientList({ moduleId, chapterId }: VirtualPatientListPr
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {[...Array(4)].map((_, i) => (
-            <VirtualPatientCardSkeleton key={i} />
+            <ClinicalCaseCardSkeleton key={i} />
           ))}
         </div>
       </div>
@@ -69,22 +84,62 @@ export function VirtualPatientList({ moduleId, chapterId }: VirtualPatientListPr
 
   if (!cases || cases.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-          <User className="w-8 h-8 text-muted-foreground" />
+      <div className="space-y-4">
+        {/* Mode Tabs */}
+        <Tabs value={modeFilter} onValueChange={(v) => setModeFilter(v as CaseMode | 'all')} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+            {CASE_MODE_TABS.map(tab => (
+              <TabsTrigger 
+                key={tab.id} 
+                value={tab.id}
+                disabled={tab.comingSoon}
+                className="relative"
+              >
+                {tab.label}
+                {tab.comingSoon && (
+                  <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0">Soon</Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        
+        <div className="text-center py-12 border rounded-lg">
+          <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
+            <Stethoscope className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="font-medium mb-1">No Clinical Cases Available</h3>
+          <p className="text-sm text-muted-foreground">
+            {moduleId 
+              ? "Clinical cases haven't been added to this module yet."
+              : "No clinical cases are available."}
+          </p>
         </div>
-        <h3 className="font-medium mb-1">No Virtual Patients Available</h3>
-        <p className="text-sm text-muted-foreground">
-          {moduleId 
-            ? "Virtual patient cases haven't been added to this module yet."
-            : "No virtual patient cases are available."}
-        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Mode Tabs */}
+      <Tabs value={modeFilter} onValueChange={(v) => setModeFilter(v as CaseMode | 'all')} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
+          {CASE_MODE_TABS.map(tab => (
+            <TabsTrigger 
+              key={tab.id} 
+              value={tab.id}
+              disabled={tab.comingSoon}
+              className="relative"
+            >
+              {tab.label}
+              {tab.comingSoon && (
+                <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0">Soon</Badge>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -112,15 +167,15 @@ export function VirtualPatientList({ moduleId, chapterId }: VirtualPatientListPr
 
       {/* Cases Grid */}
       {filteredCases.length === 0 ? (
-        <div className="text-center py-8">
+        <div className="text-center py-8 border rounded-lg">
           <p className="text-muted-foreground">No cases match your filters.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCases.map((vpCase) => (
-            <VirtualPatientCard
-              key={vpCase.id}
-              vpCase={vpCase}
+          {filteredCases.map((clinicalCase) => (
+            <ClinicalCaseCard
+              key={clinicalCase.id}
+              clinicalCase={clinicalCase}
               onStart={handleStartCase}
             />
           ))}
