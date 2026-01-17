@@ -18,12 +18,12 @@ import {
   FileText,
   Eye,
 } from 'lucide-react';
-import { VPStageFormData, VPStageType, VPChoice, VPRubric } from '@/types/virtualPatient';
-import { useCreateVirtualPatientStage } from '@/hooks/useVirtualPatient';
+import { ClinicalCaseStageFormData, CaseStageType, CaseChoice, CaseRubric } from '@/types/clinicalCase';
+import { useCreateClinicalCaseStage } from '@/hooks/useClinicalCases';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface VPQuickBuildModalProps {
+interface ClinicalCaseQuickBuildModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   caseId: string;
@@ -33,14 +33,14 @@ interface VPQuickBuildModalProps {
 
 interface ParsedStage {
   stageNumber: number;
-  type: VPStageType;
+  type: CaseStageType;
   patientInfo?: string;
   prompt: string;
-  choices: VPChoice[];
+  choices: CaseChoice[];
   correctAnswer: string | string[];
   explanation?: string;
   teachingPoints: string[];
-  rubric?: VPRubric;
+  rubric?: CaseRubric;
   errors: string[];
 }
 
@@ -82,9 +82,9 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     const rubricCriticalMatch = block.match(/RUBRIC_CRITICAL:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
 
     // Determine type (default to mcq)
-    let type: VPStageType = 'mcq';
+    let type: CaseStageType = 'mcq';
     if (typeMatch) {
-      type = typeMatch[1].toLowerCase() as VPStageType;
+      type = typeMatch[1].toLowerCase() as CaseStageType;
     }
 
     // Extract prompt
@@ -97,7 +97,7 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     const patientInfo = patientInfoMatch ? patientInfoMatch[1].trim() : undefined;
 
     // Parse choices
-    const choices: VPChoice[] = [];
+    const choices: CaseChoice[] = [];
     if (type !== 'short_answer' && choicesMatch) {
       const choiceText = choicesMatch[1];
       // Match patterns like (A) ..., (B) ..., etc.
@@ -149,7 +149,7 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     }
 
     // Parse rubric for short_answer with extended fields
-    let rubric: VPRubric | undefined;
+    let rubric: CaseRubric | undefined;
     if (type === 'short_answer') {
       const requiredConcepts = rubricRequiredMatch 
         ? parseBulletList(rubricRequiredMatch[1]) 
@@ -226,19 +226,19 @@ function parseBulletList(text: string): string[] {
     .filter(p => p.length > 0);
 }
 
-export function VPQuickBuildModal({
+export function ClinicalCaseQuickBuildModal({
   open,
   onOpenChange,
   caseId,
   currentStageCount,
   onSuccess,
-}: VPQuickBuildModalProps) {
+}: ClinicalCaseQuickBuildModalProps) {
   const [templateText, setTemplateText] = useState('');
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
   
-  const createStage = useCreateVirtualPatientStage();
+  const createStage = useCreateClinicalCaseStage();
   const queryClient = useQueryClient();
 
   const handlePreview = () => {
@@ -263,7 +263,7 @@ export function VPQuickBuildModal({
       // Create stages one by one in order
       for (let i = 0; i < parseResult.stages.length; i++) {
         const stage = parseResult.stages[i];
-        const formData: VPStageFormData = {
+        const formData: ClinicalCaseStageFormData = {
           stage_order: currentStageCount + i + 1,
           stage_type: stage.type,
           prompt: stage.prompt,
@@ -279,12 +279,12 @@ export function VPQuickBuildModal({
       }
 
       // Force immediate cache invalidation AND refetch
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-stages', caseId] });
-      await queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-case', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', caseId] });
+      await queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
       // Force immediate refetch to update UI
-      await queryClient.refetchQueries({ queryKey: ['virtual-patient-case', caseId] });
-      await queryClient.refetchQueries({ queryKey: ['virtual-patient-cases'] });
+      await queryClient.refetchQueries({ queryKey: ['clinical-case', caseId] });
+      await queryClient.refetchQueries({ queryKey: ['clinical-cases'] });
 
       toast.success(`${parseResult.stages.length} stages created successfully`);
       setTemplateText('');
@@ -314,10 +314,11 @@ export function VPQuickBuildModal({
     parseResult.stages.some(s => s.errors.length > 0)
   );
 
-  const stageTypeLabels: Record<VPStageType, string> = {
+  const stageTypeLabels: Record<CaseStageType, string> = {
     mcq: 'Single Choice',
     multi_select: 'Multi-select',
     short_answer: 'Short Answer',
+    read_only: 'Read Only',
   };
 
   const canCreate = parseResult && parseResult.stages.length > 0 && !hasErrors && !isCreating;

@@ -126,7 +126,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
       );
     }
     
-    if (stageCount < MIN_STAGES_TO_PUBLISH && !vpCase.is_published) {
+    if (stageCount < minStages && !clinicalCase.is_published) {
       return (
         <TooltipProvider>
           <Tooltip>
@@ -137,14 +137,14 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing</p>
+              <p>Add at least {minStages} stages before publishing</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
     }
     
-    if (!vpCase.is_published) {
+    if (!clinicalCase.is_published) {
       return <Badge variant="secondary" className="text-xs">DRAFT</Badge>;
     }
     
@@ -208,15 +208,15 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCases.map((vpCase) => {
-            const stageCount = vpCase.stage_count || 0;
+          {filteredCases.map((clinicalCase) => {
+            const stageCount = clinicalCase.stage_count || 0;
             const isIncomplete = stageCount === 0;
             
             return (
               <Card 
-                key={vpCase.id} 
+                key={clinicalCase.id} 
                 className={cn(
-                  !vpCase.is_published && "opacity-90",
+                  !clinicalCase.is_published && "opacity-90",
                   isIncomplete && "border-destructive/50 border-dashed"
                 )}
               >
@@ -224,21 +224,21 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        {vpCase.is_published ? (
+                        {clinicalCase.is_published ? (
                           <Eye className="w-4 h-4 text-green-600 shrink-0" />
                         ) : (
                           <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
                         )}
-                        <Badge variant="outline" className={cn("text-xs", levelColors[vpCase.level])}>
-                          {vpCase.level}
+                        <Badge variant="outline" className={cn("text-xs", levelColors[clinicalCase.level])}>
+                          {clinicalCase.level}
                         </Badge>
-                        {getStatusBadge(vpCase)}
+                        {getStatusBadge(clinicalCase)}
                       </div>
-                      <CardTitle className="text-base line-clamp-1">{vpCase.title}</CardTitle>
+                      <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
                     </div>
                   </div>
                   <CardDescription className="line-clamp-2">
-                    {vpCase.intro_text}
+                    {clinicalCase.intro_text}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -252,7 +252,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span>{vpCase.estimated_minutes} min</span>
+                      <span>{clinicalCase.estimated_minutes} min</span>
                     </div>
                   </div>
 
@@ -261,7 +261,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
                       variant={isIncomplete ? "default" : "outline"}
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleOpenBuilder(vpCase.id)}
+                      onClick={() => handleOpenBuilder(clinicalCase.id)}
                     >
                       <Settings className="w-4 h-4 mr-1" />
                       {isIncomplete ? 'Build Stages' : 'Edit Stages'}
@@ -269,14 +269,14 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleEditCase(vpCase)}
+                      onClick={() => handleEditCase(clinicalCase)}
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setDeleteConfirm(vpCase)}
+                      onClick={() => setDeleteConfirm(clinicalCase)}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -289,18 +289,18 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
       )}
 
       {/* Case Form Modal */}
-      <VPCaseFormModal
+      <ClinicalCaseFormModal
         open={caseFormOpen}
         onOpenChange={setCaseFormOpen}
         moduleId={moduleId}
         chapterId={chapterId}
-        vpCase={editingCase}
+        clinicalCase={editingCase}
         onSuccess={handleCaseCreated}
       />
 
       {/* Case Builder Modal */}
       {selectedCaseId && (
-        <VPCaseBuilderModal
+        <ClinicalCaseBuilderModal
           open={builderOpen}
           onOpenChange={setBuilderOpen}
           caseId={selectedCaseId}
@@ -309,7 +309,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
       )}
 
       {/* AI Generate Modal */}
-      <VPAIGenerateModal
+      <ClinicalCaseAIGenerateModal
         open={aiGenerateOpen}
         onOpenChange={setAiGenerateOpen}
         moduleId={moduleId}

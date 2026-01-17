@@ -27,65 +27,65 @@ import {
 } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, X, Info, AlertCircle } from 'lucide-react';
-import { VPCase, VPCaseFormData, VPLevel } from '@/types/virtualPatient';
-import { useCreateVirtualPatientCase, useUpdateVirtualPatientCase } from '@/hooks/useVirtualPatient';
+import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
+import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 
 const MIN_STAGES_TO_PUBLISH = 3;
 
-interface VPCaseFormModalProps {
+interface ClinicalCaseFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string;
-  vpCase?: VPCase | null;
+  clinicalCase?: ClinicalCase | null;
   onSuccess?: (caseId: string) => void;
 }
 
-export function VPCaseFormModal({
+export function ClinicalCaseFormModal({
   open,
   onOpenChange,
   moduleId,
   chapterId,
-  vpCase,
+  clinicalCase,
   onSuccess,
-}: VPCaseFormModalProps) {
-  const isEditing = !!vpCase;
+}: ClinicalCaseFormModalProps) {
+  const isEditing = !!clinicalCase;
   
   const [title, setTitle] = useState('');
   const [introText, setIntroText] = useState('');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
-  const [level, setLevel] = useState<VPLevel>('beginner');
+  const [level, setLevel] = useState<CaseLevel>('beginner');
   const [estimatedMinutes, setEstimatedMinutes] = useState(15);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
 
   const { data: chapters } = useModuleChapters(moduleId);
-  const createCase = useCreateVirtualPatientCase();
-  const updateCase = useUpdateVirtualPatientCase();
+  const createCase = useCreateClinicalCase();
+  const updateCase = useUpdateClinicalCase();
 
   // Check if case can be published (editing mode only)
-  const currentStageCount = vpCase?.stage_count || 0;
+  const currentStageCount = clinicalCase?.stage_count || 0;
   const canPublish = currentStageCount >= MIN_STAGES_TO_PUBLISH;
 
   useEffect(() => {
-    if (vpCase) {
-      setTitle(vpCase.title);
-      setIntroText(vpCase.intro_text);
-      setSelectedChapterId(vpCase.chapter_id || '');
-      setLevel(vpCase.level);
-      setEstimatedMinutes(vpCase.estimated_minutes);
-      setTags(vpCase.tags || []);
-      setIsPublished(vpCase.is_published);
+    if (clinicalCase) {
+      setTitle(clinicalCase.title);
+      setIntroText(clinicalCase.intro_text);
+      setSelectedChapterId(clinicalCase.chapter_id || '');
+      setLevel(clinicalCase.level);
+      setEstimatedMinutes(clinicalCase.estimated_minutes);
+      setTags(clinicalCase.tags || []);
+      setIsPublished(clinicalCase.is_published);
     } else {
       resetForm();
       if (chapterId) {
         setSelectedChapterId(chapterId);
       }
     }
-  }, [vpCase, open, chapterId]);
+  }, [clinicalCase, open, chapterId]);
 
   const resetForm = () => {
     setTitle('');
@@ -137,11 +137,12 @@ export function VPCaseFormModal({
       return;
     }
 
-    const formData: VPCaseFormData = {
+    const formData: ClinicalCaseFormData = {
       title: title.trim(),
       intro_text: introText.trim(),
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
+      case_mode: 'practice_case',
       level,
       estimated_minutes: estimatedMinutes,
       tags,
@@ -149,11 +150,11 @@ export function VPCaseFormModal({
     };
 
     try {
-      if (isEditing && vpCase) {
-        await updateCase.mutateAsync({ id: vpCase.id, data: formData });
+      if (isEditing && clinicalCase) {
+        await updateCase.mutateAsync({ id: clinicalCase.id, data: formData });
         toast.success('Case updated');
         onOpenChange(false);
-        onSuccess?.(vpCase.id);
+        onSuccess?.(clinicalCase.id);
       } else {
         const result = await createCase.mutateAsync(formData);
         toast.success('Case created! Now add stages to build your case.');
@@ -239,7 +240,7 @@ export function VPCaseFormModal({
             {/* Level */}
             <div>
               <Label>Difficulty Level</Label>
-              <Select value={level} onValueChange={(v) => setLevel(v as VPLevel)}>
+              <Select value={level} onValueChange={(v) => setLevel(v as CaseLevel)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
