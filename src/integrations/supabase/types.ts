@@ -3708,6 +3708,7 @@ export type Database = {
       }
       virtual_patient_cases: {
         Row: {
+          case_mode: string | null
           chapter_id: string | null
           created_at: string
           created_by: string | null
@@ -3716,8 +3717,13 @@ export type Database = {
           intro_text: string
           is_deleted: boolean
           is_published: boolean
+          legacy_case_scenario_id: string | null
           level: string
           module_id: string | null
+          patient_age: number | null
+          patient_gender: string | null
+          patient_image_url: string | null
+          patient_name: string | null
           tags: string[] | null
           title: string
           topic_id: string | null
@@ -3725,6 +3731,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          case_mode?: string | null
           chapter_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3733,8 +3740,13 @@ export type Database = {
           intro_text: string
           is_deleted?: boolean
           is_published?: boolean
+          legacy_case_scenario_id?: string | null
           level?: string
           module_id?: string | null
+          patient_age?: number | null
+          patient_gender?: string | null
+          patient_image_url?: string | null
+          patient_name?: string | null
           tags?: string[] | null
           title: string
           topic_id?: string | null
@@ -3742,6 +3754,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          case_mode?: string | null
           chapter_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3750,8 +3763,13 @@ export type Database = {
           intro_text?: string
           is_deleted?: boolean
           is_published?: boolean
+          legacy_case_scenario_id?: string | null
           level?: string
           module_id?: string | null
+          patient_age?: number | null
+          patient_gender?: string | null
+          patient_image_url?: string | null
+          patient_name?: string | null
           tags?: string[] | null
           title?: string
           topic_id?: string | null
