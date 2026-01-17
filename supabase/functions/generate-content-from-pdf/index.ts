@@ -14,6 +14,7 @@ type ContentType =
   | "osce"
   | "matching"
   | "virtual_patient"
+  | "clinical_case"
   | "mind_map"
   | "worked_case"
   | "guided_explanation";
@@ -90,6 +91,15 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     tags: "array of strings - relevant tags/topics",
     stages: "array of stage objects - each stage is MCQ, multi_select, or short_answer type",
   },
+  clinical_case: {
+    title: "string - case title",
+    intro_text: "string - initial patient presentation and context",
+    level: "string - beginner, intermediate, or advanced",
+    case_mode: "string - always 'practice_case'",
+    estimated_minutes: "number - expected completion time in minutes (10-30)",
+    tags: "array of strings - relevant clinical tags/topics",
+    stages: "array of 3-5 stage objects - each stage is MCQ, multi_select, or short_answer type (same format as virtual_patient stages)",
+  },
   mind_map: {
     title: "string - topic title",
     central_concept: "string - main concept at the center",
@@ -103,19 +113,19 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
   },
   guided_explanation: {
     topic: "string - main topic being explained",
-    introduction: "string - sets context for guided discovery learning",
-    guided_questions: `array of objects - [{
-      question: string,
-      hint: string (optional),
-      reveal_answer: string,
+    introduction: "string - sets context for guided discovery learning (at least 50 words)",
+    guided_questions: `array of 3-5 objects (MINIMUM 3 REQUIRED) - [{
+      question: string - the guided question to help student discover the concept,
+      hint: string (optional) - a hint to help if student is stuck,
+      reveal_answer: string - the answer to reveal after student responds,
       rubric: {
-        required_concepts: ["concept1", "concept2", ...] - key concepts student must mention,
+        required_concepts: ["concept1", "concept2", ...] - key concepts student must mention (at least 2),
         optional_concepts: ["bonus1", "bonus2"] - bonus concepts for extra credit,
         pass_threshold: 0.6 - percentage of required concepts needed to pass (default 60%)
       }
     }]`,
-    summary: "string - synthesis of what was learned",
-    key_takeaways: "array of strings - main points to remember",
+    summary: "string - synthesis of what was learned (at least 30 words)",
+    key_takeaways: "array of 3-5 strings - main points to remember",
   },
 };
 
@@ -423,6 +433,7 @@ function validateWorkedCaseItem(item: any, index: number): ValidationResult {
 
 function validateGuidedExplanationItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   
   if (!item.topic || item.topic.length < 3) {
     errors.push(`Guided Explanation #${index + 1}: topic is required`);
@@ -430,8 +441,10 @@ function validateGuidedExplanationItem(item: any, index: number): ValidationResu
   if (!item.introduction || item.introduction.length < 20) {
     errors.push(`Guided Explanation #${index + 1}: introduction must be at least 20 characters`);
   }
-  if (!Array.isArray(item.guided_questions) || item.guided_questions.length < 2) {
-    errors.push(`Guided Explanation #${index + 1}: guided_questions must have at least 2 questions`);
+  if (!Array.isArray(item.guided_questions) || item.guided_questions.length < 3) {
+    errors.push(`Guided Explanation #${index + 1}: guided_questions must have at least 3 questions`);
+  } else if (item.guided_questions.length < 5) {
+    warnings.push(`Guided Explanation #${index + 1}: consider adding more guided questions (recommended 5)`);
   }
   if (!item.summary || item.summary.length < 20) {
     errors.push(`Guided Explanation #${index + 1}: summary is required`);
@@ -440,7 +453,7 @@ function validateGuidedExplanationItem(item: any, index: number): ValidationResu
     errors.push(`Guided Explanation #${index + 1}: key_takeaways must have at least 1 item`);
   }
 
-  return { isValid: errors.length === 0, errors, warnings: [] };
+  return { isValid: errors.length === 0, errors, warnings };
 }
 
 // ============================================
@@ -512,6 +525,7 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
         result = validateMatchingItem(items[i], i);
         break;
       case 'virtual_patient':
+      case 'clinical_case':
         // Normalize stage choices
         if (Array.isArray(items[i].stages)) {
           items[i].stages = items[i].stages.map(normalizeVpStageChoices);
@@ -664,8 +678,8 @@ serve(async (req) => {
     );
   }
 
-  // Virtual patient has lower max quantity due to complexity
-  const maxQuantity = content_type === "virtual_patient" ? 5 : 20;
+  // Virtual patient and clinical case have lower max quantity due to complexity
+  const maxQuantity = (content_type === "virtual_patient" || content_type === "clinical_case") ? 5 : 20;
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > maxQuantity) {
     return jsonResponse(
       { error: `Quantity must be between 1 and ${maxQuantity}`, step: "validation", items: [], warnings: [] },
