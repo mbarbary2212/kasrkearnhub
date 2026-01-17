@@ -127,10 +127,12 @@ export default function TopicDetailPage() {
   const allPracticeTabs = createPracticeTabs({
     mcqs: mcqSets?.length || 0,
     essays: essays?.length || 0,
-    cases: clinicalCases?.length || 0,
+    clinical_cases: clinicalCases?.length || 0,
+    osce: 0,
     practical: practicals?.length || 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
+    concept_check: 0,
   });
 
   // Admin sees all tabs; students see filtered based on setting
@@ -455,8 +457,8 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Case Scenarios - Topics use clinical_cases table */}
-                {practiceTab === 'cases' && (
+                {/* Clinical Cases - Topics use clinical_cases table */}
+                {practiceTab === 'clinical_cases' && (
                   <div>
                     {casesLoading ? (
                       <div className="space-y-3">

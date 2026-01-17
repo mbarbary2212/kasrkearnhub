@@ -14,14 +14,11 @@ import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { McqList } from '@/components/content/McqList';
 import { OsceList } from '@/components/content/OsceList';
 import EssayList from '@/components/content/EssayList';
-import CaseScenarioList from '@/components/content/CaseScenarioList';
-import { CaseScenarioFormModal } from '@/components/content/CaseScenarioFormModal';
-import { CaseScenarioBulkUploadModal } from '@/components/content/CaseScenarioBulkUploadModal';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
-import { VirtualPatientList, VPAdminList } from '@/components/virtual-patient';
+import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
 import { 
   useChapterLectures, 
@@ -31,7 +28,7 @@ import {
 import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
-import { useVirtualPatientCases } from '@/hooks/useVirtualPatient';
+import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -40,7 +37,6 @@ import { MindMapViewer } from '@/components/study/MindMapViewer';
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { useChapterCaseScenarios } from '@/hooks/useCaseScenarios';
 import { useConceptCheckCount } from '@/hooks/useConceptCheckProgress';
 import { useChapterMcqs } from '@/hooks/useMcqs';
 import { useQueryClient } from '@tanstack/react-query';
@@ -249,24 +245,24 @@ export default function ChapterPage() {
   const conceptCheckCount = useConceptCheckCount(chapterId, studyResources);
 
   const allPracticeTabs = useMemo(() => {
+    // Unified clinical cases count = cases from virtual_patient_cases table
+    const clinicalCasesCount = chapterClinicalCases.length;
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
       essays: essays?.length || 0,
-      cases: caseScenarios?.length || 0,
+      clinical_cases: clinicalCasesCount,
       osce: osceQuestions?.length || 0,
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
-      virtual_patient: chapterVpCases.length,
       concept_check: conceptCheckCount,
     });
   }, [
     mcqs?.length,
     essays?.length,
-    caseScenarios?.length,
+    chapterClinicalCases.length,
     osceQuestions?.length,
     matchingQuestions?.length,
-    chapterVpCases.length,
     conceptCheckCount,
   ]);
 

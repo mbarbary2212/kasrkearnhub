@@ -33,15 +33,15 @@ import {
   AlertCircle,
   Sparkles,
 } from 'lucide-react';
-import { VPCase } from '@/types/virtualPatient';
-import { useVirtualPatientCases, useDeleteVirtualPatientCase } from '@/hooks/useVirtualPatient';
-import { VPCaseFormModal } from './VPCaseFormModal';
-import { VPCaseBuilderModal } from './VPCaseBuilderModal';
-import { VPAIGenerateModal } from './VPAIGenerateModal';
+import { ClinicalCase } from '@/types/clinicalCase';
+import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
+import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
+import { ClinicalCaseBuilderModal } from './ClinicalCaseBuilderModal';
+import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface VPAdminListProps {
+interface ClinicalCaseAdminListProps {
   moduleId: string;
   chapterId?: string;
 }
@@ -52,18 +52,18 @@ const levelColors = {
   advanced: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const MIN_STAGES_TO_PUBLISH = 3;
+const MIN_STAGES_TO_PUBLISH = 1; // Read cases only need 1 stage
 
-export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
-  const { data: cases, isLoading } = useVirtualPatientCases(moduleId, true);
-  const deleteCase = useDeleteVirtualPatientCase();
+export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdminListProps) {
+  const { data: cases, isLoading } = useClinicalCases(moduleId, true);
+  const deleteCase = useDeleteClinicalCase();
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState<VPCase | null>(null);
+  const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<VPCase | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
 
   // Filter by chapter if provided
   const filteredCases = (cases || []).filter(c => {
@@ -76,8 +76,8 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
     setCaseFormOpen(true);
   };
 
-  const handleEditCase = (vpCase: VPCase) => {
-    setEditingCase(vpCase);
+  const handleEditCase = (clinicalCase: ClinicalCase) => {
+    setEditingCase(clinicalCase);
     setCaseFormOpen(true);
   };
 
@@ -105,9 +105,9 @@ export function VPAdminList({ moduleId, chapterId }: VPAdminListProps) {
   };
 
   // Helper to get status badge
-  const getStatusBadge = (vpCase: VPCase) => {
-    const stageCount = vpCase.stage_count || 0;
-    
+  const getStatusBadge = (clinicalCase: ClinicalCase) => {
+    const stageCount = clinicalCase.stage_count || 0;
+    const minStages = clinicalCase.case_mode === 'read_case' ? 1 : MIN_STAGES_TO_PUBLISH;
     if (stageCount === 0) {
       return (
         <TooltipProvider>
