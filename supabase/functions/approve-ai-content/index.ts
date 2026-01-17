@@ -21,6 +21,7 @@ type ContentType =
   | "osce"
   | "matching"
   | "virtual_patient"
+  | "clinical_case"
   | "mind_map"
   | "worked_case"
   | "guided_explanation";
@@ -363,7 +364,6 @@ serve(async (req) => {
           statement_5: normalized.statement_5 || null,
           answer_5: normalized.answer_5 ?? null,
           explanation_5: normalized.explanation_5 || null,
-          difficulty: normalized.difficulty || "medium",
           display_order: idx,
           created_by: user.id,
           is_deleted: false,
@@ -454,6 +454,65 @@ serve(async (req) => {
           if (stagesError) {
             console.error(`[${jobId}] VP stages insert error:`, stagesError.message);
             throw new Error(`Failed to insert stages for VP case #${idx + 1}: ${stagesError.message}`);
+          }
+        }
+      }
+    } else if (contentType === "clinical_case") {
+      // Clinical Case: Insert case first, then stages (uses same tables as virtual_patient)
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        
+        const { data: clinicalCase, error: caseError } = await serviceClient
+          .from("virtual_patient_cases")
+          .insert({
+            title: item.title,
+            intro_text: item.intro_text,
+            module_id: moduleId,
+            chapter_id: chapterId,
+            level: item.level || "intermediate",
+            case_mode: "practice_case",
+            estimated_minutes: item.estimated_minutes || 15,
+            tags: Array.isArray(item.tags) ? item.tags : [],
+            is_published: false,
+            is_deleted: false,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+
+        if (caseError || !clinicalCase) {
+          console.error(`[${jobId}] Clinical case insert error:`, caseError?.message);
+          throw new Error(`Failed to create clinical case #${idx + 1}: ${caseError?.message}`);
+        }
+
+        // Insert stages
+        const stages = ensureArray(item.stages);
+        if (stages.length > 0) {
+          const stagesToInsert = stages.map((stage: any, stageIdx: number) => {
+            // Normalize stage choices
+            const normalized = normalizeVpStageChoices(stage);
+            
+            return {
+              case_id: clinicalCase.id,
+              stage_order: normalized.stage_order || stageIdx + 1,
+              stage_type: normalized.stage_type || "mcq",
+              prompt: normalized.prompt,
+              patient_info: normalized.patient_info || null,
+              choices: ensureArray(normalized.choices),
+              correct_answer: normalized.correct_answer,
+              explanation: normalized.explanation || null,
+              teaching_points: ensureArray(normalized.teaching_points),
+              rubric: normalized.rubric || null,
+            };
+          });
+
+          const { error: stagesError } = await serviceClient
+            .from("virtual_patient_stages")
+            .insert(stagesToInsert);
+
+          if (stagesError) {
+            console.error(`[${jobId}] Clinical case stages insert error:`, stagesError.message);
+            throw new Error(`Failed to insert stages for clinical case #${idx + 1}: ${stagesError.message}`);
           }
         }
       }
