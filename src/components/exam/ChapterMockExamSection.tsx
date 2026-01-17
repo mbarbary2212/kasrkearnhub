@@ -10,7 +10,6 @@ import { useConceptCheckCount } from '@/hooks/useConceptCheckProgress';
 import { MockTimedExam } from './MockTimedExam';
 import { OsceTimedExam } from './OsceTimedExam';
 import { ConceptCheckPractice } from '@/components/practice/ConceptCheckPractice';
-import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { FileQuestion, Stethoscope, MessageCircleQuestion } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -116,29 +115,11 @@ export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamS
   // Multiple types available - show tabs
   const gridCols = availableTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-  // Build tab options for mobile dropdown
-  const tabOptions = useMemo(() => {
-    const options: { id: ContentType; label: string; icon: typeof FileQuestion; count: number }[] = [];
-    if (hasMcqs) options.push({ id: 'mcq', label: 'MCQ', icon: FileQuestion, count: mcqCount });
-    if (hasOsce) options.push({ id: 'osce', label: 'OSCE', icon: Stethoscope, count: osceCount });
-    if (hasConceptCheck) options.push({ id: 'concept_check', label: 'Concept Check', icon: MessageCircleQuestion, count: conceptCheckCount });
-    return options;
-  }, [hasMcqs, hasOsce, hasConceptCheck, mcqCount, osceCount, conceptCheckCount]);
-
   return (
     <div className="space-y-6">
       {/* Content Type Tabs */}
       <Tabs value={contentType} onValueChange={(v) => setContentType(v as ContentType)}>
-        {/* Mobile: Dropdown selector */}
-        <div className="md:hidden">
-          <MobileSectionDropdown
-            tabs={tabOptions}
-            activeTab={contentType}
-            onTabChange={(tab) => setContentType(tab as ContentType)}
-          />
-        </div>
-        {/* Desktop: Tab list */}
-        <TabsList className={cn("hidden md:grid w-full max-w-lg mx-auto", gridCols)}>
+        <TabsList className={cn("grid w-full max-w-lg mx-auto", gridCols)}>
           {hasMcqs && (
             <TabsTrigger value="mcq" className="gap-2">
               <FileQuestion className="w-4 h-4" />
