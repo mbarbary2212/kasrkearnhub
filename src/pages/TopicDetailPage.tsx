@@ -132,7 +132,6 @@ export default function TopicDetailPage() {
     practical: practicals?.length || 0,
     matching: matchingQuestions?.length || 0,
     images: 0,
-    concept_check: 0,
   });
 
   // Admin sees all tabs; students see filtered based on setting

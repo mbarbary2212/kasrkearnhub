@@ -71,10 +71,9 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   // Practice Types
   { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Multiple choice questions (A-E)', category: 'practice' },
   { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
-  { value: 'case_scenario', label: 'Case Scenarios', icon: ClipboardList, description: 'Clinical case-based learning', category: 'practice' },
+  { value: 'clinical_case', label: 'Clinical Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
   { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
-  { value: 'virtual_patient', label: 'Virtual Patient', icon: UserRound, description: 'Multi-stage case with MCQ/short-answer stages', category: 'practice' },
   
   // Resource Types
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
@@ -315,16 +314,15 @@ export function AIContentFactoryModal({
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['flashcards'] }),
-        queryClient.invalidateQueries({ queryKey: ['case-scenarios'] }),
-        queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'chapter', chapterId] }),
-        queryClient.invalidateQueries({ queryKey: ['case-scenarios', 'module', moduleId] }),
+        queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['clinical-cases', 'chapter', chapterId] }),
+        queryClient.invalidateQueries({ queryKey: ['clinical-cases', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['essays'] }),
         queryClient.invalidateQueries({ queryKey: ['chapter-content', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['module-content', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['osce-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
-        queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] }),
         queryClient.invalidateQueries({ queryKey: ['guided-explanations'] }),
         queryClient.invalidateQueries({ queryKey: ['guided-explanations', 'chapter', chapterId] }),
       ]);
