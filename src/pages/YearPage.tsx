@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber } from '@/hooks/useModules';
 import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
+import { getYearIcon } from '@/lib/yearIcons';
 
 export default function YearPage() {
   const { yearId } = useParams();
@@ -42,6 +43,18 @@ export default function YearPage() {
           <Button variant="ghost" size="icon" onClick={handleGoHome}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          
+          {/* Year Icon */}
+          {getYearIcon(yearNumber) && (
+            <img 
+              src={getYearIcon(yearNumber)} 
+              alt={`Year ${yearNumber}`}
+              className="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover shadow-md
+                         animate-scale-in
+                         hover:scale-105 hover:shadow-lg transition-all duration-300"
+            />
+          )}
+          
           <div>
             {yearLoading ? (
               <>

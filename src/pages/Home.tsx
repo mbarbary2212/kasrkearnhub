@@ -11,6 +11,7 @@ import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getYearIcon } from '@/lib/yearIcons';
 
 export default function Home() {
   const { user, profile, isLoading: authLoading } = useAuthContext();
@@ -309,12 +310,22 @@ function LoggedInHome() {
                 className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
                 onClick={() => navigate(`/year/${year.number}`)}
               >
-                <div 
-                  className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
-                  style={getYearStyle(year.color)}
-                >
-                  <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
-                </div>
+                {getYearIcon(year.number) ? (
+                  <img 
+                    src={getYearIcon(year.number)} 
+                    alt={`Year ${year.number}`}
+                    className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover shadow-sm 
+                               transition-all duration-300 ease-out 
+                               group-hover:scale-110 group-hover:shadow-md group-hover:rotate-3"
+                  />
+                ) : (
+                  <div 
+                    className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
+                    style={getYearStyle(year.color)}
+                  >
+                    <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-medium text-foreground">
                     {year.name}
