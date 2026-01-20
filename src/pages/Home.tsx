@@ -300,10 +300,10 @@ function LoggedInHome() {
   const hasMessages = totalMessages > 0;
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
       {/* Welcome Section */}
-      <section className="text-center py-8">
-        <h1 className="text-3xl md:text-4xl font-heading font-bold mb-4 inline-flex items-center justify-center gap-2 flex-wrap">
+      <section className="text-center py-3 md:py-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
           <span>Welcome back,</span>
           <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
           {hasMessages && (
@@ -332,14 +332,14 @@ function LoggedInHome() {
             </TooltipProvider>
           )}
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-sm md:text-base text-muted-foreground">
           Select your academic year to continue
         </p>
       </section>
 
       {/* Year Selection */}
       <section className="max-w-3xl mx-auto">
-        <h2 className="text-xl font-heading font-semibold mb-4">Academic Years</h2>
+        <h2 className="text-lg md:text-xl font-heading font-semibold mb-3 md:mb-4">Academic Years</h2>
         
         {isLoading ? (
           <div className="space-y-4 md:space-y-6">
