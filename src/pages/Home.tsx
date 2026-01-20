@@ -233,8 +233,8 @@ function LoggedInHome() {
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
 
-  // Color mapping for years - using inline styles since dynamic Tailwind classes are purged
-  const getYearStyle = (color: string | null): React.CSSProperties => {
+  // Color mapping for year accent borders
+  const getYearColor = (color: string | null): string => {
     const colorMap: Record<string, string> = {
       'bg-blue-500': '#3b82f6',
       'bg-green-500': '#22c55e',
@@ -247,9 +247,54 @@ function LoggedInHome() {
       'bg-indigo-500': '#6366f1',
       'bg-primary': 'hsl(var(--primary))',
     };
-    const bgColor = color && colorMap[color] ? colorMap[color] : 'hsl(var(--primary))';
-    return { backgroundColor: bgColor };
+    return color && colorMap[color] ? colorMap[color] : '#3b82f6';
   };
+
+  // Year Card Component
+  const YearCard = ({ year }: { year: typeof years[0] }) => (
+    <div
+      className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
+                 transition-all duration-300 ease-out 
+                 hover:shadow-xl hover:-translate-y-1 group"
+      onClick={() => navigate(`/year/${year.number}`)}
+    >
+      {/* Colored Left Accent Border */}
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-1.5 md:w-2"
+        style={{ backgroundColor: getYearColor(year.color) }}
+      />
+      
+      {/* Card Content */}
+      <div className="flex items-center justify-between p-4 md:p-5 pl-5 md:pl-6">
+        <div className="flex-1 min-w-0 pr-4">
+          <h3 className="text-lg md:text-xl font-heading font-semibold text-foreground">
+            Year {year.number}
+          </h3>
+          <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
+            {year.subtitle || year.name}
+          </p>
+        </div>
+        
+        {/* Year Icon */}
+        {getYearIcon(year.number) ? (
+          <img 
+            src={getYearIcon(year.number)} 
+            alt={`Year ${year.number}`}
+            className="w-16 h-16 md:w-20 md:h-20 object-contain flex-shrink-0
+                       transition-transform duration-300 
+                       group-hover:scale-110 group-hover:rotate-3"
+          />
+        ) : (
+          <div 
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: getYearColor(year.color) }}
+          >
+            <span className="text-2xl font-bold text-white">{year.number}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
@@ -297,46 +342,33 @@ function LoggedInHome() {
         <h2 className="text-xl font-heading font-semibold mb-4">Academic Years</h2>
         
         {isLoading ? (
-          <div className="flex flex-col gap-2">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-[72px] w-full" />
-            ))}
+          <div className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-[100px] md:h-[120px] rounded-xl" />
+              ))}
+            </div>
+            <div className="flex justify-center">
+              <Skeleton className="h-[100px] md:h-[120px] w-full md:w-[calc(50%-0.75rem)] rounded-xl" />
+            </div>
           </div>
         ) : years && years.length > 0 ? (
-          <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-            {years.map((year) => (
-              <div
-                key={year.id}
-                className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
-                onClick={() => navigate(`/year/${year.number}`)}
-              >
-                {getYearIcon(year.number) ? (
-                  <img 
-                    src={getYearIcon(year.number)} 
-                    alt={`Year ${year.number}`}
-                    className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover shadow-sm 
-                               transition-all duration-300 ease-out 
-                               group-hover:scale-110 group-hover:shadow-md group-hover:rotate-3"
-                  />
-                ) : (
-                  <div 
-                    className="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center"
-                    style={getYearStyle(year.color)}
-                  >
-                    <span className="text-lg font-semibold text-primary-foreground">{year.number}</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-foreground">
-                    {year.name}
-                  </p>
-                  {year.subtitle && (
-                    <p className="text-sm text-muted-foreground truncate">{year.subtitle}</p>
-                  )}
+          <div className="space-y-4 md:space-y-6">
+            {/* Years 1-4: 2-column grid on desktop, 1 column on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {years.filter(y => y.number !== 5).map((year) => (
+                <YearCard key={year.id} year={year} />
+              ))}
+            </div>
+            
+            {/* Year 5: Centered below */}
+            {years.find(y => y.number === 5) && (
+              <div className="flex justify-center">
+                <div className="w-full md:w-[calc(50%-0.75rem)]">
+                  <YearCard year={years.find(y => y.number === 5)!} />
                 </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="text-center py-12">
