@@ -303,7 +303,7 @@ function LoggedInHome() {
     <div className="space-y-4 md:space-y-6 animate-fade-in">
       {/* Welcome Section */}
       <section className="text-center py-3 md:py-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
+        <h1 className="text-lg md:text-xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
           <span>Welcome back,</span>
           <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
           {hasMessages && (
