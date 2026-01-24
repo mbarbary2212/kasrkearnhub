@@ -152,10 +152,13 @@ export default function ChapterPage() {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
   
-  // Helper function to filter content by section
-  const filterBySection = useCallback(<T extends { section_id?: string | null }>(items: T[]): T[] => {
+  // Helper function to filter content by section - uses type assertion for flexibility
+  const filterBySection = useCallback(<T,>(items: T[]): T[] => {
     if (!selectedSectionId || !sectionsEnabled) return items;
-    return items.filter(item => item.section_id === selectedSectionId);
+    return items.filter(item => {
+      const sectionable = item as unknown as { section_id?: string | null };
+      return sectionable.section_id === selectedSectionId;
+    });
   }, [selectedSectionId, sectionsEnabled]);
 
   // Filter deleted MCQs only (exclude active ones)
@@ -472,7 +475,7 @@ export default function ChapterPage() {
                     ) : (
                       <LectureList 
                         key={lecturesResetKey}
-                        lectures={lectures || []} 
+                        lectures={filterBySection(lectures || [])} 
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}
@@ -515,7 +518,7 @@ export default function ChapterPage() {
                       <LectureListSkeleton count={3} />
                     ) : (
                       <FlashcardsTab
-                        resources={flashcards}
+                        resources={filterBySection(flashcards)}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                         chapterId={chapterId}
@@ -529,7 +532,7 @@ export default function ChapterPage() {
                   <ResourcesTabContent
                     chapterId={chapterId}
                     moduleId={moduleId}
-                    resources={resources || []}
+                    resources={filterBySection(resources || [])}
                     resourcesLoading={resourcesLoading}
                     canManageContent={canManageContent}
                     isSuperAdmin={auth.isSuperAdmin}
@@ -569,7 +572,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <MindMapViewer
-                        resources={mindMaps}
+                        resources={filterBySection(mindMaps)}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                       />
@@ -602,7 +605,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <GuidedExplanationList
-                        resources={studyResources?.filter(r => r.resource_type === 'guided_explanation') || []}
+                        resources={filterBySection(studyResources?.filter(r => r.resource_type === 'guided_explanation') || [])}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                       />
@@ -613,8 +616,8 @@ export default function ChapterPage() {
                 {/* Clinical Tools Content */}
                 {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
                   <ClinicalToolsSection
-                    algorithms={algorithms}
-                    workedCases={workedCases}
+                    algorithms={filterBySection(algorithms)}
+                    workedCases={filterBySection(workedCases)}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
                     onAdd={(type) => {
@@ -683,7 +686,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <McqList
-                        mcqs={mcqs || []}
+                        mcqs={filterBySection(mcqs || [])}
                         deletedMcqs={deletedOnlyMcqs}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
@@ -708,7 +711,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <EssayList
-                        essays={essays || []}
+                        essays={filterBySection(essays || [])}
                         deletedEssays={deletedOnlyEssays}
                         moduleId={moduleId}
                         chapterId={chapterId}
@@ -743,7 +746,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="osce" />
                     ) : (
                       <OsceList
-                        questions={osceQuestions || []}
+                        questions={filterBySection(osceQuestions || [])}
                         deletedQuestions={deletedOnlyOsce}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
@@ -774,7 +777,7 @@ export default function ChapterPage() {
                       <QuestionListSkeleton count={2} type="matching" />
                     ) : (
                       <MatchingQuestionList
-                        questions={matchingQuestions || []}
+                        questions={filterBySection(matchingQuestions || [])}
                         deletedQuestions={deletedOnlyMatching}
                         moduleId={moduleId || ''}
                         chapterId={chapterId}
