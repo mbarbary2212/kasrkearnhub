@@ -26,6 +26,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
+import { logActivity } from '@/lib/activityLog';
 
 interface OsceBulkUploadModalProps {
   open: boolean;
@@ -354,6 +355,15 @@ export function OsceBulkUploadModal({
       toast.success(`Successfully imported ${importedCount} OSCE questions`);
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', moduleId] });
+      
+      // Activity logging for bulk upload
+      logActivity({
+        action: 'bulk_upload_osce',
+        entity_type: 'osce',
+        scope: { module_id: moduleId, chapter_id: chapterId },
+        metadata: { source: 'csv_import', count: importedCount },
+      });
+      
       onOpenChange(false);
       resetState();
     } catch (error: any) {

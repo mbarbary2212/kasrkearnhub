@@ -27,8 +27,9 @@ export async function logActivity(payload: ActivityLogPayload): Promise<void> {
     }
 
     // Fire and forget - don't await the result in calling code
+    const supabaseUrl = 'https://dwmxnokprfiwmvzksyjg.supabase.co';
     fetch(
-      `https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/log-activity`,
+      `${supabaseUrl}/functions/v1/log-activity`,
       {
         method: 'POST',
         headers: {

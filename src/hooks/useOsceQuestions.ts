@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logActivity } from '@/lib/activityLog';
 
 export interface OsceQuestion {
   id: string;
@@ -123,6 +124,13 @@ export function useCreateOsceQuestion() {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', data.chapter_id] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', data.module_id] });
       toast.success('OSCE question added successfully');
+      logActivity({
+        action: 'created_osce',
+        entity_type: 'osce',
+        entity_id: data.id,
+        scope: { module_id: data.module_id, chapter_id: data.chapter_id },
+        metadata: { source: 'admin_form' },
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to add OSCE question');
@@ -150,6 +158,13 @@ export function useUpdateOsceQuestion() {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', data.chapter_id] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', data.module_id] });
       toast.success('OSCE question updated successfully');
+      logActivity({
+        action: 'updated_osce',
+        entity_type: 'osce',
+        entity_id: data.id,
+        scope: { module_id: data.module_id, chapter_id: data.chapter_id },
+        metadata: { source: 'admin_form' },
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update OSCE question');
@@ -169,12 +184,19 @@ export function useDeleteOsceQuestion() {
         .eq('id', id);
       
       if (error) throw error;
-      return { chapterId, moduleId };
+      return { id, chapterId, moduleId };
     },
-    onSuccess: ({ chapterId, moduleId }) => {
+    onSuccess: ({ id, chapterId, moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', moduleId] });
       toast.success('OSCE question deleted');
+      logActivity({
+        action: 'deleted_osce',
+        entity_type: 'osce',
+        entity_id: id,
+        scope: { module_id: moduleId, chapter_id: chapterId },
+        metadata: { source: 'admin_delete' },
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete OSCE question');

@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
@@ -233,6 +233,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
                       <Inbox className="mr-2 h-4 w-4" />
                       Feedback & Inquiries
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/admin/activity-log')}>
+                      <Activity className="mr-2 h-4 w-4" />
+                      Activity Log
                     </DropdownMenuItem>
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>

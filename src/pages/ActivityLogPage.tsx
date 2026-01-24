@@ -51,6 +51,14 @@ const ACTION_LABELS: Record<string, string> = {
   updated_essay: 'Updated Essay',
   deleted_essay: 'Deleted Essay',
   bulk_upload_essay: 'Bulk Upload Essays',
+  created_osce: 'Created OSCE',
+  updated_osce: 'Updated OSCE',
+  deleted_osce: 'Deleted OSCE',
+  bulk_upload_osce: 'Bulk Upload OSCE',
+  created_flashcard: 'Created Flashcard',
+  updated_flashcard: 'Updated Flashcard',
+  deleted_flashcard: 'Deleted Flashcard',
+  bulk_upload_flashcard: 'Bulk Upload Flashcards',
 };
 
 const ENTITY_COLORS: Record<string, string> = {

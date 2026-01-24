@@ -19,6 +19,23 @@ interface ActivityLogPayload {
 
 const MAX_METADATA_SIZE = 4096; // 4KB limit
 
+// Allowlists for validation (governance)
+const ALLOWED_ENTITY_TYPES = [
+  'mcq', 'essay', 'osce', 'flashcard',
+  'resource', 'lecture', 'clinical_case', 'matching',
+];
+
+const ALLOWED_ACTIONS = [
+  // MCQ
+  'created_mcq', 'updated_mcq', 'deleted_mcq', 'bulk_upload_mcq',
+  // Essay
+  'created_essay', 'updated_essay', 'deleted_essay', 'bulk_upload_essay',
+  // OSCE
+  'created_osce', 'updated_osce', 'deleted_osce', 'bulk_upload_osce',
+  // Flashcard
+  'created_flashcard', 'updated_flashcard', 'deleted_flashcard', 'bulk_upload_flashcard',
+];
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -68,6 +85,21 @@ Deno.serve(async (req) => {
     if (!payload.action || !payload.entity_type) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: action, entity_type' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate action and entity_type against allowlist
+    if (!ALLOWED_ACTIONS.includes(payload.action)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid action: ${payload.action}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!ALLOWED_ENTITY_TYPES.includes(payload.entity_type)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid entity_type: ${payload.entity_type}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
