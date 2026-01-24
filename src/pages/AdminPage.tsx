@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -166,23 +166,37 @@ function PlatformSettingsTab() {
 
 // Integrity Check Tab Component (All Admins)
 function IntegrityCheckTab() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<{ issue: string; count: number; sampleIds: string[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // MCQ Check State
+  const [isMcqRunning, setIsMcqRunning] = useState(false);
+  const [mcqResult, setMcqResult] = useState<{ issue: string; count: number; sampleIds: string[] } | null>(null);
+  const [mcqError, setMcqError] = useState<string | null>(null);
 
-  const runIntegrityCheck = async () => {
-    setIsRunning(true);
-    setError(null);
-    setResult(null);
+  // Essay Check State
+  const [isEssayRunning, setIsEssayRunning] = useState(false);
+  const [essayResult, setEssayResult] = useState<{ 
+    type: string; 
+    severity: string; 
+    count: number; 
+    description: string; 
+    affectedIds: string[]; 
+    checkedAt: string; 
+  } | null>(null);
+  const [essayError, setEssayError] = useState<string | null>(null);
+
+  const getAuthToken = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+    return token;
+  };
+
+  const runMcqCheck = async () => {
+    setIsMcqRunning(true);
+    setMcqError(null);
+    setMcqResult(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
+      const token = await getAuthToken();
       const response = await fetch(
         'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot',
         {
@@ -196,91 +210,224 @@ function IntegrityCheckTab() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to run integrity check');
+        throw new Error(errorData.error || 'Failed to run MCQ integrity check');
       }
 
       const data = await response.json();
-      setResult(data);
+      setMcqResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setMcqError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsRunning(false);
+      setIsMcqRunning(false);
     }
   };
 
+  const runEssayCheck = async () => {
+    setIsEssayRunning(true);
+    setEssayError(null);
+    setEssayResult(null);
+
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-orphaned-essays',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to run Essay integrity check');
+      }
+
+      const data = await response.json();
+      setEssayResult(data);
+    } catch (err) {
+      setEssayError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsEssayRunning(false);
+    }
+  };
+
+  const copyIdsToClipboard = (ids: string[], type: string) => {
+    navigator.clipboard.writeText(ids.join('\n'));
+    toast.success(`Copied ${ids.length} ${type} IDs to clipboard`);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5" />
-          Data Integrity Pilot
-        </CardTitle>
-        <CardDescription>
-          Read-only safety check for orphaned MCQs. Detects MCQs that reference deleted chapters.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button 
-          onClick={runIntegrityCheck} 
-          disabled={isRunning}
-          className="w-full sm:w-auto"
-        >
-          {isRunning ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Running Check...
-            </>
-          ) : (
-            'Run Integrity Pilot'
-          )}
-        </Button>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {result && (
-          <Alert variant={result.count > 0 ? "destructive" : "default"}>
-            {result.count > 0 ? (
-              <AlertTriangle className="h-4 w-4" />
+    <div className="space-y-6">
+      {/* Orphaned MCQ Check */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5" />
+            Orphaned MCQ Check
+          </CardTitle>
+          <CardDescription>
+            Detects MCQs that reference chapters which no longer exist.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            onClick={runMcqCheck} 
+            disabled={isMcqRunning}
+            className="w-full sm:w-auto"
+          >
+            {isMcqRunning ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Running Check...
+              </>
             ) : (
-              <CheckCircle2 className="h-4 w-4" />
+              'Run MCQ Check'
             )}
-            <AlertTitle>
-              {result.count > 0 
-                ? `Found ${result.count} Orphaned MCQ${result.count !== 1 ? 's' : ''}`
-                : 'No Issues Found'
-              }
-            </AlertTitle>
-            <AlertDescription>
-              {result.count > 0 ? (
-                <div className="mt-2 space-y-2">
-                  <p className="text-sm">
-                    These MCQs reference chapters that no longer exist:
-                  </p>
-                  <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
-                    {result.sampleIds.map((id) => (
-                      <li key={id} className="truncate">{id}</li>
-                    ))}
-                  </ul>
-                  {result.count > 10 && (
-                    <p className="text-xs text-muted-foreground">
-                      Showing first 10 of {result.count} orphaned MCQs
-                    </p>
-                  )}
-                </div>
+          </Button>
+
+          {mcqError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{mcqError}</AlertDescription>
+            </Alert>
+          )}
+
+          {mcqResult && (
+            <Alert variant={mcqResult.count > 0 ? "destructive" : "default"}>
+              {mcqResult.count > 0 ? (
+                <AlertTriangle className="h-4 w-4" />
               ) : (
-                <p>All MCQs with chapter references are valid.</p>
+                <CheckCircle2 className="h-4 w-4" />
               )}
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+              <AlertTitle>
+                {mcqResult.count > 0 
+                  ? `Found ${mcqResult.count} Orphaned MCQ${mcqResult.count !== 1 ? 's' : ''}`
+                  : 'No Issues Found'
+                }
+              </AlertTitle>
+              <AlertDescription>
+                {mcqResult.count > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm">
+                      These MCQs reference chapters that no longer exist:
+                    </p>
+                    <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
+                      {mcqResult.sampleIds.map((id) => (
+                        <li key={id} className="truncate">{id}</li>
+                      ))}
+                    </ul>
+                    {mcqResult.count > 10 && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing first 10 of {mcqResult.count} orphaned MCQs
+                      </p>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => copyIdsToClipboard(mcqResult.sampleIds, 'MCQ')}
+                      className="mt-2"
+                    >
+                      <Copy className="mr-2 h-3 w-3" />
+                      Copy IDs
+                    </Button>
+                  </div>
+                ) : (
+                  <p>All MCQs with chapter references are valid.</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Orphaned Essay Check */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Orphaned Essay Check
+          </CardTitle>
+          <CardDescription>
+            Detects essays that reference chapters which no longer exist.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            onClick={runEssayCheck} 
+            disabled={isEssayRunning}
+            className="w-full sm:w-auto"
+          >
+            {isEssayRunning ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Running Check...
+              </>
+            ) : (
+              'Run Essay Check'
+            )}
+          </Button>
+
+          {essayError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{essayError}</AlertDescription>
+            </Alert>
+          )}
+
+          {essayResult && (
+            <Alert variant={essayResult.count > 0 ? "destructive" : "default"}>
+              {essayResult.count > 0 ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {essayResult.count > 0 
+                  ? `Found ${essayResult.count} Orphaned Essay${essayResult.count !== 1 ? 's' : ''}`
+                  : 'No Issues Found'
+                }
+              </AlertTitle>
+              <AlertDescription>
+                {essayResult.count > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm">{essayResult.description}</p>
+                    <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
+                      {essayResult.affectedIds.slice(0, 10).map((id) => (
+                        <li key={id} className="truncate">{id}</li>
+                      ))}
+                    </ul>
+                    {essayResult.count > 10 && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing first 10 of {essayResult.count} orphaned essays
+                      </p>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => copyIdsToClipboard(essayResult.affectedIds, 'Essay')}
+                      className="mt-2"
+                    >
+                      <Copy className="mr-2 h-3 w-3" />
+                      Copy IDs
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Checked at: {new Date(essayResult.checkedAt).toLocaleString()}
+                    </p>
+                  </div>
+                ) : (
+                  <p>All essays with chapter references are valid.</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
