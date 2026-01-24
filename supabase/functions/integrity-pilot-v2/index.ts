@@ -289,6 +289,182 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ========== LECTURES CHECK ==========
+    if (!checkType || checkType === "lectures") {
+      const { data: lectures } = await supabase
+        .from("lectures")
+        .select("id, title, video_url, module_id, chapter_id, topic_id")
+        .eq("is_deleted", false);
+
+      const lectureIssues: Location[] = [];
+
+      for (const lec of lectures || []) {
+        if (!isInScope(lec.module_id, lec.chapter_id)) continue;
+
+        const problems: string[] = [];
+
+        if (!lec.title?.trim()) problems.push("empty title");
+        if (!lec.video_url?.trim()) problems.push("no video URL");
+        if (!lec.module_id && !lec.chapter_id) problems.push("no module/chapter");
+
+        if (problems.length > 0) {
+          lectureIssues.push(
+            buildLocation(
+              lec.id,
+              `[${problems.join(", ")}] ${lec.title?.substring(0, 50) || "(no title)"}`,
+              lec.module_id,
+              lec.chapter_id,
+              lec.topic_id
+            )
+          );
+        }
+      }
+
+      if (lectureIssues.length > 0) {
+        issues.push({
+          type: "lecture_integrity",
+          severity: lectureIssues.some((l) => l.preview.includes("empty title")) ? "critical" : "warning",
+          count: lectureIssues.length,
+          description: `${lectureIssues.length} lecture(s) have missing or invalid fields`,
+          locations: lectureIssues.slice(0, 50),
+        });
+      }
+    }
+
+    // ========== MATCHING QUESTIONS CHECK ==========
+    if (!checkType || checkType === "matching") {
+      const { data: matchingQuestions } = await supabase
+        .from("matching_questions")
+        .select("id, instruction, column_a_items, column_b_items, correct_matches, module_id, chapter_id, topic_id")
+        .eq("is_deleted", false);
+
+      const matchingIssues: Location[] = [];
+
+      for (const mq of matchingQuestions || []) {
+        if (!isInScope(mq.module_id, mq.chapter_id)) continue;
+
+        const problems: string[] = [];
+
+        if (!mq.instruction?.trim()) problems.push("empty instruction");
+        
+        const colA = mq.column_a_items as unknown[];
+        const colB = mq.column_b_items as unknown[];
+        const matches = mq.correct_matches as unknown[];
+        
+        if (!colA || !Array.isArray(colA) || colA.length === 0) problems.push("empty column A");
+        if (!colB || !Array.isArray(colB) || colB.length === 0) problems.push("empty column B");
+        if (!matches || !Array.isArray(matches) || matches.length === 0) problems.push("no matches");
+        if (!mq.chapter_id) problems.push("no chapter");
+
+        if (problems.length > 0) {
+          matchingIssues.push(
+            buildLocation(
+              mq.id,
+              `[${problems.join(", ")}] ${mq.instruction?.substring(0, 50) || "(no instruction)"}`,
+              mq.module_id,
+              mq.chapter_id,
+              mq.topic_id
+            )
+          );
+        }
+      }
+
+      if (matchingIssues.length > 0) {
+        issues.push({
+          type: "matching_integrity",
+          severity: matchingIssues.some((l) => l.preview.includes("empty")) ? "critical" : "warning",
+          count: matchingIssues.length,
+          description: `${matchingIssues.length} matching question(s) have missing or invalid fields`,
+          locations: matchingIssues.slice(0, 50),
+        });
+      }
+    }
+
+    // ========== CASE SCENARIOS CHECK ==========
+    if (!checkType || checkType === "case_scenarios") {
+      const { data: caseScenarios } = await supabase
+        .from("case_scenarios")
+        .select("id, title, case_history, case_questions, model_answer, module_id, chapter_id")
+        .eq("is_deleted", false);
+
+      const caseIssues: Location[] = [];
+
+      for (const cs of caseScenarios || []) {
+        if (!isInScope(cs.module_id, cs.chapter_id)) continue;
+
+        const problems: string[] = [];
+
+        if (!cs.title?.trim()) problems.push("empty title");
+        if (!cs.case_history?.trim()) problems.push("empty history");
+        if (!cs.case_questions?.trim()) problems.push("no questions");
+        if (!cs.model_answer?.trim()) problems.push("no model answer");
+        if (!cs.chapter_id && !cs.module_id) problems.push("no location");
+
+        if (problems.length > 0) {
+          caseIssues.push(
+            buildLocation(
+              cs.id,
+              `[${problems.join(", ")}] ${cs.title?.substring(0, 50) || "(no title)"}`,
+              cs.module_id,
+              cs.chapter_id,
+              null
+            )
+          );
+        }
+      }
+
+      if (caseIssues.length > 0) {
+        issues.push({
+          type: "case_scenario_integrity",
+          severity: caseIssues.some((l) => l.preview.includes("empty")) ? "critical" : "warning",
+          count: caseIssues.length,
+          description: `${caseIssues.length} case scenario(s) have missing or invalid fields`,
+          locations: caseIssues.slice(0, 50),
+        });
+      }
+    }
+
+    // ========== MCQ SETS CHECK ==========
+    if (!checkType || checkType === "mcq_sets") {
+      const { data: mcqSets } = await supabase
+        .from("mcq_sets")
+        .select("id, title, description, module_id, chapter_id, topic_id")
+        .eq("is_deleted", false);
+
+      const mcqSetIssues: Location[] = [];
+
+      for (const ms of mcqSets || []) {
+        if (!isInScope(ms.module_id, ms.chapter_id)) continue;
+
+        const problems: string[] = [];
+
+        if (!ms.title?.trim()) problems.push("empty title");
+        if (!ms.chapter_id && !ms.module_id) problems.push("no location");
+
+        if (problems.length > 0) {
+          mcqSetIssues.push(
+            buildLocation(
+              ms.id,
+              `[${problems.join(", ")}] ${ms.title?.substring(0, 50) || "(no title)"}`,
+              ms.module_id,
+              ms.chapter_id,
+              ms.topic_id
+            )
+          );
+        }
+      }
+
+      if (mcqSetIssues.length > 0) {
+        issues.push({
+          type: "mcq_set_integrity",
+          severity: mcqSetIssues.some((l) => l.preview.includes("empty title")) ? "critical" : "warning",
+          count: mcqSetIssues.length,
+          description: `${mcqSetIssues.length} MCQ set(s) have missing or invalid fields`,
+          locations: mcqSetIssues.slice(0, 50),
+        });
+      }
+    }
+
     return new Response(
       JSON.stringify({
         issues,
