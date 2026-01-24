@@ -86,27 +86,38 @@ export default function ActivityLogPage() {
   const canAccess = auth.isAdmin || auth.isModuleAdmin || auth.isTopicAdmin || 
                     auth.isDepartmentAdmin || auth.isPlatformAdmin || auth.isSuperAdmin;
 
-  // Fetch all admin users for dropdown
+  // Fetch all admin users for dropdown - two-step query since no FK relationship
   const { data: adminUsers } = useQuery({
     queryKey: ['admin-users-for-filter'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Step 1: Get all admin roles
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          profiles!inner(id, full_name, email)
-        `)
+        .select('user_id, role')
         .in('role', ['super_admin', 'platform_admin', 'department_admin', 'topic_admin', 'admin', 'teacher']);
       
-      if (error) throw error;
+      if (rolesError) throw rolesError;
+      if (!roles || roles.length === 0) return [];
       
-      // Transform the data
-      return (data || []).map((item: any) => ({
-        user_id: item.user_id,
-        role: item.role as AppRole,
-        full_name: item.profiles?.full_name || null,
-        email: item.profiles?.email || null,
+      // Step 2: Get profiles for those user IDs
+      const userIds = roles.map(r => r.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+      
+      // Step 3: Combine the data
+      const profilesMap = Object.fromEntries(
+        (profilesData || []).map(p => [p.id, p])
+      );
+      
+      return roles.map(role => ({
+        user_id: role.user_id,
+        role: role.role as AppRole,
+        full_name: profilesMap[role.user_id]?.full_name || null,
+        email: profilesMap[role.user_id]?.email || null,
       })) as AdminUser[];
     },
     enabled: canAccess,
