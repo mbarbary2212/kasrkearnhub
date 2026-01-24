@@ -33,7 +33,10 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 import { SectionSelector } from '@/components/sections';
 
-const MIN_STAGES_TO_PUBLISH = 3;
+// Dynamic min stages based on case_mode
+const getMinStagesToPublish = (caseMode: string | undefined) => {
+  return caseMode === 'read_case' ? 1 : 3;
+};
 
 interface ClinicalCaseFormModalProps {
   open: boolean;
@@ -69,8 +72,10 @@ export function ClinicalCaseFormModal({
   const updateCase = useUpdateClinicalCase();
 
   // Check if case can be published (editing mode only)
+  const caseMode = clinicalCase?.case_mode;
   const currentStageCount = clinicalCase?.stage_count || 0;
-  const canPublish = currentStageCount >= MIN_STAGES_TO_PUBLISH;
+  const minStages = getMinStagesToPublish(caseMode);
+  const canPublish = currentStageCount >= minStages;
 
   useEffect(() => {
     if (clinicalCase) {
@@ -123,8 +128,8 @@ export function ClinicalCaseFormModal({
 
   const handlePublishedChange = (checked: boolean) => {
     if (checked && isEditing && !canPublish) {
-      toast.error(`Add at least ${MIN_STAGES_TO_PUBLISH} stages before publishing`);
-      return;
+      toast.warning(`This case needs at least ${minStages} stages to be visible to students`);
+      // Still allow the toggle - the submit will validate
     }
     setIsPublished(checked);
   };
@@ -135,9 +140,11 @@ export function ClinicalCaseFormModal({
       return;
     }
 
-    // Prevent publishing if not enough stages
-    if (isPublished && isEditing && !canPublish) {
-      toast.error(`Add at least ${MIN_STAGES_TO_PUBLISH} stages before publishing`);
+    // Only block NEW attempts to publish an incomplete case
+    // Allow updates if: already published (grandfathered), or not attempting to publish
+    const isAttemptingToPublish = isPublished && !clinicalCase?.is_published;
+    if (isEditing && isAttemptingToPublish && !canPublish) {
+      toast.error(`Add at least ${minStages} stages before publishing`);
       return;
     }
 
@@ -147,7 +154,7 @@ export function ClinicalCaseFormModal({
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
       section_id: sectionId || undefined,
-      case_mode: 'practice_case',
+      case_mode: clinicalCase?.case_mode ?? 'practice_case', // Preserve existing case_mode
       level,
       estimated_minutes: estimatedMinutes,
       tags,
@@ -329,7 +336,7 @@ export function ClinicalCaseFormModal({
                     </TooltipTrigger>
                     {!canPublish && (
                       <TooltipContent>
-                        <p>Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing</p>
+                        <p>Add at least {minStages} stages before publishing</p>
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -338,12 +345,12 @@ export function ClinicalCaseFormModal({
             )}
 
             {/* Warning if trying to publish without enough stages */}
-            {isEditing && !canPublish && (
+            {isEditing && !canPublish && !clinicalCase?.is_published && (
               <Alert variant="destructive" className="bg-destructive/10">
                 <AlertCircle className="w-4 h-4" />
                 <AlertDescription className="text-sm">
                   This case has {currentStageCount} stage{currentStageCount !== 1 ? 's' : ''}. 
-                  Add at least {MIN_STAGES_TO_PUBLISH} stages before publishing.
+                  Add at least {minStages} stages before publishing.
                 </AlertDescription>
               </Alert>
             )}

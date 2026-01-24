@@ -111,6 +111,11 @@ export default function VirtualPatientRunner() {
   };
 
   const checkAnswer = (stage: VPStage, answer: string | string[]): { isCorrect: boolean; rubricResult?: VPRubricResult } => {
+    // Read-only stages are always "correct" (non-scored)
+    if (stage.stage_type === 'read_only') {
+      return { isCorrect: true };
+    }
+    
     if (stage.stage_type === 'mcq') {
       return { isCorrect: answer === stage.correct_answer };
     } else if (stage.stage_type === 'multi_select') {
@@ -134,12 +139,14 @@ export default function VirtualPatientRunner() {
   const handleSubmitAnswer = async () => {
     if (!currentStage || !attemptId) return;
 
-    const { isCorrect, rubricResult } = checkAnswer(currentStage, userAnswer);
+    // For read_only stages, use empty answer and skip to next immediately
+    const answerToSubmit = currentStage.stage_type === 'read_only' ? '' : userAnswer;
+    const { isCorrect, rubricResult } = checkAnswer(currentStage, answerToSubmit);
     const timeTaken = stageStartTime ? Math.floor((Date.now() - stageStartTime) / 1000) : 0;
 
     const stageAnswer: StageAnswer = {
       stage_id: currentStage.id,
-      user_answer: userAnswer,
+      user_answer: answerToSubmit,
       is_correct: isCorrect,
       time_taken_seconds: timeTaken,
       rubric_result: rubricResult,
@@ -158,9 +165,43 @@ export default function VirtualPatientRunner() {
         [currentStage.id]: stageAnswer,
       }));
 
-      setState('feedback');
+      // For read_only stages, skip feedback and go directly to next stage
+      if (currentStage.stage_type === 'read_only') {
+        handleNextStageAfterReadOnly(stageAnswer);
+      } else {
+        setState('feedback');
+      }
     } catch (error) {
       toast.error('Failed to submit answer. Please try again.');
+    }
+  };
+
+  const handleNextStageAfterReadOnly = async (stageAnswer: StageAnswer) => {
+    // Same logic as handleNextStage but called immediately after read_only submit
+    if (currentStageIndex + 1 >= totalStages) {
+      const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+      
+      try {
+        await completeAttempt.mutateAsync({
+          attemptId: attemptId!,
+          caseId: caseId!,
+          timeTakenSeconds: timeTaken,
+        });
+        setState('summary');
+      } catch (error) {
+        toast.error('Failed to complete case. Please try again.');
+      }
+    } else {
+      const nextIndex = currentStageIndex + 1;
+      setCurrentStageIndex(nextIndex);
+      setUserAnswer('');
+      setStageStartTime(Date.now());
+      setState('running');
+
+      const nextStage = stages[nextIndex];
+      if (nextStage?.patient_info) {
+        setRevealedPatientInfo(prev => [...prev, nextStage.patient_info!]);
+      }
     }
   };
 
@@ -404,16 +445,27 @@ export default function VirtualPatientRunner() {
                 />
               )}
 
+              {/* Read Only - Just show content, no input needed */}
+              {currentStage.stage_type === 'read_only' && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground italic">
+                    Review the information above, then continue to the next stage.
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleSubmitAnswer}
                 className="w-full"
                 disabled={
-                  !userAnswer || 
-                  (Array.isArray(userAnswer) && userAnswer.length === 0) ||
-                  submitAnswer.isPending
+                  currentStage.stage_type === 'read_only' 
+                    ? submitAnswer.isPending 
+                    : (!userAnswer || 
+                       (Array.isArray(userAnswer) && userAnswer.length === 0) ||
+                       submitAnswer.isPending)
                 }
               >
-                {submitAnswer.isPending ? 'Submitting...' : 'Submit Answer'}
+                {submitAnswer.isPending ? 'Submitting...' : (currentStage.stage_type === 'read_only' ? 'Continue' : 'Submit Answer')}
               </Button>
             </CardContent>
           </Card>
