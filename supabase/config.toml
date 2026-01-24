@@ -39,5 +39,11 @@ verify_jwt = false
 [functions.cache-readiness]
 verify_jwt = false
 
-[functions.integrity-pilot]
+[functions.integrity-orphaned-all]
+verify_jwt = false
+
+[functions.integrity-pilot-v2]
+verify_jwt = false
+
+[functions.log-activity]
 verify_jwt = false

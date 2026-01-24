@@ -140,7 +140,7 @@ export default function ContentItemActions({
         data.external_url = editFileUrl || null;
       }
 
-      await updateContent.mutateAsync({ id, data });
+      await updateContent.mutateAsync({ id, data, moduleId, chapterId });
       toast.success('Updated successfully');
       setEditOpen(false);
     } catch (error) {
@@ -150,7 +150,7 @@ export default function ContentItemActions({
 
   const handleDelete = async () => {
     try {
-      await softDeleteContent.mutateAsync(id);
+      await softDeleteContent.mutateAsync({ id, moduleId, chapterId });
       toast.success('Deleted successfully');
       setDeleteOpen(false);
     } catch (error) {

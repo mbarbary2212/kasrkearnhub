@@ -24,6 +24,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { EssayFormSchema, validateBatch } from '@/lib/validators';
+import { logActivity } from '@/lib/activityLog';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -222,22 +223,31 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         throw new Error(`Validation failed: ${messages.join(', ')}`);
       }
 
-      const { error } = await supabase.from('essays').insert({
+      const { data, error } = await supabase.from('essays').insert({
         title,
         question: description,
         model_answer: modelAnswer || null,
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
       toast.success('Essay added successfully');
       setOpen(false);
       resetForm();
+      // Log activity
+      logActivity({
+        action: 'created_essay',
+        entity_type: 'essay',
+        entity_id: data?.id,
+        scope: { module_id: moduleId, chapter_id: chapterId, topic_id: topicId },
+        metadata: { source: 'admin_form' },
+      });
     },
     onError: (error) => handlePermissionError(error, 'add'),
   });
@@ -387,12 +397,19 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       );
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
       toast.success('Short questions uploaded successfully');
       setBulkOpen(false);
       resetForm();
+      // Log activity
+      logActivity({
+        action: 'bulk_upload_essay',
+        entity_type: 'essay',
+        scope: { module_id: moduleId, chapter_id: chapterId, topic_id: topicId },
+        metadata: { source: 'csv_import' },
+      });
     },
     onError: (error) => handlePermissionError(error, 'add'),
   });

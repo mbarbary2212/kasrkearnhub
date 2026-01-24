@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { logActivity } from '@/lib/activityLog';
 import type { Json } from '@/integrations/supabase/types';
 
 export interface McqChoice {
@@ -105,7 +106,7 @@ export function useCreateMcq() {
 
   return useMutation({
     mutationFn: async (data: McqFormData & { module_id: string; chapter_id?: string | null }) => {
-      const { error } = await supabase.from('mcqs').insert({
+      const { data: result, error } = await supabase.from('mcqs').insert({
         module_id: data.module_id,
         chapter_id: data.chapter_id || null,
         stem: data.stem,
@@ -114,16 +115,25 @@ export function useCreateMcq() {
         explanation: data.explanation,
         difficulty: data.difficulty,
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+      return { ...data, id: result.id };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result) => {
       toast({ title: 'MCQ added successfully' });
-      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', variables.module_id] });
-      if (variables.chapter_id) {
-        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', variables.chapter_id] });
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.module_id] });
+      if (result.chapter_id) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapter_id] });
       }
+      // Log activity
+      logActivity({
+        action: 'created_mcq',
+        entity_type: 'mcq',
+        entity_id: result.id,
+        scope: { module_id: result.module_id, chapter_id: result.chapter_id },
+        metadata: { source: 'admin_form' },
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'Error adding MCQ', description: error.message, variant: 'destructive' });
@@ -156,7 +166,7 @@ export function useUpdateMcq() {
         .eq('id', id);
 
       if (error) throw error;
-      return { moduleId, chapterId };
+      return { id, moduleId, chapterId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ updated successfully' });
@@ -164,6 +174,14 @@ export function useUpdateMcq() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      // Log activity
+      logActivity({
+        action: 'updated_mcq',
+        entity_type: 'mcq',
+        entity_id: result.id,
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+        metadata: { source: 'admin_form' },
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'Error updating MCQ', description: error.message, variant: 'destructive' });
@@ -191,7 +209,7 @@ export function useDeleteMcq() {
       if (error) throw error;
 
       // count can be null if not returned; we proceed with success if no error
-      return { moduleId, chapterId };
+      return { id, moduleId, chapterId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ deleted successfully' });
@@ -200,6 +218,13 @@ export function useDeleteMcq() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      // Log activity
+      logActivity({
+        action: 'deleted_mcq',
+        entity_type: 'mcq',
+        entity_id: result.id,
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+      });
     },
     onError: (error: Error) => {
       console.error('MCQ delete error:', error);
@@ -296,6 +321,13 @@ export function useBulkCreateMcqs() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      // Log activity
+      logActivity({
+        action: 'bulk_upload_mcq',
+        entity_type: 'mcq',
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+        metadata: { count: result.count, source: 'csv_import' },
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'Error importing MCQs', description: error.message, variant: 'destructive' });
