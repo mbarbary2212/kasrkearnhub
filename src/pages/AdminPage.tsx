@@ -214,14 +214,17 @@ function IntegrityCheckTab() {
   const [isOsceRunning, setIsOsceRunning] = useState(false);
   const [osceResult, setOsceResult] = useState<IntegrityIssue | null>(null);
   const [osceError, setOsceError] = useState<string | null>(null);
+  const [hasOsceRun, setHasOsceRun] = useState(false);
 
   const [isFlashcardsRunning, setIsFlashcardsRunning] = useState(false);
   const [flashcardsResult, setFlashcardsResult] = useState<IntegrityIssue | null>(null);
   const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
+  const [hasFlashcardsRun, setHasFlashcardsRun] = useState(false);
 
   const [isClinicalRunning, setIsClinicalRunning] = useState(false);
   const [clinicalResult, setClinicalResult] = useState<IntegrityIssue | null>(null);
   const [clinicalError, setClinicalError] = useState<string | null>(null);
+  const [hasClinicalRun, setHasClinicalRun] = useState(false);
 
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -298,6 +301,7 @@ function IntegrityCheckTab() {
     const setRunning = checkType === 'osce' ? setIsOsceRunning : checkType === 'flashcards' ? setIsFlashcardsRunning : setIsClinicalRunning;
     const setResult = checkType === 'osce' ? setOsceResult : checkType === 'flashcards' ? setFlashcardsResult : setClinicalResult;
     const setError = checkType === 'osce' ? setOsceError : checkType === 'flashcards' ? setFlashcardsError : setClinicalError;
+    const setHasRun = checkType === 'osce' ? setHasOsceRun : checkType === 'flashcards' ? setHasFlashcardsRun : setHasClinicalRun;
 
     setRunning(true);
     setError(null);
@@ -330,6 +334,7 @@ function IntegrityCheckTab() {
       };
       const issue = data.issues.find((i) => i.type === issueTypeMap[checkType]) || null;
       setResult(issue);
+      setHasRun(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -423,7 +428,8 @@ function IntegrityCheckTab() {
     result: IntegrityIssue | null,
     error: string | null,
     onRun: () => void,
-    type: string
+    type: string,
+    hasRun: boolean
   ) => (
     <Card>
       <CardHeader>
@@ -453,20 +459,20 @@ function IntegrityCheckTab() {
           </Alert>
         )}
 
-        {result !== null && (
-          <Alert variant={result.count > 0 ? (result.severity === 'critical' ? 'destructive' : 'default') : 'default'}>
-            {result.count > 0 ? (
+        {(hasRun || result !== null) && !error && (
+          <Alert variant={result && result.count > 0 ? (result.severity === 'critical' ? 'destructive' : 'default') : 'default'}>
+            {result && result.count > 0 ? (
               <AlertTriangle className="h-4 w-4" />
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
             <AlertTitle>
-              {result.count > 0
+              {result && result.count > 0
                 ? `Found ${result.count} Issue${result.count !== 1 ? 's' : ''}`
                 : 'No Issues Found'}
             </AlertTitle>
             <AlertDescription>
-              {result.count > 0 ? (
+              {result && result.count > 0 ? (
                 <div className="mt-2 space-y-2">
                   <p className="text-sm">{result.description}</p>
                   <Button
@@ -486,7 +492,7 @@ function IntegrityCheckTab() {
           </Alert>
         )}
 
-        {result === null && !error && !isRunning && (
+        {!hasRun && !error && !isRunning && (
           <p className="text-sm text-muted-foreground">Click the button above to run this check.</p>
         )}
       </CardContent>
@@ -671,7 +677,8 @@ function IntegrityCheckTab() {
         osceResult,
         osceError,
         () => runV2Check('osce'),
-        'OSCE'
+        'OSCE',
+        hasOsceRun
       )}
 
       {/* V2 Checks: Flashcards */}
@@ -683,7 +690,8 @@ function IntegrityCheckTab() {
         flashcardsResult,
         flashcardsError,
         () => runV2Check('flashcards'),
-        'Flashcard'
+        'Flashcard',
+        hasFlashcardsRun
       )}
 
       {/* V2 Checks: Clinical Cases */}
@@ -695,7 +703,8 @@ function IntegrityCheckTab() {
         clinicalResult,
         clinicalError,
         () => runV2Check('clinical_cases'),
-        'Clinical Case'
+        'Clinical Case',
+        hasClinicalRun
       )}
     </div>
   );
