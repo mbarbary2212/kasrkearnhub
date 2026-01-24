@@ -24,6 +24,7 @@ import AccountPage from "./pages/AccountPage";
 import VirtualPatientPage from "./pages/VirtualPatientPage";
 import NotFound from "./pages/NotFound";
 import IntegrityReportPage from "./pages/IntegrityReportPage";
+import ActivityLogPage from "./pages/ActivityLogPage";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => {
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/admin/inbox" element={<AdminInboxPage />} />
                 <Route path="/admin/integrity-report" element={<IntegrityReportPage />} />
+                <Route path="/admin/activity-log" element={<ActivityLogPage />} />
                 <Route path="/feedback" element={<FeedbackPage />} />
                 <Route path="/virtual-patient/:caseId" element={<VirtualPatientPage />} />
                 <Route path="*" element={<NotFound />} />

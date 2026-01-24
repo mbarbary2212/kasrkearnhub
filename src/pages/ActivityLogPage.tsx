@@ -1,0 +1,372 @@
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+import MainLayout from '@/components/layout/MainLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { format } from 'date-fns';
+import { Download, Search, RefreshCw, Activity } from 'lucide-react';
+
+interface ActivityLog {
+  id: string;
+  created_at: string;
+  actor_user_id: string;
+  actor_role: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  scope: {
+    module_id?: string | null;
+    chapter_id?: string | null;
+    topic_id?: string | null;
+  } | null;
+  metadata: Record<string, unknown> | null;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  created_mcq: 'Created MCQ',
+  updated_mcq: 'Updated MCQ',
+  deleted_mcq: 'Deleted MCQ',
+  bulk_upload_mcq: 'Bulk Upload MCQs',
+  created_essay: 'Created Essay',
+  updated_essay: 'Updated Essay',
+  deleted_essay: 'Deleted Essay',
+  bulk_upload_essay: 'Bulk Upload Essays',
+};
+
+const ENTITY_COLORS: Record<string, string> = {
+  mcq: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  essay: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  osce: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  flashcard: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+};
+
+export default function ActivityLogPage() {
+  const auth = useAuthContext();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<string>('7');
+
+  // Only admins can access
+  const canAccess = auth.isAdmin || auth.isModuleAdmin || auth.isTopicAdmin || 
+                    auth.isDepartmentAdmin || auth.isPlatformAdmin || auth.isSuperAdmin;
+
+  // Fetch activity logs
+  const { data: logs, isLoading, refetch } = useQuery({
+    queryKey: ['activity-logs', dateRange],
+    queryFn: async () => {
+      let query = supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      // Apply date range filter
+      if (dateRange !== 'all') {
+        const days = parseInt(dateRange);
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - days);
+        query = query.gte('created_at', fromDate.toISOString());
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as ActivityLog[];
+    },
+    enabled: canAccess,
+  });
+
+  // Fetch user profiles for display
+  const actorIds = useMemo(() => {
+    if (!logs) return [];
+    return [...new Set(logs.map(l => l.actor_user_id))];
+  }, [logs]);
+
+  const { data: profiles } = useQuery({
+    queryKey: ['profiles-for-logs', actorIds],
+    queryFn: async () => {
+      if (actorIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', actorIds);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map(p => [p.id, p]));
+    },
+    enabled: actorIds.length > 0,
+  });
+
+  // Get unique actions and entity types for filters
+  const { actions, entityTypes } = useMemo(() => {
+    if (!logs) return { actions: [], entityTypes: [] };
+    return {
+      actions: [...new Set(logs.map(l => l.action))],
+      entityTypes: [...new Set(logs.map(l => l.entity_type))],
+    };
+  }, [logs]);
+
+  // Apply filters
+  const filteredLogs = useMemo(() => {
+    if (!logs) return [];
+    return logs.filter(log => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const actorName = profiles?.[log.actor_user_id]?.full_name?.toLowerCase() || '';
+        const actorEmail = profiles?.[log.actor_user_id]?.email?.toLowerCase() || '';
+        const entityId = log.entity_id?.toLowerCase() || '';
+        const actorId = log.actor_user_id.toLowerCase();
+        
+        if (!actorName.includes(searchLower) && 
+            !actorEmail.includes(searchLower) && 
+            !entityId.includes(searchLower) &&
+            !actorId.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Action filter
+      if (actionFilter !== 'all' && log.action !== actionFilter) {
+        return false;
+      }
+
+      // Entity type filter
+      if (entityFilter !== 'all' && log.entity_type !== entityFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [logs, searchTerm, actionFilter, entityFilter, profiles]);
+
+  // Export to CSV
+  const handleExportCsv = () => {
+    if (!filteredLogs.length) return;
+
+    const headers = ['Timestamp', 'Actor', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Module ID', 'Chapter ID', 'Metadata'];
+    const rows = filteredLogs.map(log => [
+      format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+      profiles?.[log.actor_user_id]?.full_name || profiles?.[log.actor_user_id]?.email || log.actor_user_id,
+      log.actor_role || '',
+      log.action,
+      log.entity_type,
+      log.entity_id || '',
+      log.scope?.module_id || '',
+      log.scope?.chapter_id || '',
+      log.metadata ? JSON.stringify(log.metadata) : '',
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-log-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (auth.isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!canAccess) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <MainLayout>
+      <div className="container py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold">Activity Log</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!filteredLogs.length}>
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
+            </Button>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium">Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by user or ID..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Actions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  {actions.map(action => (
+                    <SelectItem key={action} value={action}>
+                      {ACTION_LABELS[action] || action}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={entityFilter} onValueChange={setEntityFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Entity Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entity Types</SelectItem>
+                  {entityTypes.map(type => (
+                    <SelectItem key={type} value={type}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No activity logs found
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-40">Timestamp</TableHead>
+                      <TableHead>Actor</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Entity</TableHead>
+                      <TableHead>Details</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLogs.map(log => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          {format(new Date(log.created_at), 'MMM d, HH:mm')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">
+                              {profiles?.[log.actor_user_id]?.full_name || 
+                               profiles?.[log.actor_user_id]?.email?.split('@')[0] || 
+                               'Unknown'}
+                            </span>
+                            {log.actor_role && (
+                              <span className="text-xs text-muted-foreground">
+                                {log.actor_role.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {ACTION_LABELS[log.action] || log.action}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="secondary" 
+                              className={ENTITY_COLORS[log.entity_type] || ''}
+                            >
+                              {log.entity_type}
+                            </Badge>
+                            {log.entity_id && (
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {log.entity_id.slice(0, 8)}...
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {log.metadata && Object.keys(log.metadata).length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {Object.entries(log.metadata)
+                                .slice(0, 2)
+                                .map(([k, v]) => `${k}: ${v}`)
+                                .join(', ')}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <p className="text-sm text-muted-foreground text-center">
+          Showing {filteredLogs.length} of {logs?.length || 0} entries (max 200)
+        </p>
+      </div>
+    </MainLayout>
+  );
+}
