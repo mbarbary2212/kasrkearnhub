@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { type SortMode } from '@/hooks/useChapterSort';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { LectureListSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { SortDropdown } from '@/components/ui/sort-dropdown';
 import {
@@ -287,11 +287,7 @@ function BookLecturesView({
       </div>
       
       {chaptersLoading ? (
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
+        <LectureListSkeleton count={5} />
       ) : chapters && chapters.length > 0 ? (
         <div className="border rounded-lg divide-y">
           {chapters.map((chapter, index) => (
@@ -630,13 +626,7 @@ export function ModuleLearningTab({
   };
 
   if (chaptersLoading || booksLoading) {
-    return (
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full" />
-        ))}
-      </div>
-    );
+    return <LectureListSkeleton count={5} />;
   }
 
   // If Pharmacology department is selected, show Topics view instead of chapters

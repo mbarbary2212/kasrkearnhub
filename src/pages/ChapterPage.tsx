@@ -3,6 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  QuestionListSkeleton,
+  LectureListSkeleton,
+} from '@/components/ui/skeletons';
 import { Badge } from '@/components/ui/badge';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
@@ -428,9 +432,7 @@ export default function ChapterPage() {
                       </div>
                     )}
                     {lecturesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <LectureListSkeleton count={3} />
                     ) : (
                       <LectureList 
                         key={lecturesResetKey}
@@ -474,9 +476,7 @@ export default function ChapterPage() {
                       </div>
                     )}
                     {studyResourcesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <LectureListSkeleton count={3} />
                     ) : (
                       <FlashcardsTab
                         resources={flashcards}
@@ -530,9 +530,7 @@ export default function ChapterPage() {
                       </div>
                     )}
                     {studyResourcesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <MindMapViewer
                         resources={mindMaps}
@@ -565,9 +563,7 @@ export default function ChapterPage() {
                       </div>
                     )}
                     {studyResourcesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <GuidedExplanationList
                         resources={studyResources?.filter(r => r.resource_type === 'guided_explanation') || []}
@@ -638,9 +634,7 @@ export default function ChapterPage() {
                 {practiceTab === 'mcqs' && (
                   <div>
                     {mcqsLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <McqList
                         mcqs={mcqs || []}
@@ -665,9 +659,7 @@ export default function ChapterPage() {
                           </div>
                         )}
                     {essaysLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <EssayList
                         essays={essays || []}
@@ -691,9 +683,7 @@ export default function ChapterPage() {
                     {canManageContent ? (
                       <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
                     ) : clinicalCasesLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
                     )}
@@ -704,9 +694,7 @@ export default function ChapterPage() {
                 {practiceTab === 'osce' && (
                   <div>
                     {osceLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="osce" />
                     ) : (
                       <OsceList
                         questions={osceQuestions || []}
@@ -737,9 +725,7 @@ export default function ChapterPage() {
                 {practiceTab === 'matching' && (
                   <div>
                     {matchingLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="matching" />
                     ) : (
                       <MatchingQuestionList
                         questions={matchingQuestions || []}

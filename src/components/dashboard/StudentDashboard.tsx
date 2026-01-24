@@ -9,6 +9,12 @@ import { LearningHubTabs } from './LearningHubTabs';
 import { LearningHubEmptyState } from './LearningHubEmptyState';
 import { ExportReportDropdown } from './ExportReportDropdown';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DashboardStatusStripSkeleton,
+  DashboardTestProgressSkeleton,
+  DashboardProgressMapSkeleton,
+  WeeklySummarySkeleton,
+} from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnouncementAlert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -258,10 +264,12 @@ export function StudentDashboard() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <Skeleton className="h-10 w-64" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-48 w-full" />
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-7 w-7 rounded" />
+        <Skeleton className="h-8 w-48" />
+      </div>
+      <Skeleton className="h-20 w-full rounded-lg" />
+      <DashboardStatusStripSkeleton />
     </div>
   );
 }
@@ -269,9 +277,37 @@ function DashboardSkeleton() {
 function DashboardContentSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-32 w-full" />
-      <Skeleton className="h-48 w-full" />
+      {/* Status Strip */}
+      <DashboardStatusStripSkeleton />
+      
+      {/* Today's Plan */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-32" />
+            <div className="grid gap-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Skeleton className="w-8 h-8 rounded" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Test Progress */}
+      <DashboardTestProgressSkeleton />
+      
+      {/* Progress Map */}
+      <DashboardProgressMapSkeleton />
+      
+      {/* Weekly Summary */}
+      <WeeklySummarySkeleton />
     </div>
   );
 }
