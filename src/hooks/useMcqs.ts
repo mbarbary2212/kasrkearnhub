@@ -14,6 +14,7 @@ export interface Mcq {
   id: string;
   module_id: string;
   chapter_id: string | null;
+  section_id: string | null;
   stem: string;
   choices: McqChoice[];
   correct_key: string;
@@ -32,6 +33,7 @@ export interface McqFormData {
   correct_key: string;
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
+  section_id?: string | null;
 }
 
 // Helper to convert DB row to Mcq type
@@ -40,6 +42,7 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     id: row.id as string,
     module_id: row.module_id as string,
     chapter_id: row.chapter_id as string | null,
+    section_id: row.section_id as string | null,
     stem: row.stem as string,
     choices: row.choices as McqChoice[],
     correct_key: row.correct_key as string,
@@ -109,6 +112,7 @@ export function useCreateMcq() {
       const { data: result, error } = await supabase.from('mcqs').insert({
         module_id: data.module_id,
         chapter_id: data.chapter_id || null,
+        section_id: data.section_id || null,
         stem: data.stem,
         choices: data.choices as unknown as Json,
         correct_key: data.correct_key,
@@ -161,6 +165,7 @@ export function useUpdateMcq() {
           correct_key: data.correct_key,
           explanation: data.explanation,
           difficulty: data.difficulty,
+          section_id: data.section_id || null,
           updated_by: user?.id,
         })
         .eq('id', id);

@@ -64,7 +64,7 @@ export function McqFormModal({
       setCorrectKey(mcq.correct_key);
       setExplanation(mcq.explanation || '');
       setDifficulty(mcq.difficulty || 'medium');
-      setSectionId((mcq as any).section_id || null);
+      setSectionId(mcq.section_id || null);
     } else {
       // Reset form for new MCQ
       setStem('');
