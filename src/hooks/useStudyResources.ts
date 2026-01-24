@@ -120,6 +120,7 @@ export interface StudyResource {
   updated_by: string | null;
   is_deleted: boolean;
   folder?: string | null;
+  section_id?: string | null;
 }
 
 export interface StudyResourceInsert {
@@ -131,6 +132,7 @@ export interface StudyResourceInsert {
   display_order?: number;
   created_by?: string;
   folder?: string | null;
+  section_id?: string | null;
 }
 
 // Fetch study resources for a chapter (optionally include deleted)
@@ -285,6 +287,7 @@ export function useCreateStudyResource() {
         display_order: resource.display_order,
         created_by: userData.user?.id,
         folder: resource.folder,
+        section_id: resource.section_id,
       };
       
       const { data, error } = await supabase

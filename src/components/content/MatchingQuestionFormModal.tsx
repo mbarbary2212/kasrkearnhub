@@ -26,6 +26,7 @@ import {
   type MatchingQuestion,
   type MatchItem,
 } from '@/hooks/useMatchingQuestions';
+import { SectionSelector } from '@/components/sections';
 
 interface MatchingQuestionFormModalProps {
   open: boolean;
@@ -61,6 +62,7 @@ export function MatchingQuestionFormModal({
   const [explanation, setExplanation] = useState('');
   const [showExplanation, setShowExplanation] = useState(true);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (question) {
@@ -71,6 +73,7 @@ export function MatchingQuestionFormModal({
       setExplanation(question.explanation || '');
       setShowExplanation(question.show_explanation);
       setDifficulty(question.difficulty);
+      setSectionId((question as any).section_id || null);
     } else {
       // Reset form
       setInstruction('Match the items in Column A with the correct items in Column B');
@@ -86,6 +89,7 @@ export function MatchingQuestionFormModal({
       setExplanation('');
       setShowExplanation(true);
       setDifficulty(null);
+      setSectionId(null);
     }
   }, [question, open]);
 
@@ -142,6 +146,7 @@ export function MatchingQuestionFormModal({
       show_explanation: showExplanation,
       difficulty,
       topic_id: topicId,
+      section_id: sectionId,
     };
 
     if (question) {
@@ -189,6 +194,14 @@ export function MatchingQuestionFormModal({
               rows={2}
             />
           </div>
+
+          {/* Section Selector */}
+          <SectionSelector
+            chapterId={chapterId || undefined}
+            topicId={topicId || undefined}
+            value={sectionId}
+            onChange={setSectionId}
+          />
 
           {/* Columns */}
           <div className="grid grid-cols-2 gap-6">

@@ -9,6 +9,7 @@ import { Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { useCreateOsceQuestion, useUpdateOsceQuestion, uploadOsceImage, OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SectionSelector } from '@/components/sections';
 
 interface OsceFormModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ export function OsceFormModal({
   const [explanations, setExplanations] = useState<string[]>(['', '', '', '', '']);
   const [uploading, setUploading] = useState(false);
   const [showImageReplace, setShowImageReplace] = useState(false);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const isEditing = !!editingQuestion;
 
@@ -66,6 +68,7 @@ export function OsceFormModal({
         editingQuestion.explanation_5 || '',
       ]);
       setShowImageReplace(false);
+      setSectionId((editingQuestion as any).section_id || null);
     } else {
       resetForm();
     }
@@ -79,6 +82,7 @@ export function OsceFormModal({
     setAnswers([true, true, true, true, true]);
     setExplanations(['', '', '', '', '']);
     setShowImageReplace(false);
+    setSectionId(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +155,7 @@ export function OsceFormModal({
         explanation_4: explanations[3].trim() || null,
         explanation_5: explanations[4].trim() || null,
         updated_by: auth.user?.id || null,
+        section_id: sectionId,
       };
 
       if (isEditing && editingQuestion) {
@@ -263,6 +268,13 @@ export function OsceFormModal({
                 className="mt-1"
               />
             </div>
+
+            {/* Section Selector */}
+            <SectionSelector
+              chapterId={chapterId}
+              value={sectionId}
+              onChange={setSectionId}
+            />
 
             {/* Statements */}
             <div className="space-y-4">

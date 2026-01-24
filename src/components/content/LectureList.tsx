@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { SectionSelector } from '@/components/sections';
 
 interface Lecture {
   id: string;
@@ -40,6 +41,7 @@ interface Lecture {
   video_url?: string | null;
   videoUrl?: string | null;
   duration?: string | null;
+  section_id?: string | null;
 }
 
 interface LectureListProps {
@@ -112,6 +114,7 @@ export function LectureList({
   const [editDescription, setEditDescription] = useState('');
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDuration, setEditDuration] = useState('');
+  const [editSectionId, setEditSectionId] = useState<string | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
@@ -134,6 +137,7 @@ export function LectureList({
     setEditDescription(lecture.description || '');
     setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
     setEditDuration(lecture.duration || '');
+    setEditSectionId(lecture.section_id || null);
   };
 
   const handleSaveEdit = async () => {
@@ -160,6 +164,7 @@ export function LectureList({
           description: editDescription.trim() || null,
           video_url: normalizedUrl || null,
           duration: editDuration.trim() || null,
+          section_id: editSectionId,
         },
       });
       toast.success('Lecture updated successfully');
@@ -404,6 +409,11 @@ export function LectureList({
                 className="mt-1"
               />
             </div>
+            <SectionSelector
+              chapterId={chapterId}
+              value={editSectionId}
+              onChange={setEditSectionId}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>

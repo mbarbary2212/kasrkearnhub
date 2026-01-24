@@ -15,6 +15,7 @@ import { CaseScenario, useCreateCaseScenario, useUpdateCaseScenario } from '@/ho
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
+import { SectionSelector } from '@/components/sections';
 
 interface CaseScenarioFormModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ export function CaseScenarioFormModal({
   const [caseQuestions, setCaseQuestions] = useState('');
   const [modelAnswer, setModelAnswer] = useState('');
   const [rating, setRating] = useState<number>(0);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const createCase = useCreateCaseScenario();
   const updateCase = useUpdateCaseScenario();
@@ -50,12 +52,14 @@ export function CaseScenarioFormModal({
       setCaseQuestions(existingCase.case_questions);
       setModelAnswer(existingCase.model_answer);
       setRating(existingCase.rating || 0);
+      setSectionId((existingCase as any).section_id || null);
     } else {
       setTitle('');
       setCaseHistory('');
       setCaseQuestions('');
       setModelAnswer('');
       setRating(0);
+      setSectionId(null);
     }
   }, [existingCase, open]);
 
@@ -76,6 +80,7 @@ export function CaseScenarioFormModal({
         rating: rating > 0 ? rating : null,
         chapter_id: chapterId,
         module_id: moduleId,
+        section_id: sectionId,
       };
 
       if (isEditing) {
@@ -117,6 +122,12 @@ export function CaseScenarioFormModal({
               placeholder="e.g., Diabetic Ketoacidosis Case"
             />
           </div>
+
+          <SectionSelector
+            chapterId={chapterId}
+            value={sectionId}
+            onChange={setSectionId}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="case-history">Case Scenario *</Label>
