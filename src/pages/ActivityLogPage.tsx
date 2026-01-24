@@ -6,7 +6,6 @@ import { Navigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -24,7 +23,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Download, Search, RefreshCw, Activity } from 'lucide-react';
+import { Download, RefreshCw, Activity, Users } from 'lucide-react';
+import { AppRole } from '@/types/database';
 
 interface ActivityLog {
   id: string;
@@ -68,9 +68,16 @@ const ENTITY_COLORS: Record<string, string> = {
   flashcard: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
 };
 
+interface AdminUser {
+  user_id: string;
+  role: AppRole;
+  full_name: string | null;
+  email: string | null;
+}
+
 export default function ActivityLogPage() {
   const auth = useAuthContext();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAdminId, setSelectedAdminId] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('7');
@@ -78,6 +85,32 @@ export default function ActivityLogPage() {
   // Only admins can access
   const canAccess = auth.isAdmin || auth.isModuleAdmin || auth.isTopicAdmin || 
                     auth.isDepartmentAdmin || auth.isPlatformAdmin || auth.isSuperAdmin;
+
+  // Fetch all admin users for dropdown
+  const { data: adminUsers } = useQuery({
+    queryKey: ['admin-users-for-filter'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          role,
+          profiles!inner(id, full_name, email)
+        `)
+        .in('role', ['super_admin', 'platform_admin', 'department_admin', 'topic_admin', 'admin', 'teacher']);
+      
+      if (error) throw error;
+      
+      // Transform the data
+      return (data || []).map((item: any) => ({
+        user_id: item.user_id,
+        role: item.role as AppRole,
+        full_name: item.profiles?.full_name || null,
+        email: item.profiles?.email || null,
+      })) as AdminUser[];
+    },
+    enabled: canAccess,
+  });
 
   // Fetch activity logs
   const { data: logs, isLoading, refetch } = useQuery({
@@ -137,20 +170,9 @@ export default function ActivityLogPage() {
   const filteredLogs = useMemo(() => {
     if (!logs) return [];
     return logs.filter(log => {
-      // Search filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const actorName = profiles?.[log.actor_user_id]?.full_name?.toLowerCase() || '';
-        const actorEmail = profiles?.[log.actor_user_id]?.email?.toLowerCase() || '';
-        const entityId = log.entity_id?.toLowerCase() || '';
-        const actorId = log.actor_user_id.toLowerCase();
-        
-        if (!actorName.includes(searchLower) && 
-            !actorEmail.includes(searchLower) && 
-            !entityId.includes(searchLower) &&
-            !actorId.includes(searchLower)) {
-          return false;
-        }
+      // Admin filter
+      if (selectedAdminId !== 'all' && log.actor_user_id !== selectedAdminId) {
+        return false;
       }
 
       // Action filter
@@ -165,7 +187,7 @@ export default function ActivityLogPage() {
 
       return true;
     });
-  }, [logs, searchTerm, actionFilter, entityFilter, profiles]);
+  }, [logs, selectedAdminId, actionFilter, entityFilter]);
 
   // Export to CSV
   const handleExportCsv = () => {
@@ -238,15 +260,27 @@ export default function ActivityLogPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by user or ID..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <Select value={selectedAdminId} onValueChange={setSelectedAdminId}>
+                <SelectTrigger>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by Admin" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Admins</SelectItem>
+                  {adminUsers?.map(admin => (
+                    <SelectItem key={admin.user_id} value={admin.user_id}>
+                      <div className="flex items-center gap-2">
+                        <span>{admin.full_name || admin.email?.split('@')[0] || 'Unknown'}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {admin.role.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger>

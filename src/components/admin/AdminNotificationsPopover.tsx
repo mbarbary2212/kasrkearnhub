@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Clock, Megaphone, X } from 'lucide-react';
+import { Bell, CheckCheck, Clock, Megaphone, X, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import {
   useAdminNotifications,
   useUnreadNotificationCount,
@@ -24,6 +25,7 @@ interface AdminNotificationsPopoverProps {
 
 export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNotificationsPopoverProps) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const { data: notifications, isLoading } = useAdminNotifications();
   const { data: unreadCount } = useUnreadNotificationCount();
   const markRead = useMarkNotificationRead();
@@ -34,8 +36,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       markRead.mutate(notification.id);
     }
     
-    // Navigate to related entity if applicable
-    if (notification.entity_type === 'announcement' && notification.entity_id && onNavigateToAnnouncement) {
+    // Navigate based on notification type
+    if (notification.type === 'content_activity') {
+      navigate('/admin/activity-log');
+      setOpen(false);
+    } else if (notification.entity_type === 'announcement' && notification.entity_id && onNavigateToAnnouncement) {
       onNavigateToAnnouncement(notification.entity_id);
       setOpen(false);
     }
@@ -49,6 +54,8 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return <CheckCheck className="w-4 h-4 text-green-500" />;
       case 'announcement_rejected':
         return <X className="w-4 h-4 text-destructive" />;
+      case 'content_activity':
+        return <Activity className="w-4 h-4 text-blue-500" />;
       default:
         return <Megaphone className="w-4 h-4" />;
     }
@@ -63,6 +70,8 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return 'bg-green-500/10 border-l-2 border-green-500';
       case 'announcement_rejected':
         return 'bg-destructive/10 border-l-2 border-destructive';
+      case 'content_activity':
+        return 'bg-blue-500/10 border-l-2 border-blue-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }
