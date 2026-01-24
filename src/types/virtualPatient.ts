@@ -1,6 +1,6 @@
 // Virtual Patient Types
 
-export type VPStageType = 'mcq' | 'multi_select' | 'short_answer';
+export type VPStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type VPLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export interface VPChoice {

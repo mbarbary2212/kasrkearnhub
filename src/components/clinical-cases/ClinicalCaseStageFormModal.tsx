@@ -124,7 +124,7 @@ export function ClinicalCaseStageFormModal({
       setCorrectAnswer('A');
     } else if (type === 'multi_select') {
       setCorrectAnswer([]);
-    } else {
+    } else if (type === 'short_answer' || type === 'read_only') {
       setCorrectAnswer('');
     }
   };
@@ -188,7 +188,8 @@ export function ClinicalCaseStageFormModal({
       return;
     }
 
-    if (stageType !== 'short_answer') {
+    // Validate choices only for MCQ and multi_select types
+    if (stageType === 'mcq' || stageType === 'multi_select') {
       if (choices.some(c => !c.text.trim())) {
         toast.error('Please fill in all choices');
         return;
@@ -217,8 +218,8 @@ export function ClinicalCaseStageFormModal({
       stage_type: stageType,
       prompt: prompt.trim(),
       patient_info: patientInfo.trim() || undefined,
-      choices: stageType === 'short_answer' ? [] : choices.map(c => ({ key: c.key, text: c.text.trim() })),
-      correct_answer: correctAnswer,
+      choices: (stageType === 'short_answer' || stageType === 'read_only') ? [] : choices.map(c => ({ key: c.key, text: c.text.trim() })),
+      correct_answer: stageType === 'read_only' ? '' : correctAnswer,
       explanation: explanation.trim() || undefined,
       teaching_points: teachingPoints,
       rubric,
@@ -247,6 +248,7 @@ export function ClinicalCaseStageFormModal({
   const isLoading = createStage.isPending || updateStage.isPending;
   const isValid = prompt.trim() && (
     stageType === 'short_answer' ||
+    stageType === 'read_only' ||
     (choices.every(c => c.text.trim()) && (
       stageType === 'mcq' ? correctAnswer : (correctAnswer as string[]).length > 0
     ))
@@ -274,6 +276,7 @@ export function ClinicalCaseStageFormModal({
                   <SelectItem value="mcq">Single Choice (MCQ)</SelectItem>
                   <SelectItem value="multi_select">Multiple Choice (Multi-select)</SelectItem>
                   <SelectItem value="short_answer">Short Answer</SelectItem>
+                  <SelectItem value="read_only">Read Only (Info)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -305,7 +308,7 @@ export function ClinicalCaseStageFormModal({
             </div>
 
             {/* Choices (for MCQ and Multi-select) */}
-            {stageType !== 'short_answer' && (
+            {(stageType === 'mcq' || stageType === 'multi_select') && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>Choices *</Label>
@@ -356,6 +359,16 @@ export function ClinicalCaseStageFormModal({
                 ))}
                 <p className="text-xs text-muted-foreground">
                   {stageType === 'mcq' ? 'Select the correct answer' : 'Check all correct answers'}
+                </p>
+              </div>
+            )}
+
+            {/* Read Only Stage Content */}
+            {stageType === 'read_only' && (
+              <div className="p-3 border rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground">
+                  This stage will display the prompt and any patient information as informational content.
+                  Students will see a "Continue" button to proceed without answering.
                 </p>
               </div>
             )}
