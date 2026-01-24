@@ -985,6 +985,17 @@ The AI will parse and extract the questions automatically.`}
                   </Button>
                 </div>
 
+                {/* Validation Errors Warning */}
+                {parseCorrections.some(c => c.type === 'validation_error') && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Validation Errors:</strong> Some rows failed validation and were excluded from import.
+                      Check the corrections below for details.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Auto-corrections applied preview */}
                 {parseCorrections.length > 0 && (
                   <CsvCorrectionPreview corrections={parseCorrections} />

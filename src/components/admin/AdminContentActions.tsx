@@ -23,6 +23,7 @@ import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
+import { EssayFormSchema, validateBatch } from '@/lib/validators';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -209,6 +210,18 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const addEssay = useMutation({
     mutationFn: async () => {
+      // Validate before insert
+      const validation = EssayFormSchema.safeParse({
+        title,
+        question: description,
+        model_answer: modelAnswer || null,
+      });
+      
+      if (!validation.success) {
+        const messages = validation.error.errors.map(e => e.message);
+        throw new Error(`Validation failed: ${messages.join(', ')}`);
+      }
+
       const { error } = await supabase.from('essays').insert({
         title,
         question: description,
@@ -336,24 +349,42 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       // Skip header row if it looks like a header
       const startIndex = lines[0]?.toLowerCase().includes('title') ? 1 : 0;
       
-      const essays = [];
+      const parsedEssays = [];
       for (let i = startIndex; i < lines.length; i++) {
         const parts = parseCSVLine(lines[i]);
         if (parts[0] && parts[1]) {
-          essays.push({
+          parsedEssays.push({
             title: parts[0],
             question: parts[1],
             model_answer: parts[2] || null,
-            module_id: moduleId,
-            chapter_id: chapterId || null,
-            topic_id: topicId || null,
           });
         }
       }
 
-      if (essays.length === 0) throw new Error('No valid rows found');
+      if (parsedEssays.length === 0) throw new Error('No valid rows found');
 
-      const { error } = await supabase.from('essays').insert(essays);
+      // Validate batch before insert
+      const { valid, invalid, stats } = validateBatch(EssayFormSchema, parsedEssays, startIndex);
+      
+      if (invalid.length > 0) {
+        const errorDetails = invalid.slice(0, 5).map(
+          i => `Row ${i.row}: ${i.errors[0]}`
+        ).join('\n');
+        throw new Error(`${stats.invalidCount} row(s) failed validation:\n${errorDetails}`);
+      }
+
+      if (valid.length === 0) throw new Error('No valid rows after validation');
+
+      const { error } = await supabase.from('essays').insert(
+        valid.map(essay => ({
+          title: essay.title,
+          question: essay.question,
+          model_answer: essay.model_answer || null,
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          topic_id: topicId || null,
+        }))
+      );
       if (error) throw error;
     },
     onSuccess: () => {
