@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
+import { McqFormSchema } from '@/lib/validators';
 
 interface McqFormModalProps {
   open: boolean;
@@ -77,11 +79,6 @@ export function McqFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all choices have text
-    if (choices.some((c) => !c.text.trim())) {
-      return;
-    }
-
     const formData = {
       stem,
       choices,
@@ -89,6 +86,15 @@ export function McqFormModal({
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
     };
+
+    // Validate before submission
+    const result = McqFormSchema.safeParse(formData);
+    
+    if (!result.success) {
+      const messages = result.error.errors.map(e => e.message);
+      toast.error(`Validation failed: ${messages.join(', ')}`);
+      return;
+    }
 
     if (isEditing && mcq) {
       updateMutation.mutate(

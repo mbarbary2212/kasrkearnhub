@@ -6,6 +6,7 @@
 
 import type { McqFormData, McqChoice } from '@/hooks/useMcqs';
 import type { MatchingQuestionFormData, MatchItem } from '@/hooks/useMatchingQuestions';
+import { McqFormSchema } from './validators';
 
 // ============================================
 // DATA SANITIZATION UTILITIES
@@ -167,7 +168,7 @@ const COLUMN_MAPPINGS: Record<string, string> = {
 };
 
 export interface ParseCorrection {
-  type: 'column_mapped' | 'correct_key_converted' | 'header_skipped' | 'whitespace_trimmed' | 'html_stripped';
+  type: 'column_mapped' | 'correct_key_converted' | 'header_skipped' | 'whitespace_trimmed' | 'html_stripped' | 'validation_error';
   originalValue?: string;
   correctedValue?: string;
   row?: number;
@@ -496,8 +497,27 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
     });
   }
   
+  // Validate all parsed MCQs
+  const validatedMcqs: McqFormData[] = [];
+  for (let i = 0; i < mcqs.length; i++) {
+    const mcq = mcqs[i];
+    const result = McqFormSchema.safeParse(mcq);
+    
+    if (result.success) {
+      validatedMcqs.push(mcq);
+    } else {
+      const errorMessages = result.error.errors.map(e => e.message).join(', ');
+      corrections.push({
+        type: 'validation_error',
+        row: i + startIndex + 1, // Account for header and 1-indexing
+        message: `Row ${i + startIndex + 1}: Validation failed - ${errorMessages}`
+      });
+      errors.push(`Row ${i + startIndex + 1}: ${errorMessages}`);
+    }
+  }
+
   return { 
-    mcqs, 
+    mcqs: validatedMcqs, 
     corrections, 
     errors,
     columnMapping: columnNameMap,
