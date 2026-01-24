@@ -23,8 +23,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Download, RefreshCw, Activity, Users } from 'lucide-react';
+import { Download, RefreshCw, Activity, Users, BookOpen } from 'lucide-react';
 import { AppRole } from '@/types/database';
+import { useModules } from '@/hooks/useModules';
 
 interface ActivityLog {
   id: string;
@@ -80,7 +81,11 @@ export default function ActivityLogPage() {
   const [selectedAdminId, setSelectedAdminId] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('7');
+
+  // Fetch all modules for filter dropdown
+  const { data: modules } = useModules();
 
   // Only admins can access
   const canAccess = auth.isAdmin || auth.isModuleAdmin || auth.isTopicAdmin || 
@@ -196,15 +201,20 @@ export default function ActivityLogPage() {
         return false;
       }
 
+      // Module filter
+      if (moduleFilter !== 'all' && log.scope?.module_id !== moduleFilter) {
+        return false;
+      }
+
       return true;
     });
-  }, [logs, selectedAdminId, actionFilter, entityFilter]);
+  }, [logs, selectedAdminId, actionFilter, entityFilter, moduleFilter]);
 
   // Export to CSV
   const handleExportCsv = () => {
     if (!filteredLogs.length) return;
 
-    const headers = ['Timestamp', 'Actor', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Module ID', 'Chapter ID', 'Metadata'];
+    const headers = ['Timestamp', 'Actor', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Module', 'Chapter ID', 'Metadata'];
     const rows = filteredLogs.map(log => [
       format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
       profiles?.[log.actor_user_id]?.full_name || profiles?.[log.actor_user_id]?.email || log.actor_user_id,
@@ -212,7 +222,9 @@ export default function ActivityLogPage() {
       log.action,
       log.entity_type,
       log.entity_id || '',
-      log.scope?.module_id || '',
+      log.scope?.module_id 
+        ? modules?.find(m => m.id === log.scope?.module_id)?.name || log.scope.module_id 
+        : '',
       log.scope?.chapter_id || '',
       log.metadata ? JSON.stringify(log.metadata) : '',
     ]);
@@ -270,7 +282,7 @@ export default function ActivityLogPage() {
             <CardTitle className="text-base font-medium">Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Select value={selectedAdminId} onValueChange={setSelectedAdminId}>
                 <SelectTrigger>
                   <div className="flex items-center gap-2">
@@ -321,6 +333,23 @@ export default function ActivityLogPage() {
                 </SelectContent>
               </Select>
 
+              <Select value={moduleFilter} onValueChange={setModuleFilter}>
+                <SelectTrigger>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="All Modules" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Modules</SelectItem>
+                  {modules?.map(module => (
+                    <SelectItem key={module.id} value={module.id}>
+                      {module.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Date Range" />
@@ -353,6 +382,7 @@ export default function ActivityLogPage() {
                       <TableHead className="w-40">Timestamp</TableHead>
                       <TableHead>Actor</TableHead>
                       <TableHead>Action</TableHead>
+                      <TableHead>Module</TableHead>
                       <TableHead>Entity</TableHead>
                       <TableHead>Details</TableHead>
                     </TableRow>
@@ -383,8 +413,17 @@ export default function ActivityLogPage() {
                           </span>
                         </TableCell>
                         <TableCell>
+                          {log.scope?.module_id ? (
+                            <span className="text-sm truncate max-w-[120px] block" title={modules?.find(m => m.id === log.scope?.module_id)?.name}>
+                              {modules?.find(m => m.id === log.scope?.module_id)?.name || '-'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
-                            <Badge 
+                            <Badge
                               variant="secondary" 
                               className={ENTITY_COLORS[log.entity_type] || ''}
                             >
