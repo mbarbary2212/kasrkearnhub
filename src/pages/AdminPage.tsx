@@ -191,73 +191,156 @@ interface V2CheckResult {
   scope: string;
 }
 
+// Types for orphan check results
+interface OrphanedLocation {
+  id: string;
+  preview: string;
+  orphaned_chapter_id: string;
+  module_id: string | null;
+  module_title: string | null;
+}
+
+interface OrphanCheckResult {
+  type: string;
+  severity: 'critical' | 'warning' | 'ok';
+  count: number;
+  description: string;
+  locations: OrphanedLocation[];
+  checkedAt: string;
+}
+
+// Types for V2 quality checks
+interface IntegrityLocation {
+  id: string;
+  preview: string;
+  module_id: string | null;
+  module_title: string | null;
+  chapter_id: string | null;
+  chapter_title: string | null;
+  topic_id: string | null;
+  topic_title: string | null;
+}
+
+interface IntegrityIssue {
+  type: string;
+  severity: 'critical' | 'warning' | 'info';
+  count: number;
+  description: string;
+  locations: IntegrityLocation[];
+}
+
+interface V2CheckResult {
+  issues: IntegrityIssue[];
+  checkedAt: string;
+  scope: string;
+}
+
+// Orphan check types
+type OrphanCheckType = 'mcqs' | 'mcq_sets' | 'essays' | 'osce' | 'flashcards' | 'lectures' | 'matching' | 'case_scenarios' | 'clinical_cases' | 'study_resources';
+
+// Quality check types
+type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
+
 // Integrity Check Tab Component (All Admins)
 function IntegrityCheckTab() {
-  // MCQ Check State
-  const [isMcqRunning, setIsMcqRunning] = useState(false);
-  const [mcqResult, setMcqResult] = useState<{ issue: string; count: number; sampleIds: string[] } | null>(null);
-  const [mcqError, setMcqError] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'orphaned' | 'quality'>('orphaned');
 
-  // Essay Check State
-  const [isEssayRunning, setIsEssayRunning] = useState(false);
-  const [essayResult, setEssayResult] = useState<{ 
-    type: string; 
-    severity: string; 
-    count: number; 
-    description: string; 
-    affectedIds: string[]; 
-    checkedAt: string; 
-  } | null>(null);
-  const [essayError, setEssayError] = useState<string | null>(null);
+  // ===== ORPHAN CHECK STATES =====
+  const [orphanMcqsRunning, setOrphanMcqsRunning] = useState(false);
+  const [orphanMcqsResult, setOrphanMcqsResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanMcqsError, setOrphanMcqsError] = useState<string | null>(null);
+  const [orphanMcqsHasRun, setOrphanMcqsHasRun] = useState(false);
 
-  // V2 Checks State (OSCE, Flashcards, Clinical Cases)
-  const [isOsceRunning, setIsOsceRunning] = useState(false);
-  const [osceResult, setOsceResult] = useState<IntegrityIssue | null>(null);
-  const [osceError, setOsceError] = useState<string | null>(null);
-  const [hasOsceRun, setHasOsceRun] = useState(false);
+  const [orphanMcqSetsRunning, setOrphanMcqSetsRunning] = useState(false);
+  const [orphanMcqSetsResult, setOrphanMcqSetsResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanMcqSetsError, setOrphanMcqSetsError] = useState<string | null>(null);
+  const [orphanMcqSetsHasRun, setOrphanMcqSetsHasRun] = useState(false);
 
-  const [isFlashcardsRunning, setIsFlashcardsRunning] = useState(false);
-  const [flashcardsResult, setFlashcardsResult] = useState<IntegrityIssue | null>(null);
-  const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
-  const [hasFlashcardsRun, setHasFlashcardsRun] = useState(false);
+  const [orphanEssaysRunning, setOrphanEssaysRunning] = useState(false);
+  const [orphanEssaysResult, setOrphanEssaysResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanEssaysError, setOrphanEssaysError] = useState<string | null>(null);
+  const [orphanEssaysHasRun, setOrphanEssaysHasRun] = useState(false);
 
-  const [isClinicalRunning, setIsClinicalRunning] = useState(false);
-  const [clinicalResult, setClinicalResult] = useState<IntegrityIssue | null>(null);
-  const [clinicalError, setClinicalError] = useState<string | null>(null);
-  const [hasClinicalRun, setHasClinicalRun] = useState(false);
+  const [orphanOsceRunning, setOrphanOsceRunning] = useState(false);
+  const [orphanOsceResult, setOrphanOsceResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanOsceError, setOrphanOsceError] = useState<string | null>(null);
+  const [orphanOsceHasRun, setOrphanOsceHasRun] = useState(false);
 
-  // V2 Checks State (Lectures, Matching, Case Scenarios, MCQ Sets)
-  const [isLecturesRunning, setIsLecturesRunning] = useState(false);
-  const [lecturesResult, setLecturesResult] = useState<IntegrityIssue | null>(null);
-  const [lecturesError, setLecturesError] = useState<string | null>(null);
-  const [hasLecturesRun, setHasLecturesRun] = useState(false);
+  const [orphanFlashcardsRunning, setOrphanFlashcardsRunning] = useState(false);
+  const [orphanFlashcardsResult, setOrphanFlashcardsResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanFlashcardsError, setOrphanFlashcardsError] = useState<string | null>(null);
+  const [orphanFlashcardsHasRun, setOrphanFlashcardsHasRun] = useState(false);
 
-  const [isMatchingRunning, setIsMatchingRunning] = useState(false);
-  const [matchingResult, setMatchingResult] = useState<IntegrityIssue | null>(null);
-  const [matchingError, setMatchingError] = useState<string | null>(null);
-  const [hasMatchingRun, setHasMatchingRun] = useState(false);
+  const [orphanLecturesRunning, setOrphanLecturesRunning] = useState(false);
+  const [orphanLecturesResult, setOrphanLecturesResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanLecturesError, setOrphanLecturesError] = useState<string | null>(null);
+  const [orphanLecturesHasRun, setOrphanLecturesHasRun] = useState(false);
 
-  const [isCaseScenariosRunning, setIsCaseScenariosRunning] = useState(false);
-  const [caseScenariosResult, setCaseScenariosResult] = useState<IntegrityIssue | null>(null);
-  const [caseScenariosError, setCaseScenariosError] = useState<string | null>(null);
-  const [hasCaseScenariosRun, setHasCaseScenariosRun] = useState(false);
+  const [orphanMatchingRunning, setOrphanMatchingRunning] = useState(false);
+  const [orphanMatchingResult, setOrphanMatchingResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanMatchingError, setOrphanMatchingError] = useState<string | null>(null);
+  const [orphanMatchingHasRun, setOrphanMatchingHasRun] = useState(false);
 
-  const [isMcqSetsRunning, setIsMcqSetsRunning] = useState(false);
-  const [mcqSetsResult, setMcqSetsResult] = useState<IntegrityIssue | null>(null);
-  const [mcqSetsError, setMcqSetsError] = useState<string | null>(null);
-  const [hasMcqSetsRun, setHasMcqSetsRun] = useState(false);
+  const [orphanCaseScenariosRunning, setOrphanCaseScenariosRunning] = useState(false);
+  const [orphanCaseScenariosResult, setOrphanCaseScenariosResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanCaseScenariosError, setOrphanCaseScenariosError] = useState<string | null>(null);
+  const [orphanCaseScenariosHasRun, setOrphanCaseScenariosHasRun] = useState(false);
 
-  // Guided Explanation states
-  const [isGuidedExplanationRunning, setIsGuidedExplanationRunning] = useState(false);
-  const [guidedExplanationResult, setGuidedExplanationResult] = useState<IntegrityIssue | null>(null);
-  const [guidedExplanationError, setGuidedExplanationError] = useState<string | null>(null);
-  const [hasGuidedExplanationRun, setHasGuidedExplanationRun] = useState(false);
+  const [orphanClinicalCasesRunning, setOrphanClinicalCasesRunning] = useState(false);
+  const [orphanClinicalCasesResult, setOrphanClinicalCasesResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanClinicalCasesError, setOrphanClinicalCasesError] = useState<string | null>(null);
+  const [orphanClinicalCasesHasRun, setOrphanClinicalCasesHasRun] = useState(false);
 
-  // Mind Map states
-  const [isMindMapRunning, setIsMindMapRunning] = useState(false);
-  const [mindMapResult, setMindMapResult] = useState<IntegrityIssue | null>(null);
-  const [mindMapError, setMindMapError] = useState<string | null>(null);
-  const [hasMindMapRun, setHasMindMapRun] = useState(false);
+  const [orphanStudyResourcesRunning, setOrphanStudyResourcesRunning] = useState(false);
+  const [orphanStudyResourcesResult, setOrphanStudyResourcesResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanStudyResourcesError, setOrphanStudyResourcesError] = useState<string | null>(null);
+  const [orphanStudyResourcesHasRun, setOrphanStudyResourcesHasRun] = useState(false);
+
+  // ===== QUALITY CHECK STATES =====
+  const [qualityOsceRunning, setQualityOsceRunning] = useState(false);
+  const [qualityOsceResult, setQualityOsceResult] = useState<IntegrityIssue | null>(null);
+  const [qualityOsceError, setQualityOsceError] = useState<string | null>(null);
+  const [qualityOsceHasRun, setQualityOsceHasRun] = useState(false);
+
+  const [qualityFlashcardsRunning, setQualityFlashcardsRunning] = useState(false);
+  const [qualityFlashcardsResult, setQualityFlashcardsResult] = useState<IntegrityIssue | null>(null);
+  const [qualityFlashcardsError, setQualityFlashcardsError] = useState<string | null>(null);
+  const [qualityFlashcardsHasRun, setQualityFlashcardsHasRun] = useState(false);
+
+  const [qualityClinicalRunning, setQualityClinicalRunning] = useState(false);
+  const [qualityClinicalResult, setQualityClinicalResult] = useState<IntegrityIssue | null>(null);
+  const [qualityClinicalError, setQualityClinicalError] = useState<string | null>(null);
+  const [qualityClinicalHasRun, setQualityClinicalHasRun] = useState(false);
+
+  const [qualityLecturesRunning, setQualityLecturesRunning] = useState(false);
+  const [qualityLecturesResult, setQualityLecturesResult] = useState<IntegrityIssue | null>(null);
+  const [qualityLecturesError, setQualityLecturesError] = useState<string | null>(null);
+  const [qualityLecturesHasRun, setQualityLecturesHasRun] = useState(false);
+
+  const [qualityMatchingRunning, setQualityMatchingRunning] = useState(false);
+  const [qualityMatchingResult, setQualityMatchingResult] = useState<IntegrityIssue | null>(null);
+  const [qualityMatchingError, setQualityMatchingError] = useState<string | null>(null);
+  const [qualityMatchingHasRun, setQualityMatchingHasRun] = useState(false);
+
+  const [qualityCaseScenariosRunning, setQualityCaseScenariosRunning] = useState(false);
+  const [qualityCaseScenariosResult, setQualityCaseScenariosResult] = useState<IntegrityIssue | null>(null);
+  const [qualityCaseScenariosError, setQualityCaseScenariosError] = useState<string | null>(null);
+  const [qualityCaseScenariosHasRun, setQualityCaseScenariosHasRun] = useState(false);
+
+  const [qualityMcqSetsRunning, setQualityMcqSetsRunning] = useState(false);
+  const [qualityMcqSetsResult, setQualityMcqSetsResult] = useState<IntegrityIssue | null>(null);
+  const [qualityMcqSetsError, setQualityMcqSetsError] = useState<string | null>(null);
+  const [qualityMcqSetsHasRun, setQualityMcqSetsHasRun] = useState(false);
+
+  const [qualityGuidedRunning, setQualityGuidedRunning] = useState(false);
+  const [qualityGuidedResult, setQualityGuidedResult] = useState<IntegrityIssue | null>(null);
+  const [qualityGuidedError, setQualityGuidedError] = useState<string | null>(null);
+  const [qualityGuidedHasRun, setQualityGuidedHasRun] = useState(false);
+
+  const [qualityMindMapRunning, setQualityMindMapRunning] = useState(false);
+  const [qualityMindMapResult, setQualityMindMapResult] = useState<IntegrityIssue | null>(null);
+  const [qualityMindMapError, setQualityMindMapError] = useState<string | null>(null);
+  const [qualityMindMapHasRun, setQualityMindMapHasRun] = useState(false);
 
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -266,92 +349,82 @@ function IntegrityCheckTab() {
     return token;
   };
 
-  const runMcqCheck = async () => {
-    setIsMcqRunning(true);
-    setMcqError(null);
-    setMcqResult(null);
+  // Orphan check state map
+  const orphanStateMap: Record<OrphanCheckType, {
+    setRunning: (v: boolean) => void;
+    setResult: (v: OrphanCheckResult | null) => void;
+    setError: (v: string | null) => void;
+    setHasRun: (v: boolean) => void;
+  }> = {
+    mcqs: { setRunning: setOrphanMcqsRunning, setResult: setOrphanMcqsResult, setError: setOrphanMcqsError, setHasRun: setOrphanMcqsHasRun },
+    mcq_sets: { setRunning: setOrphanMcqSetsRunning, setResult: setOrphanMcqSetsResult, setError: setOrphanMcqSetsError, setHasRun: setOrphanMcqSetsHasRun },
+    essays: { setRunning: setOrphanEssaysRunning, setResult: setOrphanEssaysResult, setError: setOrphanEssaysError, setHasRun: setOrphanEssaysHasRun },
+    osce: { setRunning: setOrphanOsceRunning, setResult: setOrphanOsceResult, setError: setOrphanOsceError, setHasRun: setOrphanOsceHasRun },
+    flashcards: { setRunning: setOrphanFlashcardsRunning, setResult: setOrphanFlashcardsResult, setError: setOrphanFlashcardsError, setHasRun: setOrphanFlashcardsHasRun },
+    lectures: { setRunning: setOrphanLecturesRunning, setResult: setOrphanLecturesResult, setError: setOrphanLecturesError, setHasRun: setOrphanLecturesHasRun },
+    matching: { setRunning: setOrphanMatchingRunning, setResult: setOrphanMatchingResult, setError: setOrphanMatchingError, setHasRun: setOrphanMatchingHasRun },
+    case_scenarios: { setRunning: setOrphanCaseScenariosRunning, setResult: setOrphanCaseScenariosResult, setError: setOrphanCaseScenariosError, setHasRun: setOrphanCaseScenariosHasRun },
+    clinical_cases: { setRunning: setOrphanClinicalCasesRunning, setResult: setOrphanClinicalCasesResult, setError: setOrphanClinicalCasesError, setHasRun: setOrphanClinicalCasesHasRun },
+    study_resources: { setRunning: setOrphanStudyResourcesRunning, setResult: setOrphanStudyResourcesResult, setError: setOrphanStudyResourcesError, setHasRun: setOrphanStudyResourcesHasRun },
+  };
+
+  // Quality check state map
+  const qualityStateMap: Record<QualityCheckType, {
+    setRunning: (v: boolean) => void;
+    setResult: (v: IntegrityIssue | null) => void;
+    setError: (v: string | null) => void;
+    setHasRun: (v: boolean) => void;
+    issueType: string;
+  }> = {
+    osce: { setRunning: setQualityOsceRunning, setResult: setQualityOsceResult, setError: setQualityOsceError, setHasRun: setQualityOsceHasRun, issueType: 'osce_integrity' },
+    flashcards: { setRunning: setQualityFlashcardsRunning, setResult: setQualityFlashcardsResult, setError: setQualityFlashcardsError, setHasRun: setQualityFlashcardsHasRun, issueType: 'flashcard_integrity' },
+    clinical_cases: { setRunning: setQualityClinicalRunning, setResult: setQualityClinicalResult, setError: setQualityClinicalError, setHasRun: setQualityClinicalHasRun, issueType: 'clinical_case_integrity' },
+    lectures: { setRunning: setQualityLecturesRunning, setResult: setQualityLecturesResult, setError: setQualityLecturesError, setHasRun: setQualityLecturesHasRun, issueType: 'lecture_integrity' },
+    matching: { setRunning: setQualityMatchingRunning, setResult: setQualityMatchingResult, setError: setQualityMatchingError, setHasRun: setQualityMatchingHasRun, issueType: 'matching_integrity' },
+    case_scenarios: { setRunning: setQualityCaseScenariosRunning, setResult: setQualityCaseScenariosResult, setError: setQualityCaseScenariosError, setHasRun: setQualityCaseScenariosHasRun, issueType: 'case_scenario_integrity' },
+    mcq_sets: { setRunning: setQualityMcqSetsRunning, setResult: setQualityMcqSetsResult, setError: setQualityMcqSetsError, setHasRun: setQualityMcqSetsHasRun, issueType: 'mcq_set_integrity' },
+    guided_explanation: { setRunning: setQualityGuidedRunning, setResult: setQualityGuidedResult, setError: setQualityGuidedError, setHasRun: setQualityGuidedHasRun, issueType: 'guided_explanation_integrity' },
+    mind_map: { setRunning: setQualityMindMapRunning, setResult: setQualityMindMapResult, setError: setQualityMindMapError, setHasRun: setQualityMindMapHasRun, issueType: 'mind_map_integrity' },
+  };
+
+  const runOrphanCheck = async (checkType: OrphanCheckType) => {
+    const { setRunning, setResult, setError, setHasRun } = orphanStateMap[checkType];
+
+    setRunning(true);
+    setError(null);
+    setResult(null);
 
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot',
+        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-orphaned-all',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
+          body: JSON.stringify({ checkType }),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to run MCQ integrity check');
+        throw new Error(errorData.error || `Failed to run orphan check for ${checkType}`);
       }
 
-      const data = await response.json();
-      setMcqResult(data);
+      const data: OrphanCheckResult = await response.json();
+      setResult(data);
+      setHasRun(true);
     } catch (err) {
-      setMcqError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsMcqRunning(false);
+      setRunning(false);
     }
   };
 
-  const runEssayCheck = async () => {
-    setIsEssayRunning(true);
-    setEssayError(null);
-    setEssayResult(null);
-
-    try {
-      const token = await getAuthToken();
-      const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-orphaned-essays',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to run Essay integrity check');
-      }
-
-      const data = await response.json();
-      setEssayResult(data);
-    } catch (err) {
-      setEssayError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsEssayRunning(false);
-    }
-  };
-
-  type V2CheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
-
-  const runV2Check = async (checkType: V2CheckType) => {
-    const stateMap: Record<V2CheckType, {
-      setRunning: (v: boolean) => void;
-      setResult: (v: IntegrityIssue | null) => void;
-      setError: (v: string | null) => void;
-      setHasRun: (v: boolean) => void;
-      issueType: string;
-    }> = {
-      osce: { setRunning: setIsOsceRunning, setResult: setOsceResult, setError: setOsceError, setHasRun: setHasOsceRun, issueType: 'osce_integrity' },
-      flashcards: { setRunning: setIsFlashcardsRunning, setResult: setFlashcardsResult, setError: setFlashcardsError, setHasRun: setHasFlashcardsRun, issueType: 'flashcard_integrity' },
-      clinical_cases: { setRunning: setIsClinicalRunning, setResult: setClinicalResult, setError: setClinicalError, setHasRun: setHasClinicalRun, issueType: 'clinical_case_integrity' },
-      lectures: { setRunning: setIsLecturesRunning, setResult: setLecturesResult, setError: setLecturesError, setHasRun: setHasLecturesRun, issueType: 'lecture_integrity' },
-      matching: { setRunning: setIsMatchingRunning, setResult: setMatchingResult, setError: setMatchingError, setHasRun: setHasMatchingRun, issueType: 'matching_integrity' },
-      case_scenarios: { setRunning: setIsCaseScenariosRunning, setResult: setCaseScenariosResult, setError: setCaseScenariosError, setHasRun: setHasCaseScenariosRun, issueType: 'case_scenario_integrity' },
-      mcq_sets: { setRunning: setIsMcqSetsRunning, setResult: setMcqSetsResult, setError: setMcqSetsError, setHasRun: setHasMcqSetsRun, issueType: 'mcq_set_integrity' },
-      guided_explanation: { setRunning: setIsGuidedExplanationRunning, setResult: setGuidedExplanationResult, setError: setGuidedExplanationError, setHasRun: setHasGuidedExplanationRun, issueType: 'guided_explanation_integrity' },
-      mind_map: { setRunning: setIsMindMapRunning, setResult: setMindMapResult, setError: setMindMapError, setHasRun: setHasMindMapRun, issueType: 'mind_map_integrity' },
-    };
-
-    const { setRunning, setResult, setError, setHasRun, issueType } = stateMap[checkType];
+  const runQualityCheck = async (checkType: QualityCheckType) => {
+    const { setRunning, setResult, setError, setHasRun, issueType } = qualityStateMap[checkType];
 
     setRunning(true);
     setError(null);
@@ -373,7 +446,7 @@ function IntegrityCheckTab() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to run ${checkType} integrity check`);
+        throw new Error(errorData.error || `Failed to run quality check for ${checkType}`);
       }
 
       const data: V2CheckResult = await response.json();
@@ -392,7 +465,26 @@ function IntegrityCheckTab() {
     toast.success(`Copied ${ids.length} ${type} IDs to clipboard`);
   };
 
-  const exportLocationsCsv = (locations: IntegrityLocation[], type: string) => {
+  const exportOrphanLocationsCsv = (locations: OrphanedLocation[], type: string) => {
+    const headers = ['ID', 'Preview', 'Orphaned Chapter ID', 'Module'];
+    const rows = locations.map((loc) => [
+      loc.id,
+      `"${(loc.preview || '').replace(/"/g, '""')}"`,
+      loc.orphaned_chapter_id,
+      loc.module_title || '',
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orphaned-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${locations.length} orphaned ${type} to CSV`);
+  };
+
+  const exportQualityLocationsCsv = (locations: IntegrityLocation[], type: string) => {
     const headers = ['ID', 'Preview', 'Module', 'Chapter', 'Topic'];
     const rows = locations.map((loc) => [
       loc.id,
@@ -406,13 +498,13 @@ function IntegrityCheckTab() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `integrity-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `quality-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${locations.length} ${type} issues to CSV`);
   };
 
-  const renderLocationTable = (locations: IntegrityLocation[], type: string) => {
+  const renderOrphanLocationTable = (locations: OrphanedLocation[], type: string) => {
     if (!locations || locations.length === 0) return null;
 
     return (
@@ -422,7 +514,56 @@ function IntegrityCheckTab() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportLocationsCsv(locations, type)}
+            onClick={() => exportOrphanLocationsCsv(locations, type)}
+          >
+            <Download className="mr-2 h-3 w-3" />
+            Export CSV
+          </Button>
+        </div>
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]">ID</TableHead>
+                <TableHead>Preview</TableHead>
+                <TableHead>Module</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {locations.slice(0, 20).map((loc) => (
+                <TableRow key={loc.id}>
+                  <TableCell className="font-mono text-xs truncate max-w-[80px]" title={loc.id}>
+                    {loc.id.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate" title={loc.preview}>
+                    {loc.preview || '—'}
+                  </TableCell>
+                  <TableCell className="text-sm">{loc.module_title || '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        {locations.length > 20 && (
+          <p className="text-xs text-muted-foreground">
+            Showing 20 of {locations.length} items. Export CSV for full list.
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderQualityLocationTable = (locations: IntegrityLocation[], type: string) => {
+    if (!locations || locations.length === 0) return null;
+
+    return (
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Where are they?</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportQualityLocationsCsv(locations, type)}
           >
             <Download className="mr-2 h-3 w-3" />
             Export CSV
@@ -465,7 +606,82 @@ function IntegrityCheckTab() {
     );
   };
 
-  const renderV2CheckCard = (
+  const renderOrphanCheckCard = (
+    title: string,
+    description: string,
+    icon: React.ReactNode,
+    isRunning: boolean,
+    result: OrphanCheckResult | null,
+    error: string | null,
+    onRun: () => void,
+    type: string,
+    hasRun: boolean
+  ) => (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          {icon}
+          {title}
+        </CardTitle>
+        <CardDescription className="text-sm">{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button onClick={onRun} disabled={isRunning} size="sm">
+          {isRunning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Checking...
+            </>
+          ) : (
+            `Run Check`
+          )}
+        </Button>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {(hasRun || result !== null) && !error && (
+          <Alert variant={result && result.count > 0 ? 'destructive' : 'default'}>
+            {result && result.count > 0 ? (
+              <AlertTriangle className="h-4 w-4" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <AlertTitle>
+              {result && result.count > 0
+                ? `Found ${result.count} Orphaned`
+                : 'No Issues Found'}
+            </AlertTitle>
+            <AlertDescription>
+              {result && result.count > 0 ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm">{result.description}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyIdsToClipboard(result.locations.map((l) => l.id), type)}
+                  >
+                    <Copy className="mr-2 h-3 w-3" />
+                    Copy IDs
+                  </Button>
+                  {renderOrphanLocationTable(result.locations, type.toLowerCase())}
+                </div>
+              ) : (
+                <p>All {type.toLowerCase()} items have valid chapter references.</p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderQualityCheckCard = (
     title: string,
     description: string,
     icon: React.ReactNode,
@@ -477,22 +693,22 @@ function IntegrityCheckTab() {
     hasRun: boolean
   ) => (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
           {icon}
           {title}
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="text-sm">{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={onRun} disabled={isRunning} className="w-full sm:w-auto">
+        <Button onClick={onRun} disabled={isRunning} size="sm">
           {isRunning ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Running Check...
+              Checking...
             </>
           ) : (
-            `Run ${type} Check`
+            `Run Check`
           )}
         </Button>
 
@@ -528,304 +744,128 @@ function IntegrityCheckTab() {
                     <Copy className="mr-2 h-3 w-3" />
                     Copy IDs
                   </Button>
-                  {renderLocationTable(result.locations, type.toLowerCase())}
+                  {renderQualityLocationTable(result.locations, type.toLowerCase())}
                 </div>
               ) : (
-                <p>All {type.toLowerCase()} items passed integrity checks.</p>
+                <p>All {type.toLowerCase()} items passed quality checks.</p>
               )}
             </AlertDescription>
           </Alert>
         )}
-
       </CardContent>
     </Card>
   );
 
+  // Orphan check configs
+  const orphanChecks: { type: OrphanCheckType; title: string; description: string; icon: React.ReactNode; running: boolean; result: OrphanCheckResult | null; error: string | null; hasRun: boolean }[] = [
+    { type: 'mcqs', title: 'MCQs', description: 'Individual MCQ questions pointing to deleted chapters', icon: <ShieldAlert className="w-4 h-4" />, running: orphanMcqsRunning, result: orphanMcqsResult, error: orphanMcqsError, hasRun: orphanMcqsHasRun },
+    { type: 'mcq_sets', title: 'MCQ Sets', description: 'MCQ sets (timed quizzes) pointing to deleted chapters', icon: <ListChecks className="w-4 h-4" />, running: orphanMcqSetsRunning, result: orphanMcqSetsResult, error: orphanMcqSetsError, hasRun: orphanMcqSetsHasRun },
+    { type: 'essays', title: 'Essays', description: 'Essay questions pointing to deleted chapters', icon: <FileText className="w-4 h-4" />, running: orphanEssaysRunning, result: orphanEssaysResult, error: orphanEssaysError, hasRun: orphanEssaysHasRun },
+    { type: 'osce', title: 'OSCE Stations', description: 'OSCE stations pointing to deleted chapters', icon: <Stethoscope className="w-4 h-4" />, running: orphanOsceRunning, result: orphanOsceResult, error: orphanOsceError, hasRun: orphanOsceHasRun },
+    { type: 'flashcards', title: 'Flashcards', description: 'Flashcards pointing to deleted chapters', icon: <Layers className="w-4 h-4" />, running: orphanFlashcardsRunning, result: orphanFlashcardsResult, error: orphanFlashcardsError, hasRun: orphanFlashcardsHasRun },
+    { type: 'lectures', title: 'Lectures', description: 'Lecture videos pointing to deleted chapters', icon: <Video className="w-4 h-4" />, running: orphanLecturesRunning, result: orphanLecturesResult, error: orphanLecturesError, hasRun: orphanLecturesHasRun },
+    { type: 'matching', title: 'Matching Questions', description: 'Matching questions pointing to deleted chapters', icon: <ArrowLeftRight className="w-4 h-4" />, running: orphanMatchingRunning, result: orphanMatchingResult, error: orphanMatchingError, hasRun: orphanMatchingHasRun },
+    { type: 'case_scenarios', title: 'Case Scenarios', description: 'Case scenarios pointing to deleted chapters', icon: <FileText className="w-4 h-4" />, running: orphanCaseScenariosRunning, result: orphanCaseScenariosResult, error: orphanCaseScenariosError, hasRun: orphanCaseScenariosHasRun },
+    { type: 'clinical_cases', title: 'Clinical Cases', description: 'Clinical cases pointing to deleted chapters', icon: <HeartPulse className="w-4 h-4" />, running: orphanClinicalCasesRunning, result: orphanClinicalCasesResult, error: orphanClinicalCasesError, hasRun: orphanClinicalCasesHasRun },
+    { type: 'study_resources', title: 'Study Resources', description: 'Study resources pointing to deleted chapters', icon: <BookOpen className="w-4 h-4" />, running: orphanStudyResourcesRunning, result: orphanStudyResourcesResult, error: orphanStudyResourcesError, hasRun: orphanStudyResourcesHasRun },
+  ];
+
+  // Quality check configs
+  const qualityChecks: { type: QualityCheckType; title: string; description: string; icon: React.ReactNode; running: boolean; result: IntegrityIssue | null; error: string | null; hasRun: boolean }[] = [
+    { type: 'mcq_sets', title: 'MCQ Set Quality', description: 'Sets with empty titles or not assigned to any location', icon: <ListChecks className="w-4 h-4" />, running: qualityMcqSetsRunning, result: qualityMcqSetsResult, error: qualityMcqSetsError, hasRun: qualityMcqSetsHasRun },
+    { type: 'osce', title: 'OSCE Quality', description: 'Stations with missing history, empty statements, or no answers', icon: <Stethoscope className="w-4 h-4" />, running: qualityOsceRunning, result: qualityOsceResult, error: qualityOsceError, hasRun: qualityOsceHasRun },
+    { type: 'flashcards', title: 'Flashcard Quality', description: 'Cards with blank front/back text or no chapter assignment', icon: <Layers className="w-4 h-4" />, running: qualityFlashcardsRunning, result: qualityFlashcardsResult, error: qualityFlashcardsError, hasRun: qualityFlashcardsHasRun },
+    { type: 'clinical_cases', title: 'Clinical Case Quality', description: 'Cases with empty titles, introductions, or no location', icon: <HeartPulse className="w-4 h-4" />, running: qualityClinicalRunning, result: qualityClinicalResult, error: qualityClinicalError, hasRun: qualityClinicalHasRun },
+    { type: 'lectures', title: 'Lecture Quality', description: 'Videos with missing titles, no URL, or no location', icon: <Video className="w-4 h-4" />, running: qualityLecturesRunning, result: qualityLecturesResult, error: qualityLecturesError, hasRun: qualityLecturesHasRun },
+    { type: 'matching', title: 'Matching Question Quality', description: 'Questions with empty columns or no match pairs', icon: <ArrowLeftRight className="w-4 h-4" />, running: qualityMatchingRunning, result: qualityMatchingResult, error: qualityMatchingError, hasRun: qualityMatchingHasRun },
+    { type: 'case_scenarios', title: 'Case Scenario Quality', description: 'Scenarios with missing history or model answers', icon: <FileText className="w-4 h-4" />, running: qualityCaseScenariosRunning, result: qualityCaseScenariosResult, error: qualityCaseScenariosError, hasRun: qualityCaseScenariosHasRun },
+    { type: 'guided_explanation', title: 'Guided Explanation Quality', description: 'Explanations with missing topics or fewer than 3 questions', icon: <Lightbulb className="w-4 h-4" />, running: qualityGuidedRunning, result: qualityGuidedResult, error: qualityGuidedError, hasRun: qualityGuidedHasRun },
+    { type: 'mind_map', title: 'Mind Map Quality', description: 'Maps with no image and no structured content', icon: <Network className="w-4 h-4" />, running: qualityMindMapRunning, result: qualityMindMapResult, error: qualityMindMapError, hasRun: qualityMindMapHasRun },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* 1. Orphaned MCQ Check */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5" />
-            Orphaned MCQ Check
+            <Activity className="w-5 h-5" />
+            Data Integrity
           </CardTitle>
           <CardDescription>
-            Finds individual MCQ questions that reference a chapter that was deleted from the system.
+            Run audit checks to find broken references and incomplete content across the platform.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Button 
-            onClick={runMcqCheck} 
-            disabled={isMcqRunning}
-            className="w-full sm:w-auto"
-          >
-            {isMcqRunning ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running Check...
-              </>
-            ) : (
-              'Run MCQ Check'
-            )}
-          </Button>
+        <CardContent>
+          <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'orphaned' | 'quality')}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="orphaned" className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Orphaned Records
+              </TabsTrigger>
+              <TabsTrigger value="quality" className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Content Quality
+              </TabsTrigger>
+            </TabsList>
 
-          {mcqError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{mcqError}</AlertDescription>
-            </Alert>
-          )}
-
-          {mcqResult && (
-            <Alert variant={mcqResult.count > 0 ? "destructive" : "default"}>
-              {mcqResult.count > 0 ? (
+            <TabsContent value="orphaned" className="space-y-4">
+              <Alert>
                 <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              <AlertTitle>
-                {mcqResult.count > 0 
-                  ? `Found ${mcqResult.count} Orphaned MCQ${mcqResult.count !== 1 ? 's' : ''}`
-                  : 'No Issues Found'
-                }
-              </AlertTitle>
-              <AlertDescription>
-                {mcqResult.count > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-sm">
-                      These MCQs reference chapters that no longer exist:
-                    </p>
-                    <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
-                      {mcqResult.sampleIds.map((id) => (
-                        <li key={id} className="truncate">{id}</li>
-                      ))}
-                    </ul>
-                    {mcqResult.count > 10 && (
-                      <p className="text-xs text-muted-foreground">
-                        Showing first 10 of {mcqResult.count} orphaned MCQs
-                      </p>
+                <AlertTitle>Orphaned Records</AlertTitle>
+                <AlertDescription>
+                  Find content that references chapters or modules that have been deleted from the system. 
+                  These items may be invisible to users or cause errors.
+                </AlertDescription>
+              </Alert>
+              <div className="grid gap-4 md:grid-cols-2">
+                {orphanChecks.map((check) => (
+                  <div key={check.type}>
+                    {renderOrphanCheckCard(
+                      check.title,
+                      check.description,
+                      check.icon,
+                      check.running,
+                      check.result,
+                      check.error,
+                      () => runOrphanCheck(check.type),
+                      check.title,
+                      check.hasRun
                     )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => copyIdsToClipboard(mcqResult.sampleIds, 'MCQ')}
-                      className="mt-2"
-                    >
-                      <Copy className="mr-2 h-3 w-3" />
-                      Copy IDs
-                    </Button>
                   </div>
-                ) : (
-                  <p>All MCQs with chapter references are valid.</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="quality" className="space-y-4">
+              <Alert>
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertTitle>Content Quality</AlertTitle>
+                <AlertDescription>
+                  Find content with missing fields, incomplete data, or configuration issues. 
+                  These items may not display correctly for students.
+                </AlertDescription>
+              </Alert>
+              <div className="grid gap-4 md:grid-cols-2">
+                {qualityChecks.map((check) => (
+                  <div key={check.type}>
+                    {renderQualityCheckCard(
+                      check.title,
+                      check.description,
+                      check.icon,
+                      check.running,
+                      check.result,
+                      check.error,
+                      () => runQualityCheck(check.type),
+                      check.title,
+                      check.hasRun
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
-
-      {/* 2. MCQ Set Integrity Check */}
-      {renderV2CheckCard(
-        'MCQ Set Integrity Check',
-        'Finds MCQ sets (timed quizzes) with missing titles or not assigned to any module/chapter.',
-        <ListChecks className="w-5 h-5" />,
-        isMcqSetsRunning,
-        mcqSetsResult,
-        mcqSetsError,
-        () => runV2Check('mcq_sets'),
-        'MCQ Set',
-        hasMcqSetsRun
-      )}
-
-      {/* 3. Orphaned Essay Check */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Orphaned Essay Check
-          </CardTitle>
-          <CardDescription>
-            Finds essay questions that reference a chapter that was deleted from the system.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button 
-            onClick={runEssayCheck} 
-            disabled={isEssayRunning}
-            className="w-full sm:w-auto"
-          >
-            {isEssayRunning ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running Check...
-              </>
-            ) : (
-              'Run Essay Check'
-            )}
-          </Button>
-
-          {essayError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{essayError}</AlertDescription>
-            </Alert>
-          )}
-
-          {essayResult && (
-            <Alert variant={essayResult.count > 0 ? "destructive" : "default"}>
-              {essayResult.count > 0 ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              <AlertTitle>
-                {essayResult.count > 0 
-                  ? `Found ${essayResult.count} Orphaned Essay${essayResult.count !== 1 ? 's' : ''}`
-                  : 'No Issues Found'
-                }
-              </AlertTitle>
-              <AlertDescription>
-                {essayResult.count > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-sm">{essayResult.description}</p>
-                    <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
-                      {essayResult.affectedIds.slice(0, 10).map((id) => (
-                        <li key={id} className="truncate">{id}</li>
-                      ))}
-                    </ul>
-                    {essayResult.count > 10 && (
-                      <p className="text-xs text-muted-foreground">
-                        Showing first 10 of {essayResult.count} orphaned essays
-                      </p>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => copyIdsToClipboard(essayResult.affectedIds, 'Essay')}
-                      className="mt-2"
-                    >
-                      <Copy className="mr-2 h-3 w-3" />
-                      Copy IDs
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Checked at: {new Date(essayResult.checkedAt).toLocaleString()}
-                    </p>
-                  </div>
-                ) : (
-                  <p>All essays with chapter references are valid.</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 4. OSCE Integrity Check */}
-      {renderV2CheckCard(
-        'OSCE Integrity Check',
-        'Finds OSCE stations with missing patient history, blank question statements, or empty answer fields.',
-        <Stethoscope className="w-5 h-5" />,
-        isOsceRunning,
-        osceResult,
-        osceError,
-        () => runV2Check('osce'),
-        'OSCE',
-        hasOsceRun
-      )}
-
-      {/* 5. Flashcard Integrity Check */}
-      {renderV2CheckCard(
-        'Flashcard Integrity Check',
-        'Finds flashcards with blank front/back text or not assigned to any chapter.',
-        <CreditCard className="w-5 h-5" />,
-        isFlashcardsRunning,
-        flashcardsResult,
-        flashcardsError,
-        () => runV2Check('flashcards'),
-        'Flashcard',
-        hasFlashcardsRun
-      )}
-
-      {/* 6. Clinical Case Integrity Check */}
-      {renderV2CheckCard(
-        'Clinical Case Integrity Check',
-        'Finds clinical cases with missing titles, empty introductions, or not assigned to any location.',
-        <HeartPulse className="w-5 h-5" />,
-        isClinicalRunning,
-        clinicalResult,
-        clinicalError,
-        () => runV2Check('clinical_cases'),
-        'Clinical Case',
-        hasClinicalRun
-      )}
-
-      {/* 7. Lecture Integrity Check */}
-      {renderV2CheckCard(
-        'Lecture Integrity Check',
-        'Finds lectures with missing titles, no video URL, or not assigned to any module/chapter.',
-        <Video className="w-5 h-5" />,
-        isLecturesRunning,
-        lecturesResult,
-        lecturesError,
-        () => runV2Check('lectures'),
-        'Lecture',
-        hasLecturesRun
-      )}
-
-      {/* 8. Matching Question Integrity Check */}
-      {renderV2CheckCard(
-        'Matching Question Integrity Check',
-        'Finds matching questions with empty columns, missing match pairs, or no chapter assignment.',
-        <ArrowLeftRight className="w-5 h-5" />,
-        isMatchingRunning,
-        matchingResult,
-        matchingError,
-        () => runV2Check('matching'),
-        'Matching Question',
-        hasMatchingRun
-      )}
-
-      {/* 9. Case Scenario Integrity Check */}
-      {renderV2CheckCard(
-        'Case Scenario Integrity Check',
-        'Finds case scenarios with missing titles, empty history/questions, or blank model answers.',
-        <FileText className="w-5 h-5" />,
-        isCaseScenariosRunning,
-        caseScenariosResult,
-        caseScenariosError,
-        () => runV2Check('case_scenarios'),
-        'Case Scenario',
-        hasCaseScenariosRun
-      )}
-
-      {/* 10. Guided Explanation Integrity Check */}
-      {renderV2CheckCard(
-        'Guided Explanation Integrity Check',
-        'Finds guided explanations with missing topics, empty introductions, or fewer than 3 questions.',
-        <Lightbulb className="w-5 h-5" />,
-        isGuidedExplanationRunning,
-        guidedExplanationResult,
-        guidedExplanationError,
-        () => runV2Check('guided_explanation'),
-        'Guided Explanation',
-        hasGuidedExplanationRun
-      )}
-
-      {/* 11. Mind Map Integrity Check */}
-      {renderV2CheckCard(
-        'Mind Map Integrity Check',
-        'Finds mind maps with no image URL and no structured nodes, or missing central concept.',
-        <Network className="w-5 h-5" />,
-        isMindMapRunning,
-        mindMapResult,
-        mindMapError,
-        () => runV2Check('mind_map'),
-        'Mind Map',
-        hasMindMapRun
-      )}
     </div>
   );
 }
