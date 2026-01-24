@@ -1989,6 +1989,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string
+          section_id: string | null
           stem: string
           updated_by: string | null
         }
@@ -2004,6 +2005,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id: string
+          section_id?: string | null
           stem: string
           updated_by?: string | null
         }
@@ -2019,6 +2021,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string
+          section_id?: string | null
           stem?: string
           updated_by?: string | null
         }
@@ -2035,6 +2038,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcqs_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]
