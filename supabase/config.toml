@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.cache-readiness]
 verify_jwt = false
+
+[functions.integrity-pilot]
+verify_jwt = false
