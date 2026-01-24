@@ -46,7 +46,7 @@ export function ClinicalCaseList({ moduleId, chapterId }: ClinicalCaseListProps)
   });
 
   const handleStartCase = (caseId: string) => {
-    navigate(`/clinical-case/${caseId}`);
+    navigate(`/virtual-patient/${caseId}`);
   };
 
   if (isLoading) {
