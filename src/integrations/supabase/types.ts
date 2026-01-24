@@ -3908,6 +3908,7 @@ export type Database = {
           patient_gender: string | null
           patient_image_url: string | null
           patient_name: string | null
+          section_id: string | null
           tags: string[] | null
           title: string
           topic_id: string | null
@@ -3931,6 +3932,7 @@ export type Database = {
           patient_gender?: string | null
           patient_image_url?: string | null
           patient_name?: string | null
+          section_id?: string | null
           tags?: string[] | null
           title: string
           topic_id?: string | null
@@ -3954,6 +3956,7 @@ export type Database = {
           patient_gender?: string | null
           patient_image_url?: string | null
           patient_name?: string | null
+          section_id?: string | null
           tags?: string[] | null
           title?: string
           topic_id?: string | null
@@ -3973,6 +3976,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {

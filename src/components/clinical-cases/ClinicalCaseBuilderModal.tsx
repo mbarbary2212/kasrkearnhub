@@ -231,20 +231,51 @@ export function ClinicalCaseBuilderModal({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-              Case Builder
-              {clinicalCase && !clinicalCase.is_published && (
-                <Badge variant="secondary">Draft</Badge>
+          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-8">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                Case Builder
+                {clinicalCase && !clinicalCase.is_published && (
+                  <Badge variant="secondary">Draft</Badge>
+                )}
+              </DialogTitle>
+              {clinicalCase && (
+                <Badge variant="outline" className="ml-2">
+                  {stages.length} stage{stages.length !== 1 ? 's' : ''}
+                </Badge>
               )}
-            </DialogTitle>
+            </div>
+            {clinicalCase && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setQuickBuildOpen(true)}
+                >
+                  <FileText className="w-4 h-4 mr-1" />
+                  Quick Build
+                </Button>
+                <Button size="sm" onClick={handleAddStage}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Stage
+                </Button>
+              </div>
+            )}
           </DialogHeader>
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
-          ) : clinicalCase ? (
+          ) : !clinicalCase ? (
+            <div className="text-center py-12">
+              <p className="text-destructive font-medium mb-2">Failed to load case</p>
+              <p className="text-muted-foreground text-sm">Case ID: {caseId}</p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </div>
+          ) : (
             <ScrollArea className="flex-1 overflow-y-auto">
               <div className="space-y-6 pr-4 pb-4">
                 {/* Case Info Section */}
@@ -289,25 +320,9 @@ export function ClinicalCaseBuilderModal({
 
                 {/* Stages Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium">
-                      Stages ({stages.length})
-                    </h4>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => setQuickBuildOpen(true)}
-                      >
-                        <FileText className="w-4 h-4 mr-1" />
-                        Quick Build
-                      </Button>
-                      <Button size="sm" onClick={handleAddStage}>
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add Stage
-                      </Button>
-                    </div>
-                  </div>
+                  <h4 className="font-medium mb-4">
+                    Stages ({stages.length})
+                  </h4>
 
                   {stages.length === 0 ? (
                     <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
@@ -361,10 +376,6 @@ export function ClinicalCaseBuilderModal({
                 </div>
               </div>
             </ScrollArea>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Case not found</p>
-            </div>
           )}
 
           <div className="flex justify-between gap-2 pt-4 border-t">
