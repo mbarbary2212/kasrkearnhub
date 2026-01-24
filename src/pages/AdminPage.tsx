@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
@@ -157,6 +158,126 @@ function PlatformSettingsTab() {
               </Dialog>
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Integrity Check Tab Component (All Admins)
+function IntegrityCheckTab() {
+  const [isRunning, setIsRunning] = useState(false);
+  const [result, setResult] = useState<{ issue: string; count: number; sampleIds: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runIntegrityCheck = async () => {
+    setIsRunning(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(
+        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to run integrity check');
+      }
+
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5" />
+          Data Integrity Pilot
+        </CardTitle>
+        <CardDescription>
+          Read-only safety check for orphaned MCQs. Detects MCQs that reference deleted chapters.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button 
+          onClick={runIntegrityCheck} 
+          disabled={isRunning}
+          className="w-full sm:w-auto"
+        >
+          {isRunning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Running Check...
+            </>
+          ) : (
+            'Run Integrity Pilot'
+          )}
+        </Button>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {result && (
+          <Alert variant={result.count > 0 ? "destructive" : "default"}>
+            {result.count > 0 ? (
+              <AlertTriangle className="h-4 w-4" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <AlertTitle>
+              {result.count > 0 
+                ? `Found ${result.count} Orphaned MCQ${result.count !== 1 ? 's' : ''}`
+                : 'No Issues Found'
+              }
+            </AlertTitle>
+            <AlertDescription>
+              {result.count > 0 ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm">
+                    These MCQs reference chapters that no longer exist:
+                  </p>
+                  <ul className="text-xs font-mono bg-muted p-2 rounded space-y-1 max-h-48 overflow-y-auto">
+                    {result.sampleIds.map((id) => (
+                      <li key={id} className="truncate">{id}</li>
+                    ))}
+                  </ul>
+                  {result.count > 10 && (
+                    <p className="text-xs text-muted-foreground">
+                      Showing first 10 of {result.count} orphaned MCQs
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p>All MCQs with chapter references are valid.</p>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>
@@ -637,6 +758,12 @@ export default function AdminPage() {
               <HelpCircle className="w-4 h-4" />
               Help & Templates
             </TabsTrigger>
+            {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
+              <TabsTrigger value="integrity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <ShieldAlert className="w-4 h-4" />
+                Integrity
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Users Tab with Sub-tabs */}
@@ -1060,6 +1187,13 @@ export default function AdminPage() {
           <TabsContent value="help">
             <HelpTemplatesTab />
           </TabsContent>
+
+          {/* Integrity Check Tab - All Admins */}
+          {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
+            <TabsContent value="integrity">
+              <IntegrityCheckTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </MainLayout>
