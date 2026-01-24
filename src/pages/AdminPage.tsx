@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -164,6 +165,32 @@ function PlatformSettingsTab() {
   );
 }
 
+// Types for V2 Integrity Checks
+interface IntegrityLocation {
+  id: string;
+  preview: string;
+  module_id: string | null;
+  module_title: string | null;
+  chapter_id: string | null;
+  chapter_title: string | null;
+  topic_id: string | null;
+  topic_title: string | null;
+}
+
+interface IntegrityIssue {
+  type: string;
+  severity: 'critical' | 'warning' | 'info';
+  count: number;
+  description: string;
+  locations: IntegrityLocation[];
+}
+
+interface V2CheckResult {
+  issues: IntegrityIssue[];
+  checkedAt: string;
+  scope: string;
+}
+
 // Integrity Check Tab Component (All Admins)
 function IntegrityCheckTab() {
   // MCQ Check State
@@ -182,6 +209,19 @@ function IntegrityCheckTab() {
     checkedAt: string; 
   } | null>(null);
   const [essayError, setEssayError] = useState<string | null>(null);
+
+  // V2 Checks State (OSCE, Flashcards, Clinical Cases)
+  const [isOsceRunning, setIsOsceRunning] = useState(false);
+  const [osceResult, setOsceResult] = useState<IntegrityIssue | null>(null);
+  const [osceError, setOsceError] = useState<string | null>(null);
+
+  const [isFlashcardsRunning, setIsFlashcardsRunning] = useState(false);
+  const [flashcardsResult, setFlashcardsResult] = useState<IntegrityIssue | null>(null);
+  const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
+
+  const [isClinicalRunning, setIsClinicalRunning] = useState(false);
+  const [clinicalResult, setClinicalResult] = useState<IntegrityIssue | null>(null);
+  const [clinicalError, setClinicalError] = useState<string | null>(null);
 
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -254,10 +294,204 @@ function IntegrityCheckTab() {
     }
   };
 
+  const runV2Check = async (checkType: 'osce' | 'flashcards' | 'clinical_cases') => {
+    const setRunning = checkType === 'osce' ? setIsOsceRunning : checkType === 'flashcards' ? setIsFlashcardsRunning : setIsClinicalRunning;
+    const setResult = checkType === 'osce' ? setOsceResult : checkType === 'flashcards' ? setFlashcardsResult : setClinicalResult;
+    const setError = checkType === 'osce' ? setOsceError : checkType === 'flashcards' ? setFlashcardsError : setClinicalError;
+
+    setRunning(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot-v2',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ checkType }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to run ${checkType} integrity check`);
+      }
+
+      const data: V2CheckResult = await response.json();
+      const issueTypeMap: Record<string, string> = {
+        osce: 'osce_integrity',
+        flashcards: 'flashcard_integrity',
+        clinical_cases: 'clinical_case_integrity',
+      };
+      const issue = data.issues.find((i) => i.type === issueTypeMap[checkType]) || null;
+      setResult(issue);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const copyIdsToClipboard = (ids: string[], type: string) => {
     navigator.clipboard.writeText(ids.join('\n'));
     toast.success(`Copied ${ids.length} ${type} IDs to clipboard`);
   };
+
+  const exportLocationsCsv = (locations: IntegrityLocation[], type: string) => {
+    const headers = ['ID', 'Preview', 'Module', 'Chapter', 'Topic'];
+    const rows = locations.map((loc) => [
+      loc.id,
+      `"${(loc.preview || '').replace(/"/g, '""')}"`,
+      loc.module_title || '',
+      loc.chapter_title || '',
+      loc.topic_title || '',
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `integrity-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${locations.length} ${type} issues to CSV`);
+  };
+
+  const renderLocationTable = (locations: IntegrityLocation[], type: string) => {
+    if (!locations || locations.length === 0) return null;
+
+    return (
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Where are they?</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportLocationsCsv(locations, type)}
+          >
+            <Download className="mr-2 h-3 w-3" />
+            Export CSV
+          </Button>
+        </div>
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]">ID</TableHead>
+                <TableHead>Preview</TableHead>
+                <TableHead>Module</TableHead>
+                <TableHead>Chapter</TableHead>
+                <TableHead>Topic</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {locations.slice(0, 20).map((loc) => (
+                <TableRow key={loc.id}>
+                  <TableCell className="font-mono text-xs truncate max-w-[80px]" title={loc.id}>
+                    {loc.id.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate" title={loc.preview}>
+                    {loc.preview}
+                  </TableCell>
+                  <TableCell className="text-sm">{loc.module_title || '—'}</TableCell>
+                  <TableCell className="text-sm">{loc.chapter_title || '—'}</TableCell>
+                  <TableCell className="text-sm">{loc.topic_title || '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        {locations.length > 20 && (
+          <p className="text-xs text-muted-foreground">
+            Showing 20 of {locations.length} issues. Export CSV for full list.
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderV2CheckCard = (
+    title: string,
+    description: string,
+    icon: React.ReactNode,
+    isRunning: boolean,
+    result: IntegrityIssue | null,
+    error: string | null,
+    onRun: () => void,
+    type: string
+  ) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button onClick={onRun} disabled={isRunning} className="w-full sm:w-auto">
+          {isRunning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Running Check...
+            </>
+          ) : (
+            `Run ${type} Check`
+          )}
+        </Button>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {result !== null && (
+          <Alert variant={result.count > 0 ? (result.severity === 'critical' ? 'destructive' : 'default') : 'default'}>
+            {result.count > 0 ? (
+              <AlertTriangle className="h-4 w-4" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <AlertTitle>
+              {result.count > 0
+                ? `Found ${result.count} Issue${result.count !== 1 ? 's' : ''}`
+                : 'No Issues Found'}
+            </AlertTitle>
+            <AlertDescription>
+              {result.count > 0 ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm">{result.description}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyIdsToClipboard(result.locations.map((l) => l.id), type)}
+                  >
+                    <Copy className="mr-2 h-3 w-3" />
+                    Copy IDs
+                  </Button>
+                  {renderLocationTable(result.locations, type.toLowerCase())}
+                </div>
+              ) : (
+                <p>All {type.toLowerCase()} items passed integrity checks.</p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {result === null && !error && !isRunning && (
+          <p className="text-sm text-muted-foreground">Click the button above to run this check.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -427,6 +661,42 @@ function IntegrityCheckTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* V2 Checks: OSCE */}
+      {renderV2CheckCard(
+        'OSCE Integrity Check',
+        'Detects OSCE questions with missing history, empty statements, or invalid answers.',
+        <Stethoscope className="w-5 h-5" />,
+        isOsceRunning,
+        osceResult,
+        osceError,
+        () => runV2Check('osce'),
+        'OSCE'
+      )}
+
+      {/* V2 Checks: Flashcards */}
+      {renderV2CheckCard(
+        'Flashcard Integrity Check',
+        'Detects flashcards with empty front/back text or missing chapter references.',
+        <CreditCard className="w-5 h-5" />,
+        isFlashcardsRunning,
+        flashcardsResult,
+        flashcardsError,
+        () => runV2Check('flashcards'),
+        'Flashcard'
+      )}
+
+      {/* V2 Checks: Clinical Cases */}
+      {renderV2CheckCard(
+        'Clinical Case Integrity Check',
+        'Detects clinical cases with empty title/intro or missing location references.',
+        <HeartPulse className="w-5 h-5" />,
+        isClinicalRunning,
+        clinicalResult,
+        clinicalError,
+        () => runV2Check('clinical_cases'),
+        'Clinical Case'
+      )}
     </div>
   );
 }
