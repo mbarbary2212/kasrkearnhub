@@ -19,12 +19,14 @@ import {
 import { toast } from 'sonner';
 import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
 import { McqFormSchema } from '@/lib/validators';
+import { SectionSelector } from '@/components/sections';
 
 interface McqFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
   mcq?: Mcq;
   isAdmin: boolean;
 }
@@ -38,6 +40,7 @@ export function McqFormModal({
   onOpenChange,
   moduleId,
   chapterId,
+  topicId,
   mcq,
   isAdmin,
 }: McqFormModalProps) {
@@ -48,6 +51,7 @@ export function McqFormModal({
   const [correctKey, setCorrectKey] = useState<string>('A');
   const [explanation, setExplanation] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const createMutation = useCreateMcq();
   const updateMutation = useUpdateMcq();
@@ -60,6 +64,7 @@ export function McqFormModal({
       setCorrectKey(mcq.correct_key);
       setExplanation(mcq.explanation || '');
       setDifficulty(mcq.difficulty || 'medium');
+      setSectionId((mcq as any).section_id || null);
     } else {
       // Reset form for new MCQ
       setStem('');
@@ -67,6 +72,7 @@ export function McqFormModal({
       setCorrectKey('A');
       setExplanation('');
       setDifficulty('medium');
+      setSectionId(null);
     }
   }, [mcq, open]);
 
@@ -85,6 +91,7 @@ export function McqFormModal({
       correct_key: correctKey,
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
+      section_id: sectionId,
     };
 
     // Validate before submission
@@ -194,6 +201,16 @@ export function McqFormModal({
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {/* Section Selector - Admin only */}
+          {isAdmin && (
+            <SectionSelector
+              chapterId={chapterId || undefined}
+              topicId={topicId || undefined}
+              value={sectionId}
+              onChange={setSectionId}
+            />
           )}
 
           {/* Submit */}

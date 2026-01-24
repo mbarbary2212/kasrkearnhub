@@ -23,6 +23,9 @@ import { MatchingQuestionList } from '@/components/content/MatchingQuestionList'
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
+import { SectionFilter } from '@/components/sections';
+import { ChapterSettingsSheet } from '@/components/module/ChapterSettingsSheet';
+import { useChapterSectionsEnabled } from '@/hooks/useSections';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -109,6 +112,9 @@ export default function ChapterPage() {
   const [showDeletedMatching, setShowDeletedMatching] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
   const [showDeletedOsce, setShowDeletedOsce] = useState(false);
+  
+  // Section filter state (only for Resources and Practice, NOT for Test)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -136,9 +142,21 @@ export default function ChapterPage() {
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
+  const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   
   // Filter clinical cases by chapter
   const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
+  
+  // Reset section filter when leaving chapter
+  useEffect(() => {
+    return () => setSelectedSectionId(null);
+  }, [chapterId]);
+  
+  // Helper function to filter content by section
+  const filterBySection = useCallback(<T extends { section_id?: string | null }>(items: T[]): T[] => {
+    if (!selectedSectionId || !sectionsEnabled) return items;
+    return items.filter(item => item.section_id === selectedSectionId);
+  }, [selectedSectionId, sectionsEnabled]);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
@@ -303,6 +321,14 @@ export default function ChapterPage() {
               </>
             )}
           </div>
+          {/* Chapter Settings - Admin only */}
+          {canManageContent && chapterId && chapter && (
+            <ChapterSettingsSheet
+              chapterId={chapterId}
+              chapterTitle={`Chapter ${chapter.chapter_number}: ${chapter.title}`}
+              canManage={canManageContent}
+            />
+          )}
           {/* Ask Coach Button - visible in Resources and Practice sections */}
           {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
@@ -392,6 +418,16 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    chapterId={chapterId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
+                
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
                   <MobileSectionDropdown
@@ -599,6 +635,16 @@ export default function ChapterPage() {
             {/* Practice Section */}
             {activeSection === 'practice' && (
               <div className="space-y-4">
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    chapterId={chapterId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
+                
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
                   <MobileSectionDropdown

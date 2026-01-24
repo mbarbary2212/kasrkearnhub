@@ -612,6 +612,7 @@ export type Database = {
           management: string | null
           module_id: string | null
           presentation: string
+          section_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -633,6 +634,7 @@ export type Database = {
           management?: string | null
           module_id?: string | null
           presentation: string
+          section_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -654,6 +656,7 @@ export type Database = {
           management?: string | null
           module_id?: string | null
           presentation?: string
+          section_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
@@ -679,6 +682,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_cases_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -967,6 +977,7 @@ export type Database = {
           question: string
           question_ar: string | null
           rating: number | null
+          section_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -987,6 +998,7 @@ export type Database = {
           question: string
           question_ar?: string | null
           rating?: number | null
+          section_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -1007,6 +1019,7 @@ export type Database = {
           question?: string
           question_ar?: string | null
           rating?: number | null
+          section_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
@@ -1032,6 +1045,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "essays_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -1460,6 +1480,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          section_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -1478,6 +1499,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -1496,6 +1518,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
@@ -1526,6 +1549,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lectures_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lectures_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -1550,6 +1580,7 @@ export type Database = {
           instruction: string
           is_deleted: boolean
           module_id: string
+          section_id: string | null
           show_explanation: boolean
           topic_id: string | null
           updated_by: string | null
@@ -1569,6 +1600,7 @@ export type Database = {
           instruction?: string
           is_deleted?: boolean
           module_id: string
+          section_id?: string | null
           show_explanation?: boolean
           topic_id?: string | null
           updated_by?: string | null
@@ -1588,6 +1620,7 @@ export type Database = {
           instruction?: string
           is_deleted?: boolean
           module_id?: string
+          section_id?: string | null
           show_explanation?: boolean
           topic_id?: string | null
           updated_by?: string | null
@@ -1612,6 +1645,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -1857,6 +1897,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          section_id: string | null
           time_limit_minutes: number | null
           title: string
           title_ar: string | null
@@ -1873,6 +1914,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           time_limit_minutes?: number | null
           title: string
           title_ar?: string | null
@@ -1889,6 +1931,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           time_limit_minutes?: number | null
           title?: string
           title_ar?: string | null
@@ -1915,6 +1958,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcq_sets_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -2179,6 +2229,7 @@ export type Database = {
           book_label: string | null
           chapter_number: number
           created_at: string | null
+          enable_sections: boolean
           id: string
           module_id: string
           order_index: number
@@ -2188,6 +2239,7 @@ export type Database = {
           book_label?: string | null
           chapter_number: number
           created_at?: string | null
+          enable_sections?: boolean
           id?: string
           module_id: string
           order_index: number
@@ -2197,6 +2249,7 @@ export type Database = {
           book_label?: string | null
           chapter_number?: number
           created_at?: string | null
+          enable_sections?: boolean
           id?: string
           module_id?: string
           order_index?: number
@@ -2326,6 +2379,7 @@ export type Database = {
           is_deleted: boolean
           legacy_archived: boolean
           module_id: string
+          section_id: string | null
           statement_1: string
           statement_2: string
           statement_3: string
@@ -2355,6 +2409,7 @@ export type Database = {
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id: string
+          section_id?: string | null
           statement_1: string
           statement_2: string
           statement_3: string
@@ -2384,6 +2439,7 @@ export type Database = {
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id?: string
+          section_id?: string | null
           statement_1?: string
           statement_2?: string
           statement_3?: string
@@ -2407,6 +2463,13 @@ export type Database = {
             referencedRelation: "modules"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "osce_questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
         ]
       }
       practicals: {
@@ -2424,6 +2487,7 @@ export type Database = {
           objectives: string[] | null
           procedure: string | null
           procedure_ar: string | null
+          section_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -2444,6 +2508,7 @@ export type Database = {
           objectives?: string[] | null
           procedure?: string | null
           procedure_ar?: string | null
+          section_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -2464,6 +2529,7 @@ export type Database = {
           objectives?: string[] | null
           procedure?: string | null
           procedure_ar?: string | null
+          section_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
@@ -2490,6 +2556,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -2637,6 +2710,7 @@ export type Database = {
           is_deleted: boolean
           module_id: string | null
           resource_type: string | null
+          section_id: string | null
           title: string
           title_ar: string | null
           topic_id: string | null
@@ -2655,6 +2729,7 @@ export type Database = {
           is_deleted?: boolean
           module_id?: string | null
           resource_type?: string | null
+          section_id?: string | null
           title: string
           title_ar?: string | null
           topic_id?: string | null
@@ -2673,6 +2748,7 @@ export type Database = {
           is_deleted?: boolean
           module_id?: string | null
           resource_type?: string | null
+          section_id?: string | null
           title?: string
           title_ar?: string | null
           topic_id?: string | null
@@ -2701,7 +2777,56 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "resources_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "resources_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sections: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          topic_id: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+          topic_id?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
@@ -3302,6 +3427,7 @@ export type Database = {
           is_deleted: boolean | null
           module_id: string
           resource_type: Database["public"]["Enums"]["study_resource_type"]
+          section_id: string | null
           title: string
           updated_at: string | null
           updated_by: string | null
@@ -3317,6 +3443,7 @@ export type Database = {
           is_deleted?: boolean | null
           module_id: string
           resource_type: Database["public"]["Enums"]["study_resource_type"]
+          section_id?: string | null
           title: string
           updated_at?: string | null
           updated_by?: string | null
@@ -3332,6 +3459,7 @@ export type Database = {
           is_deleted?: boolean | null
           module_id?: string
           resource_type?: Database["public"]["Enums"]["study_resource_type"]
+          section_id?: string | null
           title?: string
           updated_at?: string | null
           updated_by?: string | null
@@ -3349,6 +3477,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_resources_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]
@@ -3453,6 +3588,7 @@ export type Database = {
           department_id: string
           description: string | null
           display_order: number | null
+          enable_sections: boolean
           id: string
           module_id: string | null
           name: string
@@ -3464,6 +3600,7 @@ export type Database = {
           department_id: string
           description?: string | null
           display_order?: number | null
+          enable_sections?: boolean
           id?: string
           module_id?: string | null
           name: string
@@ -3475,6 +3612,7 @@ export type Database = {
           department_id?: string
           description?: string | null
           display_order?: number | null
+          enable_sections?: boolean
           id?: string
           module_id?: string | null
           name?: string
