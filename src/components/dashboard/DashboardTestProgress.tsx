@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardTestProgressSkeleton } from '@/components/ui/skeletons';
 import { useTestProgress } from '@/hooks/useTestProgress';
 import { AskCoachButton } from '@/components/coach';
 import { 
@@ -22,23 +22,7 @@ export function DashboardTestProgress({ moduleId }: DashboardTestProgressProps) 
   const { data: progress, isLoading } = useTestProgress(moduleId);
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            Test Performance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-24 rounded-lg" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <DashboardTestProgressSkeleton />;
   }
 
   if (!progress?.hasAnyAttempts) {

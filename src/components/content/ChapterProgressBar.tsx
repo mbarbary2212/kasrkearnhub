@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ChapterProgressBarSkeleton } from '@/components/ui/skeletons';
 import { Badge } from '@/components/ui/badge';
 import { GraduationCap, Video, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -66,12 +66,7 @@ export function ChapterProgressBar({
   const isMobile = useIsMobile();
 
   if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-3 w-48" />
-      </div>
-    );
+    return <ChapterProgressBarSkeleton />;
   }
 
   const hasContent = practiceTotal > 0 || videosTotal > 0;
