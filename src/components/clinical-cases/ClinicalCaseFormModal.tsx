@@ -31,6 +31,7 @@ import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalC
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
+import { SectionSelector } from '@/components/sections';
 
 const MIN_STAGES_TO_PUBLISH = 3;
 
@@ -61,6 +62,7 @@ export function ClinicalCaseFormModal({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const { data: chapters } = useModuleChapters(moduleId);
   const createCase = useCreateClinicalCase();
@@ -79,6 +81,7 @@ export function ClinicalCaseFormModal({
       setEstimatedMinutes(clinicalCase.estimated_minutes);
       setTags(clinicalCase.tags || []);
       setIsPublished(clinicalCase.is_published);
+      setSectionId(clinicalCase.section_id || null);
     } else {
       resetForm();
       if (chapterId) {
@@ -96,6 +99,7 @@ export function ClinicalCaseFormModal({
     setTags([]);
     setTagInput('');
     setIsPublished(false);
+    setSectionId(null);
   };
 
   const handleAddTag = () => {
@@ -142,6 +146,7 @@ export function ClinicalCaseFormModal({
       intro_text: introText.trim(),
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
+      section_id: sectionId || undefined,
       case_mode: 'practice_case',
       level,
       estimated_minutes: estimatedMinutes,
@@ -236,6 +241,13 @@ export function ClinicalCaseFormModal({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Section Selector - Only shows if sections are enabled */}
+            <SectionSelector
+              chapterId={selectedChapterId || chapterId}
+              value={sectionId}
+              onChange={setSectionId}
+            />
 
             {/* Level */}
             <div>
