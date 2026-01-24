@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,6 +226,27 @@ function IntegrityCheckTab() {
   const [clinicalError, setClinicalError] = useState<string | null>(null);
   const [hasClinicalRun, setHasClinicalRun] = useState(false);
 
+  // V2 Checks State (Lectures, Matching, Case Scenarios, MCQ Sets)
+  const [isLecturesRunning, setIsLecturesRunning] = useState(false);
+  const [lecturesResult, setLecturesResult] = useState<IntegrityIssue | null>(null);
+  const [lecturesError, setLecturesError] = useState<string | null>(null);
+  const [hasLecturesRun, setHasLecturesRun] = useState(false);
+
+  const [isMatchingRunning, setIsMatchingRunning] = useState(false);
+  const [matchingResult, setMatchingResult] = useState<IntegrityIssue | null>(null);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+  const [hasMatchingRun, setHasMatchingRun] = useState(false);
+
+  const [isCaseScenariosRunning, setIsCaseScenariosRunning] = useState(false);
+  const [caseScenariosResult, setCaseScenariosResult] = useState<IntegrityIssue | null>(null);
+  const [caseScenariosError, setCaseScenariosError] = useState<string | null>(null);
+  const [hasCaseScenariosRun, setHasCaseScenariosRun] = useState(false);
+
+  const [isMcqSetsRunning, setIsMcqSetsRunning] = useState(false);
+  const [mcqSetsResult, setMcqSetsResult] = useState<IntegrityIssue | null>(null);
+  const [mcqSetsError, setMcqSetsError] = useState<string | null>(null);
+  const [hasMcqSetsRun, setHasMcqSetsRun] = useState(false);
+
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
@@ -297,11 +318,26 @@ function IntegrityCheckTab() {
     }
   };
 
-  const runV2Check = async (checkType: 'osce' | 'flashcards' | 'clinical_cases') => {
-    const setRunning = checkType === 'osce' ? setIsOsceRunning : checkType === 'flashcards' ? setIsFlashcardsRunning : setIsClinicalRunning;
-    const setResult = checkType === 'osce' ? setOsceResult : checkType === 'flashcards' ? setFlashcardsResult : setClinicalResult;
-    const setError = checkType === 'osce' ? setOsceError : checkType === 'flashcards' ? setFlashcardsError : setClinicalError;
-    const setHasRun = checkType === 'osce' ? setHasOsceRun : checkType === 'flashcards' ? setHasFlashcardsRun : setHasClinicalRun;
+  type V2CheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets';
+
+  const runV2Check = async (checkType: V2CheckType) => {
+    const stateMap: Record<V2CheckType, {
+      setRunning: (v: boolean) => void;
+      setResult: (v: IntegrityIssue | null) => void;
+      setError: (v: string | null) => void;
+      setHasRun: (v: boolean) => void;
+      issueType: string;
+    }> = {
+      osce: { setRunning: setIsOsceRunning, setResult: setOsceResult, setError: setOsceError, setHasRun: setHasOsceRun, issueType: 'osce_integrity' },
+      flashcards: { setRunning: setIsFlashcardsRunning, setResult: setFlashcardsResult, setError: setFlashcardsError, setHasRun: setHasFlashcardsRun, issueType: 'flashcard_integrity' },
+      clinical_cases: { setRunning: setIsClinicalRunning, setResult: setClinicalResult, setError: setClinicalError, setHasRun: setHasClinicalRun, issueType: 'clinical_case_integrity' },
+      lectures: { setRunning: setIsLecturesRunning, setResult: setLecturesResult, setError: setLecturesError, setHasRun: setHasLecturesRun, issueType: 'lecture_integrity' },
+      matching: { setRunning: setIsMatchingRunning, setResult: setMatchingResult, setError: setMatchingError, setHasRun: setHasMatchingRun, issueType: 'matching_integrity' },
+      case_scenarios: { setRunning: setIsCaseScenariosRunning, setResult: setCaseScenariosResult, setError: setCaseScenariosError, setHasRun: setHasCaseScenariosRun, issueType: 'case_scenario_integrity' },
+      mcq_sets: { setRunning: setIsMcqSetsRunning, setResult: setMcqSetsResult, setError: setMcqSetsError, setHasRun: setHasMcqSetsRun, issueType: 'mcq_set_integrity' },
+    };
+
+    const { setRunning, setResult, setError, setHasRun, issueType } = stateMap[checkType];
 
     setRunning(true);
     setError(null);
@@ -327,12 +363,7 @@ function IntegrityCheckTab() {
       }
 
       const data: V2CheckResult = await response.json();
-      const issueTypeMap: Record<string, string> = {
-        osce: 'osce_integrity',
-        flashcards: 'flashcard_integrity',
-        clinical_cases: 'clinical_case_integrity',
-      };
-      const issue = data.issues.find((i) => i.type === issueTypeMap[checkType]) || null;
+      const issue = data.issues.find((i) => i.type === issueType) || null;
       setResult(issue);
       setHasRun(true);
     } catch (err) {
@@ -702,6 +733,58 @@ function IntegrityCheckTab() {
         () => runV2Check('clinical_cases'),
         'Clinical Case',
         hasClinicalRun
+      )}
+
+      {/* V2 Checks: Lectures */}
+      {renderV2CheckCard(
+        'Lecture Integrity Check',
+        'Detects lectures with empty title, missing video URL, or no module/chapter reference.',
+        <Video className="w-5 h-5" />,
+        isLecturesRunning,
+        lecturesResult,
+        lecturesError,
+        () => runV2Check('lectures'),
+        'Lecture',
+        hasLecturesRun
+      )}
+
+      {/* V2 Checks: Matching Questions */}
+      {renderV2CheckCard(
+        'Matching Question Integrity Check',
+        'Detects matching questions with empty columns, missing matches, or no chapter.',
+        <ArrowLeftRight className="w-5 h-5" />,
+        isMatchingRunning,
+        matchingResult,
+        matchingError,
+        () => runV2Check('matching'),
+        'Matching Question',
+        hasMatchingRun
+      )}
+
+      {/* V2 Checks: Case Scenarios */}
+      {renderV2CheckCard(
+        'Case Scenario Integrity Check',
+        'Detects case scenarios with empty title, history, questions, or model answer.',
+        <FileText className="w-5 h-5" />,
+        isCaseScenariosRunning,
+        caseScenariosResult,
+        caseScenariosError,
+        () => runV2Check('case_scenarios'),
+        'Case Scenario',
+        hasCaseScenariosRun
+      )}
+
+      {/* V2 Checks: MCQ Sets */}
+      {renderV2CheckCard(
+        'MCQ Set Integrity Check',
+        'Detects MCQ sets with empty title or missing location references.',
+        <ListChecks className="w-5 h-5" />,
+        isMcqSetsRunning,
+        mcqSetsResult,
+        mcqSetsError,
+        () => runV2Check('mcq_sets'),
+        'MCQ Set',
+        hasMcqSetsRun
       )}
     </div>
   );
