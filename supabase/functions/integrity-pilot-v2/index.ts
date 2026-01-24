@@ -465,6 +465,104 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ========== GUIDED EXPLANATION CHECK ==========
+    if (!checkType || checkType === "guided_explanation") {
+      const { data: resources } = await supabase
+        .from("study_resources")
+        .select("id, title, module_id, chapter_id, content")
+        .eq("resource_type", "guided_explanation")
+        .eq("is_deleted", false);
+
+      const guidedIssues: Location[] = [];
+
+      for (const r of resources || []) {
+        if (!isInScope(r.module_id, r.chapter_id)) continue;
+
+        const content = r.content as any;
+        const problems: string[] = [];
+
+        if (!r.title?.trim()) problems.push("empty title");
+        if (!content?.topic?.trim()) problems.push("no topic");
+        if (!content?.introduction?.trim()) problems.push("no introduction");
+        if (!content?.guided_questions || content.guided_questions.length < 3) {
+          problems.push("fewer than 3 questions");
+        }
+
+        if (problems.length > 0) {
+          guidedIssues.push(
+            buildLocation(
+              r.id,
+              `[${problems.join(", ")}] ${r.title?.substring(0, 50) || "(untitled)"}`,
+              r.module_id,
+              r.chapter_id,
+              null
+            )
+          );
+        }
+      }
+
+      if (guidedIssues.length > 0) {
+        issues.push({
+          type: "guided_explanation_integrity",
+          severity: "warning",
+          count: guidedIssues.length,
+          description: `${guidedIssues.length} guided explanation(s) have missing topic/intro or fewer than 3 questions.`,
+          locations: guidedIssues.slice(0, 50),
+        });
+      }
+    }
+
+    // ========== MIND MAP CHECK ==========
+    if (!checkType || checkType === "mind_map") {
+      const { data: resources } = await supabase
+        .from("study_resources")
+        .select("id, title, module_id, chapter_id, content")
+        .eq("resource_type", "mind_map")
+        .eq("is_deleted", false);
+
+      const mindMapIssues: Location[] = [];
+
+      for (const r of resources || []) {
+        if (!isInScope(r.module_id, r.chapter_id)) continue;
+
+        const content = r.content as any;
+        const problems: string[] = [];
+
+        if (!r.title?.trim()) problems.push("empty title");
+
+        const hasImageUrl = content?.imageUrl?.trim();
+        const hasNodes = content?.nodes && Array.isArray(content.nodes) && content.nodes.length > 0;
+        const hasCentralConcept = content?.central_concept?.trim();
+
+        // Must have either an image OR structured nodes with central concept
+        if (!hasImageUrl && (!hasNodes || !hasCentralConcept)) {
+          problems.push("no image and no structured nodes/central concept");
+        }
+
+        if (problems.length > 0) {
+          mindMapIssues.push(
+            buildLocation(
+              r.id,
+              `[${problems.join(", ")}] ${r.title?.substring(0, 50) || "(untitled)"}`,
+              r.module_id,
+              r.chapter_id,
+              null
+            )
+          );
+        }
+      }
+
+      if (mindMapIssues.length > 0) {
+        issues.push({
+          type: "mind_map_integrity",
+          severity: "warning",
+          count: mindMapIssues.length,
+          description: `${mindMapIssues.length} mind map(s) have no image and no structured nodes, or missing central concept.`,
+          locations: mindMapIssues.slice(0, 50),
+        });
+      }
+    }
+
     return new Response(
       JSON.stringify({
         issues,
