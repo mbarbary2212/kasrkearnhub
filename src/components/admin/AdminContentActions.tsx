@@ -25,6 +25,7 @@ import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { EssayFormSchema, validateBatch } from '@/lib/validators';
 import { logActivity } from '@/lib/activityLog';
+import { SectionSelector } from '@/components/sections';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -108,6 +109,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const [csvText, setCsvText] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const addLecture = useMutation({
     mutationFn: async () => {
@@ -125,6 +127,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
+        section_id: sectionId,
       });
       if (error) throw error;
     },
@@ -175,6 +178,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
+        section_id: sectionId,
       });
       if (error) throw error;
     },
@@ -196,6 +200,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
+        section_id: sectionId,
       });
       if (error) throw error;
     },
@@ -230,6 +235,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
+        section_id: sectionId,
       }).select('id').single();
       if (error) throw error;
       return data;
@@ -265,6 +271,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         module_id: moduleId,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
+        section_id: sectionId,
       });
       if (error) throw error;
     },
@@ -422,6 +429,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     setFileUrl('');
     setCsvText('');
     setUploadedFile(null);
+    setSectionId(null);
   };
 
   const handleSubmit = () => {
@@ -566,6 +574,12 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                   </div>
                 </div>
               )}
+              <SectionSelector
+                chapterId={chapterId}
+                topicId={topicId}
+                value={sectionId}
+                onChange={setSectionId}
+              />
               <Button 
                 onClick={handleSubmit} 
                 className="w-full"

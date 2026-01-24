@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,9 @@ import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { useLectures, useResources, useMcqSets, useEssays, usePracticals, useClinicalCases } from '@/hooks/useContent';
 import { useHideEmptySelfAssessmentTabs, useChapterStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
+import { useTopicSectionsEnabled } from '@/hooks/useSections';
+import { SectionFilter } from '@/components/sections';
+import { TopicSettingsSheet } from '@/components/module/TopicSettingsSheet';
 import { 
   createResourceTabs, 
   createPracticeTabs, 
@@ -69,6 +72,9 @@ export default function TopicDetailPage() {
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
+  
+  // Section filter state (only for Resources and Practice, NOT for Test)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
 
   // Flashcard modals
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
@@ -86,6 +92,21 @@ export default function TopicDetailPage() {
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
   const { data: flashcards, isLoading: flashcardsLoading } = useChapterStudyResourcesByType(undefined, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
+  const { data: sectionsEnabled } = useTopicSectionsEnabled(topicId);
+  
+  // Reset section filter when leaving topic
+  useEffect(() => {
+    return () => setSelectedSectionId(null);
+  }, [topicId]);
+  
+  // Helper function to filter content by section (works with any array that may have section_id)
+  const filterBySection = <T,>(items: T[]): T[] => {
+    if (!selectedSectionId || !sectionsEnabled) return items;
+    return items.filter(item => {
+      const sectionableItem = item as unknown as { section_id?: string | null };
+      return sectionableItem.section_id === selectedSectionId;
+    });
+  };
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -165,6 +186,14 @@ export default function TopicDetailPage() {
               </>
             )}
           </div>
+          {/* Settings button for admins */}
+          {canManageContent && topicId && topic && (
+            <TopicSettingsSheet
+              topicId={topicId}
+              topicName={topic.name}
+              canManage={canManageContent}
+            />
+          )}
         </div>
 
         {/* Main Content Layout */}
@@ -229,6 +258,16 @@ export default function TopicDetailPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    topicId={topicId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
+                
                 <div className="flex gap-2 flex-wrap">
                   {resourcesTabs.map((tab) => {
                     const Icon = tab.icon;
@@ -267,7 +306,7 @@ export default function TopicDetailPage() {
                     ) : lectures && lectures.length > 0 ? (
                       <LectureList 
                         key={lecturesResetKey}
-                        lectures={lectures} 
+                        lectures={filterBySection(lectures) || []} 
                         moduleId={moduleId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
@@ -316,7 +355,7 @@ export default function TopicDetailPage() {
                       </div>
                     ) : (
                       <FlashcardsTab
-                        resources={flashcards || []}
+                        resources={filterBySection(flashcards || [])}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                         chapterId={topicId}
@@ -367,6 +406,16 @@ export default function TopicDetailPage() {
             {/* Self Assessment Section */}
             {activeSection === 'practice' && (
               <div className="space-y-4">
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    topicId={topicId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
+                
                 <div className="flex gap-2 flex-wrap">
                   {practiceTabs.map((tab) => {
                     const Icon = tab.icon;

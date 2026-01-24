@@ -34,6 +34,7 @@ export interface ClinicalCase {
   module_id: string | null;
   chapter_id: string | null;
   topic_id: string | null;
+  section_id: string | null;
   case_mode: CaseMode;
   level: CaseLevel;
   estimated_minutes: number;
@@ -108,6 +109,7 @@ export interface ClinicalCaseFormData {
   module_id: string;
   chapter_id?: string;
   topic_id?: string;
+  section_id?: string;
   case_mode: CaseMode;
   level: CaseLevel;
   estimated_minutes: number;
