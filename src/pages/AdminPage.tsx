@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -247,6 +247,18 @@ function IntegrityCheckTab() {
   const [mcqSetsError, setMcqSetsError] = useState<string | null>(null);
   const [hasMcqSetsRun, setHasMcqSetsRun] = useState(false);
 
+  // Guided Explanation states
+  const [isGuidedExplanationRunning, setIsGuidedExplanationRunning] = useState(false);
+  const [guidedExplanationResult, setGuidedExplanationResult] = useState<IntegrityIssue | null>(null);
+  const [guidedExplanationError, setGuidedExplanationError] = useState<string | null>(null);
+  const [hasGuidedExplanationRun, setHasGuidedExplanationRun] = useState(false);
+
+  // Mind Map states
+  const [isMindMapRunning, setIsMindMapRunning] = useState(false);
+  const [mindMapResult, setMindMapResult] = useState<IntegrityIssue | null>(null);
+  const [mindMapError, setMindMapError] = useState<string | null>(null);
+  const [hasMindMapRun, setHasMindMapRun] = useState(false);
+
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
@@ -318,7 +330,7 @@ function IntegrityCheckTab() {
     }
   };
 
-  type V2CheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets';
+  type V2CheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
 
   const runV2Check = async (checkType: V2CheckType) => {
     const stateMap: Record<V2CheckType, {
@@ -335,6 +347,8 @@ function IntegrityCheckTab() {
       matching: { setRunning: setIsMatchingRunning, setResult: setMatchingResult, setError: setMatchingError, setHasRun: setHasMatchingRun, issueType: 'matching_integrity' },
       case_scenarios: { setRunning: setIsCaseScenariosRunning, setResult: setCaseScenariosResult, setError: setCaseScenariosError, setHasRun: setHasCaseScenariosRun, issueType: 'case_scenario_integrity' },
       mcq_sets: { setRunning: setIsMcqSetsRunning, setResult: setMcqSetsResult, setError: setMcqSetsError, setHasRun: setHasMcqSetsRun, issueType: 'mcq_set_integrity' },
+      guided_explanation: { setRunning: setIsGuidedExplanationRunning, setResult: setGuidedExplanationResult, setError: setGuidedExplanationError, setHasRun: setHasGuidedExplanationRun, issueType: 'guided_explanation_integrity' },
+      mind_map: { setRunning: setIsMindMapRunning, setResult: setMindMapResult, setError: setMindMapError, setHasRun: setHasMindMapRun, issueType: 'mind_map_integrity' },
     };
 
     const { setRunning, setResult, setError, setHasRun, issueType } = stateMap[checkType];
@@ -529,7 +543,7 @@ function IntegrityCheckTab() {
 
   return (
     <div className="space-y-6">
-      {/* Orphaned MCQ Check */}
+      {/* 1. Orphaned MCQ Check */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -537,7 +551,7 @@ function IntegrityCheckTab() {
             Orphaned MCQ Check
           </CardTitle>
           <CardDescription>
-            Detects MCQs that reference chapters which no longer exist.
+            Finds individual MCQ questions that reference a chapter that was deleted from the system.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -612,7 +626,20 @@ function IntegrityCheckTab() {
         </CardContent>
       </Card>
 
-      {/* Orphaned Essay Check */}
+      {/* 2. MCQ Set Integrity Check */}
+      {renderV2CheckCard(
+        'MCQ Set Integrity Check',
+        'Finds MCQ sets (timed quizzes) with missing titles or not assigned to any module/chapter.',
+        <ListChecks className="w-5 h-5" />,
+        isMcqSetsRunning,
+        mcqSetsResult,
+        mcqSetsError,
+        () => runV2Check('mcq_sets'),
+        'MCQ Set',
+        hasMcqSetsRun
+      )}
+
+      {/* 3. Orphaned Essay Check */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -620,7 +647,7 @@ function IntegrityCheckTab() {
             Orphaned Essay Check
           </CardTitle>
           <CardDescription>
-            Detects essays that reference chapters which no longer exist.
+            Finds essay questions that reference a chapter that was deleted from the system.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -696,10 +723,10 @@ function IntegrityCheckTab() {
         </CardContent>
       </Card>
 
-      {/* V2 Checks: OSCE */}
+      {/* 4. OSCE Integrity Check */}
       {renderV2CheckCard(
         'OSCE Integrity Check',
-        'Detects OSCE questions with missing history, empty statements, or invalid answers.',
+        'Finds OSCE stations with missing patient history, blank question statements, or empty answer fields.',
         <Stethoscope className="w-5 h-5" />,
         isOsceRunning,
         osceResult,
@@ -709,10 +736,10 @@ function IntegrityCheckTab() {
         hasOsceRun
       )}
 
-      {/* V2 Checks: Flashcards */}
+      {/* 5. Flashcard Integrity Check */}
       {renderV2CheckCard(
         'Flashcard Integrity Check',
-        'Detects flashcards with empty front/back text or missing chapter references.',
+        'Finds flashcards with blank front/back text or not assigned to any chapter.',
         <CreditCard className="w-5 h-5" />,
         isFlashcardsRunning,
         flashcardsResult,
@@ -722,10 +749,10 @@ function IntegrityCheckTab() {
         hasFlashcardsRun
       )}
 
-      {/* V2 Checks: Clinical Cases */}
+      {/* 6. Clinical Case Integrity Check */}
       {renderV2CheckCard(
         'Clinical Case Integrity Check',
-        'Detects clinical cases with empty title/intro or missing location references.',
+        'Finds clinical cases with missing titles, empty introductions, or not assigned to any location.',
         <HeartPulse className="w-5 h-5" />,
         isClinicalRunning,
         clinicalResult,
@@ -735,10 +762,10 @@ function IntegrityCheckTab() {
         hasClinicalRun
       )}
 
-      {/* V2 Checks: Lectures */}
+      {/* 7. Lecture Integrity Check */}
       {renderV2CheckCard(
         'Lecture Integrity Check',
-        'Detects lectures with empty title, missing video URL, or no module/chapter reference.',
+        'Finds lectures with missing titles, no video URL, or not assigned to any module/chapter.',
         <Video className="w-5 h-5" />,
         isLecturesRunning,
         lecturesResult,
@@ -748,10 +775,10 @@ function IntegrityCheckTab() {
         hasLecturesRun
       )}
 
-      {/* V2 Checks: Matching Questions */}
+      {/* 8. Matching Question Integrity Check */}
       {renderV2CheckCard(
         'Matching Question Integrity Check',
-        'Detects matching questions with empty columns, missing matches, or no chapter.',
+        'Finds matching questions with empty columns, missing match pairs, or no chapter assignment.',
         <ArrowLeftRight className="w-5 h-5" />,
         isMatchingRunning,
         matchingResult,
@@ -761,10 +788,10 @@ function IntegrityCheckTab() {
         hasMatchingRun
       )}
 
-      {/* V2 Checks: Case Scenarios */}
+      {/* 9. Case Scenario Integrity Check */}
       {renderV2CheckCard(
         'Case Scenario Integrity Check',
-        'Detects case scenarios with empty title, history, questions, or model answer.',
+        'Finds case scenarios with missing titles, empty history/questions, or blank model answers.',
         <FileText className="w-5 h-5" />,
         isCaseScenariosRunning,
         caseScenariosResult,
@@ -774,17 +801,30 @@ function IntegrityCheckTab() {
         hasCaseScenariosRun
       )}
 
-      {/* V2 Checks: MCQ Sets */}
+      {/* 10. Guided Explanation Integrity Check */}
       {renderV2CheckCard(
-        'MCQ Set Integrity Check',
-        'Detects MCQ sets with empty title or missing location references.',
-        <ListChecks className="w-5 h-5" />,
-        isMcqSetsRunning,
-        mcqSetsResult,
-        mcqSetsError,
-        () => runV2Check('mcq_sets'),
-        'MCQ Set',
-        hasMcqSetsRun
+        'Guided Explanation Integrity Check',
+        'Finds guided explanations with missing topics, empty introductions, or fewer than 3 questions.',
+        <Lightbulb className="w-5 h-5" />,
+        isGuidedExplanationRunning,
+        guidedExplanationResult,
+        guidedExplanationError,
+        () => runV2Check('guided_explanation'),
+        'Guided Explanation',
+        hasGuidedExplanationRun
+      )}
+
+      {/* 11. Mind Map Integrity Check */}
+      {renderV2CheckCard(
+        'Mind Map Integrity Check',
+        'Finds mind maps with no image URL and no structured nodes, or missing central concept.',
+        <Network className="w-5 h-5" />,
+        isMindMapRunning,
+        mindMapResult,
+        mindMapError,
+        () => runV2Check('mind_map'),
+        'Mind Map',
+        hasMindMapRun
       )}
     </div>
   );
