@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { logActivity } from '@/lib/activityLog';
 
 // Resource types for study materials
 export type StudyResourceType = 
@@ -298,6 +299,16 @@ export function useCreateStudyResource() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
       queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data.chapter_id] });
+      // Log activity for flashcard creation
+      if (data.resource_type === 'flashcard') {
+        logActivity({
+          action: 'created_flashcard',
+          entity_type: 'flashcard',
+          entity_id: data.id,
+          scope: { module_id: data.module_id, chapter_id: data.chapter_id },
+          metadata: { source: 'admin_form' },
+        });
+      }
     },
   });
 }
@@ -332,6 +343,16 @@ export function useBulkCreateStudyResources() {
       if (data.length > 0) {
         queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data[0].chapter_id] });
         queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data[0].chapter_id] });
+        // Log activity for bulk flashcard creation
+        const flashcards = data.filter((d: { resource_type: string }) => d.resource_type === 'flashcard');
+        if (flashcards.length > 0) {
+          logActivity({
+            action: 'bulk_upload_flashcard',
+            entity_type: 'flashcard',
+            scope: { module_id: flashcards[0].module_id, chapter_id: flashcards[0].chapter_id },
+            metadata: { source: 'csv_import', count: flashcards.length },
+          });
+        }
       }
     },
   });
@@ -388,6 +409,16 @@ export function useUpdateStudyResource() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
+      // Log activity for flashcard update
+      if (data.resource_type === 'flashcard') {
+        logActivity({
+          action: 'updated_flashcard',
+          entity_type: 'flashcard',
+          entity_id: data.id,
+          scope: { module_id: data.module_id, chapter_id: data.chapter_id },
+          metadata: { source: 'admin_form' },
+        });
+      }
     },
   });
 }
@@ -397,7 +428,12 @@ export function useDeleteStudyResource() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, chapterId }: { id: string; chapterId: string }) => {
+    mutationFn: async ({ id, chapterId, moduleId, resourceType }: { 
+      id: string; 
+      chapterId: string; 
+      moduleId?: string;
+      resourceType?: string;
+    }) => {
       const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase
         .from('study_resources')
@@ -405,11 +441,21 @@ export function useDeleteStudyResource() {
         .eq('id', id);
       
       if (error) throw error;
-      return { id, chapterId };
+      return { id, chapterId, moduleId, resourceType };
     },
     onSuccess: (data) => {
       // Invalidate all study-resources queries for this chapter (with and without includeDeleted param)
       queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      // Log activity for flashcard deletion
+      if (data.resourceType === 'flashcard') {
+        logActivity({
+          action: 'deleted_flashcard',
+          entity_type: 'flashcard',
+          entity_id: data.id,
+          scope: { module_id: data.moduleId, chapter_id: data.chapterId },
+          metadata: { source: 'admin_delete' },
+        });
+      }
     },
   });
 }
