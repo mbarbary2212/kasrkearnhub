@@ -492,9 +492,6 @@ function IntegrityCheckTab() {
           </Alert>
         )}
 
-        {!hasRun && !error && !isRunning && (
-          <p className="text-sm text-muted-foreground">Click the button above to run this check.</p>
-        )}
       </CardContent>
     </Card>
   );
