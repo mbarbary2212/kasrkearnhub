@@ -76,12 +76,16 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds }: McqAnal
   const [viewMode, setViewMode] = useState<ViewMode>('flat');
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   
-  // Filter and sort modules alphabetically
+  // Filter and sort modules by code number (e.g., 101, 205, 310)
   const accessibleModules = useMemo(() => {
     const filtered = (isSuperAdmin || isPlatformAdmin)
       ? modules
       : modules.filter(m => moduleAdminModuleIds?.includes(m.id));
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+    return filtered.sort((a, b) => {
+      const numA = parseInt(a.name?.match(/\d+/)?.[0] || '999');
+      const numB = parseInt(b.name?.match(/\d+/)?.[0] || '999');
+      return numA - numB;
+    });
   }, [modules, moduleAdminModuleIds, isSuperAdmin, isPlatformAdmin]);
 
   // Fetch books and chapters for the selected module
