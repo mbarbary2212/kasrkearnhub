@@ -23,6 +23,7 @@ import { ItemType } from '@/hooks/useItemFeedback';
 import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
+import { SectionSelector } from '@/components/sections';
 
 interface ContentItemActionsProps {
   id: string;
@@ -31,6 +32,7 @@ interface ContentItemActionsProps {
   modelAnswer?: string | null;
   videoUrl?: string | null;
   fileUrl?: string | null;
+  sectionId?: string | null;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
@@ -62,6 +64,7 @@ export default function ContentItemActions({
   modelAnswer,
   videoUrl,
   fileUrl,
+  sectionId,
   contentType,
   moduleId,
   chapterId,
@@ -91,6 +94,7 @@ export default function ContentItemActions({
   const [editModelAnswer, setEditModelAnswer] = useState(modelAnswer || '');
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
+  const [editSectionId, setEditSectionId] = useState<string | null>(sectionId || null);
 
   // Sync edit state with props when dialog opens
   const handleOpenEdit = () => {
@@ -99,6 +103,7 @@ export default function ContentItemActions({
     setEditModelAnswer(modelAnswer || '');
     setEditVideoUrl(videoUrl || '');
     setEditFileUrl(fileUrl || '');
+    setEditSectionId(sectionId || null);
     setEditOpen(true);
   };
 
@@ -139,6 +144,8 @@ export default function ContentItemActions({
       if (contentType === 'resource') {
         data.external_url = editFileUrl || null;
       }
+
+      data.section_id = editSectionId;
 
       await updateContent.mutateAsync({ id, data, moduleId, chapterId });
       toast.success('Updated successfully');
@@ -271,6 +278,11 @@ export default function ContentItemActions({
                 <Input value={editFileUrl} onChange={(e) => setEditFileUrl(e.target.value)} className="mt-1" />
               </div>
             )}
+            <SectionSelector
+              chapterId={chapterId}
+              value={editSectionId}
+              onChange={setEditSectionId}
+            />
             <Button onClick={handleEdit} className="w-full" disabled={updateContent.isPending}>
               {updateContent.isPending ? 'Saving...' : 'Save Changes'}
             </Button>

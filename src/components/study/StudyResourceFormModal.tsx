@@ -32,6 +32,7 @@ import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { MindMapForm } from './MindMapForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
 import { GuidedExplanationForm } from './GuidedExplanationForm';
+import { SectionSelector } from '@/components/sections';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -68,6 +69,7 @@ export function StudyResourceFormModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState<ResourceContent>(getDefaultContent(resourceType));
   const [uploading, setUploading] = useState(false);
+  const [sectionId, setSectionId] = useState<string | null>(null);
 
   const isEditing = !!resource;
 
@@ -75,9 +77,11 @@ export function StudyResourceFormModal({
     if (resource) {
       setTitle(resource.title);
       setContent(resource.content);
+      setSectionId((resource as any).section_id || null);
     } else {
       setTitle('');
       setContent(getDefaultContent(resourceType));
+      setSectionId(null);
     }
   }, [resource, resourceType, open]);
 
@@ -93,6 +97,7 @@ export function StudyResourceFormModal({
           id: resource.id,
           title,
           content,
+          section_id: sectionId,
         });
         toast.success('Resource updated');
       } else {
@@ -103,6 +108,7 @@ export function StudyResourceFormModal({
           title,
           content,
           folder: null,
+          section_id: sectionId,
         });
         toast.success('Resource created');
       }
@@ -166,6 +172,12 @@ export function StudyResourceFormModal({
               placeholder={`Enter ${TYPE_LABELS[resourceType].toLowerCase()} title`}
             />
           </div>
+
+          <SectionSelector
+            chapterId={chapterId}
+            value={sectionId}
+            onChange={setSectionId}
+          />
 
           {resourceType === 'flashcard' && (
             <FlashcardForm
