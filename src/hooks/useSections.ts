@@ -255,6 +255,37 @@ export function useDeleteSection() {
   });
 }
 
+// Reorder sections (update display_order for each)
+export function useReorderSections() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      sections 
+    }: { 
+      sections: { id: string; display_order: number }[];
+    }) => {
+      // Update each section's display_order
+      const updates = sections.map(({ id, display_order }) =>
+        supabase
+          .from('sections')
+          .update({ display_order })
+          .eq('id', id)
+      );
+      
+      const results = await Promise.all(updates);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Invalidate all section queries
+      queryClient.invalidateQueries({ 
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'sections' 
+      });
+    },
+  });
+}
+
 // Bulk assign section to content items
 export function useBulkAssignSection() {
   const queryClient = useQueryClient();
