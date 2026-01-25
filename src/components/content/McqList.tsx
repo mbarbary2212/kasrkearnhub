@@ -1,13 +1,14 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
@@ -71,6 +72,7 @@ interface McqListProps {
   deletedMcqs?: Mcq[];
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
   isAdmin: boolean;
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
@@ -88,6 +90,7 @@ export function McqList({
   deletedMcqs = [],
   moduleId, 
   chapterId, 
+  topicId,
   isAdmin,
   showDeletedToggle = false,
   showDeleted = false,
@@ -123,6 +126,25 @@ export function McqList({
   const [fileError, setFileError] = useState<string | null>(null);
   const [parseCorrections, setParseCorrections] = useState<ParseCorrection[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Multi-select state for bulk section assignment
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+  
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   // Initialize filter states from URL params
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(() =>
@@ -364,7 +386,12 @@ export function McqList({
     return result;
   }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
 
-  const handleResetAttempt = () => {
+  // selectAll defined after filteredMcqs is available
+  const selectAll = useCallback(() => {
+    const allIds = filteredMcqs.map(m => m.id);
+    setSelectedIds(new Set(allIds));
+  }, [filteredMcqs]);
+
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' });
     // Also reset filters to default so all questions are visible again
@@ -617,12 +644,41 @@ export function McqList({
           )}
         </div>
         {showAddControls && !showDeleted && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
+            {/* Multi-select controls for bulk section assignment */}
+            {isAdmin && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={selectedIds.size > 0 && selectedIds.size === filteredMcqs.length}
+                    onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                    aria-label="Select all"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                  </span>
+                  {selectedIds.size > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                
+                <BulkSectionAssignment
+                  chapterId={chapterId ?? undefined}
+                  topicId={topicId ?? undefined}
+                  selectedIds={Array.from(selectedIds)}
+                  contentTable="mcqs"
+                  onComplete={clearSelection}
+                />
+              </>
+            )}
+            
             {/* Permission warning for admins without access */}
             {!permissionLoading && !canManageContent && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                  <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-1 rounded border border-amber-200 dark:border-amber-700">
                     <ShieldAlert className="h-3 w-3" />
                     <span>Not your module</span>
                   </div>
@@ -717,39 +773,51 @@ export function McqList({
             } : undefined;
             
             return (
-              <div key={mcq.id} className={`relative ${showDeleted ? 'opacity-75' : ''}`}>
-                {duplicateInfo && (
-                  <Badge 
-                    variant="outline" 
-                    className="absolute -top-2 right-2 z-10 bg-amber-50 text-amber-700 border-amber-300"
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    {Math.round(duplicateInfo.similarity * 100)}% similar
-                  </Badge>
+              <div key={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
+                {/* Admin multi-select checkbox */}
+                {isAdmin && !showDeleted && (
+                  <div className="pt-4 flex-shrink-0">
+                    <Checkbox 
+                      checked={selectedIds.has(mcq.id)}
+                      onCheckedChange={(checked) => toggleSelection(mcq.id, !!checked)}
+                      aria-label={`Select question ${index + 1}`}
+                    />
+                  </div>
                 )}
-                {showDeleted && (
-                  <Badge 
-                    variant="outline" 
-                    className="absolute -top-2 right-2 z-10 bg-destructive/10 text-destructive border-destructive/30"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Deleted
-                  </Badge>
-                )}
-                <McqCard
-                  mcq={mcq}
-                  index={index}
-                  isAdmin={isAdmin}
-                  chapterId={chapterId ?? undefined}
-                  moduleId={moduleId}
-                  onEdit={showDeleted ? undefined : () => setEditingMcq(mcq)}
-                  onDelete={showDeleted ? undefined : () => setDeletingMcq(mcq)}
-                  onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}
-                  isMarked={markedIds.has(mcq.id)}
-                  onToggleMark={toggleMark}
-                  isDeleted={showDeleted}
-                  previousAttempt={previousAttempt}
-                />
+                <div className="flex-1 relative">
+                  {duplicateInfo && (
+                    <Badge 
+                      variant="outline" 
+                      className="absolute -top-2 right-2 z-10 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      {Math.round(duplicateInfo.similarity * 100)}% similar
+                    </Badge>
+                  )}
+                  {showDeleted && (
+                    <Badge 
+                      variant="outline" 
+                      className="absolute -top-2 right-2 z-10 bg-destructive/10 text-destructive border-destructive/30"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Deleted
+                    </Badge>
+                  )}
+                  <McqCard
+                    mcq={mcq}
+                    index={index}
+                    isAdmin={isAdmin}
+                    chapterId={chapterId ?? undefined}
+                    moduleId={moduleId}
+                    onEdit={showDeleted ? undefined : () => setEditingMcq(mcq)}
+                    onDelete={showDeleted ? undefined : () => setDeletingMcq(mcq)}
+                    onRestore={showDeleted ? () => setRestoringMcq(mcq) : undefined}
+                    isMarked={markedIds.has(mcq.id)}
+                    onToggleMark={toggleMark}
+                    isDeleted={showDeleted}
+                    previousAttempt={previousAttempt}
+                  />
+                </div>
               </div>
             );
           })}

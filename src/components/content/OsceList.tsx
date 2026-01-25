@@ -3,9 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, AlertCircle, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { OsceQuestionCard } from './OsceQuestionCard';
 import { OsceFormModal } from './OsceFormModal';
 import { OsceBulkUploadModal } from './OsceBulkUploadModal';
+import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { 
   UnifiedQuestionFilter,
   UnifiedFilterState,
@@ -43,6 +45,7 @@ interface OsceListProps {
   deletedQuestions?: OsceQuestion[];
   moduleId: string;
   chapterId?: string;
+  topicId?: string;
   moduleSlug?: string;
   moduleCode?: string;
   chapterTitle?: string;
@@ -57,6 +60,7 @@ export function OsceList({
   deletedQuestions = [],
   moduleId,
   chapterId,
+  topicId,
   moduleSlug,
   moduleCode,
   chapterTitle,
@@ -70,6 +74,25 @@ export function OsceList({
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  
+  // Multi-select state for bulk section assignment
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+  
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   const deleteQuestion = useDeleteOsceQuestion();
   const restoreQuestion = useRestoreOsceQuestion();
@@ -220,7 +243,12 @@ export function OsceList({
     return result;
   }, [questions, filters, attemptMap, starredIds, isAdmin, showDuplicatesOnly, showDeleted, duplicateIds, duplicateGroupMap]);
 
-  // Display questions (include deleted if toggle is on)
+  // selectAll defined after filteredQuestions is available
+  const selectAll = useCallback(() => {
+    const allIds = filteredQuestions.map(q => q.id);
+    setSelectedIds(new Set(allIds));
+  }, [filteredQuestions]);
+
   const displayQuestions = useMemo(() => {
     if (showDeleted) {
       return [...deletedQuestions];
@@ -275,7 +303,32 @@ export function OsceList({
       {/* Admin Controls */}
       {isAdmin && (
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            {/* Multi-select controls for bulk section assignment */}
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                checked={selectedIds.size > 0 && selectedIds.size === filteredQuestions.length}
+                onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                aria-label="Select all"
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+              </span>
+              {selectedIds.size > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+                  Clear
+                </Button>
+              )}
+            </div>
+            
+            <BulkSectionAssignment
+              chapterId={chapterId}
+              topicId={topicId}
+              selectedIds={Array.from(selectedIds)}
+              contentTable="osce_questions"
+              onComplete={clearSelection}
+            />
+            
             <Button size="sm" variant="outline" onClick={() => {
               setEditingQuestion(null);
               setFormOpen(true);
@@ -347,20 +400,33 @@ export function OsceList({
           {displayQuestions.map((question, index) => {
             const previousAttempt = !isAdmin ? fullAttemptMap.get(question.id) : undefined;
             return (
-              <OsceQuestionCard
-                key={question.id}
-                question={question}
-                questionNumber={index + 1}
-                isAdmin={isAdmin}
-                chapterId={chapterId}
-                moduleId={moduleId}
-                onEdit={() => handleEdit(question)}
-                onDelete={() => setDeleteConfirmId(question.id)}
-                onRestore={() => handleRestore(question)}
-                previousAttempt={previousAttempt}
-                isStarred={starredIds.has(question.id)}
-                onToggleStar={toggleStar}
-              />
+              <div key={question.id} className="flex gap-2">
+                {/* Admin multi-select checkbox */}
+                {isAdmin && !showDeleted && (
+                  <div className="pt-4 flex-shrink-0">
+                    <Checkbox 
+                      checked={selectedIds.has(question.id)}
+                      onCheckedChange={(checked) => toggleSelection(question.id, !!checked)}
+                      aria-label={`Select question ${index + 1}`}
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <OsceQuestionCard
+                    question={question}
+                    questionNumber={index + 1}
+                    isAdmin={isAdmin}
+                    chapterId={chapterId}
+                    moduleId={moduleId}
+                    onEdit={() => handleEdit(question)}
+                    onDelete={() => setDeleteConfirmId(question.id)}
+                    onRestore={() => handleRestore(question)}
+                    previousAttempt={previousAttempt}
+                    isStarred={starredIds.has(question.id)}
+                    onToggleStar={toggleStar}
+                  />
+                </div>
+              </div>
             );
           })}
         </div>
