@@ -27,7 +27,7 @@ interface BulkSectionAssignmentProps {
   chapterId?: string;
   topicId?: string;
   selectedIds: string[];
-  contentTable: 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions';
+  contentTable: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions';
   onComplete?: () => void;
 }
 

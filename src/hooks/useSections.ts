@@ -265,7 +265,7 @@ export function useBulkAssignSection() {
       itemIds, 
       sectionId 
     }: { 
-      table: 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions';
+      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions';
       itemIds: string[];
       sectionId: string | null;
     }) => {
