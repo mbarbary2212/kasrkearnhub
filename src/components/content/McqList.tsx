@@ -392,6 +392,7 @@ export function McqList({
     setSelectedIds(new Set(allIds));
   }, [filteredMcqs]);
 
+  const handleResetAttempt = () => {
     if (!chapterId) return;
     resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' });
     // Also reset filters to default so all questions are visible again
