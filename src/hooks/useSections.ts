@@ -285,10 +285,19 @@ export function useBulkAssignSection() {
       queryClient.invalidateQueries({ queryKey: ['chapter-practicals'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-clinical-cases'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-study-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['osce-questions'] });
       queryClient.invalidateQueries({ queryKey: ['matching-questions'] });
       queryClient.invalidateQueries({ queryKey: ['module-lectures'] });
       queryClient.invalidateQueries({ queryKey: ['module-resources'] });
+
+      // ROBUST: Invalidate ALL MCQ queries regardless of subkeys
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'mcqs'
+      });
+
+      // ROBUST: Invalidate ALL OSCE queries (matches actual key pattern)
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'chapter-osce-questions'
+      });
     },
   });
 }
