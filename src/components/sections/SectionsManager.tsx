@@ -15,7 +15,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, GripVertical, Layers } from 'lucide-react';
+import { Plus, Layers } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import {
   useChapterSections,
   useTopicSections,
@@ -26,8 +41,10 @@ import {
   useCreateSection,
   useUpdateSection,
   useDeleteSection,
+  useReorderSections,
   Section,
 } from '@/hooks/useSections';
+import { SortableSectionItem } from './SortableSectionItem';
 
 interface SectionsManagerProps {
   chapterId?: string;
@@ -60,6 +77,40 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const createSection = useCreateSection();
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
+  const reorderSections = useReorderSections();
+  
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !sections) return;
+
+    const oldIndex = sections.findIndex(s => s.id === active.id);
+    const newIndex = sections.findIndex(s => s.id === over.id);
+
+    if (oldIndex !== newIndex) {
+      const newOrder = arrayMove(sections, oldIndex, newIndex);
+      const reorderData = newOrder.map((s, index) => ({
+        id: s.id,
+        display_order: index,
+      }));
+
+      try {
+        await reorderSections.mutateAsync({ sections: reorderData });
+        toast.success('Sections reordered');
+      } catch {
+        toast.error('Failed to reorder sections');
+      }
+    }
+  };
   
   const handleToggleSections = async (enabled: boolean) => {
     try {
@@ -155,73 +206,35 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
       
       {sectionsEnabled && (
         <CardContent className="space-y-4">
-          {/* Section list */}
+          {/* Section list with drag-and-drop */}
           {sections && sections.length > 0 ? (
-            <div className="space-y-2">
-              {sections.map((section) => (
-                <div
-                  key={section.id}
-                  className="flex items-center gap-2 p-2 rounded-md border bg-muted/30"
-                >
-                  <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                  
-                  {editingSection?.id === section.id ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="h-8"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleUpdateSection();
-                          if (e.key === 'Escape') {
-                            setEditingSection(null);
-                            setEditName('');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleUpdateSection}
-                        disabled={updateSection.isPending}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingSection(null);
-                          setEditName('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="flex-1 text-sm font-medium">{section.name}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => startEdit(section)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeletingSection(section)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </>
-                  )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sections.map(s => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {sections.map((section) => (
+                    <SortableSectionItem
+                      key={section.id}
+                      section={section}
+                      editingSection={editingSection}
+                      editName={editName}
+                      setEditName={setEditName}
+                      handleUpdateSection={handleUpdateSection}
+                      setEditingSection={setEditingSection}
+                      startEdit={startEdit}
+                      setDeletingSection={setDeletingSection}
+                      isUpdating={updateSection.isPending}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             <p className="text-sm text-muted-foreground py-2">
               No sections yet. Add your first section below.
