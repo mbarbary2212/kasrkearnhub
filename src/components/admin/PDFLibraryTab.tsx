@@ -508,8 +508,13 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Modules</SelectItem>
-                {availableModules?.map(m => (
-                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                {[...(availableModules || [])].sort((a, b) => {
+                  // Extract numeric part from slug (e.g., "ISK-101" → 101)
+                  const numA = parseInt(a.slug?.match(/\d+/)?.[0] || '999');
+                  const numB = parseInt(b.slug?.match(/\d+/)?.[0] || '999');
+                  return numA - numB;
+                }).map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.slug}: {m.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
