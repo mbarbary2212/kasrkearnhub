@@ -59,13 +59,6 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'spreadsheet',
   },
   {
-    id: 'case_scenario',
-    title: 'Case Scenarios Template',
-    description: 'Clinical case scenarios with questions and model answers',
-    format: 'csv',
-    icon: 'spreadsheet',
-  },
-  {
     id: 'matching',
     title: 'Matching Questions Template',
     description: 'Match items from Column A to Column B',
@@ -101,9 +94,9 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'spreadsheet',
   },
   {
-    id: 'virtual_patient',
-    title: 'Virtual Patient Template',
-    description: 'Copy/paste template for quick stage building',
+    id: 'clinical_case',
+    title: 'Clinical Cases Template',
+    description: 'Multi-stage clinical case scenarios with MCQ, short answer, and read-only stages',
     format: 'txt',
     icon: 'file',
   },
@@ -162,18 +155,23 @@ function downloadTxt(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadVirtualPatientTemplate() {
-  const template = `# Virtual Patient (Linear) – Copy/Paste Template
+function downloadClinicalCaseTemplate() {
+  const template = `# Clinical Cases – Quick Build Template
 # ================================================
 #
+# CLINICAL CASES support two modes:
+# • Read Case: Static case with intro and read-only content (min 1 stage)
+# • Practice Case: Interactive multi-stage simulation (min 3 stages)
+#
 # WORKFLOW:
-# 1. Create Case: Click "Add Case" to create the case header (title, intro, difficulty)
-# 2. Build Stages: Click "Build Stages" and use "Quick Build (Paste Template)" 
-#    to paste this template and create all stages at once
+# 1. Create Case: Click "Add Case" in Clinical Cases section
+# 2. Fill metadata: Title, intro text, difficulty level, case mode
+# 3. Build Stages: Click "Build Stages" → "Quick Build (Paste Template)"
+# 4. Paste this template to create all stages at once
 #
 # TEMPLATE FORMAT:
 # - Each stage starts with "STAGE N:" where N is the stage number
-# - TYPE: mcq | multi_select | short_answer
+# - TYPE: mcq | multi_select | short_answer | read_only
 # - PATIENT_INFO: (optional) New information revealed at this stage
 # - PROMPT: The question or instruction for the student
 # - CHOICES: (A) option (B) option (C) option (D) option (for mcq/multi_select)
@@ -184,6 +182,11 @@ function downloadVirtualPatientTemplate() {
 # FOR SHORT ANSWER (Rubric-Based Grading):
 # - RUBRIC_REQUIRED: Concepts the student MUST mention (60% needed to pass)
 # - RUBRIC_OPTIONAL: Bonus concepts (not required but good to mention)
+#
+# FOR READ ONLY STAGES:
+# - Use TYPE: read_only
+# - PROMPT contains the content to display
+# - No CHOICES or CORRECT needed
 #
 # ================================================
 
@@ -200,39 +203,26 @@ TEACHING_POINTS:
 - Never reassure without proper workup for a new breast lump
 
 STAGE 2:
-TYPE: mcq
-PATIENT_INFO: Mammography shows a 2cm irregular mass with microcalcifications (BIRADS 4).
-PROMPT: What is the next appropriate step?
-CHOICES: (A) Repeat mammography in 6 months (B) MRI of the breast (C) Core needle biopsy (D) Surgical excision
-CORRECT: C
-EXPLANATION: BIRADS 4 lesions have a 2-95% malignancy rate and require tissue diagnosis. Core needle biopsy provides histological diagnosis before definitive treatment.
-TEACHING_POINTS:
-- BIRADS 4 requires tissue diagnosis
-- Core biopsy is preferred over FNA for solid masses (provides architecture)
-- MRI is not routinely used for initial diagnosis
-
-STAGE 3:
 TYPE: short_answer
-PATIENT_INFO: Biopsy reveals invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
+PATIENT_INFO: Mammography shows a 2cm irregular mass with microcalcifications (BIRADS 4).
 PROMPT: Outline the components of triple assessment for a breast lump.
 RUBRIC_REQUIRED:
 - clinical examination
 - imaging
 - biopsy
-- tissue sampling
 RUBRIC_OPTIONAL:
 - mammography
 - ultrasound
 - core needle biopsy
-- fine needle aspiration
-CORRECT: Triple assessment includes: 1) Clinical examination (history and physical), 2) Imaging (mammography for women ≥40, ultrasound for women <40), and 3) Tissue sampling (core biopsy or FNA).
-EXPLANATION: Triple assessment is the gold standard approach for evaluating any breast lump. All three components are necessary to accurately diagnose breast pathology.
-TEACHING_POINTS:
-- All suspicious breast lumps require triple assessment
-- Clinical examination alone is insufficient
-- Tissue diagnosis is mandatory before treatment planning`;
+CORRECT: Triple assessment includes: clinical examination, imaging, and tissue sampling.
+EXPLANATION: Triple assessment is the gold standard approach for evaluating any breast lump.
 
-  downloadTxt('virtual_patient_template.txt', template);
+STAGE 3:
+TYPE: read_only
+PATIENT_INFO: Biopsy confirms invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
+PROMPT: The patient will now be referred to the multidisciplinary breast team for treatment planning. Key considerations include tumor staging, hormone receptor status, and patient preferences.`;
+
+  downloadTxt('clinical_cases_template.txt', template);
 }
 
 
@@ -293,99 +283,8 @@ function generateTemplateDownload(templateId: string) {
       ], 'OSCE Questions');
       break;
       
-    case 'case_scenario':
-      downloadCsv('case_scenarios_template.csv', generateCsvContent(
-        ['title', 'case_history', 'case_questions', 'model_answer', 'rating'],
-        [
-          [
-            'Acute Chest Pain Assessment',
-            'A 55-year-old male presents to the emergency department with crushing substernal chest pain that started 2 hours ago. The pain radiates to his left arm and jaw. He is diaphoretic and appears anxious. His vital signs show: BP 150/95 mmHg, HR 110 bpm, RR 22/min, SpO2 96% on room air. He has a history of hypertension and type 2 diabetes.',
-            'What is your differential diagnosis?|What initial investigations would you order?|Outline your immediate management plan.',
-            'Differential diagnosis includes: 1) Acute coronary syndrome (STEMI/NSTEMI), 2) Aortic dissection, 3) Pulmonary embolism, 4) Pericarditis. Initial investigations: 12-lead ECG, Troponin levels, Chest X-ray, CBC, BMP, Coagulation studies. Immediate management: Oxygen therapy, IV access, Aspirin 300mg, Sublingual GTN, Morphine for pain, Continuous cardiac monitoring.',
-            '4'
-          ]
-        ]
-      ));
-      break;
-      
-    case 'matching':
-      downloadCsv('matching_questions_template.csv', generateCsvContent(
-        ['instruction', 'item_a_1', 'item_a_2', 'item_a_3', 'item_a_4', 'item_b_1', 'item_b_2', 'item_b_3', 'item_b_4', 'match_1', 'match_2', 'match_3', 'match_4', 'explanation', 'difficulty', 'show_explanation'],
-        [
-          [
-            'Match each drug with its mechanism of action',
-            'Aspirin',
-            'Metformin',
-            'Lisinopril',
-            'Omeprazole',
-            'ACE inhibitor',
-            'Proton pump inhibitor',
-            'COX inhibitor',
-            'Biguanide',
-            '3',
-            '4',
-            '1',
-            '2',
-            'Aspirin inhibits COX, Metformin is a biguanide that reduces hepatic glucose production, Lisinopril is an ACE inhibitor, and Omeprazole is a proton pump inhibitor.',
-            'easy',
-            'TRUE'
-          ]
-        ]
-      ));
-      break;
-      
-    case 'flashcard':
-      downloadCsv('flashcards_template.csv', generateCsvContent(
-        ['front', 'back'],
-        [
-          ['What is the powerhouse of the cell?', 'The mitochondria - responsible for cellular respiration and ATP production.'],
-          ['What are the 4 chambers of the heart?', 'Right atrium, Right ventricle, Left atrium, Left ventricle'],
-          ['What is the normal range for blood glucose (fasting)?', '70-100 mg/dL (3.9-5.6 mmol/L)']
-        ]
-      ));
-      break;
-      
-    case 'table':
-      downloadCsv('tables_template.csv', generateCsvContent(
-        ['title', 'headers', 'row1', 'row2', 'row3'],
-        [
-          [
-            'Blood Cell Types and Functions',
-            'Cell Type|Normal Count|Primary Function',
-            'Red Blood Cells (RBC)|4.5-5.5 million/μL|Oxygen transport via hemoglobin',
-            'White Blood Cells (WBC)|4,000-11,000/μL|Immune defense and inflammation',
-            'Platelets|150,000-400,000/μL|Blood clotting and hemostasis'
-          ]
-        ]
-      ));
-      break;
-      
-    case 'algorithm':
-      downloadCsv('algorithms_template.csv', generateCsvContent(
-        ['title', 'steps'],
-        [
-          [
-            'Basic Life Support (BLS) Algorithm',
-            'Check responsiveness::Tap shoulders and shout "Are you okay?"|Call for help::Activate emergency response system and get AED|Open airway::Head tilt-chin lift maneuver|Check breathing::Look, listen, feel for 10 seconds|Start CPR::30 compressions : 2 breaths, rate 100-120/min|Apply AED::Follow voice prompts when available'
-          ]
-        ]
-      ));
-      break;
-      
-    case 'exam_tip':
-      downloadCsv('exam_tips_template.csv', generateCsvContent(
-        ['title', 'tips'],
-        [
-          [
-            'Cardiology High-Yield Tips',
-            'Always check ECG in any patient with chest pain|Remember MONA for ACS: Morphine, Oxygen, Nitrates, Aspirin|Beta-blockers are contraindicated in acute decompensated heart failure|Troponin rises 4-6 hours after MI onset|STEMI requires emergent reperfusion within 90 minutes'
-          ]
-        ]
-      ));
-      break;
-      
-    case 'virtual_patient':
-      downloadVirtualPatientTemplate();
+    case 'clinical_case':
+      downloadClinicalCaseTemplate();
       break;
       
     default:
