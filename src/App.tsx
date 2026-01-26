@@ -7,8 +7,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
+import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { AskCoachPanel } from "@/components/coach";
+import { AudioMiniPlayer } from "@/components/audio";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
@@ -50,11 +52,13 @@ const App = () => {
     <AuthProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BadgeCelebration />
-            <AskCoachPanel />
+          <AudioPlayerProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BadgeCelebration />
+              <AskCoachPanel />
+              <AudioMiniPlayer />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -74,8 +78,9 @@ const App = () => {
                 <Route path="/virtual-patient/:caseId" element={<VirtualPatientPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AudioPlayerProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
     </AuthProvider>

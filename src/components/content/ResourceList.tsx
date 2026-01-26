@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon } from 'lucide-react';
+import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon, Music } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
 import { useContentDelete } from '@/hooks/useContentDelete';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 import { PdfViewerModal } from '@/components/content/PdfViewerModal';
+import { AudioPlayer } from '@/components/audio';
 
 interface Resource {
   id: string;
@@ -23,6 +24,8 @@ interface Resource {
   resource_type?: string | null;
   file_url?: string | null;
   external_url?: string | null;
+  audio_storage_path?: string | null;
+  section_id?: string | null;
 }
 
 interface ResourceListProps {
@@ -41,6 +44,11 @@ function isPdfResource(resource: Resource): boolean {
   if (resource.resource_type === 'pdf') return true;
   const url = resource.file_url || resource.external_url || '';
   return url.toLowerCase().endsWith('.pdf');
+}
+
+// Check if resource is an audio file
+function isAudioResource(resource: Resource): boolean {
+  return resource.resource_type === 'audio' && !!resource.audio_storage_path;
 }
 
 export default function ResourceList({
@@ -84,77 +92,142 @@ export default function ResourceList({
     return (
       <>
         <div className="space-y-0.5 border rounded-lg divide-y">
-          {resources.map((resource) => (
-            <div 
-              key={resource.id} 
-              className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors group ${
-                (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
-              }`}
-              onClick={() => handleResourceClick(resource)}
-            >
-              <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium truncate block">{resource.title}</span>
-                {resource.resource_type && (
-                  <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
-                )}
-              </div>
-              <div
-                className="flex items-center gap-1.5"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
+          {resources.map((resource) => {
+            // Audio resources get special treatment
+            if (isAudioResource(resource)) {
+              return (
+                <div key={resource.id} className="px-3 py-2.5">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium truncate block">{resource.title}</span>
+                      <span className="text-xs text-muted-foreground capitalize">Audio</span>
+                    </div>
+                    <div
+                      className="flex items-center gap-1.5"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canManage && (
+                        <>
+                          {canEdit && onEdit && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0"
+                              onClick={() => onEdit(resource)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={() => askDelete(resource.id, resource.title)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {showFeedback && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => setFeedbackItem(resource)}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <AudioPlayer
+                    resourceId={resource.id}
+                    title={resource.title}
+                    moduleId={moduleId}
+                    chapterId={chapterId}
+                    sectionId={resource.section_id || undefined}
+                  />
+                </div>
+              );
+            }
+
+            // Non-audio resources
+            return (
+              <div 
+                key={resource.id} 
+                className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors group ${
+                  (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => handleResourceClick(resource)}
               >
-                {(resource.file_url || resource.external_url) && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-7 px-2"
-                    onClick={() => handleResourceClick(resource)}
-                  >
-                    {isPdfResource(resource) ? (
-                      <FileIcon className="w-3.5 h-3.5" />
-                    ) : (
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    )}
-                  </Button>
-                )}
-                {canManage && (
-                  <>
-                    {canEdit && onEdit && (
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-7 w-7 p-0"
-                        onClick={() => onEdit(resource)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                        onClick={() => askDelete(resource.id, resource.title)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </>
-                )}
-                {showFeedback && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-7 w-7 p-0"
-                    onClick={() => setFeedbackItem(resource)}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium truncate block">{resource.title}</span>
+                  {resource.resource_type && (
+                    <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
+                  )}
+                </div>
+                <div
+                  className="flex items-center gap-1.5"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {(resource.file_url || resource.external_url) && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 px-2"
+                      onClick={() => handleResourceClick(resource)}
+                    >
+                      {isPdfResource(resource) ? (
+                        <FileIcon className="w-3.5 h-3.5" />
+                      ) : (
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  )}
+                  {canManage && (
+                    <>
+                      {canEdit && onEdit && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => onEdit(resource)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => askDelete(resource.id, resource.title)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {showFeedback && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 w-7 p-0"
+                      onClick={() => setFeedbackItem(resource)}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
@@ -209,80 +282,150 @@ export default function ResourceList({
   return (
     <>
       <div className="space-y-3">
-        {resources.map((resource) => (
-          <Card 
-            key={resource.id} 
-            className={`hover:shadow-md transition-shadow ${
-              (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
-            }`}
-            onClick={() => handleResourceClick(resource)}
-          >
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
-                <FileText className="w-6 h-6 text-secondary-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{resource.title}</h3>
-                {resource.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-1">{resource.description}</p>
-                )}
-                <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
-              </div>
-              <div
-                className="flex items-center gap-2"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {(resource.file_url || resource.external_url) && (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleResourceClick(resource)}
-                  >
-                    {isPdfResource(resource) ? (
-                      <FileIcon className="w-4 h-4 mr-1" />
-                    ) : (
-                      <ExternalLink className="w-4 h-4 mr-1" />
-                    )}
-                    {isPdfResource(resource) ? 'View' : 'Open'}
-                  </Button>
-                )}
-                {canManage && (
-                  <>
-                    {canEdit && onEdit && (
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => onEdit(resource)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => askDelete(resource.id, resource.title)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </>
-                )}
-                {showFeedback && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setFeedbackItem(resource)}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {resources.map((resource) => {
+          // Audio resources get special treatment with inline player
+          if (isAudioResource(resource)) {
+            return (
+              <Card key={resource.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Music className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{resource.title}</h3>
+                      {resource.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{resource.description}</p>
+                      )}
+                      <span className="text-xs text-muted-foreground capitalize">Audio</span>
+                    </div>
+                    <div
+                      className="flex items-center gap-2"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canManage && (
+                        <>
+                          {canEdit && onEdit && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => onEdit(resource)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => askDelete(resource.id, resource.title)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {showFeedback && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => setFeedbackItem(resource)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <AudioPlayer
+                    resourceId={resource.id}
+                    title={resource.title}
+                    moduleId={moduleId}
+                    chapterId={chapterId}
+                    sectionId={resource.section_id || undefined}
+                  />
+                </CardContent>
+              </Card>
+            );
+          }
+
+          // Non-audio resources
+          return (
+            <Card 
+              key={resource.id} 
+              className={`hover:shadow-md transition-shadow ${
+                (resource.file_url || resource.external_url) ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => handleResourceClick(resource)}
+            >
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium truncate">{resource.title}</h3>
+                  {resource.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-1">{resource.description}</p>
+                  )}
+                  <span className="text-xs text-muted-foreground capitalize">{resource.resource_type}</span>
+                </div>
+                <div
+                  className="flex items-center gap-2"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {(resource.file_url || resource.external_url) && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleResourceClick(resource)}
+                    >
+                      {isPdfResource(resource) ? (
+                        <FileIcon className="w-4 h-4 mr-1" />
+                      ) : (
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                      )}
+                      {isPdfResource(resource) ? 'View' : 'Open'}
+                    </Button>
+                  )}
+                  {canManage && (
+                    <>
+                      {canEdit && onEdit && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => onEdit(resource)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => askDelete(resource.id, resource.title)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {showFeedback && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => setFeedbackItem(resource)}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
