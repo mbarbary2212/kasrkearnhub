@@ -397,6 +397,53 @@ export type Database = {
           },
         ]
       }
+      audio_progress: {
+        Row: {
+          completed: boolean
+          duration_seconds: number | null
+          id: string
+          last_position_seconds: number
+          percent_listened: number
+          play_count: number
+          progress_seconds: number
+          resource_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          duration_seconds?: number | null
+          id?: string
+          last_position_seconds?: number
+          percent_listened?: number
+          play_count?: number
+          progress_seconds?: number
+          resource_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          duration_seconds?: number | null
+          id?: string
+          last_position_seconds?: number
+          percent_listened?: number
+          play_count?: number
+          progress_seconds?: number
+          resource_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_progress_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -2708,12 +2755,14 @@ export type Database = {
       }
       resources: {
         Row: {
+          audio_storage_path: string | null
           chapter_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           display_order: number | null
+          duration_seconds: number | null
           external_url: string | null
           file_url: string | null
           id: string
@@ -2727,12 +2776,14 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          audio_storage_path?: string | null
           chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
+          duration_seconds?: number | null
           external_url?: string | null
           file_url?: string | null
           id?: string
@@ -2746,12 +2797,14 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          audio_storage_path?: string | null
           chapter_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           display_order?: number | null
+          duration_seconds?: number | null
           external_url?: string | null
           file_url?: string | null
           id?: string

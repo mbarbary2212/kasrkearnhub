@@ -26,6 +26,7 @@ import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { EssayFormSchema, validateBatch } from '@/lib/validators';
 import { logActivity } from '@/lib/activityLog';
 import { SectionSelector } from '@/components/sections';
+import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -478,6 +479,14 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
             <p>You can only manage content in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
           </TooltipContent>
         </Tooltip>
+      )}
+
+      {showAddControls && contentType === 'resource' && (
+        <AudioUploadDialog
+          moduleId={moduleId}
+          chapterId={chapterId}
+          topicId={topicId}
+        />
       )}
 
       {showAddControls && (

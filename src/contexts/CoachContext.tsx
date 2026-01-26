@@ -13,7 +13,7 @@ export interface QuestionContext {
 export interface ResourceContext {
   resourceId: string;
   title: string;
-  type: 'lecture' | 'document' | 'flashcard' | 'mind_map' | 'video' | 'clinical_case';
+  type: 'lecture' | 'document' | 'flashcard' | 'mind_map' | 'video' | 'clinical_case' | 'audio';
   metadata?: Record<string, unknown>;
 }
 
