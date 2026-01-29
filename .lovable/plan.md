@@ -1,172 +1,108 @@
 
-# Phase 4-6: Admin Table Views with Multi-Select, Bulk Operations, and CSV Export
+
+# Complete Admin Content Management System - Remaining Work
 
 ## Summary
-Create a reusable admin table component and implement table views for all content types (Flashcards, Lectures, MCQs, OSCEs, Essays, Matching Questions). Each table includes multi-select checkboxes, inline section dropdown editing, bulk delete, CSV export, and a view toggle to switch between Card/Table views.
+
+This plan completes the remaining phases of the Universal Admin Content Management System by adding table views with bulk operations to MCQs, OSCEs, and Clinical Cases (Virtual Patients), and also investigates the flashcard section tagging issue you reported.
 
 ---
 
-## Phase 4: Reusable ContentAdminTable Component
+## Issues Identified
 
-### New File: `src/components/admin/ContentAdminTable.tsx`
+### 1. MCQs and OSCEs Missing Table View Toggle
+**Status**: MCQList and OsceList were not updated with the `AdminViewToggle` component and table view like Flashcards, Lectures, Essays, and Matching Questions.
 
-A generic table component that works with any content type:
+### 2. Clinical Cases Missing Section Tagging
+**Status**: `ClinicalCaseAdminList.tsx` lacks multi-select checkboxes and bulk section assignment capability.
 
-**Features:**
-- Header row with Select All checkbox
-- Configurable columns via props
-- Section badge column with inline dropdown for quick section assignment
-- Actions column (Edit, Delete buttons)
-- Integration with `BulkSectionAssignment` component
-- Bulk Delete button using `useBulkDeleteContent` hook
-- CSV Export button using `exportToCsv` utility
+### 3. Flashcard Section Tagging Investigation
+**Status**: Database shows flashcards ARE being correctly assigned to sections. Looking at the "Arterial Disorders" chapter:
+- Sections exist: Vascular imaging (0), Acute Ischemia (1), Chronic ischemia (2), Arterial trauma (3), Gangrene (4), Diabetic foot (5), etc.
+- Flashcards are assigned to correct sections (Acute Ischemia, Chronic ischemia, Arterial trauma, Aneurysms AAA, etc.)
 
-**Props Interface:**
-```typescript
-interface ContentAdminTableProps<T extends { id: string }> {
-  data: T[];
-  columns: {
-    key: keyof T | 'actions';
-    header: string;
-    render?: (item: T) => React.ReactNode;
-    className?: string;
-  }[];
-  contentTable: ContentTableName;
-  chapterId?: string;
-  topicId?: string;
-  moduleId?: string;
-  onEdit?: (item: T) => void;
-  onDelete?: (item: T) => void;
-  sections?: Section[];
-  csvExportConfig?: {
-    filename: string;
-    columns: ExportColumn<T>[];
-  };
-}
-```
+**Possible causes of perceived issue:**
+- CSV file may have used incorrect section_number values
+- Section names in CSV may not have matched exactly (case-sensitive mismatch)
+- UI may not be properly displaying the section filter badges
 
 ---
 
-## Phase 5: Verify Section Dropdowns in Edit Forms
+## Implementation Plan
 
-All edit modals already include `SectionSelector`:
-- `McqFormModal.tsx` - line 22, uses `SectionSelector`
-- `OsceFormModal.tsx` - line 12, uses `SectionSelector`
-- `MatchingQuestionFormModal.tsx` - line 29, uses `SectionSelector`
-- `LectureList.tsx` (inline edit) - line 35, uses `SectionSelector`
-- `StudyResourceFormModal.tsx` - already implemented
+### Phase A: MCQ Table View with Section Management
 
-**Status: Complete - No changes needed**
+**Update**: `src/components/content/McqList.tsx`
 
----
+Add admin view toggle similar to FlashcardsTab:
+- Import `AdminViewToggle` and `ViewMode` from `@/components/admin/AdminViewToggle`
+- Add `viewMode` state for admin users
+- Render table view when `viewMode === 'table'`
 
-## Phase 6: Content-Specific Admin Table Views
-
-### 6A: Flashcards Admin Table
-**New File: `src/components/study/FlashcardsAdminTable.tsx`**
+**Create**: `src/components/content/McqAdminTable.tsx`
 
 | Column | Description |
 |--------|-------------|
 | Checkbox | Multi-select |
-| Title | Deck title |
-| Front | Question text (truncated to 50 chars) |
-| Back | Answer text (truncated to 50 chars) |
-| Section | Dropdown selector |
-| Actions | Edit, Delete |
-
-**Integration:** Update `FlashcardsTab.tsx` to add view toggle for admins
-
-### 6B: Lectures Admin Table  
-**New File: `src/components/content/LecturesAdminTable.tsx`**
-
-| Column | Description |
-|--------|-------------|
-| Checkbox | Multi-select |
-| Title | Lecture title |
-| Duration | Video length |
-| Source | YouTube/GDrive icon |
-| Section | Dropdown selector |
-| Actions | Edit, Delete |
-
-**Integration:** Update `LectureList.tsx` or create wrapper with toggle
-
-### 6C: MCQs Admin Table Enhancement
-**Update: `src/components/content/McqList.tsx`**
-
-Add view toggle button in admin controls:
-- Card View (existing)
-- Table View (new)
-
-New table columns:
-| Column | Description |
-|--------|-------------|
-| Checkbox | Already exists |
 | # | Question number |
-| Stem | Truncated question text |
+| Stem | Truncated to 60 chars |
 | Difficulty | Badge (easy/medium/hard) |
-| Section | Inline dropdown |
+| Section | Inline dropdown selector |
 | Actions | Edit, Delete |
 
-### 6D: OSCE Admin Table Enhancement
-**Update: `src/components/content/OsceList.tsx`**
+Features:
+- Uses `ContentAdminTable` base component
+- Inline section editing via dropdown
+- Bulk delete with confirmation
+- CSV export with section columns
 
-Similar to MCQ - add view toggle:
+---
+
+### Phase B: OSCE Table View with Section Management
+
+**Update**: `src/components/content/OsceList.tsx`
+
+Add admin view toggle:
+- Import `AdminViewToggle` component
+- Add `viewMode` state
+- Conditionally render table vs card view
+
+**Create**: `src/components/content/OsceAdminTable.tsx`
+
 | Column | Description |
 |--------|-------------|
-| Checkbox | Already exists |
+| Checkbox | Multi-select |
 | # | Question number |
 | History | Truncated history text |
 | Image | Thumbnail preview |
 | Section | Inline dropdown |
 | Actions | Edit, Delete |
 
-### 6E: Essays/Short Answer Admin Table
-**New File: `src/components/content/EssaysAdminTable.tsx`**
+---
 
-| Column | Description |
-|--------|-------------|
-| Checkbox | Multi-select |
-| Title | Question title |
-| Question | Truncated text |
-| Has Answer | Check/X icon |
-| Section | Dropdown selector |
-| Actions | Edit, Delete |
+### Phase C: Clinical Cases Section Tagging
 
-**Integration:** Update `EssayList.tsx` with toggle
+**Update**: `src/components/clinical-cases/ClinicalCaseAdminList.tsx`
 
-### 6F: Matching Questions Admin Table
-**New File: `src/components/content/MatchingAdminTable.tsx`**
+Add bulk section assignment:
+- Multi-select checkboxes on each case card
+- Import `BulkSectionAssignment` component
+- Add selection state management
+- Show selection count and bulk actions toolbar
 
-| Column | Description |
-|--------|-------------|
-| Checkbox | Multi-select |
-| Instruction | Truncated text |
-| Pairs | Count of items |
-| Difficulty | Badge |
-| Section | Dropdown selector |
-| Actions | Edit, Delete |
-
-**Integration:** Update `MatchingQuestionList.tsx` with toggle
+Note: Clinical Cases don't need a separate table view since the card layout with image/stages is more appropriate, but they DO need section bulk tagging capability.
 
 ---
 
-## Phase 9: View Toggle Component
+### Phase D: Flashcard Section Display Verification
 
-### New File: `src/components/admin/AdminViewToggle.tsx`
+**Verify**: Ensure section badges are visible in the flashcard student view
 
-Reusable toggle button group:
-```typescript
-interface AdminViewToggleProps {
-  viewMode: 'cards' | 'table';
-  onViewModeChange: (mode: 'cards' | 'table') => void;
-}
-```
+**Check**: `FlashcardsStudentView.tsx` and `FlashcardsSlideshowMode.tsx` for section filtering
 
-Renders two buttons:
-- Cards (LayoutGrid icon)
-- Table (List icon)
-
-Used by all list components when `isAdmin` is true.
+If sections are not being displayed:
+- Add section badge to flashcard card display
+- Add section filter dropdown to slideshow mode settings
 
 ---
 
@@ -174,68 +110,77 @@ Used by all list components when `isAdmin` is true.
 
 | File | Purpose |
 |------|---------|
-| `src/components/admin/ContentAdminTable.tsx` | Reusable table component |
-| `src/components/admin/AdminViewToggle.tsx` | View mode toggle buttons |
-| `src/components/study/FlashcardsAdminTable.tsx` | Flashcard table view |
-| `src/components/content/LecturesAdminTable.tsx` | Lecture table view |
-| `src/components/content/EssaysAdminTable.tsx` | Essay table view |
-| `src/components/content/MatchingAdminTable.tsx` | Matching question table view |
+| `src/components/content/McqAdminTable.tsx` | MCQ table view with sections |
+| `src/components/content/OsceAdminTable.tsx` | OSCE table view with sections |
 
 ## Files to Update
 
 | File | Changes |
 |------|---------|
-| `src/components/study/FlashcardsTab.tsx` | Add view toggle, render table when selected |
-| `src/components/content/LectureList.tsx` | Add view toggle, render table when selected |
-| `src/components/content/McqList.tsx` | Add view toggle, create inline table view |
-| `src/components/content/OsceList.tsx` | Add view toggle, create inline table view |
-| `src/components/content/EssayList.tsx` | Add view toggle, render table when selected |
-| `src/components/content/MatchingQuestionList.tsx` | Add view toggle, render table when selected |
-
----
-
-## Implementation Order
-
-1. Create `AdminViewToggle.tsx` (simple, no dependencies)
-2. Create `ContentAdminTable.tsx` (core reusable component)
-3. Create individual table views (FlashcardsAdminTable, LecturesAdminTable, etc.)
-4. Update list components to add view toggle and conditionally render table views
-5. Add CSV export buttons to each table view
-6. Test multi-select, bulk delete, and section assignment
+| `src/components/content/McqList.tsx` | Add view toggle, render table when selected |
+| `src/components/content/OsceList.tsx` | Add view toggle, render table when selected |
+| `src/components/clinical-cases/ClinicalCaseAdminList.tsx` | Add multi-select and bulk section assignment |
 
 ---
 
 ## Technical Details
 
-### Inline Section Dropdown
-Each table row will have a section cell that renders a compact dropdown:
-```tsx
-<Select
-  value={item.section_id || 'unassigned'}
-  onValueChange={(v) => updateSection(item.id, v)}
->
-  <SelectTrigger className="h-8 w-32">
-    <SelectValue />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="unassigned">Unassigned</SelectItem>
-    {sections.map(s => (
-      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+### MCQ Table Columns Configuration
+
+```typescript
+const columns: ColumnConfig<Mcq>[] = [
+  { key: 'select', header: '', className: 'w-10' },
+  { 
+    key: 'stem', 
+    header: 'Question',
+    render: (item) => (
+      <span className="line-clamp-2 max-w-[300px]">{item.stem}</span>
+    )
+  },
+  {
+    key: 'difficulty',
+    header: 'Difficulty',
+    render: (item) => (
+      <Badge variant={item.difficulty === 'hard' ? 'destructive' : 'secondary'}>
+        {item.difficulty}
+      </Badge>
+    )
+  },
+  { key: 'section', header: 'Section', className: 'w-32' },
+  { key: 'actions', header: '', className: 'w-20' },
+];
 ```
 
-### Bulk Delete Flow
-1. User selects items via checkboxes
-2. "Delete Selected" button appears when `selectedIds.size > 0`
-3. Confirmation dialog shows count of items
-4. On confirm, calls `useBulkDeleteContent` hook
-5. UI refreshes via query invalidation
+### Clinical Case Bulk Selection
 
-### CSV Export
-Each table has an "Export CSV" button that:
-1. Takes current filtered data
-2. Maps through configured columns
-3. Resolves section IDs to names using `sections` array
-4. Downloads file via `exportToCsv` utility
+```tsx
+// Add to ClinicalCaseAdminList
+const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+// Selection controls in toolbar
+<BulkSectionAssignment
+  chapterId={chapterId}
+  selectedIds={Array.from(selectedIds)}
+  contentTable="virtual_patient_cases"
+  onComplete={clearSelection}
+/>
+```
+
+---
+
+## Regarding Your Flashcard Section Issue
+
+Based on database analysis, the flashcard sections ARE being saved correctly. The flashcards in the "Arterial Disorders" chapter show proper section assignments:
+
+- "Arteries blood type" -> Acute Ischemia (section 1)
+- "Digital Subtraction Angiography" -> Chronic ischemia (section 2)
+- "Acute Limb Ischemia" -> Arterial trauma (section 3)
+- "Aneurysmal Diseases" -> Aneurysms, AAA (section 7)
+
+If flashcards appeared in the wrong sections, possible causes:
+1. **CSV section_number mismatch**: The section_number in your CSV may not match the actual section numbers in the database
+2. **Case sensitivity**: Section names must match exactly (e.g., "Chronic ischemia" vs "Chronic Ischemia")
+3. **Section 0 edge case**: Section with section_number=0 (Vascular imaging modalities) might cause matching issues
+
+**Recommendation**: Use the Table view once implemented to verify/fix section assignments inline using the dropdown.
+
