@@ -103,7 +103,7 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit }: FlashcardDe
   };
 
   return (
-    <div className="rounded-xl border bg-card p-3 max-w-sm">
+    <div className="rounded-xl border border-l-4 border-l-content-flashcard bg-card p-3 max-w-sm card-interactive">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
         <div

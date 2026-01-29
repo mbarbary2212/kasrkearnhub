@@ -1,12 +1,20 @@
+import { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, BookOpen, Calendar, Info, AlertTriangle } from 'lucide-react';
+import { CircularProgress } from '@/components/ui/circular-progress';
+import { StreakHeatMap } from './StreakHeatMap';
+import { TrendingUp, BookOpen, Calendar, Info, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { 
   type ReadinessResult, 
@@ -23,6 +31,8 @@ interface DashboardStatusStripProps {
   chaptersTotal: number;
   studyStreak: number;
   readinessResult?: ReadinessResult;
+  /** Optional: Array of dates when user studied (for heat map) */
+  activityDates?: string[];
 }
 
 export function DashboardStatusStrip({
@@ -34,23 +44,27 @@ export function DashboardStatusStrip({
   chaptersTotal,
   studyStreak,
   readinessResult,
+  activityDates,
 }: DashboardStatusStripProps) {
+  const [streakExpanded, setStreakExpanded] = useState(false);
   const capMessage = readinessResult?.cap ? getCapMessage(readinessResult.cap) : null;
   const hasDetailedBreakdown = !!readinessResult;
 
   return (
     <Card className="p-4 md:p-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Exam Readiness */}
+        {/* Exam Readiness - Circular Gauge */}
         <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-primary" />
+          <div className="flex-shrink-0">
+            <CircularProgress 
+              value={examReadiness} 
+              size="md"
+              showLabel={true}
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-heading font-bold text-foreground">
-                {examReadiness}%
-              </span>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-foreground">Exam Readiness</p>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -94,9 +108,6 @@ export function DashboardStatusStrip({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Exam Readiness
-            </p>
             {capMessage ? (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
@@ -110,18 +121,19 @@ export function DashboardStatusStrip({
           </div>
         </div>
 
-        {/* Coverage Progress */}
+        {/* Coverage Progress - with mini circular indicator */}
         <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-accent" />
+          <div className="flex-shrink-0">
+            <CircularProgress 
+              value={coveragePercent} 
+              size="sm"
+              showLabel={true}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-lg font-heading font-semibold text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 Coverage
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {coveragePercent}%
               </span>
             </div>
             <Progress value={coveragePercent} className="h-2" />
@@ -136,26 +148,41 @@ export function DashboardStatusStrip({
           </div>
         </div>
 
-        {/* Study Streak */}
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-secondary-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-heading font-bold text-foreground">
-                {studyStreak}
-              </span>
-              <span className="text-sm text-muted-foreground">days</span>
+        {/* Study Streak - Expandable with Heat Map */}
+        <Collapsible open={streakExpanded} onOpenChange={setStreakExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center gap-4 cursor-pointer group">
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-heading font-bold text-foreground">
+                    {studyStreak}
+                  </span>
+                  <span className="text-sm text-muted-foreground">days</span>
+                  {streakExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground ml-auto" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto group-hover:text-foreground transition-colors" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Study Streak
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  {studyStreak > 0 ? 'Keep it going!' : 'Start today'}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Study Streak
-            </p>
-            <p className="text-xs text-muted-foreground/70">
-              {studyStreak > 0 ? 'Keep it going!' : 'Start today'}
-            </p>
-          </div>
-        </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4 pt-4 border-t">
+            <StreakHeatMap 
+              activityDates={activityDates} 
+              streakDays={studyStreak}
+            />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </Card>
   );

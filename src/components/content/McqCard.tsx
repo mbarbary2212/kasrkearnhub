@@ -133,7 +133,7 @@ export function McqCard({
 
   return (
     <Card className={cn(
-      "overflow-hidden",
+      "overflow-hidden border-l-4 border-l-content-mcq card-interactive",
       previousAttempt && "ring-1 ring-offset-1",
       previousAttempt?.is_correct && "ring-green-300 dark:ring-green-700",
       previousAttempt && !previousAttempt.is_correct && "ring-amber-300 dark:ring-amber-700"

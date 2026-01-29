@@ -136,7 +136,7 @@ export function MatchingQuestionCard({
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-l-4 border-l-content-matching card-interactive">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
