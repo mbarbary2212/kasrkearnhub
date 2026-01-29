@@ -34,6 +34,136 @@ interface AdminHelpFile {
   created_at: string;
 }
 
+// Centralized Template Schema System - Single source of truth for all templates
+interface TemplateSchema {
+  columns: string[];
+  required: string[];
+  optional: string[];
+  examples: string[][];
+}
+
+export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
+  mcq: {
+    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
+    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    examples: [
+      [
+        'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
+        'Acute myocardial infarction',
+        'Gastroesophageal reflux disease',
+        'Costochondritis',
+        'Pulmonary embolism',
+        'Aortic dissection',
+        'A',
+        'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
+        'medium',
+        'Cardiac Emergencies',
+        '1'
+      ],
+    ],
+  },
+  osce: {
+    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    required: ['image_filename', 'history_text', 'statement_1', 'answer_1'],
+    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    examples: [
+      [
+        'chest_xray_001.jpg',
+        'A 65-year-old male presents with progressive dyspnea and chronic cough. He has a 40-pack-year smoking history.',
+        'The image shows hyperinflation of the lungs',
+        'TRUE',
+        'Hyperinflation is a classic finding in COPD/emphysema.',
+        'There is evidence of consolidation in the right lower lobe',
+        'FALSE',
+        'No consolidation is visible in this image.',
+        'The heart size is enlarged',
+        'FALSE',
+        'The heart appears normal in size.',
+        'Flattening of the diaphragm is present',
+        'TRUE',
+        'Diaphragmatic flattening indicates air trapping.',
+        'This is consistent with pneumonia',
+        'FALSE',
+        'The findings are more consistent with COPD/emphysema.',
+        'Radiology',
+        '2'
+      ],
+    ],
+  },
+  flashcard: {
+    columns: ['title', 'front', 'back', 'section_name', 'section_number'],
+    required: ['title', 'front', 'back'],
+    optional: ['section_name', 'section_number'],
+    examples: [
+      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Heart Basics', '1'],
+      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Basics', '1'],
+    ],
+  },
+  table: {
+    columns: ['title', 'headers', 'row1', 'row2', 'row3', 'section_name', 'section_number'],
+    required: ['title', 'headers', 'row1'],
+    optional: ['row2', 'row3', 'section_name', 'section_number'],
+    examples: [
+      [
+        'Types of Shock',
+        'Type|Mechanism|Key Finding',
+        'Cardiogenic|Pump failure|Elevated JVP',
+        'Hypovolemic|Volume loss|Flat JVP',
+        'Distributive|Vasodilation|Warm extremities',
+        'Shock Types',
+        '3'
+      ],
+    ],
+  },
+  algorithm: {
+    columns: ['title', 'steps', 'section_name', 'section_number'],
+    required: ['title', 'steps'],
+    optional: ['section_name', 'section_number'],
+    examples: [
+      [
+        'Chest Pain Workup',
+        '1. Obtain ECG within 10 minutes|2. Check troponins|3. Assess HEART score|4. Consider stress testing if low-risk',
+        'Cardiac Emergencies',
+        '1'
+      ],
+    ],
+  },
+  exam_tip: {
+    columns: ['title', 'tips', 'section_name', 'section_number'],
+    required: ['title', 'tips'],
+    optional: ['section_name', 'section_number'],
+    examples: [
+      [
+        'MI Mnemonic',
+        'MONA: Morphine, Oxygen, Nitrates, Aspirin|Remember: Give aspirin first!|ECG changes: ST elevation = STEMI',
+        'Cardiology Tips',
+        '1'
+      ],
+    ],
+  },
+  matching: {
+    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    required: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2'],
+    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    examples: [
+      [
+        'Heart Sounds',
+        'S3 gallop',
+        'Volume overload',
+        'S4 gallop',
+        'Stiff ventricle',
+        'Loud P2',
+        'Pulmonary hypertension',
+        'Fixed split S2',
+        'ASD',
+        'Auscultation',
+        '2'
+      ],
+    ],
+  },
+};
+
 // Built-in template definitions
 interface BuiltInTemplate {
   id: string;
@@ -47,7 +177,7 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   {
     id: 'mcq',
     title: 'MCQ Template',
-    description: 'Multiple choice questions with 5 options (A-E)',
+    description: 'Multiple choice questions with 5 options (A-E) and section tagging',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -61,14 +191,14 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   {
     id: 'matching',
     title: 'Matching Questions Template',
-    description: 'Match items from Column A to Column B',
+    description: 'Match items from Column A to Column B with section tagging',
     format: 'csv',
     icon: 'spreadsheet',
   },
   {
     id: 'flashcard',
     title: 'Flashcards Template',
-    description: 'Front and back flashcard content',
+    description: 'Front and back flashcard content with section tagging',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -103,17 +233,26 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 ];
 
 // Template generation functions
+function escapeField(field: string | undefined | null): string {
+  if (field === null || field === undefined) return '';
+  const str = String(field);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function generateCsvFromSchema(schema: TemplateSchema): string {
+  const headerLine = schema.columns.map(escapeField).join(',');
+  const dataLines = schema.examples.map(row => 
+    row.map(escapeField).join(',')
+  );
+  return [headerLine, ...dataLines].join('\n');
+}
+
 function generateCsvContent(headers: string[], rows: string[][]): string {
-  const escapeField = (field: string) => {
-    if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-      return `"${field.replace(/"/g, '""')}"`;
-    }
-    return field;
-  };
-  
   const headerLine = headers.map(escapeField).join(',');
   const dataLines = rows.map(row => row.map(escapeField).join(','));
-  
   return [headerLine, ...dataLines].join('\n');
 }
 
@@ -129,7 +268,7 @@ function downloadCsv(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadXlsx(filename: string, sheetData: any[][], sheetName: string = 'Sheet1') {
+function downloadXlsx(filename: string, sheetData: (string | undefined)[][], sheetName: string = 'Sheet1') {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
   
@@ -227,60 +366,27 @@ PROMPT: The patient will now be referred to the multidisciplinary breast team fo
 
 
 function generateTemplateDownload(templateId: string) {
+  const schema = TEMPLATE_SCHEMAS[templateId];
+  
   switch (templateId) {
     case 'mcq':
-      downloadCsv('mcq_template.csv', generateCsvContent(
-        ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty'],
-        [
-          [
-            'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
-            'Acute myocardial infarction',
-            'Gastroesophageal reflux disease',
-            'Costochondritis',
-            'Pulmonary embolism',
-            'Aortic dissection',
-            'A',
-            'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
-            'medium'
-          ],
-          [
-            'Which of the following is the first-line treatment for hypertension in a diabetic patient?',
-            'Beta-blockers',
-            'ACE inhibitors',
-            'Calcium channel blockers',
-            'Thiazide diuretics',
-            'Alpha-blockers',
-            'B',
-            'ACE inhibitors are first-line in diabetic patients due to their renoprotective effects.',
-            'easy'
-          ]
-        ]
-      ));
+    case 'flashcard':
+    case 'table':
+    case 'algorithm':
+    case 'exam_tip':
+    case 'matching':
+      // All CSV-based templates use the schema system
+      if (schema) {
+        downloadCsv(`${templateId}_template.csv`, generateCsvFromSchema(schema));
+      }
       break;
       
     case 'osce':
-      downloadXlsx('osce_template.xlsx', [
-        ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5'],
-        [
-          'chest_xray_001.jpg',
-          'A 65-year-old male presents with progressive dyspnea and chronic cough. He has a 40-pack-year smoking history.',
-          'The image shows hyperinflation of the lungs',
-          'TRUE',
-          'Hyperinflation is a classic finding in COPD/emphysema.',
-          'There is evidence of consolidation in the right lower lobe',
-          'FALSE',
-          'No consolidation is visible in this image.',
-          'The heart size is enlarged',
-          'FALSE',
-          'The heart appears normal in size.',
-          'Flattening of the diaphragm is present',
-          'TRUE',
-          'Diaphragmatic flattening indicates air trapping.',
-          'This is consistent with pneumonia',
-          'FALSE',
-          'The findings are more consistent with COPD/emphysema.'
-        ]
-      ], 'OSCE Questions');
+      // OSCE uses XLSX format with the schema
+      if (schema) {
+        const sheetData = [schema.columns, ...schema.examples];
+        downloadXlsx('osce_template.xlsx', sheetData, 'OSCE Questions');
+      }
       break;
       
     case 'clinical_case':
@@ -289,6 +395,7 @@ function generateTemplateDownload(templateId: string) {
       
     default:
       toast.error('Unknown template type');
+      return;
   }
   
   toast.success('Template downloaded successfully');
