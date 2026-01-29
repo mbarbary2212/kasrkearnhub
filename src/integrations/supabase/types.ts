@@ -2862,6 +2862,7 @@ export type Database = {
           display_order: number
           id: string
           name: string
+          section_number: number | null
           topic_id: string | null
         }
         Insert: {
@@ -2870,6 +2871,7 @@ export type Database = {
           display_order?: number
           id?: string
           name: string
+          section_number?: number | null
           topic_id?: string | null
         }
         Update: {
@@ -2878,6 +2880,7 @@ export type Database = {
           display_order?: number
           id?: string
           name?: string
+          section_number?: number | null
           topic_id?: string | null
         }
         Relationships: [

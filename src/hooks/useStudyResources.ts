@@ -330,6 +330,7 @@ export function useBulkCreateStudyResources() {
         title: r.title,
         content: r.content,
         display_order: r.display_order,
+        section_id: r.section_id || null,
         created_by: userData.user?.id,
         folder: r.folder,
       }));

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Section {
   id: string;
   name: string;
+  section_number: number | null;
   chapter_id: string | null;
   topic_id: string | null;
   display_order: number;
