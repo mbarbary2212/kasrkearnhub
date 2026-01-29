@@ -1,186 +1,270 @@
 
-
-# Complete Admin Content Management System - Remaining Work
+# Student UI Enhancement Plan: Quick Wins + High-Impact Gamification
 
 ## Summary
 
-This plan completes the remaining phases of the Universal Admin Content Management System by adding table views with bulk operations to MCQs, OSCEs, and Clinical Cases (Virtual Patients), and also investigates the flashcard section tagging issue you reported.
+This plan enhances the student-facing UI with visual interest and engagement through two phases:
+
+1. **Quick Wins**: Color-coded content type accents and enhanced hover animations
+2. **High Impact**: Circular progress gauges and gamification elements (streak heat map, animated progress)
 
 ---
 
-## Issues Identified
+## Phase 1: Color-Coded Content Type Accents
 
-### 1. MCQs and OSCEs Missing Table View Toggle
-**Status**: MCQList and OsceList were not updated with the `AdminViewToggle` component and table view like Flashcards, Lectures, Essays, and Matching Questions.
+### Design System: Content Type Color Tokens
 
-### 2. Clinical Cases Missing Section Tagging
-**Status**: `ClinicalCaseAdminList.tsx` lacks multi-select checkboxes and bulk section assignment capability.
+Add semantic CSS custom properties to identify content types visually:
 
-### 3. Flashcard Section Tagging Investigation
-**Status**: Database shows flashcards ARE being correctly assigned to sections. Looking at the "Arterial Disorders" chapter:
-- Sections exist: Vascular imaging (0), Acute Ischemia (1), Chronic ischemia (2), Arterial trauma (3), Gangrene (4), Diabetic foot (5), etc.
-- Flashcards are assigned to correct sections (Acute Ischemia, Chronic ischemia, Arterial trauma, Aneurysms AAA, etc.)
+| Content Type | Color | HSL Value |
+|--------------|-------|-----------|
+| MCQ | Blue | `hsl(199 89% 48%)` (primary) |
+| OSCE/Practical | Teal | `hsl(172 66% 50%)` |
+| Flashcards | Purple | `hsl(262 83% 58%)` |
+| Matching | Orange | `hsl(25 95% 53%)` |
+| Essays | Indigo | `hsl(240 60% 55%)` |
+| Clinical Cases | Emerald | `hsl(158 64% 45%)` (accent) |
+| Videos | Rose | `hsl(350 89% 60%)` |
 
-**Possible causes of perceived issue:**
-- CSV file may have used incorrect section_number values
-- Section names in CSV may not have matched exactly (case-sensitive mismatch)
-- UI may not be properly displaying the section filter badges
+### Implementation: Left Border Accent on Cards
 
----
+Each card component will receive a colored left border (4px) based on content type:
 
-## Implementation Plan
+**Files to Update:**
+- `src/components/content/McqCard.tsx` - Add `border-l-4 border-l-primary` 
+- `src/components/content/OsceQuestionCard.tsx` - Add `border-l-4 border-l-medical-teal`
+- `src/components/study/FlashcardDeck.tsx` - Add `border-l-4 border-l-medical-purple`
+- `src/components/content/MatchingQuestionCard.tsx` - Add `border-l-4 border-l-medical-orange`
+- `src/components/content/EssayList.tsx` (essay cards) - Add `border-l-4 border-l-indigo-500`
+- `src/components/clinical-cases/ClinicalCaseCard.tsx` - Add `border-l-4 border-l-accent`
+- `src/components/content/VideoCard.tsx` - Add `border-l-4 border-l-rose-500`
 
-### Phase A: MCQ Table View with Section Management
+### Implementation: Enhanced Hover Animations
 
-**Update**: `src/components/content/McqList.tsx`
+Add subtle scale and shadow transitions to make cards feel interactive:
 
-Add admin view toggle similar to FlashcardsTab:
-- Import `AdminViewToggle` and `ViewMode` from `@/components/admin/AdminViewToggle`
-- Add `viewMode` state for admin users
-- Render table view when `viewMode === 'table'`
+**New utility classes in `src/index.css`:**
+```css
+.card-interactive {
+  @apply transition-all duration-200 ease-out;
+}
 
-**Create**: `src/components/content/McqAdminTable.tsx`
+.card-interactive:hover {
+  @apply shadow-lg scale-[1.01] -translate-y-0.5;
+}
+```
 
-| Column | Description |
-|--------|-------------|
-| Checkbox | Multi-select |
-| # | Question number |
-| Stem | Truncated to 60 chars |
-| Difficulty | Badge (easy/medium/hard) |
-| Section | Inline dropdown selector |
-| Actions | Edit, Delete |
-
-Features:
-- Uses `ContentAdminTable` base component
-- Inline section editing via dropdown
-- Bulk delete with confirmation
-- CSV export with section columns
+**Apply to all content cards for a consistent interactive feel.**
 
 ---
 
-### Phase B: OSCE Table View with Section Management
+## Phase 2: Circular Progress Gauges (Dashboard)
 
-**Update**: `src/components/content/OsceList.tsx`
+### New Component: `CircularProgress.tsx`
 
-Add admin view toggle:
-- Import `AdminViewToggle` component
-- Add `viewMode` state
-- Conditionally render table vs card view
+A reusable SVG-based radial progress indicator with animated fill:
 
-**Create**: `src/components/content/OsceAdminTable.tsx`
+**Features:**
+- Configurable size (sm: 64px, md: 96px, lg: 128px)
+- Animated stroke-dashoffset on mount
+- Center label with percentage or custom content
+- Color theming based on value ranges (green > 70%, amber 40-70%, red < 40%)
+- Optional glow effect for 100% completion
 
-| Column | Description |
-|--------|-------------|
-| Checkbox | Multi-select |
-| # | Question number |
-| History | Truncated history text |
-| Image | Thumbnail preview |
-| Section | Inline dropdown |
-| Actions | Edit, Delete |
+**File:** `src/components/ui/circular-progress.tsx`
+
+```text
+Visual representation:
+
+   ┌─────────────┐
+   │    ╭───╮    │
+   │   ╱ 75% ╲   │  <- Animated arc with gradient
+   │  │       │  │
+   │   ╲     ╱   │
+   │    ╰───╯    │
+   │  Readiness  │  <- Label below
+   └─────────────┘
+```
+
+### Update: `DashboardStatusStrip.tsx`
+
+Replace the large text-based percentage with the new circular progress component:
+
+**Before:**
+- Text: "75%" in large font with icon box
+
+**After:**
+- Animated circular gauge with 75% arc fill
+- Color-coded (green for good, amber for moderate, red for low)
+- Subtle glow effect when at 100%
+
+### Implementation: Exam Readiness Gauge
+
+- Replace the `TrendingUp` icon box with `CircularProgress`
+- Size: `md` (96px)
+- Show percentage in center
+- Add entrance animation (scale-in + fade-in)
+
+### Implementation: Coverage Progress Ring
+
+- Convert the linear progress bar to a circular mini-ring (size `sm`)
+- Keep the linear bar as secondary indicator below
+- Add animated fill effect
 
 ---
 
-### Phase C: Clinical Cases Section Tagging
+## Phase 3: Study Streak Heat Map Calendar
 
-**Update**: `src/components/clinical-cases/ClinicalCaseAdminList.tsx`
+### New Component: `StreakHeatMap.tsx`
 
-Add bulk section assignment:
-- Multi-select checkboxes on each case card
-- Import `BulkSectionAssignment` component
-- Add selection state management
-- Show selection count and bulk actions toolbar
+A 7-week (49 days) grid showing daily study activity:
 
-Note: Clinical Cases don't need a separate table view since the card layout with image/stages is more appropriate, but they DO need section bulk tagging capability.
+**Features:**
+- 7 columns (Mon-Sun) x 7 rows (weeks)
+- Color intensity based on activity level (0-4 scale)
+- Tooltip on hover showing date and activity count
+- Current day highlighted with ring
+- Streak fire emoji for active streaks
+
+**Visual representation:**
+```text
+     M  T  W  T  F  S  S
+    ┌──┬──┬──┬──┬──┬──┬──┐
+W1  │░░│██│██│░░│██│  │  │
+W2  │██│██│██│██│██│░░│  │
+W3  │░░│██│██│██│██│██│░░│
+W4  │██│██│░░│██│██│░░│  │
+W5  │██│██│██│░░│  │  │  │
+W6  │██│██│██│██│█▓│  │  │ <- Today
+W7  │  │  │  │  │  │  │  │
+    └──┴──┴──┴──┴──┴──┴──┘
+    
+    Empty  ░ Light  █ Medium  ██ Heavy
+```
+
+**File:** `src/components/dashboard/StreakHeatMap.tsx`
+
+### Update: `DashboardStatusStrip.tsx`
+
+Add the heat map as an expandable section below the Study Streak metric:
+
+- Click on Study Streak card to expand/collapse heat map
+- Shows activity pattern at a glance
+- Encourages daily engagement through visual feedback
 
 ---
 
-### Phase D: Flashcard Section Display Verification
+## Phase 4: Progress Map Visual Enhancement
 
-**Verify**: Ensure section badges are visible in the flashcard student view
+### Update: `DashboardProgressMap.tsx`
 
-**Check**: `FlashcardsStudentView.tsx` and `FlashcardsSlideshowMode.tsx` for section filtering
+Enhance the chapter rows with:
 
-If sections are not being displayed:
-- Add section badge to flashcard card display
-- Add section filter dropdown to slideshow mode settings
+1. **Mastery stars** (1-5) based on completion quality
+2. **Color-coded status icons** with subtle pulse animation for in-progress
+3. **Mini progress arc** instead of linear bar
+4. **Hover effect** with slight lift and shadow
+
+**Visual enhancement:**
+```text
+Before:
+○ Ch. 1: Introduction         [████████░░] 80%
+
+After:
+⭐⭐⭐ Ch. 1: Introduction    ╭80%╮  →
+                              ╰──╯
+```
 
 ---
 
-## Files to Create
+## New Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/components/content/McqAdminTable.tsx` | MCQ table view with sections |
-| `src/components/content/OsceAdminTable.tsx` | OSCE table view with sections |
+| `src/components/ui/circular-progress.tsx` | Reusable circular progress gauge |
+| `src/components/dashboard/StreakHeatMap.tsx` | 7-week activity calendar |
 
 ## Files to Update
 
 | File | Changes |
 |------|---------|
-| `src/components/content/McqList.tsx` | Add view toggle, render table when selected |
-| `src/components/content/OsceList.tsx` | Add view toggle, render table when selected |
-| `src/components/clinical-cases/ClinicalCaseAdminList.tsx` | Add multi-select and bulk section assignment |
+| `src/index.css` | Add content type color tokens, `.card-interactive` utility |
+| `tailwind.config.ts` | Add new keyframes for `pulse-glow`, `progress-fill` |
+| `src/components/content/McqCard.tsx` | Add blue left border accent, hover animation |
+| `src/components/content/OsceQuestionCard.tsx` | Add teal left border accent, hover animation |
+| `src/components/study/FlashcardDeck.tsx` | Add purple left border accent, hover animation |
+| `src/components/content/MatchingQuestionCard.tsx` | Add orange left border accent, hover animation |
+| `src/components/content/EssayList.tsx` | Add indigo left border to essay cards, hover animation |
+| `src/components/clinical-cases/ClinicalCaseCard.tsx` | Add emerald left border accent, hover animation |
+| `src/components/content/VideoCard.tsx` | Add rose left border accent, hover animation |
+| `src/components/dashboard/DashboardStatusStrip.tsx` | Replace text % with CircularProgress, add StreakHeatMap toggle |
+| `src/components/dashboard/DashboardProgressMap.tsx` | Add mastery stars, enhanced hover states |
 
 ---
 
 ## Technical Details
 
-### MCQ Table Columns Configuration
+### CSS Custom Properties for Content Types
+
+Add to `:root` in `src/index.css`:
+```css
+--content-mcq: 199 89% 48%;
+--content-osce: 172 66% 50%;
+--content-flashcard: 262 83% 58%;
+--content-matching: 25 95% 53%;
+--content-essay: 240 60% 55%;
+--content-case: 158 64% 45%;
+--content-video: 350 89% 60%;
+```
+
+### Circular Progress Animation
+
+Add keyframe to `tailwind.config.ts`:
+```typescript
+"progress-fill": {
+  "0%": { strokeDashoffset: "100" },
+  "100%": { strokeDashoffset: "var(--progress-value)" }
+}
+```
+
+### Card Hover Transition
+
+The `.card-interactive` class provides:
+- 200ms ease-out transition
+- 1% scale increase on hover
+- 0.5px upward translation
+- Enhanced shadow depth
+
+### StreakHeatMap Data Structure
 
 ```typescript
-const columns: ColumnConfig<Mcq>[] = [
-  { key: 'select', header: '', className: 'w-10' },
-  { 
-    key: 'stem', 
-    header: 'Question',
-    render: (item) => (
-      <span className="line-clamp-2 max-w-[300px]">{item.stem}</span>
-    )
-  },
-  {
-    key: 'difficulty',
-    header: 'Difficulty',
-    render: (item) => (
-      <Badge variant={item.difficulty === 'hard' ? 'destructive' : 'secondary'}>
-        {item.difficulty}
-      </Badge>
-    )
-  },
-  { key: 'section', header: 'Section', className: 'w-32' },
-  { key: 'actions', header: '', className: 'w-20' },
-];
+interface DayActivity {
+  date: string; // ISO date
+  activityCount: number; // 0-10+ scale
+  level: 0 | 1 | 2 | 3 | 4; // Computed intensity
+}
 ```
 
-### Clinical Case Bulk Selection
-
-```tsx
-// Add to ClinicalCaseAdminList
-const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-// Selection controls in toolbar
-<BulkSectionAssignment
-  chapterId={chapterId}
-  selectedIds={Array.from(selectedIds)}
-  contentTable="virtual_patient_cases"
-  onComplete={clearSelection}
-/>
-```
+The heat map will query the existing `user_activity_log` or session tracking data to populate the calendar.
 
 ---
 
-## Regarding Your Flashcard Section Issue
+## Implementation Order
 
-Based on database analysis, the flashcard sections ARE being saved correctly. The flashcards in the "Arterial Disorders" chapter show proper section assignments:
+1. **CSS Foundation**: Add content type tokens and utility classes to `src/index.css`
+2. **Tailwind Config**: Add new animation keyframes
+3. **CircularProgress Component**: Create the reusable gauge component
+4. **Card Accents**: Update all content cards with left border accents and hover effects
+5. **StreakHeatMap Component**: Create the activity calendar
+6. **Dashboard Integration**: Update DashboardStatusStrip with circular progress and heat map
+7. **Progress Map Enhancement**: Add mastery indicators and improved hover states
 
-- "Arteries blood type" -> Acute Ischemia (section 1)
-- "Digital Subtraction Angiography" -> Chronic ischemia (section 2)
-- "Acute Limb Ischemia" -> Arterial trauma (section 3)
-- "Aneurysmal Diseases" -> Aneurysms, AAA (section 7)
+---
 
-If flashcards appeared in the wrong sections, possible causes:
-1. **CSV section_number mismatch**: The section_number in your CSV may not match the actual section numbers in the database
-2. **Case sensitivity**: Section names must match exactly (e.g., "Chronic ischemia" vs "Chronic Ischemia")
-3. **Section 0 edge case**: Section with section_number=0 (Vascular imaging modalities) might cause matching issues
+## Expected Visual Impact
 
-**Recommendation**: Use the Table view once implemented to verify/fix section assignments inline using the dropdown.
-
+- **Immediate Recognition**: Students can identify content types at a glance by card accent color
+- **Interactive Feel**: Cards respond to hover with subtle movement, feeling more "alive"
+- **Progress Motivation**: Circular gauges provide satisfying visual feedback on completion
+- **Daily Engagement**: Heat map encourages maintaining streaks through visual gamification
+- **Achievement Pride**: Mastery stars on chapters provide a sense of accomplishment
