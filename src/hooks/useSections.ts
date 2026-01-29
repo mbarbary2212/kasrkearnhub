@@ -297,7 +297,7 @@ export function useBulkAssignSection() {
       itemIds, 
       sectionId 
     }: { 
-      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions';
+      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions' | 'virtual_patient_cases';
       itemIds: string[];
       sectionId: string | null;
     }) => {
@@ -329,6 +329,12 @@ export function useBulkAssignSection() {
       // ROBUST: Invalidate ALL OSCE queries (matches actual key pattern)
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'chapter-osce-questions'
+      });
+
+      // ROBUST: Invalidate virtual patient cases
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && 
+          (q.queryKey[0] === 'clinical-cases' || q.queryKey[0] === 'virtual-patient-cases')
       });
     },
   });

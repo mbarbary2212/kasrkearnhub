@@ -66,6 +66,9 @@ import {
   filterMcqsByDifficulty,
   sortMcqs,
 } from './McqSearchFilter';
+import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
+import { McqAdminTable } from './McqAdminTable';
+import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -126,6 +129,14 @@ export function McqList({
   const [fileError, setFileError] = useState<string | null>(null);
   const [parseCorrections, setParseCorrections] = useState<ParseCorrection[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Admin view mode toggle (cards vs table)
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  
+  // Fetch sections for admin table
+  const { data: chapterSections = [] } = useChapterSections(chapterId ?? undefined);
+  const { data: topicSections = [] } = useTopicSections(topicId ?? undefined);
+  const sections = chapterId ? chapterSections : topicSections;
   
   // Multi-select state for bulk section assignment
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -701,6 +712,11 @@ export function McqList({
               <Plus className="h-4 w-4" />
               Add Question
             </Button>
+            {/* Admin View Toggle */}
+            <AdminViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
           </div>
         )}
       </div>

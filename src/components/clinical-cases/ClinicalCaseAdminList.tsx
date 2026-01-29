@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Tooltip,
   TooltipContent,
@@ -38,6 +39,7 @@ import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCase
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseBuilderModal } from './ClinicalCaseBuilderModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
+import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -64,12 +66,32 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
   const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
+  
+  // Multi-select state for bulk section assignment
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   // Filter by chapter if provided
   const filteredCases = (cases || []).filter(c => {
     if (chapterId) return c.chapter_id === chapterId;
     return true;
   });
+  
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredCases.map(c => c.id)));
+  }, [filteredCases]);
 
   const handleCreateCase = () => {
     setEditingCase(null);
@@ -173,7 +195,31 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Multi-select controls */}
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              checked={selectedIds.size > 0 && selectedIds.size === filteredCases.length}
+              onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+              aria-label="Select all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+            </span>
+            {selectedIds.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+                Clear
+              </Button>
+            )}
+          </div>
+          
+          <BulkSectionAssignment
+            chapterId={chapterId}
+            selectedIds={Array.from(selectedIds)}
+            contentTable="virtual_patient_cases"
+            onComplete={clearSelection}
+          />
+          
           <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
             Generate with AI
