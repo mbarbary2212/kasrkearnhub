@@ -1,378 +1,241 @@
 
-# Universal Admin Content Management with Section Tagging
+# Phase 4-6: Admin Table Views with Multi-Select, Bulk Operations, and CSV Export
 
-## Overview
-Extend the admin table view, bulk operations, CSV export/import with section tagging, and dropdown-based section assignment to **all content types** across the platform. This creates a consistent admin experience while keeping the Test tab unchanged.
-
----
-
-## Content Types Covered
-
-| Tab | Content Type | Database Table | Currently Has Table View |
-|-----|-------------|----------------|-------------------------|
-| **Resources** | Lectures/Videos | `lectures` | No (list view) |
-| **Resources** | Flashcards | `study_resources` | No (card grid) |
-| **Resources** | Mind Maps | `study_resources` | No |
-| **Resources** | Guided Explanations | `study_resources` | No |
-| **Resources** | Reference Materials | `resources` + `study_resources` | No |
-| **Practice** | MCQs | `mcqs` | Partial (has checkboxes) |
-| **Practice** | Short Answer | `essays` | No |
-| **Practice** | Clinical Cases | `clinical_cases` | No |
-| **Practice** | OSCE | `osce_questions` | Partial (has checkboxes) |
-| **Practice** | Matching | `matching_questions` | No |
-
-**Test tab**: Unchanged (uses full chapter scope, no section filtering)
+## Summary
+Create a reusable admin table component and implement table views for all content types (Flashcards, Lectures, MCQs, OSCEs, Essays, Matching Questions). Each table includes multi-select checkboxes, inline section dropdown editing, bulk delete, CSV export, and a view toggle to switch between Card/Table views.
 
 ---
 
-## Phase 1: Add Section Number to Sections Table
+## Phase 4: Reusable ContentAdminTable Component
 
-**Database Migration:**
-Add `section_number` column to sections table for easier reference:
+### New File: `src/components/admin/ContentAdminTable.tsx`
 
-```sql
-ALTER TABLE sections 
-ADD COLUMN section_number INTEGER;
-
--- Auto-populate based on display_order for existing sections
-UPDATE sections 
-SET section_number = display_order 
-WHERE section_number IS NULL;
-```
-
-**Update Section interface:**
-```typescript
-export interface Section {
-  id: string;
-  name: string;
-  section_number: number | null;  // ADD
-  chapter_id: string | null;
-  topic_id: string | null;
-  display_order: number;
-  created_at: string;
-}
-```
-
----
-
-## Phase 2: Dynamic Template Schema System
-
-**File: `src/components/admin/HelpTemplatesTab.tsx`**
-
-Replace hardcoded templates with a centralized schema that auto-generates templates:
-
-```typescript
-const TEMPLATE_SCHEMAS = {
-  flashcard: {
-    columns: ['title', 'front', 'back', 'section_name', 'section_number'],
-    required: ['title', 'front', 'back'],
-    optional: ['section_name', 'section_number'],
-    examples: [
-      ['Card Title', 'Question text', 'Answer text', 'Heart Basics', '1']
-    ],
-  },
-  mcq: {
-    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 
-              'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
-    required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
-    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
-    examples: [...],
-  },
-  // ... all other types
-};
-
-function generateTemplateFromSchema(templateId: string): string {
-  const schema = TEMPLATE_SCHEMAS[templateId];
-  // Auto-generate CSV/XLSX from schema
-}
-```
-
-**Benefits:**
-- Single source of truth for column definitions
-- Templates auto-update when schema changes
-- Adding section tagging only requires updating TEMPLATE_SCHEMAS
-
----
-
-## Phase 3: Section-Aware Bulk Upload
-
-**All bulk upload modals will:**
-1. Accept `section_name` OR `section_number` as optional columns
-2. Use dropdown for section selection (not freehand text)
-3. Resolve names/numbers to section IDs before import
-
-**Section Resolution Logic:**
-```typescript
-function resolveSectionId(
-  sections: Section[],
-  sectionName?: string,
-  sectionNumber?: number
-): string | null {
-  if (sectionNumber) {
-    const match = sections.find(s => s.section_number === sectionNumber);
-    if (match) return match.id;
-  }
-  if (sectionName) {
-    const match = sections.find(s => 
-      s.name.toLowerCase().trim() === sectionName.toLowerCase().trim()
-    );
-    if (match) return match.id;
-  }
-  return null;
-}
-```
-
-**Files to update:**
-- `StudyBulkUploadModal.tsx` - flashcards, tables, algorithms, exam tips
-- `McqList.tsx` (bulk upload section) - MCQs
-- `OsceBulkUploadModal.tsx` - OSCE questions
-- `MatchingQuestionBulkUploadModal.tsx` - Matching questions
-
----
-
-## Phase 4: Reusable Admin Table Component
-
-**New File: `src/components/admin/ContentAdminTable.tsx`**
-
-A generic, reusable table component for all content types:
-
-```typescript
-interface ContentAdminTableProps<T> {
-  data: T[];
-  columns: ColumnDef<T>[];
-  chapterId?: string;
-  topicId?: string;
-  contentTable: ContentTableName;
-  onEdit?: (item: T) => void;
-  onDelete?: (item: T) => void;
-  onExportCsv?: () => void;
-  sections?: Section[];
-}
-```
+A generic table component that works with any content type:
 
 **Features:**
-- Checkbox column for multi-select
-- Select All / Clear selection
-- Section badge column with dropdown for inline editing
-- Actions column (Edit, Delete)
-- CSV Export button
-- Integrates with `BulkSectionAssignment` and bulk delete
+- Header row with Select All checkbox
+- Configurable columns via props
+- Section badge column with inline dropdown for quick section assignment
+- Actions column (Edit, Delete buttons)
+- Integration with `BulkSectionAssignment` component
+- Bulk Delete button using `useBulkDeleteContent` hook
+- CSV Export button using `exportToCsv` utility
 
-**Column structure:**
-```text
-+----------+---------------+------------------+-----------+---------+
-| Checkbox | Title/Stem    | Preview          | Section   | Actions |
-+----------+---------------+------------------+-----------+---------+
+**Props Interface:**
+```typescript
+interface ContentAdminTableProps<T extends { id: string }> {
+  data: T[];
+  columns: {
+    key: keyof T | 'actions';
+    header: string;
+    render?: (item: T) => React.ReactNode;
+    className?: string;
+  }[];
+  contentTable: ContentTableName;
+  chapterId?: string;
+  topicId?: string;
+  moduleId?: string;
+  onEdit?: (item: T) => void;
+  onDelete?: (item: T) => void;
+  sections?: Section[];
+  csvExportConfig?: {
+    filename: string;
+    columns: ExportColumn<T>[];
+  };
+}
 ```
 
 ---
 
-## Phase 5: Section Dropdown in Edit Forms
+## Phase 5: Verify Section Dropdowns in Edit Forms
 
-**All edit modals/forms will use `SectionSelector` dropdown:**
+All edit modals already include `SectionSelector`:
+- `McqFormModal.tsx` - line 22, uses `SectionSelector`
+- `OsceFormModal.tsx` - line 12, uses `SectionSelector`
+- `MatchingQuestionFormModal.tsx` - line 29, uses `SectionSelector`
+- `LectureList.tsx` (inline edit) - line 35, uses `SectionSelector`
+- `StudyResourceFormModal.tsx` - already implemented
 
-Already implemented in:
-- `LectureList.tsx` (edit modal)
-- `StudyResourceFormModal.tsx`
-
-Need to add/verify in:
-- `McqFormModal.tsx`
-- `OsceFormModal.tsx`
-- `EssayFormModal.tsx` (if exists, or add)
-- `MatchingQuestionFormModal.tsx`
-- `ClinicalCaseFormModal.tsx`
-
-The SectionSelector already uses a dropdown with chapter sections - no freehand text allowed.
+**Status: Complete - No changes needed**
 
 ---
 
-## Phase 6: Content-Specific Table Views
+## Phase 6: Content-Specific Admin Table Views
 
 ### 6A: Flashcards Admin Table
-**File: `src/components/study/FlashcardsAdminTable.tsx`**
+**New File: `src/components/study/FlashcardsAdminTable.tsx`**
 
-| Checkbox | Title | Front (truncated) | Back (truncated) | Section | Actions |
-|----------|-------|-------------------|------------------|---------|---------|
+| Column | Description |
+|--------|-------------|
+| Checkbox | Multi-select |
+| Title | Deck title |
+| Front | Question text (truncated to 50 chars) |
+| Back | Answer text (truncated to 50 chars) |
+| Section | Dropdown selector |
+| Actions | Edit, Delete |
 
-### 6B: MCQs Table Enhancement
-**File: `src/components/content/McqList.tsx`**
+**Integration:** Update `FlashcardsTab.tsx` to add view toggle for admins
 
-Already has checkboxes - add:
-- Table view toggle (Grid vs Table)
-- CSV export with section_name column
-- Inline section dropdown
-
-### 6C: OSCE Table Enhancement
-**File: `src/components/content/OsceList.tsx`**
-
-Already has checkboxes - add:
-- Table view toggle
-- CSV export
-- Inline section dropdown
-
-### 6D: Lectures Admin Table
+### 6B: Lectures Admin Table  
 **New File: `src/components/content/LecturesAdminTable.tsx`**
 
-| Checkbox | Title | Duration | Video Source | Section | Actions |
-|----------|-------|----------|--------------|---------|---------|
+| Column | Description |
+|--------|-------------|
+| Checkbox | Multi-select |
+| Title | Lecture title |
+| Duration | Video length |
+| Source | YouTube/GDrive icon |
+| Section | Dropdown selector |
+| Actions | Edit, Delete |
+
+**Integration:** Update `LectureList.tsx` or create wrapper with toggle
+
+### 6C: MCQs Admin Table Enhancement
+**Update: `src/components/content/McqList.tsx`**
+
+Add view toggle button in admin controls:
+- Card View (existing)
+- Table View (new)
+
+New table columns:
+| Column | Description |
+|--------|-------------|
+| Checkbox | Already exists |
+| # | Question number |
+| Stem | Truncated question text |
+| Difficulty | Badge (easy/medium/hard) |
+| Section | Inline dropdown |
+| Actions | Edit, Delete |
+
+### 6D: OSCE Admin Table Enhancement
+**Update: `src/components/content/OsceList.tsx`**
+
+Similar to MCQ - add view toggle:
+| Column | Description |
+|--------|-------------|
+| Checkbox | Already exists |
+| # | Question number |
+| History | Truncated history text |
+| Image | Thumbnail preview |
+| Section | Inline dropdown |
+| Actions | Edit, Delete |
 
 ### 6E: Essays/Short Answer Admin Table
 **New File: `src/components/content/EssaysAdminTable.tsx`**
 
-| Checkbox | Title | Question (truncated) | Section | Actions |
-|----------|-------|---------------------|---------|---------|
+| Column | Description |
+|--------|-------------|
+| Checkbox | Multi-select |
+| Title | Question title |
+| Question | Truncated text |
+| Has Answer | Check/X icon |
+| Section | Dropdown selector |
+| Actions | Edit, Delete |
+
+**Integration:** Update `EssayList.tsx` with toggle
 
 ### 6F: Matching Questions Admin Table
 **New File: `src/components/content/MatchingAdminTable.tsx`**
 
-| Checkbox | Title | Pairs Count | Section | Actions |
-|----------|-------|-------------|---------|---------|
+| Column | Description |
+|--------|-------------|
+| Checkbox | Multi-select |
+| Instruction | Truncated text |
+| Pairs | Count of items |
+| Difficulty | Badge |
+| Section | Dropdown selector |
+| Actions | Edit, Delete |
+
+**Integration:** Update `MatchingQuestionList.tsx` with toggle
 
 ---
 
-## Phase 7: Bulk Delete Hook
+## Phase 9: View Toggle Component
 
-**File: `src/hooks/useContentBulkOperations.ts`**
+### New File: `src/components/admin/AdminViewToggle.tsx`
 
-Generic bulk operations hook for all content types:
-
+Reusable toggle button group:
 ```typescript
-export function useBulkDeleteContent(tableName: ContentTableName) {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ ids }: { ids: string[] }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase
-        .from(tableName)
-        .update({ is_deleted: true, updated_by: userData.user?.id })
-        .in('id', ids);
-      if (error) throw error;
-      return { ids };
-    },
-    onSuccess: () => {
-      // Invalidate relevant queries based on table name
-      queryClient.invalidateQueries({ 
-        predicate: (q) => shouldInvalidate(q, tableName) 
-      });
-    },
-  });
+interface AdminViewToggleProps {
+  viewMode: 'cards' | 'table';
+  onViewModeChange: (mode: 'cards' | 'table') => void;
 }
 ```
 
----
+Renders two buttons:
+- Cards (LayoutGrid icon)
+- Table (List icon)
 
-## Phase 8: CSV Export Functionality
-
-**File: `src/lib/csvExport.ts`**
-
-Generic CSV export utility:
-
-```typescript
-export async function exportContentToCsv<T>(
-  items: T[],
-  columns: ExportColumn<T>[],
-  filename: string,
-  sections?: Section[]
-) {
-  // Generate CSV with section names resolved
-  // Download as file
-}
-```
-
-**Export format matches import template for round-trip editing:**
-- Flashcards: `title,front,back,section_name,section_number`
-- MCQs: `stem,choiceA,...,section_name,section_number`
-- OSCE: `image_filename,history_text,...,section_name,section_number`
+Used by all list components when `isAdmin` is true.
 
 ---
 
-## Phase 9: View Toggle in Tab Components
+## Files to Create
 
-Each content tab gets an admin view toggle:
+| File | Purpose |
+|------|---------|
+| `src/components/admin/ContentAdminTable.tsx` | Reusable table component |
+| `src/components/admin/AdminViewToggle.tsx` | View mode toggle buttons |
+| `src/components/study/FlashcardsAdminTable.tsx` | Flashcard table view |
+| `src/components/content/LecturesAdminTable.tsx` | Lecture table view |
+| `src/components/content/EssaysAdminTable.tsx` | Essay table view |
+| `src/components/content/MatchingAdminTable.tsx` | Matching question table view |
 
+## Files to Update
+
+| File | Changes |
+|------|---------|
+| `src/components/study/FlashcardsTab.tsx` | Add view toggle, render table when selected |
+| `src/components/content/LectureList.tsx` | Add view toggle, render table when selected |
+| `src/components/content/McqList.tsx` | Add view toggle, create inline table view |
+| `src/components/content/OsceList.tsx` | Add view toggle, create inline table view |
+| `src/components/content/EssayList.tsx` | Add view toggle, render table when selected |
+| `src/components/content/MatchingQuestionList.tsx` | Add view toggle, render table when selected |
+
+---
+
+## Implementation Order
+
+1. Create `AdminViewToggle.tsx` (simple, no dependencies)
+2. Create `ContentAdminTable.tsx` (core reusable component)
+3. Create individual table views (FlashcardsAdminTable, LecturesAdminTable, etc.)
+4. Update list components to add view toggle and conditionally render table views
+5. Add CSV export buttons to each table view
+6. Test multi-select, bulk delete, and section assignment
+
+---
+
+## Technical Details
+
+### Inline Section Dropdown
+Each table row will have a section cell that renders a compact dropdown:
 ```tsx
-{isAdmin && (
-  <div className="flex gap-2 mb-4">
-    <Button 
-      variant={viewMode === 'cards' ? 'default' : 'outline'} 
-      size="sm"
-      onClick={() => setViewMode('cards')}
-    >
-      <Grid className="w-4 h-4 mr-1" /> Cards
-    </Button>
-    <Button 
-      variant={viewMode === 'table' ? 'default' : 'outline'} 
-      size="sm"
-      onClick={() => setViewMode('table')}
-    >
-      <List className="w-4 h-4 mr-1" /> Table
-    </Button>
-  </div>
-)}
+<Select
+  value={item.section_id || 'unassigned'}
+  onValueChange={(v) => updateSection(item.id, v)}
+>
+  <SelectTrigger className="h-8 w-32">
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="unassigned">Unassigned</SelectItem>
+    {sections.map(s => (
+      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 ```
 
----
+### Bulk Delete Flow
+1. User selects items via checkboxes
+2. "Delete Selected" button appears when `selectedIds.size > 0`
+3. Confirmation dialog shows count of items
+4. On confirm, calls `useBulkDeleteContent` hook
+5. UI refreshes via query invalidation
 
-## Phase 10: Update useBulkCreateStudyResources
-
-**File: `src/hooks/useStudyResources.ts`**
-
-Fix the missing `section_id` in bulk create:
-
-```typescript
-const resourcesWithUser = resources.map((r) => ({
-  module_id: r.module_id,
-  chapter_id: r.chapter_id,
-  title: r.title,
-  resource_type: r.resource_type,
-  content: r.content,
-  section_id: r.section_id || null,  // ADD THIS
-  created_by: user?.id,
-}));
-```
-
----
-
-## Files Summary
-
-| Phase | File | Action |
-|-------|------|--------|
-| 1 | New migration | Add section_number to sections table |
-| 1 | `src/hooks/useSections.ts` | Update Section interface |
-| 2 | `src/components/admin/HelpTemplatesTab.tsx` | Implement TEMPLATE_SCHEMAS, add missing handlers |
-| 3 | `src/components/study/StudyBulkUploadModal.tsx` | Add section_name/section_number parsing |
-| 3 | MCQ/OSCE/Matching bulk modals | Add section column support |
-| 4 | `src/components/admin/ContentAdminTable.tsx` | New reusable table component |
-| 5 | Various form modals | Ensure SectionSelector is used |
-| 6 | Multiple new table components | FlashcardsAdminTable, LecturesAdminTable, etc. |
-| 7 | `src/hooks/useContentBulkOperations.ts` | New bulk delete hook |
-| 8 | `src/lib/csvExport.ts` | New CSV export utility |
-| 9 | Tab components | Add view toggle for admins |
-| 10 | `src/hooks/useStudyResources.ts` | Fix section_id in bulk create |
-
----
-
-## Technical Notes
-
-### Section Resolution Priority
-1. If `section_number` provided → match by number
-2. Else if `section_name` provided → match by name (case-insensitive)
-3. Else → null (unassigned)
-
-### Test Tab Unchanged
-The Test Yourself section always uses full chapter/topic scope regardless of section filters. No changes needed.
-
-### Dropdown-Only Section Tagging
-All section assignment UI uses the `SectionSelector` dropdown component:
-- In edit modals/forms
-- In table inline editing
-- In bulk assignment popover
-
-No freehand text entry for section names - ensures consistency.
-
-### CSV Round-Trip Workflow
-1. Admin exports existing content to CSV
-2. Edits in Excel/Google Sheets
-3. Re-imports with section assignments
-4. Same format for export and import
+### CSV Export
+Each table has an "Export CSV" button that:
+1. Takes current filtered data
+2. Maps through configured columns
+3. Resolves section IDs to names using `sections` array
+4. Downloads file via `exportToCsv` utility
