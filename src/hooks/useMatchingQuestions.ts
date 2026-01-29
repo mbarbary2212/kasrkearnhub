@@ -14,6 +14,7 @@ export interface MatchingQuestion {
   module_id: string;
   chapter_id: string | null;
   topic_id: string | null;
+  section_id: string | null;
   contributing_department_id: string | null;
   instruction: string;
   column_a_items: MatchItem[];
@@ -47,6 +48,7 @@ function mapDbRowToMatchingQuestion(row: Record<string, unknown>): MatchingQuest
     module_id: row.module_id as string,
     chapter_id: row.chapter_id as string | null,
     topic_id: row.topic_id as string | null,
+    section_id: row.section_id as string | null,
     contributing_department_id: row.contributing_department_id as string | null,
     instruction: row.instruction as string,
     column_a_items: row.column_a_items as MatchItem[],

@@ -7,6 +7,8 @@ import { Plus, Upload, Link2, Trash2, RotateCcw } from 'lucide-react';
 import { MatchingQuestionCard } from './MatchingQuestionCard';
 import { MatchingQuestionFormModal } from './MatchingQuestionFormModal';
 import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadModal';
+import { MatchingAdminTable } from './MatchingAdminTable';
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { 
   UnifiedQuestionFilter,
   UnifiedFilterState,
@@ -85,6 +87,7 @@ export function MatchingQuestionList({
   // Unified filter state
   const [filters, setFilters] = useState<UnifiedFilterState>(DEFAULT_UNIFIED_FILTER);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
 
   const deleteMutation = useDeleteMatchingQuestion();
   const restoreMutation = useRestoreMatchingQuestion();
@@ -278,22 +281,27 @@ export function MatchingQuestionList({
       {dialog}
       {/* Admin controls */}
       {showAddControls && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <Button
-            onClick={() =>
-              guard(() => {
-                setEditingQuestion(null);
-                setShowAddModal(true);
-              })
-            }
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Question
-          </Button>
-          <Button variant="outline" onClick={() => guard(() => setShowBulkModal(true))}>
-            <Upload className="h-4 w-4 mr-1" />
-            Bulk Import
-          </Button>
+        <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={() =>
+                guard(() => {
+                  setEditingQuestion(null);
+                  setShowAddModal(true);
+                })
+              }
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Question
+            </Button>
+            <Button variant="outline" onClick={() => guard(() => setShowBulkModal(true))}>
+              <Upload className="h-4 w-4 mr-1" />
+              Bulk Import
+            </Button>
+          </div>
+          {isAdmin && (
+            <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+          )}
         </div>
       )}
 
@@ -345,43 +353,54 @@ export function MatchingQuestionList({
       )}
 
       {/* Questions list */}
-      <div className="space-y-4">
-        {displayQuestions.map((question, index) => {
-          const isDeleted = question.is_deleted;
-          return (
-            <div key={question.id} className={cn(isDeleted && "opacity-60")}>
-              {isDeleted ? (
-                <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="destructive" className="text-xs">Deleted</Badge>
-                    <span className="line-through text-muted-foreground">{question.instruction}</span>
+      {isAdmin && adminViewMode === 'table' ? (
+        <MatchingAdminTable
+          questions={displayQuestions.filter(q => !q.is_deleted)}
+          chapterId={chapterId}
+          topicId={topicId}
+          moduleId={moduleId}
+          onEdit={handleEdit}
+          onDelete={(q) => setDeleteId(q.id)}
+        />
+      ) : (
+        <div className="space-y-4">
+          {displayQuestions.map((question, index) => {
+            const isDeleted = question.is_deleted;
+            return (
+              <div key={question.id} className={cn(isDeleted && "opacity-60")}>
+                {isDeleted ? (
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="destructive" className="text-xs">Deleted</Badge>
+                      <span className="line-through text-muted-foreground">{question.instruction}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRestore(question)}
+                      className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Restore
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRestore(question)}
-                    className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Restore
-                  </Button>
-                </div>
-              ) : (
-                <MatchingQuestionCard
-                  question={question}
-                  index={index}
-                  isAdmin={isAdmin}
-                  chapterId={chapterId || undefined}
-                  onEdit={() => handleEdit(question)}
-                  onDelete={() => setDeleteId(question.id)}
-                  isExpanded={expandedId === question.id}
-                  onToggleExpand={handleToggleExpand}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+                ) : (
+                  <MatchingQuestionCard
+                    question={question}
+                    index={index}
+                    isAdmin={isAdmin}
+                    chapterId={chapterId || undefined}
+                    onEdit={() => handleEdit(question)}
+                    onDelete={() => setDeleteId(question.id)}
+                    isExpanded={expandedId === question.id}
+                    onToggleExpand={handleToggleExpand}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modals */}
       <MatchingQuestionFormModal

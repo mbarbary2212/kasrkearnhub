@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
+import { EssaysAdminTable } from './EssaysAdminTable';
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { cn } from '@/lib/utils';
 import { useContentDelete } from '@/hooks/useContentDelete';
 
@@ -53,7 +55,9 @@ export default function EssayList({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showMarkedOnly, setShowMarkedOnly] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+  const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
 
+  const isAdmin = canEdit || canDelete;
   const { doRestore } = useContentDelete('essays', moduleId || '', chapterId);
 
   const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
@@ -182,9 +186,21 @@ export default function EssayList({
             </Button>
           )}
         </div>
+        
+        {/* Admin view toggle */}
+        {isAdmin && (
+          <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+        )}
       </div>
 
-      {displayEssays.length === 0 && filteredEssays.length === 0 ? (
+      {/* Admin Table View */}
+      {isAdmin && adminViewMode === 'table' ? (
+        <EssaysAdminTable
+          essays={displayEssays.filter(e => !e.is_deleted)}
+          chapterId={chapterId}
+          moduleId={moduleId}
+        />
+      ) : displayEssays.length === 0 && filteredEssays.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
             {showMarkedOnly 
