@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, Clock, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, ChevronRight, Star } from 'lucide-react';
+import { CircularProgress } from '@/components/ui/circular-progress';
+import { cn } from '@/lib/utils';
 import type { ChapterStatus } from '@/hooks/useStudentDashboard';
 
 interface DashboardProgressMapProps {
@@ -15,20 +16,34 @@ const statusConfig = {
     label: 'Completed',
     badgeClass: 'bg-accent/10 text-accent border-accent/20',
     iconClass: 'text-accent',
+    bgClass: 'bg-accent/5',
   },
   in_progress: {
     icon: Clock,
     label: 'In Progress',
     badgeClass: 'bg-primary/10 text-primary border-primary/20',
-    iconClass: 'text-primary',
+    iconClass: 'text-primary animate-pulse',
+    bgClass: 'bg-primary/5',
   },
   not_started: {
     icon: Circle,
     label: 'Not Started',
     badgeClass: 'bg-muted text-muted-foreground border-border',
     iconClass: 'text-muted-foreground',
+    bgClass: '',
   },
 };
+
+// Calculate mastery stars based on progress percentage
+function getMasteryStars(progress: number, status: 'completed' | 'in_progress' | 'not_started'): number {
+  if (status === 'not_started') return 0;
+  if (status === 'completed') return 5;
+  if (progress >= 80) return 4;
+  if (progress >= 60) return 3;
+  if (progress >= 40) return 2;
+  if (progress >= 20) return 1;
+  return 0;
+}
 
 export function DashboardProgressMap({ chapters, onChapterClick }: DashboardProgressMapProps) {
   // Group chapters by module
@@ -98,37 +113,57 @@ interface ChapterRowProps {
 function ChapterRow({ chapter, onClick }: ChapterRowProps) {
   const config = statusConfig[chapter.status];
   const Icon = config.icon;
+  const masteryStars = getMasteryStars(chapter.progress, chapter.status);
 
   return (
     <div
-      className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors group"
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all group card-interactive",
+        config.bgClass || "bg-muted/30 hover:bg-muted/60"
+      )}
       onClick={onClick}
     >
+      {/* Status Icon */}
       <div className="flex-shrink-0">
-        <Icon className={`w-5 h-5 ${config.iconClass}`} />
+        <Icon className={cn("w-5 h-5", config.iconClass)} />
       </div>
       
+      {/* Chapter Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {chapter.bookLabel && (
             <span className="text-xs text-muted-foreground">{chapter.bookLabel}</span>
           )}
           <span className="text-xs text-muted-foreground">Ch. {chapter.chapterNumber}</span>
+          
+          {/* Mastery Stars */}
+          {masteryStars > 0 && (
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: masteryStars }).map((_, i) => (
+                <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+              ))}
+            </div>
+          )}
         </div>
         <p className="font-medium text-sm text-foreground truncate">{chapter.title}</p>
       </div>
 
+      {/* Mini Circular Progress for in-progress chapters */}
       {chapter.status === 'in_progress' && chapter.totalItems > 0 && (
-        <div className="flex-shrink-0 w-24">
-          <Progress value={chapter.progress} className="h-1.5" />
-          <p className="text-xs text-muted-foreground text-right mt-1">
-            {chapter.progress}%
-          </p>
+        <div className="flex-shrink-0">
+          <CircularProgress 
+            value={chapter.progress} 
+            size="sm" 
+            showLabel={true}
+            strokeWidth={6}
+          />
         </div>
       )}
 
+      {/* Completed Badge */}
       {chapter.status === 'completed' && (
-        <Badge variant="outline" className={config.badgeClass}>
+        <Badge variant="outline" className={cn(config.badgeClass, "gap-1")}>
+          <CheckCircle2 className="w-3 h-3" />
           Done
         </Badge>
       )}

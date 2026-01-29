@@ -66,7 +66,7 @@ export default function VideoCard({
   return (
     <>
       <Card 
-        className={`overflow-hidden transition-shadow ${isValid ? 'cursor-pointer hover:shadow-lg' : ''}`}
+        className={`overflow-hidden transition-shadow border-l-4 border-l-content-video card-interactive ${isValid ? 'cursor-pointer hover:shadow-lg' : ''}`}
         onClick={handleClick}
       >
         {/* Thumbnail with play overlay */}
