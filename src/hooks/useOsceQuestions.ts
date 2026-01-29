@@ -7,6 +7,7 @@ export interface OsceQuestion {
   id: string;
   module_id: string;
   chapter_id: string | null;
+  section_id: string | null;
   image_url: string | null;
   history_text: string;
   statement_1: string;
