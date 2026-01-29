@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SectionSelector } from '@/components/sections';
+import { LecturesAdminTable } from './LecturesAdminTable';
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 
 interface Lecture {
   id: string;
@@ -118,6 +120,7 @@ export function LectureList({
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
+  const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
@@ -192,8 +195,125 @@ export function LectureList({
   const isVimeoVideo = isVimeoUrl(normalizedVideoUrl);
   const embedUrl = isVimeoVideo ? null : buildAutoplayUrl(videoUrl);
 
+  // Admin Table View
+  if (canManage && adminViewMode === 'table') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+        </div>
+        <LecturesAdminTable
+          lectures={lectures}
+          chapterId={chapterId}
+          moduleId={moduleId}
+          onEdit={handleOpenEdit}
+          onDelete={(lecture) => askDelete(lecture.id, lecture.title)}
+        />
+        
+        {/* Edit Modal */}
+        <Dialog open={!!editLecture} onOpenChange={(open) => !open && setEditLecture(null)}>
+          <DialogContent className="z-[99999]">
+            <DialogHeader>
+              <DialogTitle>Edit Lecture</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Lecture title"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description (optional)</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Lecture description"
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-video-url">Video URL</Label>
+                <Input
+                  id="edit-video-url"
+                  value={editVideoUrl}
+                  onChange={(e) => setEditVideoUrl(e.target.value)}
+                  placeholder="YouTube or Google Drive link (or paste iframe code)"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supports YouTube and Google Drive. Vimeo support coming soon.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="edit-duration">Duration (optional)</Label>
+                <Input
+                  id="edit-duration"
+                  value={editDuration}
+                  onChange={(e) => setEditDuration(e.target.value)}
+                  placeholder="e.g., 15:30"
+                  className="mt-1"
+                />
+              </div>
+              <SectionSelector
+                chapterId={chapterId}
+                value={editSectionId}
+                onChange={setEditSectionId}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={isEditSaving}>
+                {isEditSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirmation */}
+        <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && cancelDelete()}>
+          <AlertDialogContent className="z-[99999]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete lecture?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <span className="font-medium text-foreground">"{pendingItem?.title}"</span>? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  doDelete();
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
   return (
     <>
+      {/* Admin View Toggle */}
+      {canManage && (
+        <div className="flex justify-end mb-4">
+          <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+        </div>
+      )}
       <div className="space-y-2">
         {lectures.map((lecture) => {
           const lectureVideoUrl = lecture.video_url || lecture.videoUrl || null;

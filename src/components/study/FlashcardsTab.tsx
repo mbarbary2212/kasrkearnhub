@@ -1,7 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { FlashcardsStudentView } from './FlashcardsStudentView';
 import { FlashcardsSlideshowMode } from './FlashcardsSlideshowMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
+import { FlashcardsAdminTable } from './FlashcardsAdminTable';
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { StudyResource } from '@/hooks/useStudyResources';
 import { useFlashcardStars } from '@/hooks/useFlashcardStars';
@@ -22,10 +24,12 @@ interface FlashcardsTabProps {
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
   chapterId?: string;
+  moduleId?: string;
 }
 
-export function FlashcardsTab({ resources, canManage, onEdit, chapterId }: FlashcardsTabProps) {
+export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleId }: FlashcardsTabProps) {
   const { isAdmin, isTeacher } = useAuthContext();
+  const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
   
   // Synced stars across devices
   const { starredIds, toggleStar } = useFlashcardStars(chapterId);
@@ -66,11 +70,25 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId }: Flash
 
   if (showAdminView) {
     return (
-      <FlashcardsAdminGrid
-        resources={resources ?? []}
-        canManage={canManage}
-        onEdit={onEdit}
-      />
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+        </div>
+        {adminViewMode === 'table' ? (
+          <FlashcardsAdminTable
+            resources={resources ?? []}
+            chapterId={chapterId}
+            moduleId={moduleId}
+            onEdit={onEdit}
+          />
+        ) : (
+          <FlashcardsAdminGrid
+            resources={resources ?? []}
+            canManage={canManage}
+            onEdit={onEdit}
+          />
+        )}
+      </div>
     );
   }
 
