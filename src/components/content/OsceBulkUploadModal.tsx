@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import { logActivity } from '@/lib/activityLog';
+import { resolveSectionId } from '@/lib/csvExport';
+import { useChapterSections } from '@/hooks/useSections';
 
 interface OsceBulkUploadModalProps {
   open: boolean;
@@ -44,6 +46,8 @@ interface ParsedRow {
   statements: string[];
   answers: boolean[];
   explanations: string[];
+  sectionName?: string;
+  sectionNumber?: number;
   error?: string;
   hasImage?: boolean;
 }
@@ -65,6 +69,7 @@ export function OsceBulkUploadModal({
   const auth = useAuthContext();
   const queryClient = useQueryClient();
   const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
+  const { data: sections = [] } = useChapterSections(chapterId);
 
   const [step, setStep] = useState<'excel' | 'images' | 'review' | 'importing'>('excel');
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -158,6 +163,11 @@ export function OsceBulkUploadModal({
       if (imageFilename) {
         requiredImages.add(imageFilename);
       }
+      
+      // Extract section info
+      const sectionName = String(row['section_name'] || row['sectionname'] || row['section'] || '').trim() || undefined;
+      const sectionNumRaw = String(row['section_number'] || row['sectionnumber'] || row['section_num'] || '').trim();
+      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
 
       parsedRows.push({
         rowNumber,
@@ -166,6 +176,8 @@ export function OsceBulkUploadModal({
         statements,
         answers,
         explanations,
+        sectionName,
+        sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined,
         error: errors.length > 0 ? errors.join('; ') : undefined,
         hasImage: !!imageFilename,
       });
@@ -314,10 +326,14 @@ export function OsceBulkUploadModal({
             }
           }
 
+          // Resolve section ID from parsed section info
+          const sectionId = resolveSectionId(sections, row.sectionName, row.sectionNumber);
+          
           // Insert OSCE question (image_url can be null)
           const { error: insertError } = await supabase.from('osce_questions').insert({
             module_id: moduleId,
             chapter_id: chapterId || null,
+            section_id: sectionId,
             image_url: publicUrl,
             history_text: row.historyText,
             statement_1: row.statements[0],
@@ -395,6 +411,8 @@ export function OsceBulkUploadModal({
       'explanation_3',
       'explanation_4',
       'explanation_5',
+      'section_name',
+      'section_number',
     ];
     
     // Example with image
@@ -416,6 +434,8 @@ export function OsceBulkUploadModal({
       'Troponin is a sensitive marker for myocardial damage',
       'Beta-blockers are actually indicated unless contraindicated',
       'Aspirin reduces mortality in acute coronary syndrome',
+      'Cardiology Basics', // section_name
+      '1', // section_number
     ];
 
     // Example without image (image_filename is optional)
@@ -437,6 +457,8 @@ export function OsceBulkUploadModal({
       'Reticulocytes indicate bone marrow response',
       'LDH can be elevated in hemolysis',
       'Ferritin reflects total body iron stores',
+      '', // section_name (optional)
+      '', // section_number (optional)
     ];
 
     const data = [headers, exampleRowWithImage, exampleRowWithoutImage];
@@ -460,6 +482,8 @@ export function OsceBulkUploadModal({
       { wch: 40 }, // explanation_3
       { wch: 40 }, // explanation_4
       { wch: 40 }, // explanation_5
+      { wch: 20 }, // section_name
+      { wch: 15 }, // section_number
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'OSCE Questions');

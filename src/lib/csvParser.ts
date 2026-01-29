@@ -165,6 +165,15 @@ const COLUMN_MAPPINGS: Record<string, string> = {
   'difficulty': 'difficulty',
   'level': 'difficulty',
   'diff': 'difficulty',
+  
+  // Section variations
+  'section_name': 'section_name',
+  'sectionname': 'section_name',
+  'section': 'section_name',
+  'section_number': 'section_number',
+  'sectionnumber': 'section_number',
+  'section_num': 'section_number',
+  'sectionnum': 'section_number',
 };
 
 export interface ParseCorrection {
@@ -176,8 +185,15 @@ export interface ParseCorrection {
   message: string;
 }
 
+export interface McqParsedRow {
+  mcq: McqFormData;
+  sectionName?: string;
+  sectionNumber?: number;
+}
+
 export interface ParseResult {
   mcqs: McqFormData[];
+  parsedRows: McqParsedRow[];
   corrections: ParseCorrection[];
   errors: string[];
   columnMapping: Record<string, string>;
@@ -393,7 +409,7 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
   const errors: string[] = [];
   
   if (lines.length === 0) {
-    return { mcqs: [], corrections: [], errors: ['CSV file is empty'], columnMapping: {} };
+    return { mcqs: [], parsedRows: [], corrections: [], errors: ['CSV file is empty'], columnMapping: {} };
   }
   
   const hasHeader = isHeaderRow(lines[0]);
@@ -428,6 +444,7 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
   }
   
   const mcqs: McqFormData[] = [];
+  const parsedRows: McqParsedRow[] = [];
   
   for (let i = startIndex; i < lines.length; i++) {
     const parts = parseCSVLine(lines[i]);
@@ -488,23 +505,37 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
         ? difficultyRaw as 'easy' | 'medium' | 'hard' 
         : null;
     
-    mcqs.push({
+    // Extract section info
+    const sectionName = getValue('section_name') || undefined;
+    const sectionNumberRaw = getValue('section_number');
+    const sectionNumber = sectionNumberRaw ? parseInt(sectionNumberRaw, 10) : undefined;
+    
+    const mcq: McqFormData = {
       stem,
       choices,
       correct_key: correctKey,
       explanation,
       difficulty,
+    };
+    
+    mcqs.push(mcq);
+    parsedRows.push({ 
+      mcq, 
+      sectionName: sectionName || undefined,
+      sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined,
     });
   }
   
   // Validate all parsed MCQs
   const validatedMcqs: McqFormData[] = [];
-  for (let i = 0; i < mcqs.length; i++) {
-    const mcq = mcqs[i];
+  const validatedParsedRows: McqParsedRow[] = [];
+  for (let i = 0; i < parsedRows.length; i++) {
+    const { mcq, sectionName, sectionNumber } = parsedRows[i];
     const result = McqFormSchema.safeParse(mcq);
     
     if (result.success) {
       validatedMcqs.push(mcq);
+      validatedParsedRows.push({ mcq, sectionName, sectionNumber });
     } else {
       const errorMessages = result.error.errors.map(e => e.message).join(', ');
       corrections.push({
@@ -518,6 +549,7 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
 
   return { 
     mcqs: validatedMcqs, 
+    parsedRows: validatedParsedRows,
     corrections, 
     errors,
     columnMapping: columnNameMap,
@@ -591,10 +623,26 @@ const MATCHING_COLUMN_MAPPINGS: Record<string, string> = {
   'difficulty': 'difficulty',
   'show_explanation': 'show_explanation',
   'showexplanation': 'show_explanation',
+  
+  // Section variations
+  'section_name': 'section_name',
+  'sectionname': 'section_name',
+  'section': 'section_name',
+  'section_number': 'section_number',
+  'sectionnumber': 'section_number',
+  'section_num': 'section_number',
+  'sectionnum': 'section_number',
 };
+
+export interface MatchingParsedRow {
+  question: MatchingQuestionFormData;
+  sectionName?: string;
+  sectionNumber?: number;
+}
 
 export interface MatchingParseResult {
   questions: MatchingQuestionFormData[];
+  parsedRows: MatchingParsedRow[];
   corrections: ParseCorrection[];
   errors: string[];
 }
@@ -648,7 +696,7 @@ export function parseSmartMatchingCsv(csvText: string): MatchingParseResult {
   const errors: string[] = [];
   
   if (lines.length === 0) {
-    return { questions: [], corrections: [], errors: ['CSV file is empty'] };
+    return { questions: [], parsedRows: [], corrections: [], errors: ['CSV file is empty'] };
   }
   
   const hasHeader = isMatchingHeaderRow(lines[0]);
@@ -688,6 +736,7 @@ export function parseSmartMatchingCsv(csvText: string): MatchingParseResult {
   }
   
   const questions: MatchingQuestionFormData[] = [];
+  const parsedRows: MatchingParsedRow[] = [];
   
   for (let i = startIndex; i < lines.length; i++) {
     const parts = parseCSVLine(lines[i]);
@@ -760,7 +809,12 @@ export function parseSmartMatchingCsv(csvText: string): MatchingParseResult {
     const showExplanationRaw = getValue('show_explanation')?.toLowerCase();
     const showExplanation = showExplanationRaw !== 'false';
     
-    questions.push({
+    // Extract section info
+    const sectionName = getValue('section_name') || undefined;
+    const sectionNumberRaw = getValue('section_number');
+    const sectionNumber = sectionNumberRaw ? parseInt(sectionNumberRaw, 10) : undefined;
+    
+    const question: MatchingQuestionFormData = {
       instruction,
       column_a_items: columnAItems,
       column_b_items: columnBItems,
@@ -768,8 +822,15 @@ export function parseSmartMatchingCsv(csvText: string): MatchingParseResult {
       explanation,
       show_explanation: showExplanation,
       difficulty,
+    };
+    
+    questions.push(question);
+    parsedRows.push({
+      question,
+      sectionName: sectionName || undefined,
+      sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined,
     });
   }
   
-  return { questions, corrections, errors };
+  return { questions, parsedRows, corrections, errors };
 }

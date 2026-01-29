@@ -18,7 +18,9 @@ import {
   useBulkCreateMatchingQuestions,
   type MatchingQuestionFormData,
 } from '@/hooks/useMatchingQuestions';
-import { parseSmartMatchingCsv, type ParseCorrection } from '@/lib/csvParser';
+import { parseSmartMatchingCsv, type ParseCorrection, type MatchingParsedRow } from '@/lib/csvParser';
+import { resolveSectionId } from '@/lib/csvExport';
+import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 
 interface MatchingQuestionBulkUploadModalProps {
   open: boolean;
@@ -36,13 +38,18 @@ export function MatchingQuestionBulkUploadModal({
   topicId,
 }: MatchingQuestionBulkUploadModalProps) {
   const [csvText, setCsvText] = useState('');
-  const [parsedQuestions, setParsedQuestions] = useState<MatchingQuestionFormData[]>([]);
+  const [parsedRows, setParsedRows] = useState<MatchingParsedRow[]>([]);
   const [parseCorrections, setParseCorrections] = useState<ParseCorrection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'input' | 'preview'>('input');
   
   const { isAnalyzing, analysis, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
   const bulkCreateMutation = useBulkCreateMatchingQuestions();
+  
+  // Get sections based on chapter or topic scope
+  const { data: chapterSections = [] } = useChapterSections(chapterId ?? undefined);
+  const { data: topicSections = [] } = useTopicSections(topicId ?? undefined);
+  const sections = chapterId ? chapterSections : topicSections;
 
   // Parse CSV text into headers and rows for AI analysis
   const parseCsvForAnalysis = useCallback(() => {
@@ -57,19 +64,19 @@ export function MatchingQuestionBulkUploadModal({
   const handleParse = () => {
     setError(null);
     try {
-      const { questions, corrections } = parseSmartMatchingCsv(csvText);
+      const { parsedRows: rows, corrections } = parseSmartMatchingCsv(csvText);
       setParseCorrections(corrections);
       
-      if (questions.length === 0) {
+      if (rows.length === 0) {
         setError('No valid questions found in CSV');
         return;
       }
       
       // Validate each question
-      const invalidQuestions = questions.filter(
-        q => q.column_a_items.length < 2 || 
-             q.column_b_items.length < 2 ||
-             Object.keys(q.correct_matches).length < 2
+      const invalidQuestions = rows.filter(
+        r => r.question.column_a_items.length < 2 || 
+             r.question.column_b_items.length < 2 ||
+             Object.keys(r.question.correct_matches).length < 2
       );
       
       if (invalidQuestions.length > 0) {
@@ -77,7 +84,7 @@ export function MatchingQuestionBulkUploadModal({
         return;
       }
 
-      setParsedQuestions(questions);
+      setParsedRows(rows);
       setStep('preview');
     } catch (e) {
       setError('Error parsing CSV: ' + (e as Error).message);
@@ -86,15 +93,24 @@ export function MatchingQuestionBulkUploadModal({
 
   const handleImport = async () => {
     try {
+      // Resolve section IDs from parsed section info
+      const questionsWithSections = parsedRows.map(row => {
+        const sectionId = resolveSectionId(sections, row.sectionName, row.sectionNumber);
+        return {
+          ...row.question,
+          section_id: sectionId,
+        };
+      });
+      
       await bulkCreateMutation.mutateAsync({
-        questions: parsedQuestions,
+        questions: questionsWithSections,
         moduleId,
         chapterId,
         topicId,
       });
       onOpenChange(false);
       setCsvText('');
-      setParsedQuestions([]);
+      setParsedRows([]);
       setStep('input');
     } catch (e) {
       setError('Error importing questions: ' + (e as Error).message);
@@ -108,7 +124,7 @@ export function MatchingQuestionBulkUploadModal({
   const handleClose = () => {
     onOpenChange(false);
     setCsvText('');
-    setParsedQuestions([]);
+    setParsedRows([]);
     setParseCorrections([]);
     setStep('input');
     setError(null);
@@ -144,19 +160,20 @@ export function MatchingQuestionBulkUploadModal({
                   Each row should contain:
                 </p>
                 <code className="text-xs block bg-background p-2 rounded overflow-x-auto">
-                  instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty,show_explanation
+                  instruction,item_a_1,item_a_2,item_a_3,item_a_4,item_b_1,item_b_2,item_b_3,item_b_4,match_1,match_2,match_3,match_4,explanation,difficulty,show_explanation,section_name,section_number
                 </code>
                 <div className="text-xs text-muted-foreground mt-2 space-y-1">
                   <p>• <strong>match_N:</strong> Index (1-4) of the Column B item that matches item_a_N</p>
                   <p>• <strong>difficulty:</strong> easy, medium, or hard (optional)</p>
                   <p>• <strong>show_explanation:</strong> true/false (optional, defaults to true)</p>
+                  <p>• <strong>section_name/section_number:</strong> Section assignment (optional)</p>
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <div className="p-4 bg-muted/50 border rounded-lg">
                 <h4 className="font-medium mb-2">Example:</h4>
                 <code className="text-xs block overflow-x-auto whitespace-pre">
-{`Match the terms,Cell,Nucleus,Mitochondria,Ribosome,Powerhouse,Protein synthesis,Control center,Basic unit,2,4,3,1,Basic cell biology,easy,true`}
+{`Match the terms,Cell,Nucleus,Mitochondria,Ribosome,Powerhouse,Protein synthesis,Control center,Basic unit,2,4,3,1,Basic cell biology,easy,true,Section 1,1`}
                 </code>
                 <p className="text-xs text-muted-foreground mt-2">
                   This creates: Cell→Powerhouse, Nucleus→Control center, Mitochondria→Protein synthesis, Ribosome→Basic unit
@@ -206,7 +223,7 @@ export function MatchingQuestionBulkUploadModal({
               <Alert>
                 <Upload className="h-4 w-4" />
                 <AlertDescription>
-                  {parsedQuestions.length} matching question(s) ready to import
+                  {parsedRows.length} matching question(s) ready to import
                 </AlertDescription>
               </Alert>
 
@@ -216,26 +233,33 @@ export function MatchingQuestionBulkUploadModal({
               )}
 
               <div className="max-h-96 overflow-y-auto space-y-4">
-                {parsedQuestions.map((q, i) => (
+                {parsedRows.map((row, i) => (
                   <div key={i} className="p-4 border rounded-lg">
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">Question {i + 1}</h4>
-                      {q.difficulty && (
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">Question {i + 1}</h4>
+                        {(row.sectionName || row.sectionNumber) && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                            Section: {row.sectionName || `#${row.sectionNumber}`}
+                          </span>
+                        )}
+                      </div>
+                      {row.question.difficulty && (
                         <span className={`text-xs px-2 py-1 rounded ${
-                          q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                          q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
+                          row.question.difficulty === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          row.question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                          {q.difficulty}
+                          {row.question.difficulty}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{q.instruction}</p>
+                    <p className="text-sm text-muted-foreground mb-2">{row.question.instruction}</p>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="font-medium text-xs text-muted-foreground mb-1">Column A:</p>
                         <ul className="list-disc list-inside">
-                          {q.column_a_items.map(item => (
+                          {row.question.column_a_items.map(item => (
                             <li key={item.id}>{item.text}</li>
                           ))}
                         </ul>
@@ -243,7 +267,7 @@ export function MatchingQuestionBulkUploadModal({
                       <div>
                         <p className="font-medium text-xs text-muted-foreground mb-1">Column B:</p>
                         <ul className="list-disc list-inside">
-                          {q.column_b_items.map(item => (
+                          {row.question.column_b_items.map(item => (
                             <li key={item.id}>{item.text}</li>
                           ))}
                         </ul>
@@ -269,7 +293,7 @@ export function MatchingQuestionBulkUploadModal({
                 onClick={handleImport} 
                 disabled={bulkCreateMutation.isPending}
               >
-                {bulkCreateMutation.isPending ? 'Importing...' : `Import ${parsedQuestions.length} Questions`}
+                {bulkCreateMutation.isPending ? 'Importing...' : `Import ${parsedRows.length} Questions`}
               </Button>
             </DialogFooter>
           </>
