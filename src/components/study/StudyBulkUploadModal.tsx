@@ -23,6 +23,8 @@ import {
   useChapterStudyResourcesByType,
 } from '@/hooks/useStudyResources';
 import { isFlashcardDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
+import { resolveSectionId } from '@/lib/csvExport';
+import { useChapterSections } from '@/hooks/useSections';
 import { toast } from 'sonner';
 
 interface StudyBulkUploadModalProps {
@@ -36,6 +38,8 @@ interface StudyBulkUploadModalProps {
 interface ParsedItem {
   title: string;
   content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent;
+  sectionName?: string;
+  sectionNumber?: number;
   error?: string;
 }
 
@@ -56,10 +60,10 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
-  flashcard: 'title,front,back\n"Card Title","Question text","Answer text"',
-  table: 'title,headers,row1,row2\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6"',
-  algorithm: 'title,steps\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc"',
-  exam_tip: 'title,tips\n"Tips Title","Tip 1|Tip 2|Tip 3"',
+  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"',
+  table: 'title,headers,row1,row2,section_name,section_number\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6","",""',
+  algorithm: 'title,steps,section_name,section_number\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc","",""',
+  exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
   key_image: 'Not supported for bulk upload',
   mind_map: 'Not supported for bulk upload',
   clinical_case_worked: 'Not supported for bulk upload',
@@ -77,6 +81,7 @@ export function StudyBulkUploadModal({
 }: StudyBulkUploadModalProps) {
   const bulkCreate = useBulkCreateStudyResources();
   const { data: existingResources } = useChapterStudyResourcesByType(chapterId, resourceType);
+  const { data: sections = [] } = useChapterSections(chapterId);
 
   const [parsedData, setParsedData] = useState<DuplicateResult<ParsedItem>[]>([]);
   const [errors, setErrors] = useState<ParseError[]>([]);
@@ -137,15 +142,20 @@ export function StudyBulkUploadModal({
 
       const parsed: ParsedItem[] = [];
       const parseErrors: ParseError[] = [];
+      
+      // Check if first line is a header and build mapping
+      const firstLine = lines[0];
+      const hasHeader = isHeaderLine(firstLine);
+      const headerMapping = hasHeader ? buildHeaderMapping(firstLine) : undefined;
+      const startIndex = hasHeader ? 1 : 0;
 
-      // Skip header row
-      for (let i = 1; i < lines.length; i++) {
+      for (let i = startIndex; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
         try {
           const values = parseCSVLine(line);
-          const item = parseLineByType(values, resourceType, i + 1);
+          const item = parseLineByType(values, resourceType, i + 1, headerMapping);
           if (item.error) {
             parseErrors.push({ row: i + 1, reason: item.error });
           } else {
@@ -206,13 +216,19 @@ export function StudyBulkUploadModal({
     }
 
     try {
-      const resources: StudyResourceInsert[] = toImport.map((item) => ({
-        module_id: moduleId,
-        chapter_id: chapterId,
-        resource_type: resourceType,
-        title: item.item.title,
-        content: item.item.content,
-      }));
+      const resources: StudyResourceInsert[] = toImport.map((item) => {
+        // Resolve section from parsed data
+        const sectionId = resolveSectionId(sections, item.item.sectionName, item.item.sectionNumber);
+        
+        return {
+          module_id: moduleId,
+          chapter_id: chapterId,
+          resource_type: resourceType,
+          title: item.item.title,
+          content: item.item.content,
+          section_id: sectionId,
+        };
+      });
 
       await bulkCreate.mutateAsync(resources);
       toast.success(`Imported ${resources.length} items`);
@@ -395,7 +411,8 @@ function parseCSVLine(line: string): string[] {
 function parseLineByType(
   values: string[],
   type: StudyResourceType,
-  rowNum: number
+  rowNum: number,
+  headerMapping?: Record<string, number>
 ): ParsedItem {
   if (values.length < 2) {
     return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
@@ -405,6 +422,24 @@ function parseLineByType(
   if (!title) {
     return { title: '', content: { front: '', back: '' }, error: 'Title is required' };
   }
+  
+  // Extract section info - check header mapping first, then fall back to last columns
+  const getSectionInfo = (): { sectionName?: string; sectionNumber?: number } => {
+    if (headerMapping) {
+      const sectionNameIdx = headerMapping['section_name'];
+      const sectionNumIdx = headerMapping['section_number'];
+      const sectionName = sectionNameIdx !== undefined ? values[sectionNameIdx]?.trim() : undefined;
+      const sectionNumRaw = sectionNumIdx !== undefined ? values[sectionNumIdx]?.trim() : undefined;
+      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
+      return { 
+        sectionName: sectionName || undefined, 
+        sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined 
+      };
+    }
+    return {};
+  };
+  
+  const { sectionName, sectionNumber } = getSectionInfo();
 
   switch (type) {
     case 'flashcard': {
@@ -414,17 +449,30 @@ function parseLineByType(
       return {
         title,
         content: { front: values[1], back: values[2] } as FlashcardContent,
+        sectionName,
+        sectionNumber,
       };
     }
     case 'table': {
       if (values.length < 3) {
         return { title, content: { headers: [], rows: [] }, error: 'Table requires at least title, headers, and one row' };
       }
+      // For table, need to find where section columns end and row data begins
       const headers = values[1].split('|').map((h) => h.trim());
-      const rows = values.slice(2).map((r) => r.split('|').map((c) => c.trim()));
+      // Find rows - exclude section_name and section_number columns if present
+      let rowEndIndex = values.length;
+      if (headerMapping) {
+        const sectionCols = [headerMapping['section_name'], headerMapping['section_number']].filter(i => i !== undefined);
+        if (sectionCols.length > 0) {
+          rowEndIndex = Math.min(...sectionCols);
+        }
+      }
+      const rows = values.slice(2, rowEndIndex).filter(r => r.trim()).map((r) => r.split('|').map((c) => c.trim()));
       return {
         title,
         content: { headers, rows } as TableContent,
+        sectionName,
+        sectionNumber,
       };
     }
     case 'algorithm': {
@@ -438,6 +486,8 @@ function parseLineByType(
       return {
         title,
         content: { steps } as AlgorithmContent,
+        sectionName,
+        sectionNumber,
       };
     }
     case 'exam_tip': {
@@ -448,9 +498,53 @@ function parseLineByType(
       return {
         title,
         content: { tips } as ExamTipContent,
+        sectionName,
+        sectionNumber,
       };
     }
     default:
       return { title: '', content: { front: '', back: '' }, error: `Unsupported type: ${type}` };
   }
+}
+
+// Build header mapping from first row
+function buildHeaderMapping(headerLine: string): Record<string, number> {
+  const mapping: Record<string, number> = {};
+  const headers = parseCSVLine(headerLine);
+  
+  const columnMappings: Record<string, string> = {
+    'title': 'title',
+    'front': 'front',
+    'back': 'back',
+    'headers': 'headers',
+    'steps': 'steps',
+    'tips': 'tips',
+    'section_name': 'section_name',
+    'sectionname': 'section_name',
+    'section': 'section_name',
+    'section_number': 'section_number',
+    'sectionnumber': 'section_number',
+    'section_num': 'section_number',
+  };
+  
+  headers.forEach((header, index) => {
+    const normalized = header.toLowerCase().replace(/[\s_-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const target = columnMappings[normalized];
+    if (target && mapping[target] === undefined) {
+      mapping[target] = index;
+    }
+  });
+  
+  return mapping;
+}
+
+// Check if line is a header
+function isHeaderLine(line: string): boolean {
+  const lower = line.toLowerCase();
+  return lower.includes('title') && (
+    lower.includes('front') || 
+    lower.includes('headers') || 
+    lower.includes('steps') || 
+    lower.includes('tips')
+  );
 }
