@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
@@ -82,7 +83,11 @@ export default function ChapterPage() {
   const deleteStudyResource = useDeleteStudyResource();
   const { setStudyContext } = useCoachContext();
 
-  const showAddControls = !!(
+  // Check if in support mode (impersonation or preview)
+  const { isSupportMode } = useEffectiveUser();
+
+  // Hide admin controls when in support mode (impersonation or preview)
+  const showAddControls = !isSupportMode && !!(
     auth.isTeacher ||
     auth.isAdmin ||
     auth.isModuleAdmin ||
@@ -96,7 +101,8 @@ export default function ChapterPage() {
   // 1. They are a teacher/admin/platform admin/super admin (isTeacher is true for all of these)
   // 2. They can manage this specific chapter (topic admins assigned to this chapter)
   // 3. They can manage the parent module (module admins assigned to this module)
-  const canManageContent = !!(
+  // Hide in support mode (impersonation or preview)
+  const canManageContent = !isSupportMode && !!(
     auth.isTeacher ||
     (chapterId && auth.canManageChapter(chapterId)) ||
     (moduleId && auth.canManageModule(moduleId))
