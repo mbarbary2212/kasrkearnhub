@@ -1,164 +1,176 @@
 
-# Fix Admin UI Showing in Impersonation/Preview Modes ✅ IMPLEMENTED
+# Fix: Show Student UI Elements in Preview Mode
 
-## Problem Summary
+## Problem Identified
 
-When a Super Admin uses impersonation (Mode A) or any admin uses "Preview Student UI" (Mode B), the chapter page still shows admin controls like:
-- "Add Video", "Add Flashcard", "Bulk Upload" buttons
-- "Cards / Table" view toggle
-- "Manage" dropdown with Edit/Delete options
-- Chapter Settings gear icon
-- Admin-only tabs visibility
-
-This happens because the components check role-based flags (`isAdmin`, `canManageContent`, `showAddControls`) without considering the impersonation/preview state from `useEffectiveUser`.
+The "Preview Student UI" mode currently only hides admin controls - it doesn't show the student experience. This is because student-only UI elements (Coach FAB, Ask Coach button, Study Coach navigation, etc.) check `isAdmin` from `useAuthContext()`, which remains `true` even in preview mode.
 
 ---
 
-## Root Cause Analysis
+## Root Cause
 
-| File | Issue |
-|------|-------|
-| `ChapterPage.tsx` | `showAddControls` and `canManageContent` don't check `isSupportMode` |
-| `FlashcardsTab.tsx` | `showAdminView` checks `isAdmin || isTeacher` without `isSupportMode` |
-| `LectureList.tsx` | `canManage` prop controls admin UI, passed from parent |
-| `MindMapViewer.tsx` | `canManage` prop passed from parent |
-| `ProgressPage.tsx` | Redirects admins away, blocking preview mode |
+Throughout the codebase, components use this pattern:
 
----
+```tsx
+const { isAdmin } = useAuthContext();
 
-## Solution Architecture
+// Student-only features hidden from admins
+if (isAdmin) return null;  // ❌ Still true in preview mode!
 
-Modify the relevant components to check `isSupportMode` from `useEffectiveUser()` and hide admin controls when active.
-
-```text
-+--------------------------------------------------+
-|  When isSupportMode = true (Preview or Impersonate)  |
-+--------------------------------------------------+
-|  • showAddControls = false                        |
-|  • canManageContent = false                       |
-|  • showAdminView = false                          |
-|  • Hide Chapter Settings                          |
-|  • Don't redirect from ProgressPage               |
-|  • Show student UI experience                     |
-+--------------------------------------------------+
+// Or conditional rendering
+{!isAdmin && <StudentFeature />}  // ❌ Never shows for admins
 ```
+
+---
+
+## Solution: Introduce `isEffectivelyStudent`
+
+Add a derived value in `useEffectiveUser` that components can use to determine if they should render as student UI:
+
+```typescript
+// In useEffectiveUser.ts
+const isEffectivelyStudent = isPreviewStudentUI || isImpersonating;
+```
+
+Then update all components that conditionally render student-only features to check this flag.
 
 ---
 
 ## Files to Modify
 
-### 1. `src/pages/ChapterPage.tsx`
+### 1. `src/hooks/useEffectiveUser.ts`
 
-**Current code (lines 85-103):**
+Add new export:
 ```typescript
-const showAddControls = !!(
-  auth.isTeacher ||
-  auth.isAdmin ||
-  // ...other checks
-);
+// Indicates UI should render as student (preview or impersonation)
+isEffectivelyStudent: boolean;
 
-const canManageContent = !!(
-  auth.isTeacher ||
-  // ...other checks
-);
+// Inside hook:
+const isEffectivelyStudent = isPreviewStudentUI || isImpersonating;
 ```
 
-**Updated code:**
-```typescript
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+### 2. `src/components/coach/CoachFAB.tsx`
 
-// Inside component:
-const { isSupportMode } = useEffectiveUser();
-
-// Override when in support mode (impersonation or preview)
-const showAddControls = !isSupportMode && !!(
-  auth.isTeacher ||
-  auth.isAdmin ||
-  // ...existing checks
-);
-
-const canManageContent = !isSupportMode && !!(
-  auth.isTeacher ||
-  // ...existing checks
-);
+**Current (line 21):**
+```tsx
+if (isMobile || !user || isAdmin) return null;
 ```
 
-### 2. `src/components/study/FlashcardsTab.tsx`
+**Fixed:**
+```tsx
+const { isEffectivelyStudent } = useEffectiveUser();
 
-**Current code (line 69):**
-```typescript
-const showAdminView = (isAdmin || isTeacher) && canManage;
+// Show for students OR admins in preview/impersonation mode
+if (isMobile || !user || (isAdmin && !isEffectivelyStudent)) return null;
 ```
 
-**Updated code:**
-```typescript
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+### 3. `src/pages/ChapterPage.tsx`
 
-// Inside component:
-const { isSupportMode } = useEffectiveUser();
-
-// Don't show admin view in support mode
-const showAdminView = !isSupportMode && (isAdmin || isTeacher) && canManage;
+**Current (line 342):**
+```tsx
+{!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+  <AskCoachButton ... />
+)}
 ```
 
-### 3. `src/pages/ProgressPage.tsx`
+**Fixed:**
+```tsx
+const { isEffectivelyStudent } = useEffectiveUser();
 
-**Current code:**
-```typescript
-if (isAdmin) {
-  return <Navigate to="/admin" replace />;
-}
+// Show Ask Coach for students OR admins in preview mode
+{(!auth.isAdmin || isEffectivelyStudent) && (activeSection === 'resources' || activeSection === 'practice') && (
+  <AskCoachButton ... />
+)}
 ```
 
-**Updated code:**
-```typescript
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+### 4. `src/components/layout/MainLayout.tsx`
 
-// Inside component:
-const { isSupportMode } = useEffectiveUser();
-
-// Only redirect if admin AND not in support mode
-if (isAdmin && !isSupportMode) {
-  return <Navigate to="/admin" replace />;
-}
+**Current (line 163):**
+```tsx
+{user && isMobile && !isAdmin && (
+  // Study Coach mobile icon
+)}
 ```
 
-### 4. Child components receive `canManage={false}` automatically
+**Fixed:**
+```tsx
+const { isEffectivelyStudent } = useEffectiveUser();
 
-Since `ChapterPage` passes `canManageContent` to child components like:
-- `LectureList` (receives `canEdit`, `canDelete`)
-- `FlashcardsTab` (receives `canManage`)
-- `MindMapViewer` (receives `canManage`)
-- etc.
+{user && isMobile && (!isAdmin || isEffectivelyStudent) && (
+  // Study Coach mobile icon
+)}
+```
 
-When `canManageContent` becomes `false` in support mode, all downstream components automatically hide their admin controls.
+**Current (line 223):**
+```tsx
+{!isAdmin && (
+  <DropdownMenuItem onClick={() => navigate('/progress')}>
+    <GraduationCap className="mr-2 h-4 w-4" />
+    Study Coach
+  </DropdownMenuItem>
+)}
+```
+
+**Fixed:**
+```tsx
+{(!isAdmin || isEffectivelyStudent) && (
+  <DropdownMenuItem onClick={() => navigate('/progress')}>
+    <GraduationCap className="mr-2 h-4 w-4" />
+    Study Coach
+  </DropdownMenuItem>
+)}
+```
+
+### 5. Content Lists (McqList, OsceList, etc.)
+
+These components show different UIs for students vs admins (practice filters, status indicators, etc.). They need similar updates:
+
+**Pattern to apply:**
+```tsx
+const { isEffectivelyStudent } = useEffectiveUser();
+
+// Replace: if (!isAdmin)
+// With:    if (!isAdmin || isEffectivelyStudent)
+
+// Replace: {!isAdmin && <StudentFeature />}
+// With:    {(!isAdmin || isEffectivelyStudent) && <StudentFeature />}
+```
+
+**Files to update:**
+- `src/components/content/McqList.tsx` - Practice filters, status badges
+- `src/components/content/OsceList.tsx` - Status filters
+- `src/components/content/McqCard.tsx` - Status indicators
+- `src/components/dashboard/LearningHubTabs.tsx` - Tab visibility
 
 ---
 
 ## Expected Behavior After Fix
 
-| Mode | UI Shown | Admin Controls |
-|------|----------|----------------|
-| Normal Admin | Admin UI | Visible (Add, Edit, Delete, Table toggle) |
-| Preview Student UI | Student UI | Hidden |
-| Impersonating Student | Student UI with student's data | Hidden |
+| Mode | Admin Controls | Student UI (Coach, Filters) | Data Source |
+|------|----------------|----------------------------|-------------|
+| Normal Admin | ✅ Visible | ❌ Hidden | Real admin data |
+| Preview Mode | ❌ Hidden | ✅ Visible | Demo data |
+| Impersonation | ❌ Hidden | ✅ Visible | Real student data |
+| Normal Student | ❌ Hidden | ✅ Visible | Real student data |
 
 ---
 
 ## Technical Notes
 
-- `isSupportMode` is already computed in `useEffectiveUser` as `isImpersonating || isPreviewStudentUI`
-- The banner display logic is already working correctly
-- Write operations are already blocked via `isSupportMode` check in mutation hooks
-- This fix only addresses the UI rendering aspect
+- `isEffectivelyStudent` is `true` when in preview mode OR impersonation
+- This works with existing `isSupportMode` which blocks writes
+- The hook already exists and is widely imported - minimal new imports needed
+- Demo data hooks are already implemented from previous work
 
 ---
 
-## Testing Checklist
+## Summary of Changes
 
-1. As Super Admin, click "Preview Student UI" - verify no admin controls
-2. As Super Admin, impersonate a student - verify no admin controls
-3. As Platform Admin, click "Preview Student UI" - verify no admin controls
-4. Exit preview/impersonation - verify admin controls return
-5. Navigate to Progress page in preview mode - verify it doesn't redirect
-6. Check Flashcards tab shows student study mode, not admin grid
+1. **useEffectiveUser.ts**: Export `isEffectivelyStudent` flag
+2. **CoachFAB.tsx**: Show FAB when admin is in preview/impersonation
+3. **ChapterPage.tsx**: Show Ask Coach button in preview/impersonation
+4. **MainLayout.tsx**: Show Study Coach icon and menu item in preview/impersonation
+5. **McqList.tsx**: Show student filters in preview/impersonation
+6. **OsceList.tsx**: Show student filters in preview/impersonation
+7. **McqCard.tsx**: Show status indicators in preview/impersonation
+8. **LearningHubTabs.tsx**: Show all tabs in preview/impersonation
