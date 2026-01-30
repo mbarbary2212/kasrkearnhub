@@ -20,19 +20,19 @@ All components of the two-mode admin view system have been implemented.
 - ✅ `effectiveUserId` stays as admin's ID (not null)
 - ✅ `isSupportMode` blocks writes in both modes
 
+### Demo Data Hooks Updated
+- ✅ `useStudentDashboard.ts` - Returns sample dashboard with chapters, insights, suggestions
+- ✅ `useChapterProgress.ts` - Returns demo progress percentages
+- ✅ `useBadges.ts` - Returns sample earned badges
+- ✅ `useTestProgress.ts` - Returns demo MCQ/OSCE/concept check stats
+- ✅ `useNeedsPractice.ts` - Returns demo needs practice items
+- ✅ `useQuestionAttempts.ts` - Returns empty (fresh start in preview)
+
 ### Files Modified
 - `src/hooks/useEffectiveUser.ts` - Added preview mode state and toggle
 - `src/components/layout/MainLayout.tsx` - Split menu items by role
 - `src/components/admin/ImpersonationBanner.tsx` - Dual banner support
 - `supabase/functions/start-impersonation/index.ts` - Super admin only
 - `supabase/functions/list-students-for-impersonation/index.ts` - Super admin only
-
-## Next Steps (Optional)
-The following hooks can be updated to return demo data in preview mode:
-- `useStudentDashboard.ts`
-- `useChapterProgress.ts`
-- `useQuestionAttempts.ts`
-- `useBadges.ts`
-
-Currently, preview mode shows the student UI with the admin's own data (empty/minimal for admins). Demo data can be added later if needed.
+- All student data hooks updated with demo data support
 

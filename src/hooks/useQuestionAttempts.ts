@@ -61,11 +61,16 @@ export function useChapterQuestionAttempts(
   chapterId?: string,
   questionType?: PracticeQuestionType
 ) {
-  const { effectiveUserId } = useEffectiveUser();
+  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['question-attempts', chapterId, questionType, effectiveUserId],
+    queryKey: ['question-attempts', chapterId, questionType, effectiveUserId, isPreviewStudentUI],
     queryFn: async () => {
+      // Preview mode (non-impersonation): return empty (no prior attempts in demo)
+      if (isPreviewStudentUI && !isImpersonating) {
+        return [];
+      }
+
       if (!effectiveUserId || !chapterId) return [];
 
       // First get current attempt number for this chapter
