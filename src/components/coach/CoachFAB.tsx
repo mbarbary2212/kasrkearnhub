@@ -17,8 +17,8 @@ export function CoachFAB() {
   const { shouldPulse, dismissPulse } = useCoachContext();
   const isMobile = useIsMobile();
 
-  // Don't show FAB on mobile (uses bottom nav) or if not logged in
-  if (isMobile || !user) {
+  // Don't show FAB for admins, mobile users, or if not logged in
+  if (isMobile || !user || isAdmin) {
     return null;
   }
 

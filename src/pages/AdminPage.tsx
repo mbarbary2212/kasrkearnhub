@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, UserPlus } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
 import { CurriculumTab } from '@/components/admin/CurriculumTab';
 import { PDFLibraryTab } from '@/components/admin/PDFLibraryTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
+import { AccountManagementTab } from '@/components/admin/AccountManagementTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 
@@ -1350,6 +1351,12 @@ export default function AdminPage() {
                 Integrity
               </TabsTrigger>
             )}
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <UserPlus className="w-4 h-4" />
+                Accounts
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Users Tab with Sub-tabs */}
@@ -1778,6 +1785,13 @@ export default function AdminPage() {
           {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
             <TabsContent value="integrity">
               <IntegrityCheckTab />
+            </TabsContent>
+          )}
+
+          {/* Account Management Tab - Platform/Super Admin only */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="accounts">
+              <AccountManagementTab />
             </TabsContent>
           )}
         </Tabs>
