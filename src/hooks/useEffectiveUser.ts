@@ -18,35 +18,45 @@ interface EffectiveUserState {
   userId: string | null;
   // Effective user ID (student if impersonating, else same as userId)
   effectiveUserId: string | null;
-  // Impersonation status
+  // Impersonation status (Mode A - Super Admin only)
   isImpersonating: boolean;
   effectiveUserName: string | null;
   effectiveUserEmail: string | null;
   sessionId: string | null;
   expiresAt: Date | null;
-  // Actions
+  // Actions for impersonation
   startImpersonation: (targetUserId: string) => Promise<void>;
   endImpersonation: () => Promise<void>;
+  // Preview Student UI mode (Mode B - All admins)
+  isPreviewStudentUI: boolean;
+  togglePreviewStudentUI: () => void;
   // Loading state
   isLoading: boolean;
-  // Support mode flag (writes blocked during impersonation)
+  // Support mode flag (writes blocked during impersonation OR preview)
   isSupportMode: boolean;
 }
 
 const SUPABASE_URL = 'https://dwmxnokprfiwmvzksyjg.supabase.co';
 
 /**
- * Central hook for impersonation state management.
- * - Never queries impersonation_sessions directly
- * - All operations go through Edge Functions
- * - Provides effectiveUserId for data hooks
- * - isSupportMode = true when impersonating (blocks writes)
+ * Central hook for impersonation and preview mode state management.
+ * 
+ * Two modes:
+ * - Mode A (Impersonation): Super Admin only, selects real student, sees their data
+ * - Mode B (Preview UI): All admins, toggles to student UI with demo/empty data
+ * 
+ * - effectiveUserId = studentId when impersonating (Mode A)
+ * - effectiveUserId = user.id when in preview mode (Mode B) - NOT null
+ * - isSupportMode = true when either mode is active (blocks writes)
  */
 export function useEffectiveUser(): EffectiveUserState {
-  const { user, isAdmin } = useAuthContext();
+  const { user, isAdmin, isSuperAdmin } = useAuthContext();
   const queryClient = useQueryClient();
   const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  
+  // Mode B: Preview Student UI (local state, no server interaction)
+  const [isPreviewStudentUI, setIsPreviewStudentUI] = useState(false);
 
   // Query impersonation state via edge function - enabled for all admins
   const { data: impersonationState, isLoading: isQueryLoading } = useQuery({
@@ -98,14 +108,15 @@ export function useEffectiveUser(): EffectiveUserState {
     staleTime: 30000,
   });
 
+  // Mode A: Start impersonation (Super Admin only - enforced server-side)
   const startImpersonation = useCallback(async (targetUserId: string) => {
     if (!user?.id) {
       toast.error('You must be logged in');
       return;
     }
 
-    if (!isAdmin) {
-      toast.error('Only admins can impersonate students');
+    if (!isSuperAdmin) {
+      toast.error('Only Super Admins can impersonate students');
       return;
     }
 
@@ -136,6 +147,11 @@ export function useEffectiveUser(): EffectiveUserState {
         return;
       }
 
+      // Exit preview mode if active when starting impersonation
+      if (isPreviewStudentUI) {
+        setIsPreviewStudentUI(false);
+      }
+
       toast.success(`Now viewing as ${data.effectiveUserName || 'student'} (View-Only Mode)`);
       
       // Invalidate queries to refresh UI with new effective user
@@ -150,7 +166,7 @@ export function useEffectiveUser(): EffectiveUserState {
     } finally {
       setIsStarting(false);
     }
-  }, [user?.id, isAdmin, queryClient]);
+  }, [user?.id, isSuperAdmin, isPreviewStudentUI, queryClient]);
 
   const endImpersonation = useCallback(async () => {
     if (!user?.id) return;
@@ -196,11 +212,32 @@ export function useEffectiveUser(): EffectiveUserState {
     }
   }, [user?.id, queryClient]);
 
+  // Mode B: Toggle Preview Student UI (local state only)
+  const togglePreviewStudentUI = useCallback(() => {
+    setIsPreviewStudentUI(prev => {
+      const newValue = !prev;
+      if (newValue) {
+        toast.info('Entered Student UI Preview - Demo Mode');
+      } else {
+        toast.success('Exited Student UI Preview');
+      }
+      return newValue;
+    });
+  }, []);
+
   // Derived values
   const isImpersonating = impersonationState?.isImpersonating ?? false;
+  
+  // effectiveUserId logic:
+  // - If impersonating: use the student's ID
+  // - If preview mode: keep user's own ID (NOT null)
+  // - Otherwise: user's ID
   const effectiveUserId = isImpersonating 
     ? impersonationState?.effectiveUserId 
     : user?.id ?? null;
+
+  // Support mode blocks writes in BOTH impersonation AND preview modes
+  const isSupportMode = isImpersonating || isPreviewStudentUI;
 
   return {
     userId: user?.id ?? null,
@@ -212,8 +249,10 @@ export function useEffectiveUser(): EffectiveUserState {
     expiresAt: impersonationState?.expiresAt ?? null,
     startImpersonation,
     endImpersonation,
+    isPreviewStudentUI,
+    togglePreviewStudentUI,
     isLoading: isQueryLoading || isStarting || isEnding,
-    isSupportMode: isImpersonating,
+    isSupportMode,
   };
 }
 

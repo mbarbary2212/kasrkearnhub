@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity, Eye } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity, Eye, UserCheck } from 'lucide-react';
 import { ImpersonateStudentModal } from '@/components/admin/ImpersonateStudentModal';
 import logo from '@/assets/logo.png';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
@@ -28,6 +28,7 @@ import { useBadgeStats } from '@/hooks/useBadges';
 import { CoachFAB } from '@/components/coach';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -42,6 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [impersonateModalOpen, setImpersonateModalOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
+  const { isPreviewStudentUI, togglePreviewStudentUI } = useEffectiveUser();
 
   const handleLogout = async () => {
     await signOut();
@@ -239,10 +241,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <Activity className="mr-2 h-4 w-4" />
                       Activity Log
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
+                    {/* Preview Student UI - Available to ALL admins */}
+                    <DropdownMenuItem onClick={togglePreviewStudentUI}>
                       <Eye className="mr-2 h-4 w-4" />
-                      Impersonate Student
+                      {isPreviewStudentUI ? 'Exit Student Preview' : 'Preview Student UI'}
                     </DropdownMenuItem>
+                    {/* Impersonate Student - Super Admin only */}
+                    {isSuperAdmin && (
+                      <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Impersonate Student...
+                      </DropdownMenuItem>
+                    )}
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
@@ -285,11 +295,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Coach FAB - Desktop/Tablet only */}
       <CoachFAB />
 
-      {/* Impersonate Student Modal */}
-      <ImpersonateStudentModal 
-        open={impersonateModalOpen} 
-        onOpenChange={setImpersonateModalOpen} 
-      />
+      {/* Impersonate Student Modal - Super Admin only */}
+      {isSuperAdmin && (
+        <ImpersonateStudentModal 
+          open={impersonateModalOpen} 
+          onOpenChange={setImpersonateModalOpen} 
+        />
+      )}
     </div>
   );
 }
