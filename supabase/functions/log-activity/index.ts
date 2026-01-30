@@ -23,6 +23,7 @@ const MAX_METADATA_SIZE = 4096; // 4KB limit
 const ALLOWED_ENTITY_TYPES = [
   'mcq', 'essay', 'osce', 'flashcard',
   'resource', 'lecture', 'clinical_case', 'matching',
+  'impersonation', 'user',
 ];
 
 const ALLOWED_ACTIONS = [
@@ -34,6 +35,10 @@ const ALLOWED_ACTIONS = [
   'created_osce', 'updated_osce', 'deleted_osce', 'bulk_upload_osce',
   // Flashcard
   'created_flashcard', 'updated_flashcard', 'deleted_flashcard', 'bulk_upload_flashcard',
+  // Impersonation
+  'impersonation_started', 'impersonation_ended',
+  // User management
+  'user_invited', 'user_role_changed',
 ];
 
 // Map actions to friendly labels for notifications

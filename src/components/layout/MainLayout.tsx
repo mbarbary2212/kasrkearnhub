@@ -26,6 +26,7 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { CoachFAB } from '@/components/coach';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -154,28 +155,26 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Coach Icon - Only on mobile (navigates to Coach page) */}
-            {user && isMobile && (
+            {/* Study Coach Icon - Only for non-admin users on mobile */}
+            {user && isMobile && !isAdmin && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => {
-                        navigate(isAdmin ? '/admin' : '/progress');
-                      }}
+                      onClick={() => navigate('/progress')}
                       variant="ghost"
                       size="icon"
                       className="h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
                       <img 
                         src={studyCoachIcon} 
-                        alt={isAdmin ? "Admin Panel" : "Study Coach"} 
+                        alt="Study Coach" 
                         className="h-full w-full object-contain rounded-full" 
                       />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    {isAdmin ? 'Admin Panel' : 'Study Coach'}
+                    Study Coach
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -261,6 +260,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
         </div>
       </header>
+
+      {/* Impersonation Banner - shows when admin is viewing as student */}
+      <ImpersonationBanner />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pb-24">

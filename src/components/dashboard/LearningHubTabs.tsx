@@ -3,6 +3,7 @@ import { DashboardData } from '@/hooks/useStudentDashboard';
 import { LearningHubOverview } from './LearningHubOverview';
 import { LearningHubStudyPlan } from './LearningHubStudyPlan';
 import { LearningHubUnlocks } from './LearningHubUnlocks';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface Module {
   id: string;
@@ -20,27 +21,36 @@ interface LearningHubTabsProps {
 }
 
 export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
+  const { isAdmin } = useAuthContext();
+  
+  // For admins, only show Overview tab
+  const showAllTabs = !isAdmin;
+  
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
+      <TabsList className={`grid w-full ${showAllTabs ? 'grid-cols-3' : 'grid-cols-1'} mb-6 bg-transparent p-1 gap-2`}>
         <TabsTrigger 
           value="overview" 
           className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
         >
           Overview
         </TabsTrigger>
-        <TabsTrigger 
-          value="study-plan"
-          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
-        >
-          Study Plan
-        </TabsTrigger>
-        <TabsTrigger 
-          value="unlocks"
-          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
-        >
-          Unlocks
-        </TabsTrigger>
+        {showAllTabs && (
+          <>
+            <TabsTrigger 
+              value="study-plan"
+              className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
+            >
+              Study Plan
+            </TabsTrigger>
+            <TabsTrigger 
+              value="unlocks"
+              className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
+            >
+              Unlocks
+            </TabsTrigger>
+          </>
+        )}
       </TabsList>
 
       <TabsContent value="overview" className="space-y-6">
