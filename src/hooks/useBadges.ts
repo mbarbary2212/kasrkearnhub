@@ -44,11 +44,16 @@ export function useAllBadges() {
 
 // Fetch user's earned badges
 export function useUserBadges() {
-  const { effectiveUserId } = useEffectiveUser();
+  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['user-badges', effectiveUserId],
+    queryKey: ['user-badges', effectiveUserId, isPreviewStudentUI],
     queryFn: async () => {
+      // Preview mode (non-impersonation): return demo badges
+      if (isPreviewStudentUI && !isImpersonating) {
+        return getDemoUserBadges();
+      }
+
       if (!effectiveUserId) return [];
 
       const { data, error } = await supabase
@@ -63,8 +68,52 @@ export function useUserBadges() {
       if (error) throw error;
       return data as (UserBadge & { badge: Badge })[];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!effectiveUserId || isPreviewStudentUI,
   });
+}
+
+/**
+ * Demo badges for Preview Student UI mode.
+ */
+function getDemoUserBadges(): (UserBadge & { badge: Badge })[] {
+  return [
+    {
+      id: 'demo-ub-1',
+      user_id: 'demo-user',
+      badge_id: 'demo-badge-1',
+      earned_at: new Date().toISOString(),
+      metadata: null,
+      badge: {
+        id: 'demo-badge-1',
+        code: 'first_question',
+        name: 'First Question',
+        description: 'Answered your first question!',
+        category: 'practice',
+        icon_name: 'HelpCircle',
+        tier: 1,
+        threshold: 1,
+        created_at: new Date().toISOString(),
+      },
+    },
+    {
+      id: 'demo-ub-2',
+      user_id: 'demo-user',
+      badge_id: 'demo-badge-2',
+      earned_at: new Date().toISOString(),
+      metadata: null,
+      badge: {
+        id: 'demo-badge-2',
+        code: 'streak_3',
+        name: '3-Day Streak',
+        description: 'Studied for 3 days in a row!',
+        category: 'streak',
+        icon_name: 'Flame',
+        tier: 1,
+        threshold: 3,
+        created_at: new Date().toISOString(),
+      },
+    },
+  ];
 }
 
 // Check and award badges based on user progress

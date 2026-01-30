@@ -48,11 +48,16 @@ const EMPTY_COUNTS: ContentCounts = {
 };
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
-  const { effectiveUserId } = useEffectiveUser();
+  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['needs-practice', effectiveUserId, moduleId],
+    queryKey: ['needs-practice', effectiveUserId, moduleId, isPreviewStudentUI],
     queryFn: async () => {
+      // Preview mode (non-impersonation): return demo data
+      if (isPreviewStudentUI && !isImpersonating) {
+        return getDemoNeedsPractice(moduleId || 'demo-module');
+      }
+
       if (!effectiveUserId || !moduleId) {
         return {
           mcq: [],
@@ -366,7 +371,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         counts,
       };
     },
-    enabled: !!effectiveUserId && !!moduleId,
+    enabled: !!effectiveUserId && !!moduleId || isPreviewStudentUI,
     staleTime: 30000,
   });
 
@@ -380,5 +385,62 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
     casesToReview: data?.cases || [],
     counts: data?.counts || EMPTY_COUNTS,
     isLoading,
+  };
+}
+
+/**
+ * Demo needs practice data for Preview Student UI mode.
+ */
+function getDemoNeedsPractice(moduleId: string) {
+  return {
+    mcq: [
+      {
+        id: 'demo-mcq-1',
+        type: 'mcq' as const,
+        title: 'Sample MCQ that needs more practice...',
+        chapterId: 'demo-chapter',
+        chapterTitle: 'Sample Chapter',
+        moduleId,
+        attemptCount: 2,
+        lastAttemptedAt: new Date().toISOString(),
+      },
+    ],
+    osce: [
+      {
+        id: 'demo-osce-1',
+        type: 'osce' as const,
+        title: 'Sample OSCE station requiring review...',
+        chapterId: 'demo-chapter',
+        chapterTitle: 'Sample Chapter',
+        moduleId,
+        score: 2,
+        attemptCount: 1,
+        lastAttemptedAt: new Date().toISOString(),
+      },
+    ],
+    videos: [
+      {
+        id: 'demo-video-1',
+        type: 'video' as const,
+        title: 'Sample Video Lecture',
+        chapterId: 'demo-chapter',
+        chapterTitle: 'Sample Chapter',
+        moduleId,
+        percentWatched: 45,
+      },
+    ],
+    flashcards: [],
+    matching: [],
+    essays: [],
+    cases: [],
+    counts: {
+      mcqTotal: 25,
+      osceTotal: 10,
+      videoTotal: 8,
+      flashcardTotal: 50,
+      matchingTotal: 5,
+      essayTotal: 12,
+      caseScenarioTotal: 6,
+    },
   };
 }

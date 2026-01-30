@@ -81,10 +81,10 @@ function extractVideoId(videoUrl: string | null | undefined): string | null {
 }
 
 export function useChapterProgress(chapterId?: string) {
-  const { effectiveUserId } = useEffectiveUser();
+  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['chapter-progress', chapterId, effectiveUserId],
+    queryKey: ['chapter-progress', chapterId, effectiveUserId, isPreviewStudentUI],
     queryFn: async (): Promise<ChapterProgressData> => {
       const emptyResult: ChapterProgressData = {
         totalProgress: 0,
@@ -100,6 +100,11 @@ export function useChapterProgress(chapterId?: string) {
         completedItems: 0,
         totalItems: 0,
       };
+
+      // Preview mode (non-impersonation): return demo data
+      if (isPreviewStudentUI && !isImpersonating) {
+        return getDemoChapterProgress();
+      }
 
       if (!effectiveUserId || !chapterId) return emptyResult;
 
@@ -305,6 +310,26 @@ export function useChapterProgress(chapterId?: string) {
     enabled: !!effectiveUserId && !!chapterId,
     staleTime: 30000, // 30 seconds
   });
+}
+
+/**
+ * Demo chapter progress for Preview Student UI mode.
+ */
+function getDemoChapterProgress(): ChapterProgressData {
+  return {
+    totalProgress: 58,
+    practiceProgress: 45,
+    videoProgress: 75,
+    practiceCompleted: 9,
+    practiceTotal: 20,
+    videosCompleted: 3,
+    videosTotal: 4,
+    resourcesProgress: 75,
+    resourcesCompleted: 3,
+    resourcesTotal: 4,
+    completedItems: 12,
+    totalItems: 24,
+  };
 }
 
 /**

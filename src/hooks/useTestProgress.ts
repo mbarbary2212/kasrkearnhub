@@ -37,11 +37,16 @@ const RECENT_OSCE_ATTEMPTS = 5;
  * Enhanced with attempt-based improvement data for the unified readiness system.
  */
 export function useTestProgress(moduleId?: string) {
-  const { effectiveUserId } = useEffectiveUser();
+  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['test-progress', moduleId, effectiveUserId],
+    queryKey: ['test-progress', moduleId, effectiveUserId, isPreviewStudentUI],
     queryFn: async (): Promise<TestProgressData> => {
+      // Preview mode (non-impersonation): return demo data
+      if (isPreviewStudentUI && !isImpersonating) {
+        return getDemoTestProgress();
+      }
+
       if (!effectiveUserId) {
         return getEmptyProgress();
       }
@@ -191,5 +196,35 @@ function getEmptyProgress(): TestProgressData {
     },
     conceptCheck: { passRate: 0, passed: 0, total: 0 },
     hasAnyAttempts: false,
+  };
+}
+
+/**
+ * Demo test progress for Preview Student UI mode.
+ */
+function getDemoTestProgress(): TestProgressData {
+  return {
+    mcq: { 
+      accuracy: 72, 
+      attempts: 45, 
+      weeklyChange: 5,
+      recentAttempts: Array(10).fill({ correct: 1, total: 1 }).map((_, i) => ({ 
+        correct: i < 7 ? 1 : 0, 
+        total: 1 
+      })), 
+      priorAttempts: Array(10).fill({ correct: 1, total: 1 }).map((_, i) => ({ 
+        correct: i < 6 ? 1 : 0, 
+        total: 1 
+      })),
+    },
+    osce: { 
+      avgScore: 3.8, 
+      attempts: 12, 
+      weeklyChange: 0.3,
+      recentScores: [4, 4, 3, 5, 4], 
+      priorScores: [3, 4, 3, 4, 3] 
+    },
+    conceptCheck: { passRate: 85, passed: 17, total: 20 },
+    hasAnyAttempts: true,
   };
 }
