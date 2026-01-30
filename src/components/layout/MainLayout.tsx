@@ -17,7 +17,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
+import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity, Eye } from 'lucide-react';
+import { ImpersonateStudentModal } from '@/components/admin/ImpersonateStudentModal';
 import logo from '@/assets/logo.png';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
@@ -38,6 +39,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
+  const [impersonateModalOpen, setImpersonateModalOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
 
@@ -237,6 +239,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <Activity className="mr-2 h-4 w-4" />
                       Activity Log
                     </DropdownMenuItem>
+                    {(isPlatformAdmin || isSuperAdmin) && (
+                      <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Impersonate Student
+                      </DropdownMenuItem>
+                    )}
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
@@ -278,6 +286,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Coach FAB - Desktop/Tablet only */}
       <CoachFAB />
+
+      {/* Impersonate Student Modal */}
+      <ImpersonateStudentModal 
+        open={impersonateModalOpen} 
+        onOpenChange={setImpersonateModalOpen} 
+      />
     </div>
   );
 }
