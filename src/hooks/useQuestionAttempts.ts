@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
 // Types matching the database schema
@@ -59,20 +61,20 @@ export function useChapterQuestionAttempts(
   chapterId?: string,
   questionType?: PracticeQuestionType
 ) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['question-attempts', chapterId, questionType, user?.id],
+    queryKey: ['question-attempts', chapterId, questionType, effectiveUserId],
     queryFn: async () => {
-      if (!user?.id || !chapterId) return [];
+      if (!effectiveUserId || !chapterId) return [];
 
       // First get current attempt number for this chapter
-      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, questionType!);
+      const currentAttempt = await getCurrentAttemptNumber(effectiveUserId, chapterId, questionType!);
 
       let query = supabase
         .from('question_attempts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('chapter_id', chapterId)
         .eq('attempt_number', currentAttempt);
 
@@ -85,7 +87,7 @@ export function useChapterQuestionAttempts(
 
       return (data || []) as QuestionAttempt[];
     },
-    enabled: !!chapterId && !!user?.id,
+    enabled: !!chapterId && !!effectiveUserId,
     staleTime: 10000,
   });
 }
@@ -97,17 +99,17 @@ export function useChapterAttemptHistory(
   chapterId?: string,
   questionType?: PracticeQuestionType
 ) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['chapter-attempts', chapterId, questionType, user?.id],
+    queryKey: ['chapter-attempts', chapterId, questionType, effectiveUserId],
     queryFn: async () => {
-      if (!user?.id || !chapterId) return [];
+      if (!effectiveUserId || !chapterId) return [];
 
       let query = supabase
         .from('chapter_attempts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('chapter_id', chapterId)
         .order('attempt_number', { ascending: true });
 
@@ -120,7 +122,7 @@ export function useChapterAttemptHistory(
 
       return (data || []) as ChapterAttempt[];
     },
-    enabled: !!chapterId && !!user?.id,
+    enabled: !!chapterId && !!effectiveUserId,
     staleTime: 30000,
   });
 }
@@ -169,11 +171,18 @@ async function getCurrentAttemptNumber(
  */
 export function useSaveQuestionAttempt() {
   const { user } = useAuthContext();
+  const { isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (params: SaveQuestionAttemptParams) => {
       if (!user?.id) throw new Error('Not authenticated');
+
+      // Block writes in support mode (impersonation)
+      if (isSupportMode) {
+        toast.info('View-only mode: Progress is not saved during impersonation');
+        return { success: false, blocked: true };
+      }
 
       const { questionId, questionType, chapterId, moduleId, selectedAnswer, isCorrect, score } = params;
 
@@ -229,9 +238,10 @@ export function useSaveQuestionAttempt() {
       // Update or create chapter attempt record
       await updateChapterAttempt(user.id, chapterId, moduleId, questionType, attemptNumber, isCorrect, score);
 
-      return { success: true };
+      return { success: true, blocked: false };
     },
-    onSuccess: (_, params) => {
+    onSuccess: (result, params) => {
+      if (result.blocked) return;
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ 
         queryKey: ['question-attempts', params.chapterId] 
@@ -329,6 +339,7 @@ async function updateChapterAttempt(
  */
 export function useResetChapterAttempt() {
   const { user } = useAuthContext();
+  const { isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -340,6 +351,12 @@ export function useResetChapterAttempt() {
       questionType: PracticeQuestionType;
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
+
+      // Block writes in support mode (impersonation)
+      if (isSupportMode) {
+        toast.info('View-only mode: Cannot reset progress during impersonation');
+        return { newAttemptNumber: 0, blocked: true };
+      }
 
       // Get current attempt number
       const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, questionType);
@@ -358,9 +375,10 @@ export function useResetChapterAttempt() {
 
       if (error) throw error;
 
-      return { newAttemptNumber: currentAttempt + 1 };
+      return { newAttemptNumber: currentAttempt + 1, blocked: false };
     },
-    onSuccess: (_, params) => {
+    onSuccess: (result, params) => {
+      if (result.blocked) return;
       queryClient.invalidateQueries({ 
         queryKey: ['question-attempts', params.chapterId] 
       });
@@ -378,18 +396,18 @@ export function useChapterPercentile(
   chapterId?: string,
   questionType?: PracticeQuestionType
 ) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['chapter-percentile', chapterId, questionType, user?.id],
+    queryKey: ['chapter-percentile', chapterId, questionType, effectiveUserId],
     queryFn: async () => {
-      if (!user?.id || !chapterId || !questionType) return null;
+      if (!effectiveUserId || !chapterId || !questionType) return null;
 
       // Get user's latest completed score
       const { data: latestAttempt } = await supabase
         .from('chapter_attempts')
         .select('score, total_questions')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('chapter_id', chapterId)
         .eq('question_type', questionType)
         .eq('is_completed', true)
@@ -417,7 +435,7 @@ export function useChapterPercentile(
         totalQuestions: latestAttempt.total_questions,
       };
     },
-    enabled: !!chapterId && !!questionType && !!user?.id,
+    enabled: !!chapterId && !!questionType && !!effectiveUserId,
     staleTime: 60000,
   });
 }

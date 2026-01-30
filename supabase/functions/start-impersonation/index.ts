@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if caller is platform_admin or super_admin
+    // Check if caller is any type of admin
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
     
     const { data: callerRole } = await serviceClient
@@ -45,9 +45,10 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    if (!callerRole || !['platform_admin', 'super_admin'].includes(callerRole.role)) {
+    const adminRoles = ['super_admin', 'platform_admin', 'department_admin', 'topic_admin', 'admin', 'teacher'];
+    if (!callerRole || !adminRoles.includes(callerRole.role)) {
       return new Response(
-        JSON.stringify({ error: 'Only Platform Admins and Super Admins can impersonate users' }),
+        JSON.stringify({ error: 'Only admins can impersonate students' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

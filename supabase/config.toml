@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.invite-user]
 verify_jwt = true
+
+[functions.list-students-for-impersonation]
+verify_jwt = true

@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
+import { toast } from 'sonner';
 
 // Re-export extractVimeoId as a no-op for backward compatibility (Vimeo disabled)
 export function extractVimeoId(_url: string | null | undefined): string | null {
@@ -79,10 +81,10 @@ function extractVideoId(videoUrl: string | null | undefined): string | null {
 }
 
 export function useChapterProgress(chapterId?: string) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['chapter-progress', chapterId, user?.id],
+    queryKey: ['chapter-progress', chapterId, effectiveUserId],
     queryFn: async (): Promise<ChapterProgressData> => {
       const emptyResult: ChapterProgressData = {
         totalProgress: 0,
@@ -99,7 +101,7 @@ export function useChapterProgress(chapterId?: string) {
         totalItems: 0,
       };
 
-      if (!user?.id || !chapterId) return emptyResult;
+      if (!effectiveUserId || !chapterId) return emptyResult;
 
       // Fetch all content counts for this chapter
       const [
@@ -153,7 +155,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('question_attempts')
           .select('question_id')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('question_type', 'mcq')
           .in('question_id', 
             // Subquery simulation - we'll filter after
@@ -167,7 +169,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('question_attempts')
           .select('question_id')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('question_type', 'mcq')
           .in('question_id',
             (await supabase
@@ -180,7 +182,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('question_attempts')
           .select('question_id')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('question_type', 'osce')
           .in('question_id',
             (await supabase
@@ -193,7 +195,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('question_attempts')
           .select('question_id')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('question_type', 'osce')
           .in('question_id',
             (await supabase
@@ -206,7 +208,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('question_attempts')
           .select('question_id')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('question_type', 'mcq')
           .in('question_id',
             (await supabase
@@ -220,7 +222,7 @@ export function useChapterProgress(chapterId?: string) {
         supabase
           .from('video_progress')
           .select('video_id, percent_watched')
-          .eq('user_id', user.id),
+          .eq('user_id', effectiveUserId),
       ]);
 
       // Calculate practice totals
@@ -300,7 +302,7 @@ export function useChapterProgress(chapterId?: string) {
         totalItems: practiceTotal + videosTotal,
       };
     },
-    enabled: !!user?.id && !!chapterId,
+    enabled: !!effectiveUserId && !!chapterId,
     staleTime: 30000, // 30 seconds
   });
 }
@@ -328,6 +330,7 @@ export function useInvalidateChapterProgress() {
  */
 export function useMarkItemComplete() {
   const { user } = useAuthContext();
+  const { isSupportMode } = useEffectiveUser();
   const { invalidateChapter } = useInvalidateChapterProgress();
 
   const mutation = useMutation({
@@ -346,6 +349,12 @@ export function useMarkItemComplete() {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      // Block writes in support mode (impersonation)
+      if (isSupportMode) {
+        toast.info('View-only mode: Progress is not saved during impersonation');
+        return { questionId, chapterId: chapterId || '', blocked: true };
+      }
+
       // Map to DB enum type (question_attempts table only supports 'mcq' | 'osce')
       const dbQuestionType: 'mcq' | 'osce' = 
         questionType === 'osce' || questionType === 'case_scenario' ? 'osce' : 'mcq';
@@ -362,10 +371,10 @@ export function useMarkItemComplete() {
       );
 
       if (error) throw error;
-      return { questionId, chapterId: chapterId || '' };
+      return { questionId, chapterId: chapterId || '', blocked: false };
     },
-    onSuccess: ({ chapterId }) => {
-      if (chapterId) {
+    onSuccess: ({ chapterId, blocked }) => {
+      if (chapterId && !blocked) {
         invalidateChapter(chapterId);
       }
     },
