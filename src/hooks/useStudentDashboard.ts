@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import {
   calculatePerformance,
   calculateImprovement,
@@ -79,12 +79,12 @@ interface DashboardFilters {
 }
 
 export function useStudentDashboard(filters?: DashboardFilters) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId],
+    queryKey: ['student-dashboard', effectiveUserId, filters?.yearId, filters?.moduleId],
     queryFn: async (): Promise<DashboardData> => {
-      if (!user?.id) {
+      if (!effectiveUserId) {
         return getEmptyDashboard();
       }
 
@@ -134,7 +134,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         questionAttemptsRes,
       ] = await Promise.all([
         chaptersQuery,
-        supabase.from('user_progress').select('*').eq('user_id', user.id),
+        supabase.from('user_progress').select('*').eq('user_id', effectiveUserId),
         supabase.from('mcqs').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('essays').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
@@ -145,7 +145,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         supabase
           .from('question_attempts')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -375,7 +375,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         selectedYearName: yearRes?.data?.name,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
     staleTime: 60000, // Cache for 1 minute
   });
 }

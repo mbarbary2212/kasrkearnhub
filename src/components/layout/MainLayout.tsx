@@ -239,12 +239,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <Activity className="mr-2 h-4 w-4" />
                       Activity Log
                     </DropdownMenuItem>
-                    {(isPlatformAdmin || isSuperAdmin) && (
-                      <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Impersonate Student
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Impersonate Student
+                    </DropdownMenuItem>
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />

@@ -43,12 +43,12 @@ const SUPABASE_URL = 'https://dwmxnokprfiwmvzksyjg.supabase.co';
  * - isSupportMode = true when impersonating (blocks writes)
  */
 export function useEffectiveUser(): EffectiveUserState {
-  const { user, isAdmin, isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const { user, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
   const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
 
-  // Query impersonation state via edge function
+  // Query impersonation state via edge function - enabled for all admins
   const { data: impersonationState, isLoading: isQueryLoading } = useQuery({
     queryKey: ['impersonation-state', user?.id],
     queryFn: async (): Promise<ImpersonationState> => {
@@ -93,7 +93,7 @@ export function useEffectiveUser(): EffectiveUserState {
         return getEmptyState();
       }
     },
-    enabled: !!user?.id && (isPlatformAdmin || isSuperAdmin),
+    enabled: !!user?.id && isAdmin,
     refetchInterval: 60000, // Poll every 60 seconds
     staleTime: 30000,
   });
@@ -104,8 +104,8 @@ export function useEffectiveUser(): EffectiveUserState {
       return;
     }
 
-    if (!isPlatformAdmin && !isSuperAdmin) {
-      toast.error('Only Platform Admins and Super Admins can impersonate students');
+    if (!isAdmin) {
+      toast.error('Only admins can impersonate students');
       return;
     }
 
@@ -150,7 +150,7 @@ export function useEffectiveUser(): EffectiveUserState {
     } finally {
       setIsStarting(false);
     }
-  }, [user?.id, isPlatformAdmin, isSuperAdmin, queryClient]);
+  }, [user?.id, isAdmin, queryClient]);
 
   const endImpersonation = useCallback(async () => {
     if (!user?.id) return;

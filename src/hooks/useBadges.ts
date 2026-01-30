@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useBadgeCelebration } from '@/contexts/BadgeCelebrationContext';
 
 export interface Badge {
@@ -43,12 +44,12 @@ export function useAllBadges() {
 
 // Fetch user's earned badges
 export function useUserBadges() {
-  const { user } = useAuth();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['user-badges', user?.id],
+    queryKey: ['user-badges', effectiveUserId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!effectiveUserId) return [];
 
       const { data, error } = await supabase
         .from('user_badges')
@@ -56,19 +57,20 @@ export function useUserBadges() {
           *,
           badge:badges(*)
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('earned_at', { ascending: false });
 
       if (error) throw error;
       return data as (UserBadge & { badge: Badge })[];
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 }
 
 // Check and award badges based on user progress
 export function useCheckBadges() {
   const { user } = useAuth();
+  const { isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
   const { celebrateBadge } = useBadgeCelebration();
 
@@ -82,6 +84,11 @@ export function useCheckBadges() {
       moduleProgress?: number;
     }) => {
       if (!user?.id) return [];
+
+      // Block writes in support mode (impersonation)
+      if (isSupportMode) {
+        return [];
+      }
 
       // Get all badges and user's current badges
       const [{ data: allBadges }, { data: userBadges }] = await Promise.all([

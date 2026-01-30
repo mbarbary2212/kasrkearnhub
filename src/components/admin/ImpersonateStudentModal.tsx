@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { Search, Loader2, Eye, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const SUPABASE_URL = 'https://dwmxnokprfiwmvzksyjg.supabase.co';
 
 interface ImpersonateStudentModalProps {
   open: boolean;
@@ -24,55 +26,62 @@ interface StudentProfile {
 
 /**
  * Modal for selecting which student to impersonate.
- * - Search by name/email
+ * - Search by name/email via edge function (bypasses RLS)
  * - Shows only users with 'student' role
  * - Confirmation before starting impersonation
  */
 export function ImpersonateStudentModal({ open, onOpenChange }: ImpersonateStudentModalProps) {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { startImpersonation, isLoading: isStarting } = useEffectiveUser();
 
-  // Fetch students
-  const { data: students, isLoading: isLoadingStudents } = useQuery({
-    queryKey: ['students-for-impersonation'],
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch students via edge function (bypasses RLS)
+  const { data: studentsData, isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students-for-impersonation', debouncedSearch],
     queryFn: async () => {
-      // Get all users with student role
-      const { data: studentRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return { students: [], total: 0 };
 
-      if (rolesError) throw rolesError;
-      if (!studentRoles?.length) return [];
+      const params = new URLSearchParams({
+        limit: '50',
+        offset: '0',
+      });
+      
+      if (debouncedSearch.trim()) {
+        params.set('search', debouncedSearch.trim());
+      }
 
-      const studentIds = studentRoles.map(r => r.user_id);
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/list-students-for-impersonation?${params}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
-      // Get profiles for these students
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, avatar_url')
-        .in('id', studentIds)
-        .order('full_name');
+      if (!response.ok) {
+        console.error('Failed to fetch students:', response.status);
+        return { students: [], total: 0 };
+      }
 
-      if (profilesError) throw profilesError;
-      return (profiles || []) as StudentProfile[];
+      return await response.json() as { students: StudentProfile[]; total: number };
     },
     enabled: open,
   });
 
-  // Filter students by search
-  const filteredStudents = useMemo(() => {
-    if (!students) return [];
-    if (!search.trim()) return students;
-
-    const searchLower = search.toLowerCase();
-    return students.filter(s => 
-      s.email.toLowerCase().includes(searchLower) ||
-      s.full_name?.toLowerCase().includes(searchLower)
-    );
-  }, [students, search]);
+  const students = studentsData?.students || [];
 
   const handleSelectStudent = (student: StudentProfile) => {
     setSelectedStudent(student);
@@ -132,13 +141,13 @@ export function ImpersonateStudentModal({ open, onOpenChange }: ImpersonateStude
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : filteredStudents.length === 0 ? (
+              ) : students.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">
                   {search ? 'No students found matching your search' : 'No students found'}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {filteredStudents.map(student => (
+                  {students.map(student => (
                     <button
                       key={student.id}
                       onClick={() => handleSelectStudent(student)}

@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface VideoProgress {
   last_time_seconds: number;
@@ -16,6 +17,7 @@ const PROGRESS_INVALIDATION_THRESHOLD = 10; // percent change to trigger invalid
 
 export function useVideoProgress(videoId: string | null) {
   const { user } = useAuth();
+  const { effectiveUserId, isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
   const lastSavedTime = useRef<number>(0);
   const lastSaveTimestamp = useRef<number>(0);
@@ -44,12 +46,12 @@ export function useVideoProgress(videoId: string | null) {
   const fetchProgress = useCallback(async (): Promise<VideoProgress | null> => {
     if (!videoId) return null;
 
-    // If user is logged in, fetch from Supabase
-    if (user) {
+    // If user is logged in, fetch from Supabase (use effectiveUserId for reads)
+    if (effectiveUserId) {
       const { data, error } = await supabase
         .from('video_progress')
         .select('last_time_seconds, duration_seconds, percent_watched, updated_at')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('video_id', videoId)
         .maybeSingle();
 
@@ -82,14 +84,17 @@ export function useVideoProgress(videoId: string | null) {
 
     // User not logged in, use localStorage
     return getLocalProgress(videoId);
-  }, [videoId, user, getLocalProgress]);
+  }, [videoId, effectiveUserId, getLocalProgress]);
 
   const saveProgress = useCallback(async (
     currentTime: number,
     duration: number,
     forceSave = false
   ): Promise<void> => {
-    if (!videoId) return;
+    if (!videoId || !user) return;
+    
+    // Block writes in support mode (impersonation)
+    if (isSupportMode) return;
     
     // Guard against invalid values
     if (typeof currentTime !== 'number' || isNaN(currentTime)) return;
@@ -120,8 +125,8 @@ export function useVideoProgress(videoId: string | null) {
       updated_at: new Date().toISOString(),
     };
 
+    // Save to Supabase using upsert (only when not impersonating)
     if (user) {
-      // Save to Supabase using upsert
       const { error } = await supabase
         .from('video_progress')
         .upsert(
@@ -151,7 +156,7 @@ export function useVideoProgress(videoId: string | null) {
       // Save to localStorage
       setLocalProgress(videoId, progress);
     }
-  }, [videoId, user, setLocalProgress, queryClient]);
+  }, [videoId, user, isSupportMode, setLocalProgress, queryClient]);
 
   // Mark video as complete - only resets if truly finished (>=95%)
   const markComplete = useCallback(async (
@@ -159,6 +164,9 @@ export function useVideoProgress(videoId: string | null) {
     duration: number
   ): Promise<void> => {
     if (!videoId || duration <= 0) return;
+    
+    // Block writes in support mode (impersonation)
+    if (isSupportMode) return;
 
     const percentWatched = (currentTime / duration) * 100;
     const nearEnd = currentTime >= duration - 10;
@@ -201,11 +209,14 @@ export function useVideoProgress(videoId: string | null) {
       // Not truly finished - just save current position
       await saveProgress(currentTime, duration, true);
     }
-  }, [videoId, user, setLocalProgress, saveProgress, queryClient]);
+  }, [videoId, user, isSupportMode, setLocalProgress, saveProgress, queryClient]);
 
   // Explicit reset (user clicked "Start over")
   const resetProgress = useCallback(async (duration: number): Promise<void> => {
     if (!videoId) return;
+    
+    // Block writes in support mode (impersonation)
+    if (isSupportMode) return;
 
     // Reset refs to allow immediate new saves
     lastSavedTime.current = 0;
@@ -239,7 +250,7 @@ export function useVideoProgress(videoId: string | null) {
     } else {
       setLocalProgress(videoId, progress);
     }
-  }, [videoId, user, setLocalProgress]);
+  }, [videoId, user, isSupportMode, setLocalProgress]);
 
   // Migrate localStorage progress to Supabase when user logs in
   useEffect(() => {

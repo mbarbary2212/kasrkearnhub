@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface AudioProgress {
   last_position_seconds: number;
@@ -18,18 +19,19 @@ const SAVE_THROTTLE_MS = 5000; // 5 seconds
 
 export function useAudioProgress(resourceId: string | null) {
   const { user } = useAuth();
+  const { effectiveUserId, isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
   const lastSavedTime = useRef<number>(0);
   const lastSaveTimestamp = useRef<number>(0);
   const playCountIncremented = useRef<boolean>(false);
 
   const fetchProgress = useCallback(async (): Promise<AudioProgress | null> => {
-    if (!resourceId || !user) return null;
+    if (!resourceId || !effectiveUserId) return null;
 
     const { data, error } = await supabase
       .from('audio_progress')
       .select('last_position_seconds, duration_seconds, progress_seconds, percent_listened, play_count, completed, updated_at')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .eq('resource_id', resourceId)
       .maybeSingle();
 
@@ -51,7 +53,7 @@ export function useAudioProgress(resourceId: string | null) {
     }
 
     return null;
-  }, [resourceId, user]);
+  }, [resourceId, effectiveUserId]);
 
   const saveProgress = useCallback(async (
     currentTime: number,
@@ -59,6 +61,9 @@ export function useAudioProgress(resourceId: string | null) {
     forceSave = false
   ): Promise<void> => {
     if (!resourceId || !user) return;
+    
+    // Block writes in support mode (impersonation)
+    if (isSupportMode) return;
 
     // Guard against invalid values
     if (typeof currentTime !== 'number' || isNaN(currentTime)) return;
@@ -120,13 +125,16 @@ export function useAudioProgress(resourceId: string | null) {
     if (error) {
       console.error('Error saving audio progress:', error);
     }
-  }, [resourceId, user]);
+  }, [resourceId, user, isSupportMode]);
 
   const markComplete = useCallback(async (
     currentTime: number,
     duration: number
   ): Promise<boolean> => {
     if (!resourceId || !user || duration <= 0) return false;
+    
+    // Block writes in support mode (impersonation)
+    if (isSupportMode) return false;
 
     const percentListened = (currentTime / duration) * 100;
     const nearEnd = currentTime >= duration - 5;
@@ -170,7 +178,7 @@ export function useAudioProgress(resourceId: string | null) {
     }
 
     return false;
-  }, [resourceId, user, queryClient]);
+  }, [resourceId, user, isSupportMode, queryClient]);
 
   const resetPlayCountFlag = useCallback(() => {
     playCountIncremented.current = false;

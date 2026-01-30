@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { MIN_ATTEMPTS_FOR_IMPROVEMENT } from '@/lib/readinessCalculator';
 
 export interface TestProgressData {
@@ -37,12 +37,12 @@ const RECENT_OSCE_ATTEMPTS = 5;
  * Enhanced with attempt-based improvement data for the unified readiness system.
  */
 export function useTestProgress(moduleId?: string) {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   return useQuery({
-    queryKey: ['test-progress', moduleId, user?.id],
+    queryKey: ['test-progress', moduleId, effectiveUserId],
     queryFn: async (): Promise<TestProgressData> => {
-      if (!user?.id) {
+      if (!effectiveUserId) {
         return getEmptyProgress();
       }
 
@@ -50,7 +50,7 @@ export function useTestProgress(moduleId?: string) {
       let query = supabase
         .from('question_attempts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: false }); // Most recent first
 
       // If moduleId provided, we need to filter by chapters in that module
@@ -168,7 +168,7 @@ export function useTestProgress(moduleId?: string) {
         hasAnyAttempts: mcqAttempts.length > 0 || osceAttempts.length > 0 || conceptCheckTotal > 0,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
     staleTime: 60000, // 1 minute
   });
 }

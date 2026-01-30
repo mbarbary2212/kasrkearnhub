@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 export interface NeedsPracticeItem {
   id: string;
@@ -48,12 +48,12 @@ const EMPTY_COUNTS: ContentCounts = {
 };
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
-  const { user } = useAuthContext();
+  const { effectiveUserId } = useEffectiveUser();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['needs-practice', user?.id, moduleId],
+    queryKey: ['needs-practice', effectiveUserId, moduleId],
     queryFn: async () => {
-      if (!user?.id || !moduleId) {
+      if (!effectiveUserId || !moduleId) {
         return {
           mcq: [],
           osce: [],
@@ -86,7 +86,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('question_attempts')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('module_id', moduleId)
           .eq('question_type', 'mcq')
           .eq('is_correct', false)
@@ -95,7 +95,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('question_attempts')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('module_id', moduleId)
           .eq('question_type', 'osce')
           .lte('score', 3)
@@ -128,7 +128,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('video_progress')
           .select('video_id, percent_watched')
-          .eq('user_id', user.id),
+          .eq('user_id', effectiveUserId),
         // Flashcards for this module
         supabase
           .from('flashcards')
@@ -139,7 +139,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('user_flashcard_stars')
           .select('card_id, chapter_id')
-          .eq('user_id', user.id),
+          .eq('user_id', effectiveUserId),
         // Matching questions for this module
         supabase
           .from('matching_questions')
@@ -162,7 +162,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('user_progress')
           .select('content_id, content_type, completed')
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveUserId)
           .eq('completed', true),
       ]);
 
@@ -366,7 +366,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         counts,
       };
     },
-    enabled: !!user?.id && !!moduleId,
+    enabled: !!effectiveUserId && !!moduleId,
     staleTime: 30000,
   });
 
