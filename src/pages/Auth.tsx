@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Lock, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
@@ -23,7 +24,7 @@ export default function Auth() {
   const [autoSubmitPending, setAutoSubmitPending] = useState(false);
   const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const { signIn, signOut, resetPassword, updatePassword, user, isLoading: authLoading } = useAuthContext();
+  const { signIn, signUp, signOut, resetPassword, updatePassword, user, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -115,6 +116,30 @@ export default function Auth() {
     // Match exact domain or any subdomain
     return normalizedEmail.endsWith('@kasralainy.edu.eg') || 
            normalizedEmail.includes('@') && normalizedEmail.split('@')[1]?.endsWith('.kasralainy.edu.eg');
+  };
+
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const email = (formData.get('email') as string).toLowerCase().trim();
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+
+    // Validate email domain for new sign-ups
+    if (!isAllowedEmailDomain(email)) {
+      toast.error('Registration is currently limited to Kasr Al-Ainy accounts (@kasralainy.edu.eg or subdomains).');
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signUp(email, password, name);
+    if (error) {
+      toast.error(error.message || 'Failed to sign up');
+    } else {
+      toast.success('Account created! Please check your email to confirm.');
+    }
+    setIsLoading(false);
   };
 
   const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -451,75 +476,166 @@ export default function Auth() {
           </CardHeader>
           
           <CardContent>
-            <form ref={formRef} onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="login-email"
-                    name="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    className="pl-10"
-                    required
-                    value={loginEmail}
-                    onChange={handleEmailChange}
-                    onFocus={cancelAutoSubmit}
-                  />
-                </div>
-              </div>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Create Account</TabsTrigger>
+              </TabsList>
               
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
-                    onClick={() => setAuthView('forgot')}
+              <TabsContent value="login">
+                <form ref={formRef} onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-email"
+                        name="email"
+                        type="email"
+                        placeholder="your@email.com"
+                        className="pl-10"
+                        required
+                        value={loginEmail}
+                        onChange={handleEmailChange}
+                        onFocus={cancelAutoSubmit}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                        onClick={() => setAuthView('forgot')}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-password"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10"
+                        required
+                        value={loginPassword}
+                        onChange={handlePasswordChange}
+                        onFocus={cancelAutoSubmit}
+                      />
+                    </div>
+                  </div>
+                  
+                  {autoSubmitPending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Signing in...</span>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    type="submit" 
+                    className={`w-full ${isStudent ? 'gradient-medical' : 'bg-medical-teal hover:bg-medical-teal/90'}`}
+                    disabled={isLoading}
                   >
-                    Forgot password?
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Sign In'
+                    )}
                   </Button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="login-password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    required
-                    value={loginPassword}
-                    onChange={handlePasswordChange}
-                    onFocus={cancelAutoSubmit}
-                  />
-                </div>
-              </div>
+                </form>
+              </TabsContent>
               
-              {autoSubmitPending && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Signing in...</span>
-                </div>
-              )}
-              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-name"
+                        name="name"
+                        type="text"
+                        placeholder="John Doe"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-email"
+                        name="email"
+                        type="email"
+                        placeholder="you@kasralainy.edu.eg"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      New registrations are limited to Kasr Al-Ainy accounts (e.g. @kasralainy.edu.eg, @students.kasralainy.edu.eg).
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-password"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className={`w-full ${isStudent ? 'gradient-medical' : 'bg-medical-teal hover:bg-medical-teal/90'}`}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      'Create Account'
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+
+            {/* Switch login type */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isStudent ? 'Are you a faculty member?' : 'Are you a student?'}
+              </p>
               <Button 
-                type="submit" 
-                className={`w-full ${isStudent ? 'gradient-medical' : 'bg-medical-teal hover:bg-medical-teal/90'}`}
-                disabled={isLoading}
+                variant="link" 
+                className="text-primary"
+                onClick={() => navigate(`/auth?type=${isStudent ? 'faculty' : 'student'}`)}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
+                {isStudent ? 'Faculty & Staff Login' : 'Student Login'}
               </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>

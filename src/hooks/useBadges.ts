@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useBadgeCelebration } from '@/contexts/BadgeCelebrationContext';
 
 export interface Badge {
@@ -44,17 +43,12 @@ export function useAllBadges() {
 
 // Fetch user's earned badges
 export function useUserBadges() {
-  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
+  const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-badges', effectiveUserId, isPreviewStudentUI],
+    queryKey: ['user-badges', user?.id],
     queryFn: async () => {
-      // Preview mode (non-impersonation): return demo badges
-      if (isPreviewStudentUI && !isImpersonating) {
-        return getDemoUserBadges();
-      }
-
-      if (!effectiveUserId) return [];
+      if (!user?.id) return [];
 
       const { data, error } = await supabase
         .from('user_badges')
@@ -62,64 +56,19 @@ export function useUserBadges() {
           *,
           badge:badges(*)
         `)
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', user.id)
         .order('earned_at', { ascending: false });
 
       if (error) throw error;
       return data as (UserBadge & { badge: Badge })[];
     },
-    enabled: !!effectiveUserId || isPreviewStudentUI,
+    enabled: !!user?.id,
   });
-}
-
-/**
- * Demo badges for Preview Student UI mode.
- */
-function getDemoUserBadges(): (UserBadge & { badge: Badge })[] {
-  return [
-    {
-      id: 'demo-ub-1',
-      user_id: 'demo-user',
-      badge_id: 'demo-badge-1',
-      earned_at: new Date().toISOString(),
-      metadata: null,
-      badge: {
-        id: 'demo-badge-1',
-        code: 'first_question',
-        name: 'First Question',
-        description: 'Answered your first question!',
-        category: 'practice',
-        icon_name: 'HelpCircle',
-        tier: 1,
-        threshold: 1,
-        created_at: new Date().toISOString(),
-      },
-    },
-    {
-      id: 'demo-ub-2',
-      user_id: 'demo-user',
-      badge_id: 'demo-badge-2',
-      earned_at: new Date().toISOString(),
-      metadata: null,
-      badge: {
-        id: 'demo-badge-2',
-        code: 'streak_3',
-        name: '3-Day Streak',
-        description: 'Studied for 3 days in a row!',
-        category: 'streak',
-        icon_name: 'Flame',
-        tier: 1,
-        threshold: 3,
-        created_at: new Date().toISOString(),
-      },
-    },
-  ];
 }
 
 // Check and award badges based on user progress
 export function useCheckBadges() {
   const { user } = useAuth();
-  const { isSupportMode } = useEffectiveUser();
   const queryClient = useQueryClient();
   const { celebrateBadge } = useBadgeCelebration();
 
@@ -133,11 +82,6 @@ export function useCheckBadges() {
       moduleProgress?: number;
     }) => {
       if (!user?.id) return [];
-
-      // Block writes in support mode (impersonation)
-      if (isSupportMode) {
-        return [];
-      }
 
       // Get all badges and user's current badges
       const [{ data: allBadges }, { data: userBadges }] = await Promise.all([

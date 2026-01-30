@@ -170,7 +170,7 @@ export function OsceQuestionCard({
 
   return (
     <Card className={cn(
-      "overflow-hidden border-l-4 border-l-content-osce card-interactive",
+      "overflow-hidden",
       isDeleted && "opacity-60 border-destructive/30 bg-destructive/5",
       previousAttempt && !isDeleted && "ring-1 ring-offset-1",
       previousAttempt && previousAttempt.is_correct && !isDeleted && "ring-green-300 dark:ring-green-700",

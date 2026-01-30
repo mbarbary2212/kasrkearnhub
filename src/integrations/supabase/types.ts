@@ -1380,36 +1380,6 @@ export type Database = {
           },
         ]
       }
-      impersonation_sessions: {
-        Row: {
-          actor_id: string
-          created_at: string
-          effective_user_id: string
-          end_reason: string | null
-          ended_at: string | null
-          expires_at: string
-          id: string
-        }
-        Insert: {
-          actor_id: string
-          created_at?: string
-          effective_user_id: string
-          end_reason?: string | null
-          ended_at?: string | null
-          expires_at?: string
-          id?: string
-        }
-        Update: {
-          actor_id?: string
-          created_at?: string
-          effective_user_id?: string
-          end_reason?: string | null
-          ended_at?: string | null
-          expires_at?: string
-          id?: string
-        }
-        Relationships: []
-      }
       inquiries: {
         Row: {
           admin_notes: string | null

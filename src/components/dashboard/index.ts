@@ -13,6 +13,5 @@ export { DashboardInsights } from './DashboardInsights';
 export { DashboardProgressMap } from './DashboardProgressMap';
 export { DashboardWeeklySummary } from './DashboardWeeklySummary';
 export { DashboardNeedsPractice } from './DashboardNeedsPractice';
-export { StreakHeatMap } from './StreakHeatMap';
 export { BadgesSection } from './BadgesSection';
 export { BadgeCard } from './BadgeCard';

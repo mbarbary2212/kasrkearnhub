@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { useAuthContext } from '@/contexts/AuthContext';
 import {
   calculatePerformance,
   calculateImprovement,
@@ -79,17 +79,12 @@ interface DashboardFilters {
 }
 
 export function useStudentDashboard(filters?: DashboardFilters) {
-  const { effectiveUserId, isPreviewStudentUI, isImpersonating } = useEffectiveUser();
+  const { user } = useAuthContext();
 
   return useQuery({
-    queryKey: ['student-dashboard', effectiveUserId, isPreviewStudentUI, filters?.yearId, filters?.moduleId],
+    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId],
     queryFn: async (): Promise<DashboardData> => {
-      // Preview mode (non-impersonation): return demo data for UI preview
-      if (isPreviewStudentUI && !isImpersonating) {
-        return getDemoDashboard();
-      }
-
-      if (!effectiveUserId) {
+      if (!user?.id) {
         return getEmptyDashboard();
       }
 
@@ -139,7 +134,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         questionAttemptsRes,
       ] = await Promise.all([
         chaptersQuery,
-        supabase.from('user_progress').select('*').eq('user_id', effectiveUserId),
+        supabase.from('user_progress').select('*').eq('user_id', user.id),
         supabase.from('mcqs').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('essays').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
@@ -150,7 +145,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         supabase
           .from('question_attempts')
           .select('*')
-          .eq('user_id', effectiveUserId)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -380,7 +375,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         selectedYearName: yearRes?.data?.name,
       };
     },
-    enabled: !!effectiveUserId,
+    enabled: !!user?.id,
     staleTime: 60000, // Cache for 1 minute
   });
 }
@@ -404,92 +399,6 @@ function getEmptyDashboard(): DashboardData {
     chapters: [],
     insights: [],
     suggestions: [],
-  };
-}
-
-/**
- * Demo dashboard data for Preview Student UI mode.
- * Shows realistic sample data so admins can see what the UI looks like.
- */
-function getDemoDashboard(): DashboardData {
-  return {
-    examReadiness: 65,
-    coveragePercent: 42,
-    coverageCompleted: 21,
-    coverageTotal: 50,
-    chaptersStarted: 5,
-    chaptersTotal: 12,
-    studyStreak: 7,
-    consistencyScore: 72,
-    readinessResult: {
-      examReadiness: 65,
-      components: {
-        coverage: 42,
-        performance: 68,
-        improvement: 55,
-        consistency: 72,
-      },
-      cap: null,
-      rawScore: 65,
-      breakdown: {
-        coverageContribution: 16.8,
-        performanceContribution: 20.4,
-        improvementContribution: 11,
-        consistencyContribution: 7.2,
-      },
-    },
-    performanceScore: 68,
-    improvementScore: 55,
-    weeklyTimeMinutes: 125,
-    weeklyChaptersAdvanced: 3,
-    hasRealAccuracyData: true,
-    chapters: [
-      {
-        id: 'demo-1',
-        title: 'Sample Chapter 1 - Introduction',
-        chapterNumber: 1,
-        bookLabel: null,
-        moduleId: 'demo-module',
-        moduleName: 'Demo Module',
-        status: 'completed',
-        progress: 100,
-        totalItems: 15,
-        completedItems: 15,
-      },
-      {
-        id: 'demo-2',
-        title: 'Sample Chapter 2 - Core Concepts',
-        chapterNumber: 2,
-        bookLabel: null,
-        moduleId: 'demo-module',
-        moduleName: 'Demo Module',
-        status: 'in_progress',
-        progress: 45,
-        totalItems: 20,
-        completedItems: 9,
-      },
-      {
-        id: 'demo-3',
-        title: 'Sample Chapter 3 - Advanced Topics',
-        chapterNumber: 3,
-        bookLabel: null,
-        moduleId: 'demo-module',
-        moduleName: 'Demo Module',
-        status: 'not_started',
-        progress: 0,
-        totalItems: 18,
-        completedItems: 0,
-      },
-    ],
-    insights: [
-      { type: 'strong', label: 'Sample Strong Area', detail: '100% coverage' },
-      { type: 'attention', label: 'Sample Weak Area', detail: '45% coverage' },
-      { type: 'missed', label: 'Not Started Yet', detail: '0% coverage' },
-    ],
-    suggestions: [
-      { type: 'read', title: 'Sample Lecture', estimatedMinutes: 15 },
-      { type: 'mcq', title: 'Practice MCQs', estimatedMinutes: 10 },
-    ],
   };
 }
 

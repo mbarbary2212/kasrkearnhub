@@ -50,18 +50,3 @@ verify_jwt = false
 
 [functions.get-audio-signed-url]
 verify_jwt = false
-
-[functions.start-impersonation]
-verify_jwt = true
-
-[functions.end-impersonation]
-verify_jwt = true
-
-[functions.get-impersonation-state]
-verify_jwt = true
-
-[functions.invite-user]
-verify_jwt = true
-
-[functions.list-students-for-impersonation]
-verify_jwt = true

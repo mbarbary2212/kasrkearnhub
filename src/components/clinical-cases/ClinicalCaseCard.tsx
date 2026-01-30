@@ -56,7 +56,7 @@ export function ClinicalCaseCard({ clinicalCase, onStart, isLoading }: ClinicalC
 
   return (
     <Card className={cn(
-      "hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-content-case card-interactive",
+      "hover:shadow-md transition-all cursor-pointer group",
       hasCompleted && "border-green-200 dark:border-green-800/50"
     )}>
       <CardHeader className="pb-3">

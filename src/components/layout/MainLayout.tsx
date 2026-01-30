@@ -17,8 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity, Eye, UserCheck } from 'lucide-react';
-import { ImpersonateStudentModal } from '@/components/admin/ImpersonateStudentModal';
+import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
@@ -27,8 +26,6 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { CoachFAB } from '@/components/coach';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -40,10 +37,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
-  const [impersonateModalOpen, setImpersonateModalOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
-  const { isPreviewStudentUI, togglePreviewStudentUI, isEffectivelyStudent } = useEffectiveUser();
 
   const handleLogout = async () => {
     await signOut();
@@ -159,26 +154,28 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Coach Icon - For students or admins in preview/impersonation mode on mobile */}
-            {user && isMobile && (!isAdmin || isEffectivelyStudent) && (
+            {/* Study Coach Icon - Only on mobile (navigates to Coach page) */}
+            {user && isMobile && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => navigate('/progress')}
+                      onClick={() => {
+                        navigate(isAdmin ? '/admin' : '/progress');
+                      }}
                       variant="ghost"
                       size="icon"
                       className="h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110"
                     >
                       <img 
                         src={studyCoachIcon} 
-                        alt="Study Coach" 
+                        alt={isAdmin ? "Admin Panel" : "Study Coach"} 
                         className="h-full w-full object-contain rounded-full" 
                       />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    Study Coach
+                    {isAdmin ? 'Admin Panel' : 'Study Coach'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -219,8 +216,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                {/* Show Study Coach for students OR admins in preview/impersonation mode */}
-                {(!isAdmin || isEffectivelyStudent) && (
+                {/* Only show Study Coach for non-admins */}
+                {!isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/progress')}>
                     <GraduationCap className="mr-2 h-4 w-4" />
                     Study Coach
@@ -241,18 +238,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       <Activity className="mr-2 h-4 w-4" />
                       Activity Log
                     </DropdownMenuItem>
-                    {/* Preview Student UI - Available to ALL admins */}
-                    <DropdownMenuItem onClick={togglePreviewStudentUI}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      {isPreviewStudentUI ? 'Exit Student Preview' : 'Preview Student UI'}
-                    </DropdownMenuItem>
-                    {/* Impersonate Student - Super Admin only */}
-                    {isSuperAdmin && (
-                      <DropdownMenuItem onClick={() => setImpersonateModalOpen(true)}>
-                        <UserCheck className="mr-2 h-4 w-4" />
-                        Impersonate Student...
-                      </DropdownMenuItem>
-                    )}
                     {!isTopicAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
@@ -277,9 +262,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      {/* Impersonation Banner - shows when admin is viewing as student */}
-      <ImpersonationBanner />
-
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pb-24">
         {children}
@@ -294,14 +276,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Coach FAB - Desktop/Tablet only */}
       <CoachFAB />
-
-      {/* Impersonate Student Modal - Super Admin only */}
-      {isSuperAdmin && (
-        <ImpersonateStudentModal 
-          open={impersonateModalOpen} 
-          onOpenChange={setImpersonateModalOpen} 
-        />
-      )}
     </div>
   );
 }

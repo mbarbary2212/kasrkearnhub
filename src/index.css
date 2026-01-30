@@ -56,15 +56,6 @@
 
     --font-heading: 'Plus Jakarta Sans', sans-serif;
     --font-body: 'Inter', sans-serif;
-
-    /* Content type accent colors */
-    --content-mcq: 199 89% 48%;
-    --content-osce: 172 66% 50%;
-    --content-flashcard: 262 83% 58%;
-    --content-matching: 25 95% 53%;
-    --content-essay: 240 60% 55%;
-    --content-case: 158 64% 45%;
-    --content-video: 350 89% 60%;
   }
 
   .dark {
@@ -156,15 +147,5 @@
     @apply overflow-y-auto overscroll-contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-  }
-
-  /* Interactive card hover effect */
-  .card-interactive {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  .card-interactive:hover {
-    @apply shadow-lg;
-    transform: translateY(-2px) scale(1.01);
   }
 }

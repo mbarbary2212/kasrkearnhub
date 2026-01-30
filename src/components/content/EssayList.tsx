@@ -216,7 +216,7 @@ export default function EssayList({
               <Card 
                 key={essay.id} 
                 className={cn(
-                  "hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-content-essay card-interactive",
+                  "hover:shadow-md transition-shadow cursor-pointer",
                   isDeleted && "opacity-60 border-destructive/30 bg-destructive/5"
                 )}
                 onClick={() => !isDeleted && handleOpen(index)}

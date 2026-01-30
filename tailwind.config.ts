@@ -68,15 +68,6 @@ export default {
           orange: "hsl(var(--medical-orange))",
           purple: "hsl(var(--medical-purple))",
         },
-        content: {
-          mcq: "hsl(var(--content-mcq))",
-          osce: "hsl(var(--content-osce))",
-          flashcard: "hsl(var(--content-flashcard))",
-          matching: "hsl(var(--content-matching))",
-          essay: "hsl(var(--content-essay))",
-          case: "hsl(var(--content-case))",
-          video: "hsl(var(--content-video))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -114,14 +105,6 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
-        "progress-fill": {
-          "0%": { strokeDashoffset: "100" },
-          "100%": { strokeDashoffset: "var(--progress-value)" },
-        },
-        "pulse-glow": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.6" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -131,8 +114,6 @@ export default {
         "badge-bounce": "badge-bounce 0.6s ease-out forwards",
         "confetti-burst": "confetti-burst 0.8s ease-out forwards",
         "shine": "shine 1.5s ease-in-out infinite",
-        "progress-fill": "progress-fill 1s ease-out forwards",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
     },
   },

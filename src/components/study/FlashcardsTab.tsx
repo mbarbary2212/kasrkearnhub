@@ -5,7 +5,6 @@ import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
 import { FlashcardsAdminTable } from './FlashcardsAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { StudyResource } from '@/hooks/useStudyResources';
 import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
@@ -30,7 +29,6 @@ interface FlashcardsTabProps {
 
 export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleId }: FlashcardsTabProps) {
   const { isAdmin, isTeacher } = useAuthContext();
-  const { isSupportMode } = useEffectiveUser();
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
   
   // Synced stars across devices
@@ -68,8 +66,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
   }, [resources]);
 
   // Admin/Teacher view shows the grid with edit/delete controls
-  // Hide admin view when in support mode (impersonation or preview)
-  const showAdminView = !isSupportMode && (isAdmin || isTeacher) && canManage;
+  const showAdminView = (isAdmin || isTeacher) && canManage;
 
   if (showAdminView) {
     return (
