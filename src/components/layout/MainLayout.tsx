@@ -43,7 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [impersonateModalOpen, setImpersonateModalOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
-  const { isPreviewStudentUI, togglePreviewStudentUI } = useEffectiveUser();
+  const { isPreviewStudentUI, togglePreviewStudentUI, isEffectivelyStudent } = useEffectiveUser();
 
   const handleLogout = async () => {
     await signOut();
@@ -159,8 +159,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Coach Icon - Only for non-admin users on mobile */}
-            {user && isMobile && !isAdmin && (
+            {/* Study Coach Icon - For students or admins in preview/impersonation mode on mobile */}
+            {user && isMobile && (!isAdmin || isEffectivelyStudent) && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -219,8 +219,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                {/* Only show Study Coach for non-admins */}
-                {!isAdmin && (
+                {/* Show Study Coach for students OR admins in preview/impersonation mode */}
+                {(!isAdmin || isEffectivelyStudent) && (
                   <DropdownMenuItem onClick={() => navigate('/progress')}>
                     <GraduationCap className="mr-2 h-4 w-4" />
                     Study Coach
