@@ -4,6 +4,7 @@ import { LearningHubOverview } from './LearningHubOverview';
 import { LearningHubStudyPlan } from './LearningHubStudyPlan';
 import { LearningHubUnlocks } from './LearningHubUnlocks';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 interface Module {
   id: string;
@@ -22,9 +23,10 @@ interface LearningHubTabsProps {
 
 export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
   const { isAdmin } = useAuthContext();
+  const { isEffectivelyStudent } = useEffectiveUser();
   
-  // For admins, only show Overview tab
-  const showAllTabs = !isAdmin;
+  // Show all tabs for students OR admins in preview/impersonation mode
+  const showAllTabs = !isAdmin || isEffectivelyStudent;
   
   return (
     <Tabs defaultValue="overview" className="w-full">

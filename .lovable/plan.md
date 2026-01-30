@@ -1,15 +1,13 @@
 
-# Fix: Show Student UI Elements in Preview Mode
+# Fix: Show Student UI Elements in Preview Mode ✅ IMPLEMENTED
 
 ## Problem Identified
 
 The "Preview Student UI" mode currently only hides admin controls - it doesn't show the student experience. This is because student-only UI elements (Coach FAB, Ask Coach button, Study Coach navigation, etc.) check `isAdmin` from `useAuthContext()`, which remains `true` even in preview mode.
 
----
+## Solution Implemented
 
-## Root Cause
-
-Throughout the codebase, components use this pattern:
+Added `isEffectivelyStudent` flag to `useEffectiveUser` hook and updated all components to use it.
 
 ```tsx
 const { isAdmin } = useAuthContext();

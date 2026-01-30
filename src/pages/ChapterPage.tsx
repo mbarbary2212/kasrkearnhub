@@ -338,8 +338,8 @@ export default function ChapterPage() {
               canManage={canManageContent}
             />
           )}
-          {/* Ask Coach Button - visible in Resources and Practice sections */}
-          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+          {/* Ask Coach Button - visible in Resources and Practice sections for students or admins in preview mode */}
+          {(!auth.isAdmin || isSupportMode) && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
               variant="header"
               context={{

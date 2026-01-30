@@ -34,6 +34,8 @@ interface EffectiveUserState {
   isLoading: boolean;
   // Support mode flag (writes blocked during impersonation OR preview)
   isSupportMode: boolean;
+  // UI should render as student (preview or impersonation)
+  isEffectivelyStudent: boolean;
 }
 
 const SUPABASE_URL = 'https://dwmxnokprfiwmvzksyjg.supabase.co';
@@ -238,6 +240,9 @@ export function useEffectiveUser(): EffectiveUserState {
 
   // Support mode blocks writes in BOTH impersonation AND preview modes
   const isSupportMode = isImpersonating || isPreviewStudentUI;
+  
+  // UI should render as student experience in preview or impersonation
+  const isEffectivelyStudent = isPreviewStudentUI || isImpersonating;
 
   return {
     userId: user?.id ?? null,
@@ -253,6 +258,7 @@ export function useEffectiveUser(): EffectiveUserState {
     togglePreviewStudentUI,
     isLoading: isQueryLoading || isStarting || isEnding,
     isSupportMode,
+    isEffectivelyStudent,
   };
 }
 

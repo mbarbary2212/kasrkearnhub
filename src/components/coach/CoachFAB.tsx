@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCoachContext } from '@/contexts/CoachContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
@@ -10,21 +11,24 @@ import studyCoachIcon from '@/assets/study-coach-icon.png';
  * - Appears on desktop/tablet only (bottom-right)
  * - Hidden on mobile (uses bottom nav instead)
  * - Navigates to /progress (Study Coach page)
+ * - Shows for admins when in preview/impersonation mode
  */
 export function CoachFAB() {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuthContext();
   const { shouldPulse, dismissPulse } = useCoachContext();
+  const { isEffectivelyStudent } = useEffectiveUser();
   const isMobile = useIsMobile();
 
-  // Don't show FAB for admins, mobile users, or if not logged in
-  if (isMobile || !user || isAdmin) {
+  // Don't show FAB for mobile users or if not logged in
+  // Show for students OR admins in preview/impersonation mode
+  if (isMobile || !user || (isAdmin && !isEffectivelyStudent)) {
     return null;
   }
 
   const handleClick = () => {
     dismissPulse();
-    navigate(isAdmin ? '/admin' : '/progress');
+    navigate('/progress');
   };
 
   return (
@@ -48,12 +52,12 @@ export function CoachFAB() {
         // Overflow handling
         "overflow-hidden p-1"
       )}
-      title={isAdmin ? "Admin Panel" : "Study Coach"}
-      aria-label={isAdmin ? "Open Admin Panel" : "Open Study Coach"}
+      title="Study Coach"
+      aria-label="Open Study Coach"
     >
       <img
         src={studyCoachIcon}
-        alt={isAdmin ? "Admin Panel" : "Study Coach"}
+        alt="Study Coach"
         className="h-full w-full object-contain rounded-full"
       />
     </button>
