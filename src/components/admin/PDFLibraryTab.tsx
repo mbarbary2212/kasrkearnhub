@@ -21,7 +21,8 @@ import {
   HardDrive,
   ExternalLink,
   X,
-  Plus
+  Plus,
+  Layers
 } from 'lucide-react';
 import { useAdminDocuments, useUploadAdminDocument, useDeleteAdminDocument, getSignedUrl, AdminDocument } from '@/hooks/useAdminDocuments';
 import { useModules } from '@/hooks/useModules';
@@ -445,6 +446,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
   const [filterModule, setFilterModule] = useState<string>('');
   const [filterDocType, setFilterDocType] = useState<string>('');
   const [aiFactoryOpen, setAiFactoryOpen] = useState(false);
+  const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const [selectedDocForAI, setSelectedDocForAI] = useState<AdminDocument | null>(null);
 
   const { data: documents, isLoading } = useAdminDocuments({
@@ -484,10 +486,16 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
                 Manage PDF documents for AI-powered content generation.
               </CardDescription>
             </div>
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Upload PDF
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setBatchGeneratorOpen(true)}>
+                <Layers className="w-4 h-4 mr-2" />
+                Batch Generate
+              </Button>
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload PDF
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -581,6 +589,17 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
           prefilledChapterId={selectedDocForAI?.chapter_id || undefined}
         />
       )}
+
+      {/* Lazy-load Batch Generator Modal */}
+      {batchGeneratorOpen && (
+        <AIBatchGeneratorModalLazy
+          open={batchGeneratorOpen}
+          onOpenChange={setBatchGeneratorOpen}
+          documentId={selectedDocForAI?.id}
+          prefilledModuleId={selectedDocForAI?.module_id || undefined}
+          prefilledChapterId={selectedDocForAI?.chapter_id || undefined}
+        />
+      )}
     </>
   );
 }
@@ -598,6 +617,26 @@ function AIContentFactoryModalLazy(props: {
   useEffect(() => {
     import('./AIContentFactoryModal').then(mod => {
       setComponent(() => mod.AIContentFactoryModal);
+    });
+  }, []);
+
+  if (!Component) return null;
+  return <Component {...props} />;
+}
+
+// Lazy wrapper for AI Batch Generator Modal
+function AIBatchGeneratorModalLazy(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  documentId?: string;
+  prefilledModuleId?: string;
+  prefilledChapterId?: string;
+}) {
+  const [Component, setComponent] = useState<React.ComponentType<typeof props> | null>(null);
+
+  useEffect(() => {
+    import('./AIBatchGeneratorModal').then(mod => {
+      setComponent(() => mod.AIBatchGeneratorModal);
     });
   }, []);
 
