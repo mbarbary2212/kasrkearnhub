@@ -17,14 +17,22 @@ import {
   AlertCircle,
   GraduationCap,
 } from 'lucide-react';
-import { useCoachContext, useCoachPrompt, type QuestionContext } from '@/contexts/CoachContext';
+import { useCoachContext, useCoachPrompt } from '@/contexts/CoachContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
+import { CoachErrorState, type CoachErrorCode } from './CoachErrorState';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface CoachError {
+  code: CoachErrorCode;
+  title: string;
+  message: string;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`;
@@ -49,6 +57,7 @@ export function AskCoachPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<CoachError | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasInjectedContext = useRef(false);
 
@@ -64,6 +73,7 @@ export function AskCoachPanel() {
     if (!askCoachOpen) {
       setMessages([]);
       setInput('');
+      setError(null);
       hasInjectedContext.current = false;
     }
   }, [askCoachOpen]);
@@ -79,11 +89,19 @@ export function AskCoachPanel() {
   const streamChat = useCallback(async (userMessages: Message[], contextPrompt: string | null) => {
     const systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
     
+    // Get auth token for authenticated requests
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token;
+    
+    if (!authToken) {
+      throw new Error('You must be logged in to use the Study Coach');
+    }
+    
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ 
         messages: userMessages,
@@ -92,8 +110,21 @@ export function AskCoachPanel() {
     });
 
     const contentType = resp.headers.get('content-type') || '';
+    
+    // Handle JSON error responses
     if (contentType.includes('application/json')) {
       const data = await resp.json();
+      
+      // Check for structured error codes
+      if (data.code && ['COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'].includes(data.code)) {
+        setError({
+          code: data.code as CoachErrorCode,
+          title: data.title || 'Error',
+          message: data.message || 'An error occurred',
+        });
+        return;
+      }
+      
       if (data.blocked) {
         toast.warning(data.message || 'Your message could not be processed.');
         return;
@@ -104,6 +135,23 @@ export function AskCoachPanel() {
     }
 
     if (!resp.ok) {
+      // Handle specific HTTP status codes
+      if (resp.status === 503) {
+        setError({
+          code: 'COACH_DISABLED',
+          title: 'Coach is temporarily unavailable',
+          message: 'The study coach is currently disabled by the course administrators due to usage limits. Please use your course materials and send questions via Feedback & Inquiries.',
+        });
+        return;
+      }
+      if (resp.status === 429) {
+        setError({
+          code: 'QUOTA_EXCEEDED',
+          title: 'Daily question limit reached',
+          message: 'You have used all 5 coach questions for today. Please try again tomorrow, or send your question to the moderators.',
+        });
+        return;
+      }
       throw new Error(`Error: ${resp.status}`);
     }
 
@@ -159,6 +207,9 @@ export function AskCoachPanel() {
     const messageText = text || input.trim();
     if (!messageText || isLoading) return;
 
+    // Clear any previous error
+    setError(null);
+
     const userMsg: Message = { role: 'user', content: messageText };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -168,9 +219,9 @@ export function AskCoachPanel() {
     try {
       const contextPrompt = generatePrompt();
       await streamChat(newMessages, contextPrompt);
-    } catch (error) {
-      console.error('Coach chat error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to get response');
+    } catch (err) {
+      console.error('Coach chat error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to get response');
       setMessages(messages);
     } finally {
       setIsLoading(false);
@@ -194,6 +245,54 @@ export function AskCoachPanel() {
   };
 
   const contextHeader = getContextHeader();
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <Sheet open={askCoachOpen} onOpenChange={(open) => !open && closeAskCoach()}>
+        <SheetContent 
+          side={isMobile ? "bottom" : "right"} 
+          className={`flex flex-col p-0 ${
+            isMobile 
+              ? 'h-[90vh] rounded-t-2xl' 
+              : 'w-[420px] sm:w-[460px] sm:max-w-[460px]'
+          }`}
+        >
+          {/* Header */}
+          <SheetHeader className="px-4 py-3 border-b bg-card/50 backdrop-blur-sm flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border-2 border-primary/20">
+                  <AvatarImage src={studyCoachIcon} alt="Study Coach" />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    <GraduationCap className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <SheetTitle className="text-base font-semibold">Study Coach</SheetTitle>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={closeAskCoach}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </SheetHeader>
+
+          <CoachErrorState
+            code={error.code}
+            title={error.title}
+            message={error.message}
+            onClose={closeAskCoach}
+          />
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={askCoachOpen} onOpenChange={(open) => !open && closeAskCoach()}>
