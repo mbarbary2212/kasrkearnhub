@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/tooltip';
 import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
 import logo from '@/assets/logo.png';
-import studyCoachIcon from '@/assets/study-coach-icon.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
@@ -153,32 +152,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               />
             )}
 
-            {/* Study Coach Icon - Only on mobile (navigates to Coach page) */}
-            {user && isMobile && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        navigate(isAdmin ? '/admin' : '/progress');
-                      }}
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 rounded-full hover:bg-primary/10 p-0.5 overflow-hidden transition-transform duration-200 hover:scale-110"
-                    >
-                      <img 
-                        src={studyCoachIcon} 
-                        alt={isAdmin ? "Admin Panel" : "Study Coach"} 
-                        className="h-full w-full object-contain rounded-full" 
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    {isAdmin ? 'Admin Panel' : 'Study Coach'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            {/* Mobile header coach icon removed - students use Avatar menu or Chapter "Ask Coach" buttons */}
 
             {user ? (
             <DropdownMenu>

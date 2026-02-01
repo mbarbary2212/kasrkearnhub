@@ -1,9 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface TutorError {
+  blocked: true;
+  code: string;
+  title?: string;
+  message: string;
+  action_url?: string;
+  action_label?: string;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
@@ -12,6 +22,7 @@ export function useTutorChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<TutorError | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,24 +31,47 @@ export function useTutorChat() {
     }
   }, [messages]);
 
-  const streamChat = useCallback(async (userMessages: Message[]) => {
+  const streamChat = useCallback(async (userMessages: Message[], context?: string) => {
+    // Get the current session for auth
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      setError({
+        blocked: true,
+        code: 'UNAUTHORIZED',
+        title: 'Sign in required',
+        message: 'Please sign in to use the tutor.',
+      });
+      return;
+    }
+
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ messages: userMessages }),
+      body: JSON.stringify({ messages: userMessages, context }),
     });
 
-    // Check if the response is a blocked message (JSON response)
+    // Check if the response is a blocked/error message (JSON response)
     const contentType = resp.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const data = await resp.json();
+      
       if (data.blocked) {
-        toast.warning(data.message || 'Your message could not be processed.');
+        // Set structured error for CoachErrorState to display
+        setError({
+          blocked: true,
+          code: data.code || 'UNKNOWN',
+          title: data.title,
+          message: data.message || 'Your message could not be processed.',
+          action_url: data.action_url,
+          action_label: data.action_label,
+        });
         return;
       }
+      
       if (data.error) {
         throw new Error(data.error);
       }
@@ -95,9 +129,12 @@ export function useTutorChat() {
     }
   }, []);
 
-  const handleSend = useCallback(async (text?: string) => {
+  const handleSend = useCallback(async (text?: string, context?: string) => {
     const messageText = text || input.trim();
     if (!messageText || isLoading) return;
+
+    // Clear any previous error
+    setError(null);
 
     const userMsg: Message = { role: 'user', content: messageText };
     const newMessages = [...messages, userMsg];
@@ -106,10 +143,10 @@ export function useTutorChat() {
     setIsLoading(true);
 
     try {
-      await streamChat(newMessages);
-    } catch (error) {
-      console.error('Chat error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to get response');
+      await streamChat(newMessages, context);
+    } catch (err) {
+      console.error('Chat error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to get response');
       setMessages(messages);
     } finally {
       setIsLoading(false);
@@ -123,6 +160,15 @@ export function useTutorChat() {
     }
   }, [handleSend]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setError(null);
+  }, []);
+
   return {
     messages,
     input,
@@ -131,5 +177,8 @@ export function useTutorChat() {
     scrollRef,
     handleSend,
     handleKeyDown,
+    error,
+    clearError,
+    resetChat,
   };
 }

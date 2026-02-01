@@ -29,7 +29,7 @@ export function CoachErrorState({ code, title, message, onClose }: CoachErrorSta
 
   const handleOpenFeedback = () => {
     onClose();
-    navigate('/admin/inbox');
+    navigate('/feedback');
   };
 
   return (
