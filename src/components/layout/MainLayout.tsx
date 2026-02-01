@@ -24,7 +24,6 @@ import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
-import { CoachFAB } from '@/components/coach';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainLayoutProps {
@@ -273,9 +272,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Achievements Panel */}
       <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />
-
-      {/* Coach FAB - Desktop/Tablet only */}
-      <CoachFAB />
     </div>
   );
 }
