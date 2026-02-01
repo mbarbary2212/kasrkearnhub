@@ -178,15 +178,15 @@ export function AIBatchGeneratorModal({
                 <div className="space-y-2">
                   <Label>Chapter (Optional)</Label>
                   <Select 
-                    value={selectedChapterId} 
-                    onValueChange={setSelectedChapterId}
+                    value={selectedChapterId || '__all__'} 
+                    onValueChange={(v) => setSelectedChapterId(v === '__all__' ? '' : v)}
                     disabled={!selectedModuleId}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All chapters" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All chapters</SelectItem>
+                      <SelectItem value="__all__">All chapters</SelectItem>
                       {chapters?.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
                       ))}
