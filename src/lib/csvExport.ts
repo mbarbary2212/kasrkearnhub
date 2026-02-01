@@ -37,11 +37,11 @@ export function resolveSectionId(
   sectionName?: string,
   sectionNumber?: number | string
 ): string | null {
-  // Priority 1: Match by section_number
+  // Priority 1: Match by section_number (now stored as TEXT, e.g., "3.1", "3.10")
   if (sectionNumber !== undefined && sectionNumber !== '') {
-    const num = typeof sectionNumber === 'string' ? parseInt(sectionNumber, 10) : sectionNumber;
-    if (!isNaN(num)) {
-      const match = sections.find(s => s.section_number === num);
+    const sectionNumStr = String(sectionNumber).trim();
+    if (sectionNumStr) {
+      const match = sections.find(s => s.section_number === sectionNumStr);
       if (match) return match.id;
     }
   }

@@ -243,6 +243,94 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_batch_jobs: {
+        Row: {
+          additional_instructions: string | null
+          admin_id: string
+          auto_approve: boolean
+          chapter_id: string | null
+          completed_at: string | null
+          content_types: Json
+          created_at: string | null
+          current_step: number
+          document_id: string | null
+          duplicate_stats: Json | null
+          error_message: string | null
+          id: string
+          job_ids: Json | null
+          module_id: string
+          per_section: boolean | null
+          quantities: Json
+          started_at: string | null
+          status: string
+          total_steps: number
+        }
+        Insert: {
+          additional_instructions?: string | null
+          admin_id: string
+          auto_approve?: boolean
+          chapter_id?: string | null
+          completed_at?: string | null
+          content_types?: Json
+          created_at?: string | null
+          current_step?: number
+          document_id?: string | null
+          duplicate_stats?: Json | null
+          error_message?: string | null
+          id?: string
+          job_ids?: Json | null
+          module_id: string
+          per_section?: boolean | null
+          quantities?: Json
+          started_at?: string | null
+          status?: string
+          total_steps?: number
+        }
+        Update: {
+          additional_instructions?: string | null
+          admin_id?: string
+          auto_approve?: boolean
+          chapter_id?: string | null
+          completed_at?: string | null
+          content_types?: Json
+          created_at?: string | null
+          current_step?: number
+          document_id?: string | null
+          duplicate_stats?: Json | null
+          error_message?: string | null
+          id?: string
+          job_ids?: Json | null
+          module_id?: string
+          per_section?: boolean | null
+          quantities?: Json
+          started_at?: string | null
+          status?: string
+          total_steps?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_batch_jobs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_batch_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "admin_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_batch_jobs_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_generation_jobs: {
         Row: {
           admin_id: string | null
@@ -295,6 +383,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
       }
       announcement_reads: {
         Row: {
@@ -2892,7 +3007,7 @@ export type Database = {
           display_order: number
           id: string
           name: string
-          section_number: number | null
+          section_number: string | null
           topic_id: string | null
         }
         Insert: {
@@ -2901,7 +3016,7 @@ export type Database = {
           display_order?: number
           id?: string
           name: string
-          section_number?: number | null
+          section_number?: string | null
           topic_id?: string | null
         }
         Update: {
@@ -2910,7 +3025,7 @@ export type Database = {
           display_order?: number
           id?: string
           name?: string
-          section_number?: number | null
+          section_number?: string | null
           topic_id?: string | null
         }
         Relationships: [

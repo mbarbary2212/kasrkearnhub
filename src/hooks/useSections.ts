@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Section {
   id: string;
   name: string;
-  section_number: number | null;
+  section_number: string | null;  // Changed from number to string for hierarchical numbering (e.g., "3.1", "3.10")
   chapter_id: string | null;
   topic_id: string | null;
   display_order: number;

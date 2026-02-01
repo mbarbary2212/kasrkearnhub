@@ -239,6 +239,28 @@ serve(async (req) => {
     });
   }
 
+  // Build section lookup map (section_number TEXT → section_id UUID)
+  let sectionLookup = new Map<string, string>();
+  if (chapterId) {
+    const { data: sections } = await serviceClient
+      .from("sections")
+      .select("id, section_number")
+      .eq("chapter_id", chapterId);
+    
+    sectionLookup = new Map(
+      (sections || [])
+        .filter((s: any) => s.section_number)
+        .map((s: any) => [s.section_number, s.id])
+    );
+  }
+
+  // Helper to map section_number string to section_id UUID
+  const getSectionId = (item: any): string | null => {
+    if (!item.section_number) return null;
+    const sectionNum = String(item.section_number).trim();
+    return sectionLookup.get(sectionNum) || null;
+  };
+
   // Insert into target tables
   try {
     console.log(`[${jobId}] Inserting ${items.length} ${contentType} items...`);
@@ -251,6 +273,7 @@ serve(async (req) => {
         return {
           module_id: moduleId,
           chapter_id: chapterId,
+          section_id: getSectionId(normalized),
           stem: normalized.stem,
           choices: normalized.choices,
           correct_key: normalized.correct_key,

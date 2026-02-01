@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.get-audio-signed-url]
 verify_jwt = false
+
+[functions.process-batch-job]
+verify_jwt = false
