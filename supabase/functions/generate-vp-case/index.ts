@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,11 +73,16 @@ serve(async (req) => {
       learningObjectives 
     } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    // Create Supabase client to read AI settings
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get AI provider configuration from database
+    const aiSettings = await getAISettings(serviceClient);
+    const provider = getAIProvider(aiSettings);
+
+    console.log(`Using AI provider: ${provider.name}, model: ${provider.model}`);
 
     // Build the generation prompt
     const userPrompt = `Create a Virtual Patient case with the following specifications:
@@ -97,44 +104,32 @@ Requirements:
 
 Output valid JSON only.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    // Use the shared AI provider abstraction
+    const result = await callAI(SYSTEM_PROMPT, userPrompt, provider);
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!result.success) {
+      console.error("AI call failed:", result.error);
+      
+      if (result.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), 
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (result.status === 402) {
         return new Response(
           JSON.stringify({ error: "AI service usage limit reached. Please contact support." }), 
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      
       return new Response(
-        JSON.stringify({ error: "AI service temporarily unavailable" }), 
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: result.error || "AI service temporarily unavailable" }), 
+        { status: result.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
+    const content = result.content;
 
     if (!content) {
       throw new Error("No content in AI response");
@@ -185,7 +180,8 @@ Output valid JSON only.`;
         generatedCase,
         metadata: {
           generatedAt: new Date().toISOString(),
-          model: "google/gemini-3-flash-preview",
+          provider: provider.name,
+          model: provider.model,
         }
       }), 
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

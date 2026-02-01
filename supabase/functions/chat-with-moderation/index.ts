@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getAISettings, getAIProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,6 +126,133 @@ async function moderateContent(content: string, apiKey: string): Promise<{ flagg
   }
 }
 
+// Stream from Lovable AI Gateway (OpenAI-compatible)
+async function streamFromLovable(
+  messages: Array<{ role: string; content: string }>,
+  model: string
+): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...messages,
+      ],
+      stream: true,
+    }),
+  });
+
+  return response;
+}
+
+// Stream from Google Gemini API with SSE transformation
+async function streamFromGemini(
+  messages: Array<{ role: string; content: string }>,
+  model: string
+): Promise<Response> {
+  const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
+  
+  if (!googleApiKey) {
+    throw new Error('GOOGLE_API_KEY not configured');
+  }
+
+  // Build conversation for Gemini format
+  const conversationParts: string[] = [];
+  conversationParts.push(`System: ${SYSTEM_PROMPT}`);
+  
+  for (const msg of messages) {
+    const role = msg.role === 'user' ? 'User' : 'Assistant';
+    conversationParts.push(`${role}: ${msg.content}`);
+  }
+
+  const fullPrompt = conversationParts.join('\n\n');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-goog-api-key': googleApiKey,
+    },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [{ text: fullPrompt }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+      },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Gemini streaming error (${response.status}):`, errorText);
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  // Transform Gemini SSE format to OpenAI-compatible format for frontend
+  const transformStream = new TransformStream({
+    transform(chunk, controller) {
+      const text = new TextDecoder().decode(chunk);
+      const lines = text.split('\n');
+      
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        
+        try {
+          const geminiData = JSON.parse(jsonStr);
+          const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (content) {
+            // Transform to OpenAI-compatible format
+            const openaiFormat = {
+              choices: [{
+                delta: { content },
+                index: 0,
+              }]
+            };
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+          }
+        } catch (e) {
+          // Skip malformed JSON chunks
+        }
+      }
+    },
+    flush(controller) {
+      controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+    },
+  });
+
+  const transformedStream = response.body!.pipeThrough(transformStream);
+  
+  return new Response(transformedStream, {
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -141,20 +270,11 @@ serve(async (req) => {
     }
 
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!OPENAI_API_KEY) {
       console.error('OPENAI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'Moderation service unavailable' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
-      return new Response(
-        JSON.stringify({ error: 'AI service unavailable' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -202,40 +322,48 @@ serve(async (req) => {
       );
     }
 
-    // Step 3: Message is safe - forward to AI
-    console.log('Message passed moderation, forwarding to AI');
+    // Step 3: Get AI provider configuration
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const aiSettings = await getAISettings(serviceClient);
+    const provider = getAIProvider(aiSettings);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
+    console.log(`Message passed moderation, forwarding to AI (provider: ${provider.name}, model: ${provider.model})`);
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    // Step 4: Stream response based on provider
+    let streamResponse: Response;
+    
+    try {
+      if (provider.name === 'gemini') {
+        streamResponse = await streamFromGemini(messages, provider.model);
+      } else {
+        streamResponse = await streamFromLovable(messages, provider.model);
+      }
+    } catch (providerError) {
+      console.error('Provider error:', providerError);
+      return new Response(
+        JSON.stringify({ error: 'AI service temporarily unavailable' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!streamResponse.ok && provider.name === 'lovable') {
+      if (streamResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (streamResponse.status === 402) {
         return new Response(
           JSON.stringify({ error: "AI service temporarily unavailable. Please try again later." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      const errorText = await streamResponse.text();
+      console.error("AI gateway error:", streamResponse.status, errorText);
       return new Response(
         JSON.stringify({ error: "AI service error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -243,7 +371,7 @@ serve(async (req) => {
     }
 
     // Stream the response back
-    return new Response(response.body, {
+    return new Response(streamResponse.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
 
