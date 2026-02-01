@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +27,8 @@ import { PDFLibraryTab } from '@/components/admin/PDFLibraryTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
+import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
+import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -1334,6 +1336,12 @@ export default function AdminPage() {
                 Settings
               </TabsTrigger>
             )}
+            {isSuperAdmin && (
+              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Sparkles className="w-4 h-4" />
+                AI Settings
+              </TabsTrigger>
+            )}
             {(isPlatformAdmin || isModuleAdmin) && (
               <TabsTrigger value="pdf-library" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <FileText className="w-4 h-4" />
@@ -1759,6 +1767,16 @@ export default function AdminPage() {
           {isPlatformAdmin && (
             <TabsContent value="settings">
               <PlatformSettingsTab />
+            </TabsContent>
+          )}
+
+          {/* AI Settings Tab - Super Admin Only */}
+          {isSuperAdmin && (
+            <TabsContent value="ai-settings">
+              <div className="space-y-6">
+                <AISettingsPanel />
+                <AIBatchJobsList />
+              </div>
             </TabsContent>
           )}
 
