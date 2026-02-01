@@ -1,322 +1,192 @@
 
-# Personal Study Coach - UI Cleanup + Gemini Guardrails + User Messages
+# Direct Gemini API Support - Implementation Plan
 
 ## Overview
 
-This plan addresses four main areas:
-1. Remove the floating Coach FAB from all users
-2. Unify the two student coach entry points to use the same backend
-3. Switch coach to Gemini with strict server-side limitations (quota for students only, RAG-first, security)
-4. Implement exact user-facing messages for error states
+Good news! The infrastructure for direct Gemini API support is **already largely in place**. The `_shared/ai-provider.ts` abstraction already supports both Lovable AI Gateway and direct Gemini API calls using the secure `X-goog-api-key` header.
+
+The main work needed is:
+1. Update 2 edge functions that bypass the shared abstraction
+2. Ensure the `ai_settings` defaults/values are correct for Gemini
 
 ---
 
-## Current State Analysis
+## Current Implementation Status
 
-### Entry Points for Coach
-Currently there are multiple coach-related components and endpoints:
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `CoachFAB` | Bottom-right floating button | Navigates to /progress (students) or /admin (admins) |
-| `AskCoachButton` | Chapter pages, dashboard | Opens `AskCoachPanel` sheet |
-| `AskCoachPanel` | Global sheet component | Chat interface using `coach-chat` endpoint |
-| `TutorPage` | `/tutor` route (appears unused) | Standalone tutor using `chat-with-moderation` |
-
-### Backend Endpoints
-| Endpoint | Purpose | Provider |
-|----------|---------|----------|
-| `coach-chat` | Study Coach with context | Lovable AI Gateway |
-| `chat-with-moderation` | General tutor with OpenAI moderation | Lovable AI Gateway |
-| `med-tutor-chat` | Original tutor (unused) | Lovable AI Gateway |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `_shared/ai-provider.ts` | Ready | Already supports Gemini with `X-goog-api-key` header |
+| `coach-chat` | Ready | Already has dual-provider streaming support |
+| `generate-content-from-pdf` | Ready | Uses shared abstraction |
+| `process-batch-job` | Ready | Calls `generate-content-from-pdf` |
+| `approve-ai-content` | Ready | No AI calls (just database operations) |
+| `generate-vp-case` | Needs Update | Hardcoded to Lovable gateway |
+| `chat-with-moderation` | Needs Update | Hardcoded to Lovable gateway |
 
 ---
 
-## Implementation Plan
+## Implementation Tasks
 
-### Phase 1: Remove Floating Coach FAB
+### Task 1: Update `generate-vp-case/index.ts`
 
-**Goal**: Remove the floating Coach icon from all roles while keeping existing access points.
+This function generates Virtual Patient cases but bypasses the shared AI provider abstraction.
 
-**Files to Modify**:
+**Changes:**
+- Import and use `getAISettings`, `getAIProvider`, `callAI` from `_shared/ai-provider.ts`
+- Add Supabase client for database access (to read settings)
+- Replace direct Lovable gateway call with abstracted `callAI()`
 
-1. **`src/components/layout/MainLayout.tsx`**
-   - Remove `CoachFAB` import
-   - Remove `<CoachFAB />` component from JSX
-
-2. **`src/components/coach/index.ts`**
-   - Remove `CoachFAB` export (cleanup)
-
-3. **`src/components/coach/CoachFAB.tsx`**
-   - Delete this file entirely (no longer needed)
-
-**Access Points Preserved**:
-- Students: Avatar menu -> "Study Coach" link
-- Students: Chapter page -> "Ask Coach" button
-- Admins: Avatar menu only (no floating icon, unlimited usage)
-
----
-
-### Phase 2: Unify Student Coach Entry Points
-
-**Goal**: Ensure both coach entry points use the same backend with identical quota/logging for students.
-
-**Current State**:
-- Both `AskCoachPanel` (sheet from chapters) and Avatar menu access already use the same `coach-chat` endpoint
-- The `TutorPage` uses `chat-with-moderation` - this is a separate feature
-
-**Changes Required**:
-
-1. **`src/components/coach/AskCoachPanel.tsx`**
-   - Update to call the new unified `coach-chat` endpoint (already does)
-   - Add handling for new error states (disabled, quota, no RAG results)
-
-2. **`supabase/functions/coach-chat/index.ts`**
-   - Major rewrite to add all security features (see Phase 3)
-
----
-
-### Phase 3: Database Additions
-
-**New Table: `coach_usage`** - Track daily coach usage per student
-
-```text
-CREATE TABLE coach_usage (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  question_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  question_count INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  UNIQUE(user_id, question_date)
-);
-
-ALTER TABLE coach_usage ENABLE ROW LEVEL SECURITY;
-
--- Users can read their own usage
-CREATE POLICY "Users can read own usage" ON coach_usage
-  FOR SELECT USING (auth.uid() = user_id);
-
--- Service role can manage all
-CREATE POLICY "Service role full access" ON coach_usage
-  FOR ALL USING (auth.role() = 'service_role');
-
-CREATE INDEX idx_coach_usage_user_date ON coach_usage(user_id, question_date);
+**Before:**
+```typescript
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", ...);
 ```
 
-**New `ai_settings` Keys** (add to existing table):
+**After:**
+```typescript
+import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts";
+// Fetch settings from database
+const aiSettings = await getAISettings(serviceClient);
+const provider = getAIProvider(aiSettings);
+const result = await callAI(SYSTEM_PROMPT, userPrompt, provider);
+```
 
-| Key | Default Value | Description |
+---
+
+### Task 2: Update `chat-with-moderation/index.ts`
+
+This function powers the MedGPT Tutor feature and also bypasses the shared abstraction.
+
+**Changes:**
+- Add Supabase client imports
+- Import `getAISettings`, `getAIProvider` from `_shared/ai-provider.ts`
+- Implement dual-provider streaming (similar to `coach-chat`)
+- Keep OpenAI moderation API call (it's separate from the AI response generation)
+
+**Key Notes:**
+- This function uses OpenAI's moderation API (still uses `OPENAI_API_KEY`)
+- Only the **chat completion** should switch to Gemini
+- The moderation check stays with OpenAI
+
+---
+
+### Task 3: Update Default ai_settings Values (Optional)
+
+Current database values:
+
+| Key | Current Value | Recommended |
 |-----|---------------|-------------|
-| `study_coach_enabled` | `true` | Enable/disable Study Coach feature |
-| `study_coach_daily_limit` | `5` | Daily question limit per student (admins unlimited) |
-| `study_coach_disabled_message` | Custom message | Message when coach is disabled |
-| `study_coach_provider` | `"lovable"` | AI provider: "lovable" or "gemini" |
-| `study_coach_model` | `"google/gemini-3-flash-preview"` | Model for study coach |
+| `ai_provider` | `lovable` | Keep (admin can change to `gemini`) |
+| `gemini_model` | `gemini-1.5-flash` | Correct |
+| `study_coach_provider` | `lovable` | Keep (independent control) |
+| `study_coach_model` | `google/gemini-3-flash-preview` | Correct |
+
+The settings are already correct. Super Admins can switch `ai_provider` and `study_coach_provider` to `gemini` in the admin panel to start using direct Gemini API.
 
 ---
 
-### Phase 4: Edge Function Updates
+## Security Checklist
 
-**`supabase/functions/coach-chat/index.ts`** - Complete Rewrite
+All security requirements are already implemented:
 
-New features to implement:
-
-1. **JWT + Access Control**
-   - Require valid JWT
-   - Extract user_id from JWT
-   - Query `user_roles` table to determine role
-
-2. **Role-Based Quota Logic**
-   ```text
-   Admin roles (unlimited): super_admin, platform_admin, department_admin, admin, teacher, topic_admin
-   Student roles (5/day limit): student (or no role)
-   ```
-
-3. **Coach Enabled Check**
-   - Query `ai_settings` for `study_coach_enabled`
-   - Return structured error if disabled (affects all users)
-
-4. **Daily Quota Enforcement (Students Only)**
-   - Query `coach_usage` for today's count
-   - If student AND count >= limit, return structured error
-   - Admins bypass this check entirely
-   - Increment count on successful response (students only)
-
-5. **Prompt Injection Defense**
-   - Import from `_shared/security.ts`
-   - Scan user message before processing
-
-6. **RAG-First Requirement** (Foundation Only)
-   - For now: Add system prompt requiring coach to stay on-curriculum
-   - Future: Actual RAG retrieval from uploaded PDFs
-   - If no context available, return structured "not found" error
-
-7. **Dual Provider Support**
-   - Import from `_shared/ai-provider.ts`
-   - Use `study_coach_provider` setting
-   - Use `x-goog-api-key` header for Gemini (already in ai-provider.ts)
-
-8. **Structured Error Responses**
-   - Return JSON with `status`, `code`, `title`, `message`, `action_url`
-
-**Response Format**:
-
-```text
-// Success: Stream response
-// Error: JSON with structure
-{
-  "status": "error",
-  "code": "COACH_DISABLED" | "QUOTA_EXCEEDED" | "RAG_NO_RESULTS" | "INJECTION_DETECTED",
-  "title": "string",
-  "message": "string",
-  "action_url": "/admin/inbox",
-  "action_label": "Open Feedback & Inquiries"
-}
-```
+| Requirement | Status | Location |
+|-------------|--------|----------|
+| Server-side key reading | Implemented | `Deno.env.get("GOOGLE_API_KEY")` |
+| `X-goog-api-key` header | Implemented | `_shared/ai-provider.ts` line 134 |
+| No key in database/frontend | Confirmed | Key only in Edge Function secrets |
+| Prompt injection defense | Implemented | `_shared/security.ts` |
+| Student daily limits (coach) | Implemented | `coach-chat/index.ts` |
+| No limits for admins | Implemented | Role check bypasses quota |
 
 ---
 
-### Phase 5: Frontend Error Handling
+## Files to Modify
 
-**`src/components/coach/AskCoachPanel.tsx`** - Add Error States
-
-New UI states to handle:
-
-**A) Coach Disabled (all users)**
-```text
-Title: "Coach is temporarily unavailable"
-Body: "The study coach is currently disabled by the course administrators 
-       due to usage limits. Please use your course materials and send 
-       questions via Feedback & Inquiries."
-Action: Button -> Navigate to /admin/inbox (Feedback & Inquiries)
-```
-
-**B) Daily Limit Reached (students only)**
-```text
-Title: "Daily question limit reached"
-Body: "You have used all 5 coach questions for today. Please try again 
-       tomorrow, or send your question to the moderators."
-Actions: 
-  - "Open Feedback & Inquiries" -> /admin/inbox
-  - "Try again tomorrow" -> Close panel
-```
-
-**C) RAG Can't Find Answer**
-```text
-Title: "Not found in course materials"
-Body: "I couldn't find this answer in the uploaded course resources. 
-       Please select a chapter/section or paste the relevant paragraph, 
-       or send your question to the moderators."
-Actions:
-  - "Open Feedback & Inquiries" -> /admin/inbox
-  - Optional: "Choose chapter/section" -> Chapter picker
-```
-
-**Implementation**:
-- Create `CoachErrorState` component for consistent error UI
-- Handle error codes from backend in `streamChat` function
-- Show appropriate error UI instead of chat
-
----
-
-## Files Summary
-
-### Files to Create
-| File | Purpose |
-|------|---------|
-| Migration SQL | Add `coach_usage` table + new ai_settings keys |
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/components/layout/MainLayout.tsx` | Remove CoachFAB import and usage |
-| `src/components/coach/index.ts` | Remove CoachFAB export |
-| `src/components/coach/AskCoachPanel.tsx` | Add error state handling UI |
-| `supabase/functions/coach-chat/index.ts` | Complete rewrite with quota, security, RAG-first |
-| `supabase/config.toml` | Update coach-chat config if needed |
-
-### Files to Delete
-| File | Reason |
-|------|--------|
-| `src/components/coach/CoachFAB.tsx` | Floating icon removed per requirements |
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/generate-vp-case/index.ts` | Modify | Use shared AI provider abstraction |
+| `supabase/functions/chat-with-moderation/index.ts` | Modify | Add dual-provider streaming support |
 
 ---
 
 ## Technical Details
 
-### Role-Based Access Summary
+### Provider Switching Logic
 
-| Role | Coach Access | Daily Limit | Quota Tracked |
-|------|--------------|-------------|---------------|
-| `super_admin` | Unlimited | None | No |
-| `platform_admin` | Unlimited | None | No |
-| `department_admin` | Unlimited | None | No |
-| `admin` | Unlimited | None | No |
-| `teacher` | Unlimited | None | No |
-| `topic_admin` | Unlimited | None | No |
-| `student` | Limited | 5/day | Yes |
-
-### Error Codes and Messages
-
-| Code | HTTP Status | Title | Message | Affects |
-|------|-------------|-------|---------|---------|
-| `COACH_DISABLED` | 503 | Coach is temporarily unavailable | The study coach is currently disabled by the course administrators due to usage limits. Please use your course materials and send questions via Feedback & Inquiries. | All users |
-| `QUOTA_EXCEEDED` | 429 | Daily question limit reached | You have used all 5 coach questions for today. Please try again tomorrow, or send your question to the moderators. | Students only |
-| `RAG_NO_RESULTS` | 422 | Not found in course materials | I couldn't find this answer in the uploaded course resources. Please select a chapter/section or paste the relevant paragraph, or send your question to the moderators. | All users |
-| `INJECTION_DETECTED` | 400 | Invalid request | I cannot process this request. Please rephrase your question in an academic context. | All users |
-
-### Quota Logic (Edge Function)
+The system already supports selecting providers via `ai_settings` table:
 
 ```text
-1. Validate JWT and extract user_id
-2. Query user_roles to determine role
-3. Check if study_coach_enabled = true (abort if false)
-4. If role is in admin_roles:
-   - Skip quota check, proceed to AI
-5. Else (student):
-   - Get current date (UTC)
-   - Query coach_usage WHERE user_id = ? AND question_date = TODAY
-   - If count >= limit:
-     - Return QUOTA_EXCEEDED error
-6. Process AI request with security checks
-7. If successful AND student:
-   - UPSERT coach_usage: increment count or insert new row
+For AI Content Factory:
+  - Read ai_settings.ai_provider ("lovable" or "gemini")
+  - Read ai_settings.gemini_model or ai_settings.lovable_model
+  - Use _shared/ai-provider.ts callAI()
+
+For Study Coach:
+  - Read ai_settings.study_coach_provider ("lovable" or "gemini")
+  - Read ai_settings.study_coach_model
+  - Has independent provider/model selection
 ```
 
-### Security Layers
+### Gemini API Call Pattern (Already Implemented)
 
-1. **JWT Validation**: Required for all requests
-2. **Role Check**: Determines admin vs student for quota
-3. **Prompt Injection Detection**: Using shared security.ts
-4. **Trust Boundary in Prompt**: User message wrapped with delimiters
-5. **RAG Confinement**: System prompt requires staying on-curriculum
-6. **Gemini Key Security**: Using X-goog-api-key header (already in ai-provider.ts)
+```typescript
+const key = Deno.env.get("GOOGLE_API_KEY");
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+const resp = await fetch(url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-goog-api-key": key!,  // Secure header-based auth
+  },
+  body: JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+    safetySettings: [...],
+  }),
+});
+```
+
+### Streaming Support (For Chat Functions)
+
+For `chat-with-moderation`, I'll add streaming Gemini support similar to what's already in `coach-chat`:
+
+```typescript
+// For streaming, use ?alt=sse endpoint
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+
+// Transform Gemini SSE to OpenAI-compatible SSE for frontend compatibility
+const transformStream = new TransformStream({
+  transform(chunk, controller) {
+    // Convert Gemini format to OpenAI format
+  },
+  flush(controller) {
+    controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+  },
+});
+```
 
 ---
 
-## Implementation Order
+## How Admins Switch to Gemini
 
-1. **Database migration** - Add coach_usage table + ai_settings keys
-2. **Remove CoachFAB** - Delete component and remove from MainLayout
-3. **Update coach-chat Edge Function** - Add role-based quota, security features
-4. **Update AskCoachPanel** - Add error state handling
-5. **Test end-to-end** - Verify admin unlimited access, student quota enforcement
-6. **Deploy and verify** - Test with both admin and student accounts
+After implementation, Super Admins can:
+
+1. Go to **Admin Panel → AI Settings**
+2. Change `ai_provider` from `lovable` to `gemini`
+3. Optionally change `gemini_model` (default: `gemini-1.5-flash`)
+4. For Study Coach specifically: change `study_coach_provider` to `gemini`
+
+The system will immediately start using direct Gemini API calls with the configured `GOOGLE_API_KEY`.
 
 ---
 
-## Scope Clarification (Confirmed)
+## Summary
 
-The Personal Study Coach is a separate feature from the AI Content Factory:
-- **Independent AI provider configuration** (via `study_coach_provider` setting)
-- **Independent quota controls** (via `study_coach_daily_limit`, students only)
-- **Role-aware limits** (admins unlimited, students limited)
-- **RAG-first approach** (confined to in-app content only)
-- **Budget/billing control** (Super Admin can disable for all users)
+Most of the Gemini infrastructure is already in place. This plan focuses on updating 2 functions that hardcode the Lovable gateway, ensuring all AI features can use direct Gemini API when the admin configures it.
 
-Future enhancements (not in this plan):
-- Actual vector-based RAG from uploaded PDFs
-- Per-user quota customization
-- Usage analytics dashboard
+**Scope:**
+- AI Content Factory: Uses `ai_provider` setting
+- Study Coach: Uses `study_coach_provider` setting (independent)
+- No usage limits for admins (already implemented)
+- Student limits apply only to coach (already implemented)
