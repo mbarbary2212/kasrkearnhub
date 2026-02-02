@@ -122,7 +122,7 @@ export function AIBatchGeneratorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -146,8 +146,8 @@ export function AIBatchGeneratorModal({
             </AlertDescription>
           </Alert>
         ) : (
-          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
-            <div className="space-y-6 pb-4">
+          <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+            <div className="space-y-6 pb-4 pr-2">
               {/* Module & Chapter Selection */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -317,7 +317,7 @@ export function AIBatchGeneratorModal({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <DialogFooter className="border-t pt-4">
