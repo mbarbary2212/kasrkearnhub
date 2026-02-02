@@ -1,83 +1,98 @@
 
-# Plan: Fix Batch Job Content Generation
+# Plan: Fix Batch Generation by Requiring PDF Document Selection
 
 ## Problem Summary
-The batch job shows "Completed" in the UI, but **no content was actually generated**. The `generate-content-from-pdf` edge function is still running an old version of `ai-provider.ts` that crashes when parsing the `gemini_model` database value.
+When you click "Batch Generate" from the PDF Library header, no PDF document is selected. The batch job is created with `document_id: null`, causing all content generation to fail with "Missing required fields: document_id".
 
 ---
 
 ## Root Cause Analysis
 
-The logs reveal:
-```
-ERROR: SyntaxError: Unexpected token 'g', "gemini-1.5-flash" is not valid JSON
-    at JSON.parse (<anonymous>)
-    at getAISettings (file:///.../_shared/ai-provider.ts:25:56)
-```
+The issue is in the flow between components:
 
-**Problem:** The database stores `gemini-1.5-flash` as a raw string, but the old code tried to `JSON.parse()` it, which fails because it's not valid JSON.
+1. **PDF Library Header Button** (line 490):
+   ```typescript
+   <Button variant="outline" onClick={() => setBatchGeneratorOpen(true)}>
+   ```
+   This opens the batch modal but does NOT set `selectedDocForAI`.
 
-**Fix Applied (but not fully deployed):** The updated `ai-provider.ts` now checks if a string looks like JSON before parsing it.
+2. **Document Card "Use as AI Source"** (line 468-472):
+   ```typescript
+   setSelectedDocForAI(doc);
+   setAiFactoryOpen(true);  // Opens single-item factory, NOT batch
+   ```
+   This sets the document but opens the wrong modal.
+
+3. **Batch Modal** receives `documentId: undefined` and creates a job with null document.
 
 ---
 
 ## Solution
 
-### Step 1: Redeploy All Affected Edge Functions
-Redeploy the three functions that import `ai-provider.ts`:
-- `generate-content-from-pdf` (primary - the one that's failing)
-- `chat-with-moderation`
-- `generate-vp-case`
+### Option 1: Require Document Selection in Batch Modal
 
-### Step 2: Improve Error Handling in Batch Processing
-Update `process-batch-job` to:
-1. **Fail fast:** If all content generation fails, mark the job as "failed" instead of "completed"
-2. **Track actual success:** Only mark completed if at least one job succeeded
-3. **Better error messages:** Show the actual error to admins
+Add a document picker dropdown to the batch generator modal. The "Create Batch Job" button will be disabled until a document is selected.
+
+**Changes:**
+- Add document selector dropdown to `AIBatchGeneratorModal.tsx`
+- Make document selection required before submission
+- Remove the separate "Batch Generate" header button (or make it open a PDF-first picker)
+
+### Implementation Details
+
+**File: `src/components/admin/AIBatchGeneratorModal.tsx`**
+
+1. Add state for selected document
+2. Fetch available documents using existing `useAdminDocuments` hook
+3. Add document selector UI between module/chapter selection
+4. Validate document is selected before enabling submit
+
+**File: `src/components/admin/PDFLibraryTab.tsx`**
+
+1. Update "Batch Generate" button to require document selection first
+   - Option A: Show toast "Please select a PDF first"
+   - Option B: Keep modal but modal now has document picker
 
 ---
 
-## Technical Details
+## Technical Changes
 
-### Changes to `process-batch-job/index.ts`
+### AIBatchGeneratorModal.tsx
 
-**Current behavior (problematic):**
+Add document selection:
 ```typescript
-// Currently marks job as "completed" even if ALL generations fail
-if (!generateResponse.ok) {
-  // Records failure but continues...
-  continue;
-}
-// After loop, marks as "completed" regardless
+// Add state
+const [selectedDocId, setSelectedDocId] = useState(documentId || '');
+
+// Fetch documents
+const { data: documents } = useAdminDocuments({
+  module_id: selectedModuleId || undefined,
+});
+
+// Add UI element (between Module/Chapter and Content Types)
+<Select value={selectedDocId} onValueChange={setSelectedDocId}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select PDF document *" />
+  </SelectTrigger>
+  <SelectContent>
+    {documents?.map(doc => (
+      <SelectItem key={doc.id} value={doc.id}>
+        {doc.title}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+// Update submit validation
+disabled={!selectedDocId || !selectedModuleId || selectedTypes.length === 0}
+
+// Pass selected document to create mutation
+document_id: selectedDocId,
 ```
 
-**Proposed fix:**
-```typescript
-// Track if at least one generation succeeded
-let hasSuccesses = false;
+### PDFLibraryTab.tsx (optional improvement)
 
-for (let i = currentStep; i < contentTypes.length; i++) {
-  // ... generation code ...
-  
-  if (generateResult.job_id) {
-    jobIds.push(generateResult.job_id);
-    hasSuccesses = true;
-  }
-}
-
-// Only mark completed if we had at least one success
-if (hasSuccesses) {
-  await serviceClient.from("ai_batch_jobs").update({
-    status: "completed",
-    // ...
-  });
-} else {
-  await serviceClient.from("ai_batch_jobs").update({
-    status: "failed",
-    error_message: "All content generation attempts failed. Check AI settings configuration.",
-  });
-}
-```
+Remove the confusing top-level "Batch Generate" button, or make it work like "Use as AI Source" by requiring document selection first.
 
 ---
 
@@ -85,31 +100,24 @@ if (hasSuccesses) {
 
 | File | Change |
 |------|--------|
-| `supabase/functions/process-batch-job/index.ts` | Add success tracking & fail-fast logic |
-
-## Functions to Redeploy
-
-| Function | Reason |
-|----------|--------|
-| `generate-content-from-pdf` | Uses updated `ai-provider.ts` |
-| `chat-with-moderation` | Uses updated `ai-provider.ts` |
-| `generate-vp-case` | Uses updated `ai-provider.ts` |
-| `process-batch-job` | After code changes |
+| `src/components/admin/AIBatchGeneratorModal.tsx` | Add required document selector |
+| `src/components/admin/PDFLibraryTab.tsx` | Remove or update header "Batch Generate" button |
 
 ---
 
 ## Testing
 
-After deployment:
-1. Delete the failed batch job from the UI
-2. Start a new batch generation from the PDF Library
-3. Verify the job completes successfully with actual content
-4. Check the respective admin tables (MCQs, Flashcards, etc.) for the generated items
+After changes:
+1. Open PDF Library
+2. Click on a PDF card's "Use as AI Source" button
+3. Or open Batch Generate and select a document first
+4. Complete the batch configuration
+5. Start the job and verify it generates content successfully
 
 ---
 
 ## Expected Outcome
 
-- Batch jobs will correctly report "Failed" if no content is generated
-- The `generate-content-from-pdf` function will no longer crash on AI settings
-- Content will actually be created and added to the curriculum
+- Batch jobs will always have a valid `document_id`
+- No more "Missing required fields" errors
+- Content will actually be generated from the selected PDF
