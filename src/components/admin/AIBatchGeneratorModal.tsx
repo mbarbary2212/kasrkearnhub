@@ -54,7 +54,7 @@ export function AIBatchGeneratorModal({
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [perSection, setPerSection] = useState(false);
-  const [autoApprove, setAutoApprove] = useState(false);
+  const [autoApprove, setAutoApprove] = useState(true); // Default to auto-approve
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   const { data: factoryEnabled, isLoading: factoryLoading } = useIsAIContentFactoryEnabled();
@@ -279,22 +279,17 @@ export function AIBatchGeneratorModal({
                 </div>
               )}
 
+              {/* Auto-Approve Warning */}
+              <Alert className="border-warning/50 bg-warning/10">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <AlertDescription className="text-sm">
+                  <strong>Important:</strong> Content will be automatically added to the curriculum. 
+                  You must review all generated items in the respective admin tables after upload.
+                </AlertDescription>
+              </Alert>
+
               {/* Options */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <Label htmlFor="auto-approve">Auto-approve content</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Automatically approve generated content without manual review
-                    </p>
-                  </div>
-                  <Switch
-                    id="auto-approve"
-                    checked={autoApprove}
-                    onCheckedChange={setAutoApprove}
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="instructions">Additional Instructions</Label>
                   <Textarea
