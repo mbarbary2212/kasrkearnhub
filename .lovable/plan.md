@@ -1,59 +1,115 @@
 
-# Fix: Batch Generate Button Crash
+# Plan: Fix Batch Job Content Generation
 
-## Root Cause
+## Problem Summary
+The batch job shows "Completed" in the UI, but **no content was actually generated**. The `generate-content-from-pdf` edge function is still running an old version of `ai-provider.ts` that crashes when parsing the `gemini_model` database value.
 
-The "Batch Generate" button triggers a crash because `AIBatchGeneratorModal.tsx` contains an invalid `SelectItem`:
+---
 
-```tsx
-<SelectItem value="">All chapters</SelectItem>  // ← Line 189
+## Root Cause Analysis
+
+The logs reveal:
+```
+ERROR: SyntaxError: Unexpected token 'g', "gemini-1.5-flash" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at getAISettings (file:///.../_shared/ai-provider.ts:25:56)
 ```
 
-**Radix UI Rule**: `<Select.Item />` must have a non-empty string value. Empty strings are reserved for clearing the selection.
+**Problem:** The database stores `gemini-1.5-flash` as a raw string, but the old code tried to `JSON.parse()` it, which fails because it's not valid JSON.
 
-When the modal opens, React attempts to render this invalid component, which throws an error. Since this happens during render (not in an async handler), the `GlobalErrorBoundary` catches it and displays "Something Went Wrong."
+**Fix Applied (but not fully deployed):** The updated `ai-provider.ts` now checks if a string looks like JSON before parsing it.
 
-## Fix
+---
 
-Replace the empty string with a sentinel value like `"__all__"`, then handle it in the `onValueChange` callback:
+## Solution
 
-**Before:**
-```tsx
-<SelectContent>
-  <SelectItem value="">All chapters</SelectItem>
-  {chapters?.map(c => (
-    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-  ))}
-</SelectContent>
+### Step 1: Redeploy All Affected Edge Functions
+Redeploy the three functions that import `ai-provider.ts`:
+- `generate-content-from-pdf` (primary - the one that's failing)
+- `chat-with-moderation`
+- `generate-vp-case`
+
+### Step 2: Improve Error Handling in Batch Processing
+Update `process-batch-job` to:
+1. **Fail fast:** If all content generation fails, mark the job as "failed" instead of "completed"
+2. **Track actual success:** Only mark completed if at least one job succeeded
+3. **Better error messages:** Show the actual error to admins
+
+---
+
+## Technical Details
+
+### Changes to `process-batch-job/index.ts`
+
+**Current behavior (problematic):**
+```typescript
+// Currently marks job as "completed" even if ALL generations fail
+if (!generateResponse.ok) {
+  // Records failure but continues...
+  continue;
+}
+// After loop, marks as "completed" regardless
 ```
 
-**After:**
-```tsx
-<SelectContent>
-  <SelectItem value="__all__">All chapters</SelectItem>
-  {chapters?.map(c => (
-    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-  ))}
-</SelectContent>
+**Proposed fix:**
+```typescript
+// Track if at least one generation succeeded
+let hasSuccesses = false;
+
+for (let i = currentStep; i < contentTypes.length; i++) {
+  // ... generation code ...
+  
+  if (generateResult.job_id) {
+    jobIds.push(generateResult.job_id);
+    hasSuccesses = true;
+  }
+}
+
+// Only mark completed if we had at least one success
+if (hasSuccesses) {
+  await serviceClient.from("ai_batch_jobs").update({
+    status: "completed",
+    // ...
+  });
+} else {
+  await serviceClient.from("ai_batch_jobs").update({
+    status: "failed",
+    error_message: "All content generation attempts failed. Check AI settings configuration.",
+  });
+}
 ```
 
-And update the handler:
-```tsx
-<Select 
-  value={selectedChapterId || '__all__'} 
-  onValueChange={(v) => setSelectedChapterId(v === '__all__' ? '' : v)}
-  disabled={!selectedModuleId}
->
-```
+---
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/admin/AIBatchGeneratorModal.tsx` | Replace empty string value with `"__all__"` sentinel and update handler |
+| `supabase/functions/process-batch-job/index.ts` | Add success tracking & fail-fast logic |
 
-## Technical Notes
+## Functions to Redeploy
 
-- The PDFLibraryTab filter dropdowns already use this pattern correctly (e.g., `value="all"` for "All Modules")
-- This is a common Radix UI pitfall documented in their API
-- No database or edge function changes required - this is purely a frontend fix
+| Function | Reason |
+|----------|--------|
+| `generate-content-from-pdf` | Uses updated `ai-provider.ts` |
+| `chat-with-moderation` | Uses updated `ai-provider.ts` |
+| `generate-vp-case` | Uses updated `ai-provider.ts` |
+| `process-batch-job` | After code changes |
+
+---
+
+## Testing
+
+After deployment:
+1. Delete the failed batch job from the UI
+2. Start a new batch generation from the PDF Library
+3. Verify the job completes successfully with actual content
+4. Check the respective admin tables (MCQs, Flashcards, etc.) for the generated items
+
+---
+
+## Expected Outcome
+
+- Batch jobs will correctly report "Failed" if no content is generated
+- The `generate-content-from-pdf` function will no longer crash on AI settings
+- Content will actually be created and added to the curriculum
