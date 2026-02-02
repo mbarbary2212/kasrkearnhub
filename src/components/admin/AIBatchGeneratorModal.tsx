@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -22,6 +21,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useChapterSections } from '@/hooks/useSections';
 import { useCreateBatchJob, useStartBatchJob } from '@/hooks/useAIBatchJobs';
 import { useIsAIContentFactoryEnabled } from '@/hooks/useAISettings';
+import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQs', description: 'Multiple choice questions' },
@@ -51,6 +51,7 @@ export function AIBatchGeneratorModal({
 }: AIBatchGeneratorModalProps) {
   const [selectedModuleId, setSelectedModuleId] = useState(prefilledModuleId || '');
   const [selectedChapterId, setSelectedChapterId] = useState(prefilledChapterId || '');
+  const [selectedDocId, setSelectedDocId] = useState(documentId || '');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [perSection, setPerSection] = useState(false);
@@ -61,15 +62,20 @@ export function AIBatchGeneratorModal({
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(selectedModuleId || undefined);
   const { data: sections } = useChapterSections(selectedChapterId || undefined);
+  const { data: documents } = useAdminDocuments({
+    module_id: selectedModuleId || undefined,
+    chapter_id: selectedChapterId || undefined,
+  });
   
   const createJob = useCreateBatchJob();
   const startJob = useStartBatchJob();
 
-  // Update module/chapter when prefilled values change
+  // Update module/chapter/document when prefilled values change
   useEffect(() => {
     if (prefilledModuleId) setSelectedModuleId(prefilledModuleId);
     if (prefilledChapterId) setSelectedChapterId(prefilledChapterId);
-  }, [prefilledModuleId, prefilledChapterId]);
+    if (documentId) setSelectedDocId(documentId);
+  }, [prefilledModuleId, prefilledChapterId, documentId]);
 
   const handleTypeToggle = (type: string) => {
     setSelectedTypes(prev => {
@@ -94,11 +100,11 @@ export function AIBatchGeneratorModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedModuleId || selectedTypes.length === 0) return;
+    if (!selectedDocId || !selectedModuleId || selectedTypes.length === 0) return;
 
     try {
       const job = await createJob.mutateAsync({
-        document_id: documentId,
+        document_id: selectedDocId,
         module_id: selectedModuleId,
         chapter_id: selectedChapterId || undefined,
         content_types: selectedTypes,
@@ -195,13 +201,41 @@ export function AIBatchGeneratorModal({
                 </div>
               </div>
 
-              {/* Document Info */}
-              {documentId && (
-                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Using selected PDF document as source</span>
-                </div>
-              )}
+              {/* PDF Document Selection (Required) */}
+              <div className="space-y-2">
+                <Label>PDF Document *</Label>
+                <Select 
+                  value={selectedDocId} 
+                  onValueChange={setSelectedDocId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select PDF document" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documents && documents.length > 0 ? (
+                      documents.map(doc => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3 h-3 text-muted-foreground" />
+                            <span className="truncate max-w-[300px]">{doc.title}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                        {selectedModuleId 
+                          ? 'No PDFs found for this module/chapter' 
+                          : 'Select a module first to see available PDFs'}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {!selectedModuleId && (
+                  <p className="text-xs text-muted-foreground">
+                    Select a module to filter available PDFs
+                  </p>
+                )}
+              </div>
 
               {/* Content Types */}
               <div className="space-y-3">
@@ -328,6 +362,7 @@ export function AIBatchGeneratorModal({
             onClick={handleSubmit}
             disabled={
               !factoryEnabled ||
+              !selectedDocId ||
               !selectedModuleId ||
               selectedTypes.length === 0 ||
               createJob.isPending
