@@ -1,5 +1,6 @@
 // ============================================
 // Process Batch Job - Resumable Batch Worker
+// Implements strict queue-like sequential processing
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -10,11 +11,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Delay between content types to avoid rate limits
+const STEP_DELAY_MS = 2000;
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+interface StepResult {
+  content_type: string;
+  step_index: number;
+  started_at: string;
+  finished_at: string | null;
+  status: 'pending' | 'generating' | 'approving' | 'completed' | 'failed';
+  generated_count: number;
+  inserted_count: number;
+  duplicate_count: number;
+  approved_count: number;
+  job_id: string | null;
+  error_message: string | null;
+  target_table: string;
+  module_id: string;
+  chapter_id: string | null;
 }
 
 interface BatchJob {
@@ -30,14 +51,31 @@ interface BatchJob {
   total_steps: number;
   status: string;
   auto_approve: boolean;
+  stop_on_failure: boolean;
   job_ids: string[];
   duplicate_stats: Record<string, { total: number; unique: number; duplicates: number }>;
+  step_results: StepResult[];
   error_message: string | null;
   additional_instructions: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
 }
+
+// Target table mapping for each content type
+const CONTENT_TYPE_TABLES: Record<string, string> = {
+  mcq: 'mcqs',
+  flashcard: 'flashcards',
+  osce: 'osce_questions',
+  essay: 'essays',
+  matching: 'matching_questions',
+  clinical_case: 'virtual_patient_cases',
+  virtual_patient: 'virtual_patient_cases',
+  case_scenario: 'case_scenarios',
+  mind_map: 'mind_maps',
+  guided_explanation: 'guided_explanations',
+  worked_case: 'worked_cases',
+};
 
 serve(async (req) => {
   // 1. CORS preflight
@@ -138,6 +176,7 @@ serve(async (req) => {
       status: "completed", 
       message: "Batch job already completed",
       job_ids: job.job_ids,
+      step_results: job.step_results,
     });
   }
 
@@ -160,27 +199,54 @@ serve(async (req) => {
     })
     .eq("id", batch_id);
 
-  // 9. RESUMABLE PROCESSING
+  // 9. STRICT SEQUENTIAL PROCESSING
   const contentTypes = job.content_types || [];
   const quantities = job.quantities || {};
   let currentStep = job.current_step || 0;
   const jobIds = [...(job.job_ids || [])];
   const duplicateStats = { ...(job.duplicate_stats || {}) };
+  const stepResults: StepResult[] = [...(job.step_results || [])];
+  const stopOnFailure = job.stop_on_failure !== false; // Default true
+  
   let hasSuccesses = false;
   let lastError: string | null = null;
+  let batchFailed = false;
 
   try {
     // Process each remaining content type (resume capability)
     for (let i = currentStep; i < contentTypes.length; i++) {
       const contentType = contentTypes[i];
       const quantity = quantities[contentType] || 5;
+      const stepStartTime = new Date().toISOString();
+      const targetTable = CONTENT_TYPE_TABLES[contentType] || 'unknown';
 
-      console.log(`[${batch_id}] Processing step ${i + 1}/${contentTypes.length}: ${contentType} (qty: ${quantity})`);
+      console.log(`[${batch_id}] Step ${i + 1}/${contentTypes.length}: ${contentType} (qty: ${quantity})`);
+
+      // Initialize step result
+      const stepResult: StepResult = {
+        content_type: contentType,
+        step_index: i,
+        started_at: stepStartTime,
+        finished_at: null,
+        status: 'generating',
+        generated_count: 0,
+        inserted_count: 0,
+        duplicate_count: 0,
+        approved_count: 0,
+        job_id: null,
+        error_message: null,
+        target_table: targetTable,
+        module_id: job.module_id,
+        chapter_id: job.chapter_id,
+      };
 
       // Update current step BEFORE processing (for resume on failure)
       await serviceClient
         .from("ai_batch_jobs")
-        .update({ current_step: i })
+        .update({ 
+          current_step: i,
+          step_results: [...stepResults, stepResult],
+        })
         .eq("id", batch_id);
 
       // Check if paused mid-processing
@@ -197,57 +263,88 @@ serve(async (req) => {
           status: statusCheck.status,
           current_step: i,
           total_steps: contentTypes.length,
+          step_results: stepResults,
         });
       }
 
-      // Call generate-content-from-pdf for this content type
-      const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-content-from-pdf`, {
-        method: "POST",
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          document_id: job.document_id,
-          content_type: contentType,
-          module_id: job.module_id,
-          chapter_id: job.chapter_id,
-          quantity,
-          additional_instructions: job.additional_instructions,
-        }),
-      });
+      // ===== STEP 1: GENERATE CONTENT =====
+      let generateResult: any = null;
+      try {
+        const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-content-from-pdf`, {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            document_id: job.document_id,
+            content_type: contentType,
+            module_id: job.module_id,
+            chapter_id: job.chapter_id,
+            quantity,
+            additional_instructions: job.additional_instructions,
+          }),
+        });
 
-      const generateResult = await generateResponse.json();
+        generateResult = await generateResponse.json();
 
-      if (!generateResponse.ok) {
-        const errorMsg = generateResult.error || `Generation failed with status ${generateResponse.status}`;
-        console.error(`[${batch_id}] Generation failed for ${contentType}:`, errorMsg);
+        if (!generateResponse.ok) {
+          const errorMsg = generateResult.error || `Generation failed with status ${generateResponse.status}`;
+          console.error(`[${batch_id}] Generation failed for ${contentType}:`, errorMsg);
+          
+          stepResult.status = 'failed';
+          stepResult.finished_at = new Date().toISOString();
+          stepResult.error_message = errorMsg;
+          lastError = errorMsg;
+          
+          // Record partial failure
+          duplicateStats[contentType] = { total: 0, unique: 0, duplicates: 0 };
+          stepResults.push(stepResult);
+
+          if (stopOnFailure) {
+            console.log(`[${batch_id}] Stopping batch due to failure (stop_on_failure=true)`);
+            batchFailed = true;
+            break;
+          } else {
+            console.log(`[${batch_id}] Continuing to next content type despite failure`);
+            continue;
+          }
+        }
+
+        stepResult.generated_count = generateResult.items?.length || 0;
+        stepResult.job_id = generateResult.job_id || null;
+
+      } catch (fetchError) {
+        const errorMsg = fetchError instanceof Error ? fetchError.message : "Generation request failed";
+        console.error(`[${batch_id}] Generation fetch error for ${contentType}:`, errorMsg);
+        
+        stepResult.status = 'failed';
+        stepResult.finished_at = new Date().toISOString();
+        stepResult.error_message = errorMsg;
         lastError = errorMsg;
         
-        // Record partial failure but continue
-        duplicateStats[contentType] = {
-          total: 0,
-          unique: 0,
-          duplicates: 0,
-        };
+        stepResults.push(stepResult);
+
+        if (stopOnFailure) {
+          batchFailed = true;
+          break;
+        }
         continue;
       }
 
-      if (generateResult.job_id) {
-        jobIds.push(generateResult.job_id);
-        hasSuccesses = true;
+      // ===== STEP 2: AUTO-APPROVE IF ENABLED =====
+      if (job.auto_approve && generateResult.job_id) {
+        stepResult.status = 'approving';
+        
+        // Update progress before approval
+        await serviceClient
+          .from("ai_batch_jobs")
+          .update({ step_results: [...stepResults.slice(0, -1), stepResult] })
+          .eq("id", batch_id);
 
-        // Record duplicate stats if available
-        duplicateStats[contentType] = {
-          total: generateResult.items?.length || 0,
-          unique: generateResult.items?.length || 0,
-          duplicates: 0,
-        };
+        console.log(`[${batch_id}] Auto-approving job ${generateResult.job_id}`);
 
-        // Auto-approve if enabled
-        if (job.auto_approve && generateResult.job_id) {
-          console.log(`[${batch_id}] Auto-approving job ${generateResult.job_id}`);
-          
+        try {
           const approveResponse = await fetch(`${supabaseUrl}/functions/v1/approve-ai-content`, {
             method: "POST",
             headers: {
@@ -257,25 +354,119 @@ serve(async (req) => {
             body: JSON.stringify({ job_id: generateResult.job_id }),
           });
 
+          const approveResult = await approveResponse.json();
+
           if (!approveResponse.ok) {
-            const approveError = await approveResponse.json();
-            console.error(`[${batch_id}] Auto-approve failed:`, approveError.error);
+            const errorMsg = approveResult.error || `Approval failed with status ${approveResponse.status}`;
+            console.error(`[${batch_id}] Auto-approve failed for ${contentType}:`, errorMsg);
+            
+            stepResult.status = 'failed';
+            stepResult.finished_at = new Date().toISOString();
+            stepResult.error_message = `Approval failed: ${errorMsg}`;
+            lastError = stepResult.error_message;
+            
+            stepResults.push(stepResult);
+
+            if (stopOnFailure) {
+              batchFailed = true;
+              break;
+            }
+            continue;
           }
+
+          // Success - update counts from approval response
+          stepResult.inserted_count = approveResult.inserted_count || approveResult.items_approved || stepResult.generated_count;
+          stepResult.approved_count = stepResult.inserted_count;
+          stepResult.duplicate_count = approveResult.duplicates_skipped || 0;
+          
+          console.log(`[${batch_id}] Approved ${stepResult.approved_count} items for ${contentType}`);
+
+        } catch (approveError) {
+          const errorMsg = approveError instanceof Error ? approveError.message : "Approval request failed";
+          console.error(`[${batch_id}] Approval fetch error for ${contentType}:`, errorMsg);
+          
+          stepResult.status = 'failed';
+          stepResult.finished_at = new Date().toISOString();
+          stepResult.error_message = `Approval failed: ${errorMsg}`;
+          lastError = stepResult.error_message;
+          
+          stepResults.push(stepResult);
+
+          if (stopOnFailure) {
+            batchFailed = true;
+            break;
+          }
+          continue;
         }
       }
 
-      // Save progress after each step
+      // ===== STEP COMPLETED =====
+      stepResult.status = 'completed';
+      stepResult.finished_at = new Date().toISOString();
+      
+      if (generateResult.job_id) {
+        jobIds.push(generateResult.job_id);
+        hasSuccesses = true;
+      }
+
+      // Record duplicate stats
+      duplicateStats[contentType] = {
+        total: stepResult.generated_count,
+        unique: stepResult.inserted_count || stepResult.generated_count,
+        duplicates: stepResult.duplicate_count,
+      };
+
+      stepResults.push(stepResult);
+
+      // Save progress after each completed step
       await serviceClient
         .from("ai_batch_jobs")
         .update({
           current_step: i + 1,
           job_ids: jobIds,
           duplicate_stats: duplicateStats,
+          step_results: stepResults,
         })
         .eq("id", batch_id);
+
+      // ===== DELAY BEFORE NEXT STEP =====
+      if (i < contentTypes.length - 1) {
+        console.log(`[${batch_id}] Waiting ${STEP_DELAY_MS}ms before next step...`);
+        await new Promise(resolve => setTimeout(resolve, STEP_DELAY_MS));
+      }
     }
 
     // 10. MARK COMPLETED OR FAILED
+    if (batchFailed) {
+      // Batch stopped due to a failure
+      const errorMessage = lastError || "One or more generation steps failed. Check step_results for details.";
+      
+      await serviceClient
+        .from("ai_batch_jobs")
+        .update({
+          status: "failed",
+          current_step: stepResults.length,
+          error_message: errorMessage,
+          job_ids: jobIds,
+          duplicate_stats: duplicateStats,
+          step_results: stepResults,
+        })
+        .eq("id", batch_id);
+
+      console.error(`[${batch_id}] Batch job failed at step ${stepResults.length}. Error: ${errorMessage}`);
+
+      return jsonResponse({
+        success: false,
+        status: "failed",
+        error: errorMessage,
+        current_step: stepResults.length,
+        total_steps: contentTypes.length,
+        job_ids: jobIds,
+        duplicate_stats: duplicateStats,
+        step_results: stepResults,
+      }, 500);
+    }
+
     if (hasSuccesses) {
       await serviceClient
         .from("ai_batch_jobs")
@@ -285,6 +476,7 @@ serve(async (req) => {
           completed_at: new Date().toISOString(),
           job_ids: jobIds,
           duplicate_stats: duplicateStats,
+          step_results: stepResults,
         })
         .eq("id", batch_id);
 
@@ -295,6 +487,7 @@ serve(async (req) => {
         status: "completed",
         job_ids: jobIds,
         duplicate_stats: duplicateStats,
+        step_results: stepResults,
       });
     } else {
       // All generations failed - mark as failed with error message
@@ -308,6 +501,7 @@ serve(async (req) => {
           error_message: errorMessage,
           job_ids: jobIds,
           duplicate_stats: duplicateStats,
+          step_results: stepResults,
         })
         .eq("id", batch_id);
 
@@ -319,6 +513,7 @@ serve(async (req) => {
         error: errorMessage,
         job_ids: jobIds,
         duplicate_stats: duplicateStats,
+        step_results: stepResults,
       }, 500);
     }
 
@@ -332,6 +527,7 @@ serve(async (req) => {
       .update({
         status: "failed",
         error_message: msg,
+        step_results: stepResults,
       })
       .eq("id", batch_id);
 
@@ -341,6 +537,7 @@ serve(async (req) => {
       current_step: currentStep,
       total_steps: contentTypes.length,
       job_ids: jobIds,
+      step_results: stepResults,
     }, 500);
   }
 });

@@ -30,7 +30,8 @@ import {
   XCircle,
   Loader2,
   AlertCircle,
-  FileText
+  FileText,
+  ArrowRight
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { 
@@ -39,7 +40,8 @@ import {
   useCancelBatchJob, 
   useRetryBatchJob,
   useDeleteBatchJob,
-  AIBatchJob 
+  AIBatchJob,
+  StepResult
 } from '@/hooks/useAIBatchJobs';
 
 const STATUS_CONFIG = {
@@ -51,6 +53,14 @@ const STATUS_CONFIG = {
   cancelled: { icon: AlertCircle, color: 'bg-gray-500', label: 'Cancelled' },
 };
 
+const STEP_STATUS_CONFIG = {
+  pending: { icon: Clock, className: 'text-muted-foreground' },
+  generating: { icon: Loader2, className: 'text-blue-500 animate-spin' },
+  approving: { icon: Loader2, className: 'text-purple-500 animate-spin' },
+  completed: { icon: CheckCircle2, className: 'text-green-500' },
+  failed: { icon: XCircle, className: 'text-destructive' },
+};
+
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   mcq: 'MCQs',
   flashcard: 'Flashcards',
@@ -58,9 +68,50 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   essay: 'Essays',
   matching: 'Matching Questions',
   clinical_case: 'Clinical Cases',
+  virtual_patient: 'Virtual Patients',
   mind_map: 'Mind Maps',
   guided_explanation: 'Guided Explanations',
+  worked_case: 'Worked Cases',
 };
+
+interface StepResultItemProps {
+  step: StepResult;
+}
+
+function StepResultItem({ step }: StepResultItemProps) {
+  const config = STEP_STATUS_CONFIG[step.status];
+  const Icon = config.icon;
+  
+  return (
+    <div className="flex items-center justify-between p-2 bg-background rounded border">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className={`w-4 h-4 flex-shrink-0 ${config.className}`} />
+        <span className="font-medium truncate">
+          {CONTENT_TYPE_LABELS[step.content_type] || step.content_type}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-shrink-0">
+        {step.status === 'completed' ? (
+          <span className="text-primary">
+            {step.inserted_count > 0 
+              ? `${step.inserted_count} inserted` 
+              : `${step.generated_count} generated`}
+          </span>
+        ) : step.status === 'failed' ? (
+          <span className="text-destructive text-xs max-w-[200px] truncate" title={step.error_message || ''}>
+            {step.error_message || 'Failed'}
+          </span>
+        ) : step.status === 'generating' ? (
+          <span>Generating...</span>
+        ) : step.status === 'approving' ? (
+          <span>Approving...</span>
+        ) : (
+          <span>Pending</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface JobCardProps {
   job: AIBatchJob;
@@ -76,6 +127,10 @@ function JobCard({ job, onStart, onCancel, onRetry, onDelete, isLoading }: JobCa
   const statusConfig = STATUS_CONFIG[job.status];
   const StatusIcon = statusConfig.icon;
   const progress = job.total_steps > 0 ? (job.current_step / job.total_steps) * 100 : 0;
+
+  const stepResults = job.step_results || [];
+  const completedSteps = stepResults.filter(s => s.status === 'completed').length;
+  const failedSteps = stepResults.filter(s => s.status === 'failed').length;
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
@@ -116,6 +171,22 @@ function JobCard({ job, onStart, onCancel, onRetry, onDelete, isLoading }: JobCa
                       </span>
                     </div>
                   )}
+                  {(job.status === 'completed' || job.status === 'failed') && stepResults.length > 0 && (
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      {completedSteps > 0 && (
+                        <span className="text-primary flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {completedSteps} completed
+                        </span>
+                      )}
+                      {failedSteps > 0 && (
+                        <span className="text-destructive flex items-center gap-1">
+                          <XCircle className="w-3 h-3" />
+                          {failedSteps} failed
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -127,6 +198,21 @@ function JobCard({ job, onStart, onCancel, onRetry, onDelete, isLoading }: JobCa
 
         <CollapsibleContent>
           <div className="border-t p-4 bg-muted/30 space-y-4">
+            {/* Step Results */}
+            {stepResults.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <ArrowRight className="w-4 h-4" />
+                  Step Results
+                </h4>
+                <div className="space-y-2">
+                  {stepResults.map((step, idx) => (
+                    <StepResultItem key={idx} step={step} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Quantities */}
             <div>
               <h4 className="text-sm font-medium mb-2">Content Quantities</h4>
@@ -144,23 +230,6 @@ function JobCard({ job, onStart, onCancel, onRetry, onDelete, isLoading }: JobCa
               <div className="flex items-center gap-2 text-sm">
                 <FileText className="w-4 h-4 text-muted-foreground" />
                 <span>Source: {job.document.title}</span>
-              </div>
-            )}
-
-            {/* Duplicate Stats */}
-            {job.duplicate_stats && Object.keys(job.duplicate_stats).length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium mb-2">Duplicate Detection</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(job.duplicate_stats).map(([type, stats]) => (
-                    <div key={type} className="flex items-center justify-between p-2 bg-background rounded">
-                      <span>{CONTENT_TYPE_LABELS[type] || type}</span>
-                      <span className="text-muted-foreground">
-                        {(stats as { total: number; duplicates: number }).duplicates} / {(stats as { total: number; duplicates: number }).total} duplicates
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
@@ -264,7 +333,7 @@ export function AIBatchJobsList({ moduleId }: AIBatchJobsListProps) {
             Batch Generation Jobs
           </CardTitle>
           <CardDescription>
-            Monitor and manage AI content generation batch jobs.
+            Monitor and manage AI content generation batch jobs. Each step runs sequentially with a 2-second delay.
           </CardDescription>
         </CardHeader>
         <CardContent>
