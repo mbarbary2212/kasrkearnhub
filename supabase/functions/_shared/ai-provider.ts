@@ -25,7 +25,7 @@ export interface AISettings {
 
 const DEFAULT_SETTINGS: AISettings = {
   ai_provider: 'lovable',
-  gemini_model: 'gemini-1.5-flash',
+  gemini_model: 'gemini-2.5-flash',
   lovable_model: 'google/gemini-3-flash-preview',
   ai_content_factory_enabled: true,
   ai_content_factory_disabled_message: 'AI content generation is currently disabled by the administrator.',
