@@ -166,6 +166,8 @@ serve(async (req) => {
   let currentStep = job.current_step || 0;
   const jobIds = [...(job.job_ids || [])];
   const duplicateStats = { ...(job.duplicate_stats || {}) };
+  let hasSuccesses = false;
+  let lastError: string | null = null;
 
   try {
     // Process each remaining content type (resume capability)
@@ -218,7 +220,9 @@ serve(async (req) => {
       const generateResult = await generateResponse.json();
 
       if (!generateResponse.ok) {
-        console.error(`[${batch_id}] Generation failed for ${contentType}:`, generateResult.error);
+        const errorMsg = generateResult.error || `Generation failed with status ${generateResponse.status}`;
+        console.error(`[${batch_id}] Generation failed for ${contentType}:`, errorMsg);
+        lastError = errorMsg;
         
         // Record partial failure but continue
         duplicateStats[contentType] = {
@@ -231,6 +235,7 @@ serve(async (req) => {
 
       if (generateResult.job_id) {
         jobIds.push(generateResult.job_id);
+        hasSuccesses = true;
 
         // Record duplicate stats if available
         duplicateStats[contentType] = {
@@ -270,26 +275,52 @@ serve(async (req) => {
         .eq("id", batch_id);
     }
 
-    // 10. MARK COMPLETED
-    await serviceClient
-      .from("ai_batch_jobs")
-      .update({
+    // 10. MARK COMPLETED OR FAILED
+    if (hasSuccesses) {
+      await serviceClient
+        .from("ai_batch_jobs")
+        .update({
+          status: "completed",
+          current_step: contentTypes.length,
+          completed_at: new Date().toISOString(),
+          job_ids: jobIds,
+          duplicate_stats: duplicateStats,
+        })
+        .eq("id", batch_id);
+
+      console.log(`[${batch_id}] Batch job completed. Jobs created: ${jobIds.length}`);
+
+      return jsonResponse({
+        success: true,
         status: "completed",
-        current_step: contentTypes.length,
-        completed_at: new Date().toISOString(),
         job_ids: jobIds,
         duplicate_stats: duplicateStats,
-      })
-      .eq("id", batch_id);
+      });
+    } else {
+      // All generations failed - mark as failed with error message
+      const errorMessage = lastError || "All content generation attempts failed. Check AI settings configuration.";
+      
+      await serviceClient
+        .from("ai_batch_jobs")
+        .update({
+          status: "failed",
+          current_step: contentTypes.length,
+          error_message: errorMessage,
+          job_ids: jobIds,
+          duplicate_stats: duplicateStats,
+        })
+        .eq("id", batch_id);
 
-    console.log(`[${batch_id}] Batch job completed. Jobs created: ${jobIds.length}`);
+      console.error(`[${batch_id}] Batch job failed - no content generated. Error: ${errorMessage}`);
 
-    return jsonResponse({
-      success: true,
-      status: "completed",
-      job_ids: jobIds,
-      duplicate_stats: duplicateStats,
-    });
+      return jsonResponse({
+        success: false,
+        status: "failed",
+        error: errorMessage,
+        job_ids: jobIds,
+        duplicate_stats: duplicateStats,
+      }, 500);
+    }
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error";
