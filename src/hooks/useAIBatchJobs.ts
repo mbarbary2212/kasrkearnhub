@@ -169,7 +169,7 @@ export function useStartBatchJob() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ batch_job_id: jobId }),
+          body: JSON.stringify({ batch_id: jobId }),
         }
       );
 
