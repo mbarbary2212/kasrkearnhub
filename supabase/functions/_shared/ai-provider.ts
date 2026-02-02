@@ -53,23 +53,34 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
   const settings = { ...DEFAULT_SETTINGS };
   
   for (const row of (data || []) as AISettingRow[]) {
-    const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    // Safely parse the value - it might be a raw string or a JSON-encoded string
+    let value = row.value;
+    if (typeof value === 'string') {
+      // Only try to parse if it looks like JSON (starts with { or [ or ")
+      if (value.startsWith('{') || value.startsWith('[') || value.startsWith('"')) {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          // If parsing fails, use the raw string value
+        }
+      }
+    }
     
     switch (row.key) {
       case 'ai_provider':
         settings.ai_provider = value === 'gemini' ? 'gemini' : 'lovable';
         break;
       case 'gemini_model':
-        settings.gemini_model = value || DEFAULT_SETTINGS.gemini_model;
+        settings.gemini_model = (value as string) || DEFAULT_SETTINGS.gemini_model;
         break;
       case 'lovable_model':
-        settings.lovable_model = value || DEFAULT_SETTINGS.lovable_model;
+        settings.lovable_model = (value as string) || DEFAULT_SETTINGS.lovable_model;
         break;
       case 'ai_content_factory_enabled':
         settings.ai_content_factory_enabled = value === true || value === 'true';
         break;
       case 'ai_content_factory_disabled_message':
-        settings.ai_content_factory_disabled_message = value || DEFAULT_SETTINGS.ai_content_factory_disabled_message;
+        settings.ai_content_factory_disabled_message = (value as string) || DEFAULT_SETTINGS.ai_content_factory_disabled_message;
         break;
     }
   }
