@@ -146,7 +146,7 @@ export function AIBatchGeneratorModal({
             </AlertDescription>
           </Alert>
         ) : (
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
             <div className="space-y-6 pb-4">
               {/* Module & Chapter Selection */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -220,6 +220,7 @@ export function AIBatchGeneratorModal({
                       <Checkbox
                         checked={selectedTypes.includes(type.value)}
                         onCheckedChange={() => handleTypeToggle(type.value)}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex-1">
                         <div className="font-medium text-sm">{type.label}</div>
