@@ -102,13 +102,21 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     section_number: "string (optional) - section number from the provided list",
   },
   clinical_case: {
-    title: "string - case title",
-    intro_text: "string - initial patient presentation and context",
-    level: "string - beginner, intermediate, or advanced",
+    title: "string - case title (at least 10 characters)",
+    intro_text: "string - initial patient presentation, chief complaint, and relevant history (at least 50 characters)",
+    level: "string - EXACTLY one of: 'beginner', 'intermediate', or 'advanced'",
     case_mode: "string - always 'practice_case'",
     estimated_minutes: "number - expected completion time in minutes (10-30)",
-    tags: "array of strings - relevant clinical tags/topics",
-    stages: "array of 3-5 stage objects - each stage is MCQ, multi_select, or short_answer type (same format as virtual_patient stages)",
+    tags: "array of 2-5 strings - relevant clinical tags (e.g., 'cardiology', 'chest pain', 'ECG')",
+    stages: `array of 3-5 stage objects. Each stage MUST have ALL of these fields:
+      - stage_order: number (1, 2, 3, ...)
+      - stage_type: string - EXACTLY one of 'mcq', 'multi_select', or 'short_answer'
+      - prompt: string - the clinical question (at least 15 characters)
+      - patient_info: string or null - additional info revealed at this stage
+      - choices: array of 4-5 objects [{key: 'A', text: '...'}, {key: 'B', text: '...'}] - REQUIRED for mcq/multi_select
+      - correct_answer: string 'A'/'B'/etc for mcq, array ['A','B'] for multi_select, string for short_answer
+      - explanation: string - detailed explanation of why the answer is correct
+      - teaching_points: array of 2-4 strings - key learning points`,
     section_number: "string (optional) - section number from the provided list",
   },
   mind_map: {
@@ -518,6 +526,97 @@ function normalizeVpStageChoices(stage: any): any {
   return stage;
 }
 
+// Normalize stage_type to valid values
+function normalizeStageType(type: string | undefined): string {
+  const valid = ['mcq', 'multi_select', 'short_answer'];
+  if (!type) return 'mcq';
+  const lower = String(type).toLowerCase().replace(/[^a-z_]/g, '');
+  if (valid.includes(lower)) return lower;
+  if (lower.includes('multi') || lower.includes('select')) return 'multi_select';
+  if (lower.includes('short') || lower.includes('text') || lower.includes('free')) return 'short_answer';
+  return 'mcq';
+}
+
+// Ensure value is an array
+function ensureArray(val: any): string[] {
+  if (Array.isArray(val)) return val.map(String);
+  if (typeof val === 'string') return [val];
+  return [];
+}
+
+// Normalize clinical case item with robust stage handling
+function normalizeClinicalCaseItem(item: any): any {
+  // Ensure basic fields
+  if (!item.level || !['beginner', 'intermediate', 'advanced'].includes(item.level)) {
+    item.level = 'intermediate';
+  }
+  if (!item.case_mode) {
+    item.case_mode = 'practice_case';
+  }
+  if (!item.estimated_minutes || typeof item.estimated_minutes !== 'number') {
+    item.estimated_minutes = 15;
+  }
+  if (!Array.isArray(item.tags)) {
+    item.tags = item.tags ? [String(item.tags)] : ['clinical'];
+  }
+
+  // Normalize stages array
+  if (!Array.isArray(item.stages)) {
+    item.stages = [];
+    return item;
+  }
+
+  item.stages = item.stages.map((stage: any, idx: number) => {
+    // Normalize stage_type
+    const normalizedType = normalizeStageType(stage.stage_type || stage.type);
+    
+    // Normalize choices for MCQ/multi_select
+    let choices = stage.choices;
+    if (normalizedType !== 'short_answer') {
+      if (choices && !Array.isArray(choices) && typeof choices === 'object') {
+        // Convert object format to array
+        const keys = Object.keys(choices).sort();
+        choices = keys.map(k => ({ key: k, text: choices[k] }));
+      }
+      if (!Array.isArray(choices) || choices.length < 2) {
+        // Provide default choices if missing
+        choices = [
+          { key: 'A', text: 'Option A' },
+          { key: 'B', text: 'Option B' },
+          { key: 'C', text: 'Option C' },
+          { key: 'D', text: 'Option D' },
+        ];
+      }
+    } else {
+      choices = null;
+    }
+
+    // Normalize correct_answer
+    let correctAnswer = stage.correct_answer || stage.answer || stage.correctAnswer;
+    if (normalizedType === 'multi_select' && !Array.isArray(correctAnswer)) {
+      correctAnswer = correctAnswer ? [String(correctAnswer)] : ['A'];
+    } else if (normalizedType === 'mcq' && typeof correctAnswer !== 'string') {
+      correctAnswer = Array.isArray(correctAnswer) ? correctAnswer[0] : 'A';
+    } else if (normalizedType === 'short_answer' && typeof correctAnswer !== 'string') {
+      correctAnswer = String(correctAnswer || 'Expected answer');
+    }
+
+    return {
+      stage_order: stage.stage_order || stage.order || idx + 1,
+      stage_type: normalizedType,
+      prompt: stage.prompt || stage.question || stage.text || `[Question ${idx + 1}]`,
+      patient_info: stage.patient_info || stage.patientInfo || null,
+      choices: choices,
+      correct_answer: correctAnswer,
+      explanation: stage.explanation || stage.rationale || '',
+      teaching_points: ensureArray(stage.teaching_points || stage.teachingPoints || stage.learningPoints || []),
+      rubric: stage.rubric || null,
+    };
+  });
+
+  return item;
+}
+
 // Main validation dispatcher
 function validateItems(items: any[], contentType: ContentType): ValidationResult {
   const allErrors: string[] = [];
@@ -540,10 +639,8 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
         break;
       case 'virtual_patient':
       case 'clinical_case':
-        // Normalize stage choices
-        if (Array.isArray(items[i].stages)) {
-          items[i].stages = items[i].stages.map(normalizeVpStageChoices);
-        }
+        // Normalize clinical case stages with robust fallbacks
+        items[i] = normalizeClinicalCaseItem(items[i]);
         result = validateVirtualPatientItem(items[i], i);
         break;
       case 'flashcard':
@@ -894,10 +991,40 @@ If content doesn't fit any specific section, set section_number to null.`;
 Frame explanations as a dialogue that guides reasoning rather than providing direct answers.`
       : "";
 
-    // Additional context for Virtual Patient
+    // Additional context for Virtual Patient and Clinical Cases
     const vpStageInfo =
-      content_type === "virtual_patient"
-        ? `\n\nEach stage in the 'stages' array must follow this structure:\n${JSON.stringify(VP_STAGE_SCHEMA, null, 2)}\n\nCreate 4-6 stages per case, mixing MCQ, multi_select, and short_answer types. Ensure stages progressively reveal information and build on each other.`
+      content_type === "virtual_patient" || content_type === "clinical_case"
+        ? `\n\nCRITICAL FOR ${content_type.toUpperCase()}:
+You MUST generate 3-5 stages in the 'stages' array. Each stage MUST have ALL of these fields:
+
+STAGE STRUCTURE (all fields required):
+{
+  "stage_order": 1,  // number: 1, 2, 3, etc.
+  "stage_type": "mcq",  // EXACTLY: "mcq", "multi_select", or "short_answer"
+  "prompt": "Based on this patient's presentation, what is the most likely diagnosis?",  // at least 15 chars
+  "patient_info": "Vital signs: BP 140/90, HR 88, RR 16",  // or null
+  "choices": [  // REQUIRED for mcq/multi_select (4-5 options)
+    {"key": "A", "text": "Acute coronary syndrome"},
+    {"key": "B", "text": "Pulmonary embolism"},
+    {"key": "C", "text": "Aortic dissection"},
+    {"key": "D", "text": "Pneumonia"}
+  ],
+  "correct_answer": "A",  // string for mcq, array for multi_select, string for short_answer
+  "explanation": "The ECG changes and troponin elevation indicate...",
+  "teaching_points": ["Always obtain ECG within 10 minutes", "Risk stratify using HEART score"]
+}
+
+RULES:
+- stage_type must be EXACTLY "mcq", "multi_select", or "short_answer" (no variations)
+- prompt must be at least 15 characters
+- choices array is REQUIRED for mcq and multi_select types
+- Each choice must have "key" (A, B, C, D, E) and "text" fields
+- correct_answer for mcq: single letter like "A"
+- correct_answer for multi_select: array like ["A", "C"]
+- correct_answer for short_answer: expected text answer
+- teaching_points must be an array of strings
+
+Mix different stage types (2-3 MCQ, 1 multi_select, 1 short_answer) for variety.`
         : "";
 
     // Special MCQ instruction for array format

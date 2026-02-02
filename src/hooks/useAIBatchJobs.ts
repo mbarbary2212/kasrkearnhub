@@ -2,6 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface StepResult {
+  content_type: string;
+  step_index: number;
+  started_at: string;
+  finished_at: string | null;
+  status: 'pending' | 'generating' | 'approving' | 'completed' | 'failed';
+  generated_count: number;
+  inserted_count: number;
+  duplicate_count: number;
+  approved_count: number;
+  job_id: string | null;
+  error_message: string | null;
+  target_table: string;
+  module_id: string;
+  chapter_id: string | null;
+}
+
 export interface AIBatchJob {
   id: string;
   document_id: string | null;
@@ -15,8 +32,10 @@ export interface AIBatchJob {
   total_steps: number;
   status: 'pending' | 'processing' | 'paused' | 'completed' | 'failed' | 'cancelled';
   auto_approve: boolean;
+  stop_on_failure: boolean;
   job_ids: string[] | null;
   duplicate_stats: Record<string, { total: number; duplicates: number }> | null;
+  step_results: StepResult[] | null;
   error_message: string | null;
   additional_instructions: string | null;
   created_at: string | null;
@@ -56,6 +75,8 @@ export function useAIBatchJobs(moduleId?: string) {
         quantities: job.quantities as Record<string, number>,
         job_ids: job.job_ids as string[] | null,
         duplicate_stats: job.duplicate_stats as Record<string, { total: number; duplicates: number }> | null,
+        step_results: (job.step_results as unknown) as StepResult[] | null,
+        stop_on_failure: job.stop_on_failure ?? true,
       })) as AIBatchJob[];
     },
   });
@@ -84,6 +105,8 @@ export function useAIBatchJob(jobId: string) {
         quantities: data.quantities as Record<string, number>,
         job_ids: data.job_ids as string[] | null,
         duplicate_stats: data.duplicate_stats as Record<string, { total: number; duplicates: number }> | null,
+        step_results: (data.step_results as unknown) as StepResult[] | null,
+        stop_on_failure: data.stop_on_failure ?? true,
       } as AIBatchJob;
     },
     enabled: !!jobId,
@@ -98,6 +121,7 @@ interface CreateBatchJobInput {
   quantities: Record<string, number>;
   per_section?: boolean;
   auto_approve?: boolean;
+  stop_on_failure?: boolean;
   additional_instructions?: string;
 }
 
@@ -132,9 +156,11 @@ export function useCreateBatchJob() {
           quantities: input.quantities,
           per_section: input.per_section ?? false,
           auto_approve: input.auto_approve ?? false,
+          stop_on_failure: input.stop_on_failure ?? true,
           additional_instructions: input.additional_instructions || null,
           total_steps: totalSteps,
           status: 'pending',
+          step_results: [],
         })
         .select()
         .single();
@@ -229,6 +255,7 @@ export function useRetryBatchJob() {
         .update({ 
           status: 'pending',
           error_message: null,
+          step_results: [],
         })
         .eq('id', jobId)
         .eq('status', 'failed')

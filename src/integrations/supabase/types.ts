@@ -263,6 +263,8 @@ export type Database = {
           quantities: Json
           started_at: string | null
           status: string
+          step_results: Json | null
+          stop_on_failure: boolean | null
           total_steps: number
         }
         Insert: {
@@ -284,6 +286,8 @@ export type Database = {
           quantities?: Json
           started_at?: string | null
           status?: string
+          step_results?: Json | null
+          stop_on_failure?: boolean | null
           total_steps?: number
         }
         Update: {
@@ -305,6 +309,8 @@ export type Database = {
           quantities?: Json
           started_at?: string | null
           status?: string
+          step_results?: Json | null
+          stop_on_failure?: boolean | null
           total_steps?: number
         }
         Relationships: [
