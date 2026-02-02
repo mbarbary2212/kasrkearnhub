@@ -33,9 +33,9 @@ const LOVABLE_MODELS = [
 ];
 
 const GEMINI_MODELS = [
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast)' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (High Quality)' },
-  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Experimental' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
 ];
 
 export function AISettingsPanel() {
@@ -72,7 +72,7 @@ export function AISettingsPanel() {
   const factoryEnabled = getValue('ai_content_factory_enabled', true);
   const provider = getValue('ai_provider', 'lovable');
   const lovableModel = getValue('lovable_model', 'google/gemini-3-flash-preview');
-  const geminiModel = getValue('gemini_model', 'gemini-1.5-flash');
+  const geminiModel = getValue('gemini_model', 'gemini-2.5-flash');
   const disabledMessage = getValue('ai_content_factory_disabled_message', 'AI content generation is currently disabled.');
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
