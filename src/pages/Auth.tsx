@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/kalm-hub-logo.png';
 
 type AuthView = 'login' | 'forgot' | 'reset' | 'change-password';
 
