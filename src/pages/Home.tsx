@@ -94,8 +94,12 @@ export default function Home() {
         <div className="container mx-auto px-4 py-16 relative z-10">
           {/* Logo */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center mb-6">
-              <img src={logo} alt="KALM Hub Logo" className="w-60 h-60 object-contain" />
+            <div className="inline-flex items-center justify-center mb-6 overflow-hidden h-72 md:h-80">
+              <img 
+                src={logo} 
+                alt="KALM Hub Logo" 
+                className="w-[360px] h-[360px] md:w-[400px] md:h-[400px] object-contain object-top -mb-24" 
+              />
             </div>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Kasralainy for learning and mentorship HUB
