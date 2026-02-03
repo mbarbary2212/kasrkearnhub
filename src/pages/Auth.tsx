@@ -221,7 +221,9 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <div className="mx-auto overflow-hidden h-24 md:h-28 flex items-center justify-center mb-2">
+                <img src={logo} alt="KALM Hub Logo" className="w-auto h-[140px] md:h-[160px] object-cover scale-[1.8]" />
+              </div>
               <CardTitle className="text-2xl font-heading font-bold">Set New Password</CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
@@ -300,7 +302,9 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <div className="mx-auto overflow-hidden h-24 md:h-28 flex items-center justify-center mb-2">
+                <img src={logo} alt="KALM Hub Logo" className="w-auto h-[140px] md:h-[160px] object-cover scale-[1.8]" />
+              </div>
               <CardTitle className="text-2xl font-heading font-bold">Forgot Password?</CardTitle>
               <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
             </CardHeader>
@@ -362,7 +366,9 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <div className="mx-auto overflow-hidden h-24 md:h-28 flex items-center justify-center mb-2">
+                <img src={logo} alt="KALM Hub Logo" className="w-auto h-[140px] md:h-[160px] object-cover scale-[1.8]" />
+              </div>
               <CardTitle className="text-2xl font-heading font-bold">Change Password</CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
@@ -429,7 +435,9 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+            <div className="mx-auto overflow-hidden h-24 md:h-28 flex items-center justify-center mb-2">
+              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[140px] md:h-[160px] object-cover scale-[1.8]" />
+            </div>
             <CardTitle>You're signed in</CardTitle>
             <CardDescription>What would you like to do?</CardDescription>
           </CardHeader>
@@ -470,7 +478,9 @@ export default function Auth() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
-            <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+            <div className="mx-auto overflow-hidden h-24 md:h-28 flex items-center justify-center mb-2">
+              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[140px] md:h-[160px] object-cover scale-[1.8]" />
+            </div>
             <CardTitle className="text-2xl font-heading font-bold">{title}</CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
           </CardHeader>
