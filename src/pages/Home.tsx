@@ -92,14 +92,11 @@ export default function Home() {
         <div className="absolute inset-0 gradient-medical opacity-5" />
         
         <div className="container mx-auto px-4 py-16 relative z-10">
-          {/* Logo and Title */}
+          {/* Logo */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center gap-3 mb-6">
-              <img src={logo} alt="KALM Hub Logo" className="w-20 h-20 object-contain" />
+            <div className="inline-flex items-center justify-center mb-6">
+              <img src={logo} alt="KALM Hub Logo" className="w-60 h-60 object-contain" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">
-              <span className="text-gradient-medical">KALM Hub</span>
-            </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Kasralainy for learning and mentorship HUB
             </p>
