@@ -94,11 +94,11 @@ export default function Home() {
         <div className="container mx-auto px-4 py-16 relative z-10">
           {/* Logo - cropped to remove white space */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center overflow-hidden h-24 md:h-32">
+            <div className="inline-flex items-center justify-center overflow-hidden h-[106px] md:h-[166px]">
               <img 
                 src={logo} 
                 alt="KALM Hub Logo" 
-                className="w-auto h-[140px] md:h-[180px] object-contain" 
+                className="w-auto h-[154px] md:h-[234px] object-contain" 
               />
             </div>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mt-2">
