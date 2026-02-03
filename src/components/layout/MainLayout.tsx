@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
-import logo from '@/assets/kalm-hub-logo.jpeg';
+import logo from '@/assets/logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
