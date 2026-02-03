@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Layers, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Layers, ChevronDown, Check } from 'lucide-react';
 import { useChapterSections, useTopicSections, useChapterSectionsEnabled, useTopicSectionsEnabled, Section } from '@/hooks/useSections';
 
 interface SectionFilterProps {
@@ -21,9 +24,6 @@ export function SectionFilter({
   onSectionChange,
   className,
 }: SectionFilterProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showMobileSheet, setShowMobileSheet] = useState(false);
-  
   const isChapterScope = !!chapterId;
   
   // Check if sections are enabled
@@ -44,118 +44,77 @@ export function SectionFilter({
     return null;
   }
   
-  const handleSelect = (sectionId: string | null) => {
-    onSectionChange(sectionId);
-    setShowMobileSheet(false);
-  };
-  
-  // Chip component
-  const FilterChip = ({ 
-    section, 
-    isActive, 
-    onClick 
-  }: { 
-    section: Section | null; 
-    isActive: boolean; 
-    onClick: () => void;
-  }) => (
-    <button
-      onClick={onClick}
-      className={cn(
-        "px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors",
-        "min-h-[36px] sm:min-h-[32px] flex items-center",
-        isActive
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-      )}
-    >
-      {section ? section.name : 'All'}
-    </button>
-  );
+  const sectionCount = sections.length;
   
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {/* Label - hidden on very small screens */}
-      <div className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Layers className="h-4 w-4" />
-        <span>Sections:</span>
-      </div>
-      
-      {/* Desktop: Horizontal scroll chips */}
-      <div className="hidden sm:block flex-1 overflow-hidden">
-        <div 
-          ref={scrollRef}
-          className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <FilterChip 
-            section={null} 
-            isActive={!selectedSectionId} 
-            onClick={() => handleSelect(null)} 
-          />
-          {sections.map(section => (
-            <FilterChip
-              key={section.id}
-              section={section}
-              isActive={selectedSectionId === section.id}
-              onClick={() => handleSelect(section.id)}
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Mobile: Compact button with sheet */}
-      <div className="sm:hidden flex-1">
-        <Sheet open={showMobileSheet} onOpenChange={setShowMobileSheet}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between h-9"
+    <div className={cn("flex justify-center py-3", className)}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 rounded-full",
+              "bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10",
+              "border-2 border-primary/30 shadow-sm",
+              "text-sm font-medium transition-all duration-200",
+              "hover:border-primary/50 hover:shadow-md hover:scale-[1.02]",
+              "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+            )}
+          >
+            <Layers className="w-4 h-4 text-primary" />
+            <span className="text-foreground">
+              {selectedSection ? selectedSection.name : 'All Sections'}
+            </span>
+            <Badge 
+              variant="secondary" 
+              className="h-5 px-1.5 text-[10px] bg-primary/20 text-primary border-0"
             >
-              <span className="flex items-center gap-1.5">
-                <Layers className="h-4 w-4" />
-                <span className="truncate">
-                  {selectedSection ? selectedSection.name : 'All Sections'}
-                </span>
-              </span>
-              <ChevronDown className="h-4 w-4 ml-1 shrink-0" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-auto max-h-[60vh]">
-            <SheetHeader className="pb-4">
-              <SheetTitle>Select Section</SheetTitle>
-            </SheetHeader>
-            <div className="space-y-2 pb-4">
-              <button
-                onClick={() => handleSelect(null)}
+              {sectionCount}
+            </Badge>
+            <ChevronDown className="w-4 h-4 text-muted-foreground ml-1" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent 
+          className="w-64 max-h-80 overflow-y-auto bg-popover border border-border shadow-lg z-50"
+          align="center"
+          sideOffset={8}
+        >
+          <DropdownMenuItem
+            onClick={() => onSectionChange(null)}
+            className={cn(
+              "flex items-center justify-between gap-2 py-3 cursor-pointer",
+              !selectedSectionId && "bg-primary/10"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Layers className={cn("w-4 h-4", !selectedSectionId ? "text-primary" : "text-muted-foreground")} />
+              <span className={cn(!selectedSectionId && "font-medium text-primary")}>All Sections</span>
+            </div>
+            {!selectedSectionId && <Check className="w-4 h-4 text-primary" />}
+          </DropdownMenuItem>
+          
+          {sections.map((section) => {
+            const isActive = selectedSectionId === section.id;
+            return (
+              <DropdownMenuItem
+                key={section.id}
+                onClick={() => onSectionChange(section.id)}
                 className={cn(
-                  "w-full p-3 rounded-lg text-left text-sm font-medium transition-colors",
-                  !selectedSectionId
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
+                  "flex items-center justify-between gap-2 py-3 cursor-pointer",
+                  isActive && "bg-primary/10"
                 )}
               >
-                All Sections
-              </button>
-              {sections.map(section => (
-                <button
-                  key={section.id}
-                  onClick={() => handleSelect(section.id)}
-                  className={cn(
-                    "w-full p-3 rounded-lg text-left text-sm font-medium transition-colors",
-                    selectedSectionId === section.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80"
-                  )}
-                >
+                <span className={cn(
+                  "truncate",
+                  isActive && "font-medium text-primary"
+                )}>
                   {section.name}
-                </button>
-              ))}
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+                </span>
+                {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
