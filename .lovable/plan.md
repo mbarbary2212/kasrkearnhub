@@ -1,90 +1,82 @@
 
 
-# Splash Screen Enhancement Plan
+# Splash Screen - Thin Frame Enhancement
 
 ## Summary
-Transform the splash screen from an auto-dismissing animation to an interactive welcome screen with a "Click here to log in" button. Add a white frame around the image for better presentation, and show it every time users visit the site (not just once per session).
+Enlarge the splash images to fill nearly the entire screen with only a thin white border/frame around the edges. The click-anywhere-to-dismiss functionality already works.
 
-## Current Issues
-1. **Auto-dismiss**: Currently fades out automatically after 1.5-2 seconds - no time to read
-2. **Session-based**: Only shows once per session (`sessionStorage` check)
-3. **No interaction**: Missing a click-to-continue button
-4. **Mobile image**: Portrait image exists in `/public/splash-portrait.jpeg` but may need verification
-5. **No framing**: Images stretch full screen without visual frame
+## Current vs New Design
 
-## Changes Overview
+**Current State:**
+- Large white padding around image (p-8 to p-12)
+- Image limited to max-w-5xl and max-h-[70vh]
+- Lots of empty white space
 
-### 1. App.tsx - Remove Auto-Timer Logic
-- Remove the `sessionStorage` check - show splash every visit
-- Remove the automatic fade timers
-- Add a callback function to dismiss splash when user clicks
+**New Design:**
+- Image fills almost the entire screen
+- Thin white border (8-12px) around the edges
+- Subtle shadow on the image for depth
+- Button positioned over the image at the bottom
 
-### 2. SplashScreen.tsx - Complete Redesign
-- Add white frame/border around the image for PC/tablet
-- Center the image within the frame
-- Add "Click here to log in" button at the bottom
-- Make the entire splash clickable for convenience
-- Keep responsive image switching (portrait for mobile, landscape for larger screens)
+## Visual Comparison
 
-## Visual Design
-
-**Desktop/Tablet Layout:**
+**Desktop/Tablet - Before:**
 ```
 ┌─────────────────────────────────────┐
-│         White Background            │
-│   ┌─────────────────────────────┐   │
-│   │                             │   │
-│   │     Splash Image            │   │
-│   │     (Landscape)             │   │
-│   │                             │   │
-│   └─────────────────────────────┘   │
 │                                     │
-│      [ Click here to log in ]       │
-│                                     │
+│     ┌───────────────────────┐       │
+│     │                       │       │
+│     │   Image (70% screen)  │       │
+│     │                       │       │
+│     └───────────────────────┘       │
+│        [ Click to log in ]          │
 └─────────────────────────────────────┘
 ```
 
-**Mobile Layout:**
+**Desktop/Tablet - After:**
+```
+┌─────────────────────────────────────┐
+│ ┌─────────────────────────────────┐ │ ← thin white frame
+│ │                                 │ │
+│ │     Image (fills screen)        │ │
+│ │                                 │ │
+│ │      [ Click to log in ]        │ │ ← button overlay
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+**Mobile - After:**
 ```
 ┌─────────────────┐
-│                 │
-│  Splash Image   │
-│  (Portrait)     │
-│  Full Width     │
-│                 │
-│                 │
-│[ Click to login]│
-│                 │
+│ ┌─────────────┐ │ ← thin white frame
+│ │             │ │
+│ │   Portrait  │ │
+│ │   Image     │ │
+│ │   (full)    │ │
+│ │             │ │
+│ │ [Log in]    │ │
+│ └─────────────┘ │
 └─────────────────┘
 ```
 
-## Technical Details
-
-### File: `src/App.tsx`
-
-**Changes:**
-- Remove `SPLASH_SESSION_KEY` constant and `sessionStorage` logic
-- Remove the auto-fade `useEffect` with timers
-- Keep `showSplash` state but initialize to `true` always
-- Add `handleDismissSplash` callback function
-- Pass callback to `SplashScreen` component
+## Changes to Make
 
 ### File: `src/components/SplashScreen.tsx`
 
-**Changes:**
-- Accept `onDismiss` callback prop instead of `isFading`
-- Create a centered layout with white background
-- Add white frame/padding around the image (for tablet/PC)
-- Use `object-contain` to show full image without cropping
-- Add styled "Click here to log in" button
-- Make the component clickable
-- Add smooth entrance animation
-- Keep responsive `<picture>` element for mobile vs desktop images
+| Change | Before | After |
+|--------|--------|-------|
+| Frame padding | `p-8 lg:p-12` (32-48px) | `p-2 md:p-3` (8-12px thin frame) |
+| Image max size | `max-w-5xl max-h-[70vh]` | `w-full h-full` (fill container) |
+| Mobile padding | `p-4` | `p-2` |
+| Button position | Below image | Positioned at bottom of image |
+| Image object-fit | `object-contain` | `object-cover` (fill area) |
 
-## Files to Modify
+## Technical Details
 
-| File | Purpose |
-|------|---------|
-| `src/App.tsx` | Remove auto-timer, add click handler, show every visit |
-| `src/components/SplashScreen.tsx` | Add button, white frame, click-to-dismiss |
+- Remove large padding, use minimal padding for thin white border effect
+- Make image container fill available space
+- Position button absolutely at bottom of image area
+- Use `object-cover` so image fills the frame completely
+- Keep rounded corners and shadow for polish
+- White background provides the thin frame appearance
 
