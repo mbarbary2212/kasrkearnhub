@@ -101,7 +101,7 @@ export default function Home() {
               <span className="text-gradient-medical">KALM Hub</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Your comprehensive medical education platform for Kasr Al-Ainy Faculty of Medicine
+              Kasralainy for learning and mentorship HUB
             </p>
           </div>
 
