@@ -1,82 +1,59 @@
 
 
-# Splash Screen - Thin Frame Enhancement
+# Splash Screen Button Refinement
 
 ## Summary
-Enlarge the splash images to fill nearly the entire screen with only a thin white border/frame around the edges. The click-anywhere-to-dismiss functionality already works.
+Make the "Click to log in" button more subtle with a transparent background and simplified text. Smaller size on mobile for better proportions.
 
-## Current vs New Design
+## Changes
 
-**Current State:**
-- Large white padding around image (p-8 to p-12)
-- Image limited to max-w-5xl and max-h-[70vh]
-- Lots of empty white space
+### Text Simplification
+- **Before**: "Click here to log in"
+- **After**: "Click to log in"
 
-**New Design:**
-- Image fills almost the entire screen
-- Thin white border (8-12px) around the edges
-- Subtle shadow on the image for depth
-- Button positioned over the image at the bottom
+### Button Styling
 
-## Visual Comparison
+| Property | Desktop/Tablet | Mobile |
+|----------|---------------|--------|
+| Background | Transparent with subtle backdrop blur | Transparent with subtle backdrop blur |
+| Border | White border for visibility | White border for visibility |
+| Text color | White | White |
+| Padding | `px-8 py-3` (current) | `px-4 py-2` (smaller) |
+| Font size | `text-lg` | `text-sm` |
 
-**Desktop/Tablet - Before:**
-```
-┌─────────────────────────────────────┐
-│                                     │
-│     ┌───────────────────────┐       │
-│     │                       │       │
-│     │   Image (70% screen)  │       │
-│     │                       │       │
-│     └───────────────────────┘       │
-│        [ Click to log in ]          │
-└─────────────────────────────────────┘
-```
+### Visual Effect
+The button will have:
+- Transparent background (`bg-transparent` or `bg-white/10`)
+- White border (`border border-white`)
+- White text (`text-white`)
+- Optional: subtle backdrop blur for readability over any image (`backdrop-blur-sm`)
+- Hover effect: slightly more visible background (`hover:bg-white/20`)
 
-**Desktop/Tablet - After:**
-```
-┌─────────────────────────────────────┐
-│ ┌─────────────────────────────────┐ │ ← thin white frame
-│ │                                 │ │
-│ │     Image (fills screen)        │ │
-│ │                                 │ │
-│ │      [ Click to log in ]        │ │ ← button overlay
-│ └─────────────────────────────────┘ │
-└─────────────────────────────────────┘
-```
+## File to Modify
 
-**Mobile - After:**
-```
-┌─────────────────┐
-│ ┌─────────────┐ │ ← thin white frame
-│ │             │ │
-│ │   Portrait  │ │
-│ │   Image     │ │
-│ │   (full)    │ │
-│ │             │ │
-│ │ [Log in]    │ │
-│ └─────────────┘ │
-└─────────────────┘
+| File | Changes |
+|------|---------|
+| `src/components/SplashScreen.tsx` | Update button text and styling for both desktop and mobile versions |
+
+## Code Preview
+
+**Desktop button:**
+```tsx
+<button
+  className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-lg font-medium hover:bg-white/20 transition-colors"
+  ...
+>
+  Click to log in
+</button>
 ```
 
-## Changes to Make
-
-### File: `src/components/SplashScreen.tsx`
-
-| Change | Before | After |
-|--------|--------|-------|
-| Frame padding | `p-8 lg:p-12` (32-48px) | `p-2 md:p-3` (8-12px thin frame) |
-| Image max size | `max-w-5xl max-h-[70vh]` | `w-full h-full` (fill container) |
-| Mobile padding | `p-4` | `p-2` |
-| Button position | Below image | Positioned at bottom of image |
-| Image object-fit | `object-contain` | `object-cover` (fill area) |
-
-## Technical Details
-
-- Remove large padding, use minimal padding for thin white border effect
-- Make image container fill available space
-- Position button absolutely at bottom of image area
-- Use `object-cover` so image fills the frame completely
-- Keep rounded corners and shadow for polish
-- White background provides the thin frame appearance
+**Mobile button:**
+```tsx
+<button
+  className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors"
+  ...
+>
+  Click to log in
+</button>
+```
 
