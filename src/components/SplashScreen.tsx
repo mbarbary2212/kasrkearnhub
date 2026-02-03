@@ -16,13 +16,13 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
           className="w-full h-full object-cover"
         />
         <button
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-primary text-primary-foreground rounded-full text-lg font-medium hover:bg-primary/90 transition-colors shadow-md"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-lg font-medium hover:bg-white/20 transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             onDismiss();
           }}
         >
-          Click here to log in
+          Click to log in
         </button>
       </div>
 
@@ -34,13 +34,13 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
           className="w-full h-full object-cover"
         />
         <button
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-primary text-primary-foreground rounded-full text-base font-medium hover:bg-primary/90 transition-colors shadow-md"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             onDismiss();
           }}
         >
-          Click here to log in
+          Click to log in
         </button>
       </div>
     </div>
