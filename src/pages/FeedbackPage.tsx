@@ -46,7 +46,7 @@ export default function FeedbackPage() {
           <MessageSquare className="w-8 h-8 text-primary" />
           <div>
             <h1 className="text-3xl font-heading font-bold">Feedback Portal</h1>
-            <p className="text-muted-foreground">Share your thoughts to help improve KasrLearn</p>
+            <p className="text-muted-foreground">Share your thoughts to help improve KALM Hub</p>
           </div>
         </div>
 

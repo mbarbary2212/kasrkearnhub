@@ -61,7 +61,7 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
 
     // Build mailto link - anonymous, no user info
     const recipient = 'learning.admin@kasralainy.edu.eg';
-    const subject = encodeURIComponent(`KasrLearn Feedback – ${code}`);
+    const subject = encodeURIComponent(`KALM Hub Feedback – ${code}`);
     
     const body = encodeURIComponent(
 `Module: ${code} – ${modName}

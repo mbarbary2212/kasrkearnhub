@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail, GraduationCap } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/kalm-hub-logo.jpeg';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -95,10 +95,10 @@ export default function Home() {
           {/* Logo and Title */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center gap-3 mb-6">
-              <img src={logo} alt="KasrLearn Logo" className="w-20 h-20 object-contain" />
+              <img src={logo} alt="KALM Hub Logo" className="w-20 h-20 object-contain" />
             </div>
             <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4">
-              <span className="text-gradient-medical">KasrLearn</span>
+              <span className="text-gradient-medical">KALM Hub</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Your comprehensive medical education platform for Kasr Al-Ainy Faculty of Medicine
@@ -163,62 +163,130 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Features Section */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <BookOpen className="w-6 h-6 text-secondary-foreground" />
+          {/* Features Section - 5 Pillars */}
+          <div className="mt-16 max-w-6xl mx-auto">
+            {/* Desktop: all 5 in single row */}
+            <div className="hidden md:grid md:grid-cols-5 gap-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <BookOpen className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <h3 className="font-heading font-semibold mb-2">Resources</h3>
+                <p className="text-sm text-muted-foreground">
+                  To build understanding
+                </p>
               </div>
-              <h3 className="font-heading font-semibold mb-2">Resources</h3>
-              <p className="text-sm text-muted-foreground">
-                To build understanding
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
+              <div className="text-center">
+                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <h3 className="font-heading font-semibold mb-2">Practice</h3>
+                <p className="text-sm text-muted-foreground">
+                  Test your understanding
+                </p>
               </div>
-              <h3 className="font-heading font-semibold mb-2">Practice</h3>
-              <p className="text-sm text-muted-foreground">
-                Test your understanding
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <FileQuestion className="w-6 h-6 text-secondary-foreground" />
+              <div className="text-center">
+                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <FileQuestion className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
+                <p className="text-sm text-muted-foreground">
+                  Designed around your module
+                </p>
               </div>
-              <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
-              <p className="text-sm text-muted-foreground">
-                Designed around your module
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                <MessageCircle className="w-6 h-6 text-secondary-foreground" />
+              <div className="text-center">
+                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <MessageCircle className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <h3 className="font-heading font-semibold mb-2">Connect</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your voice matters
+                </p>
               </div>
-              <h3 className="font-heading font-semibold mb-2">Connect</h3>
-              <p className="text-sm text-muted-foreground">
-                Your voice matters
-              </p>
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-center cursor-pointer">
-                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="text-center cursor-pointer">
+                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+                      </div>
+                      <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
+                      <p className="text-sm text-muted-foreground">
+                        AI-powered guidance for your learning journey
+                      </p>
                     </div>
-                    <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
-                    <p className="text-sm text-muted-foreground">
-                      AI-powered guidance for your learning journey
-                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Personal Study Coach
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Mobile: 2x2 grid for first 4, then 5th centered below */}
+            <div className="md:hidden space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-6 h-6 text-secondary-foreground" />
                   </div>
-                </TooltipTrigger>
-                <TooltipContent className="bg-black text-white border-black">
-                  Personal Study Coach
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                  <h3 className="font-heading font-semibold mb-2">Resources</h3>
+                  <p className="text-sm text-muted-foreground">
+                    To build understanding
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
+                  </div>
+                  <h3 className="font-heading font-semibold mb-2">Practice</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Test your understanding
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <FileQuestion className="w-6 h-6 text-secondary-foreground" />
+                  </div>
+                  <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Designed around your module
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <MessageCircle className="w-6 h-6 text-secondary-foreground" />
+                  </div>
+                  <h3 className="font-heading font-semibold mb-2">Connect</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your voice matters
+                  </p>
+                </div>
+              </div>
+              {/* 5th pillar centered */}
+              <div className="flex justify-center">
+                <div className="w-[calc(50%-0.75rem)] text-center">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="cursor-pointer">
+                          <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
+                            <GraduationCap className="w-6 h-6 text-secondary-foreground" />
+                          </div>
+                          <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
+                          <p className="text-sm text-muted-foreground">
+                            AI-powered guidance for your learning journey
+                          </p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-black text-white border-black">
+                        Personal Study Coach
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

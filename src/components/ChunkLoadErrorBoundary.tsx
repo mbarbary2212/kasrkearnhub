@@ -61,7 +61,7 @@ export class ChunkLoadErrorBoundary extends Component<Props, State> {
                 App Updated
               </h1>
               <p className="text-muted-foreground">
-                A new version of KasrLearn is available. Please refresh to continue.
+                A new version of KALM Hub is available. Please refresh to continue.
               </p>
             </div>
 

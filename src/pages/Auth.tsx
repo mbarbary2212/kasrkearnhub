@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, Lock, User, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/kalm-hub-logo.jpeg';
 
 type AuthView = 'login' | 'forgot' | 'reset' | 'change-password';
 
@@ -221,7 +221,7 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
               <CardTitle className="text-2xl font-heading font-bold">Set New Password</CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
@@ -300,7 +300,7 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
               <CardTitle className="text-2xl font-heading font-bold">Forgot Password?</CardTitle>
               <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
             </CardHeader>
@@ -362,7 +362,7 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+              <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
               <CardTitle className="text-2xl font-heading font-bold">Change Password</CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
@@ -429,7 +429,7 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+            <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
             <CardTitle>You're signed in</CardTitle>
             <CardDescription>What would you like to do?</CardDescription>
           </CardHeader>
@@ -470,9 +470,9 @@ export default function Auth() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
-            <img src={logo} alt="KasrLearn Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
+            <img src={logo} alt="KALM Hub Logo" className="mx-auto w-16 h-16 object-contain mb-4" />
             <CardTitle className="text-2xl font-heading font-bold">{title}</CardTitle>
-            <CardDescription>Sign in to access KasrLearn</CardDescription>
+            <CardDescription>Sign in to access KALM Hub</CardDescription>
           </CardHeader>
           
           <CardContent>
