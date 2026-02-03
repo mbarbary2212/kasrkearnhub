@@ -1,296 +1,202 @@
 
-# AI Content Factory: Robust Queue Processing and Clinical Cases Fix
+# Rebrand to KALM Hub + Responsive Splash + 5 Pillars Layout
 
-## Problem Summary
+## Overview
 
-Based on investigation of the codebase and database, I've identified these issues:
+This plan implements frontend-only UI changes to rebrand the app from "KasrLearn" to "KALM Hub", add a responsive full-screen splash overlay on initial load only, and improve the 5 pillars layout on mobile by centering the 5th item.
 
-### 1. Clinical Cases Validation Failures
-The database shows clinical case generations are failing with validation errors like:
-```
-VP Case #1, Stage #1: stage_type must be mcq, multi_select, or short_answer
-VP Case #1, Stage #1: prompt must be at least 10 characters
-```
-
-**Root Cause**: The AI is not generating the correct stage structure. The prompt schema for `clinical_case` is defined but the AI output doesn't match the expected `stages` array format. This is a prompt engineering and validation issue, not a routing issue.
-
-### 2. Rate Limiting Issues
-Recent jobs show: `Gemini API rate limit exceeded. Please try again later.`
-
-The batch processor doesn't have delays between content types, which triggers rate limits when processing multiple items.
-
-### 3. Silent Continuation on Failure
-Current behavior (line 227-233 in `process-batch-job`):
-```typescript
-// Record partial failure but continue
-duplicateStats[contentType] = { total: 0, unique: 0, duplicates: 0 };
-continue;
-```
-
-This silently continues even when generation fails, leading to "ghost successes."
-
-### 4. Limited Step-Level Visibility
-The `ai_batch_jobs` table only stores aggregate `duplicate_stats` and `job_ids`, without per-step details like success/failure status, timestamps, or error messages.
+**Scope**: UI text, images, and layout/styling only. No backend, auth, routing, database, or localStorage/state changes.
 
 ---
 
-## Technical Implementation Plan
+## Additional Constraints (User Clarification)
 
-### Phase 1: Database Schema Enhancement
-
-**New `step_results` JSONB Column**
-
-Add to `ai_batch_jobs` table:
-```sql
-ALTER TABLE ai_batch_jobs 
-ADD COLUMN step_results JSONB DEFAULT '[]'::jsonb;
-```
-
-Structure per step:
-```typescript
-interface StepResult {
-  content_type: string;
-  step_index: number;
-  started_at: string;
-  finished_at: string | null;
-  status: 'pending' | 'generating' | 'approving' | 'completed' | 'failed';
-  generated_count: number;
-  inserted_count: number;
-  duplicate_count: number;
-  approved_count: number;
-  job_id: string | null;
-  error_message: string | null;
-  target_table: string;
-  module_id: string;
-  chapter_id: string | null;
-}
-```
+1. **Splash display rule**: Show only on initial load/refresh, NOT on internal navigation
+   - Implementation: Use `sessionStorage` flag that persists during the session but clears on refresh
+   
+2. **Navbar logo constraint**: Keep logo height consistent
+   - Desktop: max ~40px height
+   - Mobile: max ~32px height
 
 ---
 
-### Phase 2: Strict Sequential Processing with Delays
+## Assets to Add
 
-**Updates to `process-batch-job/index.ts`**:
-
-1. **Add inter-step delay** (2 seconds between content types to avoid rate limits):
-```typescript
-const STEP_DELAY_MS = 2000;
-
-// After each successful step:
-if (i < contentTypes.length - 1) {
-  await new Promise(resolve => setTimeout(resolve, STEP_DELAY_MS));
-}
-```
-
-2. **Stop on failure option** - Add a `stop_on_failure` flag (default: true):
-```typescript
-if (!generateResponse.ok) {
-  // Record step failure in step_results
-  stepResults.push({
-    content_type: contentType,
-    step_index: i,
-    started_at: stepStartTime,
-    finished_at: new Date().toISOString(),
-    status: 'failed',
-    error_message: errorMsg,
-    // ...other fields
-  });
-  
-  if (job.stop_on_failure !== false) {
-    // Mark batch as failed and exit
-    await updateBatchJobFailed(serviceClient, batch_id, stepResults, errorMsg);
-    return jsonResponse({ ... });
-  }
-}
-```
-
-3. **Await approval completion before proceeding**:
-```typescript
-// Auto-approve if enabled
-if (job.auto_approve && generateResult.job_id) {
-  const approveResult = await fetch(...);
-  const approveData = await approveResult.json();
-  
-  if (!approveResult.ok) {
-    stepResult.status = 'failed';
-    stepResult.error_message = `Approval failed: ${approveData.error}`;
-    // Handle as failure
-  } else {
-    stepResult.approved_count = approveData.inserted_count || 0;
-    stepResult.inserted_count = approveData.inserted_count || 0;
-  }
-}
-```
+| Source Upload | Destination | Purpose |
+|--------------|-------------|---------|
+| White-background logo (JPEG) | `src/assets/kalm-hub-logo.jpeg` | Header + landing page logo |
+| Landscape splash image (JPEG) | `public/splash-landscape.jpeg` | Desktop/tablet splash (>=768px) |
+| Portrait splash image (JPEG) | `public/splash-portrait.jpeg` | Mobile splash (<768px) |
 
 ---
 
-### Phase 3: Clinical Case Generation Fix
+## Implementation Details
 
-**Problem**: AI generates invalid stage structures.
+### Phase 1: Add Splash Screen Component
 
-**Solution in `generate-content-from-pdf/index.ts`**:
+**New File: `src/components/SplashScreen.tsx`**
 
-1. **Enhanced Clinical Case Schema Instructions**:
-```typescript
-const clinicalCaseStageInfo = content_type === "clinical_case"
-  ? `\n\nCRITICAL FOR CLINICAL CASES:
-You MUST generate 3-5 stages in the 'stages' array. Each stage MUST have:
-- stage_order: number (1, 2, 3, ...)
-- stage_type: EXACTLY one of "mcq", "multi_select", or "short_answer"
-- prompt: string at least 10 characters (the question/instruction)
-- choices: array of {key, text} for mcq/multi_select (e.g., [{key:"A", text:"..."}, ...])
-- correct_answer: "A" for mcq, ["A","B"] for multi_select, "text" for short_answer
-- explanation: string explaining the answer
-- teaching_points: array of strings
+Creates a full-screen overlay that:
+- Uses `<picture>` element with responsive `<source>` for image selection
+- Portrait image for `max-width: 767px`
+- Landscape image for `min-width: 768px`  
+- Shows for approximately 1.5 seconds
+- Fades out smoothly with 500ms CSS opacity transition
+- Covers the entire viewport with `fixed inset-0 z-[9999]`
+- Only loads ONE image per device size (browser handles this with picture/source)
 
-Example stage:
-{
-  "stage_order": 1,
-  "stage_type": "mcq",
-  "prompt": "Based on the patient's presentation, what is the most likely diagnosis?",
-  "choices": [
-    {"key": "A", "text": "Acute appendicitis"},
-    {"key": "B", "text": "Cholecystitis"},
-    {"key": "C", "text": "Pancreatitis"},
-    {"key": "D", "text": "Gastroenteritis"}
-  ],
-  "correct_answer": "A",
-  "explanation": "The classic presentation of...",
-  "teaching_points": ["RLQ pain", "McBurney's point"]
-}`
-  : "";
+```text
+Splash Screen Flow:
+┌────────────────────────────────────┐
+│  App mounts                        │
+│           ↓                        │
+│  Check sessionStorage flag         │
+│  "splash_shown_this_session"       │
+│           ↓                        │
+│  If flag exists → skip splash      │
+│  If no flag → show splash          │
+│           ↓                        │
+│  Set flag in sessionStorage        │
+│           ↓                        │
+│  After 1.5s → isFading = true      │
+│           ↓                        │
+│  Apply opacity-0 transition (0.5s) │
+│           ↓                        │
+│  After fade → showSplash = false   │
+│  (component unmounts)              │
+└────────────────────────────────────┘
 ```
 
-2. **Stage Normalization Function** - Add robust fallback handling:
-```typescript
-function normalizeClinicalCaseStages(item: any): any {
-  if (!Array.isArray(item.stages)) {
-    item.stages = [];
-    return item;
-  }
-  
-  item.stages = item.stages.map((stage: any, idx: number) => ({
-    stage_order: stage.stage_order || idx + 1,
-    stage_type: normalizeStageType(stage.stage_type),
-    prompt: stage.prompt || stage.question || stage.text || "[Missing prompt]",
-    patient_info: stage.patient_info || null,
-    choices: normalizeChoices(stage.choices),
-    correct_answer: stage.correct_answer || stage.answer || "A",
-    explanation: stage.explanation || "",
-    teaching_points: ensureArray(stage.teaching_points || stage.learningPoints),
-    rubric: stage.rubric || null,
-  }));
-  
-  return item;
-}
+### Phase 2: Integrate Splash into App
 
-function normalizeStageType(type: string | undefined): string {
-  const valid = ['mcq', 'multi_select', 'short_answer'];
-  if (!type) return 'mcq';
-  const lower = String(type).toLowerCase().replace(/[^a-z_]/g, '');
-  if (valid.includes(lower)) return lower;
-  if (lower.includes('multi')) return 'multi_select';
-  if (lower.includes('short') || lower.includes('text')) return 'short_answer';
-  return 'mcq';
-}
-```
+**File: `src/App.tsx`**
 
----
+Changes:
+- Import new `SplashScreen` component
+- Add `useState` for `showSplash` and `isFading`
+- Add `useEffect` that:
+  - Checks `sessionStorage.getItem('splash_shown_this_session')`
+  - If already shown this session → skip splash entirely
+  - If not shown → display splash, set flag, then fade after 1500ms
+- Render `<SplashScreen>` conditionally above all other content
 
-### Phase 4: Batch Completion Report UI
+### Phase 3: Rebrand Visible Text Only
 
-**Updates to `AIBatchJobsList.tsx`**:
+**Files to update with "KALM Hub" instead of "KasrLearn":**
 
-1. **Add Step Results Display**:
-```typescript
-{job.step_results && job.step_results.length > 0 && (
-  <div>
-    <h4 className="text-sm font-medium mb-2">Step Results</h4>
-    <div className="space-y-2">
-      {job.step_results.map((step, idx) => (
-        <div key={idx} className="flex items-center justify-between p-2 bg-background rounded border">
-          <div className="flex items-center gap-2">
-            {step.status === 'completed' ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-            ) : step.status === 'failed' ? (
-              <XCircle className="w-4 h-4 text-red-500" />
-            ) : (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            )}
-            <span>{CONTENT_TYPE_LABELS[step.content_type]}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {step.status === 'completed' 
-              ? `${step.inserted_count} inserted`
-              : step.error_message || step.status
-            }
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-```
+| File | Changes |
+|------|---------|
+| `index.html` | Title, og:title, meta description, meta author, twitter:site |
+| `src/pages/Home.tsx` | H1 heading, alt text, meta description text |
+| `src/pages/Auth.tsx` | All logo alt texts (6 instances), "Sign in to access" text |
+| `src/components/layout/MainLayout.tsx` | Brand text in header, logo alt text |
+| `src/components/ChunkLoadErrorBoundary.tsx` | "new version of KALM Hub" error text |
+| `src/pages/FeedbackPage.tsx` | "improve KALM Hub" description text |
+| `src/components/feedback/FeedbackModal.tsx` | Email subject line "KALM Hub Feedback" |
+| `src/components/feedback/InquiryModal.tsx` | Email subject line "KALM Hub Question" |
 
-2. **Update TypeScript Interface**:
-```typescript
-interface StepResult {
-  content_type: string;
-  step_index: number;
-  started_at: string;
-  finished_at: string | null;
-  status: 'pending' | 'generating' | 'approving' | 'completed' | 'failed';
-  generated_count: number;
-  inserted_count: number;
-  error_message: string | null;
-}
+### Phase 4: Replace Logo Images
 
-export interface AIBatchJob {
-  // ... existing fields
-  step_results?: StepResult[];
-}
-```
-
----
-
-### Phase 5: Hook Updates
-
-**Updates to `useAIBatchJobs.ts`**:
-- Add `step_results` to the query select
-- Add type casting for `step_results` JSONB
-
----
-
-## Files to Modify
+**Files to update:**
 
 | File | Change |
 |------|--------|
-| `supabase/migrations/xxx.sql` | Add `step_results` column |
-| `supabase/functions/process-batch-job/index.ts` | Strict sequential processing, delays, step tracking |
-| `supabase/functions/generate-content-from-pdf/index.ts` | Enhanced clinical case prompts + normalization |
-| `src/hooks/useAIBatchJobs.ts` | Add `step_results` to types and query |
-| `src/components/admin/AIBatchJobsList.tsx` | Display step-level results |
-| `src/integrations/supabase/types.ts` | Update generated types |
+| `src/pages/Home.tsx` | Import new `kalm-hub-logo.jpeg` instead of `logo.png` |
+| `src/pages/Auth.tsx` | Import new `kalm-hub-logo.jpeg` instead of `logo.png` |
+| `src/components/layout/MainLayout.tsx` | Import new `kalm-hub-logo.jpeg`, add height constraints |
+
+**Navbar logo sizing (MainLayout.tsx):**
+```jsx
+<img 
+  src={logo} 
+  alt="KALM Hub Logo" 
+  className="h-8 md:h-10 w-auto object-contain" 
+/>
+```
+- `h-8` = 32px on mobile
+- `md:h-10` = 40px on desktop
+- `w-auto` preserves aspect ratio
+
+### Phase 5: 5 Pillars Layout Enhancement
+
+**File: `src/pages/Home.tsx`**
+
+Current layout: All 5 pillars in `grid-cols-2 md:grid-cols-5`
+
+New layout:
+- Desktop/tablet (md+): Keep existing 5-column single row
+- Mobile: First 4 pillars in 2x2 grid, 5th pillar (Personal Study Coach) in a separate centered row with the same width as other cards
+
+```text
+Mobile Layout (New):
+┌──────────────────────────────┐
+│  Resources  │   Practice     │
+├──────────────────────────────┤
+│  Formative  │   Connect      │
+├──────────────────────────────┤
+│     [ Study Coach ]          │ ← Centered, same width
+└──────────────────────────────┘
+
+Desktop Layout (Unchanged):
+┌──────────────────────────────────────────────────────────┐
+│ Resources │ Practice │ Formative │ Connect │ Study Coach │
+└──────────────────────────────────────────────────────────┘
+```
+
+Implementation:
+1. Define pillars array with all 5 items
+2. On mobile view: render first 4 in grid, then 5th in flex justify-center with width matching grid columns
+3. On desktop: show all 5 in single row
 
 ---
 
-## Expected Behavior After Implementation
+## File Change Summary
 
-1. **Strict Queue**: Each content type waits for previous to complete (generate + approve)
-2. **Rate Limit Protection**: 2-second delay between steps
-3. **No Ghost Successes**: Batch marked failed if any step fails
-4. **Clinical Cases Work**: Improved prompts and normalization fix validation errors
-5. **Full Visibility**: Each step shows status, counts, and errors
-6. **Auditable Reports**: Complete per-step history in `step_results`
+| File | Type | Changes |
+|------|------|---------|
+| `src/assets/kalm-hub-logo.jpeg` | New | KALM Hub logo asset |
+| `public/splash-landscape.jpeg` | New | Landscape splash image |
+| `public/splash-portrait.jpeg` | New | Portrait splash image |
+| `src/components/SplashScreen.tsx` | New | Splash overlay component |
+| `src/App.tsx` | Edit | Import + render SplashScreen with session-aware state |
+| `index.html` | Edit | Update title and meta tags |
+| `src/pages/Home.tsx` | Edit | Logo, text, 5 pillars layout |
+| `src/pages/Auth.tsx` | Edit | Logo and text changes |
+| `src/components/layout/MainLayout.tsx` | Edit | Logo with height constraints, brand text |
+| `src/components/ChunkLoadErrorBoundary.tsx` | Edit | Text update |
+| `src/pages/FeedbackPage.tsx` | Edit | Text update |
+| `src/components/feedback/FeedbackModal.tsx` | Edit | Email subject text |
+| `src/components/feedback/InquiryModal.tsx` | Edit | Email subject text |
+
+**NOT modified** (explicitly excluded):
+- `src/lib/stabilityGuards.ts` - no localStorage changes
+- `src/components/dashboard/StudentDashboard.tsx` - no localStorage changes
+- Any backend/auth/routing logic
 
 ---
 
-## Testing Checklist
+## Technical Notes
+
+1. **Responsive Images**: Using `<picture>` with `<source media="...">` ensures only the appropriate image is downloaded based on viewport width
+2. **Splash Timing**: 1.5s display + 0.5s fade = 2s total - feels snappy without being jarring
+3. **Session-only splash**: Using `sessionStorage` ensures splash shows on page refresh but not on internal navigation
+4. **Z-index**: Splash uses `z-[9999]` to appear above all other content including modals
+5. **Logo height consistency**: Using Tailwind classes `h-8 md:h-10 w-auto` for 32px/40px responsive sizing
+6. **No State/Storage Changes**: All localStorage keys and app state logic remain unchanged
+
+---
+
+## Verification Checklist
 
 After implementation:
-- [ ] Create batch with 2-3 content types including `clinical_case`
-- [ ] Verify steps execute sequentially with visible delays
-- [ ] Confirm clinical cases insert into `virtual_patient_cases`
-- [ ] Check step_results shows accurate counts
-- [ ] Verify failed step stops the batch
-- [ ] UI displays step-level details correctly
+- [ ] Splash appears on initial page load with correct image per device
+- [ ] Splash does NOT appear on internal navigation (e.g., click Home then back)
+- [ ] Splash fades out smoothly after ~2 seconds
+- [ ] "KALM Hub" appears in browser tab
+- [ ] New logo appears in header (~32px mobile, ~40px desktop)
+- [ ] New logo appears on landing page
+- [ ] New logo appears on auth page
+- [ ] 5 pillars: first 4 in 2x2 grid on mobile, 5th centered below
+- [ ] 5 pillars: all 5 in single row on desktop
+- [ ] All visible "KasrLearn" text replaced with "KALM Hub"
+- [ ] App functionality unchanged (login, navigation, data persistence all work)
