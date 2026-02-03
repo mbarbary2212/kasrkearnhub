@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/kalm-hub-logo.jpeg';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
@@ -108,8 +108,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center gap-3 hover:opacity-80 transition-all duration-200 hover:scale-105">
-              <img src={logo} alt="KasrLearn Logo" className="w-10 h-10 object-contain" />
-              <span className="font-heading font-bold text-xl">KasrLearn</span>
+              <img src={logo} alt="KALM Hub Logo" className="h-8 md:h-10 w-auto object-contain" />
+              <span className="font-heading font-bold text-xl">KALM Hub</span>
             </button>
             {/* Achievements Trophy Icon - Right of logo */}
             {user && (

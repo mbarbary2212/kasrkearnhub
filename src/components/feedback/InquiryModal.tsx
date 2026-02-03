@@ -45,7 +45,7 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, mo
 
     // Build mailto link
     const recipient = 'mohamed.elbarbary@gmail.com';
-    const subject = encodeURIComponent(`KasrLearn Question – ${code}`);
+    const subject = encodeURIComponent(`KALM Hub Question – ${code}`);
     
     const body = encodeURIComponent(
 `User Name: ${userName}
