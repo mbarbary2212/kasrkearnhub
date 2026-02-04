@@ -50,13 +50,13 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
     >
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay */}
+        {/* Pillar overlay - centered */}
         <div 
-          className="absolute bottom-24 left-1/2 -translate-x-1/2"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
           style={animationStyle}
         >
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-xl font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
             <p className="text-base text-white/80 mt-1">
@@ -79,13 +79,13 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
 
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay */}
+        {/* Pillar overlay - centered */}
         <div 
-          className="absolute bottom-20 left-1/2 -translate-x-1/2"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
           style={animationStyle}
         >
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 max-w-[280px] text-center">
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-base font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
             <p className="text-sm text-white/80 mt-1">
