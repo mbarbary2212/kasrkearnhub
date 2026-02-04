@@ -297,7 +297,7 @@ export function useBulkAssignSection() {
       itemIds, 
       sectionId 
     }: { 
-      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions' | 'virtual_patient_cases';
+      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions' | 'virtual_patient_cases' | 'true_false_questions';
       itemIds: string[];
       sectionId: string | null;
     }) => {
@@ -335,6 +335,11 @@ export function useBulkAssignSection() {
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey) && 
           (q.queryKey[0] === 'clinical-cases' || q.queryKey[0] === 'virtual-patient-cases')
+      });
+      
+      // ROBUST: Invalidate True/False queries
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'true_false'
       });
     },
   });
