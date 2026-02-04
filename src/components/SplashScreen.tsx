@@ -50,9 +50,9 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
     >
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay - centered */}
+        {/* Pillar overlay - left aligned */}
         <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          className="absolute top-1/2 left-12 -translate-y-1/2"
           style={animationStyle}
         >
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
