@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import type { Json } from '@/integrations/supabase/types';
+import type { Json, Database } from '@/integrations/supabase/types';
 
 // Types matching the database schema
 export type QuestionAttemptStatus = 'unseen' | 'attempted' | 'correct' | 'incorrect';
-// Database supports: 'mcq' | 'osce' | 'guided_explanation'
-// For true_false questions, we map to 'mcq' in the database
+
+// Database enum type
+type DbQuestionType = Database['public']['Enums']['practice_question_type'];
+
+// Frontend type includes true_false which maps to 'mcq' in DB
 export type PracticeQuestionType = 'mcq' | 'osce' | 'true_false';
-type DbQuestionType = 'mcq' | 'osce' | 'guided_explanation';
 
 // Helper to map frontend question type to database type
 function mapToDbQuestionType(type: PracticeQuestionType): DbQuestionType {
@@ -63,6 +65,45 @@ interface SaveQuestionAttemptParams {
 }
 
 /**
+ * Get the current attempt number for a chapter
+ */
+async function getCurrentAttemptNumber(
+  userId: string,
+  chapterId: string,
+  questionType: DbQuestionType
+): Promise<number> {
+  const { data } = await supabase
+    .from('chapter_attempts')
+    .select('attempt_number')
+    .eq('user_id', userId)
+    .eq('chapter_id', chapterId)
+    .eq('question_type', questionType)
+    .order('attempt_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // If there's a completed attempt, next one is +1, otherwise use the current
+  if (data?.attempt_number) {
+    // Check if the latest is completed
+    const { data: latestAttempt } = await supabase
+      .from('chapter_attempts')
+      .select('is_completed')
+      .eq('user_id', userId)
+      .eq('chapter_id', chapterId)
+      .eq('question_type', questionType)
+      .eq('attempt_number', data.attempt_number)
+      .maybeSingle();
+
+    if (latestAttempt?.is_completed) {
+      return data.attempt_number + 1;
+    }
+    return data.attempt_number;
+  }
+
+  return 1;
+}
+
+/**
  * Hook to get all question attempts for a chapter (current attempt)
  */
 export function useChapterQuestionAttempts(
@@ -76,7 +117,7 @@ export function useChapterQuestionAttempts(
     queryFn: async () => {
       if (!user?.id || !chapterId) return [];
 
-      const dbType = mapToDbQuestionType(questionType!);
+      const dbType = questionType ? mapToDbQuestionType(questionType) : 'mcq';
       
       // First get current attempt number for this chapter
       const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, dbType);
@@ -140,45 +181,6 @@ export function useChapterAttemptHistory(
 }
 
 /**
- * Get the current attempt number for a chapter
- */
-async function getCurrentAttemptNumber(
-  userId: string,
-  chapterId: string,
-  questionType: PracticeQuestionType
-): Promise<number> {
-  const { data } = await supabase
-    .from('chapter_attempts')
-    .select('attempt_number')
-    .eq('user_id', userId)
-    .eq('chapter_id', chapterId)
-    .eq('question_type', questionType)
-    .order('attempt_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // If there's a completed attempt, next one is +1, otherwise use the current
-  if (data?.attempt_number) {
-    // Check if the latest is completed
-    const { data: latestAttempt } = await supabase
-      .from('chapter_attempts')
-      .select('is_completed')
-      .eq('user_id', userId)
-      .eq('chapter_id', chapterId)
-      .eq('question_type', questionType)
-      .eq('attempt_number', data.attempt_number)
-      .maybeSingle();
-
-    if (latestAttempt?.is_completed) {
-      return data.attempt_number + 1;
-    }
-    return data.attempt_number;
-  }
-
-  return 1;
-}
-
-/**
  * Hook to save a question attempt (auto-save)
  */
 export function useSaveQuestionAttempt() {
@@ -190,9 +192,10 @@ export function useSaveQuestionAttempt() {
       if (!user?.id) throw new Error('Not authenticated');
 
       const { questionId, questionType, chapterId, moduleId, selectedAnswer, isCorrect, score } = params;
+      const dbType = mapToDbQuestionType(questionType);
 
       // Get current attempt number
-      const attemptNumber = await getCurrentAttemptNumber(user.id, chapterId, questionType);
+      const attemptNumber = await getCurrentAttemptNumber(user.id, chapterId, dbType);
 
       // Determine status
       const status: QuestionAttemptStatus = isCorrect ? 'correct' : 'incorrect';
@@ -203,7 +206,7 @@ export function useSaveQuestionAttempt() {
         .select('id')
         .eq('user_id', user.id)
         .eq('question_id', questionId)
-        .eq('question_type', questionType)
+        .eq('question_type', dbType)
         .eq('attempt_number', attemptNumber)
         .maybeSingle();
 
@@ -216,18 +219,18 @@ export function useSaveQuestionAttempt() {
             status,
             is_correct: isCorrect,
             score: score ?? null,
-          } as never)
+          })
           .eq('id', existing.id);
 
         if (error) throw error;
       } else {
-        // Insert new - using raw insert since types may not be synced yet
+        // Insert new
         const { error } = await supabase
           .from('question_attempts')
-          .insert([{
+          .insert({
             user_id: user.id,
             question_id: questionId,
-            question_type: questionType,
+            question_type: dbType,
             chapter_id: chapterId,
             module_id: moduleId,
             attempt_number: attemptNumber,
@@ -235,13 +238,13 @@ export function useSaveQuestionAttempt() {
             status,
             is_correct: isCorrect,
             score: score ?? null,
-          }] as never);
+          });
 
         if (error) throw error;
       }
 
       // Update or create chapter attempt record
-      await updateChapterAttempt(user.id, chapterId, moduleId, questionType, attemptNumber, isCorrect, score);
+      await updateChapterAttempt(user.id, chapterId, moduleId, dbType, attemptNumber, isCorrect, score);
 
       return { success: true };
     },
@@ -264,7 +267,7 @@ async function updateChapterAttempt(
   userId: string,
   chapterId: string,
   moduleId: string,
-  questionType: PracticeQuestionType,
+  questionType: DbQuestionType,
   attemptNumber: number,
   isCorrect: boolean,
   score?: number
@@ -280,11 +283,10 @@ async function updateChapterAttempt(
     .maybeSingle();
 
   // Get total questions for this chapter + type
-  let tableName: 'mcqs' | 'osce_questions' | 'true_false_questions';
+  // Note: true_false uses 'mcq' in DB, so we query mcqs table for that
+  let tableName: 'mcqs' | 'osce_questions';
   if (questionType === 'mcq') {
     tableName = 'mcqs';
-  } else if (questionType === 'true_false') {
-    tableName = 'true_false_questions';
   } else {
     tableName = 'osce_questions';
   }
@@ -306,11 +308,10 @@ async function updateChapterAttempt(
     .eq('question_type', questionType)
     .eq('attempt_number', attemptNumber);
 
-  const answeredCount = attempts?.length || 0;
   let correctCount = 0;
   let totalScore = 0;
 
-  if (questionType === 'mcq' || questionType === 'true_false') {
+  if (questionType === 'mcq') {
     correctCount = attempts?.filter(a => a.is_correct).length || 0;
     totalScore = correctCount;
   } else {
@@ -327,12 +328,12 @@ async function updateChapterAttempt(
         total_questions: totalQuestions,
         correct_count: correctCount,
         score: totalScore,
-      } as never)
+      })
       .eq('id', existingAttempt.id);
   } else {
     await supabase
       .from('chapter_attempts')
-      .insert([{
+      .insert({
         user_id: userId,
         chapter_id: chapterId,
         module_id: moduleId,
@@ -342,7 +343,7 @@ async function updateChapterAttempt(
         correct_count: correctCount,
         score: totalScore,
         started_at: new Date().toISOString(),
-      }] as never);
+      });
   }
 }
 
@@ -363,8 +364,10 @@ export function useResetChapterAttempt() {
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
+      const dbType = mapToDbQuestionType(questionType);
+
       // Get current attempt number
-      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, questionType);
+      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, dbType);
 
       // Mark current attempt as completed
       const { error } = await supabase
@@ -372,10 +375,10 @@ export function useResetChapterAttempt() {
         .update({
           is_completed: true,
           completed_at: new Date().toISOString(),
-        } as never)
+        })
         .eq('user_id', user.id)
         .eq('chapter_id', chapterId)
-        .eq('question_type', questionType)
+        .eq('question_type', dbType)
         .eq('attempt_number', currentAttempt);
 
       if (error) throw error;
@@ -407,13 +410,15 @@ export function useChapterPercentile(
     queryFn: async () => {
       if (!user?.id || !chapterId || !questionType) return null;
 
+      const dbType = mapToDbQuestionType(questionType);
+
       // Get user's latest completed score
       const { data: latestAttempt } = await supabase
         .from('chapter_attempts')
         .select('score, total_questions')
         .eq('user_id', user.id)
         .eq('chapter_id', chapterId)
-        .eq('question_type', questionType)
+        .eq('question_type', dbType)
         .eq('is_completed', true)
         .order('attempt_number', { ascending: false })
         .limit(1)
@@ -424,7 +429,7 @@ export function useChapterPercentile(
       // Call the database function to get percentile
       const { data, error } = await supabase.rpc('get_chapter_percentile', {
         p_chapter_id: chapterId,
-        p_question_type: questionType,
+        p_question_type: dbType,
         p_user_score: latestAttempt.score,
       });
 
