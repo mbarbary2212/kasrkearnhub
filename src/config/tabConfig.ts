@@ -12,6 +12,7 @@ import {
   GitBranch,
   Network,
   MessageCircleQuestion,
+  ToggleLeft,
 } from 'lucide-react';
 
 // Unified tab configuration for the entire app
@@ -23,7 +24,7 @@ export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'guided_ex
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
 // Consolidated: cases, virtual_patient, worked_case → clinical_cases
-export type PracticeTabId = 'mcqs' | 'essays' | 'clinical_cases' | 'osce' | 'practical' | 'matching' | 'images';
+export type PracticeTabId = 'mcqs' | 'true_false' | 'essays' | 'clinical_cases' | 'osce' | 'practical' | 'matching' | 'images';
 
 export interface TabConfig {
   id: string;
@@ -47,6 +48,7 @@ export const RESOURCES_TABS: TabConfig[] = [
 // Consolidated: "Case Scenarios" and "Virtual Patient" → "Clinical Cases"
 export const PRACTICE_TABS: TabConfig[] = [
   { id: 'mcqs', label: 'MCQs', icon: HelpCircle },
+  { id: 'true_false', label: 'True/False', icon: ToggleLeft },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
   { id: 'clinical_cases', label: 'Clinical Cases', icon: Stethoscope },
   { id: 'osce', label: 'OSCE', icon: FlaskConical },
@@ -76,6 +78,7 @@ export function createResourceTabs(counts: {
 
 export function createPracticeTabs(counts: {
   mcqs?: number;
+  true_false?: number;
   essays?: number;
   clinical_cases?: number;
   osce?: number;

@@ -3774,6 +3774,76 @@ export type Database = {
         }
         Relationships: []
       }
+      tf_analytics: {
+        Row: {
+          chapter_id: string | null
+          correct_count: number | null
+          created_at: string | null
+          facility_index: number | null
+          flag_reasons: string[] | null
+          flag_severity: string | null
+          id: string
+          is_flagged: boolean | null
+          last_calculated_at: string | null
+          module_id: string
+          tf_id: string
+          total_attempts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          correct_count?: number | null
+          created_at?: string | null
+          facility_index?: number | null
+          flag_reasons?: string[] | null
+          flag_severity?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          last_calculated_at?: string | null
+          module_id: string
+          tf_id: string
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          correct_count?: number | null
+          created_at?: string | null
+          facility_index?: number | null
+          flag_reasons?: string[] | null
+          flag_severity?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          last_calculated_at?: string | null
+          module_id?: string
+          tf_id?: string
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tf_analytics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tf_analytics_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tf_analytics_tf_id_fkey"
+            columns: ["tf_id"]
+            isOneToOne: false
+            referencedRelation: "true_false_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topic_admins: {
         Row: {
           assigned_by: string | null
@@ -3876,6 +3946,99 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      true_false_questions: {
+        Row: {
+          chapter_id: string | null
+          contributing_department_id: string | null
+          correct_answer: boolean
+          created_at: string | null
+          created_by: string | null
+          difficulty: string | null
+          display_order: number | null
+          explanation: string | null
+          id: string
+          is_deleted: boolean | null
+          module_id: string
+          section_id: string | null
+          statement: string
+          topic_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          contributing_department_id?: string | null
+          correct_answer: boolean
+          created_at?: string | null
+          created_by?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          module_id: string
+          section_id?: string | null
+          statement: string
+          topic_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          contributing_department_id?: string | null
+          correct_answer?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          explanation?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          module_id?: string
+          section_id?: string | null
+          statement?: string
+          topic_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "true_false_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "true_false_questions_contributing_department_id_fkey"
+            columns: ["contributing_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "true_false_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "true_false_questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "true_false_questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

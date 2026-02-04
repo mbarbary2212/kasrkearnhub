@@ -44,6 +44,7 @@ export type TrackableContentType =
   | 'lecture' 
   | 'resource' 
   | 'mcq' 
+  | 'true_false'
   | 'essay' 
   | 'practical' 
   | 'osce' 
@@ -339,16 +340,22 @@ export function useMarkItemComplete() {
       selectedAnswer,
     }: {
       questionId: string;
-      questionType: 'mcq' | 'essay' | 'osce' | 'case_scenario' | 'matching';
+      questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'case_scenario' | 'matching';
       chapterId?: string;
       isCorrect?: boolean;
       selectedAnswer?: unknown;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // Map to DB enum type (question_attempts table only supports 'mcq' | 'osce')
-      const dbQuestionType: 'mcq' | 'osce' = 
-        questionType === 'osce' || questionType === 'case_scenario' ? 'osce' : 'mcq';
+      // Map to DB enum type (question_attempts table supports 'mcq' | 'osce' | 'true_false')
+      let dbQuestionType: 'mcq' | 'osce' | 'true_false';
+      if (questionType === 'true_false') {
+        dbQuestionType = 'true_false';
+      } else if (questionType === 'osce' || questionType === 'case_scenario') {
+        dbQuestionType = 'osce';
+      } else {
+        dbQuestionType = 'mcq';
+      }
 
       const { error } = await supabase.from('question_attempts').upsert(
         {
@@ -374,7 +381,7 @@ export function useMarkItemComplete() {
   // Wrapper function that accepts simple arguments for backward compatibility
   const markComplete = (
     questionId: string,
-    questionType: 'mcq' | 'essay' | 'osce' | 'case_scenario' | 'matching',
+    questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'case_scenario' | 'matching',
     chapterId?: string
   ) => {
     mutation.mutate({ questionId, questionType, chapterId });

@@ -126,5 +126,24 @@ export function validateBatch<T>(
   };
 }
 
+// =====================
+// True/False Validation Schema
+// =====================
+
+export const TrueFalseFormSchema = z.object({
+  statement: z.string()
+    .min(10, 'Statement must be at least 10 characters')
+    .max(3000, 'Statement is too long (max 3000 characters)'),
+  correct_answer: z.boolean(),
+  explanation: z.string()
+    .max(2000, 'Explanation is too long (max 2000 characters)')
+    .nullable()
+    .optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard'])
+    .nullable()
+    .optional(),
+});
+
 export type ValidatedMcq = z.infer<typeof McqFormSchema>;
 export type ValidatedEssay = z.infer<typeof EssayFormSchema>;
+export type ValidatedTrueFalse = z.infer<typeof TrueFalseFormSchema>;
