@@ -44,6 +44,8 @@ import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModa
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { useChapterMcqs } from '@/hooks/useMcqs';
+import { useChapterTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
+import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -112,6 +114,7 @@ export default function ChapterPage() {
   const [showDeletedMatching, setShowDeletedMatching] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
   const [showDeletedOsce, setShowDeletedOsce] = useState(false);
+  const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
   
   // Section filter state (only for Resources and Practice, NOT for Test)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -140,6 +143,8 @@ export default function ChapterPage() {
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
+  const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useChapterTrueFalseQuestions(chapterId);
+  const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
@@ -166,6 +171,7 @@ export default function ChapterPage() {
   const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
   const deletedOnlyOsce = (deletedOsceQuestions || []).filter(q => q.is_deleted);
+  const deletedOnlyTrueFalse = (deletedTrueFalseQuestions || []).filter(q => q.is_deleted);
 
   // Filter flashcards from study resources
   const flashcards = studyResources?.filter(r => r.resource_type === 'flashcard') || [];
@@ -266,6 +272,7 @@ export default function ChapterPage() {
     const clinicalCasesCount = chapterClinicalCases.length;
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
+      true_false: trueFalseQuestions?.length || 0,
       essays: essays?.length || 0,
       clinical_cases: clinicalCasesCount,
       osce: osceQuestions?.length || 0,
@@ -275,6 +282,7 @@ export default function ChapterPage() {
     });
   }, [
     mcqs?.length,
+    trueFalseQuestions?.length,
     essays?.length,
     chapterClinicalCases.length,
     osceQuestions?.length,
@@ -694,6 +702,26 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMcqs}
                         onShowDeletedChange={setShowDeletedMcqs}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* True/False Content */}
+                {practiceTab === 'true_false' && (
+                  <div>
+                    {trueFalseLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <TrueFalseList
+                        questions={filterBySection(trueFalseQuestions || [])}
+                        deletedQuestions={deletedOnlyTrueFalse}
+                        moduleId={moduleId || ''}
+                        chapterId={chapterId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedTrueFalse}
+                        onShowDeletedChange={setShowDeletedTrueFalse}
                       />
                     )}
                   </div>

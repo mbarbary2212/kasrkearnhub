@@ -1,7 +1,17 @@
 import { useState, useMemo } from 'react';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +25,8 @@ import {
 import { TrueFalseCard } from './TrueFalseCard';
 import { TrueFalseFormModal } from './TrueFalseFormModal';
 import { TrueFalseBulkUploadModal } from './TrueFalseBulkUploadModal';
+import { AdminViewToggle } from '@/components/admin/AdminViewToggle';
+import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { 
   useDeleteTrueFalseQuestion, 
   useRestoreTrueFalseQuestion,
@@ -24,6 +36,7 @@ import { useChapterQuestionAttempts } from '@/hooks/useQuestionAttempts';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import type { Json } from '@/integrations/supabase/types';
+import { cn } from '@/lib/utils';
 
 interface TrueFalseListProps {
   questions: TrueFalseQuestion[];
@@ -32,7 +45,9 @@ interface TrueFalseListProps {
   chapterId?: string | null;
   topicId?: string | null;
   isAdmin: boolean;
+  showDeletedToggle?: boolean;
   showDeleted?: boolean;
+  onShowDeletedChange?: (show: boolean) => void;
 }
 
 export function TrueFalseList({ 
@@ -42,7 +57,9 @@ export function TrueFalseList({
   chapterId, 
   topicId,
   isAdmin,
+  showDeletedToggle = false,
   showDeleted = false,
+  onShowDeletedChange,
 }: TrueFalseListProps) {
   const auth = useAuthContext();
   
@@ -59,14 +76,20 @@ export function TrueFalseList({
   const {
     guard,
     dialog,
-    canManage: canManageContent,
   } = useAddPermissionGuard({ moduleId, chapterId });
   
+  // UI State
   const [editingQuestion, setEditingQuestion] = useState<TrueFalseQuestion | null>(null);
   const [deletingQuestion, setDeletingQuestion] = useState<TrueFalseQuestion | null>(null);
   const [restoringQuestion, setRestoringQuestion] = useState<TrueFalseQuestion | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  
+  // Admin controls
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const deleteMutation = useDeleteTrueFalseQuestion();
   const restoreMutation = useRestoreTrueFalseQuestion();
@@ -88,6 +111,47 @@ export function TrueFalseList({
   }, [questionAttempts]);
 
   const displayQuestions = showDeleted ? deletedQuestions : questions;
+  
+  // Apply filters
+  const filteredQuestions = useMemo(() => {
+    let result = displayQuestions;
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(q => 
+        q.statement.toLowerCase().includes(query) ||
+        (q.explanation?.toLowerCase().includes(query))
+      );
+    }
+    
+    // Difficulty filter
+    if (difficultyFilter !== 'all') {
+      result = result.filter(q => q.difficulty === difficultyFilter);
+    }
+    
+    return result;
+  }, [displayQuestions, searchQuery, difficultyFilter]);
+  
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredQuestions.map(q => q.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+  
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(i => i !== id));
+    }
+  };
+  
+  const isAllSelected = filteredQuestions.length > 0 && selectedIds.length === filteredQuestions.length;
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < filteredQuestions.length;
 
   const handleDelete = () => {
     if (!deletingQuestion || deleteMutation.isPending) return;
@@ -106,6 +170,11 @@ export function TrueFalseList({
       { onSuccess: () => setRestoringQuestion(null) }
     );
   };
+  
+  // Clear selection when bulk assignment completes
+  const handleBulkComplete = () => {
+    setSelectedIds([]);
+  };
 
   if (displayQuestions.length === 0 && !showAddControls) {
     return (
@@ -119,54 +188,163 @@ export function TrueFalseList({
 
   return (
     <div className="space-y-4">
-      {/* Admin Controls */}
-      {showAddControls && !showDeleted && (
-        <div className="flex gap-2 justify-end">
-          <Button
-            onClick={() => guard(() => setShowBulkModal(true))}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            Bulk Upload
-          </Button>
-          <Button
-            onClick={() => guard(() => setShowAddModal(true))}
-            size="sm"
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Question
-          </Button>
+      {/* Admin Controls Row */}
+      {showAddControls && (
+        <div className="flex flex-col gap-3">
+          {/* Top row: Select all, Bulk actions, View toggle, Add buttons */}
+          <div className="flex flex-wrap items-center gap-2 justify-between">
+            <div className="flex items-center gap-2">
+              {/* Select All - only in admin mode */}
+              {isAdmin && !showDeleted && (
+                <div className="flex items-center gap-2 pr-2 border-r">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    aria-label="Select all"
+                    className={cn(isSomeSelected && "data-[state=checked]:bg-primary/50")}
+                  />
+                  {selectedIds.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {selectedIds.length} selected
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Bulk Section Assignment */}
+              {chapterId && (
+                <BulkSectionAssignment
+                  chapterId={chapterId}
+                  selectedIds={selectedIds}
+                  contentTable="true_false_questions"
+                  onComplete={handleBulkComplete}
+                />
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Deleted Toggle */}
+              {showDeletedToggle && onShowDeletedChange && (
+                <Button
+                  variant={showDeleted ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={() => onShowDeletedChange(!showDeleted)}
+                  className="gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Deleted</span>
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    {deletedQuestions.length}
+                  </Badge>
+                </Button>
+              )}
+              
+              {/* View Toggle */}
+              {isAdmin && (
+                <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              )}
+              
+              {/* Bulk Upload */}
+              {!showDeleted && (
+                <Button
+                  onClick={() => guard(() => setShowBulkModal(true))}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline">Bulk Import</span>
+                </Button>
+              )}
+              
+              {/* Add Question */}
+              {!showDeleted && (
+                <Button
+                  onClick={() => guard(() => setShowAddModal(true))}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add Question</span>
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {/* Search and Filter Row */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search statements..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            
+            {/* Difficulty Filter */}
+            <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+              <SelectTrigger className="w-[130px] h-9">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Count */}
+            <span className="text-sm text-muted-foreground">
+              {filteredQuestions.length}/{displayQuestions.length}
+            </span>
+          </div>
         </div>
       )}
 
       {/* Questions */}
-      {displayQuestions.length === 0 ? (
+      {filteredQuestions.length === 0 ? (
         <Alert>
           <AlertDescription>
             {showDeleted 
               ? "No deleted True/False questions." 
-              : "No True/False questions yet. Click 'Add Question' to create one."}
+              : searchQuery || difficultyFilter !== 'all'
+                ? "No questions match your filters."
+                : "No True/False questions yet. Click 'Add Question' to create one."}
           </AlertDescription>
         </Alert>
       ) : (
         <div className="space-y-4">
-          {displayQuestions.map((question, index) => (
-            <TrueFalseCard
-              key={question.id}
-              question={question}
-              index={index}
-              isAdmin={isAdmin}
-              chapterId={chapterId || undefined}
-              moduleId={moduleId}
-              onEdit={isAdmin && !showDeleted ? () => setEditingQuestion(question) : undefined}
-              onDelete={isAdmin && !showDeleted ? () => setDeletingQuestion(question) : undefined}
-              onRestore={isAdmin && showDeleted ? () => setRestoringQuestion(question) : undefined}
-              isDeleted={showDeleted}
-              previousAttempt={attemptMap.get(question.id)}
-            />
+          {filteredQuestions.map((question, index) => (
+            <div key={question.id} className="flex gap-2">
+              {/* Checkbox for multi-select */}
+              {isAdmin && !showDeleted && (
+                <div className="pt-4">
+                  <Checkbox
+                    checked={selectedIds.includes(question.id)}
+                    onCheckedChange={(checked) => handleSelectOne(question.id, !!checked)}
+                    aria-label={`Select question ${index + 1}`}
+                  />
+                </div>
+              )}
+              <div className="flex-1">
+                <TrueFalseCard
+                  question={question}
+                  index={index}
+                  isAdmin={isAdmin}
+                  chapterId={chapterId || undefined}
+                  moduleId={moduleId}
+                  onEdit={isAdmin && !showDeleted ? () => setEditingQuestion(question) : undefined}
+                  onDelete={isAdmin && !showDeleted ? () => setDeletingQuestion(question) : undefined}
+                  onRestore={isAdmin && showDeleted ? () => setRestoringQuestion(question) : undefined}
+                  isDeleted={showDeleted}
+                  previousAttempt={attemptMap.get(question.id)}
+                />
+              </div>
+            </div>
           ))}
         </div>
       )}
