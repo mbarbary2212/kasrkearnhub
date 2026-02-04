@@ -5,7 +5,17 @@ import type { Json } from '@/integrations/supabase/types';
 
 // Types matching the database schema
 export type QuestionAttemptStatus = 'unseen' | 'attempted' | 'correct' | 'incorrect';
-export type PracticeQuestionType = 'mcq' | 'osce';
+// Database supports: 'mcq' | 'osce' | 'guided_explanation'
+// For true_false questions, we map to 'mcq' in the database
+export type PracticeQuestionType = 'mcq' | 'osce' | 'true_false';
+type DbQuestionType = 'mcq' | 'osce' | 'guided_explanation';
+
+// Helper to map frontend question type to database type
+function mapToDbQuestionType(type: PracticeQuestionType): DbQuestionType {
+  // true_false is stored as 'mcq' type in the database
+  if (type === 'true_false') return 'mcq';
+  return type;
+}
 
 export interface QuestionAttempt {
   id: string;
@@ -66,8 +76,10 @@ export function useChapterQuestionAttempts(
     queryFn: async () => {
       if (!user?.id || !chapterId) return [];
 
+      const dbType = mapToDbQuestionType(questionType!);
+      
       // First get current attempt number for this chapter
-      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, questionType!);
+      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, dbType);
 
       let query = supabase
         .from('question_attempts')
@@ -77,7 +89,7 @@ export function useChapterQuestionAttempts(
         .eq('attempt_number', currentAttempt);
 
       if (questionType) {
-        query = query.eq('question_type', questionType);
+        query = query.eq('question_type', dbType);
       }
 
       const { data, error } = await query;
@@ -104,6 +116,8 @@ export function useChapterAttemptHistory(
     queryFn: async () => {
       if (!user?.id || !chapterId) return [];
 
+      const dbType = questionType ? mapToDbQuestionType(questionType) : undefined;
+
       let query = supabase
         .from('chapter_attempts')
         .select('*')
@@ -111,8 +125,8 @@ export function useChapterAttemptHistory(
         .eq('chapter_id', chapterId)
         .order('attempt_number', { ascending: true });
 
-      if (questionType) {
-        query = query.eq('question_type', questionType);
+      if (dbType) {
+        query = query.eq('question_type', dbType);
       }
 
       const { data, error } = await query;
@@ -266,7 +280,15 @@ async function updateChapterAttempt(
     .maybeSingle();
 
   // Get total questions for this chapter + type
-  const tableName = questionType === 'mcq' ? 'mcqs' : 'osce_questions';
+  let tableName: 'mcqs' | 'osce_questions' | 'true_false_questions';
+  if (questionType === 'mcq') {
+    tableName = 'mcqs';
+  } else if (questionType === 'true_false') {
+    tableName = 'true_false_questions';
+  } else {
+    tableName = 'osce_questions';
+  }
+  
   const { count } = await supabase
     .from(tableName)
     .select('id', { count: 'exact', head: true })
@@ -288,7 +310,7 @@ async function updateChapterAttempt(
   let correctCount = 0;
   let totalScore = 0;
 
-  if (questionType === 'mcq') {
+  if (questionType === 'mcq' || questionType === 'true_false') {
     correctCount = attempts?.filter(a => a.is_correct).length || 0;
     totalScore = correctCount;
   } else {
