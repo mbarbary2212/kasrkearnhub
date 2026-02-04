@@ -72,8 +72,8 @@ export default function SplashScreen({
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
         {/* Pillar overlay - centered, smaller text for mobile */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={animationStyle}>
-          <div className="bg-black/40 backdrop-blur-md px-5 py-3 max-w-[240px] text-center rounded-sm">
+        <div className="absolute top-1/2 left-2 -translate-y-1/2" style={animationStyle}>
+          <div className="bg-black/40 backdrop-blur-md px-5 py-3 max-w-[240px] text-left rounded-sm">
             <h2 className="text-sm font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
