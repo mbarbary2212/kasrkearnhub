@@ -50,9 +50,9 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
     >
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay - right aligned, vertically centered */}
+        {/* Pillar overlay - left aligned, vertically centered */}
         <div 
-          className="absolute top-1/2 right-12 -translate-y-1/2"
+          className="absolute top-1/2 left-12 -translate-y-1/2"
           style={animationStyle}
         >
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
@@ -79,9 +79,9 @@ export default function SplashScreen({ onDismiss }: SplashScreenProps) {
 
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay - right aligned, vertically centered */}
+        {/* Pillar overlay - left aligned, vertically centered */}
         <div 
-          className="absolute top-1/2 right-4 -translate-y-1/2"
+          className="absolute top-1/2 left-4 -translate-y-1/2"
           style={animationStyle}
         >
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 max-w-[280px] text-center">
