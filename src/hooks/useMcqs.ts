@@ -392,15 +392,23 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
 
     const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty] = parts;
 
+    // Build choices array and filter out empty choice E
+    const allChoices = [
+      { key: 'A' as const, text: choiceA || '' },
+      { key: 'B' as const, text: choiceB || '' },
+      { key: 'C' as const, text: choiceC || '' },
+      { key: 'D' as const, text: choiceD || '' },
+      { key: 'E' as const, text: choiceE || '' },
+    ];
+    
+    // Filter: keep A-D always, keep E only if it has content
+    const filteredChoices = allChoices.filter(c => 
+      c.key !== 'E' || c.text.trim() !== ''
+    );
+
     return {
       stem: stem || '',
-      choices: [
-        { key: 'A' as const, text: choiceA || '' },
-        { key: 'B' as const, text: choiceB || '' },
-        { key: 'C' as const, text: choiceC || '' },
-        { key: 'D' as const, text: choiceD || '' },
-        { key: 'E' as const, text: choiceE || '' },
-      ],
+      choices: filteredChoices,
       correct_key: normalizeCorrectKey(correctKey),
       explanation: explanation || null,
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 

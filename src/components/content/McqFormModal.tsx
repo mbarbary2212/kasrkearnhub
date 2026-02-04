@@ -32,6 +32,7 @@ interface McqFormModalProps {
 }
 
 const CHOICE_KEYS = ['A', 'B', 'C', 'D', 'E'] as const;
+const REQUIRED_CHOICE_KEYS = ['A', 'B', 'C', 'D'] as const;
 
 const defaultChoices: McqChoice[] = CHOICE_KEYS.map((key) => ({ key, text: '' }));
 
@@ -85,9 +86,14 @@ export function McqFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Filter out empty choice E before submission
+    const filteredChoices = choices.filter(c => 
+      REQUIRED_CHOICE_KEYS.includes(c.key as typeof REQUIRED_CHOICE_KEYS[number]) || c.text.trim() !== ''
+    );
+
     const formData = {
       stem,
-      choices,
+      choices: filteredChoices,
       correct_key: correctKey,
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
@@ -142,19 +148,25 @@ export function McqFormModal({
           {/* Choices A-E */}
           <div className="space-y-3">
             <Label>Choices *</Label>
-            {CHOICE_KEYS.map((key) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-8 h-8 flex items-center justify-center rounded-full border-2 font-semibold text-sm shrink-0">
-                  {key}
-                </span>
-                <Input
-                  value={choices.find((c) => c.key === key)?.text || ''}
-                  onChange={(e) => handleChoiceChange(key, e.target.value)}
-                  placeholder={`Option ${key}`}
-                  required
-                />
-              </div>
-            ))}
+            {CHOICE_KEYS.map((key) => {
+              const isOptional = key === 'E';
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full border-2 font-semibold text-sm shrink-0">
+                    {key}
+                  </span>
+                  <Input
+                    value={choices.find((c) => c.key === key)?.text || ''}
+                    onChange={(e) => handleChoiceChange(key, e.target.value)}
+                    placeholder={isOptional ? `Option ${key} (Optional)` : `Option ${key}`}
+                    required={!isOptional}
+                  />
+                  {isOptional && (
+                    <span className="text-xs text-muted-foreground shrink-0">(Optional)</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Correct Answer */}
