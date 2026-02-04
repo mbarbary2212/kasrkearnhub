@@ -24,7 +24,8 @@ export const McqFormSchema = z.object({
     .max(5000, 'Question is too long (max 5000 characters)'),
   
   choices: z.array(McqChoiceSchema)
-    .length(5, 'MCQ must have exactly 5 choices (A-E)')
+    .min(4, 'MCQ must have at least 4 choices (A-D)')
+    .max(5, 'MCQ can have at most 5 choices (A-E)')
     .refine(
       (choices) => {
         const keys = choices.map(c => c.key);

@@ -10,6 +10,11 @@ interface McqChoice {
   text: string;
 }
 
+// Filter choices to remove empty E option
+function filterValidChoices(choices: McqChoice[]): McqChoice[] {
+  return choices.filter(c => c.key !== 'E' || (c.text && c.text.trim() !== ''));
+}
+
 interface McqFormData {
   stem: string;
   choices: McqChoice[];
@@ -189,12 +194,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare records for insertion with normalized correct_key
+    // Prepare records for insertion with normalized correct_key and filtered choices
     const records = validatedMcqs.map((mcq, index) => ({
       module_id: moduleId,
       chapter_id: chapterId || null,
       stem: mcq.stem,
-      choices: mcq.choices,
+      choices: filterValidChoices(mcq.choices), // Filter out empty E choice
       correct_key: mcq.normalizedCorrectKey, // Use normalized value
       explanation: mcq.explanation,
       difficulty: mcq.difficulty,
