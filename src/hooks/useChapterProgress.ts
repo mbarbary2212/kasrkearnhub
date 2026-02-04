@@ -347,10 +347,11 @@ export function useMarkItemComplete() {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // Map to DB enum type (question_attempts table supports 'mcq' | 'osce' | 'true_false')
-      let dbQuestionType: 'mcq' | 'osce' | 'true_false';
+      // Map to DB enum type (question_attempts table uses 'mcq' | 'osce' | 'guided_explanation')
+      // true_false is stored as 'mcq' in the database since DB enum doesn't include it yet
+      let dbQuestionType: 'mcq' | 'osce' | 'guided_explanation';
       if (questionType === 'true_false') {
-        dbQuestionType = 'true_false';
+        dbQuestionType = 'mcq';
       } else if (questionType === 'osce' || questionType === 'case_scenario') {
         dbQuestionType = 'osce';
       } else {
@@ -364,8 +365,12 @@ export function useMarkItemComplete() {
           question_type: dbQuestionType,
           is_correct: isCorrect ?? null,
           selected_answer: (selectedAnswer ?? null) as import('@/integrations/supabase/types').Json,
+          chapter_id: chapterId || null,
+          module_id: '',
+          attempt_number: 1,
+          status: isCorrect ? 'correct' : 'incorrect',
         },
-        { onConflict: 'user_id,question_id,question_type' }
+        { onConflict: 'user_id,question_id,question_type,attempt_number' }
       );
 
       if (error) throw error;
