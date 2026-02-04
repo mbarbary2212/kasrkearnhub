@@ -1,199 +1,96 @@
 
+# Plan: Make 5th MCQ Choice (E) Optional
 
-# Animated Pillar Overlay for Splash Screen
+## Overview
+Currently, the MCQ system requires exactly 5 choices (A-E). Some departments only have 4-choice questions (A-D). This plan modifies the system to support **4 or 5 choices**, making option E optional while maintaining backward compatibility with existing 5-choice questions.
 
-## Summary
-Add a cycling animated text overlay that introduces the four core pillars of KALM Hub (Learn, Connect, Formative assessment, Personal coach) using a fade-up + blur-to-sharp animation. The background will use CSS background-image instead of `<img>` tags.
+## Changes Required
 
-## The Four Pillars
+### 1. Validation Schema (src/lib/validators.ts)
+Update the Zod schema to accept 4-5 choices instead of exactly 5:
 
-| # | Title | Description |
-|---|-------|-------------|
-| 1 | Learn | Resources • Practice • Test yourself |
-| 2 | Connect | Feedback • Questions • Discussion |
-| 3 | Formative assessment | Track progress • Identify gaps |
-| 4 | Personal coach | Guidance • Smart recommendations |
+- Change `choices` array validation from `.length(5)` to `.min(4).max(5)`
+- Update the error message to: "MCQ must have 4 or 5 choices"
+- Ensure `correct_key` validation still works (must match one of the provided choices)
 
-## Animation Timeline
+### 2. MCQ Form Modal (src/components/content/McqFormModal.tsx)
+Modify the form UI to make option E optional:
 
-```text
-0ms ────── 600ms ────── 2600ms ────── 3200ms ────► next pillar
-    Fade In    Hold/Read    Fade Out
-    Blur→Sharp             Sharp→Blur
-    ↑ Move up              ↓ Move down
+- Change option E input from `required` to optional
+- Add visual indicator showing E is optional (e.g., "(Optional)" label)
+- Filter out empty choice E before submission
+- Update default choices to still show all 5 fields but only require 4
+
+### 3. CSV Parser (src/hooks/useMcqs.ts - parseMcqCsv function)
+Update bulk import CSV parsing to handle 4-choice MCQs:
+
+- Filter out empty choice E when parsing CSV
+- Only include choices with non-empty text
+- Update correct_key validation to work with 4 choices
+
+### 4. Edge Function (supabase/functions/bulk-import-mcqs/index.ts)
+Update the bulk import edge function:
+
+- Accept 4 or 5 choices in the request
+- Update the TypeScript interface to reflect optional E
+- Filter empty choices before database insertion
+
+### 5. Display Components
+These components already work correctly because they iterate over the `choices` array dynamically:
+- **McqCard.tsx** - Maps over `choices` array (no changes needed)
+- **MockExamQuestion.tsx** - Maps over `choices` array (no changes needed)
+
+### 6. Type Definition (src/hooks/useMcqs.ts)
+Consider if the `McqChoice` interface needs updating - currently the key is typed as `'A' | 'B' | 'C' | 'D' | 'E'` which will continue to work for both 4 and 5 choices.
+
+---
+
+## Technical Details
+
+### Validator Changes
+```typescript
+// Current
+.length(5, 'MCQ must have exactly 5 choices (A-E)')
+
+// New
+.min(4, 'MCQ must have at least 4 choices (A-D)')
+.max(5, 'MCQ can have at most 5 choices (A-E)')
 ```
 
-- **Fade in**: 600ms
-- **Hold (read time)**: 2000ms  
-- **Fade out**: 600ms
-- **Total per pillar**: 3200ms
-- **Full loop (4 pillars)**: 12.8 seconds
+### Form Modal Changes
+- Display all 5 choice inputs in the form
+- Only the first 4 (A-D) are required; E is optional
+- Before submission, filter choices to only include those with non-empty text
+- Add "(Optional)" label next to choice E
 
-## Key Changes
-
-### 1. Background Image Approach
-**Before**: Using `<img>` tags
-**After**: Using CSS background-image classes
-
-```tsx
-// Desktop
-className="bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat"
-
-// Mobile  
-className="bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat"
+### CSV Parser Changes
+```typescript
+// Filter out empty choices
+choices: [
+  { key: 'A' as const, text: choiceA || '' },
+  { key: 'B' as const, text: choiceB || '' },
+  { key: 'C' as const, text: choiceC || '' },
+  { key: 'D' as const, text: choiceD || '' },
+  { key: 'E' as const, text: choiceE || '' },
+].filter(c => c.text.trim() !== '')
 ```
 
-### 2. State & Animation Logic
+---
 
-```tsx
-const [currentPillar, setCurrentPillar] = useState(0);
-const [isVisible, setIsVisible] = useState(true);
+## Backward Compatibility
+- Existing 5-choice questions remain valid and unchanged
+- New 4-choice questions will work seamlessly
+- Display components already handle variable-length choice arrays
+- No database schema changes required (choices stored as JSONB)
 
-// Stable scheduling pattern with single interval
-useEffect(() => {
-  const FADE_IN = 600;
-  const HOLD = 2000;
-  const FADE_OUT = 600;
-  const CYCLE = FADE_IN + HOLD + FADE_OUT; // 3200ms
+---
 
-  const interval = setInterval(() => {
-    // Start fade out
-    setIsVisible(false);
-    
-    // After fade out completes, advance and fade in
-    setTimeout(() => {
-      setCurrentPillar((prev) => (prev + 1) % 4);
-      setIsVisible(true);
-    }, FADE_OUT);
-  }, CYCLE);
+## Files to Modify
 
-  return () => clearInterval(interval);
-}, []);
-```
-
-### 3. Pillar Overlay Component
-
-```tsx
-// Inline styles for smooth blur/opacity/transform transitions
-style={{
-  opacity: isVisible ? 1 : 0,
-  transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
-  filter: isVisible ? 'blur(0px)' : 'blur(4px)',
-  transition: 'opacity 600ms ease-out, transform 600ms ease-out, filter 600ms ease-out',
-  willChange: 'opacity, transform, filter', // iOS Safari optimization
-}}
-```
-
-## Visual Layout
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │                                                       │  │
-│  │            [CSS Background Image - Static]            │  │
-│  │                                                       │  │
-│  │                                                       │  │
-│  │              ╭─────────────────────────╮              │  │
-│  │              │        Learn            │ ← Animated   │  │
-│  │              │  Resources • Practice   │   overlay    │  │
-│  │              │    • Test yourself      │              │  │
-│  │              ╰─────────────────────────╯              │  │
-│  │                                                       │  │
-│  │              [ Click to log in ]        ← Existing    │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-     Thin white frame (p-2 / p-3)
-```
-
-## Overlay Container Styling
-
-| Property | Value |
-|----------|-------|
-| Background | `bg-black/40` |
-| Blur | `backdrop-blur-md` |
-| Border radius | `rounded-xl` |
-| Padding | `px-6 py-4` |
-| Max width | `max-w-[320px]` (mobile) / `max-w-md` (desktop) |
-| Position | `absolute bottom-24` (above login button) |
-| Text align | `text-center` |
-
-## Typography
-
-| Element | Desktop | Mobile |
-|---------|---------|--------|
-| Title | `text-2xl font-bold text-white` | `text-lg font-bold text-white` |
-| Description | `text-base text-white/80` | `text-sm text-white/80` |
-
-## File to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/SplashScreen.tsx` | Replace `<img>` with CSS background, add state/effect for animation, add pillar overlay component |
-
-## Component Structure
-
-```tsx
-import { useState, useEffect } from 'react';
-
-const PILLARS = [
-  { title: 'Learn', description: 'Resources • Practice • Test yourself' },
-  { title: 'Connect', description: 'Feedback • Questions • Discussion' },
-  { title: 'Formative assessment', description: 'Track progress • Identify gaps' },
-  { title: 'Personal coach', description: 'Guidance • Smart recommendations' },
-];
-
-export default function SplashScreen({ onDismiss }: SplashScreenProps) {
-  const [currentPillar, setCurrentPillar] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    // Animation cycle logic
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
-      
-      {/* Desktop: CSS background image */}
-      <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
-        
-        {/* Pillar overlay */}
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2" style={{ /* animation styles */ }}>
-          <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
-            <h2 className="text-2xl font-bold text-white">{PILLARS[currentPillar].title}</h2>
-            <p className="text-base text-white/80 mt-1">{PILLARS[currentPillar].description}</p>
-          </div>
-        </div>
-
-        {/* Login button - unchanged */}
-        <button className="absolute bottom-8 left-1/2 -translate-x-1/2 ...">Click to log in</button>
-      </div>
-
-      {/* Mobile: CSS background image */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
-        
-        {/* Pillar overlay (smaller) */}
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2" style={{ /* animation styles */ }}>
-          <div className="bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 max-w-[280px] text-center">
-            <h2 className="text-lg font-bold text-white">{PILLARS[currentPillar].title}</h2>
-            <p className="text-sm text-white/80 mt-1">{PILLARS[currentPillar].description}</p>
-          </div>
-        </div>
-
-        {/* Login button - unchanged */}
-        <button className="absolute bottom-6 left-1/2 -translate-x-1/2 ...">Click to log in</button>
-      </div>
-    </div>
-  );
-}
-```
-
-## iOS Safari Compatibility
-
-- Use `will-change: opacity, transform, filter` for GPU acceleration
-- Use `-webkit-backdrop-filter` (Tailwind handles this automatically)
-- Inline transition styles ensure consistent behavior across browsers
-
-## Result
-
-A premium, calm, and professional splash screen that elegantly introduces users to the four core value propositions of KALM Hub with a smooth cycling animation before they log in.
+| File | Change |
+|------|--------|
+| `src/lib/validators.ts` | Update choices array length validation from exactly 5 to 4-5 |
+| `src/components/content/McqFormModal.tsx` | Make choice E optional in form, filter empty choices on submit |
+| `src/hooks/useMcqs.ts` | Update CSV parser to filter empty choices |
+| `supabase/functions/bulk-import-mcqs/index.ts` | Accept and handle 4-5 choices |
 
