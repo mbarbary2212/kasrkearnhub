@@ -1,202 +1,268 @@
 
-# Plan: Make MCQ Choice E Optional App-Wide
+# Plan: Add Table View Toggle to MCQ, True/False, OSCE, Mind Maps, and Guided Explanations
 
 ## Problem Summary
-Currently, the MCQ validation schema requires all choice texts to have at least 1 character (`text.min(1)`). This blocks 4-choice MCQs from being created or imported anywhere in the app - both via the form modal and CSV bulk upload.
+Several content types have incomplete table view implementations:
+- **MCQs**: Has `AdminViewToggle` + `McqAdminTable` but never renders the table
+- **True/False**: Has `AdminViewToggle` but no `TrueFalseAdminTable` component exists
+- **OSCE**: Has `OsceAdminTable` but no toggle and it's not used in `OsceList`
+- **Mind Maps**: No table view option at all
+- **Guided Explanations**: No table view option at all
 
-## Current Behavior
-- `McqChoiceSchema` in `validators.ts` has `text.min(1, 'Choice text cannot be empty')`
-- This applies to ALL choices including E
-- When a 4-choice MCQ is parsed from CSV, choice E gets an empty string
-- Validation fails with "Choice text cannot be empty"
-- Both manual form submission and bulk upload are affected
-
-## Good News: Display Components Already Work
-The display components (`McqCard`, `MockExamQuestion`, `HardModeQuestion`, `MockExamResults`) simply iterate over whatever choices exist in the `choices` array:
-```typescript
-{choices.map((choice: McqChoice) => ( ... ))}
-```
-No changes needed for display - they'll correctly show 4 or 5 choices.
-
-## Solution Overview
-
-Update the validation layer to:
-1. Require choices A-D (mandatory, non-empty)
-2. Make choice E optional (can be omitted or have text)
-3. Ensure if `correct_key = 'E'`, then choice E must exist
-4. Filter empty choice E before validation in CSV parser
+Meanwhile, **Videos/Lectures** and **Flashcards** work correctly because they properly conditionally render their table views based on `viewMode`.
 
 ---
 
-## Files to Modify
+## Solution
 
-### 1. `src/lib/validators.ts` - Update Validation Schema
+### Phase 1: Fix MCQ Table View (Currently Broken)
 
-**Current schema (problematic):**
-```typescript
-export const McqChoiceSchema = z.object({
-  key: z.enum(['A', 'B', 'C', 'D', 'E']),
-  text: z.string()
-    .min(1, 'Choice text cannot be empty')  // Blocks empty E
-    .max(1000, 'Choice text is too long'),
-});
-```
+**File**: `src/components/content/McqList.tsx`
 
-**New schema approach:**
-- Allow empty text at the individual choice level
-- Add refinements to McqFormSchema to enforce A-D are non-empty
-- Add refinement to check if correct_key=E then E must exist and be non-empty
+Add conditional rendering to show `McqAdminTable` when `viewMode === 'table'`:
 
 ```typescript
-export const McqChoiceSchema = z.object({
-  key: z.enum(['A', 'B', 'C', 'D', 'E']),
-  text: z.string().max(1000, 'Choice text is too long'),  // Remove min(1)
-});
-
-export const McqFormSchema = z.object({
-  stem: z.string().min(10).max(5000),
-  choices: z.array(McqChoiceSchema)
-    .min(4, 'MCQ must have at least 4 choices (A-D)')
-    .max(5, 'MCQ can have at most 5 choices (A-E)')
-    .refine(
-      (choices) => {
-        // A-D must all be present and non-empty
-        const requiredKeys = ['A', 'B', 'C', 'D'] as const;
-        return requiredKeys.every(key => 
-          choices.some(c => c.key === key && c.text.trim().length > 0)
-        );
-      },
-      { message: 'Choices A, B, C, and D are required and cannot be empty' }
-    )
-    .refine(
-      (choices) => {
-        const keys = choices.map(c => c.key);
-        return new Set(keys).size === keys.length;
-      },
-      { message: 'Each choice must have a unique key' }
-    ),
-  correct_key: z.enum(['A', 'B', 'C', 'D', 'E']),
-  explanation: z.string().max(2000).nullable().optional(),
-  difficulty: z.enum(['easy', 'medium', 'hard']).nullable().optional(),
-})
-.refine(
-  (data) => {
-    // If correct_key is E, choice E must exist and be non-empty
-    if (data.correct_key === 'E') {
-      const choiceE = data.choices.find(c => c.key === 'E');
-      return choiceE && choiceE.text.trim().length > 0;
-    }
-    return true;
-  },
-  {
-    message: 'If correct answer is E, choice E must exist and have text',
-    path: ['correct_key'],
-  }
-)
-.refine(
-  (data) => data.choices.some(c => c.key === data.correct_key),
-  {
-    message: 'Correct answer must match one of the choice keys',
-    path: ['correct_key'],
-  }
-);
+// After the filters/search section, replace the current card rendering with:
+{viewMode === 'table' && isAdmin && !showDeleted ? (
+  <McqAdminTable
+    mcqs={filteredMcqs}
+    sections={sections}
+    chapterId={chapterId ?? undefined}
+    topicId={topicId ?? undefined}
+    moduleId={moduleId}
+    onEdit={(mcq) => setEditingMcq(mcq)}
+    onDelete={(mcq) => setDeletingMcq(mcq)}
+  />
+) : (
+  // Existing cards view
+)}
 ```
 
 ---
 
-### 2. `src/lib/csvParser.ts` - Filter Empty E Before Validation
+### Phase 2: Create TrueFalseAdminTable Component
 
-The CSV parser currently builds all 5 choices then validates. Update to filter out empty E BEFORE building the MCQ object:
+**Create File**: `src/components/content/TrueFalseAdminTable.tsx`
 
-**Lines ~471-519 in `parseSmartMcqCsv`:**
+New component using `ContentAdminTable` pattern (similar to `McqAdminTable`):
 
 ```typescript
-// Current: builds all 5 choices
-const choices: McqChoice[] = [
-  { key: 'A', text: stripHtmlAndMarkdown(getValue('choice_a')) },
-  { key: 'B', text: stripHtmlAndMarkdown(getValue('choice_b')) },
-  { key: 'C', text: stripHtmlAndMarkdown(getValue('choice_c')) },
-  { key: 'D', text: stripHtmlAndMarkdown(getValue('choice_d')) },
-  { key: 'E', text: stripHtmlAndMarkdown(getValue('choice_e')) },
-];
+import { Badge } from '@/components/ui/badge';
+import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
+import type { TrueFalseQuestion } from '@/hooks/useTrueFalseQuestions';
+import type { Section } from '@/hooks/useSections';
 
-// Change to: filter empty E before building MCQ
-const allChoices: McqChoice[] = [
-  { key: 'A', text: stripHtmlAndMarkdown(getValue('choice_a')) },
-  { key: 'B', text: stripHtmlAndMarkdown(getValue('choice_b')) },
-  { key: 'C', text: stripHtmlAndMarkdown(getValue('choice_c')) },
-  { key: 'D', text: stripHtmlAndMarkdown(getValue('choice_d')) },
-  { key: 'E', text: stripHtmlAndMarkdown(getValue('choice_e')) },
-];
+interface TrueFalseAdminTableProps {
+  questions: TrueFalseQuestion[];
+  sections?: Section[];
+  chapterId?: string;
+  topicId?: string;
+  moduleId: string;
+  onEdit: (question: TrueFalseQuestion) => void;
+  onDelete: (question: TrueFalseQuestion) => void;
+}
 
-// Filter: keep A-D always, keep E only if non-empty
-const choices = allChoices.filter(c => 
-  c.key !== 'E' || c.text.trim() !== ''
-);
-```
+export function TrueFalseAdminTable({ ... }) {
+  const columns: ColumnConfig<TrueFalseQuestion>[] = [
+    { key: 'select', header: '', className: 'w-10' },
+    { key: 'statement', header: 'Statement', render: (q) => <span className="line-clamp-2">{q.statement}</span> },
+    { key: 'correct_answer', header: 'Answer', className: 'w-20', render: (q) => <Badge>{q.correct_answer ? 'True' : 'False'}</Badge> },
+    { key: 'difficulty', header: 'Difficulty', className: 'w-24' },
+    { key: 'section', header: 'Section', className: 'w-32' },
+    { key: 'actions', header: '', className: 'w-24' },
+  ];
 
----
-
-### 3. `src/components/content/McqFormModal.tsx` - Already Correct
-
-The form modal already handles this correctly:
-```typescript
-// Filter out empty choice E before submission (line 89-92)
-const filteredChoices = choices.filter(c => 
-  REQUIRED_CHOICE_KEYS.includes(c.key as typeof REQUIRED_CHOICE_KEYS[number]) || c.text.trim() !== ''
-);
-```
-
-No changes needed - it already filters empty E before validation.
-
----
-
-### 4. `supabase/functions/bulk-import-mcqs/index.ts` - Already Correct
-
-The edge function already has filtering:
-```typescript
-// Filter choices to remove empty E option (lines 13-16)
-function filterValidChoices(choices: McqChoice[]): McqChoice[] {
-  return choices.filter(c => c.key !== 'E' || (c.text && c.text.trim() !== ''));
+  return <ContentAdminTable ... />;
 }
 ```
 
-No changes needed.
+**Update File**: `src/components/content/TrueFalseList.tsx`
+
+Add conditional rendering for table view (similar to MCQ fix).
 
 ---
 
-## Validation Rules After Changes
+### Phase 3: Add Table View Toggle to OSCE
 
-| Rule | Behavior |
-|------|----------|
-| Choices A-D | Required, must have non-empty text |
-| Choice E | Optional - can be omitted entirely or included with text |
-| Minimum choices | 4 (A, B, C, D) |
-| Maximum choices | 5 (A, B, C, D, E) |
-| If correct_key = E | Choice E must exist and be non-empty |
-| Correct key | Must match one of the provided choice keys |
+**File**: `src/components/content/OsceList.tsx`
+
+1. Import `AdminViewToggle` and `OsceAdminTable`
+2. Add `viewMode` state
+3. Add the toggle to the admin toolbar
+4. Conditionally render `OsceAdminTable` when `viewMode === 'table'`
+
+```typescript
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
+import { OsceAdminTable } from './OsceAdminTable';
+import { useChapterSections, useTopicSections } from '@/hooks/useSections';
+
+// Add state
+const [viewMode, setViewMode] = useState<ViewMode>('cards');
+const { data: sections = [] } = useChapterSections(chapterId);
+
+// Add to toolbar
+<AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+
+// Conditional rendering
+{viewMode === 'table' && isAdmin ? (
+  <OsceAdminTable
+    questions={filteredQuestions}
+    sections={sections}
+    chapterId={chapterId}
+    topicId={topicId}
+    moduleId={moduleId}
+    onEdit={handleEdit}
+    onDelete={(q) => setDeleteConfirmId(q.id)}
+  />
+) : (
+  // Existing cards view
+)}
+```
 
 ---
 
-## Summary of Changes
+### Phase 4: Add Table View to Mind Maps
 
-| File | Change | Impact |
-|------|--------|--------|
-| `src/lib/validators.ts` | Remove `min(1)` from McqChoiceSchema.text, add refinements for A-D required | Core fix |
-| `src/lib/csvParser.ts` | Filter empty E before building MCQ object | Bulk upload works |
-| `McqFormModal.tsx` | No changes needed | Already handles optional E |
-| Edge function | No changes needed | Already filters empty E |
-| Display components | No changes needed | Already iterate over existing choices |
+**Create File**: `src/components/study/MindMapAdminTable.tsx`
+
+New admin table for mind maps:
+
+```typescript
+import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
+import { StudyResource, MindMapContent } from '@/hooks/useStudyResources';
+import { FileText, Network, Image } from 'lucide-react';
+
+interface MindMapAdminTableProps {
+  resources: StudyResource[];
+  chapterId?: string;
+  onEdit: (resource: StudyResource) => void;
+  onDelete: (resource: StudyResource) => void;
+}
+
+export function MindMapAdminTable({ ... }) {
+  const columns: ColumnConfig<StudyResource>[] = [
+    { key: 'select', header: '', className: 'w-10' },
+    { key: 'title', header: 'Title' },
+    { 
+      key: 'content', 
+      header: 'Type', 
+      render: (r) => {
+        const content = r.content as MindMapContent;
+        const isPdf = content.imageUrl?.endsWith('.pdf');
+        const isNodeBased = !content.imageUrl && content.nodes?.length > 0;
+        return isPdf ? <FileText /> : isNodeBased ? <Network /> : <Image />;
+      }
+    },
+    { key: 'section', header: 'Section', className: 'w-32' },
+    { key: 'actions', header: '', className: 'w-24' },
+  ];
+
+  return <ContentAdminTable data={resources} columns={columns} contentTable="study_resources" ... />;
+}
+```
+
+**Update File**: `src/components/study/MindMapViewer.tsx`
+
+Add `AdminViewToggle` and conditional table rendering.
+
+---
+
+### Phase 5: Add Table View to Guided Explanations
+
+**Create File**: `src/components/study/GuidedExplanationAdminTable.tsx`
+
+New admin table for guided explanations:
+
+```typescript
+import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
+import { StudyResource, GuidedExplanationContent } from '@/hooks/useStudyResources';
+import { Badge } from '@/components/ui/badge';
+
+interface GuidedExplanationAdminTableProps {
+  resources: StudyResource[];
+  chapterId?: string;
+  onEdit: (resource: StudyResource) => void;
+  onDelete: (id: string) => void;
+}
+
+export function GuidedExplanationAdminTable({ ... }) {
+  const columns: ColumnConfig<StudyResource>[] = [
+    { key: 'select', header: '', className: 'w-10' },
+    { key: 'title', header: 'Title' },
+    { 
+      key: 'content', 
+      header: 'Questions',
+      render: (r) => {
+        const content = r.content as GuidedExplanationContent;
+        return <Badge variant="secondary">{content.guided_questions?.length || 0}</Badge>;
+      }
+    },
+    { key: 'section', header: 'Section', className: 'w-32' },
+    { key: 'actions', header: '', className: 'w-24' },
+  ];
+
+  return <ContentAdminTable data={resources} columns={columns} contentTable="study_resources" ... />;
+}
+```
+
+**Update File**: `src/components/study/GuidedExplanationList.tsx`
+
+Add `canManage` prop check, `AdminViewToggle`, and conditional table rendering.
+
+---
+
+## Files to Create
+
+| File | Description |
+|------|-------------|
+| `src/components/content/TrueFalseAdminTable.tsx` | Admin table for True/False questions |
+| `src/components/study/MindMapAdminTable.tsx` | Admin table for mind maps |
+| `src/components/study/GuidedExplanationAdminTable.tsx` | Admin table for guided explanations |
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/content/McqList.tsx` | Add conditional table view rendering |
+| `src/components/content/TrueFalseList.tsx` | Import new table, add conditional rendering |
+| `src/components/content/OsceList.tsx` | Import toggle + table, add viewMode state |
+| `src/components/study/MindMapViewer.tsx` | Add toggle and table view option |
+| `src/components/study/GuidedExplanationList.tsx` | Add toggle and table view option |
+
+---
+
+## Implementation Pattern
+
+All components should follow this consistent pattern:
+
+```typescript
+// 1. Import
+import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
+import { XxxAdminTable } from './XxxAdminTable';
+
+// 2. State
+const [viewMode, setViewMode] = useState<ViewMode>('cards');
+
+// 3. Toolbar (admin only)
+{isAdmin && <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />}
+
+// 4. Conditional rendering
+{viewMode === 'table' && isAdmin ? (
+  <XxxAdminTable ... />
+) : (
+  <ExistingCardsView ... />
+)}
+```
 
 ---
 
 ## Testing Checklist
 
-After implementation:
-- [ ] 4-choice MCQ can be created via form modal
-- [ ] 4-choice MCQ CSV imports successfully  
-- [ ] 5-choice MCQ still works in form and CSV
-- [ ] MCQ with correct_key=E but empty choiceE is rejected with clear error
-- [ ] Existing MCQs display correctly (both 4 and 5 choice)
-- [ ] Mock exam shows correct number of choices
-- [ ] Hard mode shows correct number of choices
+After implementation, verify for each content type:
+- [ ] Cards/Table toggle is visible for admins
+- [ ] Clicking "Table" shows the table view
+- [ ] Clicking "Cards" returns to card view
+- [ ] Multi-select works in table view
+- [ ] Bulk section assignment works in table view
+- [ ] Edit/Delete actions work from table view
+- [ ] Students only see cards view (no toggle)
