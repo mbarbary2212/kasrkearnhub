@@ -7,6 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { OsceQuestionCard } from './OsceQuestionCard';
 import { OsceFormModal } from './OsceFormModal';
 import { OsceBulkUploadModal } from './OsceBulkUploadModal';
+import { OsceAdminTable } from './OsceAdminTable';
+import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { 
   UnifiedQuestionFilter,
@@ -23,6 +25,7 @@ import {
   useRestoreOsceQuestion 
 } from '@/hooks/useOsceQuestions';
 import { isOsceDuplicate } from '@/lib/duplicateDetection';
+import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +77,14 @@ export function OsceList({
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  
+  // Admin view toggle
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  
+  // Fetch sections for admin table
+  const { data: chapterSections = [] } = useChapterSections(chapterId);
+  const { data: topicSections = [] } = useTopicSections(topicId);
+  const sections = chapterId ? chapterSections : topicSections;
   
   // Multi-select state for bulk section assignment
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -341,6 +352,9 @@ export function OsceList({
               Bulk Upload
             </Button>
           </div>
+          
+          {/* View Toggle */}
+          <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
       )}
 
@@ -382,7 +396,7 @@ export function OsceList({
         </Alert>
       )}
 
-      {/* Questions List */}
+      {/* Questions List - Table or Cards */}
       {displayQuestions.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
@@ -395,6 +409,16 @@ export function OsceList({
                   : 'No OSCE questions available yet.'}
           </p>
         </div>
+      ) : viewMode === 'table' && isAdmin && !showDeleted ? (
+        <OsceAdminTable
+          questions={displayQuestions}
+          sections={sections}
+          chapterId={chapterId}
+          topicId={topicId}
+          moduleId={moduleId}
+          onEdit={handleEdit}
+          onDelete={(q) => setDeleteConfirmId(q.id)}
+        />
       ) : (
         <div className="space-y-6">
           {displayQuestions.map((question, index) => {

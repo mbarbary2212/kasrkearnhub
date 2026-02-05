@@ -28,6 +28,9 @@ import { StudyResource, MindMapContent, useReorderStudyResources } from '@/hooks
 import { useIsMobile } from '@/hooks/use-mobile';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MindMapNodeRenderer } from './MindMapNodeRenderer';
+import { MindMapAdminTable } from './MindMapAdminTable';
+import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
+import { useChapterSections } from '@/hooks/useSections';
 import {
   DndContext,
   closestCenter,
@@ -226,8 +229,13 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#ef4444');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const canvasRef = useRef<ReactSketchCanvasRef>(null);
   const isMobile = useIsMobile();
+  
+  // Fetch sections for admin table
+  const chapterId = resources[0]?.chapter_id;
+  const { data: sections = [] } = useChapterSections(chapterId);
   
   const reorderMutation = useReorderStudyResources();
 
@@ -379,6 +387,19 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   }
 
   const renderGrid = () => {
+    if (viewMode === 'table' && canManage) {
+      return (
+        <MindMapAdminTable
+          resources={localResources}
+          sections={sections}
+          chapterId={chapterId}
+          moduleId={resources[0]?.module_id}
+          onEdit={(r) => onEdit?.(r)}
+          onDelete={handleDelete}
+        />
+      );
+    }
+    
     if (!canManage) {
       // Non-admin: no drag and drop
       return (
@@ -428,7 +449,14 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const isPdf = fullscreenContent?.imageUrl?.toLowerCase().endsWith('.pdf');
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* Admin View Toggle */}
+      {canManage && (
+        <div className="flex justify-end">
+          <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+        </div>
+      )}
+      
       {renderGrid()}
 
       {/* Fullscreen Modal */}
@@ -673,6 +701,6 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
