@@ -14,7 +14,6 @@ export const McqChoiceSchema = z.object({
     errorMap: () => ({ message: 'Choice key must be A, B, C, D, or E' }),
   }),
   text: z.string()
-    .min(1, 'Choice text cannot be empty')
     .max(1000, 'Choice text is too long (max 1000 characters)'),
 });
 
@@ -26,6 +25,16 @@ export const McqFormSchema = z.object({
   choices: z.array(McqChoiceSchema)
     .min(4, 'MCQ must have at least 4 choices (A-D)')
     .max(5, 'MCQ can have at most 5 choices (A-E)')
+    .refine(
+      (choices) => {
+        // A-D must all be present and non-empty
+        const requiredKeys = ['A', 'B', 'C', 'D'] as const;
+        return requiredKeys.every(key => 
+          choices.some(c => c.key === key && c.text.trim().length > 0)
+        );
+      },
+      { message: 'Choices A, B, C, and D are required and cannot be empty' }
+    )
     .refine(
       (choices) => {
         const keys = choices.map(c => c.key);
@@ -47,6 +56,20 @@ export const McqFormSchema = z.object({
     .nullable()
     .optional(),
 })
+.refine(
+  (data) => {
+    // If correct_key is E, choice E must exist and be non-empty
+    if (data.correct_key === 'E') {
+      const choiceE = data.choices.find(c => c.key === 'E');
+      return choiceE && choiceE.text.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'If correct answer is E, choice E must exist and have text',
+    path: ['correct_key'],
+  }
+)
 .refine(
   (data) => data.choices.some(c => c.key === data.correct_key),
   {
