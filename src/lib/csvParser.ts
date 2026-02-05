@@ -468,13 +468,18 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
     // Apply sanitization to all text fields
     const stem = stripHtmlAndMarkdown(stemRaw);
     
-    const choices: McqChoice[] = [
+    const allChoices: McqChoice[] = [
       { key: 'A', text: stripHtmlAndMarkdown(getValue('choice_a')) },
       { key: 'B', text: stripHtmlAndMarkdown(getValue('choice_b')) },
       { key: 'C', text: stripHtmlAndMarkdown(getValue('choice_c')) },
       { key: 'D', text: stripHtmlAndMarkdown(getValue('choice_d')) },
       { key: 'E', text: stripHtmlAndMarkdown(getValue('choice_e')) },
     ];
+    
+    // Filter: keep A-D always, keep E only if non-empty
+    const choices = allChoices.filter(c => 
+      c.key !== 'E' || c.text.trim() !== ''
+    );
     
     // Check if any HTML/Markdown was stripped
     const stemHadFormatting = stemRaw !== stem;
