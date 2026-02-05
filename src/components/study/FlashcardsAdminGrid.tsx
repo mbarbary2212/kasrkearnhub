@@ -10,6 +10,8 @@ interface FlashcardsAdminGridProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (id: string, checked: boolean) => void;
 }
 
 interface GroupedDeck {
@@ -23,7 +25,7 @@ const TIMING_OPTIONS = [
   { value: '7000', label: '7s' },
 ];
 
-export function FlashcardsAdminGrid({ resources, canManage, onEdit }: FlashcardsAdminGridProps) {
+export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds = new Set(), onToggleSelection }: FlashcardsAdminGridProps) {
   // Group flashcards by title
   const groups = useMemo(() => {
     const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
@@ -56,6 +58,8 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit }: Flashcards
           cards={group.cards}
           canManage={canManage}
           onEdit={onEdit}
+          selectedIds={selectedIds}
+          onToggleSelection={onToggleSelection}
         />
       ))}
     </div>
@@ -67,15 +71,31 @@ interface FlashcardDeckGroupProps {
   cards: { front: string; back: string; resource: StudyResource }[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (id: string, checked: boolean) => void;
 }
 
-function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit }: FlashcardDeckGroupProps) {
+function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, selectedIds = new Set(), onToggleSelection }: FlashcardDeckGroupProps) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [autoReturn, setAutoReturn] = useState(true);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
 
   const current = cards[index];
+  
+  // Count selected cards in this group
+  const selectedInGroup = cards.filter(c => selectedIds.has(c.resource.id)).length;
+  const allInGroupSelected = cards.length > 0 && selectedInGroup === cards.length;
+
+  const toggleGroupSelection = () => {
+    if (allInGroupSelected) {
+      // Deselect all in group
+      cards.forEach(c => onToggleSelection?.(c.resource.id, false));
+    } else {
+      // Select all in group
+      cards.forEach(c => onToggleSelection?.(c.resource.id, true));
+    }
+  };
 
   // Auto-return after showing answer
   useEffect(() => {
@@ -105,8 +125,24 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit }: FlashcardDe
   return (
     <div className="rounded-xl border bg-card p-3 max-w-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Multi-select checkbox for the group */}
+          {onToggleSelection && (
+            <Checkbox
+              checked={allInGroupSelected}
+              onCheckedChange={toggleGroupSelection}
+              aria-label={`Select all in ${deckTitle}`}
+              className="shrink-0"
+            />
+          )}
+          <div className="font-medium text-sm text-foreground truncate">{deckTitle}</div>
+        </div>
         <div className="flex items-center gap-1">
+          {selectedInGroup > 0 && onToggleSelection && (
+            <span className="text-xs text-muted-foreground">
+              {selectedInGroup}/{cards.length}
+            </span>
+          )}
           {canManage && (
             <>
               <Button

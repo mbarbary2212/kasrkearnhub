@@ -1,20 +1,34 @@
 import { useState, useMemo, useCallback } from 'react';
-import { PenTool, Star, Printer, ExternalLink, Filter, Trash2, RotateCcw } from 'lucide-react';
+import { PenTool, Star, Printer, ExternalLink, Filter, Trash2, RotateCcw, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
 import { EssaysAdminTable } from './EssaysAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
+import { BulkSectionAssignment } from '@/components/sections';
+import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { cn } from '@/lib/utils';
 import { useContentDelete } from '@/hooks/useContentDelete';
+import { toast } from 'sonner';
 
 interface Essay {
   id: string;
@@ -24,6 +38,7 @@ interface Essay {
   rating?: number | null;
   is_deleted?: boolean;
   chapter_id?: string | null;
+  section_id?: string | null;
 }
 
 interface EssayListProps {
@@ -56,9 +71,12 @@ export default function EssayList({
   const [showMarkedOnly, setShowMarkedOnly] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const isAdmin = canEdit || canDelete;
   const { doRestore } = useContentDelete('essays', moduleId || '', chapterId);
+  const bulkDelete = useBulkDeleteContent('essays');
 
   const toggleMark = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -72,6 +90,39 @@ export default function EssayList({
       return newSet;
     });
   }, []);
+
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    const idsToSelect = essays.filter(e => !e.is_deleted).map(e => e.id);
+    setSelectedIds(new Set(idsToSelect));
+  }, [essays]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = async () => {
+    try {
+      await bulkDelete.mutateAsync({
+        ids: Array.from(selectedIds),
+        chapterId,
+      });
+      toast.success(`Deleted ${selectedIds.size} essays`);
+      clearSelection();
+    } catch (error) {
+      toast.error('Failed to delete essays');
+    } finally {
+      setBulkDeleteOpen(false);
+    }
+  };
 
   const filteredEssays = useMemo(() => {
     if (showMarkedOnly) {
@@ -148,7 +199,46 @@ export default function EssayList({
     <>
       {/* Filter Bar - always visible when there's a toggle or content */}
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Multi-select controls for admin */}
+          {isAdmin && (
+            <>
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === essays.filter(e => !e.is_deleted).length}
+                onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                aria-label="Select all"
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+              </span>
+              {selectedIds.size > 0 && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 gap-1">
+                    <X className="h-3.5 w-3.5" />
+                    Clear
+                  </Button>
+                  {chapterId && (
+                    <BulkSectionAssignment
+                      chapterId={chapterId}
+                      selectedIds={Array.from(selectedIds)}
+                      contentTable="essays"
+                      onComplete={clearSelection}
+                    />
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteOpen(true)}
+                    className="h-7 gap-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -225,6 +315,16 @@ export default function EssayList({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
+                        {/* Checkbox for multi-select (admin only) */}
+                        {isAdmin && !isDeleted && (
+                          <Checkbox
+                            checked={selectedIds.has(essay.id)}
+                            onCheckedChange={(checked) => toggleSelection(essay.id, !!checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select ${essay.title}`}
+                            className="shrink-0"
+                          />
+                        )}
                         {/* Mark for Review star */}
                         {!isDeleted && (
                           <button
@@ -332,6 +432,31 @@ export default function EssayList({
         onToggleMark={toggleMark}
         isAdmin={canEdit}
       />
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} essays?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will soft-delete the selected essays. You can restore them later from the deleted items view.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDelete.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkDelete();
+              }}
+              disabled={bulkDelete.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDelete.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

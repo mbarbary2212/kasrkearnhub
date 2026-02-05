@@ -9,7 +9,8 @@ import { StudyResource } from '@/hooks/useStudyResources';
 import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
-import { Layers, Play, Star, Filter, RotateCcw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Layers, Play, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { BulkSectionAssignment } from '@/components/sections';
+import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
+import { toast } from 'sonner';
 
 interface FlashcardsTabProps {
   resources: StudyResource[];
@@ -30,9 +44,12 @@ interface FlashcardsTabProps {
 export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleId }: FlashcardsTabProps) {
   const { isAdmin, isTeacher } = useAuthContext();
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   
   // Synced stars across devices
   const { starredIds, toggleStar } = useFlashcardStars(chapterId);
+  const bulkDelete = useBulkDeleteContent('study_resources');
   
   // Persisted settings
   const {
@@ -43,6 +60,38 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
   } = useFlashcardSettings(chapterId);
 
   const { mode: studentMode, showMarkedOnly } = settings;
+
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set((resources ?? []).map(r => r.id)));
+  }, [resources]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = async () => {
+    try {
+      await bulkDelete.mutateAsync({
+        ids: Array.from(selectedIds),
+        chapterId,
+      });
+      toast.success(`Deleted ${selectedIds.size} flashcards`);
+      clearSelection();
+    } catch (error) {
+      toast.error('Failed to delete flashcards');
+    } finally {
+      setBulkDeleteOpen(false);
+    }
+  };
 
   // Wrap toggleStar to include chapter context
   const handleToggleStar = useCallback((cardId: string) => {
@@ -71,7 +120,43 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
   if (showAdminView) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Multi-select controls */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={selectedIds.size > 0 && selectedIds.size === (resources ?? []).length}
+              onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+              aria-label="Select all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+            </span>
+            {selectedIds.size > 0 && (
+              <>
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 gap-1">
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+                {chapterId && (
+                  <BulkSectionAssignment
+                    chapterId={chapterId}
+                    selectedIds={Array.from(selectedIds)}
+                    contentTable="study_resources"
+                    onComplete={clearSelection}
+                  />
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  className="h-7 gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
           <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
         </div>
         {adminViewMode === 'table' ? (
@@ -86,8 +171,35 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
             resources={resources ?? []}
             canManage={canManage}
             onEdit={onEdit}
+            selectedIds={selectedIds}
+            onToggleSelection={toggleSelection}
           />
         )}
+
+        {/* Bulk Delete Confirmation */}
+        <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedIds.size} flashcards?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will soft-delete the selected flashcards. You can restore them later from the deleted items view.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={bulkDelete.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBulkDelete();
+                }}
+                disabled={bulkDelete.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {bulkDelete.isPending ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }

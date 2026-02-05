@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle } from 'lucide-react';
+import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,9 +33,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, BulkSectionAssignment } from '@/components/sections';
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
+import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 
 interface Lecture {
   id: string;
@@ -121,12 +123,48 @@ export function LectureList({
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const bulkDelete = useBulkDeleteContent('lectures');
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
   }, []);
+
+  const toggleSelection = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(lectures.map(l => l.id)));
+  }, [lectures]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = async () => {
+    try {
+      await bulkDelete.mutateAsync({
+        ids: Array.from(selectedIds),
+        chapterId,
+      });
+      toast.success(`Deleted ${selectedIds.size} lectures`);
+      clearSelection();
+    } catch (error) {
+      toast.error('Failed to delete lectures');
+    } finally {
+      setBulkDeleteOpen(false);
+    }
+  };
 
   const { askDelete, doDelete, cancelDelete, confirmOpen, isDeleting, pendingItem } = useVideoDelete(
     moduleId || '',
@@ -310,7 +348,43 @@ export function LectureList({
     <>
       {/* Admin View Toggle */}
       {canManage && (
-        <div className="flex justify-end mb-4">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          {/* Multi-select controls */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={selectedIds.size > 0 && selectedIds.size === lectures.length}
+              onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+              aria-label="Select all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+            </span>
+            {selectedIds.size > 0 && (
+              <>
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 gap-1">
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+                {chapterId && (
+                  <BulkSectionAssignment
+                    chapterId={chapterId}
+                    selectedIds={Array.from(selectedIds)}
+                    contentTable="lectures"
+                    onComplete={clearSelection}
+                  />
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  className="h-7 gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
           <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
         </div>
       )}
@@ -321,14 +395,27 @@ export function LectureList({
           const isValid = isValidVideoUrl(lectureVideoUrl);
 
           return (
-            <button
+            <div
               key={lecture.id}
-              onClick={() => isValid && handleSelectLecture(lecture)}
-              disabled={!isValid}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
             >
+              {/* Checkbox for multi-select (admin only) */}
+              {canManage && (
+                <Checkbox
+                  checked={selectedIds.has(lecture.id)}
+                  onCheckedChange={(checked) => toggleSelection(lecture.id, !!checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select ${lecture.title}`}
+                  className="shrink-0"
+                />
+              )}
+
               {/* Thumbnail */}
-              <div className="w-20 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center relative">
+              <button
+                onClick={() => isValid && handleSelectLecture(lecture)}
+                disabled={!isValid}
+                className="w-20 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center relative disabled:opacity-50"
+              >
                 {videoInfo.thumbnailUrl ? (
                   <>
                     <img
@@ -345,10 +432,14 @@ export function LectureList({
                 ) : (
                   <Video className="w-5 h-5 text-muted-foreground" />
                 )}
-              </div>
+              </button>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
+              <button
+                onClick={() => isValid && handleSelectLecture(lecture)}
+                disabled={!isValid}
+                className="flex-1 min-w-0 text-left disabled:opacity-50"
+              >
                 <div className="font-semibold truncate">{lecture.title}</div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                   {lecture.duration && (
@@ -359,7 +450,7 @@ export function LectureList({
                   )}
                   <span>Tap to play</span>
                 </div>
-              </div>
+              </button>
 
               {/* Actions */}
               {canManage ? (
@@ -406,7 +497,7 @@ export function LectureList({
               ) : (
                 <span className="text-muted-foreground text-lg">▶</span>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -583,6 +674,31 @@ export function LectureList({
           chapterId={chapterId}
         />
       )}
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent className="z-[99999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} lectures?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will soft-delete the selected lectures. You can restore them later from the deleted items view.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDelete.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkDelete();
+              }}
+              disabled={bulkDelete.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDelete.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
