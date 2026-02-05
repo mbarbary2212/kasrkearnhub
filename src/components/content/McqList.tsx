@@ -764,7 +764,7 @@ export function McqList({
         </Alert>
       )}
 
-      {/* MCQ Cards */}
+      {/* MCQ Cards or Table View */}
       {filteredMcqs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>
@@ -779,6 +779,16 @@ export function McqList({
                     : 'No MCQs yet. Click "Add Question" to create one.'}
           </p>
         </div>
+      ) : viewMode === 'table' && isAdmin && !showDeleted ? (
+        <McqAdminTable
+          mcqs={filteredMcqs}
+          sections={sections}
+          chapterId={chapterId ?? undefined}
+          topicId={topicId ?? undefined}
+          moduleId={moduleId}
+          onEdit={(mcq) => setEditingMcq(mcq)}
+          onDelete={(mcq) => setDeletingMcq(mcq)}
+        />
       ) : (
         <div className="space-y-4">
           {filteredMcqs.map((mcq, index) => {

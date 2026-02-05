@@ -25,7 +25,8 @@ import {
 import { TrueFalseCard } from './TrueFalseCard';
 import { TrueFalseFormModal } from './TrueFalseFormModal';
 import { TrueFalseBulkUploadModal } from './TrueFalseBulkUploadModal';
-import { AdminViewToggle } from '@/components/admin/AdminViewToggle';
+import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
+import { TrueFalseAdminTable } from './TrueFalseAdminTable';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { 
   useDeleteTrueFalseQuestion, 
@@ -33,6 +34,7 @@ import {
   type TrueFalseQuestion,
 } from '@/hooks/useTrueFalseQuestions';
 import { useChapterQuestionAttempts } from '@/hooks/useQuestionAttempts';
+import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import type { Json } from '@/integrations/supabase/types';
@@ -78,6 +80,11 @@ export function TrueFalseList({
     dialog,
   } = useAddPermissionGuard({ moduleId, chapterId });
   
+  // Fetch sections for admin table
+  const { data: chapterSections = [] } = useChapterSections(chapterId ?? undefined);
+  const { data: topicSections = [] } = useTopicSections(topicId ?? undefined);
+  const sections = chapterId ? chapterSections : topicSections;
+  
   // UI State
   const [editingQuestion, setEditingQuestion] = useState<TrueFalseQuestion | null>(null);
   const [deletingQuestion, setDeletingQuestion] = useState<TrueFalseQuestion | null>(null);
@@ -86,7 +93,7 @@ export function TrueFalseList({
   const [showBulkModal, setShowBulkModal] = useState(false);
   
   // Admin controls
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -305,7 +312,7 @@ export function TrueFalseList({
         </div>
       )}
 
-      {/* Questions */}
+      {/* Questions - Table or Cards */}
       {filteredQuestions.length === 0 ? (
         <Alert>
           <AlertDescription>
@@ -316,6 +323,16 @@ export function TrueFalseList({
                 : "No True/False questions yet. Click 'Add Question' to create one."}
           </AlertDescription>
         </Alert>
+      ) : viewMode === 'table' && isAdmin && !showDeleted ? (
+        <TrueFalseAdminTable
+          questions={filteredQuestions}
+          sections={sections}
+          chapterId={chapterId ?? undefined}
+          topicId={topicId ?? undefined}
+          moduleId={moduleId}
+          onEdit={(q) => setEditingQuestion(q)}
+          onDelete={(q) => setDeletingQuestion(q)}
+        />
       ) : (
         <div className="space-y-4">
           {filteredQuestions.map((question, index) => (

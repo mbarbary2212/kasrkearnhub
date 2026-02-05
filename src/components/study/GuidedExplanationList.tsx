@@ -12,6 +12,9 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { StudyResource, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { GuidedExplanationViewer } from './GuidedExplanationViewer';
+import { GuidedExplanationAdminTable } from './GuidedExplanationAdminTable';
+import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
+import { useChapterSections } from '@/hooks/useSections';
 import { cn } from '@/lib/utils';
 
 interface GuidedExplanationListProps {
@@ -28,6 +31,11 @@ export function GuidedExplanationList({
   onDelete,
 }: GuidedExplanationListProps) {
   const [selectedResource, setSelectedResource] = useState<StudyResource | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  
+  // Fetch sections for admin table
+  const chapterId = resources[0]?.chapter_id;
+  const { data: sections = [] } = useChapterSections(chapterId);
 
   if (resources.length === 0) {
     return (
@@ -46,84 +54,104 @@ export function GuidedExplanationList({
   }
 
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {resources.map((resource) => {
-          const content = resource.content as GuidedExplanationContent;
-          const questionCount = content.guided_questions?.length || 0;
+    <div className="space-y-4">
+      {/* Admin View Toggle */}
+      {canManage && (
+        <div className="flex justify-end">
+          <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+        </div>
+      )}
 
-          return (
-            <Card
-              key={resource.id}
-              className={cn(
-                "group cursor-pointer transition-all hover:shadow-md hover:border-primary/50",
-                "flex flex-col"
-              )}
-              onClick={() => setSelectedResource(resource)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                      <MessageCircleQuestion className="w-4 h-4 text-primary" />
-                    </div>
-                    <CardTitle className="text-base line-clamp-2">
-                      {resource.title}
-                    </CardTitle>
-                  </div>
-                  {canManage && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit?.(resource);
-                        }}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete?.(resource.id);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
+      {/* Table View */}
+      {viewMode === 'table' && canManage ? (
+        <GuidedExplanationAdminTable
+          resources={resources}
+          sections={sections}
+          chapterId={chapterId}
+          moduleId={resources[0]?.module_id}
+          onEdit={(r) => onEdit?.(r)}
+          onDelete={(id) => onDelete?.(id)}
+        />
+      ) : (
+        /* Cards Grid */
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {resources.map((resource) => {
+            const content = resource.content as GuidedExplanationContent;
+            const questionCount = content.guided_questions?.length || 0;
 
-              <CardContent className="flex-1 flex flex-col">
-                {content.topic && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {content.topic}
-                  </p>
+            return (
+              <Card
+                key={resource.id}
+                className={cn(
+                  "group cursor-pointer transition-all hover:shadow-md hover:border-primary/50",
+                  "flex flex-col"
                 )}
-
-                <div className="flex-1" />
-
-                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
+                onClick={() => setSelectedResource(resource)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                        <MessageCircleQuestion className="w-4 h-4 text-primary" />
+                      </div>
+                      <CardTitle className="text-base line-clamp-2">
+                        {resource.title}
+                      </CardTitle>
+                    </div>
+                    {canManage && (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(resource);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete?.(resource.id);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <Badge variant="secondary" className="gap-1">
-                    Start
-                    <ChevronRight className="w-3 h-3" />
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 flex flex-col">
+                  {content.topic && (
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                      {content.topic}
+                    </p>
+                  )}
+
+                  <div className="flex-1" />
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <BookOpen className="w-4 h-4" />
+                      <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    <Badge variant="secondary" className="gap-1">
+                      Start
+                      <ChevronRight className="w-3 h-3" />
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Fullscreen Viewer Dialog */}
       <Dialog 
@@ -139,6 +167,6 @@ export function GuidedExplanationList({
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
