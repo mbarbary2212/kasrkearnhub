@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import kalmSplashLogo from '@/assets/kalm-splash-logo.png';
-
 interface SplashScreenProps {
   onDismiss: () => void;
 }
@@ -50,11 +48,6 @@ export default function SplashScreen({
   return <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Logo - top right */}
-        <div className="absolute top-8 right-12">
-          <img src={kalmSplashLogo} alt="KALM Hub" className="h-24 w-auto" />
-        </div>
-
         {/* Pillar overlay - left aligned */}
         <div className="absolute top-1/2 left-12 -translate-y-1/2" style={animationStyle}>
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
@@ -78,11 +71,6 @@ export default function SplashScreen({
 
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Logo - top right */}
-        <div className="absolute top-4 right-4">
-          <img src={kalmSplashLogo} alt="KALM Hub" className="h-16 w-auto" />
-        </div>
-
         {/* Pillar overlay - centered, smaller text for mobile */}
         <div className="absolute top-1/2 left-2 -translate-y-1/2" style={animationStyle}>
           <div className="bg-black/40 backdrop-blur-md px-3 py-2 max-w-[180px] text-left rounded-sm">
