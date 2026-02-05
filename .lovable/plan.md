@@ -1,268 +1,241 @@
 
-# Plan: Add Table View Toggle to MCQ, True/False, OSCE, Mind Maps, and Guided Explanations
+
+# Plan: Unify Chapter/Topic UI Across All Modules
 
 ## Problem Summary
-Several content types have incomplete table view implementations:
-- **MCQs**: Has `AdminViewToggle` + `McqAdminTable` but never renders the table
-- **True/False**: Has `AdminViewToggle` but no `TrueFalseAdminTable` component exists
-- **OSCE**: Has `OsceAdminTable` but no toggle and it's not used in `OsceList`
-- **Mind Maps**: No table view option at all
-- **Guided Explanations**: No table view option at all
 
-Meanwhile, **Videos/Lectures** and **Flashcards** work correctly because they properly conditionally render their table views based on `viewMode`.
+The app currently has two different UIs depending on whether a module uses **Chapters** (Surgery) or **Topics** (Pharmacology):
+
+| Feature | ChapterPage (Surgery) | TopicDetailPage (Pharmacology) |
+|---------|----------------------|--------------------------------|
+| MCQ Component | Modern `McqList` | Legacy `AdminContentActions` + `useMcqSets` |
+| "Test Yourself" | Yes | No |
+| True/False | Yes | No |
+| OSCE | Modern `OsceList` | No |
+| View Toggle | Cards/Table | Not available |
+| Section modes | resources, practice, test | resources, practice only |
+
+Additionally, the **BookFormModal** "Chapter Label Style" dropdown has options that should be removed: "Unit", "Section", "Part"
 
 ---
 
 ## Solution
 
-### Phase 1: Fix MCQ Table View (Currently Broken)
+### Part 1: Simplify Chapter Label Style Dropdown
 
-**File**: `src/components/content/McqList.tsx`
+**File:** `src/components/module/BookFormModal.tsx`
 
-Add conditional rendering to show `McqAdminTable` when `viewMode === 'table'`:
+Remove "Unit", "Section", and "Part" from the dropdown, keeping only "Chapter (Ch)" and "Lecture (Lec)":
 
 ```typescript
-// After the filters/search section, replace the current card rendering with:
-{viewMode === 'table' && isAdmin && !showDeleted ? (
-  <McqAdminTable
-    mcqs={filteredMcqs}
-    sections={sections}
-    chapterId={chapterId ?? undefined}
-    topicId={topicId ?? undefined}
-    moduleId={moduleId}
-    onEdit={(mcq) => setEditingMcq(mcq)}
-    onDelete={(mcq) => setDeletingMcq(mcq)}
-  />
-) : (
-  // Existing cards view
-)}
+// Before
+const CHAPTER_PREFIXES = [
+  { value: 'Ch', label: 'Chapter (Ch)' },
+  { value: 'Lec', label: 'Lecture (Lec)' },
+  { value: 'Unit', label: 'Unit' },        // Remove
+  { value: 'Section', label: 'Section' },  // Remove
+  { value: 'Part', label: 'Part' },        // Remove
+];
+
+// After
+const CHAPTER_PREFIXES = [
+  { value: 'Ch', label: 'Chapter (Ch)' },
+  { value: 'Lec', label: 'Lecture (Lec)' },
+];
 ```
 
 ---
 
-### Phase 2: Create TrueFalseAdminTable Component
+### Part 2: Database - Add `topic_id` to `mcqs` Table
 
-**Create File**: `src/components/content/TrueFalseAdminTable.tsx`
+Topics need to use the modern `mcqs` table instead of the legacy `mcq_sets` table.
 
-New component using `ContentAdminTable` pattern (similar to `McqAdminTable`):
-
-```typescript
-import { Badge } from '@/components/ui/badge';
-import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
-import type { TrueFalseQuestion } from '@/hooks/useTrueFalseQuestions';
-import type { Section } from '@/hooks/useSections';
-
-interface TrueFalseAdminTableProps {
-  questions: TrueFalseQuestion[];
-  sections?: Section[];
-  chapterId?: string;
-  topicId?: string;
-  moduleId: string;
-  onEdit: (question: TrueFalseQuestion) => void;
-  onDelete: (question: TrueFalseQuestion) => void;
-}
-
-export function TrueFalseAdminTable({ ... }) {
-  const columns: ColumnConfig<TrueFalseQuestion>[] = [
-    { key: 'select', header: '', className: 'w-10' },
-    { key: 'statement', header: 'Statement', render: (q) => <span className="line-clamp-2">{q.statement}</span> },
-    { key: 'correct_answer', header: 'Answer', className: 'w-20', render: (q) => <Badge>{q.correct_answer ? 'True' : 'False'}</Badge> },
-    { key: 'difficulty', header: 'Difficulty', className: 'w-24' },
-    { key: 'section', header: 'Section', className: 'w-32' },
-    { key: 'actions', header: '', className: 'w-24' },
-  ];
-
-  return <ContentAdminTable ... />;
-}
-```
-
-**Update File**: `src/components/content/TrueFalseList.tsx`
-
-Add conditional rendering for table view (similar to MCQ fix).
-
----
-
-### Phase 3: Add Table View Toggle to OSCE
-
-**File**: `src/components/content/OsceList.tsx`
-
-1. Import `AdminViewToggle` and `OsceAdminTable`
-2. Add `viewMode` state
-3. Add the toggle to the admin toolbar
-4. Conditionally render `OsceAdminTable` when `viewMode === 'table'`
-
-```typescript
-import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
-import { OsceAdminTable } from './OsceAdminTable';
-import { useChapterSections, useTopicSections } from '@/hooks/useSections';
-
-// Add state
-const [viewMode, setViewMode] = useState<ViewMode>('cards');
-const { data: sections = [] } = useChapterSections(chapterId);
-
-// Add to toolbar
-<AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-
-// Conditional rendering
-{viewMode === 'table' && isAdmin ? (
-  <OsceAdminTable
-    questions={filteredQuestions}
-    sections={sections}
-    chapterId={chapterId}
-    topicId={topicId}
-    moduleId={moduleId}
-    onEdit={handleEdit}
-    onDelete={(q) => setDeleteConfirmId(q.id)}
-  />
-) : (
-  // Existing cards view
-)}
+**SQL Migration:**
+```sql
+-- Add topic_id to mcqs for topics to use the modern MCQ system
+ALTER TABLE public.mcqs ADD COLUMN IF NOT EXISTS topic_id uuid REFERENCES topics(id);
+CREATE INDEX IF NOT EXISTS idx_mcqs_topic_id ON public.mcqs(topic_id);
 ```
 
 ---
 
-### Phase 4: Add Table View to Mind Maps
+### Part 3: Create Topic Hooks for Modern Tables
 
-**Create File**: `src/components/study/MindMapAdminTable.tsx`
+**File:** `src/hooks/useMcqs.ts`
 
-New admin table for mind maps:
+Add `useTopicMcqs` hook to query MCQs by topic:
 
 ```typescript
-import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
-import { StudyResource, MindMapContent } from '@/hooks/useStudyResources';
-import { FileText, Network, Image } from 'lucide-react';
-
-interface MindMapAdminTableProps {
-  resources: StudyResource[];
-  chapterId?: string;
-  onEdit: (resource: StudyResource) => void;
-  onDelete: (resource: StudyResource) => void;
-}
-
-export function MindMapAdminTable({ ... }) {
-  const columns: ColumnConfig<StudyResource>[] = [
-    { key: 'select', header: '', className: 'w-10' },
-    { key: 'title', header: 'Title' },
-    { 
-      key: 'content', 
-      header: 'Type', 
-      render: (r) => {
-        const content = r.content as MindMapContent;
-        const isPdf = content.imageUrl?.endsWith('.pdf');
-        const isNodeBased = !content.imageUrl && content.nodes?.length > 0;
-        return isPdf ? <FileText /> : isNodeBased ? <Network /> : <Image />;
-      }
+export function useTopicMcqs(topicId?: string, includeDeleted = false) {
+  return useQuery({
+    queryKey: ['mcqs', 'topic', topicId, { includeDeleted }],
+    queryFn: async () => {
+      let query = supabase.from('mcqs').select('*').eq('topic_id', topicId!);
+      if (!includeDeleted) query = query.eq('is_deleted', false);
+      const { data, error } = await query.order('display_order');
+      if (error) throw error;
+      return (data || []).map(mapDbRowToMcq);
     },
-    { key: 'section', header: 'Section', className: 'w-32' },
-    { key: 'actions', header: '', className: 'w-24' },
-  ];
-
-  return <ContentAdminTable data={resources} columns={columns} contentTable="study_resources" ... />;
+    enabled: !!topicId,
+  });
 }
 ```
 
-**Update File**: `src/components/study/MindMapViewer.tsx`
+---
 
-Add `AdminViewToggle` and conditional table rendering.
+### Part 4: Refactor TopicDetailPage to Match ChapterPage
+
+**File:** `src/pages/TopicDetailPage.tsx`
+
+Major changes to align with ChapterPage:
+
+1. **Add "Test Yourself" section mode:**
+   ```typescript
+   type SectionMode = 'resources' | 'practice' | 'test';  // Add 'test'
+   ```
+
+2. **Add navigation item for Test Yourself:**
+   ```typescript
+   const sectionNav = [
+     { id: 'resources', label: 'Resources', icon: FolderOpen },
+     { id: 'practice', label: 'Self Assessment', icon: GraduationCap },
+     { id: 'test', label: 'Test Yourself', icon: ClipboardCheck },  // Add this
+   ];
+   ```
+
+3. **Replace legacy MCQ handling with modern McqList:**
+   ```typescript
+   // Remove: const { data: mcqSets } = useMcqSets(topicId);
+   // Add:
+   import { useTopicMcqs } from '@/hooks/useMcqs';
+   import { McqList } from '@/components/content/McqList';
+   
+   const { data: mcqs } = useTopicMcqs(topicId, false);
+   const { data: deletedMcqs } = useTopicMcqs(topicId, true);
+   
+   // In the MCQs tab:
+   <McqList
+     mcqs={filterBySection(mcqs || [])}
+     deletedMcqs={deletedOnlyMcqs}
+     moduleId={moduleId || ''}
+     topicId={topicId}
+     isAdmin={canManageContent}
+     showDeletedToggle={canManageContent}
+     showDeleted={showDeletedMcqs}
+     onShowDeletedChange={setShowDeletedMcqs}
+   />
+   ```
+
+4. **Add True/False tab:**
+   ```typescript
+   import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
+   import { TrueFalseList } from '@/components/content/TrueFalseList';
+   ```
+
+5. **Add OSCE tab:**
+   ```typescript
+   import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
+   import { OsceList } from '@/components/content/OsceList';
+   ```
+
+6. **Add Test Yourself section:**
+   ```typescript
+   import { ChapterMockExamSection } from '@/components/exam';
+   
+   {activeSection === 'test' && (
+     <ChapterMockExamSection
+       chapterId={topicId!}
+       moduleId={moduleId || ''}
+     />
+   )}
+   ```
 
 ---
 
-### Phase 5: Add Table View to Guided Explanations
+### Part 5: Add Topic Support to Content Hooks
 
-**Create File**: `src/components/study/GuidedExplanationAdminTable.tsx`
+**Files to modify:**
+- `src/hooks/useTrueFalseQuestions.ts` - Add `useTopicTrueFalseQuestions`
+- `src/hooks/useOsceQuestions.ts` - Add `useTopicOsceQuestions`
+- `src/hooks/useMatchingQuestions.ts` - Already has `useTopicMatchingQuestions`
 
-New admin table for guided explanations:
-
+Each hook follows the same pattern:
 ```typescript
-import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
-import { StudyResource, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { Badge } from '@/components/ui/badge';
-
-interface GuidedExplanationAdminTableProps {
-  resources: StudyResource[];
-  chapterId?: string;
-  onEdit: (resource: StudyResource) => void;
-  onDelete: (id: string) => void;
-}
-
-export function GuidedExplanationAdminTable({ ... }) {
-  const columns: ColumnConfig<StudyResource>[] = [
-    { key: 'select', header: '', className: 'w-10' },
-    { key: 'title', header: 'Title' },
-    { 
-      key: 'content', 
-      header: 'Questions',
-      render: (r) => {
-        const content = r.content as GuidedExplanationContent;
-        return <Badge variant="secondary">{content.guided_questions?.length || 0}</Badge>;
-      }
+export function useTopicTrueFalseQuestions(topicId?: string, includeDeleted = false) {
+  return useQuery({
+    queryKey: ['true-false', 'topic', topicId, { includeDeleted }],
+    queryFn: async () => {
+      let query = supabase.from('true_false_questions')
+        .select('*').eq('topic_id', topicId!);
+      if (!includeDeleted) query = query.eq('is_deleted', false);
+      // ...
     },
-    { key: 'section', header: 'Section', className: 'w-32' },
-    { key: 'actions', header: '', className: 'w-24' },
-  ];
-
-  return <ContentAdminTable data={resources} columns={columns} contentTable="study_resources" ... />;
+    enabled: !!topicId,
+  });
 }
 ```
 
-**Update File**: `src/components/study/GuidedExplanationList.tsx`
-
-Add `canManage` prop check, `AdminViewToggle`, and conditional table rendering.
-
 ---
 
-## Files to Create
+### Part 6: Update Bulk Import Edge Functions
 
-| File | Description |
-|------|-------------|
-| `src/components/content/TrueFalseAdminTable.tsx` | Admin table for True/False questions |
-| `src/components/study/MindMapAdminTable.tsx` | Admin table for mind maps |
-| `src/components/study/GuidedExplanationAdminTable.tsx` | Admin table for guided explanations |
+**File:** `supabase/functions/bulk-import-mcqs/index.ts`
+
+Accept and store `topic_id`:
+```typescript
+const { mcqs, moduleId, chapterId, topicId } = await req.json();
+
+const records = mcqs.map((mcq) => ({
+  module_id: moduleId,
+  chapter_id: chapterId || null,
+  topic_id: topicId || null,  // Add this
+  // ...other fields
+}));
+```
+
+---
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/content/McqList.tsx` | Add conditional table view rendering |
-| `src/components/content/TrueFalseList.tsx` | Import new table, add conditional rendering |
-| `src/components/content/OsceList.tsx` | Import toggle + table, add viewMode state |
-| `src/components/study/MindMapViewer.tsx` | Add toggle and table view option |
-| `src/components/study/GuidedExplanationList.tsx` | Add toggle and table view option |
+| `src/components/module/BookFormModal.tsx` | Remove "Unit", "Section", "Part" from dropdown |
+| `src/hooks/useMcqs.ts` | Add `useTopicMcqs` hook |
+| `src/hooks/useTrueFalseQuestions.ts` | Add `useTopicTrueFalseQuestions` hook |
+| `src/hooks/useOsceQuestions.ts` | Add `useTopicOsceQuestions` hook |
+| `src/pages/TopicDetailPage.tsx` | Major refactor - use modern components, add Test section |
+| `supabase/functions/bulk-import-mcqs/index.ts` | Support `topic_id` |
+
+**Database Migration:**
+- Add `topic_id` column to `mcqs` table
+- Add `topic_id` column to `true_false_questions` table
+- Add `topic_id` column to `osce_questions` table
 
 ---
 
-## Implementation Pattern
+## Result After Implementation
 
-All components should follow this consistent pattern:
+Both ChapterPage and TopicDetailPage will have:
+- Identical admin toolbar (Select All, Bulk Import, Add, Cards/Table toggle)
+- Same section navigation (Resources, Self Assessment, Test Yourself)
+- Same content components (McqList, TrueFalseList, OsceList, etc.)
+- Same bulk upload functionality
+- Same mock exam/test features
 
-```typescript
-// 1. Import
-import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
-import { XxxAdminTable } from './XxxAdminTable';
-
-// 2. State
-const [viewMode, setViewMode] = useState<ViewMode>('cards');
-
-// 3. Toolbar (admin only)
-{isAdmin && <AdminViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />}
-
-// 4. Conditional rendering
-{viewMode === 'table' && isAdmin ? (
-  <XxxAdminTable ... />
-) : (
-  <ExistingCardsView ... />
-)}
-```
+Any feature or UI change made in one will automatically apply to the other.
 
 ---
 
 ## Testing Checklist
 
-After implementation, verify for each content type:
-- [ ] Cards/Table toggle is visible for admins
-- [ ] Clicking "Table" shows the table view
-- [ ] Clicking "Cards" returns to card view
-- [ ] Multi-select works in table view
-- [ ] Bulk section assignment works in table view
-- [ ] Edit/Delete actions work from table view
-- [ ] Students only see cards view (no toggle)
+After implementation:
+- [ ] Navigate to a Pharmacology topic (e.g., PHAR-108)
+- [ ] Verify "Test Yourself" section appears in navigation
+- [ ] Verify MCQ tab uses modern McqList with Cards/Table toggle
+- [ ] Test adding a single MCQ via the Add button
+- [ ] Test bulk CSV upload for MCQs
+- [ ] Verify True/False tab appears and works
+- [ ] Verify OSCE tab appears and works
+- [ ] Compare UI side-by-side with Surgery chapter - should be identical
+- [ ] Verify Add Department modal only shows "Chapter (Ch)" and "Lecture (Lec)"
+
