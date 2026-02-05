@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Trash2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MatchingQuestion, MatchItem } from '@/hooks/useMatchingQuestions';
@@ -16,6 +17,8 @@ interface MatchingQuestionCardProps {
   onDelete?: () => void;
   isExpanded?: boolean;
   onToggleExpand?: (id: string) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (checked: boolean) => void;
 }
 
 export function MatchingQuestionCard({ 
@@ -26,7 +29,9 @@ export function MatchingQuestionCard({
   onEdit, 
   onDelete,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  isSelected,
+  onToggleSelect
 }: MatchingQuestionCardProps) {
   const [selectedMatches, setSelectedMatches] = useState<Record<string, string>>({});
   const [selectedA, setSelectedA] = useState<string | null>(null);
@@ -141,6 +146,16 @@ export function MatchingQuestionCard({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
+              {/* Checkbox for multi-select (admin only) */}
+              {onToggleSelect && (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={onToggleSelect}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select question ${index + 1}`}
+                  className="shrink-0"
+                />
+              )}
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>

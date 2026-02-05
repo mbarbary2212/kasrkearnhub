@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { useBulkDeleteContent, useBulkUpdateSection, type ContentTableName } from '@/hooks/useContentBulkOperations';
 import { exportToCsv, type ExportColumn } from '@/lib/csvExport';
 import type { Section } from '@/hooks/useSections';
+import { BulkSectionAssignment } from '@/components/sections';
 
 export interface ColumnConfig<T> {
   key: keyof T | 'actions' | 'select' | 'section';
@@ -257,6 +258,15 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete
               </Button>
+              {sections.length > 0 && chapterId && (
+                <BulkSectionAssignment
+                  chapterId={chapterId}
+                  topicId={topicId}
+                  selectedIds={Array.from(selectedIds)}
+                  contentTable={contentTable}
+                  onComplete={clearSelection}
+                />
+              )}
             </>
           )}
         </div>
