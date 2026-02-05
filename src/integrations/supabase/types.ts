@@ -2216,6 +2216,7 @@ export type Database = {
           module_id: string
           section_id: string | null
           stem: string
+          topic_id: string | null
           updated_by: string | null
         }
         Insert: {
@@ -2232,6 +2233,7 @@ export type Database = {
           module_id: string
           section_id?: string | null
           stem: string
+          topic_id?: string | null
           updated_by?: string | null
         }
         Update: {
@@ -2248,6 +2250,7 @@ export type Database = {
           module_id?: string
           section_id?: string | null
           stem?: string
+          topic_id?: string | null
           updated_by?: string | null
         }
         Relationships: [
@@ -2270,6 +2273,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcqs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -2620,6 +2630,7 @@ export type Database = {
           statement_3: string
           statement_4: string
           statement_5: string
+          topic_id: string | null
           updated_at: string | null
           updated_by: string | null
         }
@@ -2650,6 +2661,7 @@ export type Database = {
           statement_3: string
           statement_4: string
           statement_5: string
+          topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -2680,6 +2692,7 @@ export type Database = {
           statement_3?: string
           statement_4?: string
           statement_5?: string
+          topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -2703,6 +2716,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "osce_questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
