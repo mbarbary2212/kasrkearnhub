@@ -1,149 +1,258 @@
 
-# Plan: Fix Missing True/False Tab Integration in ChapterPage
 
-## Problem Summary
-The True/False tab appears in the navigation (showing count "0") but clicking it displays nothing - no admin controls, no content, no empty state message. This is because the ChapterPage was not updated to integrate the True/False feature.
+# Plan: Add Multi-Select and Bulk Operations to All Content Types
 
-## Root Cause
-The `ChapterPage.tsx` is missing several key integrations:
+## Overview
+Implement consistent multi-select functionality with bulk operations (delete, assign section, etc.) across all content tabs in admin views: Videos/Lectures, Flashcards, MCQs, OSCE, True/False, Essays, Clinical Cases, and Matching Questions.
 
-1. **Missing imports** - No import for `useChapterTrueFalseQuestions` hook or `TrueFalseList` component
-2. **Missing data fetching** - The hook is never called to fetch True/False questions
-3. **Missing tab count** - The `true_false` count is not passed to `createPracticeTabs()`
-4. **Missing content block** - No `{practiceTab === 'true_false' && (...)}` rendering section
+## Current State Analysis
 
-## Solution
+| Content Type | Multi-Select | Bulk Delete | Bulk Section Assign | Table View |
+|--------------|--------------|-------------|---------------------|------------|
+| MCQs | Yes | Yes | Yes | Yes |
+| OSCE | Yes | No (via table) | Yes | No |
+| True/False | Yes | No | Yes | Yes |
+| Lectures | No | No | Via table only | Yes |
+| Flashcards | No | No | Via table only | Yes |
+| Essays | No | No | No | No |
+| Clinical Cases | Yes | No | Yes | No |
+| Matching Questions | Partial | No | No | No |
 
-### Phase 1: ChapterPage Integration
+## Implementation Strategy
 
-Update `src/pages/ChapterPage.tsx` to properly integrate True/False:
+The existing `ContentAdminTable` component already provides excellent bulk functionality:
+- Multi-select with "Select All" checkbox
+- Bulk delete with confirmation dialog
+- Inline section assignment via dropdown
+- CSV export
 
-**1.1 Add imports:**
+The solution is to ensure all content types:
+1. Have a **Table View** option with `ContentAdminTable`
+2. In **Cards View**, add consistent multi-select controls matching the MCQ/OSCE pattern
+3. Wire up `BulkSectionAssignment` component for bulk section tagging
+4. Add bulk delete capability where missing
+
+---
+
+## Phase 1: Enhance ContentAdminTable with More Bulk Actions
+
+Update `src/components/admin/ContentAdminTable.tsx` to add a bulk section assignment button to the toolbar (currently it only has bulk delete).
+
+**Changes:**
+- Add `BulkSectionAssignment` component to the toolbar when items are selected
+- Add the `contentTable` to the BulkSectionAssignment call
+
 ```typescript
-import { useChapterTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
-import { TrueFalseList } from '@/components/content/TrueFalseList';
+// In toolbar section, after bulk delete button:
+{selectedIds.size > 0 && sections.length > 0 && (
+  <BulkSectionAssignment
+    chapterId={chapterId}
+    topicId={topicId}
+    selectedIds={Array.from(selectedIds)}
+    contentTable={contentTable}
+    onComplete={clearSelection}
+  />
+)}
 ```
 
-**1.2 Add data fetching (alongside other question hooks):**
+---
+
+## Phase 2: Lectures - Add Multi-Select in Cards View
+
+Currently `LectureList.tsx` only has multi-select in Table View via `LecturesAdminTable`. Add multi-select to Cards View.
+
+**File:** `src/components/content/LectureList.tsx`
+
+**Changes:**
+1. Add state for `selectedIds` (Set<string>)
+2. Add `toggleSelection`, `selectAll`, `clearSelection` callbacks
+3. Add admin toolbar with:
+   - Select All checkbox
+   - "X selected" indicator
+   - Clear button
+   - BulkSectionAssignment component
+   - Bulk Delete button with confirmation dialog
+4. Add checkbox to each lecture card row
+
+---
+
+## Phase 3: Flashcards - Add Multi-Select Controls
+
+Currently `FlashcardsTab.tsx` shows either Cards or Table view for admins. The Table view has multi-select via `ContentAdminTable`, but Cards view (`FlashcardsAdminGrid`) does not.
+
+**Option A (Recommended):** Add a wrapper component with selection controls above the grid/table.
+
+**File:** `src/components/study/FlashcardsTab.tsx`
+
+**Changes:**
+1. Add state for `selectedIds` 
+2. Add admin toolbar with multi-select controls when in Cards view
+3. Pass selection state to `FlashcardsAdminGrid`
+4. Add checkbox rendering to each flashcard group card
+
+**File:** `src/components/study/FlashcardsAdminGrid.tsx`
+
+**Changes:**
+1. Add `selectedIds` and `onToggleSelection` props
+2. Add checkbox to each deck group header
+
+---
+
+## Phase 4: Essays - Create Admin Table and Controls
+
+Essays currently have no admin table view or multi-select.
+
+**Files to Create:**
+- `src/components/content/EssaysAdminTable.tsx` - Table view using `ContentAdminTable`
+
+**File:** `src/components/content/EssayList.tsx` (Update)
+
+**Changes:**
+1. Add admin view mode toggle (Cards/Table)
+2. Add multi-select state and controls
+3. Add `BulkSectionAssignment` component
+4. Add bulk delete with confirmation
+5. Import and render `EssaysAdminTable` when in table view
+
+---
+
+## Phase 5: Matching Questions - Complete Multi-Select
+
+**File:** `src/components/content/MatchingQuestionList.tsx`
+
+Verify and ensure:
+1. Multi-select state exists
+2. Select All checkbox in toolbar
+3. BulkSectionAssignment component wired up
+4. Bulk delete with confirmation
+
+---
+
+## Phase 6: Update useContentBulkOperations Hook
+
+**File:** `src/hooks/useContentBulkOperations.ts`
+
+Add missing table entries to `ContentTableName` and `QUERY_INVALIDATION_MAP`:
+
 ```typescript
-const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useChapterTrueFalseQuestions(chapterId);
-const { data: deletedTrueFalse } = useChapterTrueFalseQuestions(chapterId, true);
+export type ContentTableName = 
+  | 'lectures'
+  | 'resources'
+  | 'study_resources'
+  | 'mcqs'
+  | 'essays'
+  | 'clinical_cases'
+  | 'osce_questions'
+  | 'matching_questions'
+  | 'virtual_patient_cases'
+  | 'true_false_questions';  // Add if not present
+
+const QUERY_INVALIDATION_MAP: Record<ContentTableName, string[]> = {
+  // ... existing entries
+  true_false_questions: ['true_false'],  // Add
+};
 ```
 
-**1.3 Add state for deleted toggle:**
-```typescript
-const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
+---
+
+## Implementation Files Summary
+
+| File | Action | Priority |
+|------|--------|----------|
+| `src/components/admin/ContentAdminTable.tsx` | Add BulkSectionAssignment to toolbar | High |
+| `src/components/content/LectureList.tsx` | Add multi-select in cards view | High |
+| `src/components/study/FlashcardsTab.tsx` | Add multi-select controls wrapper | High |
+| `src/components/study/FlashcardsAdminGrid.tsx` | Add checkbox to deck groups | High |
+| `src/components/content/EssaysAdminTable.tsx` | Create new table component | Medium |
+| `src/components/content/EssayList.tsx` | Add admin controls and table view | Medium |
+| `src/components/content/MatchingQuestionList.tsx` | Complete multi-select setup | Medium |
+| `src/hooks/useContentBulkOperations.ts` | Add missing table types | High |
+
+---
+
+## UI Pattern Reference
+
+All admin list views should follow this consistent pattern:
+
+```text
++------------------------------------------------------------------+
+| [✓] Select all  |  3 selected  | [Clear] | [Assign Section ▾] | [🗑 Delete] | [⬇ Export CSV] |  [Cards/Table Toggle] |
++------------------------------------------------------------------+
 ```
 
-**1.4 Add deleted filter:**
+When items are selected:
+- Show count: "3 selected"
+- Show Clear button
+- Show Assign Section popover (uses BulkSectionAssignment)
+- Show Delete button (opens confirmation dialog)
+- Show Export CSV (exports selected or all)
+
+---
+
+## Technical Details
+
+### Multi-Select State Pattern
 ```typescript
-const deletedOnlyTrueFalse = (deletedTrueFalse || []).filter(q => q.is_deleted);
+const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+const toggleSelection = useCallback((id: string, checked: boolean) => {
+  setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (checked) next.add(id);
+    else next.delete(id);
+    return next;
+  });
+}, []);
+
+const selectAll = useCallback(() => {
+  setSelectedIds(new Set(filteredItems.map(item => item.id)));
+}, [filteredItems]);
+
+const clearSelection = useCallback(() => {
+  setSelectedIds(new Set());
+}, []);
 ```
 
-**1.5 Update `createPracticeTabs` call to include true_false count:**
-```typescript
-return createPracticeTabs({
-  mcqs: mcqs?.length || 0,
-  true_false: trueFalseQuestions?.length || 0,  // Add this line
-  essays: essays?.length || 0,
-  clinical_cases: clinicalCasesCount,
-  osce: osceQuestions?.length || 0,
-  practical: 0,
-  matching: matchingQuestions?.length || 0,
-  images: 0,
-});
-```
-
-**1.6 Add content rendering block after MCQs section (around line 700):**
-```typescript
-{/* True/False Content */}
-{practiceTab === 'true_false' && (
-  <div>
-    {trueFalseLoading ? (
-      <QuestionListSkeleton count={2} type="mcq" />
-    ) : (
-      <TrueFalseList
-        questions={filterBySection(trueFalseQuestions || [])}
-        deletedQuestions={deletedOnlyTrueFalse}
-        moduleId={moduleId || ''}
-        chapterId={chapterId}
-        isAdmin={canManageContent}
-        showDeletedToggle={canManageContent}
-        showDeleted={showDeletedTrueFalse}
-        onShowDeletedChange={setShowDeletedTrueFalse}
-      />
+### Admin Toolbar Pattern
+```tsx
+{isAdmin && (
+  <div className="flex flex-wrap items-center gap-2 mb-4">
+    <Checkbox 
+      checked={selectedIds.size > 0 && selectedIds.size === items.length}
+      onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+    />
+    <span className="text-sm text-muted-foreground">
+      {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+    </span>
+    {selectedIds.size > 0 && (
+      <>
+        <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+        <BulkSectionAssignment
+          chapterId={chapterId}
+          selectedIds={Array.from(selectedIds)}
+          contentTable="lectures"
+          onComplete={clearSelection}
+        />
+        <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+          <Trash2 className="w-4 h-4 mr-1" /> Delete
+        </Button>
+      </>
     )}
   </div>
 )}
 ```
 
-### Phase 2: Enhance TrueFalseList Component
+---
 
-The current `TrueFalseList` has minimal admin controls. Update it to match the MCQ list pattern with:
+## Testing Checklist
 
-**2.1 Add missing props to interface:**
-```typescript
-interface TrueFalseListProps {
-  questions: TrueFalseQuestion[];
-  deletedQuestions?: TrueFalseQuestion[];
-  moduleId: string;
-  chapterId?: string | null;
-  topicId?: string | null;
-  isAdmin: boolean;
-  showDeletedToggle?: boolean;    // Add
-  showDeleted?: boolean;          // Already exists
-  onShowDeletedChange?: (show: boolean) => void;  // Add
-}
-```
+After implementation, verify for each content type:
+- [ ] Select individual items via checkbox
+- [ ] Select all via header checkbox
+- [ ] Clear selection works
+- [ ] Bulk assign section updates all selected items
+- [ ] Bulk delete soft-deletes all selected items
+- [ ] Selection persists when switching between cards/table view (optional)
+- [ ] Export CSV works with selection (if applicable)
+- [ ] Multi-select controls hidden for students
 
-**2.2 Add admin controls matching MCQ pattern:**
-- Select all checkbox with multi-select state
-- Assign Section button (using `BulkSectionAssignment` component)
-- Bulk Import button
-- Add Question button
-- Cards/Table view toggle (using `AdminViewToggle` component)
-
-**2.3 Add search and filter controls:**
-- Search input for filtering by statement text
-- Difficulty filter dropdown
-- Marked (0) / Duplicates (0) / Deleted (0) toggle buttons
-
-**2.4 Add count display:**
-- Show filtered count like "20/20"
-
-### Phase 3: Create TrueFalseAdminTable Component (Optional Enhancement)
-
-Create `src/components/content/TrueFalseAdminTable.tsx` for the table view:
-- Multi-select checkboxes in first column
-- Statement column (truncated with tooltip)
-- Answer column (True/False badge)
-- Difficulty column
-- Section dropdown for inline assignment
-- Edit/Delete action buttons
-
-This can be a follow-up enhancement after the core integration is working.
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/ChapterPage.tsx` | Add imports, data fetching, state, and rendering block |
-| `src/components/content/TrueFalseList.tsx` | Add missing props and enhanced admin controls |
-
-## Implementation Order
-
-1. Fix ChapterPage.tsx integration (critical - makes tab work)
-2. Add missing TrueFalseList props for deleted toggle
-3. Enhance TrueFalseList with full admin controls (matching MCQ pattern)
-4. Test end-to-end: tab click, empty state, add question, bulk upload
-
-## Expected Outcome
-
-After these changes:
-- Clicking True/False tab will show the admin controls (Select all, Assign Section, Bulk Import, Add Question)
-- Search and filter bar will be visible
-- Cards/Table view toggle will work
-- Empty state message will show when no questions exist
-- Admin can add single questions via form modal
-- Admin can bulk upload via CSV
-- Section assignment will work via dropdown
