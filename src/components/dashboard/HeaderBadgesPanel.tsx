@@ -50,7 +50,7 @@ export function HeaderBadgesPanel({ open, onOpenChange }: HeaderBadgesPanelProps
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[360px] sm:w-[400px]">
+      <SheetContent side="right" className="w-[360px] sm:w-[400px] flex flex-col overflow-hidden">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2 text-xl">
             <Trophy className="h-6 w-6 text-yellow-500" />
@@ -58,7 +58,7 @@ export function HeaderBadgesPanel({ open, onOpenChange }: HeaderBadgesPanelProps
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6">
           {/* Progress Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

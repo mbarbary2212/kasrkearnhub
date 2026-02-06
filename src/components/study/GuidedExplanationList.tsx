@@ -158,7 +158,7 @@ export function GuidedExplanationList({
         open={!!selectedResource} 
         onOpenChange={(open) => !open && setSelectedResource(null)}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden p-0">
           {selectedResource && (
             <GuidedExplanationViewer
               title={selectedResource.title}

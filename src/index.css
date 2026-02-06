@@ -148,4 +148,10 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
+
+  /* Single scroll container pattern - use on the innermost scrollable element */
+  .scroll-container {
+    @apply overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
 }
