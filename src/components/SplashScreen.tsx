@@ -144,11 +144,11 @@ export default function SplashScreen({
 
         {/* Pillar overlay - upper right corner */}
         <div className="absolute top-4 right-4" style={animationStyle}>
-          <div className="bg-black/40 backdrop-blur-md px-2 py-1.5 w-fit text-left rounded-md">
-            <h2 className="text-[10px] font-medium text-white">
+          <div className="bg-black/40 backdrop-blur-md px-3 py-3 w-24 min-h-24 flex flex-col justify-center text-left rounded-md">
+            <h2 className="text-[10px] font-medium text-white leading-tight">
               {PILLARS[currentPillar].title}
             </h2>
-            <p className="text-[9px] text-white/80 mt-0.5">
+            <p className="text-[8px] text-white/80 mt-1 leading-tight">
               {PILLARS[currentPillar].description}
             </p>
           </div>
