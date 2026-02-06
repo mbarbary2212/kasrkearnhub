@@ -1,72 +1,32 @@
 
 
-# Plan: Reposition SEO Text to Left Side
+# Fix: Background Image Top Cropping on macOS Browsers
 
 ## Problem
-The subtitle ("Kasr Al-Ainy Learning & Mentorship Hub") and description paragraph are currently centered on the screen, covering the watercolor building image in the background.
+The top portion of the splash screen background image appears cut off or unclear in Chrome and Safari on macOS. This is visible in your screenshots where the top of the building/architectural elements are cropped.
+
+## Root Cause
+The current background positioning uses `bg-center`, which centers the image both horizontally and vertically. On screens with different aspect ratios than the image, this can crop the top portion of the image.
 
 ## Solution
-Move the SEO text content to the left side, positioned below the logo and title, creating a left-aligned content column that leaves the central image visible.
-
-## Layout Changes
-
-### Desktop/Tablet View
-**Before:**
-```
-+--------------------------------------------------+
-|  [Logo] KALM Hub                                 |
-|                                                  |
-|           [Centered subtitle]                    |
-|           [Centered SEO paragraph]               |
-|                                                  |
-|  [Pillar animation]                              |
-|                                                  |
-|              [Login button]                      |
-+--------------------------------------------------+
-```
-
-**After:**
-```
-+--------------------------------------------------+
-|  [Logo] KALM Hub                                 |
-|  Kasr Al-Ainy Learning & Mentorship Hub          |
-|                                                  |
-|  [SEO paragraph - left aligned]                  |
-|                                                  |
-|  [Pillar animation]              [Image visible] |
-|                                                  |
-|              [Login button]                      |
-+--------------------------------------------------+
-```
-
-### Mobile View
-Similar approach - left-aligned text below the logo/title area.
+Change the background position from `bg-center` to `bg-top` (or a custom position like `bg-[center_top]`) so the top of the image is always visible and any cropping happens at the bottom instead.
 
 ## Technical Changes
 
-**File: `src/components/SplashScreen.tsx`**
+### File: `src/components/SplashScreen.tsx`
 
-1. **Remove centered content div** (lines 76-89 for desktop, lines 131-144 for mobile)
+**Desktop container (line 51):**
+- Change `bg-center` to `bg-top` to anchor the image from the top
 
-2. **Move subtitle and SEO paragraph into the logo/title container** with absolute positioning, or create a new left-aligned container below the logo
+**Mobile container (line 97):**
+- Change `bg-center` to `bg-top` for consistency
 
-3. **New positioning for desktop:**
-   - Position: `absolute top-24 left-12` (below the logo area)
-   - Text alignment: `text-left`
-   - Max width: `max-w-md` to prevent spanning too wide
-   - Remove `mx-auto` centering
+| Before | After |
+|--------|-------|
+| `bg-cover bg-center bg-no-repeat` | `bg-cover bg-top bg-no-repeat` |
 
-4. **New positioning for mobile:**
-   - Position: `absolute top-16 left-4` (below the mobile logo)
-   - Smaller text sizes maintained
-   - Left-aligned text
-
-5. **Adjust pillar animation position** if needed to avoid overlap (currently at `top-1/2 left-12`)
-
-## Visual Styling
-- Keep text shadow/outline for readability against varying backgrounds
-- Maintain semi-transparent text colors (`text-white/90`, `text-white/70`)
-- Add drop-shadow for better contrast
-outline the fonts for better visalbilty 
-
+## Result
+- The top of the background image (showing the building architecture) will always be visible
+- Any cropping due to aspect ratio differences will happen at the bottom of the image instead
+- The splash screen will look consistent across Chrome, Safari, and other browsers on macOS
 
