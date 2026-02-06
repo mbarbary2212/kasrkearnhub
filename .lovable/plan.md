@@ -1,239 +1,198 @@
 
 
-# Plan: Fix Scrolling Issues Across the Application
+# Plan: SEO-Optimized Landing Page with New Branding
 
-## Problem Summary
+## Overview
 
-The user experiences scroll "trapping" where:
-1. Scrolling inside a nested frame/container doesn't propagate to the parent when reaching the boundary
-2. They have to move the mouse outside a frame and scroll there for the page to scroll
-3. This feels unnatural and gives the impression that scrolling is broken
+Transform the current SplashScreen from an overlay component into a proper SEO-indexable landing page. The new design will use the uploaded watercolor building images as backgrounds, the new icon-only logo, and semantic HTML text for "KALM Hub" title with proper styling.
 
-## Root Cause Analysis
+## Current vs. New Architecture
 
-After investigating the codebase, I found **multiple sources of nested scroll contexts** that can trap scroll events:
-
-### Issue 1: Nested ScrollArea + overflow-y-auto Combination
-Several components use both `ScrollArea` (Radix UI) AND `overflow-y-auto` on parent containers, creating double scroll contexts:
-
-| File | Problem |
-|------|---------|
-| `EssayDetailModal.tsx` | `ScrollArea` with `overflow-y-auto` class on the same element (line 162) |
-| `ClinicalCaseStageFormModal.tsx` | `ScrollArea` with `overflow-y-auto` on same element (line 266) |
-| `ClinicalCaseFormModal.tsx` | `ScrollArea` with `overflow-y-auto` (line 193) |
-
-### Issue 2: DialogContent Global Scroll + Component-Level Scroll
-The `dialog.tsx` component adds global `max-h-[90vh] overflow-y-auto overscroll-contain` to ALL dialogs (line 50). When modals also have their own ScrollArea inside, this creates nested scroll containers:
-
-```
-DialogContent (overflow-y-auto, overscroll-contain) ← TRAPS SCROLL
-  └── ScrollArea (internal scroll) ← ALSO SCROLLS
-```
-
-The `overscroll-contain` prevents scroll events from propagating to the parent when the inner element reaches its boundary.
-
-### Issue 3: SheetContent Missing Scroll Handling
-`sheet.tsx` doesn't have consistent scroll handling for long content, causing some sheets to overflow or trap scroll.
-
-### Issue 4: Individual Modal Scroll Patterns
-Many modals apply `max-h-[90vh] overflow-y-auto` directly to DialogContent, then add another `overflow-y-auto` div inside:
-
-```typescript
-// McqList.tsx line 882
-<DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-  <div className="flex-1 overflow-y-auto space-y-4">  ← Nested scroll
-```
-
-This is actually correct (using `overflow-hidden` on parent), but inconsistent across the app.
+| Aspect | Current | New |
+|--------|---------|-----|
+| Component type | Fixed overlay on all routes | Conditional first-visit landing screen |
+| Background images | `/splash-landscape.jpeg`, `/splash-portrait.jpeg` | New watercolor building images |
+| Logo | Full logo image with text | Icon-only logo + semantic text |
+| Title | None (embedded in logo) | `<h1>KALM Hub</h1>` with styled text |
+| SEO content | None | Static visible paragraph for Google |
+| Meta tags | Basic | Full SEO-optimized title and description |
 
 ---
 
-## Solution Architecture
+## Implementation Steps
 
-### Strategy: Establish a Clear Scroll Hierarchy
+### Step 1: Copy Uploaded Assets to Project
 
-1. **Dialog/Sheet containers** → Fixed position, constrained height, NO scroll
-2. **Content wrapper inside** → Single scrollable area with proper overscroll behavior
-3. **Nested content** → No additional scroll containers unless explicitly needed (like code previews)
+Copy the three uploaded images to the public folder for CSS background usage:
+
+| Source | Destination |
+|--------|-------------|
+| `user-uploads://element-289244-create_a_background_image_from.png` | `public/splash-landscape.png` |
+| `user-uploads://element-289247-create_a_background_image_from.png` | `public/splash-portrait.png` |
+| `user-uploads://kalm_logo.PNG` | `src/assets/kalm-logo-icon.png` |
+
+### Step 2: Update SEO Meta Tags in index.html
+
+**File: `index.html`**
+
+Update the `<head>` section with enhanced SEO metadata:
+
+```html
+<title>KALM Hub - Kasr Al-Ainy Learning & Mentorship Platform</title>
+<meta name="description" content="KALM Hub is a digital learning and mentorship platform developed at Kasr Al-Ainy to support medical students and trainees through structured education, formative assessment, and guided learning." />
+
+<!-- Open Graph -->
+<meta property="og:title" content="KALM Hub - Kasr Al-Ainy Learning & Mentorship Platform" />
+<meta property="og:description" content="Digital learning and mentorship platform supporting medical students at Kasr Al-Ainy through structured education and formative assessment." />
+```
+
+### Step 3: Redesign SplashScreen Component
+
+**File: `src/components/SplashScreen.tsx`**
+
+Transform into an SEO-friendly landing page:
+
+**A. Structure:**
+```
++--------------------------------------------------+
+|                                                  |
+|     [Logo Icon]                                  |
+|                                                  |
+|     KALM Hub   (KALM=white, Hub=golden)         |
+|     Kasr Al-Ainy Learning & Mentorship Hub      |
+|                                                  |
+|     [Static SEO paragraph - visible to Google]  |
+|                                                  |
+|     [Animated pillar overlay]                   |
+|                                                  |
+|     [Click to log in button]                    |
+|                                                  |
++--------------------------------------------------+
+          (watercolor building background)
+```
+
+**B. Key Changes:**
+
+1. **Replace background images** with new watercolor building images:
+   - Desktop: `bg-[url('/splash-landscape.png')]`
+   - Mobile: `bg-[url('/splash-portrait.png')]`
+
+2. **Add semantic title text:**
+   ```tsx
+   <h1 className="text-4xl md:text-6xl font-heading font-bold">
+     <span className="text-white">KALM</span>
+     <span className="text-amber-500"> Hub</span>
+   </h1>
+   <p className="text-lg md:text-xl text-white/90 mt-2">
+     Kasr Al-Ainy Learning & Mentorship Hub
+   </p>
+   ```
+
+3. **Add static SEO content** (visible but styled to blend):
+   ```tsx
+   <p className="text-sm text-white/70 max-w-md mx-auto mt-4">
+     KALM Hub is an academic digital platform designed to support medical 
+     students and trainees at Kasr Al-Ainy through structured learning 
+     resources, formative assessment, mentorship, and progress tracking.
+   </p>
+   ```
+
+4. **Import and display the icon-only logo:**
+   ```tsx
+   import logoIcon from '@/assets/kalm-logo-icon.png';
+   
+   <img 
+     src={logoIcon} 
+     alt="KALM Hub Logo" 
+     className="w-20 h-20 md:w-28 md:h-28 mx-auto mb-4"
+   />
+   ```
+
+5. **Keep animated pillars** - same cycling animation with the 4 frames
+
+6. **Keep "Click to log in" button** - same position and behavior
+
+**C. Visual Layout (Desktop):**
+- Content centered vertically and horizontally
+- Logo icon at top
+- Title below logo
+- Subtitle/tagline below title
+- SEO paragraph below subtitle
+- Animated pillar overlay positioned on the left (as current)
+- Login button at bottom center
+
+**D. Visual Layout (Mobile):**
+- Same structure but scaled down
+- Pillar overlay smaller and left-aligned (as current)
+- Smaller fonts and spacing
+
+### Step 4: Styling Details
+
+**Golden/Amber color for "Hub":**
+Use Tailwind's `text-amber-500` or `text-yellow-500` to match the logo's golden accent. Based on the logo image, `text-amber-500` (approximately #f59e0b) provides a good match.
+
+**Font styling:**
+- Use `font-heading` (Plus Jakarta Sans) for the title
+- Font weights: `font-bold` for main title, `font-medium` for subtitle
+
+**Text visibility:**
+- All text content is rendered as real HTML elements
+- Nothing hidden via CSS or animation-only display
+- Static paragraph visible on initial load
 
 ---
 
-## Implementation Plan
+## Files to Create/Modify
 
-### Step 1: Update DialogContent Base Component
-
-**File: `src/components/ui/dialog.tsx`**
-
-Remove the global `overflow-y-auto overscroll-contain` from DialogContent base and instead use `overflow-hidden`:
-
-```typescript
-// Before (line 48-52)
-"max-h-[90vh] overflow-y-auto overscroll-contain",
-"[&]:touch-action-pan-y [-webkit-overflow-scrolling:touch]",
-
-// After
-"max-h-[90vh] overflow-hidden",  // Container holds shape, doesn't scroll
-```
-
-This forces each modal to explicitly add a single scroll wrapper inside, preventing nested scrolls.
-
-### Step 2: Update ScrollArea Component
-
-**File: `src/components/ui/scroll-area.tsx`**
-
-Add `overscroll-contain` to prevent scroll chaining in the correct place:
-
-```typescript
-// Line 14 - update Viewport
-<ScrollAreaPrimitive.Viewport 
-  className="h-full w-full rounded-[inherit] overscroll-contain [-webkit-overflow-scrolling:touch]"
->
-```
-
-This is already correct! The issue is that ScrollArea is being combined with external `overflow-y-auto`.
-
-### Step 3: Fix Modals with Double Scroll
-
-Update these files to use consistent pattern: `overflow-hidden` on DialogContent, single ScrollArea or `overflow-y-auto` inside.
-
-**Files to update:**
-
-| File | Current Issue | Fix |
-|------|---------------|-----|
-| `EssayDetailModal.tsx` | ScrollArea + overflow-y-auto | Remove `overflow-y-auto` from ScrollArea element |
-| `ClinicalCaseFormModal.tsx` | ScrollArea + overflow-y-auto | Remove `overflow-y-auto` from ScrollArea |
-| `ClinicalCaseStageFormModal.tsx` | ScrollArea + overflow-y-auto | Remove `overflow-y-auto` from ScrollArea |
-| `GuidedExplanationList.tsx` | DialogContent overflow-y-auto | Use overflow-hidden on DialogContent |
-| `OsceAnalyticsDashboard.tsx` | DialogContent overflow-y-auto | Use overflow-hidden + inner scroll |
-
-### Step 4: Establish Consistent Modal Pattern
-
-Create a standard pattern for all modals:
-
-```typescript
-// CORRECT PATTERN
-<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-  <DialogHeader className="flex-shrink-0">
-    {/* Header - always visible */}
-  </DialogHeader>
-  
-  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-    {/* Scrollable content */}
-  </div>
-  
-  <DialogFooter className="flex-shrink-0">
-    {/* Footer - always visible */}
-  </DialogFooter>
-</DialogContent>
-```
-
-Or using ScrollArea:
-
-```typescript
-<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-  <DialogHeader className="flex-shrink-0">{/* ... */}</DialogHeader>
-  
-  <ScrollArea className="flex-1 min-h-0">
-    {/* Content */}
-  </ScrollArea>
-  
-  <DialogFooter className="flex-shrink-0">{/* ... */}</DialogFooter>
-</DialogContent>
-```
-
-### Step 5: Fix Sheet Components
-
-**File: `src/components/ui/sheet.tsx`**
-
-Add proper scroll handling for sheet content:
-
-```typescript
-// Update SheetContent (around line 58)
-<SheetPrimitive.Content 
-  ref={ref} 
-  className={cn(
-    sheetVariants({ side }), 
-    "flex flex-col overflow-hidden",  // Add overflow-hidden
-    className
-  )} 
-  {...props}
->
-```
-
-### Step 6: Update Coach Panel Sheet
-
-**File: `src/components/coach/AskCoachPanel.tsx`**
-
-The coach panel uses ScrollArea correctly inside SheetContent, but ensure the SheetContent itself uses `overflow-hidden`:
-
-```typescript
-<SheetContent 
-  side={isMobile ? "bottom" : "right"} 
-  className={`flex flex-col p-0 overflow-hidden ${...}`}  // Add overflow-hidden
->
-```
-
-### Step 7: Add Global CSS Utility
-
-**File: `src/index.css`**
-
-Add a utility class for consistent modal scrolling:
-
-```css
-@layer utilities {
-  /* Single scroll container pattern */
-  .scroll-container {
-    @apply overflow-y-auto overscroll-contain;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-```
+| File | Action |
+|------|--------|
+| `public/splash-landscape.png` | Create (copy from upload) |
+| `public/splash-portrait.png` | Create (copy from upload) |
+| `src/assets/kalm-logo-icon.png` | Create (copy from upload) |
+| `index.html` | Update meta tags |
+| `src/components/SplashScreen.tsx` | Major refactor with new design |
 
 ---
 
-## Files to Modify
+## SEO Compliance Checklist
 
-| File | Change Type |
-|------|-------------|
-| `src/components/ui/dialog.tsx` | Change from `overflow-y-auto` to `overflow-hidden` on DialogContent |
-| `src/components/ui/sheet.tsx` | Add `overflow-hidden` to SheetContent |
-| `src/index.css` | Add `.scroll-container` utility class |
-| `src/components/content/EssayDetailModal.tsx` | Remove duplicate `overflow-y-auto` from ScrollArea |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Remove duplicate overflow |
-| `src/components/clinical-cases/ClinicalCaseStageFormModal.tsx` | Remove duplicate overflow |
-| `src/components/study/GuidedExplanationList.tsx` | Fix modal scroll pattern |
-| `src/components/analytics/OsceAnalyticsDashboard.tsx` | Fix modal scroll pattern |
-| `src/components/coach/AskCoachPanel.tsx` | Ensure overflow-hidden on SheetContent |
-| `src/components/dashboard/HeaderBadgesPanel.tsx` | Add overflow handling if content is long |
+After implementation:
+
+- [x] Public route (/) - already accessible
+- [x] No `noindex` meta tag - verified none exists
+- [x] robots.txt allows crawling - verified `Allow: /`
+- [x] Semantic `<h1>` with site name
+- [x] Semantic `<p>` with description
+- [x] Static visible content (not animation-only)
+- [x] Proper meta title and description
+- [x] Open Graph tags updated
 
 ---
 
-## Testing Checklist
+## Preserved Elements
 
-After implementation, verify these scenarios:
+These elements remain unchanged:
 
-1. **Topic/Chapter pages**: Scroll down through MCQ list, verify page scrolls when reaching content end
-2. **Essay modal**: Open essay detail, scroll through content, verify it doesn't trap when reaching top/bottom
-3. **Bulk upload modals**: Scroll through preview list, verify smooth scroll behavior
-4. **Coach panel**: Open coach panel, scroll chat messages, verify doesn't trap
-5. **Mobile**: Test on mobile viewport - swipe/scroll should feel natural
-6. **Flashcard slideshow**: Navigate through flashcards, verify no scroll trapping
+1. **Animated pillars** - Same 4 pillars cycling with fade animation
+2. **"Click to log in" button** - Same position and behavior
+3. **Dismiss on click** - Click anywhere to dismiss
+4. **z-index and overlay behavior** - Still overlays the app
+5. **UX flow** - Still acts as a welcome/landing screen before accessing the app
 
 ---
 
 ## Technical Notes
 
-### Why `overscroll-contain` matters
-- It prevents scroll events from "chaining" to parent elements when reaching the boundary
-- Should be applied to the **innermost** scroll container only
-- When applied to multiple nested containers, it creates scroll traps
+**Why use `public/` for background images:**
+- CSS `background-image: url()` requires files in the public folder
+- Direct URL references work with public folder
+- src/assets requires ES6 imports (not usable in CSS classes)
 
-### The `min-h-0` trick
-- In flexbox, children with `flex-1` need `min-h-0` to allow shrinking below content size
-- Without it, the `overflow-y-auto` won't activate properly
+**Why use `src/assets/` for the logo icon:**
+- Will be imported via ES6 module in the component
+- Enables bundler optimization
+- Type safety with TypeScript
 
-### ScrollArea vs native scroll
-- `ScrollArea` provides custom scrollbar styling but adds complexity
-- For simple cases, native `overflow-y-auto` is sufficient and less prone to issues
-- Reserve `ScrollArea` for cases where custom scrollbar appearance is needed
+**Color matching:**
+The logo uses a golden/amber color (#C9A227 approximately) which is close to Tailwind's `amber-500` (#f59e0b) or `yellow-600` (#ca8a04). We'll use `amber-500` for good visibility against dark backgrounds.
 
