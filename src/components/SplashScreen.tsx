@@ -26,10 +26,10 @@ export default function SplashScreen({
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    const FADE_IN = 800;
-    const HOLD = 3500;
-    const FADE_OUT = 800;
-    const CYCLE = FADE_IN + HOLD + FADE_OUT; // 5100ms
+    const FADE_IN = 500;
+    const HOLD = 2000;
+    const FADE_OUT = 500;
+    const CYCLE = FADE_IN + HOLD + FADE_OUT; // 3000ms
 
     const interval = setInterval(() => {
       // Start fade out
@@ -48,7 +48,7 @@ export default function SplashScreen({
     opacity: isVisible ? 1 : 0,
     transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
     filter: isVisible ? 'blur(0px)' : 'blur(4px)',
-    transition: 'opacity 800ms ease-out, transform 800ms ease-out, filter 800ms ease-out',
+    transition: 'opacity 500ms ease-out, transform 500ms ease-out, filter 500ms ease-out',
     willChange: 'opacity, transform, filter' as const
   };
 
@@ -72,7 +72,7 @@ export default function SplashScreen({
           </h1>
         </div>
         
-        {/* SEO Text - center left, vertically centered */}
+        {/* SEO Text + Login button - center left, vertically centered */}
         <div className="absolute top-1/2 left-6 -translate-y-1/2 z-10 max-w-xs text-left">
           <p className="text-lg md:text-xl text-black font-medium drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
@@ -80,6 +80,17 @@ export default function SplashScreen({
           <p className="text-sm text-black/80 mt-2 leading-relaxed max-w-[240px]">
             An academic digital platform supporting medical students at Kasr Al-Ainy.
           </p>
+          
+          {/* Login button */}
+          <button 
+            className="mt-4 px-6 py-2 bg-white/20 backdrop-blur-sm border border-black/30 text-black rounded-full text-sm font-medium hover:bg-white/40 transition-colors" 
+            onClick={e => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+          >
+            Click to log in
+          </button>
         </div>
 
         {/* Pillar overlay - upper right corner */}
@@ -93,17 +104,6 @@ export default function SplashScreen({
             </p>
           </div>
         </div>
-
-        {/* Login button */}
-        <button 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-lg font-medium hover:bg-white/20 transition-colors" 
-          onClick={e => {
-            e.stopPropagation();
-            onDismiss();
-          }}
-        >
-          Click to log in
-        </button>
       </div>
 
       {/* Mobile: CSS background image */}
@@ -121,7 +121,7 @@ export default function SplashScreen({
           </h1>
         </div>
         
-        {/* SEO Text - center left, vertically centered */}
+        {/* SEO Text + Login button - center left, vertically centered */}
         <div className="absolute top-1/2 left-4 -translate-y-1/2 z-10 max-w-[180px] text-left">
           <p className="text-xs text-black font-medium drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
@@ -129,6 +129,17 @@ export default function SplashScreen({
           <p className="text-[10px] text-black/80 mt-1 leading-relaxed">
             An academic platform for medical students at Kasr Al-Ainy.
           </p>
+          
+          {/* Login button */}
+          <button 
+            className="mt-3 px-4 py-1.5 bg-white/20 backdrop-blur-sm border border-black/30 text-black rounded-full text-xs font-medium hover:bg-white/40 transition-colors" 
+            onClick={e => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+          >
+            Click to log in
+          </button>
         </div>
 
         {/* Pillar overlay - upper right corner */}
@@ -142,17 +153,6 @@ export default function SplashScreen({
             </p>
           </div>
         </div>
-
-        {/* Login button */}
-        <button 
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors" 
-          onClick={e => {
-            e.stopPropagation();
-            onDismiss();
-          }}
-        >
-          Click to log in
-        </button>
       </div>
     </div>
   );
