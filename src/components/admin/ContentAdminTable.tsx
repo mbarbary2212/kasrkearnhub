@@ -297,12 +297,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                 >
                   {column.key === 'select' ? (
                     <Checkbox
-                      checked={allSelected}
-                      ref={(el) => {
-                        if (el && 'indeterminate' in el) {
-                          (el as HTMLInputElement).indeterminate = someSelected;
-                        }
-                      }}
+                      checked={someSelected ? 'indeterminate' : allSelected}
                       onCheckedChange={toggleAll}
                       aria-label="Select all"
                     />

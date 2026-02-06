@@ -12,12 +12,18 @@ import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
 import EssayList from '@/components/content/EssayList';
-import PracticalList from '@/components/content/PracticalList';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
+import { McqList } from '@/components/content/McqList';
+import { TrueFalseList } from '@/components/content/TrueFalseList';
+import { OsceList } from '@/components/content/OsceList';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
-import { useLectures, useResources, useMcqSets, useEssays, usePracticals, useClinicalCases } from '@/hooks/useContent';
+import { ChapterMockExamSection } from '@/components/exam';
+import { useLectures, useResources, useEssays, useClinicalCases } from '@/hooks/useContent';
+import { useTopicMcqs } from '@/hooks/useMcqs';
+import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
+import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useHideEmptySelfAssessmentTabs, useChapterStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { useTopicSectionsEnabled } from '@/hooks/useSections';
@@ -35,11 +41,11 @@ import {
   Video, 
   FileText, 
   HelpCircle, 
-  PenTool, 
   FlaskConical,
   Stethoscope,
   FolderOpen,
   GraduationCap,
+  ClipboardCheck,
   ClipboardList,
   ExternalLink,
   Plus,
@@ -48,7 +54,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type SectionMode = 'resources' | 'practice';
+type SectionMode = 'resources' | 'practice' | 'test';
 
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
@@ -76,6 +82,11 @@ export default function TopicDetailPage() {
   // Section filter state (only for Resources and Practice, NOT for Test)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
 
+  // Deleted items toggle state
+  const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
+  const [showDeletedOsce, setShowDeletedOsce] = useState(false);
+
   // Flashcard modals
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
@@ -85,14 +96,36 @@ export default function TopicDetailPage() {
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: lectures, isLoading: lecturesLoading } = useLectures(topicId);
   const { data: resources, isLoading: resourcesLoading } = useResources(topicId);
-  const { data: mcqSets, isLoading: mcqsLoading } = useMcqSets(topicId);
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
-  const { data: practicals, isLoading: practicalsLoading } = usePracticals(topicId);
   const { data: clinicalCases, isLoading: casesLoading } = useClinicalCases(topicId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
   const { data: flashcards, isLoading: flashcardsLoading } = useChapterStudyResourcesByType(undefined, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useTopicSectionsEnabled(topicId);
+
+  // Modern hooks for MCQ, True/False, OSCE
+  const { data: mcqs, isLoading: mcqsLoading } = useTopicMcqs(topicId, false);
+  const { data: deletedMcqs } = useTopicMcqs(topicId, true);
+  const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useTopicTrueFalseQuestions(topicId, false);
+  const { data: deletedTrueFalse } = useTopicTrueFalseQuestions(topicId, true);
+  const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
+  const { data: deletedOsce } = useTopicOsceQuestions(topicId, true);
+
+  // Compute deleted-only arrays
+  const deletedOnlyMcqs = useMemo(() => {
+    const activeIds = new Set((mcqs || []).map(m => m.id));
+    return (deletedMcqs || []).filter(m => !activeIds.has(m.id));
+  }, [mcqs, deletedMcqs]);
+
+  const deletedOnlyTrueFalse = useMemo(() => {
+    const activeIds = new Set((trueFalseQuestions || []).map(q => q.id));
+    return (deletedTrueFalse || []).filter(q => !activeIds.has(q.id));
+  }, [trueFalseQuestions, deletedTrueFalse]);
+
+  const deletedOnlyOsce = useMemo(() => {
+    const activeIds = new Set((osceQuestions || []).map(q => q.id));
+    return (deletedOsce || []).filter(q => !activeIds.has(q.id));
+  }, [osceQuestions, deletedOsce]);
   
   // Reset section filter when leaving topic
   useEffect(() => {
@@ -120,6 +153,37 @@ export default function TopicDetailPage() {
     setResourcesTab(tab);
   };
 
+  const sectionNav = [
+    { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
+    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
+    { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
+  ];
+
+  // Use unified tab configuration
+  const resourcesTabs = createResourceTabs({
+    lectures: lectures?.length || 0,
+    flashcards: flashcards?.length || 0,
+    reference_materials: resources?.length || 0,
+  });
+
+  const allPracticeTabs = createPracticeTabs({
+    mcqs: mcqs?.length || 0,
+    true_false: trueFalseQuestions?.length || 0,
+    essays: essays?.length || 0,
+    clinical_cases: clinicalCases?.length || 0,
+    osce: osceQuestions?.length || 0,
+    practical: 0,
+    matching: matchingQuestions?.length || 0,
+    images: 0,
+  });
+
+  // Admin sees all tabs; students see filtered based on setting
+  const practiceTabs = useMemo(() => {
+    if (canManageContent) return allPracticeTabs;
+    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, mcqs, trueFalseQuestions, essays, clinicalCases, osceQuestions, matchingQuestions, hideEmptyTabs]);
+
+  // Early return for not found - MUST be after all hooks
   if (!topicLoading && !topic) {
     return (
       <MainLayout>
@@ -132,34 +196,6 @@ export default function TopicDetailPage() {
       </MainLayout>
     );
   }
-
-  const sectionNav = [
-    { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
-    { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
-  ];
-
-  // Use unified tab configuration
-  const resourcesTabs = createResourceTabs({
-    lectures: lectures?.length || 0,
-    flashcards: flashcards?.length || 0,
-    reference_materials: resources?.length || 0,
-  });
-
-  const allPracticeTabs = createPracticeTabs({
-    mcqs: mcqSets?.length || 0,
-    essays: essays?.length || 0,
-    clinical_cases: clinicalCases?.length || 0,
-    osce: 0,
-    practical: practicals?.length || 0,
-    matching: matchingQuestions?.length || 0,
-    images: 0,
-  });
-
-  // Admin sees all tabs; students see filtered based on setting
-  const practiceTabs = useMemo(() => {
-    if (canManageContent) return allPracticeTabs;
-    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, mcqSets, essays, clinicalCases, practicals, matchingQuestions, hideEmptyTabs]);
 
   return (
     <MainLayout>
@@ -439,44 +475,46 @@ export default function TopicDetailPage() {
                   })}
                 </div>
 
-                {/* MCQs */}
+                {/* MCQs - Using modern McqList component */}
                 {practiceTab === 'mcqs' && (
                   <div>
-                    {canManageContent && topicId && moduleId && (
-                      <div className="mb-4">
-                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="mcq" />
-                      </div>
-                    )}
                     {mcqsLoading ? (
                       <div className="space-y-2">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
                       </div>
-                    ) : mcqSets && mcqSets.length > 0 ? (
+                    ) : (
+                      <McqList
+                        mcqs={filterBySection(mcqs || [])}
+                        deletedMcqs={deletedOnlyMcqs}
+                        moduleId={moduleId || ''}
+                        topicId={topicId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedMcqs}
+                        onShowDeletedChange={setShowDeletedMcqs}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* True/False Questions */}
+                {practiceTab === 'true_false' && (
+                  <div>
+                    {trueFalseLoading ? (
                       <div className="space-y-2">
-                        {mcqSets.map((mcq) => (
-                          <Card key={mcq.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <ClipboardList className="w-5 h-5 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-medium">{mcq.title}</h4>
-                                {mcq.description && (
-                                  <p className="text-sm text-muted-foreground line-clamp-1">{mcq.description}</p>
-                                )}
-                              </div>
-                              {mcq.time_limit_minutes && (
-                                <Badge variant="outline">{mcq.time_limit_minutes} min</Badge>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
                       </div>
                     ) : (
-                      <div className="text-center py-12 border rounded-lg">
-                        <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No MCQs available yet.</p>
-                      </div>
+                      <TrueFalseList
+                        questions={filterBySection(trueFalseQuestions || [])}
+                        deletedQuestions={deletedOnlyTrueFalse}
+                        moduleId={moduleId || ''}
+                        topicId={topicId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedTrueFalse}
+                        onShowDeletedChange={setShowDeletedTrueFalse}
+                      />
                     )}
                   </div>
                 )}
@@ -537,12 +575,25 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* OSCE - Note: OSCE is available at Chapter level */}
+                {/* OSCE - Using modern OsceList component */}
                 {practiceTab === 'osce' && (
-                  <div className="text-center py-12 border rounded-lg">
-                    <FlaskConical className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">OSCE questions are available at the Chapter level.</p>
-                    <p className="text-sm text-muted-foreground mt-2">Navigate to a chapter to access OSCE content.</p>
+                  <div>
+                    {osceLoading ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                      </div>
+                    ) : (
+                      <OsceList
+                        questions={filterBySection(osceQuestions || [])}
+                        deletedQuestions={deletedOnlyOsce}
+                        moduleId={moduleId || ''}
+                        topicId={topicId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedOsce}
+                        onShowDeletedChange={setShowDeletedOsce}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -581,6 +632,14 @@ export default function TopicDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Test Yourself Section */}
+            {activeSection === 'test' && topicId && moduleId && (
+              <ChapterMockExamSection
+                moduleId={moduleId}
+                topicId={topicId}
+              />
+            )}
           </div>
         </div>
 
@@ -604,6 +663,9 @@ export default function TopicDetailPage() {
             />
           </>
         )}
+
+        {/* Permission Dialog */}
+        {permissionDialog}
       </div>
     </MainLayout>
   );
