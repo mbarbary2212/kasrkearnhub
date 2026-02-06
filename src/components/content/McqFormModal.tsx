@@ -116,7 +116,7 @@ export function McqFormModal({
       );
     } else {
       createMutation.mutate(
-        { ...formData, module_id: moduleId, chapter_id: chapterId || null },
+        { ...formData, module_id: moduleId, chapter_id: chapterId || null, topic_id: topicId || null },
         { onSuccess: () => onOpenChange(false) }
       );
     }

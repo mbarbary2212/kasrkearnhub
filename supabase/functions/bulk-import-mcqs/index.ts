@@ -27,6 +27,7 @@ interface RequestBody {
   mcqs: McqFormData[];
   moduleId: string;
   chapterId?: string | null;
+  topicId?: string | null;
 }
 
 const VALID_CORRECT_KEYS = ['A', 'B', 'C', 'D', 'E'];
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { mcqs, moduleId, chapterId } = body;
+    const { mcqs, moduleId, chapterId, topicId } = body;
 
     if (!mcqs || !Array.isArray(mcqs) || mcqs.length === 0) {
       return new Response(
@@ -198,6 +199,7 @@ Deno.serve(async (req) => {
     const records = validatedMcqs.map((mcq, index) => ({
       module_id: moduleId,
       chapter_id: chapterId || null,
+      topic_id: topicId || null,
       stem: mcq.stem,
       choices: filterValidChoices(mcq.choices), // Filter out empty E choice
       correct_key: mcq.normalizedCorrectKey, // Use normalized value
