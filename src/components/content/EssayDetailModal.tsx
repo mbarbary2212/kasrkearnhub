@@ -159,7 +159,7 @@ export function EssayDetailModal({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 h-full overflow-y-auto pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-6 py-4 pb-6">
             {/* Question Section */}
             <div className="space-y-2">

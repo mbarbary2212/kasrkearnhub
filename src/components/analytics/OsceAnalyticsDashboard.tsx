@@ -389,13 +389,14 @@ export function OsceAnalyticsDashboard({ modules, moduleAdminModuleIds }: OsceAn
 
       {/* Detail Modal */}
       <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Station Details</DialogTitle>
           </DialogHeader>
           
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {selectedQuestion && (
-            <div className="space-y-6">
+            <div className="space-y-6 pb-4">
               {/* Question ID */}
               <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
                 <span className="text-sm text-muted-foreground">Question ID:</span>
@@ -486,6 +487,7 @@ export function OsceAnalyticsDashboard({ modules, moduleAdminModuleIds }: OsceAn
               )}
             </div>
           )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
