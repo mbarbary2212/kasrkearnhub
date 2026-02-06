@@ -122,7 +122,7 @@ export default function SplashScreen({
         </div>
         
         {/* SEO Text + Login button - below logo */}
-        <div className="absolute top-16 left-4 z-10 max-w-[180px] text-left">
+        <div className="absolute top-16 left-4 z-10 w-32 text-left">
           <p className="text-xs text-black font-medium drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
           </p>
