@@ -60,7 +60,7 @@ export default function SplashScreen({
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-center bg-no-repeat flex-col items-center justify-center">
         {/* Logo + Title + SEO Text - left column */}
-        <div className="absolute top-6 left-6 z-10 max-w-md">
+        <div className="absolute top-6 left-6 z-10 max-w-xs">
           {/* Logo + Title */}
           <div className="flex items-center gap-3">
             <img 
@@ -75,25 +75,23 @@ export default function SplashScreen({
           </div>
           
           {/* Subtitle */}
-          <p className="text-lg md:text-xl text-white/90 font-medium mt-3 drop-shadow-md" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+          <p className="text-lg md:text-xl text-black font-medium mt-3 drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
           </p>
           
           {/* SEO paragraph */}
-          <p className="text-sm md:text-base text-white/80 mt-2 leading-relaxed" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-            KALM Hub is an academic digital platform designed to support medical 
-            students and trainees at Kasr Al-Ainy through structured learning 
-            resources, formative assessment, mentorship, and progress tracking.
+          <p className="text-sm text-black/80 mt-2 leading-relaxed max-w-[220px]">
+            An academic digital platform supporting medical students at Kasr Al-Ainy.
           </p>
         </div>
 
-        {/* Pillar overlay - positioned lower to avoid SEO text */}
-        <div className="absolute bottom-24 left-12" style={animationStyle}>
-          <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-left">
-            <h2 className="text-xl font-medium text-white">
+        {/* Pillar overlay - upper right corner */}
+        <div className="absolute top-6 right-6" style={animationStyle}>
+          <div className="bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 max-w-xs text-left">
+            <h2 className="text-lg font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
-            <p className="text-base text-white/80 mt-1">
+            <p className="text-sm text-white/80 mt-1">
               {PILLARS[currentPillar].description}
             </p>
           </div>
@@ -114,7 +112,7 @@ export default function SplashScreen({
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center">
         {/* Logo + Title + SEO Text - left column */}
-        <div className="absolute top-4 left-4 z-10 max-w-[200px]">
+        <div className="absolute top-4 left-4 z-10 max-w-[180px]">
           {/* Logo + Title */}
           <div className="flex items-center gap-2">
             <img 
@@ -129,20 +127,19 @@ export default function SplashScreen({
           </div>
           
           {/* Subtitle */}
-          <p className="text-xs text-white/90 font-medium mt-2 drop-shadow-md" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+          <p className="text-xs text-black font-medium mt-2 drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
           </p>
           
           {/* SEO paragraph */}
-          <p className="text-[10px] text-white/80 mt-1 leading-relaxed" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-            KALM Hub is an academic digital platform designed to support medical 
-            students and trainees at Kasr Al-Ainy.
+          <p className="text-[10px] text-black/80 mt-1 leading-relaxed">
+            An academic platform for medical students at Kasr Al-Ainy.
           </p>
         </div>
 
-        {/* Pillar overlay - positioned lower */}
-        <div className="absolute bottom-20 left-2" style={animationStyle}>
-          <div className="bg-black/40 backdrop-blur-md px-3 py-2 max-w-[180px] text-left rounded-sm">
+        {/* Pillar overlay - upper right corner */}
+        <div className="absolute top-4 right-4" style={animationStyle}>
+          <div className="bg-black/40 backdrop-blur-md px-3 py-2 max-w-[160px] text-left rounded-lg">
             <h2 className="text-xs font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
