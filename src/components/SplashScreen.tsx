@@ -121,8 +121,8 @@ export default function SplashScreen({
           </h1>
         </div>
         
-        {/* SEO Text + Login button - center left, vertically centered */}
-        <div className="absolute top-1/2 left-4 -translate-y-1/2 z-10 max-w-[180px] text-left">
+        {/* SEO Text + Login button - upper center left */}
+        <div className="absolute top-[38%] left-4 -translate-y-1/2 z-10 max-w-[180px] text-left">
           <p className="text-xs text-black font-medium drop-shadow-sm">
             Kasr Al-Ainy Learning & Mentorship Hub
           </p>
@@ -144,11 +144,11 @@ export default function SplashScreen({
 
         {/* Pillar overlay - upper right corner */}
         <div className="absolute top-4 right-4" style={animationStyle}>
-          <div className="bg-black/40 backdrop-blur-md px-3 py-2 max-w-[160px] text-left rounded-lg">
-            <h2 className="text-xs font-medium text-white">
+          <div className="bg-black/40 backdrop-blur-md px-2 py-1.5 max-w-[140px] text-left rounded-md">
+            <h2 className="text-[10px] font-medium text-white">
               {PILLARS[currentPillar].title}
             </h2>
-            <p className="text-[10px] text-white/80 mt-0.5">
+            <p className="text-[9px] text-white/80 mt-0.5">
               {PILLARS[currentPillar].description}
             </p>
           </div>
