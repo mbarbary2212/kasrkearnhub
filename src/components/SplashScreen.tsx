@@ -48,7 +48,7 @@ export default function SplashScreen({
   };
   return <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
       {/* Desktop/Tablet: CSS background image */}
-      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-center bg-no-repeat flex-col items-center justify-center">
+      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-top bg-no-repeat flex-col items-center justify-center">
         {/* Logo + Title - upper left corner */}
         <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
           <img src={logoIcon} alt="KALM Hub Logo" className="w-12 h-12 md:w-14 md:h-14 drop-shadow-lg" />
@@ -94,7 +94,7 @@ export default function SplashScreen({
       </div>
 
       {/* Mobile: CSS background image */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center">
+      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-top bg-no-repeat flex flex-col items-center justify-center">
         {/* Logo + Title - upper left corner */}
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <img src={logoIcon} alt="KALM Hub Logo" className="w-8 h-8 drop-shadow-lg" />
