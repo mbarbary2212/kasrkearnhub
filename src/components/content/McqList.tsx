@@ -426,7 +426,7 @@ export function McqList({
     if (!deletingMcq || deleteMutation.isPending) return;
 
     deleteMutation.mutate(
-      { id: deletingMcq.id, moduleId, chapterId },
+      { id: deletingMcq.id, moduleId, chapterId, topicId },
       { onSuccess: () => setDeletingMcq(null) }
     );
   };
@@ -435,7 +435,7 @@ export function McqList({
     if (!restoringMcq || restoreMutation.isPending) return;
 
     restoreMutation.mutate(
-      { id: restoringMcq.id, moduleId, chapterId },
+      { id: restoringMcq.id, moduleId, chapterId, topicId },
       { onSuccess: () => setRestoringMcq(null) }
     );
   };
@@ -604,7 +604,7 @@ export function McqList({
     }
     
     bulkCreateMutation.mutate(
-      { mcqs: itemsToImport, moduleId, chapterId },
+      { mcqs: itemsToImport, moduleId, chapterId, topicId },
       {
         onSuccess: () => {
           setShowBulkModal(false);

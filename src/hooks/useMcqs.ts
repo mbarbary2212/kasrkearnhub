@@ -131,10 +131,15 @@ export function useCreateMcq() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async (data: McqFormData & { module_id: string; chapter_id?: string | null }) => {
+    mutationFn: async (data: McqFormData & { 
+      module_id: string; 
+      chapter_id?: string | null;
+      topic_id?: string | null;
+    }) => {
       const { data: result, error } = await supabase.from('mcqs').insert({
         module_id: data.module_id,
         chapter_id: data.chapter_id || null,
+        topic_id: data.topic_id || null,
         section_id: data.section_id || null,
         stem: data.stem,
         choices: data.choices as unknown as Json,
@@ -153,12 +158,15 @@ export function useCreateMcq() {
       if (result.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapter_id] });
       }
+      if (result.topic_id) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topic_id] });
+      }
       // Log activity
       logActivity({
         action: 'created_mcq',
         entity_type: 'mcq',
         entity_id: result.id,
-        scope: { module_id: result.module_id, chapter_id: result.chapter_id },
+        scope: { module_id: result.module_id, chapter_id: result.chapter_id, topic_id: result.topic_id },
         metadata: { source: 'admin_form' },
       });
     },
@@ -174,11 +182,12 @@ export function useUpdateMcq() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ id, data, moduleId, chapterId }: { 
+    mutationFn: async ({ id, data, moduleId, chapterId, topicId }: { 
       id: string; 
       data: McqFormData; 
       moduleId: string;
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       const { error } = await supabase
         .from('mcqs')
@@ -194,7 +203,7 @@ export function useUpdateMcq() {
         .eq('id', id);
 
       if (error) throw error;
-      return { id, moduleId, chapterId };
+      return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ updated successfully' });
@@ -202,12 +211,15 @@ export function useUpdateMcq() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
+      }
       // Log activity
       logActivity({
         action: 'updated_mcq',
         entity_type: 'mcq',
         entity_id: result.id,
-        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId, topic_id: result.topicId },
         metadata: { source: 'admin_form' },
       });
     },
@@ -223,10 +235,11 @@ export function useDeleteMcq() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ id, moduleId, chapterId }: { 
+    mutationFn: async ({ id, moduleId, chapterId, topicId }: { 
       id: string; 
       moduleId: string;
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       // Simple update without .select() to avoid JSON coercion issues
       const { error, count } = await supabase
@@ -237,7 +250,7 @@ export function useDeleteMcq() {
       if (error) throw error;
 
       // count can be null if not returned; we proceed with success if no error
-      return { id, moduleId, chapterId };
+      return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ deleted successfully' });
@@ -246,12 +259,15 @@ export function useDeleteMcq() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
+      }
       // Log activity
       logActivity({
         action: 'deleted_mcq',
         entity_type: 'mcq',
         entity_id: result.id,
-        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId, topic_id: result.topicId },
       });
     },
     onError: (error: Error) => {
@@ -271,10 +287,11 @@ export function useRestoreMcq() {
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ id, moduleId, chapterId }: { 
+    mutationFn: async ({ id, moduleId, chapterId, topicId }: { 
       id: string; 
       moduleId: string;
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       const { error } = await supabase
         .from('mcqs')
@@ -282,13 +299,16 @@ export function useRestoreMcq() {
         .eq('id', id);
 
       if (error) throw error;
-      return { moduleId, chapterId };
+      return { moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
       toast({ title: 'MCQ restored successfully' });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
       }
     },
     onError: (error: Error) => {
@@ -310,11 +330,13 @@ export function useBulkCreateMcqs() {
     mutationFn: async ({ 
       mcqs, 
       moduleId, 
-      chapterId 
+      chapterId,
+      topicId,
     }: { 
       mcqs: McqFormData[]; 
       moduleId: string; 
       chapterId?: string | null;
+      topicId?: string | null;
     }) => {
       // Get current session for auth header
       const { data: { session } } = await supabase.auth.getSession();
@@ -331,7 +353,7 @@ export function useBulkCreateMcqs() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ mcqs, moduleId, chapterId }),
+          body: JSON.stringify({ mcqs, moduleId, chapterId, topicId }),
         }
       );
 
@@ -341,7 +363,7 @@ export function useBulkCreateMcqs() {
         throw new Error(result.error || 'Failed to import MCQs');
       }
 
-      return { moduleId, chapterId, count: mcqs.length };
+      return { moduleId, chapterId, topicId, count: mcqs.length };
     },
     onSuccess: (result) => {
       toast({ title: `${result.count} MCQs imported successfully` });
@@ -349,11 +371,14 @@ export function useBulkCreateMcqs() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
       }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
+      }
       // Log activity
       logActivity({
         action: 'bulk_upload_mcq',
         entity_type: 'mcq',
-        scope: { module_id: result.moduleId, chapter_id: result.chapterId },
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId, topic_id: result.topicId },
         metadata: { count: result.count, source: 'csv_import' },
       });
     },
