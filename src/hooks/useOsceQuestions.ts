@@ -82,6 +82,30 @@ export function useChapterOsceQuestions(chapterId?: string, includeDeleted = fal
   });
 }
 
+// Fetch OSCE questions for a topic
+export function useTopicOsceQuestions(topicId?: string, includeDeleted = false) {
+  return useQuery({
+    queryKey: ['topic-osce-questions', topicId, includeDeleted],
+    queryFn: async () => {
+      let query = supabase
+        .from('osce_questions')
+        .select('*')
+        .eq('topic_id', topicId!)
+        .eq('legacy_archived', false)
+        .order('display_order', { ascending: true });
+
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as OsceQuestion[];
+    },
+    enabled: !!topicId,
+  });
+}
+
 // Fetch OSCE questions for a module
 export function useModuleOsceQuestions(moduleId?: string, includeDeleted = false) {
   return useQuery({

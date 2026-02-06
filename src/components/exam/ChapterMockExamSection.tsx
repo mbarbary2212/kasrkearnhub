@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useChapterMcqs } from '@/hooks/useMcqs';
-import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
+import { useChapterMcqs, useTopicMcqs } from '@/hooks/useMcqs';
+import { useChapterOsceQuestions, useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
 import { useMockExamSettings } from '@/hooks/useMockExam';
 import { MockTimedExam } from './MockTimedExam';
 import { OsceTimedExam } from './OsceTimedExam';
@@ -13,17 +13,26 @@ import { cn } from '@/lib/utils';
 interface ChapterMockExamSectionProps {
   moduleId: string;
   chapterId?: string;
+  topicId?: string;
 }
 
 type ContentType = 'mcq' | 'osce';
 
-export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamSectionProps) {
+export function ChapterMockExamSection({ moduleId, chapterId, topicId }: ChapterMockExamSectionProps) {
   const [contentType, setContentType] = useState<ContentType>('mcq');
 
-  // Fetch chapter MCQs, OSCEs and settings
-  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId);
-  const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId);
+  // Fetch chapter or topic MCQs, OSCEs and settings
+  const { data: chapterMcqs, isLoading: chapterMcqsLoading } = useChapterMcqs(chapterId);
+  const { data: topicMcqs, isLoading: topicMcqsLoading } = useTopicMcqs(topicId);
+  const { data: chapterOsce, isLoading: chapterOsceLoading } = useChapterOsceQuestions(chapterId);
+  const { data: topicOsce, isLoading: topicOsceLoading } = useTopicOsceQuestions(topicId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
+
+  // Use the appropriate data based on whether it's a chapter or topic
+  const mcqs = chapterId ? chapterMcqs : topicMcqs;
+  const osceQuestions = chapterId ? chapterOsce : topicOsce;
+  const mcqsLoading = chapterId ? chapterMcqsLoading : topicMcqsLoading;
+  const osceLoading = chapterId ? chapterOsceLoading : topicOsceLoading;
 
   const isLoading = mcqsLoading || osceLoading || settingsLoading;
 
@@ -47,6 +56,9 @@ export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamS
   const questionCount = settings ? Math.min(settings.question_count, mcqCount) : Math.min(20, mcqCount);
   const secondsPerQuestion = settings?.seconds_per_question || 60;
 
+  // Label for empty state message
+  const entityLabel = chapterId ? 'chapter' : 'topic';
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -61,7 +73,7 @@ export function ChapterMockExamSection({ moduleId, chapterId }: ChapterMockExamS
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground text-sm">
-          Test is not available yet for this chapter.
+          Test is not available yet for this {entityLabel}.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           No MCQ or OSCE questions have been added.

@@ -102,6 +102,29 @@ export function useChapterMcqs(chapterId?: string, includeDeleted = false) {
   });
 }
 
+// Fetch MCQs by topic (with optional includeDeleted flag)
+export function useTopicMcqs(topicId?: string, includeDeleted = false) {
+  return useQuery({
+    queryKey: ['mcqs', 'topic', topicId, { includeDeleted }],
+    queryFn: async () => {
+      let query = supabase
+        .from('mcqs')
+        .select('*')
+        .eq('topic_id', topicId!);
+      
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+      
+      const { data, error } = await query.order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return (data || []).map(mapDbRowToMcq);
+    },
+    enabled: !!topicId,
+  });
+}
+
 // Create MCQ
 export function useCreateMcq() {
   const queryClient = useQueryClient();
