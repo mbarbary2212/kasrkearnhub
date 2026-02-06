@@ -67,8 +67,8 @@ export default function SplashScreen({
             className="w-12 h-12 md:w-14 md:h-14 drop-shadow-lg"
           />
           <h1 className="text-4xl md:text-5xl font-heading font-bold drop-shadow-lg">
-            <span className="text-white">KALM</span>
-            <span className="text-[#C9A227]"> Hub</span>
+            <span className="text-white" style={{ textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)' }}>KALM</span>
+            <span className="text-[#C9A227]" style={{ textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)' }}> Hub</span>
           </h1>
         </div>
         
@@ -122,8 +122,8 @@ export default function SplashScreen({
             className="w-8 h-8 drop-shadow-lg"
           />
           <h1 className="text-2xl font-heading font-bold drop-shadow-lg">
-            <span className="text-white">KALM</span>
-            <span className="text-[#C9A227]"> Hub</span>
+            <span className="text-white" style={{ textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)' }}>KALM</span>
+            <span className="text-[#C9A227]" style={{ textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)' }}> Hub</span>
           </h1>
         </div>
         
