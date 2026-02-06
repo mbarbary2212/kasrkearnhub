@@ -59,14 +59,15 @@ export default function SplashScreen({
     >
       {/* Desktop/Tablet: CSS background image */}
       <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-center bg-no-repeat flex-col items-center justify-center">
-        {/* Central content with logo, title, and SEO text */}
+        {/* Logo icon - upper left corner */}
+        <img 
+          src={logoIcon} 
+          alt="KALM Hub Logo" 
+          className="absolute top-6 left-6 w-24 h-24 md:w-32 md:h-32 drop-shadow-lg z-10"
+        />
+        
+        {/* Central content with title and SEO text */}
         <div className="text-center z-10 px-4">
-          {/* Logo icon */}
-          <img 
-            src={logoIcon} 
-            alt="KALM Hub Logo" 
-            className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 drop-shadow-lg"
-          />
           
           {/* Semantic H1 title */}
           <h1 className="text-5xl md:text-6xl font-heading font-bold mb-3 drop-shadow-lg">
@@ -113,14 +114,15 @@ export default function SplashScreen({
 
       {/* Mobile: CSS background image */}
       <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center">
-        {/* Central content with logo, title, and SEO text */}
+        {/* Logo icon - upper left corner */}
+        <img 
+          src={logoIcon} 
+          alt="KALM Hub Logo" 
+          className="absolute top-4 left-4 w-16 h-16 drop-shadow-lg z-10"
+        />
+        
+        {/* Central content with title and SEO text */}
         <div className="text-center z-10 px-4">
-          {/* Logo icon */}
-          <img 
-            src={logoIcon} 
-            alt="KALM Hub Logo" 
-            className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
-          />
           
           {/* Semantic H1 title */}
           <h1 className="text-3xl font-heading font-bold mb-2 drop-shadow-lg">
