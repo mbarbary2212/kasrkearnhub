@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import logoIcon from '@/assets/kalm-logo-icon.png';
+
 interface SplashScreenProps {
   onDismiss: () => void;
 }
+
 const PILLARS = [{
   title: 'Learn',
   description: 'Resources • Practice • Test yourself'
@@ -15,11 +18,13 @@ const PILLARS = [{
   title: 'Personal coach',
   description: 'Guidance • Smart recommendations'
 }];
+
 export default function SplashScreen({
   onDismiss
 }: SplashScreenProps) {
   const [currentPillar, setCurrentPillar] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+
   useEffect(() => {
     const FADE_IN = 600;
     const HOLD = 2000;
@@ -38,6 +43,7 @@ export default function SplashScreen({
     }, CYCLE);
     return () => clearInterval(interval);
   }, []);
+
   const animationStyle = {
     opacity: isVisible ? 1 : 0,
     transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
@@ -45,9 +51,42 @@ export default function SplashScreen({
     transition: 'opacity 600ms ease-out, transform 600ms ease-out, filter 600ms ease-out',
     willChange: 'opacity, transform, filter' as const
   };
-  return <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
+
+  return (
+    <div 
+      className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" 
+      onClick={onDismiss}
+    >
       {/* Desktop/Tablet: CSS background image */}
-      <div className="hidden md:block relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.jpeg')] bg-cover bg-center bg-no-repeat">
+      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-center bg-no-repeat flex-col items-center justify-center">
+        {/* Central content with logo, title, and SEO text */}
+        <div className="text-center z-10 px-4">
+          {/* Logo icon */}
+          <img 
+            src={logoIcon} 
+            alt="KALM Hub Logo" 
+            className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6 drop-shadow-lg"
+          />
+          
+          {/* Semantic H1 title */}
+          <h1 className="text-5xl md:text-6xl font-heading font-bold mb-3 drop-shadow-lg">
+            <span className="text-white">KALM</span>
+            <span className="text-amber-500"> Hub</span>
+          </h1>
+          
+          {/* Subtitle/tagline */}
+          <p className="text-xl md:text-2xl text-white/90 font-medium mb-6 drop-shadow-md">
+            Kasr Al-Ainy Learning & Mentorship Hub
+          </p>
+          
+          {/* Static SEO paragraph - visible to Google */}
+          <p className="text-sm md:text-base text-white/70 max-w-lg mx-auto leading-relaxed">
+            KALM Hub is an academic digital platform designed to support medical 
+            students and trainees at Kasr Al-Ainy through structured learning 
+            resources, formative assessment, mentorship, and progress tracking.
+          </p>
+        </div>
+
         {/* Pillar overlay - left aligned */}
         <div className="absolute top-1/2 left-12 -translate-y-1/2" style={animationStyle}>
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-8 py-5 max-w-md text-center">
@@ -61,17 +100,48 @@ export default function SplashScreen({
         </div>
 
         {/* Login button */}
-        <button className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-lg font-medium hover:bg-white/20 transition-colors" onClick={e => {
-        e.stopPropagation();
-        onDismiss();
-      }}>
+        <button 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-lg font-medium hover:bg-white/20 transition-colors" 
+          onClick={e => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+        >
           Click to log in
         </button>
       </div>
 
       {/* Mobile: CSS background image */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.jpeg')] bg-cover bg-center bg-no-repeat">
-        {/* Pillar overlay - centered, smaller text for mobile */}
+      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center">
+        {/* Central content with logo, title, and SEO text */}
+        <div className="text-center z-10 px-4">
+          {/* Logo icon */}
+          <img 
+            src={logoIcon} 
+            alt="KALM Hub Logo" 
+            className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+          />
+          
+          {/* Semantic H1 title */}
+          <h1 className="text-3xl font-heading font-bold mb-2 drop-shadow-lg">
+            <span className="text-white">KALM</span>
+            <span className="text-amber-500"> Hub</span>
+          </h1>
+          
+          {/* Subtitle/tagline */}
+          <p className="text-base text-white/90 font-medium mb-4 drop-shadow-md">
+            Kasr Al-Ainy Learning & Mentorship Hub
+          </p>
+          
+          {/* Static SEO paragraph - visible to Google */}
+          <p className="text-xs text-white/70 max-w-xs mx-auto leading-relaxed">
+            KALM Hub is an academic digital platform designed to support medical 
+            students and trainees at Kasr Al-Ainy through structured learning 
+            resources, formative assessment, mentorship, and progress tracking.
+          </p>
+        </div>
+
+        {/* Pillar overlay - left aligned, smaller for mobile */}
         <div className="absolute top-1/2 left-2 -translate-y-1/2" style={animationStyle}>
           <div className="bg-black/40 backdrop-blur-md px-3 py-2 max-w-[180px] text-left rounded-sm">
             <h2 className="text-xs font-medium text-white">
@@ -84,12 +154,16 @@ export default function SplashScreen({
         </div>
 
         {/* Login button */}
-        <button className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors" onClick={e => {
-        e.stopPropagation();
-        onDismiss();
-      }}>
+        <button 
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors" 
+          onClick={e => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+        >
           Click to log in
         </button>
       </div>
-    </div>;
+    </div>
+  );
 }
