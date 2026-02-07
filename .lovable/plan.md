@@ -1,56 +1,54 @@
-# In-App Messaging System for Feedback and Questions
 
-## ✅ IMPLEMENTATION COMPLETE
 
-All database and frontend changes have been successfully implemented.
+# Fix Splash Screen Image Cropping
 
----
+## Problem
+The splash screen images are being cropped at the top because `object-cover` scales and crops to fill the container, even with `object-top` positioning.
 
-## What Was Implemented
+## Solution
+Change from `object-cover object-top` to `object-contain` positioning. This will:
+- Show the complete image without cropping
+- Maintain aspect ratio
+- Position at the top with padding/margin for clear visibility
+- Add a matching background color to fill any empty space
 
-### Database (Migration Applied)
-1. ✅ `admin_replies` table with RLS policies for students and admins
-2. ✅ `item_feedback_admin_view` secured view (excludes user_id for anonymity)
-3. ✅ `get_module_feedback_for_admin()` RPC function for module admins
-4. ✅ Updated `item_feedback` RLS policies to protect student anonymity
-5. ✅ Students can mark replies as read via RLS UPDATE policy
+## Changes to SplashScreen.tsx
 
-### Frontend Files Updated/Created
-1. ✅ `src/components/feedback/FeedbackModal.tsx` - Stores to DB, no mailto
-2. ✅ `src/components/feedback/InquiryModal.tsx` - Stores to DB, no mailto  
-3. ✅ `src/hooks/useAdminReplies.ts` - New hook for reply management
-4. ✅ `src/hooks/useItemFeedback.ts` - Added `useMyFeedback()` hook
-5. ✅ `src/components/feedback/AdminReplyDialog.tsx` - New reply dialog
-6. ✅ `src/pages/AdminInboxPage.tsx` - Added Reply button and dialog
-7. ✅ `src/components/connect/MessagesCard.tsx` - 3 tabs with replies
+### Desktop/Tablet Image (Line 67)
+Change:
+```
+className="w-full h-full object-cover object-top"
+```
+To:
+```
+className="w-full h-full object-contain object-top"
+```
 
----
+### Mobile Image (Line 125)
+Change:
+```
+className="w-full h-full object-cover object-top"
+```
+To:
+```
+className="w-full h-full object-contain object-top"
+```
 
-## User Experience
+### Add Background Color to Container
+Add a sky/light blue background to the container divs to complement the watercolor building images where the image doesn't fill:
 
-### For Students:
-- **Feedback**: Anonymous → module admins can't see who submitted
-- **Questions**: Non-anonymous → admins can see identity to respond
-- **Messages Card**: 3 tabs showing Announcements, My Feedback, My Questions
-- **Replies**: Auto-marked as read when student expands the thread
+**Desktop container (Line 58):**
+Add `bg-sky-100` to provide a soft background where image doesn't reach
 
-### For Admins:
-- **Admin Inbox**: View and reply to feedback/inquiries
-- **Feedback Tab**: Anonymous (via secure view), can reply
-- **Inquiries Tab**: User identity visible, can reply
-- **Super Admin**: Can reveal feedback identity if needed
+**Mobile container (Line 116):**
+Add `bg-sky-100` to provide a soft background where image doesn't reach
 
----
+## Summary of File Changes
 
-## Security Matrix
+| File | Line | Change |
+|------|------|--------|
+| `src/components/SplashScreen.tsx` | 58 | Add `bg-sky-100` to desktop container |
+| `src/components/SplashScreen.tsx` | 67 | Change `object-cover` to `object-contain` |
+| `src/components/SplashScreen.tsx` | 116 | Add `bg-sky-100` to mobile container |
+| `src/components/SplashScreen.tsx` | 125 | Change `object-cover` to `object-contain` |
 
-| Data | Student | Module Admin | Super Admin |
-|------|---------|--------------|-------------|
-| Submit feedback | ✅ | ❌ | ❌ |
-| View own feedback | ✅ | - | - |
-| View feedback message | - | ✅ (via view) | ✅ |
-| View feedback user_id | - | ❌ | ✅ |
-| Reply to feedback | - | ✅ | ✅ |
-| Submit inquiry | ✅ | ❌ | ❌ |
-| View inquiry user_id | - | ✅ | ✅ |
-| Reply to inquiry | - | ✅ | ✅ |
