@@ -55,9 +55,9 @@ export default function SplashScreen({
   return (
     <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
       {/* Desktop/Tablet Layout */}
-      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center">
+      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center bg-white">
         {/* Responsive background image */}
-        <picture className="absolute inset-0 w-full h-full">
+        <picture className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] rounded-lg overflow-hidden">
           <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
           <source media="(min-width: 769px)" srcSet="/splash-landscape.webp" />
           <img
@@ -113,9 +113,9 @@ export default function SplashScreen({
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center">
+      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center bg-white">
         {/* Responsive background image */}
-        <picture className="absolute inset-0 w-full h-full">
+        <picture className="absolute inset-3 w-[calc(100%-1.5rem)] h-[calc(100%-1.5rem)] rounded-lg overflow-hidden">
           <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
           <source media="(min-width: 769px)" srcSet="/splash-landscape.webp" />
           <img
