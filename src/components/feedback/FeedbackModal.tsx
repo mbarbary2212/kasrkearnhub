@@ -10,6 +10,12 @@ import { MessageSquare, ShieldCheck, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSubmitItemFeedback, FeedbackCategory } from '@/hooks/useItemFeedback';
+import { 
+  validateFeedbackMessage, 
+  sanitizeTextInput,
+  FEEDBACK_MIN_LENGTH,
+  FEEDBACK_MAX_LENGTH 
+} from '@/lib/feedbackValidation';
 
 interface FeedbackModalProps {
   open: boolean;
@@ -49,8 +55,10 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       return;
     }
 
-    if (message.length < 20) {
-      toast.error('Message must be at least 20 characters');
+    // Validate message with sanitization
+    const messageValidation = validateFeedbackMessage(message);
+    if (!messageValidation.success) {
+      toast.error(messageValidation.error);
       return;
     }
 
@@ -65,15 +73,16 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
         chapterId,
         itemType: 'resource', // Generic feedback
         category,
-        message: message.trim(),
+        message: messageValidation.data!,
         isAnonymous: true,
       });
 
-      toast.success('Feedback submitted! You can view replies in Messages.');
+      toast.success('Thank you for your feedback.');
       resetForm();
       onOpenChange(false);
-    } catch (error) {
-      toast.error('Failed to submit feedback. Please try again.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback. Please try again.';
+      toast.error(errorMessage);
     }
   };
 
@@ -117,17 +126,17 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
 
       {/* Message */}
       <div className="space-y-2">
-        <Label>Message * <span className="text-xs text-muted-foreground">(min 20 characters)</span></Label>
+        <Label>Message * <span className="text-xs text-muted-foreground">({FEEDBACK_MIN_LENGTH}-{FEEDBACK_MAX_LENGTH} chars)</span></Label>
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Describe your feedback in detail..."
           rows={5}
+          maxLength={FEEDBACK_MAX_LENGTH}
           required
-          minLength={20}
         />
         <p className="text-xs text-muted-foreground text-right">
-          {message.length}/20 min characters
+          {sanitizeTextInput(message).length}/{FEEDBACK_MAX_LENGTH}
         </p>
       </div>
 

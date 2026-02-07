@@ -14,6 +14,7 @@ import { useAllInquiries, useUpdateInquiry, InquiryStatus, Inquiry } from '@/hoo
 import { useUserManagedModules } from '@/hooks/useModuleAdmin';
 import { useThreadReplies } from '@/hooks/useAdminReplies';
 import { AdminReplyDialog } from '@/components/feedback/AdminReplyDialog';
+import { getInquiryCategoryLabel } from '@/lib/feedbackValidation';
 import { MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff, Reply } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -424,7 +425,7 @@ export default function AdminInboxPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline">{inquiry.category}</Badge>
+                            <Badge variant="outline">{getInquiryCategoryLabel(inquiry.category)}</Badge>
                             <Badge className={STATUS_COLORS[inquiry.status]}>{inquiry.status}</Badge>
                           </div>
                           <h3 className="font-medium mt-2">{inquiry.subject}</h3>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { MAX_SUBMISSIONS_PER_HOUR } from '@/lib/feedbackValidation';
 
 export type ItemType = 'video' | 'resource' | 'mcq' | 'practical' | 'shortq' | 'case';
 export type FeedbackCategory = 'content_quality' | 'technical_issue' | 'suggestion' | 'error' | 'other';
@@ -47,6 +48,20 @@ export function useSubmitItemFeedback() {
       isAnonymous?: boolean;
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit feedback');
+
+      // Rate limiting: Check recent submissions
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count, error: countError } = await supabase
+        .from('item_feedback')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', oneHourAgo);
+
+      if (countError) throw countError;
+      
+      if (count !== null && count >= MAX_SUBMISSIONS_PER_HOUR) {
+        throw new Error(`Rate limit exceeded. Maximum ${MAX_SUBMISSIONS_PER_HOUR} submissions per hour.`);
+      }
 
       const { error } = await supabase.from('item_feedback').insert({
         user_id: user.id,
