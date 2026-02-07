@@ -30,7 +30,10 @@ import { toast } from 'sonner';
 interface StudyBulkUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chapterId: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
   moduleId: string;
   resourceType: StudyResourceType;
 }
@@ -76,9 +79,11 @@ export function StudyBulkUploadModal({
   open,
   onOpenChange,
   chapterId,
+  topicId,
   moduleId,
   resourceType,
 }: StudyBulkUploadModalProps) {
+  const containerId = chapterId || topicId;
   const bulkCreate = useBulkCreateStudyResources();
   const { data: existingResources } = useChapterStudyResourcesByType(chapterId, resourceType);
   const { data: sections = [] } = useChapterSections(chapterId);
@@ -222,7 +227,8 @@ export function StudyBulkUploadModal({
         
         return {
           module_id: moduleId,
-          chapter_id: chapterId,
+          chapter_id: chapterId || null,
+          topic_id: topicId || null,
           resource_type: resourceType,
           title: item.item.title,
           content: item.item.content,

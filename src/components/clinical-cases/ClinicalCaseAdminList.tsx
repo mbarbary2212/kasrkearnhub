@@ -45,7 +45,10 @@ import { cn } from '@/lib/utils';
 
 interface ClinicalCaseAdminListProps {
   moduleId: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 const levelColors = {
@@ -56,7 +59,8 @@ const levelColors = {
 
 const MIN_STAGES_TO_PUBLISH = 1; // Read cases only need 1 stage
 
-export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdminListProps) {
+export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: ClinicalCaseAdminListProps) {
+  const containerId = chapterId || topicId;
   const { data: cases, isLoading } = useClinicalCases(moduleId, true);
   const deleteCase = useDeleteClinicalCase();
 
@@ -83,9 +87,10 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
     setSelectedIds(new Set());
   }, []);
 
-  // Filter by chapter if provided
+  // Filter by chapter or topic if provided
   const filteredCases = (cases || []).filter(c => {
     if (chapterId) return c.chapter_id === chapterId;
+    if (topicId) return c.topic_id === topicId;
     return true;
   });
   
@@ -215,6 +220,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
           
           <BulkSectionAssignment
             chapterId={chapterId}
+            topicId={topicId}
             selectedIds={Array.from(selectedIds)}
             contentTable="virtual_patient_cases"
             onComplete={clearSelection}
@@ -340,6 +346,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
         onOpenChange={setCaseFormOpen}
         moduleId={moduleId}
         chapterId={chapterId}
+        topicId={topicId}
         clinicalCase={editingCase}
         onSuccess={handleCaseCreated}
       />
@@ -360,6 +367,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId }: ClinicalCaseAdmin
         onOpenChange={setAiGenerateOpen}
         moduleId={moduleId}
         chapterId={chapterId}
+        topicId={topicId}
         onCaseCreated={handleCaseCreated}
       />
 

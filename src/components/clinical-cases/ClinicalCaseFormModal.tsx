@@ -43,6 +43,7 @@ interface ClinicalCaseFormModalProps {
   onOpenChange: (open: boolean) => void;
   moduleId: string;
   chapterId?: string;
+  topicId?: string;
   clinicalCase?: ClinicalCase | null;
   onSuccess?: (caseId: string) => void;
 }

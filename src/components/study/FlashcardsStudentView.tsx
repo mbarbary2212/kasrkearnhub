@@ -14,7 +14,10 @@ interface FlashcardsStudentViewProps {
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
   availableTopics?: string[];
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 interface TopicGroup {
@@ -43,14 +46,15 @@ export function FlashcardsStudentView({
   markedIds, 
   onToggleMark, 
   availableTopics = [],
-  chapterId 
+  chapterId,
+  topicId,
 }: FlashcardsStudentViewProps) {
-  // Persisted settings
+  // Persisted settings - supports both chapter and topic
   const { 
     settings, 
     setSelectedTopics, 
     setShuffle 
-  } = useFlashcardSettings(chapterId);
+  } = useFlashcardSettings({ chapterId, topicId });
 
   const [topicSectionOpen, setTopicSectionOpen] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);

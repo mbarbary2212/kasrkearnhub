@@ -42,7 +42,8 @@ interface StudyResourceTypeSectionProps {
   resourceType: StudyResourceType;
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  chapterId: string;
+  chapterId?: string;
+  topicId?: string;
 }
 
 // Map study resource type to delete manager resource kind

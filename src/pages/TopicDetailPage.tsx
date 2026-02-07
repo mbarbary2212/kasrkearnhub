@@ -394,7 +394,7 @@ export default function TopicDetailPage() {
                         resources={filterBySection(flashcards || [])}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
-                        chapterId={topicId}
+                        topicId={topicId}
                       />
                     )}
                   </div>
@@ -649,7 +649,7 @@ export default function TopicDetailPage() {
             <StudyResourceFormModal
               open={flashcardFormOpen}
               onOpenChange={setFlashcardFormOpen}
-              chapterId={topicId}
+              topicId={topicId}
               moduleId={moduleId}
               resourceType="flashcard"
               resource={editingFlashcard}
@@ -657,7 +657,7 @@ export default function TopicDetailPage() {
             <StudyBulkUploadModal
               open={flashcardBulkOpen}
               onOpenChange={setFlashcardBulkOpen}
-              chapterId={topicId}
+              topicId={topicId}
               moduleId={moduleId}
               resourceType="flashcard"
             />
