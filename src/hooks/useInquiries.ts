@@ -1,8 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { MAX_SUBMISSIONS_PER_HOUR } from '@/lib/feedbackValidation';
 
-export type InquiryCategory = 'general' | 'technical' | 'content' | 'account' | 'suggestion' | 'other';
+export type InquiryCategory = 
+  | 'study_material' 
+  | 'mcq_explanation' 
+  | 'exam_assessment' 
+  | 'syllabus_objectives' 
+  | 'technical' 
+  | 'suggestion' 
+  | 'other'
+  // Legacy values for backward compatibility
+  | 'general' 
+  | 'content' 
+  | 'account';
 export type InquiryStatus = 'open' | 'in_review' | 'resolved' | 'closed';
 
 export interface Inquiry {
@@ -40,6 +52,20 @@ export function useSubmitInquiry() {
       isAnonymous?: boolean;
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit inquiry');
+
+      // Rate limiting: Check recent submissions
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count, error: countError } = await supabase
+        .from('inquiries')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', oneHourAgo);
+
+      if (countError) throw countError;
+      
+      if (count !== null && count >= MAX_SUBMISSIONS_PER_HOUR) {
+        throw new Error(`Rate limit exceeded. Maximum ${MAX_SUBMISSIONS_PER_HOUR} questions per hour.`);
+      }
 
       const { error } = await supabase.from('inquiries').insert({
         user_id: user.id,

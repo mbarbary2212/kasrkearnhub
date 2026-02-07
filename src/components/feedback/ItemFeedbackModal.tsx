@@ -60,7 +60,7 @@ export default function ItemFeedbackModal({
         message: message.trim(),
         isAnonymous,
       });
-      toast.success('Feedback submitted successfully');
+      toast.success('Thank you for your feedback.');
       onClose();
       resetForm();
     } catch (error) {

@@ -11,6 +11,7 @@ import { useMyFeedback } from '@/hooks/useItemFeedback';
 import { useMyInquiries } from '@/hooks/useInquiries';
 import { useMyThreadReplies, useMarkThreadRepliesRead, useUnreadReplyCount } from '@/hooks/useAdminReplies';
 import { cn } from '@/lib/utils';
+import { getInquiryCategoryLabel } from '@/lib/feedbackValidation';
 import { format } from 'date-fns';
 
 interface MessagesCardProps {
@@ -435,7 +436,7 @@ function InquiryItem({ inquiry, replies, hasUnreadReplies, onMarkRead }: Inquiry
         <HelpCircle className="w-4 h-4 text-muted-foreground mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">{inquiry.category}</Badge>
+            <Badge variant="outline" className="text-xs">{getInquiryCategoryLabel(inquiry.category)}</Badge>
             <Badge variant="secondary" className="text-xs">{inquiry.status}</Badge>
             {hasUnreadReplies && (
               <Badge variant="default" className="text-[10px] h-4 px-1">New reply</Badge>
