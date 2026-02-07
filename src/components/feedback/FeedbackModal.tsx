@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, ShieldCheck, Send } from 'lucide-react';
+import { MessageSquare, ShieldCheck, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSubmitItemFeedback, FeedbackCategory } from '@/hooks/useItemFeedback';
 
 interface FeedbackModalProps {
   open: boolean;
@@ -16,23 +17,20 @@ interface FeedbackModalProps {
   moduleId?: string;
   moduleName?: string;
   moduleCode?: string;
+  chapterId?: string;
 }
-
-type FeedbackCategory = 'suggestion' | 'bug' | 'content' | 'other';
 
 const CATEGORIES: { value: FeedbackCategory; label: string }[] = [
   { value: 'suggestion', label: 'Suggestion' },
-  { value: 'bug', label: 'Bug / Technical issue' },
-  { value: 'content', label: 'Content issue' },
+  { value: 'technical_issue', label: 'Bug / Technical issue' },
+  { value: 'content_quality', label: 'Content issue' },
+  { value: 'error', label: 'Error in content' },
   { value: 'other', label: 'Other' },
 ];
 
-const getCategoryLabel = (value: FeedbackCategory): string => {
-  return CATEGORIES.find(c => c.value === value)?.label || value;
-};
-
-export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName, moduleCode }: FeedbackModalProps) {
+export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName, chapterId }: FeedbackModalProps) {
   const isMobile = useIsMobile();
+  const submitFeedback = useSubmitItemFeedback();
 
   // Form state
   const [category, setCategory] = useState<FeedbackCategory | ''>('');
@@ -43,7 +41,7 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
     setMessage('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!category) {
@@ -56,29 +54,27 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       return;
     }
 
-    const code = moduleCode || 'N/A';
-    const modName = moduleName || 'Not specified';
+    if (!moduleId) {
+      toast.error('Module context is required');
+      return;
+    }
 
-    // Build mailto link - anonymous, no user info
-    const recipient = 'learning.admin@kasralainy.edu.eg';
-    const subject = encodeURIComponent(`KALM Hub Feedback – ${code}`);
-    
-    const body = encodeURIComponent(
-`Module: ${code} – ${modName}
-Feedback Type: ${getCategoryLabel(category)}
+    try {
+      await submitFeedback.mutateAsync({
+        moduleId,
+        chapterId,
+        itemType: 'resource', // Generic feedback
+        category,
+        message: message.trim(),
+        isAnonymous: true,
+      });
 
-Feedback:
-${message.trim()}`
-    );
-
-    const mailtoLink = `mailto:${recipient}?subject=${subject}&body=${body}`;
-    
-    // Open mailto link
-    window.location.href = mailtoLink;
-    
-    toast.success('Thanks! Opening your email client to send feedback.');
-    resetForm();
-    onOpenChange(false);
+      toast.success('Feedback submitted! You can view replies in Messages.');
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error('Failed to submit feedback. Please try again.');
+    }
   };
 
   const content = (
@@ -98,7 +94,7 @@ ${message.trim()}`
         <div>
           <p className="text-sm font-medium text-primary">Anonymous Feedback</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Your feedback is anonymous. Your name and email are not shared with staff. 
+            Your feedback is anonymous. Your name and email are not shared with module admins. 
             The platform reserves the right to identify the sender in cases of abusive or inappropriate language.
           </p>
         </div>
@@ -136,8 +132,12 @@ ${message.trim()}`
       </div>
 
       {/* Submit */}
-      <Button type="submit" className="w-full">
-        <Send className="w-4 h-4 mr-2" />
+      <Button type="submit" className="w-full" disabled={submitFeedback.isPending}>
+        {submitFeedback.isPending ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Send className="w-4 h-4 mr-2" />
+        )}
         Submit Anonymous Feedback
       </Button>
     </form>

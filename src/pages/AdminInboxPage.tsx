@@ -12,7 +12,9 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useAllFeedback, useUpdateFeedback, FeedbackStatus, ItemFeedback } from '@/hooks/useItemFeedback';
 import { useAllInquiries, useUpdateInquiry, InquiryStatus, Inquiry } from '@/hooks/useInquiries';
 import { useUserManagedModules } from '@/hooks/useModuleAdmin';
-import { MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff } from 'lucide-react';
+import { useThreadReplies } from '@/hooks/useAdminReplies';
+import { AdminReplyDialog } from '@/components/feedback/AdminReplyDialog';
+import { MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff, Reply } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -39,6 +41,8 @@ export default function AdminInboxPage() {
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [revealedFeedbackIds, setRevealedFeedbackIds] = useState<Set<string>>(new Set());
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [replyThread, setReplyThread] = useState<{ type: 'feedback' | 'inquiry'; id: string; subject?: string; message: string } | null>(null);
   const { data: modules, isLoading: modulesLoading } = useUserManagedModules();
   
   // Determine filter based on user role
@@ -191,6 +195,11 @@ export default function AdminInboxPage() {
     }
   };
 
+  const handleOpenReply = (type: 'feedback' | 'inquiry', id: string, message: string, subject?: string) => {
+    setReplyThread({ type, id, message, subject });
+    setReplyDialogOpen(true);
+  };
+
   const renderRating = (rating: number | null) => {
     if (!rating) return null;
     return (
@@ -327,6 +336,15 @@ export default function AdminInboxPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {/* Reply button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenReply('feedback', feedback.id, feedback.message)}
+                            >
+                              <Reply className="w-4 h-4 mr-1" />
+                              Reply
+                            </Button>
                             {/* Reveal identity button for super admins on anonymous feedback */}
                             {isSuperAdmin && feedback.is_anonymous && !isRevealed && feedback.user_profile && (
                               <Button
@@ -429,6 +447,15 @@ export default function AdminInboxPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {/* Reply button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenReply('inquiry', inquiry.id, inquiry.message, inquiry.subject)}
+                          >
+                            <Reply className="w-4 h-4 mr-1" />
+                            Reply
+                          </Button>
                           <Select
                             value={inquiry.status}
                             onValueChange={(v) => handleUpdateInquiryStatus(inquiry.id, v as InquiryStatus)}
@@ -500,6 +527,18 @@ export default function AdminInboxPage() {
           <Button onClick={handleSaveInquiryNotes}>Save Notes</Button>
         </DialogContent>
       </Dialog>
+
+      {/* Reply Dialog */}
+      {replyThread && (
+        <AdminReplyDialog
+          open={replyDialogOpen}
+          onOpenChange={setReplyDialogOpen}
+          threadType={replyThread.type}
+          threadId={replyThread.id}
+          threadSubject={replyThread.subject}
+          threadMessage={replyThread.message}
+        />
+      )}
     </MainLayout>
   );
 }

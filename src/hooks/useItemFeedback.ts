@@ -68,6 +68,27 @@ export function useSubmitItemFeedback() {
   });
 }
 
+export function useMyFeedback() {
+  const { user } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['item-feedback', 'mine', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from('item_feedback')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as ItemFeedback[];
+    },
+    enabled: !!user?.id,
+  });
+}
+
 export function useModuleFeedback(moduleId: string | undefined) {
   return useQuery({
     queryKey: ['item-feedback', 'module', moduleId],
