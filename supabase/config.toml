@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.notify-ticket-admins]
 verify_jwt = false
+
+[functions.manage-test-user]
+verify_jwt = false
