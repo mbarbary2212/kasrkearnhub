@@ -44,6 +44,7 @@ interface ClinicalCaseAIGenerateModalProps {
   moduleId: string;
   moduleName?: string;
   chapterId?: string;
+  topicId?: string;
   chapterTitle?: string;
   onCaseCreated?: (caseId: string) => void;
 }

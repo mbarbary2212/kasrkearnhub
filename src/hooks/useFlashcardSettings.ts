@@ -24,20 +24,28 @@ const DEFAULT_SETTINGS: FlashcardSettings = {
 /**
  * Generates storage key for flashcard settings.
  * Uses user ID if available, otherwise falls back to anonymous key.
+ * Supports both chapterId and topicId (mutually exclusive).
  */
-function getStorageKey(userId?: string, chapterId?: string): string {
+function getStorageKey(userId?: string, chapterId?: string, topicId?: string): string {
   const userPart = userId || 'anon';
-  const chapterPart = chapterId || 'global';
-  return `flashcard-settings-${userPart}-${chapterPart}`;
+  const containerType = chapterId ? 'chapter' : 'topic';
+  const containerId = chapterId || topicId || 'global';
+  return `flashcard-settings-${userPart}-${containerType}-${containerId}`;
 }
 
 /**
  * Hook for persisting flashcard review session settings across page refreshes.
- * Settings are stored per user + chapter combination.
+ * Settings are stored per user + container (chapter or topic) combination.
+ * IMPORTANT: chapterId and topicId are mutually exclusive - never pass both.
  */
-export function useFlashcardSettings(chapterId?: string) {
+export function useFlashcardSettings(params: { chapterId?: string; topicId?: string } | string = {}) {
+  // Handle legacy string parameter (chapterId only)
+  const { chapterId, topicId } = typeof params === 'string' 
+    ? { chapterId: params, topicId: undefined }
+    : params;
+  
   const { user } = useAuthContext();
-  const storageKey = useMemo(() => getStorageKey(user?.id, chapterId), [user?.id, chapterId]);
+  const storageKey = useMemo(() => getStorageKey(user?.id, chapterId, topicId), [user?.id, chapterId, topicId]);
 
   const [settings, setSettings] = useState<FlashcardSettings>(() => {
     // Try to load from localStorage on initial render

@@ -21,7 +21,10 @@ interface FlashcardsSlideshowModeProps {
   cards: StudyResource[];
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 const CARD_COUNT_OPTIONS = [
@@ -51,18 +54,18 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapterId }: FlashcardsSlideshowModeProps) {
+export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapterId, topicId }: FlashcardsSlideshowModeProps) {
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
 
-  // Persisted settings
+  // Persisted settings - supports both chapter and topic
   const {
     settings,
     setSelectedTopics,
     setNumberOfCards,
     setIntervalSeconds,
     setShuffle,
-  } = useFlashcardSettings(chapterId);
+  } = useFlashcardSettings({ chapterId, topicId });
 
   const [topicSectionOpen, setTopicSectionOpen] = useState<boolean>(false);
 

@@ -14,7 +14,10 @@ interface ClinicalToolsSectionProps {
   onEdit?: (resource: StudyResource) => void;
   onAdd?: (type: StudyResourceType) => void;
   onBulkUpload?: (type: StudyResourceType) => void;
-  chapterId: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 // Types that belong to Clinical Tools - Algorithms and Worked Cases
@@ -31,7 +34,9 @@ export function ClinicalToolsSection({
   onAdd,
   onBulkUpload,
   chapterId,
+  topicId,
 }: ClinicalToolsSectionProps) {
+  const containerId = chapterId || topicId;
   return (
     <div className="space-y-4">
       <Tabs defaultValue="algorithm" className="w-full">
@@ -82,6 +87,7 @@ export function ClinicalToolsSection({
             canManage={canManage}
             onEdit={onEdit}
             chapterId={chapterId}
+            topicId={topicId}
           />
         </TabsContent>
 

@@ -37,27 +37,32 @@ interface FlashcardsTabProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
+  /** Chapter ID - use for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
+  /** Topic ID - use for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
   moduleId?: string;
 }
 
-export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleId }: FlashcardsTabProps) {
+export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId }: FlashcardsTabProps) {
+  // Determine container ID - use exactly one of chapterId or topicId
+  const containerId = chapterId || topicId;
   const { isAdmin, isTeacher } = useAuthContext();
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   
-  // Synced stars across devices
-  const { starredIds, toggleStar } = useFlashcardStars(chapterId);
+  // Synced stars across devices - supports both chapter and topic
+  const { starredIds, toggleStar } = useFlashcardStars({ chapterId, topicId });
   const bulkDelete = useBulkDeleteContent('study_resources');
   
-  // Persisted settings
+  // Persisted settings - supports both chapter and topic
   const {
     settings,
     setMode,
     setShowMarkedOnly,
     resetToDefaults,
-  } = useFlashcardSettings(chapterId);
+  } = useFlashcardSettings({ chapterId, topicId });
 
   const { mode: studentMode, showMarkedOnly } = settings;
 
@@ -83,6 +88,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
       await bulkDelete.mutateAsync({
         ids: Array.from(selectedIds),
         chapterId,
+        topicId,
       });
       toast.success(`Deleted ${selectedIds.size} flashcards`);
       clearSelection();
@@ -93,10 +99,11 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
     }
   };
 
-  // Wrap toggleStar to include chapter context
+  // Wrap toggleStar to include container context (chapter or topic)
   const handleToggleStar = useCallback((cardId: string) => {
     const card = resources.find(r => r.id === cardId);
-    toggleStar(cardId, card?.chapter_id);
+    // Pass both chapter_id and topic_id - hook will use whichever is set
+    toggleStar(cardId, card?.chapter_id ?? undefined, card?.topic_id ?? undefined);
   }, [resources, toggleStar]);
 
   // Filter resources if showing marked only
@@ -137,9 +144,10 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
                   <X className="h-3.5 w-3.5" />
                   Clear
                 </Button>
-                {chapterId && (
+                {containerId && (
                   <BulkSectionAssignment
                     chapterId={chapterId}
+                    topicId={topicId}
                     selectedIds={Array.from(selectedIds)}
                     contentTable="study_resources"
                     onComplete={clearSelection}
@@ -282,6 +290,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
               onToggleMark={handleToggleStar}
               availableTopics={availableTopics}
               chapterId={chapterId}
+              topicId={topicId}
             />
           ) : (
             <FlashcardsSlideshowMode 
@@ -289,6 +298,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, moduleI
               markedIds={starredIds}
               onToggleMark={handleToggleStar}
               chapterId={chapterId}
+              topicId={topicId}
             />
           )}
         </>

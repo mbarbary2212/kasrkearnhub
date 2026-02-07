@@ -37,7 +37,10 @@ import { SectionSelector } from '@/components/sections';
 interface StudyResourceFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chapterId: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
   moduleId: string;
   resourceType: StudyResourceType;
   resource?: StudyResource | null;
@@ -58,10 +61,12 @@ export function StudyResourceFormModal({
   open,
   onOpenChange,
   chapterId,
+  topicId,
   moduleId,
   resourceType,
   resource,
 }: StudyResourceFormModalProps) {
+  const containerId = chapterId || topicId;
   const { isModuleAdmin, isTopicAdmin } = useAuthContext();
   const createResource = useCreateStudyResource();
   const updateResource = useUpdateStudyResource();
@@ -103,7 +108,8 @@ export function StudyResourceFormModal({
       } else {
         await createResource.mutateAsync({
           module_id: moduleId,
-          chapter_id: chapterId,
+          chapter_id: chapterId || null,
+          topic_id: topicId || null,
           resource_type: resourceType,
           title,
           content,
@@ -129,7 +135,7 @@ export function StudyResourceFormModal({
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${moduleId}/${chapterId}/${fileName}`;
+      const filePath = `${moduleId}/${containerId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('study-resources')
@@ -175,6 +181,7 @@ export function StudyResourceFormModal({
 
           <SectionSelector
             chapterId={chapterId}
+            topicId={topicId}
             value={sectionId}
             onChange={setSectionId}
           />

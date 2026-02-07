@@ -2967,6 +2967,7 @@ export type Database = {
           selected_answer: Json | null
           status: Database["public"]["Enums"]["question_attempt_status"]
           time_spent_seconds: number | null
+          topic_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2983,6 +2984,7 @@ export type Database = {
           selected_answer?: Json | null
           status?: Database["public"]["Enums"]["question_attempt_status"]
           time_spent_seconds?: number | null
+          topic_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2999,6 +3001,7 @@ export type Database = {
           selected_answer?: Json | null
           status?: Database["public"]["Enums"]["question_attempt_status"]
           time_spent_seconds?: number | null
+          topic_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -3015,6 +3018,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_attempts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -3749,7 +3759,7 @@ export type Database = {
       }
       study_resources: {
         Row: {
-          chapter_id: string
+          chapter_id: string | null
           content: Json
           created_at: string | null
           created_by: string | null
@@ -3761,11 +3771,12 @@ export type Database = {
           resource_type: Database["public"]["Enums"]["study_resource_type"]
           section_id: string | null
           title: string
+          topic_id: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
-          chapter_id: string
+          chapter_id?: string | null
           content?: Json
           created_at?: string | null
           created_by?: string | null
@@ -3777,11 +3788,12 @@ export type Database = {
           resource_type: Database["public"]["Enums"]["study_resource_type"]
           section_id?: string | null
           title: string
+          topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
-          chapter_id?: string
+          chapter_id?: string | null
           content?: Json
           created_at?: string | null
           created_by?: string | null
@@ -3793,6 +3805,7 @@ export type Database = {
           resource_type?: Database["public"]["Enums"]["study_resource_type"]
           section_id?: string | null
           title?: string
+          topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -3816,6 +3829,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_resources_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -4169,6 +4189,7 @@ export type Database = {
           chapter_id: string | null
           created_at: string
           id: string
+          topic_id: string | null
           user_id: string
         }
         Insert: {
@@ -4176,6 +4197,7 @@ export type Database = {
           chapter_id?: string | null
           created_at?: string
           id?: string
+          topic_id?: string | null
           user_id: string
         }
         Update: {
@@ -4183,6 +4205,7 @@ export type Database = {
           chapter_id?: string | null
           created_at?: string
           id?: string
+          topic_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -4198,6 +4221,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_flashcard_stars_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

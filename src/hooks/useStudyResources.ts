@@ -110,7 +110,8 @@ export type ResourceContent =
 export interface StudyResource {
   id: string;
   module_id: string;
-  chapter_id: string;
+  chapter_id: string | null;
+  topic_id?: string | null;
   resource_type: StudyResourceType;
   title: string;
   content: ResourceContent;
@@ -125,7 +126,8 @@ export interface StudyResource {
 
 export interface StudyResourceInsert {
   module_id: string;
-  chapter_id: string;
+  chapter_id?: string | null;
+  topic_id?: string | null;
   resource_type: StudyResourceType;
   title: string;
   content: ResourceContent;
@@ -159,6 +161,30 @@ export function useChapterStudyResources(chapterId?: string, includeDeleted = fa
   });
 }
 
+// Fetch study resources for a topic (optionally include deleted)
+export function useTopicStudyResources(topicId?: string, includeDeleted = false) {
+  return useQuery({
+    queryKey: ['study-resources', 'topic', topicId, includeDeleted],
+    queryFn: async () => {
+      let query = supabase
+        .from('study_resources')
+        .select('*')
+        .eq('topic_id', topicId!)
+        .order('resource_type')
+        .order('display_order');
+
+      if (!includeDeleted) {
+        query = query.eq('is_deleted', false);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as unknown as StudyResource[];
+    },
+    enabled: !!topicId,
+  });
+}
+
 // Fetch study resources by type for a chapter
 export function useChapterStudyResourcesByType(chapterId?: string, resourceType?: StudyResourceType) {
   return useQuery({
@@ -177,6 +203,27 @@ export function useChapterStudyResourcesByType(chapterId?: string, resourceType?
       return data as unknown as StudyResource[];
     },
     enabled: !!chapterId && !!resourceType,
+  });
+}
+
+// Fetch study resources by type for a topic
+export function useTopicStudyResourcesByType(topicId?: string, resourceType?: StudyResourceType) {
+  return useQuery({
+    queryKey: ['study-resources', 'topic', topicId, 'type', resourceType],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('study_resources')
+        .select('*')
+        .eq('topic_id', topicId!)
+        // Cast to any to support extended resource types not yet in DB schema
+        .eq('resource_type', resourceType as any)
+        .eq('is_deleted', false)
+        .order('display_order');
+      
+      if (error) throw error;
+      return data as unknown as StudyResource[];
+    },
+    enabled: !!topicId && !!resourceType,
   });
 }
 
@@ -271,7 +318,7 @@ export function useStudyDisclaimer() {
   });
 }
 
-// Create study resource
+// Create study resource (supports both chapter_id and topic_id)
 export function useCreateStudyResource() {
   const queryClient = useQueryClient();
   
@@ -280,7 +327,8 @@ export function useCreateStudyResource() {
       const { data: userData } = await supabase.auth.getUser();
       const insertData = {
         module_id: resource.module_id,
-        chapter_id: resource.chapter_id,
+        chapter_id: resource.chapter_id || null,
+        topic_id: resource.topic_id || null,
         resource_type: resource.resource_type,
         title: resource.title,
         content: resource.content,
@@ -300,15 +348,22 @@ export function useCreateStudyResource() {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
-      queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data.chapter_id] });
+      // Invalidate both chapter and topic queries
+      if (data.chapter_id) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
+        queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data.chapter_id] });
+      }
+      if (data.topic_id) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', data.topic_id] });
+        queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data.topic_id] });
+      }
       // Log activity for flashcard creation
       if (data.resource_type === 'flashcard') {
         logActivity({
           action: 'created_flashcard',
           entity_type: 'flashcard',
           entity_id: data.id,
-          scope: { module_id: data.module_id, chapter_id: data.chapter_id },
+          scope: { module_id: data.module_id, chapter_id: data.chapter_id, topic_id: data.topic_id },
           metadata: { source: 'admin_form' },
         });
       }
@@ -316,7 +371,7 @@ export function useCreateStudyResource() {
   });
 }
 
-// Bulk create study resources
+// Bulk create study resources (supports both chapter_id and topic_id)
 export function useBulkCreateStudyResources() {
   const queryClient = useQueryClient();
   
@@ -325,7 +380,8 @@ export function useBulkCreateStudyResources() {
       const { data: userData } = await supabase.auth.getUser();
       const resourcesWithUser = resources.map((r) => ({
         module_id: r.module_id,
-        chapter_id: r.chapter_id,
+        chapter_id: r.chapter_id || null,
+        topic_id: r.topic_id || null,
         resource_type: r.resource_type,
         title: r.title,
         content: r.content,
@@ -345,15 +401,26 @@ export function useBulkCreateStudyResources() {
     },
     onSuccess: (data) => {
       if (data.length > 0) {
-        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data[0].chapter_id] });
-        queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data[0].chapter_id] });
+        // Invalidate both chapter and topic queries
+        if (data[0].chapter_id) {
+          queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data[0].chapter_id] });
+          queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data[0].chapter_id] });
+        }
+        if (data[0].topic_id) {
+          queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', data[0].topic_id] });
+          queryClient.invalidateQueries({ queryKey: ['study-resource-folders', data[0].topic_id] });
+        }
         // Log activity for bulk flashcard creation
         const flashcards = data.filter((d: { resource_type: string }) => d.resource_type === 'flashcard');
         if (flashcards.length > 0) {
           logActivity({
             action: 'bulk_upload_flashcard',
             entity_type: 'flashcard',
-            scope: { module_id: flashcards[0].module_id, chapter_id: flashcards[0].chapter_id },
+            scope: { 
+              module_id: flashcards[0].module_id, 
+              chapter_id: flashcards[0].chapter_id,
+              topic_id: flashcards[0].topic_id,
+            },
             metadata: { source: 'csv_import', count: flashcards.length },
           });
         }
@@ -427,14 +494,15 @@ export function useUpdateStudyResource() {
   });
 }
 
-// Delete study resource (soft delete)
+// Delete study resource (soft delete) - supports both chapter_id and topic_id
 export function useDeleteStudyResource() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, chapterId, moduleId, resourceType }: { 
+    mutationFn: async ({ id, chapterId, topicId, moduleId, resourceType }: { 
       id: string; 
-      chapterId: string; 
+      chapterId?: string; 
+      topicId?: string;
       moduleId?: string;
       resourceType?: string;
     }) => {
@@ -445,18 +513,23 @@ export function useDeleteStudyResource() {
         .eq('id', id);
       
       if (error) throw error;
-      return { id, chapterId, moduleId, resourceType };
+      return { id, chapterId, topicId, moduleId, resourceType };
     },
     onSuccess: (data) => {
-      // Invalidate all study-resources queries for this chapter (with and without includeDeleted param)
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      // Invalidate all study-resources queries for this chapter or topic
+      if (data.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      }
+      if (data.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', data.topicId] });
+      }
       // Log activity for flashcard deletion
       if (data.resourceType === 'flashcard') {
         logActivity({
           action: 'deleted_flashcard',
           entity_type: 'flashcard',
           entity_id: data.id,
-          scope: { module_id: data.moduleId, chapter_id: data.chapterId },
+          scope: { module_id: data.moduleId, chapter_id: data.chapterId, topic_id: data.topicId },
           metadata: { source: 'admin_delete' },
         });
       }
@@ -464,12 +537,12 @@ export function useDeleteStudyResource() {
   });
 }
 
-// Restore study resource (undo soft delete)
+// Restore study resource (undo soft delete) - supports both chapter_id and topic_id
 export function useRestoreStudyResource() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, chapterId }: { id: string; chapterId: string }) => {
+    mutationFn: async ({ id, chapterId, topicId }: { id: string; chapterId?: string; topicId?: string }) => {
       const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase
         .from('study_resources')
@@ -477,11 +550,16 @@ export function useRestoreStudyResource() {
         .eq('id', id);
       
       if (error) throw error;
-      return { id, chapterId };
+      return { id, chapterId, topicId };
     },
     onSuccess: (data) => {
-      // Invalidate all study-resources queries for this chapter
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      // Invalidate all study-resources queries for this chapter or topic
+      if (data.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapterId] });
+      }
+      if (data.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', data.topicId] });
+      }
     },
   });
 }
