@@ -13,6 +13,7 @@ export interface ItemFeedback {
   user_id: string;
   module_id: string | null;
   chapter_id: string | null;
+  topic_id: string | null;
   item_type: ItemType;
   item_id: string | null;
   rating: number | null;
@@ -47,6 +48,7 @@ export function useSubmitItemFeedback() {
     mutationFn: async (data: {
       moduleId: string;
       chapterId?: string;
+      topicId?: string;
       itemType: ItemType;
       itemId?: string;
       rating?: number;
@@ -74,6 +76,7 @@ export function useSubmitItemFeedback() {
         user_id: user.id,
         module_id: data.moduleId,
         chapter_id: data.chapterId || null,
+        topic_id: data.topicId || null,
         item_type: data.itemType,
         item_id: data.itemId || null,
         rating: data.rating || null,
@@ -92,6 +95,7 @@ export function useSubmitItemFeedback() {
             id: insertedData.id,
             module_id: data.moduleId,
             chapter_id: data.chapterId || null,
+            topic_id: data.topicId || null,
             category: data.category,
           },
         });
@@ -202,6 +206,7 @@ export function useAllFeedback(filters?: {
   moduleId?: string;
   moduleIds?: string[];
   chapterIds?: string[];
+  topicIds?: string[];
   status?: FeedbackStatus;
   isFlagged?: boolean;
 }, options?: { includeUserProfiles?: boolean }) {
@@ -221,6 +226,9 @@ export function useAllFeedback(filters?: {
       }
       if (filters?.chapterIds && filters.chapterIds.length > 0) {
         query = query.in('chapter_id', filters.chapterIds);
+      }
+      if (filters?.topicIds && filters.topicIds.length > 0) {
+        query = query.in('topic_id', filters.topicIds);
       }
       if (filters?.status) {
         query = query.eq('status', filters.status);

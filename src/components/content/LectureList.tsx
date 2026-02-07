@@ -52,6 +52,7 @@ interface LectureListProps {
   lectures: Lecture[];
   moduleId?: string;
   chapterId?: string;
+  topicId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
@@ -107,6 +108,7 @@ export function LectureList({
   lectures,
   moduleId,
   chapterId,
+  topicId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
@@ -672,6 +674,7 @@ export function LectureList({
           itemTitle={feedbackItem.title}
           moduleId={moduleId}
           chapterId={chapterId}
+          topicId={topicId}
         />
       )}
 

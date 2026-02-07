@@ -32,6 +32,7 @@ interface McqSetListProps {
   mcqSets: McqSet[];
   moduleId?: string;
   chapterId?: string;
+  topicId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
@@ -41,6 +42,7 @@ export default function McqSetList({
   mcqSets,
   moduleId,
   chapterId,
+  topicId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
@@ -167,6 +169,7 @@ export default function McqSetList({
           itemTitle={feedbackItem.title}
           moduleId={moduleId}
           chapterId={chapterId}
+          topicId={topicId}
         />
       )}
     </>

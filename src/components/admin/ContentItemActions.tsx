@@ -36,6 +36,7 @@ interface ContentItemActionsProps {
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
+  topicId?: string;
   canEdit: boolean;
   canDelete: boolean;
   showFeedback?: boolean;
@@ -68,6 +69,7 @@ export default function ContentItemActions({
   contentType,
   moduleId,
   chapterId,
+  topicId,
   canEdit,
   canDelete,
   showFeedback = true,
@@ -324,6 +326,7 @@ export default function ContentItemActions({
         onClose={() => setFeedbackOpen(false)}
         moduleId={moduleId}
         chapterId={chapterId}
+        topicId={topicId}
         itemType={ITEM_TYPE_MAP[contentType]}
         itemId={id}
         itemTitle={title}

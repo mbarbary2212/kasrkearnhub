@@ -344,6 +344,7 @@ export default function TopicDetailPage() {
                         key={lecturesResetKey}
                         lectures={filterBySection(lectures) || []} 
                         moduleId={moduleId}
+                        topicId={topicId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
@@ -535,6 +536,7 @@ export default function TopicDetailPage() {
                       <EssayList
                         essays={essays || []}
                         moduleId={moduleId}
+                        topicId={topicId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
