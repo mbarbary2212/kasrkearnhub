@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Clock, Megaphone, X, Activity } from 'lucide-react';
+import { Bell, CheckCheck, Clock, Megaphone, X, Activity, MessageCircle, HelpCircle, AlertTriangle, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
   useAdminNotifications,
@@ -40,6 +40,18 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
     if (notification.type === 'content_activity') {
       navigate('/admin/activity-log');
       setOpen(false);
+    } else if (notification.type === 'new_inquiry' || notification.type === 'inquiry_reply') {
+      // Navigate to admin inbox with inquiry filter
+      navigate('/admin/inbox?tab=inquiries');
+      setOpen(false);
+    } else if (notification.type === 'new_feedback' || notification.type === 'feedback_reply') {
+      // Navigate to admin inbox with feedback filter
+      navigate('/admin/inbox?tab=feedback');
+      setOpen(false);
+    } else if (notification.type === 'ticket_assigned') {
+      // Navigate to admin inbox
+      navigate('/admin/inbox');
+      setOpen(false);
     } else if (notification.entity_type === 'announcement' && notification.entity_id && onNavigateToAnnouncement) {
       onNavigateToAnnouncement(notification.entity_id);
       setOpen(false);
@@ -56,6 +68,15 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return <X className="w-4 h-4 text-destructive" />;
       case 'content_activity':
         return <Activity className="w-4 h-4 text-blue-500" />;
+      case 'new_inquiry':
+        return <HelpCircle className="w-4 h-4 text-purple-500" />;
+      case 'new_feedback':
+        return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+      case 'inquiry_reply':
+      case 'feedback_reply':
+        return <MessageCircle className="w-4 h-4 text-blue-500" />;
+      case 'ticket_assigned':
+        return <UserCheck className="w-4 h-4 text-green-500" />;
       default:
         return <Megaphone className="w-4 h-4" />;
     }
@@ -72,6 +93,15 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return 'bg-destructive/10 border-l-2 border-destructive';
       case 'content_activity':
         return 'bg-blue-500/10 border-l-2 border-blue-500';
+      case 'new_inquiry':
+        return 'bg-purple-500/10 border-l-2 border-purple-500';
+      case 'new_feedback':
+        return 'bg-orange-500/10 border-l-2 border-orange-500';
+      case 'inquiry_reply':
+      case 'feedback_reply':
+        return 'bg-blue-500/10 border-l-2 border-blue-500';
+      case 'ticket_assigned':
+        return 'bg-green-500/10 border-l-2 border-green-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }

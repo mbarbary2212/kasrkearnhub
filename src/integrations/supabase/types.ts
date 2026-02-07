@@ -1599,45 +1599,60 @@ export type Database = {
       inquiries: {
         Row: {
           admin_notes: string | null
+          assigned_team: string | null
+          assigned_to_user_id: string | null
           category: string
           chapter_id: string | null
           created_at: string
+          first_viewed_at: string | null
+          first_viewed_by: string | null
           id: string
           is_anonymous: boolean
           message: string
           module_id: string | null
           resolved_at: string | null
           resolved_by: string | null
+          seen_by_admin: boolean | null
           status: string
           subject: string
           user_id: string
         }
         Insert: {
           admin_notes?: string | null
+          assigned_team?: string | null
+          assigned_to_user_id?: string | null
           category: string
           chapter_id?: string | null
           created_at?: string
+          first_viewed_at?: string | null
+          first_viewed_by?: string | null
           id?: string
           is_anonymous?: boolean
           message: string
           module_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by_admin?: boolean | null
           status?: string
           subject: string
           user_id: string
         }
         Update: {
           admin_notes?: string | null
+          assigned_team?: string | null
+          assigned_to_user_id?: string | null
           category?: string
           chapter_id?: string | null
           created_at?: string
+          first_viewed_at?: string | null
+          first_viewed_by?: string | null
           id?: string
           is_anonymous?: boolean
           message?: string
           module_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by_admin?: boolean | null
           status?: string
           subject?: string
           user_id?: string
@@ -1662,9 +1677,13 @@ export type Database = {
       item_feedback: {
         Row: {
           admin_notes: string | null
+          assigned_team: string | null
+          assigned_to_user_id: string | null
           category: string
           chapter_id: string | null
           created_at: string
+          first_viewed_at: string | null
+          first_viewed_by: string | null
           id: string
           is_anonymous: boolean
           is_flagged: boolean
@@ -1675,14 +1694,19 @@ export type Database = {
           rating: number | null
           resolved_at: string | null
           resolved_by: string | null
+          seen_by_admin: boolean | null
           status: string
           user_id: string
         }
         Insert: {
           admin_notes?: string | null
+          assigned_team?: string | null
+          assigned_to_user_id?: string | null
           category: string
           chapter_id?: string | null
           created_at?: string
+          first_viewed_at?: string | null
+          first_viewed_by?: string | null
           id?: string
           is_anonymous?: boolean
           is_flagged?: boolean
@@ -1693,14 +1717,19 @@ export type Database = {
           rating?: number | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by_admin?: boolean | null
           status?: string
           user_id: string
         }
         Update: {
           admin_notes?: string | null
+          assigned_team?: string | null
+          assigned_to_user_id?: string | null
           category?: string
           chapter_id?: string | null
           created_at?: string
+          first_viewed_at?: string | null
+          first_viewed_by?: string | null
           id?: string
           is_anonymous?: boolean
           is_flagged?: boolean
@@ -1711,6 +1740,7 @@ export type Database = {
           rating?: number | null
           resolved_at?: string | null
           resolved_by?: string | null
+          seen_by_admin?: boolean | null
           status?: string
           user_id?: string
         }

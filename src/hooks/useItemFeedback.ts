@@ -6,6 +6,7 @@ import { MAX_SUBMISSIONS_PER_HOUR } from '@/lib/feedbackValidation';
 export type ItemType = 'video' | 'resource' | 'mcq' | 'practical' | 'shortq' | 'case';
 export type FeedbackCategory = 'content_quality' | 'technical_issue' | 'suggestion' | 'error' | 'other';
 export type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'closed';
+export type AssignedTeam = 'platform' | 'module' | 'chapter' | 'teacher';
 
 export interface ItemFeedback {
   id: string;
@@ -24,6 +25,12 @@ export interface ItemFeedback {
   resolved_by: string | null;
   resolved_at: string | null;
   created_at: string;
+  // Assignment tracking
+  assigned_to_user_id: string | null;
+  assigned_team: AssignedTeam | null;
+  seen_by_admin: boolean;
+  first_viewed_at: string | null;
+  first_viewed_by: string | null;
   // Revealed user profile (only for super admins who reveal)
   user_profile?: {
     full_name: string | null;
@@ -63,7 +70,7 @@ export function useSubmitItemFeedback() {
         throw new Error(`Rate limit exceeded. Maximum ${MAX_SUBMISSIONS_PER_HOUR} submissions per hour.`);
       }
 
-      const { error } = await supabase.from('item_feedback').insert({
+      const { data: insertedData, error } = await supabase.from('item_feedback').insert({
         user_id: user.id,
         module_id: data.moduleId,
         chapter_id: data.chapterId || null,
@@ -73,7 +80,75 @@ export function useSubmitItemFeedback() {
         category: data.category,
         message: data.message,
         is_anonymous: data.isAnonymous ?? true,
-      });
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Notify admins via Edge Function
+      try {
+        await supabase.functions.invoke('notify-ticket-admins', {
+          body: {
+            type: 'feedback',
+            id: insertedData.id,
+            module_id: data.moduleId,
+            chapter_id: data.chapterId || null,
+            category: data.category,
+          },
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify admins:', notifyError);
+        // Don't throw - the feedback was still created
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['item-feedback'] });
+    },
+  });
+}
+
+export function useAssignFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      assignedToUserId?: string | null;
+      assignedTeam?: AssignedTeam | null;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (data.assignedToUserId !== undefined) updates.assigned_to_user_id = data.assignedToUserId;
+      if (data.assignedTeam !== undefined) updates.assigned_team = data.assignedTeam;
+
+      const { error } = await supabase
+        .from('item_feedback')
+        .update(updates)
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['item-feedback'] });
+    },
+  });
+}
+
+export function useMarkFeedbackSeen() {
+  const { user } = useAuthContext();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (feedbackId: string) => {
+      if (!user?.id) throw new Error('Must be logged in');
+
+      const { error } = await supabase
+        .from('item_feedback')
+        .update({
+          seen_by_admin: true,
+          first_viewed_at: new Date().toISOString(),
+          first_viewed_by: user.id,
+        })
+        .eq('id', feedbackId)
+        .eq('seen_by_admin', false); // Only update if not already seen
 
       if (error) throw error;
     },

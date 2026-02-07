@@ -16,6 +16,7 @@ export type InquiryCategory =
   | 'content' 
   | 'account';
 export type InquiryStatus = 'open' | 'in_review' | 'resolved' | 'closed';
+export type AssignedTeam = 'platform' | 'module' | 'chapter' | 'teacher';
 
 export interface Inquiry {
   id: string;
@@ -31,6 +32,12 @@ export interface Inquiry {
   resolved_by: string | null;
   resolved_at: string | null;
   created_at: string;
+  // Assignment tracking
+  assigned_to_user_id: string | null;
+  assigned_team: AssignedTeam | null;
+  seen_by_admin: boolean;
+  first_viewed_at: string | null;
+  first_viewed_by: string | null;
   // Joined profile data
   user_profile?: {
     full_name: string | null;
@@ -67,7 +74,7 @@ export function useSubmitInquiry() {
         throw new Error(`Rate limit exceeded. Maximum ${MAX_SUBMISSIONS_PER_HOUR} questions per hour.`);
       }
 
-      const { error } = await supabase.from('inquiries').insert({
+      const { data: insertedData, error } = await supabase.from('inquiries').insert({
         user_id: user.id,
         module_id: data.moduleId || null,
         chapter_id: data.chapterId || null,
@@ -75,7 +82,76 @@ export function useSubmitInquiry() {
         subject: data.subject,
         message: data.message,
         is_anonymous: data.isAnonymous ?? false,
-      });
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Notify admins via Edge Function
+      try {
+        await supabase.functions.invoke('notify-ticket-admins', {
+          body: {
+            type: 'inquiry',
+            id: insertedData.id,
+            module_id: data.moduleId || null,
+            chapter_id: data.chapterId || null,
+            category: data.category,
+            subject: data.subject,
+          },
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify admins:', notifyError);
+        // Don't throw - the inquiry was still created
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+    },
+  });
+}
+
+export function useAssignInquiry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      assignedToUserId?: string | null;
+      assignedTeam?: AssignedTeam | null;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (data.assignedToUserId !== undefined) updates.assigned_to_user_id = data.assignedToUserId;
+      if (data.assignedTeam !== undefined) updates.assigned_team = data.assignedTeam;
+
+      const { error } = await supabase
+        .from('inquiries')
+        .update(updates)
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inquiries'] });
+    },
+  });
+}
+
+export function useMarkInquirySeen() {
+  const { user } = useAuthContext();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (inquiryId: string) => {
+      if (!user?.id) throw new Error('Must be logged in');
+
+      const { error } = await supabase
+        .from('inquiries')
+        .update({
+          seen_by_admin: true,
+          first_viewed_at: new Date().toISOString(),
+          first_viewed_by: user.id,
+        })
+        .eq('id', inquiryId)
+        .eq('seen_by_admin', false); // Only update if not already seen
 
       if (error) throw error;
     },
