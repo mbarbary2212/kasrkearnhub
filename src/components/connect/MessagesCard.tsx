@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Mail, ChevronRight, X, Megaphone, MessageCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, ChevronRight, Megaphone, MessageCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, MessageSquare, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStudentAnnouncements, useMarkAnnouncementRead } from '@/hooks/useAnnouncements';
+import { useMyFeedback } from '@/hooks/useItemFeedback';
 import { useMyInquiries } from '@/hooks/useInquiries';
+import { useMyThreadReplies, useMarkThreadRepliesRead, useUnreadReplyCount } from '@/hooks/useAdminReplies';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -19,21 +21,46 @@ interface MessagesCardProps {
 export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
   const [open, setOpen] = useState(false);
   const { data: announcements = [] } = useStudentAnnouncements(moduleId, yearId);
-  const { data: inquiries = [] } = useMyInquiries();
-  const markAsRead = useMarkAnnouncementRead();
+  const { data: myFeedback = [] } = useMyFeedback();
+  const { data: myInquiries = [] } = useMyInquiries();
+  const { data: myReplies = [] } = useMyThreadReplies();
+  const { data: unreadReplyCount = 0 } = useUnreadReplyCount();
+  const markAnnouncementRead = useMarkAnnouncementRead();
+  const markRepliesRead = useMarkThreadRepliesRead();
 
-  // Filter inquiries for this module that have admin replies
-  const moduleInquiries = inquiries.filter(
-    i => i.module_id === moduleId && i.admin_notes
-  );
+  // Filter feedback/inquiries for this module
+  const moduleFeedback = myFeedback.filter(f => f.module_id === moduleId);
+  const moduleInquiries = myInquiries.filter(i => i.module_id === moduleId);
 
-  // Count unread items
+  // Get unread counts
   const unreadAnnouncements = announcements.filter(a => !a.isRead).length;
-  const unreadReplies = moduleInquiries.filter(i => i.status === 'resolved').length; // TODO: track read state for replies
-  const totalUnread = unreadAnnouncements + unreadReplies;
+  
+  // Count unread replies for this module's threads
+  const moduleFeedbackIds = new Set(moduleFeedback.map(f => f.id));
+  const moduleInquiryIds = new Set(moduleInquiries.map(i => i.id));
+  const unreadModuleReplies = myReplies.filter(r => 
+    !r.is_read && (
+      (r.thread_type === 'feedback' && moduleFeedbackIds.has(r.thread_id)) ||
+      (r.thread_type === 'inquiry' && moduleInquiryIds.has(r.thread_id))
+    )
+  ).length;
 
-  const handleMarkRead = async (announcementId: string) => {
-    await markAsRead.mutateAsync(announcementId);
+  const totalUnread = unreadAnnouncements + unreadModuleReplies;
+
+  // Group replies by thread
+  const repliesByThread = myReplies.reduce((acc, reply) => {
+    const key = `${reply.thread_type}:${reply.thread_id}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(reply);
+    return acc;
+  }, {} as Record<string, typeof myReplies>);
+
+  const handleMarkAnnouncementRead = async (announcementId: string) => {
+    await markAnnouncementRead.mutateAsync(announcementId);
+  };
+
+  const handleMarkThreadRepliesRead = async (threadType: 'feedback' | 'inquiry', threadId: string) => {
+    await markRepliesRead.mutateAsync({ threadType, threadId });
   };
 
   const getPriorityStyles = (priority: string) => {
@@ -65,8 +92,8 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
         onClick={() => setOpen(true)}
       >
         <CardHeader className="pb-2">
-          <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-2 relative">
-            <Mail className="w-6 h-6 text-blue-600" />
+          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-2 relative">
+            <Mail className="w-6 h-6 text-primary" />
             {totalUnread > 0 && (
               <Badge 
                 variant="destructive" 
@@ -78,7 +105,7 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
           </div>
           <CardTitle className="text-lg">Messages</CardTitle>
           <CardDescription>
-            View announcements and replies to your questions
+            View announcements and replies to your submissions
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,22 +125,20 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
           </DialogHeader>
 
           <Tabs defaultValue="announcements" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="announcements" className="relative">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="announcements" className="relative text-xs">
                 Announcements
                 {unreadAnnouncements > 0 && (
-                  <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs px-1.5">
+                  <Badge variant="destructive" className="ml-1 h-4 min-w-4 text-[10px] px-1">
                     {unreadAnnouncements}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="replies" className="relative">
-                Replies
-                {unreadReplies > 0 && (
-                  <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs px-1.5">
-                    {unreadReplies}
-                  </Badge>
-                )}
+              <TabsTrigger value="feedback" className="relative text-xs">
+                My Feedback
+              </TabsTrigger>
+              <TabsTrigger value="inquiries" className="relative text-xs">
+                My Questions
               </TabsTrigger>
             </TabsList>
 
@@ -130,7 +155,7 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
                       <AnnouncementItem
                         key={announcement.id}
                         announcement={announcement}
-                        onMarkRead={handleMarkRead}
+                        onMarkRead={handleMarkAnnouncementRead}
                         getPriorityStyles={getPriorityStyles}
                         getPriorityIcon={getPriorityIcon}
                       />
@@ -140,18 +165,61 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="replies" className="mt-4">
+            <TabsContent value="feedback" className="mt-4">
               <ScrollArea className="h-[50vh]">
-                {moduleInquiries.length === 0 ? (
+                {moduleFeedback.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No replies to your questions yet</p>
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No feedback submitted</p>
+                    <p className="text-xs mt-1">Submit feedback to see it here</p>
                   </div>
                 ) : (
                   <div className="space-y-3 pr-4">
-                    {moduleInquiries.map((inquiry) => (
-                      <ReplyItem key={inquiry.id} inquiry={inquiry} />
-                    ))}
+                    {moduleFeedback.map((feedback) => {
+                      const threadKey = `feedback:${feedback.id}`;
+                      const threadReplies = repliesByThread[threadKey] || [];
+                      const hasUnreadReplies = threadReplies.some(r => !r.is_read);
+
+                      return (
+                        <FeedbackItem
+                          key={feedback.id}
+                          feedback={feedback}
+                          replies={threadReplies}
+                          hasUnreadReplies={hasUnreadReplies}
+                          onMarkRead={() => handleMarkThreadRepliesRead('feedback', feedback.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="inquiries" className="mt-4">
+              <ScrollArea className="h-[50vh]">
+                {moduleInquiries.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No questions submitted</p>
+                    <p className="text-xs mt-1">Ask a question to see it here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pr-4">
+                    {moduleInquiries.map((inquiry) => {
+                      const threadKey = `inquiry:${inquiry.id}`;
+                      const threadReplies = repliesByThread[threadKey] || [];
+                      const hasUnreadReplies = threadReplies.some(r => !r.is_read);
+
+                      return (
+                        <InquiryItem
+                          key={inquiry.id}
+                          inquiry={inquiry}
+                          replies={threadReplies}
+                          hasUnreadReplies={hasUnreadReplies}
+                          onMarkRead={() => handleMarkThreadRepliesRead('inquiry', inquiry.id)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
@@ -163,6 +231,7 @@ export function MessagesCard({ moduleId, yearId }: MessagesCardProps) {
   );
 }
 
+// Announcement Item Component
 interface AnnouncementItemProps {
   announcement: {
     id: string;
@@ -214,7 +283,7 @@ function AnnouncementItem({ announcement, onMarkRead, getPriorityStyles, getPrio
                   variant="ghost"
                   size="sm"
                   className="h-6 text-xs px-2"
-                  onClick={() => setExpanded(!expanded)}
+                  onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
                 >
                   {expanded ? (
                     <>Less <ChevronUp className="w-3 h-3 ml-1" /></>
@@ -228,9 +297,9 @@ function AnnouncementItem({ announcement, onMarkRead, getPriorityStyles, getPrio
                   variant="ghost"
                   size="sm"
                   className="h-6 text-xs px-2"
-                  onClick={() => onMarkRead(announcement.id)}
+                  onClick={(e) => { e.stopPropagation(); onMarkRead(announcement.id); }}
                 >
-                  <X className="w-3 h-3 mr-1" /> Dismiss
+                  Dismiss
                 </Button>
               )}
             </div>
@@ -241,48 +310,75 @@ function AnnouncementItem({ announcement, onMarkRead, getPriorityStyles, getPrio
   );
 }
 
-interface ReplyItemProps {
-  inquiry: {
+// Feedback Item Component
+interface FeedbackItemProps {
+  feedback: {
     id: string;
-    subject: string;
+    category: string;
     message: string;
-    admin_notes: string | null;
     status: string;
     created_at: string;
-    resolved_at: string | null;
   };
+  replies: Array<{
+    id: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    admin_profile?: { full_name: string | null; email: string } | null;
+  }>;
+  hasUnreadReplies: boolean;
+  onMarkRead: () => void;
 }
 
-function ReplyItem({ inquiry }: ReplyItemProps) {
+function FeedbackItem({ feedback, replies, hasUnreadReplies, onMarkRead }: FeedbackItemProps) {
   const [expanded, setExpanded] = useState(false);
 
-  return (
-    <div className="border rounded-lg p-3 bg-card">
-      <div className="flex items-start gap-2">
-        <MessageCircle className="w-4 h-4 text-muted-foreground mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm">{inquiry.subject}</h4>
-          
-          {/* Original question */}
-          <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-            <span className="font-medium">Your question:</span>
-            <p className={cn('mt-1', !expanded && 'line-clamp-2')}>{inquiry.message}</p>
-          </div>
+  useEffect(() => {
+    // Mark replies as read when expanded
+    if (expanded && hasUnreadReplies) {
+      onMarkRead();
+    }
+  }, [expanded, hasUnreadReplies, onMarkRead]);
 
-          {/* Admin reply */}
-          {inquiry.admin_notes && (
-            <div className="mt-2 p-2 bg-primary/5 rounded text-sm border-l-2 border-primary">
-              <span className="text-xs font-medium text-primary">Reply:</span>
-              <p className={cn('mt-1', !expanded && 'line-clamp-3')}>{inquiry.admin_notes}</p>
+  return (
+    <div className={cn(
+      'border rounded-lg p-3 bg-card transition-all',
+      hasUnreadReplies && 'ring-1 ring-primary/30'
+    )}>
+      <div className="flex items-start gap-2">
+        <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">{feedback.category}</Badge>
+            <Badge variant="secondary" className="text-xs">{feedback.status}</Badge>
+            {hasUnreadReplies && (
+              <Badge variant="default" className="text-[10px] h-4 px-1">New reply</Badge>
+            )}
+          </div>
+          
+          <p className={cn('text-sm mt-2', !expanded && 'line-clamp-2')}>{feedback.message}</p>
+          
+          {/* Replies */}
+          {expanded && replies.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Replies:</p>
+              {replies.map((reply) => (
+                <div key={reply.id} className="p-2 bg-primary/5 rounded border-l-2 border-primary">
+                  <p className="text-xs font-medium text-primary">
+                    {reply.admin_profile?.full_name || 'Admin'}
+                  </p>
+                  <p className="text-sm mt-1">{reply.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {format(new Date(reply.created_at), 'MMM d, yyyy h:mm a')}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 
           <div className="flex items-center justify-between mt-2">
             <span className="text-xs text-muted-foreground">
-              {inquiry.resolved_at 
-                ? `Replied ${format(new Date(inquiry.resolved_at), 'MMM d, yyyy')}`
-                : format(new Date(inquiry.created_at), 'MMM d, yyyy')
-              }
+              {format(new Date(feedback.created_at), 'MMM d, yyyy')}
             </span>
             <Button
               variant="ghost"
@@ -290,7 +386,94 @@ function ReplyItem({ inquiry }: ReplyItemProps) {
               className="h-6 text-xs px-2"
               onClick={() => setExpanded(!expanded)}
             >
-              {expanded ? 'Show less' : 'Show more'}
+              {expanded ? 'Show less' : `Show ${replies.length > 0 ? `${replies.length} replies` : 'more'}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Inquiry Item Component
+interface InquiryItemProps {
+  inquiry: {
+    id: string;
+    subject: string;
+    category: string;
+    message: string;
+    status: string;
+    created_at: string;
+  };
+  replies: Array<{
+    id: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    admin_profile?: { full_name: string | null; email: string } | null;
+  }>;
+  hasUnreadReplies: boolean;
+  onMarkRead: () => void;
+}
+
+function InquiryItem({ inquiry, replies, hasUnreadReplies, onMarkRead }: InquiryItemProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    // Mark replies as read when expanded
+    if (expanded && hasUnreadReplies) {
+      onMarkRead();
+    }
+  }, [expanded, hasUnreadReplies, onMarkRead]);
+
+  return (
+    <div className={cn(
+      'border rounded-lg p-3 bg-card transition-all',
+      hasUnreadReplies && 'ring-1 ring-primary/30'
+    )}>
+      <div className="flex items-start gap-2">
+        <HelpCircle className="w-4 h-4 text-muted-foreground mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">{inquiry.category}</Badge>
+            <Badge variant="secondary" className="text-xs">{inquiry.status}</Badge>
+            {hasUnreadReplies && (
+              <Badge variant="default" className="text-[10px] h-4 px-1">New reply</Badge>
+            )}
+          </div>
+          
+          <h4 className="font-medium text-sm mt-2">{inquiry.subject}</h4>
+          <p className={cn('text-sm text-muted-foreground mt-1', !expanded && 'line-clamp-2')}>{inquiry.message}</p>
+          
+          {/* Replies */}
+          {expanded && replies.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Replies:</p>
+              {replies.map((reply) => (
+                <div key={reply.id} className="p-2 bg-primary/5 rounded border-l-2 border-primary">
+                  <p className="text-xs font-medium text-primary">
+                    {reply.admin_profile?.full_name || 'Admin'}
+                  </p>
+                  <p className="text-sm mt-1">{reply.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {format(new Date(reply.created_at), 'MMM d, yyyy h:mm a')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-muted-foreground">
+              {format(new Date(inquiry.created_at), 'MMM d, yyyy')}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? 'Show less' : `Show ${replies.length > 0 ? `${replies.length} replies` : 'more'}`}
             </Button>
           </div>
         </div>

@@ -243,6 +243,44 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_replies: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          thread_id: string
+          thread_type: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          thread_id: string
+          thread_type: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          thread_id?: string
+          thread_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_replies_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_batch_jobs: {
         Row: {
           additional_instructions: string | null
@@ -4588,6 +4626,75 @@ export type Database = {
           },
         ]
       }
+      item_feedback_admin_view: {
+        Row: {
+          admin_notes: string | null
+          category: string | null
+          chapter_id: string | null
+          created_at: string | null
+          id: string | null
+          is_anonymous: boolean | null
+          is_flagged: boolean | null
+          item_id: string | null
+          item_type: string | null
+          message: string | null
+          module_id: string | null
+          rating: number | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          is_flagged?: boolean | null
+          item_id?: string | null
+          item_type?: string | null
+          message?: string | null
+          module_id?: string | null
+          rating?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          is_flagged?: boolean | null
+          item_id?: string | null
+          item_type?: string | null
+          message?: string | null
+          module_id?: string | null
+          rating?: number | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_feedback_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_feedback_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_ban_user: {
@@ -4631,6 +4738,26 @@ export type Database = {
           p_user_score: number
         }
         Returns: number
+      }
+      get_module_feedback_for_admin: {
+        Args: { _module_id?: string }
+        Returns: {
+          admin_notes: string
+          category: string
+          chapter_id: string
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          is_flagged: boolean
+          item_id: string
+          item_type: string
+          message: string
+          module_id: string
+          rating: number
+          resolved_at: string
+          resolved_by: string
+          status: string
+        }[]
       }
       get_user_analytics: {
         Args: { _user_id: string }
