@@ -12,10 +12,13 @@ import { Badge } from '@/components/ui/badge';
 
 interface ClinicalCaseListProps {
   moduleId?: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
-export function ClinicalCaseList({ moduleId, chapterId }: ClinicalCaseListProps) {
+export function ClinicalCaseList({ moduleId, chapterId, topicId }: ClinicalCaseListProps) {
   const navigate = useNavigate();
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const canSeeUnpublished = isAdmin || isTeacher || isPlatformAdmin || isSuperAdmin;
@@ -30,6 +33,9 @@ export function ClinicalCaseList({ moduleId, chapterId }: ClinicalCaseListProps)
   const filteredCases = (cases || []).filter(c => {
     // Filter by chapter if provided
     if (chapterId && c.chapter_id !== chapterId) return false;
+    
+    // Filter by topic if provided
+    if (topicId && c.topic_id !== topicId) return false;
     
     // Filter by search
     if (searchQuery) {

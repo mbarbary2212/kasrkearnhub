@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  QuestionListSkeleton,
+  LectureListSkeleton,
+} from '@/components/ui/skeletons';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { useTopic } from '@/hooks/useTopics';
 import { useModule } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -16,19 +19,40 @@ import { MatchingQuestionList } from '@/components/content/MatchingQuestionList'
 import { McqList } from '@/components/content/McqList';
 import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { OsceList } from '@/components/content/OsceList';
+import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
+import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
+import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
+import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
+import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
+import { MindMapViewer } from '@/components/study/MindMapViewer';
+import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
+import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
+import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { ChapterMockExamSection } from '@/components/exam';
-import { useLectures, useResources, useEssays, useClinicalCases } from '@/hooks/useContent';
+import { AskCoachButton } from '@/components/coach';
+import { useCoachContext } from '@/contexts/CoachContext';
+import { useLectures, useResources, useEssays } from '@/hooks/useContent';
+import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { useTopicMcqs } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
-import { useHideEmptySelfAssessmentTabs, useTopicStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
+import { 
+  useTopicStudyResources, 
+  useTopicStudyResourcesByType, 
+  useDeleteStudyResource,
+  useHideEmptySelfAssessmentTabs, 
+  StudyResource,
+} from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { useTopicSectionsEnabled } from '@/hooks/useSections';
+import { useContentProgress } from '@/hooks/useContentProgress';
 import { SectionFilter } from '@/components/sections';
 import { TopicSettingsSheet } from '@/components/module/TopicSettingsSheet';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   createResourceTabs, 
   createPracticeTabs, 
@@ -40,14 +64,10 @@ import {
   ArrowLeft, 
   Video, 
   FileText, 
-  HelpCircle, 
   FlaskConical,
-  Stethoscope,
   FolderOpen,
   GraduationCap,
   ClipboardCheck,
-  ClipboardList,
-  ExternalLink,
   Plus,
   Upload,
   Image,
@@ -60,7 +80,10 @@ export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
   const navigate = useNavigate();
   const auth = useAuthContext();
+  const queryClient = useQueryClient();
   const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, topicId });
+  const deleteStudyResource = useDeleteStudyResource();
+  const { setStudyContext } = useCoachContext();
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -86,22 +109,30 @@ export default function TopicDetailPage() {
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
   const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
   const [showDeletedOsce, setShowDeletedOsce] = useState(false);
+  const [showDeletedEssays, setShowDeletedEssays] = useState(false);
+  const [showDeletedMatching, setShowDeletedMatching] = useState(false);
 
-  // Flashcard modals
+  // Modals
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
+  const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
+  // Data fetching
   const { data: topic, isLoading: topicLoading } = useTopic(topicId);
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: lectures, isLoading: lecturesLoading } = useLectures(topicId);
   const { data: resources, isLoading: resourcesLoading } = useResources(topicId);
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
-  const { data: clinicalCases, isLoading: casesLoading } = useClinicalCases(topicId);
+  const { data: deletedEssays } = useEssays(topicId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
+  const { data: deletedMatchingQuestions } = useTopicMatchingQuestions(topicId);
+  const { data: studyResources, isLoading: studyResourcesLoading } = useTopicStudyResources(topicId);
   const { data: flashcards, isLoading: flashcardsLoading } = useTopicStudyResourcesByType(topicId, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useTopicSectionsEnabled(topicId);
+  const { data: topicProgress, isLoading: progressLoading } = useContentProgress({ topicId });
+  const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
 
   // Modern hooks for MCQ, True/False, OSCE
   const { data: mcqs, isLoading: mcqsLoading } = useTopicMcqs(topicId, false);
@@ -110,6 +141,9 @@ export default function TopicDetailPage() {
   const { data: deletedTrueFalse } = useTopicTrueFalseQuestions(topicId, true);
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
   const { data: deletedOsce } = useTopicOsceQuestions(topicId, true);
+
+  // Filter clinical cases by topic
+  const topicClinicalCases = (clinicalCases || []).filter(c => c.topic_id === topicId);
 
   // Compute deleted-only arrays
   const deletedOnlyMcqs = useMemo(() => {
@@ -126,20 +160,48 @@ export default function TopicDetailPage() {
     const activeIds = new Set((osceQuestions || []).map(q => q.id));
     return (deletedOsce || []).filter(q => !activeIds.has(q.id));
   }, [osceQuestions, deletedOsce]);
+
+  const deletedOnlyEssays: typeof essays = [];
+
+  const deletedOnlyMatching: typeof matchingQuestions = [];
+
+  // Filter study resources by type
+  const algorithms = useMemo(() => studyResources?.filter(r => r.resource_type === 'algorithm') || [], [studyResources]);
+  const mindMaps = useMemo(() => studyResources?.filter(r => r.resource_type === 'mind_map') || [], [studyResources]);
+  const workedCases = useMemo(() => studyResources?.filter(r => r.resource_type === 'clinical_case_worked') || [], [studyResources]);
+  const guidedExplanations = useMemo(() => studyResources?.filter(r => r.resource_type === 'guided_explanation') || [], [studyResources]);
+  
+  // Count non-flashcard study resources (tables, exam tips, images) for Documents tab
+  const documentStudyResources = useMemo(() => studyResources?.filter(r => 
+    r.resource_type === 'table' || r.resource_type === 'exam_tip' || r.resource_type === 'key_image'
+  ) || [], [studyResources]);
+  const documentsCount = (resources?.length || 0) + documentStudyResources.length;
   
   // Reset section filter when leaving topic
   useEffect(() => {
     return () => setSelectedSectionId(null);
   }, [topicId]);
+
+  // Update Coach context when page loads or section changes
+  useEffect(() => {
+    if (module && topic) {
+      setStudyContext({
+        pageType: activeSection === 'resources' ? 'resource' : activeSection === 'practice' ? 'practice' : 'test',
+        moduleId: module.id,
+        moduleName: module.name,
+        topicId: topic.id,
+      });
+    }
+  }, [module, topic, activeSection, setStudyContext]);
   
-  // Helper function to filter content by section (works with any array that may have section_id)
-  const filterBySection = <T,>(items: T[]): T[] => {
+  // Helper function to filter content by section
+  const filterBySection = useCallback(<T,>(items: T[]): T[] => {
     if (!selectedSectionId || !sectionsEnabled) return items;
     return items.filter(item => {
       const sectionableItem = item as unknown as { section_id?: string | null };
       return sectionableItem.section_id === selectedSectionId;
     });
-  };
+  }, [selectedSectionId, sectionsEnabled]);
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -153,35 +215,76 @@ export default function TopicDetailPage() {
     setResourcesTab(tab);
   };
 
+  // Handler for deleting study resources via ResourcesDeleteManager
+  const handleDeleteStudyResource = useCallback(async (kind: ResourceKind, id: string) => {
+    if (!topicId) return;
+    await deleteStudyResource.mutateAsync({ id, topicId });
+    toast.success('Resource deleted');
+  }, [deleteStudyResource, topicId]);
+
+  // Refetch study resources
+  const refetchStudyResources = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', topicId] });
+  }, [queryClient, topicId]);
+
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
     { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
     { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
 
-  // Use unified tab configuration
-  const resourcesTabs = createResourceTabs({
-    lectures: lectures?.length || 0,
-    flashcards: flashcards?.length || 0,
-    reference_materials: resources?.length || 0,
-  });
+  // Use unified tab configuration - create all tabs first
+  const allResourcesTabs = useMemo(() => {
+    return createResourceTabs({
+      lectures: lectures?.length || 0,
+      flashcards: flashcards?.length || 0,
+      mind_maps: mindMaps.length,
+      guided_explanations: guidedExplanations.length,
+      reference_materials: documentsCount,
+      clinical_tools: algorithms.length + workedCases.length,
+    });
+  }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, algorithms.length, workedCases.length]);
 
-  const allPracticeTabs = createPracticeTabs({
-    mcqs: mcqs?.length || 0,
-    true_false: trueFalseQuestions?.length || 0,
-    essays: essays?.length || 0,
-    clinical_cases: clinicalCases?.length || 0,
-    osce: osceQuestions?.length || 0,
-    practical: 0,
-    matching: matchingQuestions?.length || 0,
-    images: 0,
-  });
+  // Admin sees all tabs; students see filtered based on setting
+  const resourcesTabs = useMemo(() => {
+    if (canManageContent) return allResourcesTabs;
+    return filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, allResourcesTabs, hideEmptyTabs]);
+
+  // Reset resources tab if current tab becomes hidden
+  useEffect(() => {
+    if (resourcesTabs.length > 0 && !resourcesTabs.find(t => t.id === resourcesTab)) {
+      setResourcesTab(resourcesTabs[0].id as ResourceTabId);
+    }
+  }, [resourcesTabs, resourcesTab]);
+
+  const allPracticeTabs = useMemo(() => {
+    // Unified clinical cases count = cases from virtual_patient_cases table
+    const clinicalCasesCount = topicClinicalCases.length;
+    return createPracticeTabs({
+      mcqs: mcqs?.length || 0,
+      true_false: trueFalseQuestions?.length || 0,
+      essays: essays?.length || 0,
+      clinical_cases: clinicalCasesCount,
+      osce: osceQuestions?.length || 0,
+      practical: 0,
+      matching: matchingQuestions?.length || 0,
+      images: 0,
+    });
+  }, [mcqs?.length, trueFalseQuestions?.length, essays?.length, topicClinicalCases.length, osceQuestions?.length, matchingQuestions?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
     return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, mcqs, trueFalseQuestions, essays, clinicalCases, osceQuestions, matchingQuestions, hideEmptyTabs]);
+  }, [canManageContent, allPracticeTabs, hideEmptyTabs]);
+
+  // Reset practice tab if current tab becomes hidden
+  useEffect(() => {
+    if (practiceTabs.length > 0 && !practiceTabs.find(t => t.id === practiceTab)) {
+      setPracticeTab(practiceTabs[0].id as PracticeTabId);
+    }
+  }, [practiceTabs, practiceTab]);
 
   // Early return for not found - MUST be after all hooks
   if (!topicLoading && !topic) {
@@ -208,15 +311,20 @@ export default function TopicDetailPage() {
           <div className="flex-1">
             {(moduleLoading || topicLoading) ? (
               <>
-                <Skeleton className="h-5 w-48 mb-2" />
-                <Skeleton className="h-8 w-96" />
+                <Skeleton className="hidden md:block h-5 w-48 mb-2" />
+                <Skeleton className="h-8 w-96 max-w-full" />
               </>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground">
-                  {module?.name} • {topic?.description || 'Pharmacology'}
-                </p>
-                <h1 className="text-2xl font-heading font-semibold">
+                {/* Desktop: Full two-line header */}
+                <div className="hidden md:block">
+                  <p className="text-sm text-muted-foreground">{module?.name}</p>
+                  <h1 className="text-2xl font-heading font-semibold">
+                    {topic?.name}
+                  </h1>
+                </div>
+                {/* Mobile: Just the topic title, smaller */}
+                <h1 className="md:hidden text-lg font-heading font-semibold line-clamp-1">
                   {topic?.name}
                 </h1>
               </>
@@ -230,13 +338,37 @@ export default function TopicDetailPage() {
               canManage={canManageContent}
             />
           )}
+          {/* Ask Coach Button - visible in Resources and Practice sections */}
+          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+            <AskCoachButton 
+              variant="header"
+              context={{
+                pageType: activeSection === 'resources' ? 'resource' : 'practice',
+                moduleId: module?.id,
+                moduleName: module?.name,
+                topicId: topic?.id,
+              }}
+            />
+          )}
         </div>
+
+        {/* Topic Progress Bar */}
+        <ChapterProgressBar
+          totalProgress={topicProgress?.totalProgress || 0}
+          practiceProgress={topicProgress?.practiceProgress || 0}
+          videoProgress={topicProgress?.videoProgress || 0}
+          practiceCompleted={topicProgress?.practiceCompleted || 0}
+          practiceTotal={topicProgress?.practiceTotal || 0}
+          videosCompleted={topicProgress?.videosCompleted || 0}
+          videosTotal={topicProgress?.videosTotal || 0}
+          isLoading={progressLoading}
+        />
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-muted/30 rounded-lg p-1.5">
+            <nav className="flex gap-1.5 bg-muted/50 border border-border/50 rounded-xl p-1.5 shadow-sm">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -245,7 +377,7 @@ export default function TopicDetailPage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-colors",
                       isActive 
                         ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -304,7 +436,15 @@ export default function TopicDetailPage() {
                   />
                 )}
                 
-                <div className="flex gap-2 flex-wrap">
+                {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={resourcesTabs}
+                    activeTab={resourcesTab}
+                    onTabChange={(tab) => handleResourcesTabChange(tab as ResourceTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
                   {resourcesTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = resourcesTab === tab.id;
@@ -327,7 +467,7 @@ export default function TopicDetailPage() {
                   })}
                 </div>
 
-                {/* Videos/Lectures */}
+                {/* Lectures Content */}
                 {resourcesTab === 'lectures' && (
                   <div>
                     {showAddControls && topicId && moduleId && (
@@ -336,24 +476,17 @@ export default function TopicDetailPage() {
                       </div>
                     )}
                     {lecturesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
-                    ) : lectures && lectures.length > 0 ? (
+                      <LectureListSkeleton count={3} />
+                    ) : (
                       <LectureList 
                         key={lecturesResetKey}
-                        lectures={filterBySection(lectures) || []} 
+                        lectures={filterBySection(lectures || [])} 
                         moduleId={moduleId}
                         topicId={topicId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
                       />
-                    ) : (
-                      <div className="text-center py-12 border rounded-lg">
-                        <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No videos available yet.</p>
-                      </div>
                     )}
                   </div>
                 )}
@@ -387,9 +520,7 @@ export default function TopicDetailPage() {
                       </div>
                     )}
                     {flashcardsLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <LectureListSkeleton count={3} />
                     ) : (
                       <FlashcardsTab
                         resources={filterBySection(flashcards || [])}
@@ -401,41 +532,111 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Reference Materials (formerly Documents) */}
-                {resourcesTab === 'reference_materials' && (
-                  <div>
-                    {showAddControls && topicId && moduleId && (
-                      <div className="mb-4">
-                        <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" />
+                {/* Mind Maps Content */}
+                {resourcesTab === 'mind_maps' && topicId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              (window as any).__pendingResourceType = 'mind_map';
+                              setFlashcardFormOpen(true);
+                            })
+                          }
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Mind Map
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => guardAdd(() => setMindMapBulkOpen(true))}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Bulk Upload PDFs
+                        </Button>
                       </div>
                     )}
-                    {resourcesLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10" />)}
-                      </div>
-                    ) : resources && resources.length > 0 ? (
-                      <div className="space-y-1">
-                        {resources.map((resource) => (
-                          <a
-                            key={resource.id}
-                            href={resource.file_url || resource.external_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors group"
-                          >
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                            <span className="flex-1 text-sm">{resource.title}</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </a>
-                        ))}
-                      </div>
+                    {studyResourcesLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <div className="text-center py-12 border rounded-lg">
-                        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No documents available yet.</p>
-                      </div>
+                      <MindMapViewer
+                        resources={filterBySection(mindMaps)}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                        topicId={topicId}
+                      />
                     )}
                   </div>
+                )}
+
+                {/* Guided Explanations Content */}
+                {resourcesTab === 'guided_explanations' && topicId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            guardAdd(() => {
+                              setEditingFlashcard(null);
+                              (window as any).__pendingResourceType = 'guided_explanation';
+                              setFlashcardFormOpen(true);
+                            })
+                          }
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Guided Explanation
+                        </Button>
+                      </div>
+                    )}
+                    {studyResourcesLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <GuidedExplanationList
+                        resources={filterBySection(guidedExplanations)}
+                        canManage={canManageContent}
+                        onEdit={handleEditFlashcard}
+                        topicId={topicId}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Reference Materials Content */}
+                {resourcesTab === 'reference_materials' && topicId && moduleId && (
+                  <ResourcesTabContent
+                    chapterId={topicId} // Using topicId for now - ResourcesTabContent needs to support topicId
+                    moduleId={moduleId}
+                    resources={filterBySection(resources || [])}
+                    resourcesLoading={resourcesLoading}
+                    canManageContent={canManageContent}
+                    isSuperAdmin={auth.isSuperAdmin}
+                  />
+                )}
+
+                {/* Clinical Tools Content */}
+                {resourcesTab === 'clinical_tools' && topicId && moduleId && (
+                  <ClinicalToolsSection
+                    algorithms={filterBySection(algorithms)}
+                    workedCases={filterBySection(workedCases)}
+                    canManage={canManageContent}
+                    onEdit={handleEditFlashcard}
+                    onAdd={(type) => {
+                      setEditingFlashcard(null);
+                      guardAdd(() => {
+                        setFlashcardFormOpen(true);
+                        (window as any).__pendingResourceType = type;
+                      });
+                    }}
+                    onBulkUpload={(type) => guardAdd(() => setFlashcardBulkOpen(true))}
+                    topicId={topicId}
+                  />
                 )}
               </div>
             )}
@@ -453,7 +654,15 @@ export default function TopicDetailPage() {
                   />
                 )}
                 
-                <div className="flex gap-2 flex-wrap">
+                {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={practiceTabs}
+                    activeTab={practiceTab}
+                    onTabChange={(tab) => setPracticeTab(tab as PracticeTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
                   {practiceTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = practiceTab === tab.id;
@@ -476,13 +685,11 @@ export default function TopicDetailPage() {
                   })}
                 </div>
 
-                {/* MCQs - Using modern McqList component */}
+                {/* MCQs */}
                 {practiceTab === 'mcqs' && (
                   <div>
                     {mcqsLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <McqList
                         mcqs={filterBySection(mcqs || [])}
@@ -502,9 +709,7 @@ export default function TopicDetailPage() {
                 {practiceTab === 'true_false' && (
                   <div>
                     {trueFalseLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <TrueFalseList
                         questions={filterBySection(trueFalseQuestions || [])}
@@ -523,73 +728,56 @@ export default function TopicDetailPage() {
                 {/* Essays / Short Answer */}
                 {practiceTab === 'essays' && (
                   <div>
-                    {canManageContent && topicId && moduleId && (
+                    {showAddControls && topicId && moduleId && (
                       <div className="mb-4">
                         <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="essay" />
                       </div>
                     )}
                     {essaysLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
                       <EssayList
-                        essays={essays || []}
+                        essays={filterBySection(essays || [])}
+                        deletedEssays={deletedOnlyEssays}
                         moduleId={moduleId}
                         topicId={topicId}
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedEssays}
+                        onShowDeletedChange={setShowDeletedEssays}
                       />
                     )}
                   </div>
                 )}
 
-                {/* Clinical Cases - Topics use clinical_cases table */}
-                {practiceTab === 'clinical_cases' && (
+                {/* Clinical Cases */}
+                {practiceTab === 'clinical_cases' && moduleId && topicId && (
                   <div>
-                    {casesLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
-                    ) : clinicalCases && clinicalCases.length > 0 ? (
-                      <div className="space-y-2">
-                        {clinicalCases.map((c) => (
-                          <Card key={c.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="flex items-center gap-4 p-4">
-                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <Stethoscope className="w-5 h-5 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-medium">{c.title}</h4>
-                                <p className="text-sm text-muted-foreground line-clamp-1">{c.presentation}</p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                    {canManageContent ? (
+                      <ClinicalCaseAdminList moduleId={moduleId} topicId={topicId} />
+                    ) : clinicalCasesLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <div className="text-center py-12 border rounded-lg">
-                        <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No case scenarios available yet.</p>
-                      </div>
+                      <ClinicalCaseList moduleId={moduleId} topicId={topicId} />
                     )}
                   </div>
                 )}
 
-                {/* OSCE - Using modern OsceList component */}
+                {/* OSCE */}
                 {practiceTab === 'osce' && (
                   <div>
                     {osceLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="osce" />
                     ) : (
                       <OsceList
                         questions={filterBySection(osceQuestions || [])}
                         deletedQuestions={deletedOnlyOsce}
                         moduleId={moduleId || ''}
                         topicId={topicId}
+                        moduleCode={module?.slug?.toUpperCase() || 'MODULE'}
+                        chapterTitle={topic?.name || 'TOPIC'}
                         isAdmin={canManageContent}
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedOsce}
@@ -611,15 +799,17 @@ export default function TopicDetailPage() {
                 {practiceTab === 'matching' && (
                   <div>
                     {matchingLoading ? (
-                      <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
-                      </div>
+                      <QuestionListSkeleton count={2} type="matching" />
                     ) : (
                       <MatchingQuestionList
-                        questions={matchingQuestions || []}
+                        questions={filterBySection(matchingQuestions || [])}
+                        deletedQuestions={deletedOnlyMatching}
                         moduleId={moduleId || ''}
                         topicId={topicId}
                         isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedMatching}
+                        onShowDeletedChange={setShowDeletedMatching}
                       />
                     )}
                   </div>
@@ -627,8 +817,10 @@ export default function TopicDetailPage() {
 
                 {/* Image Questions (placeholder) */}
                 {practiceTab === 'images' && (
-                  <div className="text-center py-12 border rounded-lg">
-                    <Image className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Image className="w-6 h-6 text-muted-foreground" />
+                    </div>
                     <p className="text-muted-foreground">Image questions coming soon.</p>
                   </div>
                 )}
@@ -645,15 +837,18 @@ export default function TopicDetailPage() {
           </div>
         </div>
 
-        {/* Flashcard Modals */}
+        {/* Modals */}
         {topicId && moduleId && (
           <>
             <StudyResourceFormModal
               open={flashcardFormOpen}
-              onOpenChange={setFlashcardFormOpen}
+              onOpenChange={(open) => {
+                setFlashcardFormOpen(open);
+                if (!open) delete (window as any).__pendingResourceType;
+              }}
               topicId={topicId}
               moduleId={moduleId}
-              resourceType="flashcard"
+              resourceType={(window as any).__pendingResourceType || editingFlashcard?.resource_type || 'flashcard'}
               resource={editingFlashcard}
             />
             <StudyBulkUploadModal
@@ -663,7 +858,21 @@ export default function TopicDetailPage() {
               moduleId={moduleId}
               resourceType="flashcard"
             />
+            <MindMapBulkUploadModal
+              open={mindMapBulkOpen}
+              onOpenChange={setMindMapBulkOpen}
+              topicId={topicId}
+              moduleId={moduleId}
+            />
           </>
+        )}
+
+        {/* Study Resource Delete Manager */}
+        {canManageContent && topicId && (
+          <ResourcesDeleteManager
+            deleteResource={handleDeleteStudyResource}
+            refetchResources={refetchStudyResources}
+          />
         )}
 
         {/* Permission Dialog */}

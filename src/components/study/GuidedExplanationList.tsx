@@ -22,6 +22,10 @@ interface GuidedExplanationListProps {
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
   onDelete?: (id: string) => void;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 export function GuidedExplanationList({
@@ -29,13 +33,15 @@ export function GuidedExplanationList({
   canManage = false,
   onEdit,
   onDelete,
+  chapterId,
+  topicId,
 }: GuidedExplanationListProps) {
   const [selectedResource, setSelectedResource] = useState<StudyResource | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   
-  // Fetch sections for admin table
-  const chapterId = resources[0]?.chapter_id;
-  const { data: sections = [] } = useChapterSections(chapterId);
+  // Fetch sections for admin table - use prop or fall back to first resource
+  const resolvedChapterId = chapterId || resources[0]?.chapter_id;
+  const { data: sections = [] } = useChapterSections(resolvedChapterId);
 
   if (resources.length === 0) {
     return (
@@ -67,7 +73,7 @@ export function GuidedExplanationList({
         <GuidedExplanationAdminTable
           resources={resources}
           sections={sections}
-          chapterId={chapterId}
+          chapterId={resolvedChapterId}
           moduleId={resources[0]?.module_id}
           onEdit={(r) => onEdit?.(r)}
           onDelete={(id) => onDelete?.(id)}

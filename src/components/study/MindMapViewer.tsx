@@ -220,9 +220,13 @@ interface MindMapViewerProps {
   resources: StudyResource[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
-export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapViewerProps) {
+export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId }: MindMapViewerProps) {
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
@@ -233,9 +237,9 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
   const canvasRef = useRef<ReactSketchCanvasRef>(null);
   const isMobile = useIsMobile();
   
-  // Fetch sections for admin table
-  const chapterId = resources[0]?.chapter_id;
-  const { data: sections = [] } = useChapterSections(chapterId);
+  // Fetch sections for admin table - use prop or fall back to first resource
+  const resolvedChapterId = chapterId || resources[0]?.chapter_id;
+  const { data: sections = [] } = useChapterSections(resolvedChapterId);
   
   const reorderMutation = useReorderStudyResources();
 
@@ -357,16 +361,16 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
     // Update local state immediately for optimistic UI
     setLocalResources(reorderedItems);
 
-    // Persist to database
-    const chapterId = localResources[0]?.chapter_id;
-    if (chapterId) {
+    // Persist to database - use chapterId prop or from first resource
+    const containerId = chapterId || topicId || localResources[0]?.chapter_id || localResources[0]?.topic_id;
+    if (containerId) {
       const updates = reorderedItems.map((r, idx) => ({
         id: r.id,
         display_order: idx,
       }));
 
       reorderMutation.mutate(
-        { resources: updates, chapterId },
+        { resources: updates, chapterId: resolvedChapterId },
         {
           onError: () => {
             toast.error('Failed to save order');
@@ -375,7 +379,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
         }
       );
     }
-  }, [localResources, resources, reorderMutation]);
+  }, [localResources, resources, reorderMutation, chapterId, topicId, resolvedChapterId]);
 
   if (resources.length === 0) {
     return (
@@ -392,7 +396,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit }: MindMapV
         <MindMapAdminTable
           resources={localResources}
           sections={sections}
-          chapterId={chapterId}
+          chapterId={resolvedChapterId}
           moduleId={resources[0]?.module_id}
           onEdit={(r) => onEdit?.(r)}
           onDelete={handleDelete}

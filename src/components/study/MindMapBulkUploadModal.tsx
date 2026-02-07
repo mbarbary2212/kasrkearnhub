@@ -18,8 +18,11 @@ import { cn } from '@/lib/utils';
 interface MindMapBulkUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chapterId: string;
   moduleId: string;
+  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
+  chapterId?: string;
+  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
+  topicId?: string;
 }
 
 interface UploadItem {
@@ -44,9 +47,11 @@ function generateTitleFromFilename(filename: string): string {
 export function MindMapBulkUploadModal({
   open,
   onOpenChange,
-  chapterId,
   moduleId,
+  chapterId,
+  topicId,
 }: MindMapBulkUploadModalProps) {
+  const containerId = chapterId || topicId || 'general';
   const [items, setItems] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -122,7 +127,7 @@ export function MindMapBulkUploadModal({
         // Upload file to storage
         const fileExt = item.file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${moduleId}/${chapterId}/${fileName}`;
+        const filePath = `${moduleId}/${containerId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('study-resources')
@@ -157,7 +162,8 @@ export function MindMapBulkUploadModal({
         await bulkCreate.mutateAsync(
           successfulResources.map(r => ({
             module_id: moduleId,
-            chapter_id: chapterId,
+            chapter_id: chapterId || null,
+            topic_id: topicId || null,
             resource_type: 'mind_map' as const,
             title: r.title,
             content: { imageUrl: r.url, description: '' },
