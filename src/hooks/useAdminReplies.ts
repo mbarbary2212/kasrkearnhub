@@ -216,6 +216,21 @@ export function useSubmitReply() {
       });
 
       if (error) throw error;
+
+      // Notify higher-level admins about the reply
+      try {
+        await supabase.functions.invoke('notify-ticket-admins', {
+          body: {
+            type: 'reply',
+            threadType: data.threadType,
+            threadId: data.threadId,
+            replyBy: user.id,
+          },
+        });
+      } catch (notifyError) {
+        console.error('Failed to notify admins about reply:', notifyError);
+        // Don't throw - the reply was still created
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-replies', variables.threadType, variables.threadId] });

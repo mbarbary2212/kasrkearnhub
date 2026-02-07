@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.process-batch-job]
 verify_jwt = false
+
+[functions.notify-ticket-admins]
+verify_jwt = false
