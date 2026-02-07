@@ -1615,6 +1615,7 @@ export type Database = {
           seen_by_admin: boolean | null
           status: string
           subject: string
+          topic_id: string | null
           user_id: string
         }
         Insert: {
@@ -1635,6 +1636,7 @@ export type Database = {
           seen_by_admin?: boolean | null
           status?: string
           subject: string
+          topic_id?: string | null
           user_id: string
         }
         Update: {
@@ -1655,6 +1657,7 @@ export type Database = {
           seen_by_admin?: boolean | null
           status?: string
           subject?: string
+          topic_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1670,6 +1673,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -1696,6 +1706,7 @@ export type Database = {
           resolved_by: string | null
           seen_by_admin: boolean | null
           status: string
+          topic_id: string | null
           user_id: string
         }
         Insert: {
@@ -1719,6 +1730,7 @@ export type Database = {
           resolved_by?: string | null
           seen_by_admin?: boolean | null
           status?: string
+          topic_id?: string | null
           user_id: string
         }
         Update: {
@@ -1742,6 +1754,7 @@ export type Database = {
           resolved_by?: string | null
           seen_by_admin?: boolean | null
           status?: string
+          topic_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1757,6 +1770,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_feedback_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

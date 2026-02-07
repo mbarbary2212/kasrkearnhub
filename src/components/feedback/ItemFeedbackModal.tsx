@@ -14,6 +14,7 @@ interface ItemFeedbackModalProps {
   onClose: () => void;
   moduleId: string;
   chapterId?: string;
+  topicId?: string;
   itemType: ItemType;
   itemId?: string;
   itemTitle?: string;
@@ -32,6 +33,7 @@ export default function ItemFeedbackModal({
   onClose,
   moduleId,
   chapterId,
+  topicId,
   itemType,
   itemId,
   itemTitle,
@@ -53,6 +55,7 @@ export default function ItemFeedbackModal({
       await submitFeedback.mutateAsync({
         moduleId,
         chapterId,
+        topicId,
         itemType,
         itemId,
         rating: rating || undefined,

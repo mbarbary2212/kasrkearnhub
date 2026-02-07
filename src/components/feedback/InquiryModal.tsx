@@ -28,6 +28,7 @@ interface InquiryModalProps {
   moduleName?: string;
   moduleCode?: string;
   chapterId?: string;
+  topicId?: string;
 }
 
 const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string }[] = [
@@ -40,7 +41,7 @@ const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string 
   { value: 'other', label: 'Other', helper: 'Anything not listed above' },
 ];
 
-export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId }: InquiryModalProps) {
+export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId, topicId }: InquiryModalProps) {
   const isMobile = useIsMobile();
   const { profile } = useAuthContext();
   const submitInquiry = useSubmitInquiry();
@@ -84,6 +85,7 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
         message: messageValidation.data!,
         moduleId,
         chapterId,
+        topicId,
         isAnonymous: false, // Inquiries are not anonymous
       });
 

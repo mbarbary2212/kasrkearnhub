@@ -20,6 +20,7 @@ interface VideoCardProps {
   duration?: string | null;
   moduleId?: string;
   chapterId?: string;
+  topicId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
@@ -35,6 +36,7 @@ export default function VideoCard({
   duration,
   moduleId,
   chapterId,
+  topicId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
@@ -189,6 +191,7 @@ export default function VideoCard({
           itemTitle={title}
           moduleId={moduleId}
           chapterId={chapterId}
+          topicId={topicId}
         />
       )}
     </>

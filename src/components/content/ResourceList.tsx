@@ -32,6 +32,7 @@ interface ResourceListProps {
   resources: Resource[];
   moduleId?: string;
   chapterId?: string;
+  topicId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
@@ -55,6 +56,7 @@ export default function ResourceList({
   resources,
   moduleId,
   chapterId,
+  topicId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
@@ -263,6 +265,7 @@ export default function ResourceList({
             itemTitle={feedbackItem.title}
             moduleId={moduleId}
             chapterId={chapterId}
+            topicId={topicId}
           />
         )}
 
@@ -461,6 +464,7 @@ export default function ResourceList({
           itemTitle={feedbackItem.title}
           moduleId={moduleId}
           chapterId={chapterId}
+          topicId={topicId}
         />
       )}
 

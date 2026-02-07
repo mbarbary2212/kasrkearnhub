@@ -23,6 +23,7 @@ export interface Inquiry {
   user_id: string;
   module_id: string | null;
   chapter_id: string | null;
+  topic_id: string | null;
   category: InquiryCategory;
   subject: string;
   message: string;
@@ -56,6 +57,7 @@ export function useSubmitInquiry() {
       message: string;
       moduleId?: string;
       chapterId?: string;
+      topicId?: string;
       isAnonymous?: boolean;
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit inquiry');
@@ -78,6 +80,7 @@ export function useSubmitInquiry() {
         user_id: user.id,
         module_id: data.moduleId || null,
         chapter_id: data.chapterId || null,
+        topic_id: data.topicId || null,
         category: data.category,
         subject: data.subject,
         message: data.message,
@@ -94,6 +97,7 @@ export function useSubmitInquiry() {
             id: insertedData.id,
             module_id: data.moduleId || null,
             chapter_id: data.chapterId || null,
+            topic_id: data.topicId || null,
             category: data.category,
             subject: data.subject,
           },
@@ -186,6 +190,7 @@ export function useAllInquiries(filters?: {
   moduleId?: string;
   moduleIds?: string[];
   chapterIds?: string[];
+  topicIds?: string[];
   status?: InquiryStatus;
 }) {
   return useQuery({
@@ -204,6 +209,9 @@ export function useAllInquiries(filters?: {
       }
       if (filters?.chapterIds && filters.chapterIds.length > 0) {
         query = query.in('chapter_id', filters.chapterIds);
+      }
+      if (filters?.topicIds && filters.topicIds.length > 0) {
+        query = query.in('topic_id', filters.topicIds);
       }
       if (filters?.status) {
         query = query.eq('status', filters.status);

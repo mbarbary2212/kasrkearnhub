@@ -46,6 +46,7 @@ interface EssayListProps {
   deletedEssays?: Essay[];
   moduleId?: string;
   chapterId?: string;
+  topicId?: string;
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
@@ -59,6 +60,7 @@ export default function EssayList({
   deletedEssays = [],
   moduleId,
   chapterId,
+  topicId,
   canEdit = false,
   canDelete = false,
   showFeedback = true,
@@ -404,6 +406,7 @@ export default function EssayList({
                                 contentType="essay"
                                 moduleId={moduleId}
                                 chapterId={chapterId}
+                                topicId={topicId}
                                 canEdit={canEdit}
                                 canDelete={canDelete}
                                 showFeedback={showFeedback}
