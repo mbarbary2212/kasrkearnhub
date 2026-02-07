@@ -1,138 +1,171 @@
 
-# Create Temporary Test Admin Account & Run Comprehensive Tests
+# Feature Parity: Topics and Chapters
 
-## Security Assessment
+## Overview
 
-Creating a temporary test account is **safe** if done correctly:
-
-| Risk | Mitigation |
-|------|------------|
-| Account left active | Will delete immediately after testing |
-| Weak password | Using strong 24-character password |
-| Privilege escalation | Using same secure role pattern as existing admins |
-| Activity logging | All actions logged in audit trail |
+This plan aligns the TopicDetailPage (Pharmacology) with ChapterPage (Surgery), ensuring identical functionality. The changes also add Audio upload capability to chapters.
 
 ---
 
-## Phase 1: Create Edge Function for Test User Management
+## Identified Gaps
 
-Create a new edge function `manage-test-user` that:
+### TopicDetailPage Missing (vs ChapterPage):
 
-1. **Verifies caller is super_admin** (using JWT validation)
-2. **Creates user** via Supabase Admin API (`supabase.auth.admin.createUser`)
-3. **Assigns role** to `user_roles` table
-4. **Creates profile** entry
-5. **Can also delete** the test user when done
+| Feature | Status |
+|---------|--------|
+| Progress Bar | Missing |
+| Ask Coach Button | Missing |
+| Mobile Section Dropdown | Missing |
+| Mind Maps tab | Missing |
+| Guided Explanations tab | Missing |
+| Clinical Tools tab | Missing |
+| Reference Materials (Tables/Tips/Images/Documents sub-tabs) | Missing - only shows basic links |
+| Clinical Case Admin List | Missing - shows simple cards instead |
 
-```typescript
-// supabase/functions/manage-test-user/index.ts
-// POST { action: 'create' | 'delete', email, password, role }
-// Returns: { success: true, user_id: '...' }
-```
+### ChapterPage Missing:
 
-### Security Measures:
-- Only super_admins can call this function
-- Emails must end with `.test` domain
-- All operations logged to audit trail
-- Password validated for minimum complexity
-
----
-
-## Phase 2: Create the Test Account
-
-Call the edge function to create:
-
-| Field | Value |
-|-------|-------|
-| Email | `test-platform-admin@kasralainy.test` |
-| Password | Auto-generated strong password |
-| Role | `platform_admin` |
-| Full Name | `Test Platform Admin (TEMPORARY)` |
+| Feature | Status |
+|---------|--------|
+| Audio Upload Dialog | Not shown in UI (AudioUploadDialog supports chapterId but not rendered in ChapterPage) |
 
 ---
 
-## Phase 3: Run Comprehensive Tests
+## Implementation Plan
 
-Once the account is created, I will:
+### Phase 1: Add Missing Imports and Hooks to TopicDetailPage
 
-### 3.1 Login & Navigation Tests
-- Log in with the test account
-- Verify admin panel access
-- Check all major navigation routes
+**File: `src/pages/TopicDetailPage.tsx`**
 
-### 3.2 Surgery Module Tests (Chapter-Based)
-- Navigate to Surgery module
-- View chapter content (lectures, MCQs, flashcards)
-- Test feedback submission from chapter page
-- Verify feedback has `chapter_id` populated
-- Test inquiry submission
+Add imports:
+- `ChapterProgressBar` component
+- `AskCoachButton` component
+- `MobileSectionDropdown` component
+- `MindMapViewer` component
+- `MindMapBulkUploadModal` component
+- `GuidedExplanationList` component
+- `ClinicalToolsSection` component
+- `ResourcesTabContent` component
+- `ClinicalCaseAdminList` component
+- `useCoachContext` hook
+- `useTopicStudyResources` hook (already partially imported)
+- Progress tracking hook (create `useTopicProgress` or reuse existing)
 
-### 3.3 Pharmacology Module Tests (Topic-Based)
-- Navigate to Pharmacology module
-- View topic content (lectures, MCQs, flashcards)
-- Test feedback submission from topic page
-- Verify feedback has `topic_id` populated
-- Test inquiry submission
+### Phase 2: Add Progress Bar to TopicDetailPage
 
-### 3.4 Admin Panel Tests
-- User management tab
-- Announcements tab
-- Question analytics
-- Integrity checks
-- Module admin assignments
+Use the existing `useContentProgress` hook or create a dedicated `useTopicProgress` hook mirroring `useChapterProgress`.
 
-### 3.5 Student Dashboard Tests
-- View student dashboard
-- Check progress tracking
-- Verify study plan features
+Add the `ChapterProgressBar` component below the header (same position as ChapterPage).
 
-### 3.6 Database Integrity Verification
-- Check `topic_id` population in:
-  - `item_feedback` table
-  - `inquiries` table
-  - `study_resources` table
-  - `question_attempts` table
-  - `user_flashcard_stars` table
-- Verify RLS policies work correctly for topic admins
+### Phase 3: Add Ask Coach Button
 
----
+Add `AskCoachButton` to the header area, visible when not an admin and in Resources or Practice sections.
 
-## Phase 4: Delete Test Account
+### Phase 4: Add Mobile Section Dropdown
 
-After all tests complete, immediately run:
+Replace the simple button tabs on mobile with `MobileSectionDropdown` for both Resources and Practice sub-tabs.
 
-```sql
--- Edge function will execute this via Admin API
-DELETE FROM auth.users 
-WHERE email = 'test-platform-admin@kasralainy.test';
--- Cascade automatically removes profile and role
-```
+### Phase 5: Expand Resources Tabs
 
----
+Update the `resourcesTabs` configuration to include:
+- Mind Maps (count from `useTopicStudyResourcesByType(topicId, 'mind_map')`)
+- Guided Explanations (count from study resources with type `guided_explanation`)
+- Clinical Tools (algorithms + worked cases count)
+- Keep Reference Materials but use the full `ResourcesTabContent` component logic
 
-## Files to Create/Modify
+Add tab content rendering for:
+- `mind_maps` - Use `MindMapViewer` with topic-filtered resources
+- `guided_explanations` - Use `GuidedExplanationList` with topic-filtered resources
+- `clinical_tools` - Use `ClinicalToolsSection` with algorithms and worked cases
+- `reference_materials` - Either create a new `TopicResourcesTabContent` or adapt existing
 
-### New Files
-- `supabase/functions/manage-test-user/index.ts` - Edge function for safe test user management
+### Phase 6: Update Clinical Cases Admin View
 
-### No Production Code Changes
-- This is purely for testing purposes
-- All changes are in test infrastructure
+When `canManageContent` is true, render `ClinicalCaseAdminList` with `topicId` instead of the simple Card view.
 
----
+### Phase 7: Add Audio Upload to ChapterPage
 
-## Test Report
+**File: `src/pages/ChapterPage.tsx`**
 
-At the end, I will provide a comprehensive report with:
-- Screenshots of each test step
-- Console logs and errors found
-- Database verification results
-- Network request analysis
-- Issues discovered (if any)
-- Recommendations for fixes
+The `AudioUploadDialog` component already supports `chapterId`, but it's only rendered via `AdminContentActions` in the Resources tab. Verify it appears when `contentType="resource"` is used.
+
+If not visible, add explicit AudioUploadDialog button in the Lectures tab admin actions (similar to how Topics handle it).
+
+### Phase 8: Create/Update Supporting Hooks
+
+**File: `src/hooks/useTopicProgress.ts`** (new or update existing)
+
+Create a hook mirroring `useChapterProgress` that:
+- Queries `question_attempts` with `topic_id`
+- Queries `video_progress` with `topic_id`
+- Returns same shape: `totalProgress`, `practiceProgress`, `videoProgress`, etc.
+
+**File: `src/components/study/MindMapBulkUploadModal.tsx`**
+
+Update to accept optional `topicId` prop alongside `chapterId`.
 
 ---
 
-## Summary
+## Files to Modify
 
-This plan creates a secure, temporary test account with full audit logging, runs comprehensive end-to-end tests across both chapter-based (Surgery) and topic-based (Pharmacology) modules, and then immediately deletes the test account. The edge function ensures only super_admins can create test accounts and restricts emails to a `.test` domain for safety.
+| File | Changes |
+|------|---------|
+| `src/pages/TopicDetailPage.tsx` | Major update - add all missing features |
+| `src/pages/ChapterPage.tsx` | Minor - verify Audio upload visibility |
+| `src/hooks/useTopicProgress.ts` | New file or update existing progress hook |
+| `src/components/study/MindMapBulkUploadModal.tsx` | Add `topicId` support |
+| `src/components/study/MindMapViewer.tsx` | Ensure works with `topic_id` (may need update for section fetching) |
+| `src/components/study/GuidedExplanationList.tsx` | Ensure works with `topic_id` |
+| `src/components/study/ClinicalToolsSection.tsx` | Already has `topicId` prop |
+| `src/components/content/ResourcesTabContent.tsx` | Create topic variant or make dual-support |
+
+---
+
+## Technical Details
+
+### TopicDetailPage Changes (Detailed)
+
+1. **State additions:**
+   - `mindMapBulkOpen` for MindMapBulkUploadModal
+   - Study resource type states for various modals
+
+2. **Hook additions:**
+   - `useTopicStudyResources(topicId)` - fetch all study resources
+   - Progress hook for topic
+
+3. **Computed values:**
+   - Filter study resources by type: flashcards, algorithms, mindMaps, workedCases, guidedExplanations
+   - Count document study resources (table, exam_tip, key_image)
+
+4. **Resources tabs update:**
+   ```typescript
+   const resourcesTabs = createResourceTabs({
+     lectures: lectures?.length || 0,
+     flashcards: flashcards?.length || 0,
+     mind_maps: mindMaps.length,
+     guided_explanations: guidedExplanations.length,
+     reference_materials: documentsCount,
+     clinical_tools: algorithms.length + workedCases.length,
+   });
+   ```
+
+5. **Tab content rendering:**
+   - Add cases for `mind_maps`, `guided_explanations`, `clinical_tools`
+   - Update `reference_materials` to use richer component
+
+### Progress Hook for Topics
+
+Mirror the chapter progress calculation:
+- 60% weight on practice (MCQs, True/False, OSCE, Essays, Matching)
+- 40% weight on videos (lecture watch progress)
+
+Query using `topic_id` column instead of `chapter_id`.
+
+---
+
+## Expected Outcome
+
+After implementation:
+- TopicDetailPage will have identical feature set to ChapterPage
+- Both pages support audio upload
+- Students see consistent UI regardless of module type (chapter vs topic based)
+- Admins have full CRUD on all content types in both contexts
