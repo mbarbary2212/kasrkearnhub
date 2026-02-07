@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import logoIcon from '@/assets/kalm-logo-icon.png';
+
 interface SplashScreenProps {
   onDismiss: () => void;
 }
+
 const PILLARS = [{
   title: 'Learn',
   description: 'Resources • Practice • Test yourself'
@@ -16,11 +18,13 @@ const PILLARS = [{
   title: 'Personal coach',
   description: 'Guidance • Smart recommendations'
 }];
+
 export default function SplashScreen({
   onDismiss
 }: SplashScreenProps) {
   const [currentPillar, setCurrentPillar] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+
   useEffect(() => {
     const FADE_IN = 500;
     const HOLD = 2000;
@@ -39,6 +43,7 @@ export default function SplashScreen({
     }, CYCLE);
     return () => clearInterval(interval);
   }, []);
+
   const animationStyle = {
     opacity: isVisible ? 1 : 0,
     transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
@@ -46,19 +51,33 @@ export default function SplashScreen({
     transition: 'opacity 500ms ease-out, transform 500ms ease-out, filter 500ms ease-out',
     willChange: 'opacity, transform, filter' as const
   };
-  return <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
-      {/* Desktop/Tablet: CSS background image */}
-      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-landscape.png')] bg-cover bg-top bg-no-repeat flex-col items-center justify-center">
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
+      {/* Desktop/Tablet Layout */}
+      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center">
+        {/* Responsive background image */}
+        <picture className="absolute inset-0 w-full h-full">
+          <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
+          <source media="(min-width: 769px)" srcSet="/splash-landscape.webp" />
+          <img
+            src="/splash-landscape.webp"
+            alt="KALM Hub background"
+            fetchPriority="high"
+            className="w-full h-full object-cover object-top"
+          />
+        </picture>
+
         {/* Logo + Title - upper left corner */}
         <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
           <img src={logoIcon} alt="KALM Hub Logo" className="w-12 h-12 md:w-14 md:h-14 drop-shadow-lg" />
           <h1 className="text-4xl md:text-5xl font-heading font-bold drop-shadow-lg">
             <span className="text-white" style={{
-            textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
-          }}>KALM</span>
+              textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
+            }}>KALM</span>
             <span className="text-[#C9A227] text-3xl md:text-4xl" style={{
-            textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
-          }}> Hub</span>
+              textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
+            }}> Hub</span>
           </h1>
         </div>
         
@@ -73,15 +92,15 @@ export default function SplashScreen({
           
           {/* Login button */}
           <button className="mt-4 px-6 py-2 bg-white/20 backdrop-blur-sm border border-black/30 text-black rounded-full text-sm font-medium hover:bg-white/40 transition-colors" onClick={e => {
-          e.stopPropagation();
-          onDismiss();
-        }}>
+            e.stopPropagation();
+            onDismiss();
+          }}>
             Click to log in
           </button>
         </div>
 
         {/* Pillar overlay - upper right corner */}
-        <div className="absolute top-6 right-6" style={animationStyle}>
+        <div className="absolute top-6 right-6 z-10" style={animationStyle}>
           <div className="bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 max-w-xs text-left">
             <h2 className="text-lg font-medium text-white">
               {PILLARS[currentPillar].title}
@@ -93,18 +112,30 @@ export default function SplashScreen({
         </div>
       </div>
 
-      {/* Mobile: CSS background image */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-[url('/splash-portrait.png')] bg-cover bg-top bg-no-repeat flex flex-col items-center justify-center">
+      {/* Mobile Layout */}
+      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center">
+        {/* Responsive background image */}
+        <picture className="absolute inset-0 w-full h-full">
+          <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
+          <source media="(min-width: 769px)" srcSet="/splash-landscape.webp" />
+          <img
+            src="/splash-portrait.webp"
+            alt="KALM Hub background"
+            fetchPriority="high"
+            className="w-full h-full object-cover object-top"
+          />
+        </picture>
+
         {/* Logo + Title - upper left corner */}
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <img src={logoIcon} alt="KALM Hub Logo" className="w-8 h-8 drop-shadow-lg" />
           <h1 className="text-2xl font-heading font-bold drop-shadow-lg">
             <span className="text-white" style={{
-            textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
-          }}>KALM</span>
+              textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
+            }}>KALM</span>
             <span className="text-[#C9A227] text-xl" style={{
-            textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
-          }}> Hub</span>
+              textShadow: '1px 1px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 2px 2px 4px rgba(0,0,0,0.5)'
+            }}> Hub</span>
           </h1>
         </div>
         
@@ -119,17 +150,18 @@ export default function SplashScreen({
           
           {/* Login button */}
           <button className="mt-3 px-4 py-1.5 bg-white/20 backdrop-blur-sm border border-black/30 text-black rounded-full text-xs font-medium hover:bg-white/40 transition-colors" onClick={e => {
-          e.stopPropagation();
-          onDismiss();
-        }}>
+            e.stopPropagation();
+            onDismiss();
+          }}>
             Click to log in
           </button>
         </div>
 
         {/* Pillar overlay - upper right corner */}
-        <div className="absolute top-4 right-4" style={animationStyle}>
+        <div className="absolute top-4 right-4 z-10" style={animationStyle}>
           
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }
