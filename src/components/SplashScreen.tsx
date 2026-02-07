@@ -55,7 +55,7 @@ export default function SplashScreen({
   return (
     <div className="fixed inset-0 z-[9999] bg-white p-2 md:p-3 cursor-pointer animate-fade-in" onClick={onDismiss}>
       {/* Desktop/Tablet Layout */}
-      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center">
+      <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center bg-sky-100">
         {/* Responsive background image */}
         <picture className="absolute inset-0 w-full h-full">
           <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
@@ -64,7 +64,7 @@ export default function SplashScreen({
             src="/splash-landscape.webp"
             alt="KALM Hub background"
             fetchPriority="high"
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-contain object-top"
           />
         </picture>
 
@@ -113,7 +113,7 @@ export default function SplashScreen({
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center">
+      <div className="md:hidden relative w-full h-full rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center bg-sky-100">
         {/* Responsive background image */}
         <picture className="absolute inset-0 w-full h-full">
           <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
@@ -122,7 +122,7 @@ export default function SplashScreen({
             src="/splash-portrait.webp"
             alt="KALM Hub background"
             fetchPriority="high"
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-contain object-top"
           />
         </picture>
 
