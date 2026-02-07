@@ -1515,7 +1515,7 @@ export type Database = {
       flashcards: {
         Row: {
           back: string
-          chapter_id: string
+          chapter_id: string | null
           created_at: string | null
           created_by: string | null
           display_order: number | null
@@ -1523,11 +1523,12 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string
+          topic_id: string | null
           updated_by: string | null
         }
         Insert: {
           back: string
-          chapter_id: string
+          chapter_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -1535,11 +1536,12 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id: string
+          topic_id?: string | null
           updated_by?: string | null
         }
         Update: {
           back?: string
-          chapter_id?: string
+          chapter_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -1547,6 +1549,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string
+          topic_id?: string | null
           updated_by?: string | null
         }
         Relationships: [
@@ -1562,6 +1565,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

@@ -132,13 +132,13 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         // Flashcards for this module
         supabase
           .from('flashcards')
-          .select('id, front, chapter_id')
+          .select('id, front, chapter_id, topic_id')
           .eq('module_id', moduleId)
           .eq('is_deleted', false),
         // User's starred flashcards
         supabase
           .from('user_flashcard_stars')
-          .select('card_id, chapter_id')
+          .select('card_id, chapter_id, topic_id')
           .eq('user_id', user.id),
         // Matching questions for this module
         supabase
@@ -188,10 +188,10 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       const videoProgressMap = new Map(videoProgress.map(v => [v.video_id, v.percent_watched]));
       const completedContent = new Set(userProgress.map(p => `${p.content_type}:${p.content_id}`));
 
-      // Filter flashcard stars to only include this module's chapters
+      // Filter flashcard stars to include this module's chapters OR topics
       const moduleFlashcardStarIds = new Set(
         flashcardStars
-          .filter(s => s.chapter_id && chapterIds.has(s.chapter_id))
+          .filter(s => (s.chapter_id && chapterIds.has(s.chapter_id)) || s.topic_id)
           .map(s => s.card_id)
       );
 
@@ -292,13 +292,14 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       // --- Starred Flashcards ---
       const starredFlashcards: NeedsPracticeItem[] = [];
       flashcards.forEach(card => {
-        if (moduleFlashcardStarIds.has(card.id) && card.chapter_id) {
+        const containerId = card.chapter_id || card.topic_id;
+        if (moduleFlashcardStarIds.has(card.id) && containerId) {
           starredFlashcards.push({
             id: card.id,
             type: 'flashcard',
             title: card.front.length > 80 ? card.front.slice(0, 80) + '...' : card.front,
-            chapterId: card.chapter_id,
-            chapterTitle: chapterMap.get(card.chapter_id) || 'Unknown Chapter',
+            chapterId: containerId, // Use whichever ID is available
+            chapterTitle: chapterMap.get(containerId) || 'Unknown',
             moduleId: moduleId,
           });
         }
