@@ -25,6 +25,7 @@ export interface QuestionAttempt {
   question_id: string;
   question_type: PracticeQuestionType;
   chapter_id: string | null;
+  topic_id: string | null;
   module_id: string;
   attempt_number: number;
   status: QuestionAttemptStatus;
@@ -57,7 +58,8 @@ export interface ChapterAttempt {
 interface SaveQuestionAttemptParams {
   questionId: string;
   questionType: PracticeQuestionType;
-  chapterId: string;
+  chapterId?: string;
+  topicId?: string;
   moduleId: string;
   selectedAnswer: Json;
   isCorrect: boolean;
@@ -191,11 +193,17 @@ export function useSaveQuestionAttempt() {
     mutationFn: async (params: SaveQuestionAttemptParams) => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      const { questionId, questionType, chapterId, moduleId, selectedAnswer, isCorrect, score } = params;
+      const { questionId, questionType, chapterId, topicId, moduleId, selectedAnswer, isCorrect, score } = params;
       const dbType = mapToDbQuestionType(questionType);
+      
+      // Use chapterId or topicId for container identification
+      const containerId = chapterId || topicId;
+      if (!containerId) throw new Error('Either chapterId or topicId is required');
 
-      // Get current attempt number
-      const attemptNumber = await getCurrentAttemptNumber(user.id, chapterId, dbType);
+      // Get current attempt number (using chapter_attempts table for now)
+      const attemptNumber = chapterId 
+        ? await getCurrentAttemptNumber(user.id, chapterId, dbType)
+        : 1; // Topics start at attempt 1 for now
 
       // Determine status
       const status: QuestionAttemptStatus = isCorrect ? 'correct' : 'incorrect';
@@ -224,14 +232,15 @@ export function useSaveQuestionAttempt() {
 
         if (error) throw error;
       } else {
-        // Insert new
+        // Insert new with correct chapter_id OR topic_id
         const { error } = await supabase
           .from('question_attempts')
           .insert({
             user_id: user.id,
             question_id: questionId,
             question_type: dbType,
-            chapter_id: chapterId,
+            chapter_id: chapterId || null,
+            topic_id: topicId || null,
             module_id: moduleId,
             attempt_number: attemptNumber,
             selected_answer: selectedAnswer as Json,
@@ -243,19 +252,28 @@ export function useSaveQuestionAttempt() {
         if (error) throw error;
       }
 
-      // Update or create chapter attempt record
-      await updateChapterAttempt(user.id, chapterId, moduleId, dbType, attemptNumber, isCorrect, score);
+      // Update chapter attempt record (only for chapter-based)
+      if (chapterId) {
+        await updateChapterAttempt(user.id, chapterId, moduleId, dbType, attemptNumber, isCorrect, score);
+      }
 
-      return { success: true };
+      return { success: true, chapterId, topicId };
     },
-    onSuccess: (_, params) => {
+    onSuccess: (result) => {
       // Invalidate queries to refresh UI
-      queryClient.invalidateQueries({ 
-        queryKey: ['question-attempts', params.chapterId] 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ['chapter-attempts', params.chapterId] 
-      });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['question-attempts', result.chapterId] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['chapter-attempts', result.chapterId] 
+        });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['content-progress', 'topic_id', result.topicId] 
+        });
+      }
     },
   });
 }

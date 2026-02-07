@@ -24,7 +24,7 @@ import { useLectures, useResources, useEssays, useClinicalCases } from '@/hooks/
 import { useTopicMcqs } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
-import { useHideEmptySelfAssessmentTabs, useChapterStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
+import { useHideEmptySelfAssessmentTabs, useTopicStudyResourcesByType, StudyResource } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { useTopicSectionsEnabled } from '@/hooks/useSections';
 import { SectionFilter } from '@/components/sections';
@@ -99,7 +99,7 @@ export default function TopicDetailPage() {
   const { data: essays, isLoading: essaysLoading } = useEssays(topicId);
   const { data: clinicalCases, isLoading: casesLoading } = useClinicalCases(topicId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useTopicMatchingQuestions(topicId);
-  const { data: flashcards, isLoading: flashcardsLoading } = useChapterStudyResourcesByType(undefined, 'flashcard');
+  const { data: flashcards, isLoading: flashcardsLoading } = useTopicStudyResourcesByType(topicId, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useTopicSectionsEnabled(topicId);
 
