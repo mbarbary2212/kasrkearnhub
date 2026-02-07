@@ -57,14 +57,14 @@ export default function SplashScreen({
       {/* Desktop/Tablet Layout */}
       <div className="hidden md:flex relative w-full h-full rounded-lg overflow-hidden shadow-lg flex-col items-center justify-center bg-white">
         {/* Responsive background image */}
-        <picture className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] rounded-lg overflow-hidden">
+        <picture className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] rounded-lg overflow-hidden flex items-start justify-center">
           <source media="(max-width: 768px)" srcSet="/splash-portrait.webp" />
           <source media="(min-width: 769px)" srcSet="/splash-landscape.webp" />
           <img
             src="/splash-landscape.webp"
             alt="KALM Hub background"
             fetchPriority="high"
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-contain object-top"
           />
         </picture>
 
