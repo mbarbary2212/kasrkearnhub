@@ -88,7 +88,7 @@ export function useApproveAccessRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['access-requests'] });
-      toast.success('User invited successfully');
+      toast.success('Invite sent. Ask the user to check Spam/Junk if it doesn\'t arrive within a few minutes.');
     },
     onError: (error: any) => {
       console.error('Error approving request:', error);

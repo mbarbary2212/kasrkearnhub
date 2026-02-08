@@ -79,6 +79,9 @@ export function AccessRequestForm({ onBack, defaultType = 'student' }: AccessReq
             <p className="text-muted-foreground">
               Your access request has been submitted successfully. You'll receive an email when your account is approved.
             </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              If you don't receive the email within a few minutes, please check your Spam or Junk folder and mark it as "Not Spam".
+            </p>
           </div>
           <Button onClick={onBack} variant="outline" className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
