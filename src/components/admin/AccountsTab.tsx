@@ -55,11 +55,13 @@ import {
 } from '@/hooks/useAccessRequests';
 import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
+import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [singleInviteOpen, setSingleInviteOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -133,6 +135,10 @@ export function AccountsTab() {
         </div>
         <div className="flex items-center gap-2">
           <EmailBouncesPopover />
+          <Button variant="outline" onClick={() => setSingleInviteOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Invite User
+          </Button>
           <Button onClick={() => setBulkUploadOpen(true)} className="gap-2">
             <Upload className="h-4 w-4" />
             Bulk Invite
@@ -387,6 +393,12 @@ export function AccountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Single User Invite Modal */}
+      <SingleUserInviteModal
+        open={singleInviteOpen}
+        onOpenChange={setSingleInviteOpen}
+      />
 
       {/* Bulk Upload Modal */}
       <BulkUserUploadModal
