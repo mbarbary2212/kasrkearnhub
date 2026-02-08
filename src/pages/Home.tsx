@@ -1,28 +1,26 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserRound, UsersRound, BookOpen, ClipboardCheck, MessageCircle, FileQuestion, ChevronRight, Megaphone, Mail, GraduationCap } from 'lucide-react';
+import { BookOpen, Megaphone, Mail } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
-import logo from '@/assets/kalm-hub-logo.png';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
+import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 
 export default function Home() {
-  const { user, profile, isLoading: authLoading } = useAuthContext();
+  const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
-  // Handle auto-login to preferred year - only on fresh session, not when user explicitly navigates home
+  // Handle resume last path OR auto-login to preferred year
   useEffect(() => {
     if (!user || authLoading || hasCheckedAutoLogin) return;
 
-    // Check if user explicitly navigated to home (skip auto-login)
+    // Check if user explicitly navigated to home (skip all auto-redirects)
     const skipAutoLogin = sessionStorage.getItem('skipAutoLogin');
     if (skipAutoLogin) {
       sessionStorage.removeItem('skipAutoLogin');
@@ -30,8 +28,18 @@ export default function Home() {
       return;
     }
 
-    const checkAutoLogin = async () => {
+    const checkAutoRedirect = async () => {
       try {
+        // Priority 1: Check for stored lastPath (resume functionality)
+        const lastPath = getLastPath();
+        if (lastPath && isValidResumePath(lastPath, isAdmin)) {
+          // Clear the stored path to prevent loops if the route is invalid
+          clearLastPath();
+          navigate(lastPath, { replace: true });
+          return;
+        }
+
+        // Priority 2: Fall back to preferred year auto-login
         const { data } = await supabase
           .from('profiles')
           .select('preferred_year_id, auto_login_to_year')
@@ -39,7 +47,6 @@ export default function Home() {
           .single();
 
         if (data?.auto_login_to_year && data?.preferred_year_id) {
-          // Get the year number from the year ID
           const { data: yearData } = await supabase
             .from('years')
             .select('number')
@@ -52,14 +59,14 @@ export default function Home() {
           }
         }
       } catch (error) {
-        console.error('Error checking auto-login:', error);
+        console.error('Error checking auto-redirect:', error);
       } finally {
         setHasCheckedAutoLogin(true);
       }
     };
 
-    checkAutoLogin();
-  }, [user, authLoading, hasCheckedAutoLogin, navigate]);
+    checkAutoRedirect();
+  }, [user, authLoading, hasCheckedAutoLogin, navigate, isAdmin]);
 
   // If not logged in, redirect to auth page
   if (!user && !authLoading) {

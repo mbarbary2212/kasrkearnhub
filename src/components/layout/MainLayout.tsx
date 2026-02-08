@@ -24,6 +24,7 @@ import { AdminNotificationsPopover } from '@/components/admin/AdminNotifications
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -38,7 +39,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
 
+  // Track route changes for resume functionality
+  useRouteResume(isAdmin);
+
   const handleLogout = async () => {
+    // Clear stored last path on logout
+    clearLastPath();
     await signOut();
     navigate('/');
   };

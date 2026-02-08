@@ -66,6 +66,12 @@ export default function Auth() {
 
   // Sign out function
   const signOut = async () => {
+    // Clear stored last path on logout
+    try {
+      localStorage.removeItem('kalmhub:lastPath');
+    } catch {
+      // Ignore storage errors
+    }
     await supabase.auth.signOut();
     setUser(null);
   };
@@ -147,6 +153,8 @@ export default function Auth() {
     if (error) {
       toast.error(error.message || 'Failed to sign in');
     } else {
+      // Check for stored lastPath to resume session
+      // Home.tsx will handle the redirect logic with proper role validation
       navigate('/');
     }
     setIsLoading(false);
