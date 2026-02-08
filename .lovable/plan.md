@@ -1,53 +1,64 @@
 
-# Fix Resend Sender Domain Mismatch
+## What’s actually causing the “grey / in the background” dropdown
 
-## Problem Identified
-The `RESEND_FROM_EMAIL` secret is currently set to use `kalmhub.com` (which is NOT verified in Resend), but your only verified domain is `feedback.kalmhub.com`.
+Your `AlertDialog` is configured with extremely high z-index values:
 
-## Solution
+- `AlertDialogOverlay`: `z-[99998]`
+- `AlertDialogContent`: `z-[99999]`
 
-### Step 1: Update the RESEND_FROM_EMAIL Secret
-Update the secret value from the current unverified sender to your verified subdomain:
+But the Radix `Select` menu (`SelectContent`) is currently rendering at a much lower z-index (in your case it was set to `z-[9999]`, and the default shadcn select is `z-50`).
 
-| Secret | Current Value (likely) | New Value |
-|--------|----------------------|-----------|
-| `RESEND_FROM_EMAIL` | `noreply@kalmhub.com` | `KALM Hub <noreply@feedback.kalmhub.com>` |
+Result: the Select menu is rendered *under the AlertDialog overlay/content*, so it looks grey (the overlay is “on top” of it) and feels like it’s in the background.
 
-The format `KALM Hub <noreply@feedback.kalmhub.com>` includes a friendly display name that will show as "KALM Hub" in the recipient's inbox.
+## Implementation approach (safe + permanent)
 
-### Step 2: Add Debugging Logs to Edge Function
-Add a log line before the Resend API call to make troubleshooting easier in the future:
+### 1) Fix the specific broken dropdown in AccountsTab (minimal change)
+Update the role dropdown in:
+- `src/components/admin/AccountsTab.tsx`
 
-```typescript
-// Before the fetch call:
-console.log(`Sending email via Resend - From: ${resendFromEmail}, To: ${email}`);
-```
+Change:
+- `SelectContent className="z-[9999]"`
 
-And after the response:
-```typescript
-console.log(`Resend API response status: ${resendResponse.status}`);
-```
+To:
+- `SelectContent className="z-[100000]"`
 
-### Step 3: Redeploy and Test
+Why `100000`: it guarantees the dropdown is above both the overlay (`99998`) and dialog content (`99999`) even if Radix portals to `document.body`.
 
-After updating the secret and code:
-1. Redeploy the edge function
-2. Test the Approve button again
-3. Check edge function logs to verify the correct sender is being used
+### 2) Prevent this issue across the app (recommended)
+Update the shared Select component so any Select used inside high-z dialogs works automatically:
 
-## Files to Modify
+File:
+- `src/components/ui/select.tsx`
 
-| File | Change |
-|------|--------|
-| `supabase/functions/provision-user/index.ts` | Add debugging log lines before/after Resend API call |
+Change the default z-index in `SelectContent` from:
+- `z-50`
 
-## Secret to Update
+To:
+- `z-[100000]` (or `!z-[100000]` if we want to prevent accidental overrides)
 
-| Secret | Action |
-|--------|--------|
-| `RESEND_FROM_EMAIL` | Update value to `KALM Hub <noreply@feedback.kalmhub.com>` |
+This reduces the need to sprinkle `z-[...]` everywhere and avoids other “Select inside modal” cases breaking later.
 
-## Why This Fixes It
-- Resend requires the sender email domain to be verified
-- Your verified domain is `feedback.kalmhub.com`, not `kalmhub.com`
-- Using `noreply@feedback.kalmhub.com` will pass Resend's domain verification check
+### 3) Quick regression scan (to ensure we don’t break anything)
+After the change:
+- Open the same “Approve Access Request” dialog and open the role dropdown:
+  - Menu should be above the modal, not greyed out
+  - Clicking items should work normally
+- Check at least 1–2 other Selects elsewhere (e.g., a content form modal) to confirm they still render correctly.
+
+## Notes / edge cases
+- If any screen intentionally relies on a Select being *below* something (rare), we can selectively lower z-index there, but the default should be “menus appear on top”.
+- The background “grey” effect should disappear automatically once the dropdown is above the overlay (because the overlay is what’s tinting it).
+
+## Files we will change
+1. `src/components/admin/AccountsTab.tsx`
+   - Raise role `SelectContent` z-index to `z-[100000]`
+
+2. `src/components/ui/select.tsx`
+   - Raise default `SelectContent` z-index from `z-50` to `z-[100000]`
+
+## How we’ll verify the fix
+- Reproduce: Admin → Accounts → Approve → open Assign Role dropdown
+- Confirm:
+  - dropdown is fully visible (not tinted/grey)
+  - dropdown is clickable
+  - selection updates the trigger value
