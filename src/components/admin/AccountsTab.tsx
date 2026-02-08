@@ -297,7 +297,7 @@ export function AccountsTab() {
               <SelectTrigger className="mt-2">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[9999]">
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="topic_admin">Topic Admin</SelectItem>
