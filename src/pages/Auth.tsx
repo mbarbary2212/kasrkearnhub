@@ -443,15 +443,6 @@ export default function Auth() {
       <div className="absolute inset-0 gradient-medical opacity-5" />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          className="mb-4"
-          onClick={() => navigate('/')}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Button>
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
