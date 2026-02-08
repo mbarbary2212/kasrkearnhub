@@ -44,7 +44,8 @@ import {
   UserPlus,
   Mail,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -54,9 +55,11 @@ import {
   useDeleteAccessRequest 
 } from '@/hooks/useAccessRequests';
 import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
+import { useEmailInvitations } from '@/hooks/useEmailInvitations';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
+import { EmailInvitationsTable } from './EmailInvitationsTable';
 
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
@@ -116,7 +119,7 @@ export function AccountsTab() {
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
       case 'approved':
-        return <Badge className="gap-1 bg-green-500"><CheckCircle className="h-3 w-3" /> Approved</Badge>;
+        return <Badge className="gap-1 bg-emerald-600 dark:bg-emerald-500"><CheckCircle className="h-3 w-3" /> Approved</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rejected</Badge>;
       default:
@@ -160,6 +163,10 @@ export function AccountsTab() {
           <TabsTrigger value="all" className="gap-2">
             <UserPlus className="h-4 w-4" />
             All Requests
+          </TabsTrigger>
+          <TabsTrigger value="invitations" className="gap-2">
+            <Send className="h-4 w-4" />
+            Email Invitations
           </TabsTrigger>
         </TabsList>
 
@@ -317,6 +324,10 @@ export function AccountsTab() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="invitations">
+          <EmailInvitationsTable />
         </TabsContent>
       </Tabs>
 

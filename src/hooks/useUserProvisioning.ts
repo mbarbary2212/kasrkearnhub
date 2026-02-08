@@ -35,6 +35,7 @@ export function useInviteSingleUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['access-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['email-invitations'] });
       toast.success('Invitation sent successfully');
     },
     onError: (error: any) => {
@@ -63,6 +64,7 @@ export function useInviteBulkUsers() {
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ['access-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['email-invitations'] });
       const successCount = results.filter(r => r.status === 'success').length;
       const errorCount = results.filter(r => r.status === 'error').length;
       
@@ -77,6 +79,34 @@ export function useInviteBulkUsers() {
     onError: (error: any) => {
       console.error('Error bulk inviting users:', error);
       toast.error(error.message || 'Failed to send bulk invitations');
+    },
+  });
+}
+
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (user: { email: string; full_name: string; role?: string }) => {
+      const { data, error } = await supabase.functions.invoke('provision-user', {
+        body: {
+          action: 'invite-single',
+          user,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to resend invite');
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-invitations'] });
+      toast.success('Invitation resent successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error resending invitation:', error);
+      toast.error(error.message || 'Failed to resend invitation');
     },
   });
 }
