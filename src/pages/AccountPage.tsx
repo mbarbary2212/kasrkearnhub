@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Camera, Key, Home, User, Loader2 } from 'lucide-react';
 import { ImageCropper } from '@/components/account/ImageCropper';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 
 export default function AccountPage() {
   const { user, profile, isLoading: authLoading } = useAuthContext();
@@ -194,8 +195,13 @@ export default function AccountPage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword.length > 64) {
+      toast.error('Password must be 64 characters or less');
       return;
     }
 
@@ -381,7 +387,10 @@ export default function AccountPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
+                minLength={8}
+                maxLength={64}
               />
+              <PasswordRequirements password={newPassword} mode="live" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm New Password</Label>
@@ -391,6 +400,8 @@ export default function AccountPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
+                minLength={8}
+                maxLength={64}
               />
             </div>
             <Button 
