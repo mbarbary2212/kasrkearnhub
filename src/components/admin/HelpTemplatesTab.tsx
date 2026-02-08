@@ -162,6 +162,17 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ],
     ],
   },
+  user_invite: {
+    columns: ['full_name', 'email', 'role'],
+    required: ['full_name', 'email'],
+    optional: ['role'],
+    examples: [
+      ['Ahmed Hassan', 'ahmed.hassan@example.com', 'student'],
+      ['Dr. Sarah Ahmed', 'sarah.ahmed@example.com', 'teacher'],
+      ['Mohamed Ali', 'mohamed.ali@example.com', 'topic_admin'],
+      ['Dr. Fatima Hussein', 'fatima.hussein@example.com', 'department_admin'],
+    ],
+  },
 };
 
 // Built-in template definitions
@@ -174,6 +185,13 @@ interface BuiltInTemplate {
 }
 
 const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
+  {
+    id: 'user_invite',
+    title: 'User Invite Template',
+    description: 'Bulk invite users with name, email, and role assignments',
+    format: 'xlsx',
+    icon: 'spreadsheet',
+  },
   {
     id: 'mcq',
     title: 'MCQ Template',
@@ -386,6 +404,18 @@ function generateTemplateDownload(templateId: string) {
       if (schema) {
         const sheetData = [schema.columns, ...schema.examples];
         downloadXlsx('osce_template.xlsx', sheetData, 'OSCE Questions');
+      }
+      break;
+      
+    case 'user_invite':
+      // User invite available in both CSV and XLSX
+      if (schema) {
+        const sheetData = [schema.columns, ...schema.examples];
+        downloadXlsx('user_invite_template.xlsx', sheetData, 'Users');
+        // Also generate CSV version
+        setTimeout(() => {
+          downloadCsv('user_invite_template.csv', generateCsvFromSchema(schema));
+        }, 500);
       }
       break;
       
