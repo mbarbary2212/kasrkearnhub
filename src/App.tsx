@@ -12,6 +12,7 @@ import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { AskCoachPanel } from "@/components/coach";
 import { AudioMiniPlayer } from "@/components/audio";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import YearPage from "./pages/YearPage";
@@ -69,6 +70,7 @@ const App = () => {
               <AskCoachPanel />
               <AudioMiniPlayer />
             <BrowserRouter>
+              <ScrollToTop />
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<Auth />} />
