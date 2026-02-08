@@ -1,145 +1,83 @@
 
+# Skip Landing Page - Direct to Login
 
-# Login Type Selection Improvement
-
-## Current State
-
-The login flow is secure and roles are properly handled:
-
-- **Roles are stored separately** in the `user_roles` table (not in profiles)
-- The `type=student` or `type=faculty` URL parameter is **purely cosmetic** - it only changes:
-  - The portal title ("Student Portal" vs "Faculty & Staff Portal")
-  - The button color (gradient-medical vs medical-teal)
-- **User privileges are NOT affected** by which login type they choose - roles are fetched from the database after authentication
-
-## Proposed Solution: Unified Login with Role Selector
-
-Replace the current two-page approach with a single login form that has a clear "Login as" selector at the top.
-
-### Design
-
+## Current Flow (What You Want to Remove)
 ```
-┌─────────────────────────────────────┐
-│         [KALM Hub Logo]             │
-│                                     │
-│   ┌─────────────────────────────┐   │
-│   │  Login as:                  │   │
-│   │  ┌─────────┬──────────────┐ │   │
-│   │  │Student ●│  Faculty     │ │   │  ← Toggle/Segmented control
-│   │  └─────────┴──────────────┘ │   │
-│   └─────────────────────────────┘   │
-│                                     │
-│  Email: [________________]          │
-│  Password: [________________]       │
-│                                     │
-│  [       Sign In       ]            │
-│                                     │
-│  ▼ Forgot your password?            │
-│  Don't have an account?             │
-│  [  Request Access  ]               │
-└─────────────────────────────────────┘
+Non-logged-in user visits "/" 
+    → Shows landing page with Student/Faculty cards (left screenshot)
+    → User clicks "Student Login" or "Faculty Login"
+    → Navigates to /auth?type=student (right screenshot)
 ```
 
-### Changes
+## Proposed Flow (Direct Login)
+```
+Non-logged-in user visits "/"
+    → Immediately redirects to /auth?type=student (the login form with toggle)
 
-**File: `src/pages/Auth.tsx`**
+Logged-in user visits "/"
+    → Shows year selection (LoggedInHome) - unchanged
+```
 
-1. Add a segmented control/toggle at the top of the login form
-2. Default selection: **Student** (first option, pre-selected)
-3. Remove the bottom "switch login type" section
-4. Clicking either segment updates the URL parameter and visual styling
+## Implementation
 
-**File: `src/pages/Home.tsx`**
+**File to Modify: `src/pages/Home.tsx`**
 
-1. Change the landing page to have a single "Login" button
-2. Or keep both cards but make the flow clearer
+Replace the entire non-logged-in landing page section (lines 88-295) with a simple redirect to `/auth?type=student`.
 
-### Option A: Segmented Control (Recommended)
+### Changes:
+
+1. **Add `useEffect` to redirect non-logged-in users**
+   - When `user` is null and `authLoading` is false, navigate to `/auth?type=student`
+   - Use `{ replace: true }` to prevent back-button issues
+
+2. **Remove the entire landing page JSX**
+   - Delete lines 88-295 (the landing page for non-logged-in users)
+   - Keep the loading skeleton during auth check
+
+3. **Keep logged-in user flow intact**
+   - The `LoggedInHome` component and auto-login logic remain unchanged
+   - Year selection page still works exactly the same
+
+### Code Change:
 
 ```tsx
-<div className="flex items-center justify-center gap-2 p-1 bg-muted rounded-lg mb-6">
-  <Button
-    variant={isStudent ? "default" : "ghost"}
-    size="sm"
-    className={cn(
-      "flex-1",
-      isStudent && "gradient-medical"
-    )}
-    onClick={() => navigate('/auth?type=student', { replace: true })}
-  >
-    <UserRound className="w-4 h-4 mr-2" />
-    Student
-  </Button>
-  <Button
-    variant={!isStudent ? "default" : "ghost"}
-    size="sm"
-    className={cn(
-      "flex-1",
-      !isStudent && "bg-medical-teal hover:bg-medical-teal/90"
-    )}
-    onClick={() => navigate('/auth?type=faculty', { replace: true })}
-  >
-    <UsersRound className="w-4 h-4 mr-2" />
-    Faculty
-  </Button>
-</div>
+// In Home.tsx - update the non-logged-in case
+
+// If not logged in, redirect to auth page
+if (!user && !authLoading) {
+  navigate('/auth?type=student', { replace: true });
+  return null;
+}
 ```
 
-### Option B: Dropdown Menu
+**File to Modify: `src/pages/Auth.tsx`**
 
-```tsx
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" className="w-full mb-6">
-      {isStudent ? (
-        <>
-          <UserRound className="w-4 h-4 mr-2" />
-          Student Portal
-        </>
-      ) : (
-        <>
-          <UsersRound className="w-4 h-4 mr-2" />
-          Faculty & Staff Portal
-        </>
-      )}
-      <ChevronDown className="w-4 h-4 ml-auto" />
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent className="w-full bg-popover">
-    <DropdownMenuItem onClick={() => navigate('/auth?type=student')}>
-      <UserRound className="w-4 h-4 mr-2" />
-      Student
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => navigate('/auth?type=faculty')}>
-      <UsersRound className="w-4 h-4 mr-2" />
-      Faculty & Staff
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
-```
+1. **Remove "Back to Home" button** (lines 447-454)
+   - Since `/` now redirects to `/auth`, this button is no longer needed
+   - It would create a redirect loop otherwise
+
+### Safety Checks:
+
+| Scenario | Current Behavior | New Behavior |
+|----------|------------------|--------------|
+| Non-logged-in user visits `/` | Shows landing page | Redirects to `/auth?type=student` |
+| User logs in from `/auth` | `navigate('/')` goes to year selection | Same (works correctly) |
+| Logged-in user visits `/` | Shows year selection | Same (unchanged) |
+| User clicks back after login | Goes to landing | Goes to `/auth` (harmless - will redirect to `/`) |
+| Auto-login to preferred year | Works | Works (unchanged) |
+
+### Roles and Privileges:
+This change does NOT affect roles or privileges because:
+- The `type=student` URL parameter is purely cosmetic (changes button colors/icons only)
+- User roles are fetched from `user_roles` table after authentication
+- RLS policies enforce server-side security regardless of which login type was selected
 
 ---
 
-## Technical Details
+## Technical Summary
 
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/Auth.tsx` | Add segmented control/dropdown at top, remove bottom "switch type" section |
-
-### Confirmation: Roles Are Secure
-
-The authentication changes did **NOT** affect user roles or privileges because:
-
-1. Roles are stored in a **separate `user_roles` table**, not in the profile
-2. The login `type` parameter is **never used** to determine or set roles
-3. After login, `useAuth.ts` fetches the role from `user_roles` table (line 50-54)
-4. All role checks (isAdmin, isPlatformAdmin, etc.) are based on database values
-5. RLS policies enforce server-side security regardless of client-side parameters
-
-### Default Behavior
-
-- URL `/auth` (no type) → defaults to `student` (already implemented)
-- This remains unchanged - student is the default
+| File | Change |
+|------|--------|
+| `src/pages/Home.tsx` | Add redirect for non-logged-in users, remove landing page JSX |
+| `src/pages/Auth.tsx` | Remove "Back to Home" button to prevent redirect loop |
 
