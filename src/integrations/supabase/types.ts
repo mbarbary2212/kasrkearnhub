@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          job_title: string | null
+          notes: string | null
+          request_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          job_title?: string | null
+          notes?: string | null
+          request_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          notes?: string | null
+          request_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           action: string
