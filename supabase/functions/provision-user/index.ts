@@ -284,6 +284,8 @@ If you did not expect this email, you can safely ignore it.
       resendPayload.reply_to = resendReplyTo;
     }
 
+    console.log(`Sending email via Resend - From: ${resendFromEmail}, To: ${email}`);
+    
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -292,6 +294,8 @@ If you did not expect this email, you can safely ignore it.
       },
       body: JSON.stringify(resendPayload),
     });
+
+    console.log(`Resend API response status: ${resendResponse.status}`);
 
     if (!resendResponse.ok) {
       const resendError = await resendResponse.text();
