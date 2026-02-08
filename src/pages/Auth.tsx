@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus, UserRound, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
@@ -437,7 +437,6 @@ export default function Auth() {
   }
 
   const isStudent = loginType === 'student';
-  const title = isStudent ? 'Student Portal' : 'Faculty & Staff Portal';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -459,8 +458,38 @@ export default function Auth() {
             <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
               <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
             </div>
-            <CardTitle className="text-2xl font-heading font-bold">{title}</CardTitle>
+            <CardTitle className="text-2xl font-heading font-bold">Welcome</CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
+            
+            {/* Login Type Selector */}
+            <div className="flex items-center justify-center gap-1 p-1 bg-muted rounded-lg mt-4">
+              <Button
+                type="button"
+                variant={isStudent ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "flex-1 transition-all",
+                  isStudent && "gradient-medical shadow-sm"
+                )}
+                onClick={() => navigate('/auth?type=student', { replace: true })}
+              >
+                <UserRound className="w-4 h-4 mr-2" />
+                Student
+              </Button>
+              <Button
+                type="button"
+                variant={!isStudent ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "flex-1 transition-all",
+                  !isStudent && "bg-medical-teal hover:bg-medical-teal/90 shadow-sm"
+                )}
+                onClick={() => navigate('/auth?type=faculty', { replace: true })}
+              >
+                <UsersRound className="w-4 h-4 mr-2" />
+                Faculty
+              </Button>
+            </div>
           </CardHeader>
           
           <CardContent>
@@ -605,19 +634,6 @@ export default function Auth() {
               </Button>
             </div>
 
-            {/* Switch login type */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                {isStudent ? 'Are you a faculty member?' : 'Are you a student?'}
-              </p>
-              <Button 
-                variant="link" 
-                className="text-primary"
-                onClick={() => navigate(`/auth?type=${isStudent ? 'faculty' : 'student'}`)}
-              >
-                {isStudent ? 'Faculty & Staff Login' : 'Student Login'}
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
