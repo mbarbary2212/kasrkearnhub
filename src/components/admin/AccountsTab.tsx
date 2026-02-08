@@ -300,7 +300,9 @@ export function AccountsTab() {
               <SelectContent>
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="topic_admin">Topic Admin</SelectItem>
+                <SelectItem value="department_admin">Department Admin</SelectItem>
+                <SelectItem value="platform_admin">Platform Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
