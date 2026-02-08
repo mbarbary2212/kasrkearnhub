@@ -245,14 +245,14 @@ export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps
                       Add Module
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-h-[90vh] flex flex-col">
                     <DialogHeader>
                       <DialogTitle>{editingModule ? 'Edit Module' : 'Create New Module'}</DialogTitle>
                       <DialogDescription>
                         {editingModule ? 'Update module details.' : 'Add a new module to the curriculum.'}
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 flex-1 overflow-y-auto">
                       {!editingModule && (
                         <div className="space-y-2">
                           <Label>Year *</Label>
