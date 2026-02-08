@@ -1,171 +1,332 @@
 
-# Feature Parity: Topics and Chapters
+# Authentication Overhaul - Full Correction Plan
 
-## Overview
+## Summary
 
-This plan aligns the TopicDetailPage (Pharmacology) with ChapterPage (Surgery), ensuring identical functionality. The changes also add Audio upload capability to chapters.
-
----
-
-## Identified Gaps
-
-### TopicDetailPage Missing (vs ChapterPage):
-
-| Feature | Status |
-|---------|--------|
-| Progress Bar | Missing |
-| Ask Coach Button | Missing |
-| Mobile Section Dropdown | Missing |
-| Mind Maps tab | Missing |
-| Guided Explanations tab | Missing |
-| Clinical Tools tab | Missing |
-| Reference Materials (Tables/Tips/Images/Documents sub-tabs) | Missing - only shows basic links |
-| Clinical Case Admin List | Missing - shows simple cards instead |
-
-### ChapterPage Missing:
-
-| Feature | Status |
-|---------|--------|
-| Audio Upload Dialog | Not shown in UI (AudioUploadDialog supports chapterId but not rendered in ChapterPage) |
+This plan addresses all non-negotiable requirements by correcting the password policy, removing temporary password distribution, and implementing Resend-based email invites for user provisioning.
 
 ---
 
-## Implementation Plan
+## Current State Analysis
 
-### Phase 1: Add Missing Imports and Hooks to TopicDetailPage
-
-**File: `src/pages/TopicDetailPage.tsx`**
-
-Add imports:
-- `ChapterProgressBar` component
-- `AskCoachButton` component
-- `MobileSectionDropdown` component
-- `MindMapViewer` component
-- `MindMapBulkUploadModal` component
-- `GuidedExplanationList` component
-- `ClinicalToolsSection` component
-- `ResourcesTabContent` component
-- `ClinicalCaseAdminList` component
-- `useCoachContext` hook
-- `useTopicStudyResources` hook (already partially imported)
-- Progress tracking hook (create `useTopicProgress` or reuse existing)
-
-### Phase 2: Add Progress Bar to TopicDetailPage
-
-Use the existing `useContentProgress` hook or create a dedicated `useTopicProgress` hook mirroring `useChapterProgress`.
-
-Add the `ChapterProgressBar` component below the header (same position as ChapterPage).
-
-### Phase 3: Add Ask Coach Button
-
-Add `AskCoachButton` to the header area, visible when not an admin and in Resources or Practice sections.
-
-### Phase 4: Add Mobile Section Dropdown
-
-Replace the simple button tabs on mobile with `MobileSectionDropdown` for both Resources and Practice sub-tabs.
-
-### Phase 5: Expand Resources Tabs
-
-Update the `resourcesTabs` configuration to include:
-- Mind Maps (count from `useTopicStudyResourcesByType(topicId, 'mind_map')`)
-- Guided Explanations (count from study resources with type `guided_explanation`)
-- Clinical Tools (algorithms + worked cases count)
-- Keep Reference Materials but use the full `ResourcesTabContent` component logic
-
-Add tab content rendering for:
-- `mind_maps` - Use `MindMapViewer` with topic-filtered resources
-- `guided_explanations` - Use `GuidedExplanationList` with topic-filtered resources
-- `clinical_tools` - Use `ClinicalToolsSection` with algorithms and worked cases
-- `reference_materials` - Either create a new `TopicResourcesTabContent` or adapt existing
-
-### Phase 6: Update Clinical Cases Admin View
-
-When `canManageContent` is true, render `ClinicalCaseAdminList` with `topicId` instead of the simple Card view.
-
-### Phase 7: Add Audio Upload to ChapterPage
-
-**File: `src/pages/ChapterPage.tsx`**
-
-The `AudioUploadDialog` component already supports `chapterId`, but it's only rendered via `AdminContentActions` in the Resources tab. Verify it appears when `contentType="resource"` is used.
-
-If not visible, add explicit AudioUploadDialog button in the Lectures tab admin actions (similar to how Topics handle it).
-
-### Phase 8: Create/Update Supporting Hooks
-
-**File: `src/hooks/useTopicProgress.ts`** (new or update existing)
-
-Create a hook mirroring `useChapterProgress` that:
-- Queries `question_attempts` with `topic_id`
-- Queries `video_progress` with `topic_id`
-- Returns same shape: `totalProgress`, `practiceProgress`, `videoProgress`, etc.
-
-**File: `src/components/study/MindMapBulkUploadModal.tsx`**
-
-Update to accept optional `topicId` prop alongside `chapterId`.
+| Area | Current State | Required State |
+|------|--------------|----------------|
+| Password length | `minLength={6}`, validation: `< 6` | `minLength={8}`, max 64, no complexity requirements |
+| Password complexity | None enforced (but should display recommendation) | Recommend only, not require |
+| Auth tabs | "Sign In" / "Create Account" tabs exist | Single login form, no Create Account |
+| User provisioning | Not implemented | Admin sends invite via Resend, user sets own password |
+| Bulk upload | Not implemented | Names + emails only, send invites via Resend |
+| Edge function | `manage-test-user` (test only, 12 char) | New `provision-user` with Resend integration |
+| Secrets | Only `OPENAI_API_KEY` exists | Need `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_REPLY_TO`, `PUBLIC_APP_URL` |
 
 ---
 
-## Files to Modify
+## Phase 1: Password Policy Correction
+
+### A1. Create PasswordRequirements Component
+
+**New File: `src/components/auth/PasswordRequirements.tsx`**
+
+Creates a simple component that displays:
+- "Recommended: 8-64 characters. Using a number and symbol can improve strength."
+- Optional live mode shows checkmarks as recommendations (not requirements)
+- Uses `text-xs text-muted-foreground` styling
+
+### A2. Update Auth.tsx
+
+**File: `src/pages/Auth.tsx`**
+
+Changes:
+1. Remove Create Account tab (lines 489-493 TabsList, lines 567-633 signup form)
+2. Remove `handleSignup` function (lines 121-143)
+3. Remove `isAllowedEmailDomain` function (lines 113-119)
+4. Change all `minLength={6}` to `minLength={8}` (lines 244, 260, 389, 405, 613)
+5. Update validation in `handleResetPassword` (line 174): change from `< 6` to `< 8` and add `> 64` check
+6. Remove number/symbol enforcement (none exists currently, but prevent future addition)
+7. Update forgot password success message (line 154-155) to generic: "If this email is registered, you will receive a reset link shortly."
+8. Add PasswordRequirements component under password inputs
+9. Convert forgot password to inline collapsible section (remove separate view)
+
+### A3. Update AccountPage.tsx
+
+**File: `src/pages/AccountPage.tsx`**
+
+Changes:
+1. Update validation (line 197): change from `< 6` to `< 8` and add `> 64` check
+2. Update error message (line 198): "Password must be 8-64 characters"
+3. Add PasswordRequirements component under password input
+
+---
+
+## Phase 2: Access Request System
+
+### B1. Database Migration
+
+Create `access_requests` table:
+
+```sql
+CREATE TABLE public.access_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  job_title TEXT,
+  request_type TEXT DEFAULT 'student',
+  status TEXT DEFAULT 'pending',
+  reviewed_by UUID REFERENCES auth.users(id),
+  reviewed_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE UNIQUE INDEX idx_access_requests_email_pending 
+ON public.access_requests(email) 
+WHERE status = 'pending';
+
+ALTER TABLE public.access_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit access request"
+ON public.access_requests
+FOR INSERT TO anon, authenticated
+WITH CHECK (true);
+
+CREATE POLICY "Admins can manage access requests"
+ON public.access_requests
+FOR SELECT, UPDATE, DELETE TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+    AND role IN ('platform_admin', 'super_admin')
+  )
+);
+```
+
+### B2. Create AccessRequestForm Component
+
+**New File: `src/components/auth/AccessRequestForm.tsx`**
+
+Form fields:
+- Full Name (required)
+- Email (required)
+- Job Title (optional)
+- Request Type: Student / Faculty (radio)
+
+On submit: Insert to `access_requests`, show success message.
+
+### B3. Update Auth.tsx - Add Request Access
+
+Add `authView` value: `'request-access'`
+Add "Need access? Request an account" link below login form.
+When clicked, show AccessRequestForm.
+
+---
+
+## Phase 3: Admin Accounts Tab
+
+### C1. Create AccountsTab Component
+
+**New File: `src/components/admin/AccountsTab.tsx`**
+
+Sub-tabs:
+1. **Pending Requests** - List access requests with Approve/Reject
+2. **Bulk Upload** - CSV upload for names + emails only
+
+**Approve Flow:**
+1. Admin clicks "Approve" on a pending request
+2. Call `provision-user` edge function with `action: "invite-single"`
+3. Function creates user (if needed) + sends Resend email with password setup link
+4. Request marked as approved
+
+**NO temporary passwords anywhere.**
+
+### C2. Create BulkUserUploadModal Component
+
+**New File: `src/components/admin/BulkUserUploadModal.tsx`**
+
+Features:
+- Drag & drop CSV/Excel
+- Columns accepted: `full_name`, `email`, `role` (optional), `request_type` (optional)
+- **NO password column**
+- Preview before submission
+- "Create Users + Send Invites" button
+- Results CSV columns: `email`, `status`, `message`, `invited_at` (NO passwords)
+
+### C3. Update AdminPage.tsx
+
+Add Accounts tab for Platform/Super Admins:
+
+```tsx
+{(isSuperAdmin || isPlatformAdmin) && (
+  <TabsTrigger value="accounts" className="gap-2 ...">
+    <UserPlus className="w-4 h-4" />
+    Accounts
+  </TabsTrigger>
+)}
+
+{(isSuperAdmin || isPlatformAdmin) && (
+  <TabsContent value="accounts">
+    <AccountsTab />
+  </TabsContent>
+)}
+```
+
+---
+
+## Phase 4: Edge Function - provision-user
+
+### D1. Create provision-user Edge Function
+
+**New File: `supabase/functions/provision-user/index.ts`**
+
+**Actions:**
+- `invite-single`: Create/find user + send invite email
+- `invite-bulk`: Process array of users
+
+**For each user:**
+1. Verify caller is `platform_admin` or `super_admin` (check `user_roles` for `auth.uid()`)
+2. Check if user exists by email using Admin API
+3. If not exists: Create user with `admin.createUser({ email, email_confirm: false })`
+4. Generate password setup link using `admin.generateLink({ type: 'recovery', email })`
+5. Send email via Resend API with the link
+6. Log to `audit_log`
+7. Return per-user results
+
+**Email Template:**
+
+Subject: "Set your password for KALM Hub"
+
+Text body:
+```
+Hello {{name}},
+You've been invited to access KALM Hub.
+Set your password using this link:
+{{invite_link}}
+
+If you did not expect this email, you can ignore it.
+— KALM Hub Team
+```
+
+HTML body:
+```html
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <h1 style="color: #333;">You're invited to KALM Hub</h1>
+  <p>Hello {{name}},</p>
+  <p>You've been invited to access KALM Hub.</p>
+  <p>
+    <a href="{{invite_link}}" 
+       style="display: inline-block; padding: 12px 24px; 
+              background-color: #4f46e5; color: white; 
+              text-decoration: none; border-radius: 6px;">
+      Set your password
+    </a>
+  </p>
+  <p style="margin-top: 20px; font-size: 12px; color: #666;">
+    Or copy this link: {{invite_link}}
+  </p>
+  <p style="margin-top: 20px; font-size: 12px; color: #666;">
+    If you did not expect this email, you can ignore it.
+  </p>
+  <p>— KALM Hub Team</p>
+</body>
+</html>
+```
+
+**Required Environment Variables:**
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL` (e.g., "KALM Hub <no-reply@kalmhub.com>")
+- `RESEND_REPLY_TO` (e.g., "mohamed.elbarbary@gmail.com")
+- `PUBLIC_APP_URL` (e.g., "https://www.kalmhub.com")
+
+### D2. Update supabase/config.toml
+
+Add:
+```toml
+[functions.provision-user]
+verify_jwt = false
+```
+
+---
+
+## Phase 5: Required Secrets
+
+Before implementation, the following secrets must be configured:
+
+| Secret | Example Value | Purpose |
+|--------|---------------|---------|
+| `RESEND_API_KEY` | `re_xxxxx...` | Resend API authentication |
+| `RESEND_FROM_EMAIL` | `KALM Hub <no-reply@kalmhub.com>` | Sender address (must be verified domain) |
+| `RESEND_REPLY_TO` | `mohamed.elbarbary@gmail.com` | Reply-to address for monitoring |
+| `PUBLIC_APP_URL` | `https://www.kalmhub.com` | Base URL for invite links |
+
+---
+
+## Files Summary
+
+### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/auth/PasswordRequirements.tsx` | Password recommendation display |
+| `src/components/auth/AccessRequestForm.tsx` | Access request form |
+| `src/components/admin/AccountsTab.tsx` | Admin user provisioning tab |
+| `src/components/admin/BulkUserUploadModal.tsx` | CSV/Excel bulk invite upload |
+| `src/hooks/useAccessRequests.ts` | Access request CRUD hook |
+| `src/hooks/useUserProvisioning.ts` | User invite hook |
+| `supabase/functions/provision-user/index.ts` | User provisioning + Resend email |
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/TopicDetailPage.tsx` | Major update - add all missing features |
-| `src/pages/ChapterPage.tsx` | Minor - verify Audio upload visibility |
-| `src/hooks/useTopicProgress.ts` | New file or update existing progress hook |
-| `src/components/study/MindMapBulkUploadModal.tsx` | Add `topicId` support |
-| `src/components/study/MindMapViewer.tsx` | Ensure works with `topic_id` (may need update for section fetching) |
-| `src/components/study/GuidedExplanationList.tsx` | Ensure works with `topic_id` |
-| `src/components/study/ClinicalToolsSection.tsx` | Already has `topicId` prop |
-| `src/components/content/ResourcesTabContent.tsx` | Create topic variant or make dual-support |
+| `src/pages/Auth.tsx` | Remove signup tab, fix password validation (8-64), inline forgot password, add request access, add PasswordRequirements |
+| `src/pages/AccountPage.tsx` | Fix password validation (8-64), add PasswordRequirements |
+| `src/pages/AdminPage.tsx` | Add Accounts tab |
+| `supabase/config.toml` | Add provision-user function |
+
+### Database Migration
+
+| Change | Description |
+|--------|-------------|
+| Create `access_requests` table | Store pending access requests |
+| Add RLS policies | Public INSERT, admin SELECT/UPDATE/DELETE |
 
 ---
 
-## Technical Details
+## Validation Checklist
 
-### TopicDetailPage Changes (Detailed)
+After implementation, confirm:
 
-1. **State additions:**
-   - `mindMapBulkOpen` for MindMapBulkUploadModal
-   - Study resource type states for various modals
-
-2. **Hook additions:**
-   - `useTopicStudyResources(topicId)` - fetch all study resources
-   - Progress hook for topic
-
-3. **Computed values:**
-   - Filter study resources by type: flashcards, algorithms, mindMaps, workedCases, guidedExplanations
-   - Count document study resources (table, exam_tip, key_image)
-
-4. **Resources tabs update:**
-   ```typescript
-   const resourcesTabs = createResourceTabs({
-     lectures: lectures?.length || 0,
-     flashcards: flashcards?.length || 0,
-     mind_maps: mindMaps.length,
-     guided_explanations: guidedExplanations.length,
-     reference_materials: documentsCount,
-     clinical_tools: algorithms.length + workedCases.length,
-   });
-   ```
-
-5. **Tab content rendering:**
-   - Add cases for `mind_maps`, `guided_explanations`, `clinical_tools`
-   - Update `reference_materials` to use richer component
-
-### Progress Hook for Topics
-
-Mirror the chapter progress calculation:
-- 60% weight on practice (MCQs, True/False, OSCE, Essays, Matching)
-- 40% weight on videos (lecture watch progress)
-
-Query using `topic_id` column instead of `chapter_id`.
+- [ ] Password policy is 8-64 length-only everywhere
+- [ ] No number/symbol requirements remain enforced (only recommended)
+- [ ] No temporary passwords are generated or exported
+- [ ] Bulk upload accepts only names + emails (no password column)
+- [ ] Invites are sent via Resend from the Edge Function
+- [ ] Reply-To header is included in emails
+- [ ] Create Account tab is removed from Auth page
+- [ ] Forgot password shows generic success message
+- [ ] Access request form works for new users
+- [ ] Accounts tab appears for Platform/Super Admins only
 
 ---
 
-## Expected Outcome
+## User Experience Flows
 
-After implementation:
-- TopicDetailPage will have identical feature set to ChapterPage
-- Both pages support audio upload
-- Students see consistent UI regardless of module type (chapter vs topic based)
-- Admins have full CRUD on all content types in both contexts
+### New User Requesting Access:
+1. Home → Click "Student Login"
+2. See login form → Click "Need access? Request an account"
+3. Fill request form → Submit
+4. See: "Request submitted. You'll receive email when approved."
+5. Admin approves → User receives Resend email with "Set your password" link
+6. User clicks link → Sets own password (8-64 chars) → Full access
+
+### Admin Bulk Invite:
+1. Admin Panel → Accounts → Bulk Upload
+2. Download CSV template (columns: full_name, email, role)
+3. Fill in users
+4. Upload → Preview
+5. Click "Create Users + Send Invites"
+6. Download results CSV (email, status, message, invited_at) - NO passwords
+7. Users receive Resend emails and set their own passwords
