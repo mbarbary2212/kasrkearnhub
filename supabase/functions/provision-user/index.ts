@@ -79,7 +79,7 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: Only platform admins can provision users');
     }
 
-    const { action, user, users } = await req.json();
+    const { action, user, users, source } = await req.json();
 
     if (action === 'invite-single') {
       if (!user || !user.email || !user.full_name) {
@@ -93,7 +93,8 @@ serve(async (req: Request) => {
         resendFromEmail, 
         resendReplyTo,
         publicAppUrl,
-        caller.id
+        caller.id,
+        source || 'direct'
       );
 
       return new Response(
@@ -126,7 +127,8 @@ serve(async (req: Request) => {
           resendFromEmail,
           resendReplyTo,
           publicAppUrl,
-          caller.id
+          caller.id,
+          source || 'direct'
         );
         results.push(result);
       }
@@ -155,7 +157,8 @@ async function inviteUser(
   resendFromEmail: string,
   resendReplyTo: string | undefined,
   publicAppUrl: string,
-  adminId: string
+  adminId: string,
+  source: string
 ): Promise<InviteResult> {
   const email = user.email.trim().toLowerCase();
   const fullName = user.full_name.trim();
@@ -336,6 +339,7 @@ KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub`;
         role,
         is_new_user: isNewUser,
         link_type: linkType,
+        source,
       },
     });
 
