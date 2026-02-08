@@ -28,6 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
@@ -38,7 +43,8 @@ import {
   Loader2, 
   UserPlus,
   Mail,
-  Trash2 
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -47,7 +53,9 @@ import {
   useRejectAccessRequest,
   useDeleteAccessRequest 
 } from '@/hooks/useAccessRequests';
+import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
+import { EmailBouncesPopover } from './EmailBouncesPopover';
 
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
@@ -60,6 +68,10 @@ export function AccountsTab() {
 
   const { data: pendingRequests, isLoading: loadingPending } = useAccessRequests('pending');
   const { data: allRequests, isLoading: loadingAll } = useAccessRequests();
+  
+  // Get all emails to check for bounces
+  const allEmails = allRequests?.map(r => r.email) || [];
+  const { data: bounceMap } = useEmailBouncesByEmail(allEmails);
   
   const approveRequest = useApproveAccessRequest();
   const rejectRequest = useRejectAccessRequest();
@@ -119,10 +131,13 @@ export function AccountsTab() {
             Manage access requests and invite new users
           </p>
         </div>
-        <Button onClick={() => setBulkUploadOpen(true)} className="gap-2">
-          <Upload className="h-4 w-4" />
-          Bulk Invite
-        </Button>
+        <div className="flex items-center gap-2">
+          <EmailBouncesPopover />
+          <Button onClick={() => setBulkUploadOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Bulk Invite
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -247,7 +262,24 @@ export function AccountsTab() {
                     {allRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.full_name}</TableCell>
-                        <TableCell>{request.email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {request.email}
+                            {bounceMap?.[request.email.toLowerCase()] && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="font-medium">Email Delivery Failed</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {bounceMap[request.email.toLowerCase()].reason || 'Email bounced or marked as spam'}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {request.request_type === 'faculty' ? 'Faculty' : 'Student'}
