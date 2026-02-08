@@ -1,12 +1,12 @@
 
 # Email Bounce Monitoring Implementation Plan
 
-## Summary
+## ✅ COMPLETED
 
-This plan adds bounce/complaint monitoring for invitation emails by:
-1. Creating a new `email_events` database table
-2. Adding a `resend-webhook` Edge Function to receive Resend webhook events
-3. Updating the Accounts admin UI to show bounce warnings
+This plan added bounce/complaint monitoring for invitation emails by:
+1. ✅ Created `email_events` database table with RLS policies
+2. ✅ Added `resend-webhook` Edge Function to receive Resend webhook events
+3. ✅ Updated the Accounts admin UI to show bounce warnings
 
 The email template and UI spam notices have already been implemented (per the diff shown).
 

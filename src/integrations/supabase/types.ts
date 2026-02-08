@@ -1233,6 +1233,39 @@ export type Database = {
           },
         ]
       }
+      email_events: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          resend_email_id: string | null
+          status: string | null
+          to_email: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          resend_email_id?: string | null
+          status?: string | null
+          to_email: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          resend_email_id?: string | null
+          status?: string | null
+          to_email?: string
+        }
+        Relationships: []
+      }
       essays: {
         Row: {
           chapter_id: string | null
