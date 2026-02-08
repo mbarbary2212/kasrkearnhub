@@ -1,174 +1,114 @@
 
-# Resume Last In-App Page Implementation ✅ COMPLETED
+# Fix User Approval & Add More Role Options
 
-## Overview
-Implement session persistence so logged-in users automatically resume at their last visited page after browser refresh, while preserving the existing preferred-year auto-login as a fallback.
+## Issues Found
 
-## How It Works
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    BROWSER REFRESH FLOW                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  User refreshes browser                                         │
-│         │                                                       │
-│         ▼                                                       │
-│  Vercel serves index.html (SPA fallback - unchanged)            │
-│         │                                                       │
-│         ▼                                                       │
-│  App loads at "/" (landing)                                     │
-│         │                                                       │
-│         ▼                                                       │
-│  Auth check: Is user logged in?                                 │
-│         │                                                       │
-│    ┌────┴────┐                                                  │
-│    │         │                                                  │
-│   NO        YES                                                 │
-│    │         │                                                  │
-│    ▼         ▼                                                  │
-│ Redirect  Check localStorage for lastPath                      │
-│ to /auth       │                                                │
-│            ┌───┴───┐                                            │
-│            │       │                                            │
-│         EXISTS   EMPTY                                          │
-│            │       │                                            │
-│            ▼       ▼                                            │
-│      Validate   Fall back to                                    │
-│      & resume   preferred year                                  │
-│      lastPath   auto-login                                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+### Issue 1: Invite Failure
+The edge function `provision-user` is using a non-existent API method:
+```
+TypeError: supabaseAdmin.auth.admin.getUserByEmail is not a function
 ```
 
-## Routes to Track
+The Supabase JS library v2 does **not** have `getUserByEmail()`. The correct approach is to use `listUsers()` and filter the results, or create the user directly and catch the "already exists" error.
 
-**Store in localStorage:**
-- `/year/*` - Year pages
-- `/module/*` - Module and chapter pages
-- `/progress` - Study coach/progress page
-- `/account` - User account settings
-- `/admin/*` - Admin pages (only for admin users)
-- `/virtual-patient/*` - Virtual patient sessions
-- `/feedback` - Feedback page
+### Issue 2: Limited Role Options
+The approval dialog only shows 3 roles:
+- Student
+- Teacher
+- Admin
 
-**Never store:**
-- `/` - Landing/home page
-- `/auth*` - Authentication pages
+But your system has 7 roles defined in `src/types/database.ts`:
+- student
+- teacher
+- admin
+- department_admin
+- topic_admin
+- platform_admin
+- super_admin
 
-## Implementation
+---
 
-### 1. Create Route Persistence Hook
-**New file: `src/hooks/useRouteResume.ts`**
+## Solution
 
-This hook handles:
-- **Tracking**: Saves current path to localStorage on every navigation
-- **Restoration**: Returns the saved path for redirect logic
-- **Validation**: Checks if saved path is valid for the user's role
-- **Cleanup**: Clears stored path on logout
+### Fix 1: Update Edge Function API Call
+
+**File: `supabase/functions/provision-user/index.ts`**
+
+Replace the non-existent `getUserByEmail()` with the `listUsers()` approach or a try-catch on `createUser`:
 
 ```typescript
-// Key functionality:
-const STORAGE_KEY = 'kalmhub:lastPath';
+// BEFORE (broken):
+const { data: userByEmail, error: lookupError } = 
+  await supabaseAdmin.auth.admin.getUserByEmail(email);
 
-// Which routes to track
-const RESUMABLE_ROUTES = ['/year', '/module', '/progress', '/account', '/virtual-patient', '/feedback'];
-const ADMIN_ROUTES = ['/admin'];
+// AFTER (working):
+// Option A: Use listUsers with filter (works but less efficient)
+const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({
+  perPage: 1,
+});
+const existingUser = users.find(u => u.email?.toLowerCase() === email);
 
-// Save path on navigation
-useEffect(() => {
-  if (shouldTrackRoute(pathname)) {
-    localStorage.setItem(STORAGE_KEY, pathname + search);
-  }
-}, [pathname, search]);
-
-// Clear on logout
-export function clearLastPath() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+// Option B: Try createUser and handle "already exists" error (preferred)
 ```
 
-### 2. Integrate with Home Page
-**Modify: `src/pages/Home.tsx`**
+**Recommended approach**: Try to create the user first. If it fails with "User already registered", then we know the user exists and can generate a recovery link instead.
 
-Update the auto-login logic to check for `lastPath` first:
+### Fix 2: Add More Role Options to Approval Dialog
 
-```typescript
-// Current priority order:
-// 1. Skip if user explicitly navigated home (skipAutoLogin flag)
-// 2. NEW: Check localStorage for lastPath → redirect if valid
-// 3. Check preferred_year_id + auto_login_to_year → redirect to year
-// 4. Show year selection page
+**File: `src/components/admin/AccountsTab.tsx`**
+
+Update the role selector to include all appropriate roles:
+
+```tsx
+<SelectContent>
+  <SelectItem value="student">Student</SelectItem>
+  <SelectItem value="teacher">Teacher</SelectItem>
+  <SelectItem value="topic_admin">Topic Admin</SelectItem>
+  <SelectItem value="department_admin">Department Admin</SelectItem>
+  <SelectItem value="platform_admin">Platform Admin</SelectItem>
+</SelectContent>
 ```
 
-### 3. Integrate with Auth Page
-**Modify: `src/pages/Auth.tsx`**
+Note: `super_admin` should NOT be in this list as it's reserved for the highest-level administrators and should only be assigned manually at the database level.
 
-After successful login, check for stored path:
+---
 
-```typescript
-// In handleLogin success:
-const lastPath = localStorage.getItem('kalmhub:lastPath');
-if (lastPath && isValidPath(lastPath)) {
-  navigate(lastPath);
-} else {
-  navigate('/');  // Goes through Home.tsx auto-login logic
-}
-```
+## Implementation Details
 
-### 4. Clear on Logout
-**Modify: `src/components/layout/MainLayout.tsx`**
+### Edge Function Changes
 
-Add cleanup in the logout handler:
+| Change | Location | Description |
+|--------|----------|-------------|
+| Remove `getUserByEmail` | Line 170 | Replace with try-create approach |
+| Add error handling | Lines 183-197 | Check if "already registered" error, use that user |
+| Generate correct link type | Existing logic | Keep invite vs recovery distinction |
 
-```typescript
-const handleLogout = async () => {
-  clearLastPath();  // Clear stored route
-  await signOut();
-  navigate('/');
-};
-```
+### Frontend Changes
 
-Also clear in `src/pages/Auth.tsx` signOut function.
+| Change | Location | Description |
+|--------|----------|-------------|
+| Add role options | Lines 300-304 | Add topic_admin, department_admin, platform_admin |
+| Group roles visually | Optional | Add separators between role tiers |
 
-## Safety Features
+---
 
-| Scenario | Handling |
-|----------|----------|
-| User is not admin but lastPath is `/admin/*` | Ignore lastPath, fall back to preferred year |
-| lastPath points to deleted content | React Query will show "not found" UI gracefully |
-| Redirect loop prevention | Don't redirect if already on the target path |
-| User explicitly clicks Home | `skipAutoLogin` flag bypasses resume logic |
+## Role Hierarchy Reference
 
-## Files to Create/Modify
+| Role | Description | Should be in dropdown? |
+|------|-------------|------------------------|
+| student | Basic read-only access | Yes (default) |
+| teacher | Can add/edit content | Yes |
+| topic_admin | Manages assigned topics/chapters | Yes |
+| admin | Legacy role, manages content | No (deprecated) |
+| department_admin | Manages assigned departments | Yes |
+| platform_admin | Full platform access | Yes (careful) |
+| super_admin | System owner, 1-2 users only | No (manual only) |
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/hooks/useRouteResume.ts` | **Create** | Core hook for tracking and restoring routes |
-| `src/pages/Home.tsx` | **Modify** | Add lastPath check before preferred-year logic |
-| `src/pages/Auth.tsx` | **Modify** | Redirect to lastPath after login, clear on signOut |
-| `src/components/layout/MainLayout.tsx` | **Modify** | Clear lastPath on logout |
+---
 
-## Technical Details
+## Files to Modify
 
-### localStorage Key
-```
-kalmhub:lastPath = "/module/abc123/chapter/xyz789"
-```
-
-### Route Validation
-```typescript
-function isValidResumePath(path: string, isAdmin: boolean): boolean {
-  // Check if path matches resumable patterns
-  const isResumable = RESUMABLE_ROUTES.some(r => path.startsWith(r));
-  const isAdminRoute = ADMIN_ROUTES.some(r => path.startsWith(r));
-  
-  // Admin routes only valid for admins
-  if (isAdminRoute && !isAdmin) return false;
-  
-  return isResumable || isAdminRoute;
-}
-```
-
-### Integration with Existing Auto-Login
-The existing `preferred_year_id` + `auto_login_to_year` feature becomes the fallback when no `lastPath` exists. This preserves the user's preference for fresh sessions while adding resume capability for interrupted sessions.
+| File | Changes |
+|------|---------|
+| `supabase/functions/provision-user/index.ts` | Fix the user lookup API to use a working method |
+| `src/components/admin/AccountsTab.tsx` | Add more role options to the Select dropdown |
