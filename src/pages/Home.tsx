@@ -61,6 +61,12 @@ export default function Home() {
     checkAutoLogin();
   }, [user, authLoading, hasCheckedAutoLogin, navigate]);
 
+  // If not logged in, redirect to auth page
+  if (!user && !authLoading) {
+    navigate('/auth?type=student', { replace: true });
+    return null;
+  }
+
   // If user is logged in, show the year selection page wrapped in MainLayout
   if (user) {
     // Don't render until we've checked auto-login preference
@@ -84,213 +90,10 @@ export default function Home() {
     );
   }
 
-  // Landing page for non-logged in users
+  // Loading state during auth check
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 gradient-medical opacity-5" />
-        
-        <div className="container mx-auto px-4 py-16 relative z-10">
-          {/* Logo - cropped to remove white space */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center overflow-hidden h-[106px] md:h-[166px]">
-              <img 
-                src={logo} 
-                alt="KALM Hub Logo" 
-                className="w-auto h-[154px] md:h-[234px] object-contain" 
-              />
-            </div>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mt-2">
-              Kasralainy for learning and mentorship HUB
-            </p>
-          </div>
-
-          {/* Login Options */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {/* Student Login - Primary, prominent on all devices */}
-            <Card 
-              className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2 border-0 shadow-lg group"
-              onClick={() => navigate('/auth?type=student')}
-            >
-              <CardHeader className="text-center pb-4">
-                <div className="w-20 h-20 bg-medical-blue rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                  <UserRound className="w-10 h-10 text-primary-foreground" />
-                </div>
-                <CardTitle className="text-2xl font-heading">Student</CardTitle>
-                <CardDescription className="text-base">
-                  Access lectures, quizzes, and study materials
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Button className="w-full gradient-medical text-lg py-6">
-                  Student Login
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Faculty & Staff Login - Only visible on desktop/tablet (md and up) */}
-            <Card 
-              className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2 border-0 shadow-lg group hidden md:block"
-              onClick={() => navigate('/auth?type=faculty')}
-            >
-              <CardHeader className="text-center pb-4">
-                <div className="w-20 h-20 bg-medical-teal rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                  <UsersRound className="w-10 h-10 text-primary-foreground" />
-                </div>
-                <CardTitle className="text-2xl font-heading">Faculty & Staff</CardTitle>
-                <CardDescription className="text-base">
-                  Manage content, view analytics, and track progress
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Button className="w-full bg-medical-teal hover:bg-medical-teal/90 text-primary-foreground text-lg py-6">
-                  Faculty Login
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Mobile-only Faculty Login - Secondary/Less prominent */}
-          <div className="md:hidden mt-6 text-center">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="text-muted-foreground"
-              onClick={() => navigate('/auth?type=faculty')}
-            >
-              <UsersRound className="w-4 h-4 mr-2" />
-              Faculty & Staff Login
-            </Button>
-          </div>
-
-          {/* Features Section - 5 Pillars */}
-          <div className="mt-16 max-w-6xl mx-auto">
-            {/* Desktop: all 5 in single row */}
-            <div className="hidden md:grid md:grid-cols-5 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <BookOpen className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <h3 className="font-heading font-semibold mb-2">Resources</h3>
-                <p className="text-sm text-muted-foreground">
-                  To build understanding
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <h3 className="font-heading font-semibold mb-2">Practice</h3>
-                <p className="text-sm text-muted-foreground">
-                  Test your understanding
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <FileQuestion className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
-                <p className="text-sm text-muted-foreground">
-                  Designed around your module
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <MessageCircle className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <h3 className="font-heading font-semibold mb-2">Connect</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your voice matters
-                </p>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="text-center cursor-pointer">
-                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <GraduationCap className="w-6 h-6 text-secondary-foreground" />
-                      </div>
-                      <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
-                      <p className="text-sm text-muted-foreground">
-                        AI-powered guidance for your learning journey
-                      </p>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    Personal Study Coach
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            {/* Mobile: 2x2 grid for first 4, then 5th centered below */}
-            <div className="md:hidden space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <BookOpen className="w-6 h-6 text-secondary-foreground" />
-                  </div>
-                  <h3 className="font-heading font-semibold mb-2">Resources</h3>
-                  <p className="text-sm text-muted-foreground">
-                    To build understanding
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <ClipboardCheck className="w-6 h-6 text-secondary-foreground" />
-                  </div>
-                  <h3 className="font-heading font-semibold mb-2">Practice</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Test your understanding
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <FileQuestion className="w-6 h-6 text-secondary-foreground" />
-                  </div>
-                  <h3 className="font-heading font-semibold mb-2">Formative Assessment</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Designed around your module
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <MessageCircle className="w-6 h-6 text-secondary-foreground" />
-                  </div>
-                  <h3 className="font-heading font-semibold mb-2">Connect</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Your voice matters
-                  </p>
-                </div>
-              </div>
-              {/* 5th pillar centered */}
-              <div className="flex justify-center">
-                <div className="w-[calc(50%-0.75rem)] text-center">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="cursor-pointer">
-                          <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mx-auto mb-3">
-                            <GraduationCap className="w-6 h-6 text-secondary-foreground" />
-                          </div>
-                          <h3 className="font-heading font-semibold mb-2">Personal Study Coach</h3>
-                          <p className="text-sm text-muted-foreground">
-                            AI-powered guidance for your learning journey
-                          </p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-black text-white border-black">
-                        Personal Study Coach
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <Skeleton className="h-8 w-64" />
     </div>
   );
 }
