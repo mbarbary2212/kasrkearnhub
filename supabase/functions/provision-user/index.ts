@@ -162,11 +162,16 @@ async function inviteUser(
   const role = user.role || 'student';
 
   try {
-    // Check if user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === email
-    );
+    // Check if user already exists using efficient single-user lookup
+    let existingUser: any = null;
+    let isNewUser = false;
+    
+    // Try to get user by email (efficient O(1) lookup instead of listing all users)
+    const { data: userByEmail, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    
+    if (!lookupError && userByEmail?.user) {
+      existingUser = userByEmail.user;
+    }
 
     let userId: string;
 
@@ -187,12 +192,17 @@ async function inviteUser(
       }
 
       userId = newUser.user.id;
+      isNewUser = true;
       console.log(`Created new user ${email} with id ${userId}`);
     }
 
-    // Generate password recovery link (this serves as "set password" for new users)
+    // Generate appropriate link based on user status:
+    // - 'invite' for new users (account activation)
+    // - 'recovery' for existing users (password reset)
+    const linkType = isNewUser ? 'invite' : 'recovery';
+    
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
+      type: linkType,
       email,
       options: {
         redirectTo: `${publicAppUrl}/auth?view=change-password`,
@@ -308,16 +318,17 @@ If you did not expect this email, you can safely ignore it.
         email,
         full_name: fullName,
         role,
-        is_new_user: !existingUser,
+        is_new_user: isNewUser,
+        link_type: linkType,
       },
     });
 
     return {
       email,
       status: 'success',
-      message: existingUser 
-        ? 'Password reset email sent to existing user' 
-        : 'Invitation email sent to new user',
+      message: isNewUser 
+        ? 'Invitation email sent to new user' 
+        : 'Password reset email sent to existing user',
       invited_at: new Date().toISOString(),
     };
 
