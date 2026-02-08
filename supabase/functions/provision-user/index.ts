@@ -236,9 +236,10 @@ async function inviteUser(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background-color: #f9fafb;">
   <div style="max-width: 560px; margin: 0 auto; background-color: white; border-radius: 8px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-    <h1 style="color: #111827; font-size: 24px; margin-bottom: 16px;">You're invited to KALM Hub</h1>
+    <h1 style="color: #111827; font-size: 24px; margin-bottom: 16px;">Welcome to KALM Hub</h1>
     <p style="color: #374151; font-size: 16px; line-height: 1.5;">Hello ${fullName},</p>
-    <p style="color: #374151; font-size: 16px; line-height: 1.5;">You've been invited to access KALM Hub. Click the button below to set your password and activate your account.</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">You are receiving this email because your access request to KALM Hub has been approved by the administration.</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">Click the button below to set your password and activate your account:</p>
     <p style="text-align: center; margin: 32px 0;">
       <a href="${inviteLink}" 
          style="display: inline-block; padding: 14px 28px; 
@@ -254,28 +255,30 @@ async function inviteUser(
     </p>
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
     <p style="color: #9ca3af; font-size: 12px; line-height: 1.5;">
-      If you did not expect this email, you can safely ignore it.
+      If you did not request this, you can safely ignore this email.
     </p>
-    <p style="color: #374151; font-size: 14px; margin-top: 24px;">— KALM Hub Team</p>
+    <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 24px;">
+      KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub
+    </p>
   </div>
 </body>
 </html>`;
 
     const emailText = `Hello ${fullName},
 
-You've been invited to access KALM Hub.
+You are receiving this email because your access request to KALM Hub has been approved by the administration.
 
-Set your password using this link:
+Click the link below to set your password and activate your account:
 ${inviteLink}
 
-If you did not expect this email, you can safely ignore it.
+If you did not request this, you can safely ignore this email.
 
-— KALM Hub Team`;
+KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub`;
 
     const resendPayload: any = {
       from: resendFromEmail,
       to: [email],
-      subject: 'Set your password for KALM Hub',
+      subject: 'Your KALM Hub access is approved — set your password',
       html: emailHtml,
       text: emailText,
     };
