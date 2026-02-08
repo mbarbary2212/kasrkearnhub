@@ -1,83 +1,174 @@
 
-# Skip Landing Page - Direct to Login
+# Resume Last In-App Page Implementation
 
-## Current Flow (What You Want to Remove)
-```
-Non-logged-in user visits "/" 
-    → Shows landing page with Student/Faculty cards (left screenshot)
-    → User clicks "Student Login" or "Faculty Login"
-    → Navigates to /auth?type=student (right screenshot)
+## Overview
+Implement session persistence so logged-in users automatically resume at their last visited page after browser refresh, while preserving the existing preferred-year auto-login as a fallback.
+
+## How It Works
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    BROWSER REFRESH FLOW                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  User refreshes browser                                         │
+│         │                                                       │
+│         ▼                                                       │
+│  Vercel serves index.html (SPA fallback - unchanged)            │
+│         │                                                       │
+│         ▼                                                       │
+│  App loads at "/" (landing)                                     │
+│         │                                                       │
+│         ▼                                                       │
+│  Auth check: Is user logged in?                                 │
+│         │                                                       │
+│    ┌────┴────┐                                                  │
+│    │         │                                                  │
+│   NO        YES                                                 │
+│    │         │                                                  │
+│    ▼         ▼                                                  │
+│ Redirect  Check localStorage for lastPath                      │
+│ to /auth       │                                                │
+│            ┌───┴───┐                                            │
+│            │       │                                            │
+│         EXISTS   EMPTY                                          │
+│            │       │                                            │
+│            ▼       ▼                                            │
+│      Validate   Fall back to                                    │
+│      & resume   preferred year                                  │
+│      lastPath   auto-login                                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Proposed Flow (Direct Login)
-```
-Non-logged-in user visits "/"
-    → Immediately redirects to /auth?type=student (the login form with toggle)
+## Routes to Track
 
-Logged-in user visits "/"
-    → Shows year selection (LoggedInHome) - unchanged
-```
+**Store in localStorage:**
+- `/year/*` - Year pages
+- `/module/*` - Module and chapter pages
+- `/progress` - Study coach/progress page
+- `/account` - User account settings
+- `/admin/*` - Admin pages (only for admin users)
+- `/virtual-patient/*` - Virtual patient sessions
+- `/feedback` - Feedback page
+
+**Never store:**
+- `/` - Landing/home page
+- `/auth*` - Authentication pages
 
 ## Implementation
 
-**File to Modify: `src/pages/Home.tsx`**
+### 1. Create Route Persistence Hook
+**New file: `src/hooks/useRouteResume.ts`**
 
-Replace the entire non-logged-in landing page section (lines 88-295) with a simple redirect to `/auth?type=student`.
+This hook handles:
+- **Tracking**: Saves current path to localStorage on every navigation
+- **Restoration**: Returns the saved path for redirect logic
+- **Validation**: Checks if saved path is valid for the user's role
+- **Cleanup**: Clears stored path on logout
 
-### Changes:
+```typescript
+// Key functionality:
+const STORAGE_KEY = 'kalmhub:lastPath';
 
-1. **Add `useEffect` to redirect non-logged-in users**
-   - When `user` is null and `authLoading` is false, navigate to `/auth?type=student`
-   - Use `{ replace: true }` to prevent back-button issues
+// Which routes to track
+const RESUMABLE_ROUTES = ['/year', '/module', '/progress', '/account', '/virtual-patient', '/feedback'];
+const ADMIN_ROUTES = ['/admin'];
 
-2. **Remove the entire landing page JSX**
-   - Delete lines 88-295 (the landing page for non-logged-in users)
-   - Keep the loading skeleton during auth check
+// Save path on navigation
+useEffect(() => {
+  if (shouldTrackRoute(pathname)) {
+    localStorage.setItem(STORAGE_KEY, pathname + search);
+  }
+}, [pathname, search]);
 
-3. **Keep logged-in user flow intact**
-   - The `LoggedInHome` component and auto-login logic remain unchanged
-   - Year selection page still works exactly the same
-
-### Code Change:
-
-```tsx
-// In Home.tsx - update the non-logged-in case
-
-// If not logged in, redirect to auth page
-if (!user && !authLoading) {
-  navigate('/auth?type=student', { replace: true });
-  return null;
+// Clear on logout
+export function clearLastPath() {
+  localStorage.removeItem(STORAGE_KEY);
 }
 ```
 
-**File to Modify: `src/pages/Auth.tsx`**
+### 2. Integrate with Home Page
+**Modify: `src/pages/Home.tsx`**
 
-1. **Remove "Back to Home" button** (lines 447-454)
-   - Since `/` now redirects to `/auth`, this button is no longer needed
-   - It would create a redirect loop otherwise
+Update the auto-login logic to check for `lastPath` first:
 
-### Safety Checks:
+```typescript
+// Current priority order:
+// 1. Skip if user explicitly navigated home (skipAutoLogin flag)
+// 2. NEW: Check localStorage for lastPath → redirect if valid
+// 3. Check preferred_year_id + auto_login_to_year → redirect to year
+// 4. Show year selection page
+```
 
-| Scenario | Current Behavior | New Behavior |
-|----------|------------------|--------------|
-| Non-logged-in user visits `/` | Shows landing page | Redirects to `/auth?type=student` |
-| User logs in from `/auth` | `navigate('/')` goes to year selection | Same (works correctly) |
-| Logged-in user visits `/` | Shows year selection | Same (unchanged) |
-| User clicks back after login | Goes to landing | Goes to `/auth` (harmless - will redirect to `/`) |
-| Auto-login to preferred year | Works | Works (unchanged) |
+### 3. Integrate with Auth Page
+**Modify: `src/pages/Auth.tsx`**
 
-### Roles and Privileges:
-This change does NOT affect roles or privileges because:
-- The `type=student` URL parameter is purely cosmetic (changes button colors/icons only)
-- User roles are fetched from `user_roles` table after authentication
-- RLS policies enforce server-side security regardless of which login type was selected
+After successful login, check for stored path:
 
----
+```typescript
+// In handleLogin success:
+const lastPath = localStorage.getItem('kalmhub:lastPath');
+if (lastPath && isValidPath(lastPath)) {
+  navigate(lastPath);
+} else {
+  navigate('/');  // Goes through Home.tsx auto-login logic
+}
+```
 
-## Technical Summary
+### 4. Clear on Logout
+**Modify: `src/components/layout/MainLayout.tsx`**
 
-| File | Change |
-|------|--------|
-| `src/pages/Home.tsx` | Add redirect for non-logged-in users, remove landing page JSX |
-| `src/pages/Auth.tsx` | Remove "Back to Home" button to prevent redirect loop |
+Add cleanup in the logout handler:
 
+```typescript
+const handleLogout = async () => {
+  clearLastPath();  // Clear stored route
+  await signOut();
+  navigate('/');
+};
+```
+
+Also clear in `src/pages/Auth.tsx` signOut function.
+
+## Safety Features
+
+| Scenario | Handling |
+|----------|----------|
+| User is not admin but lastPath is `/admin/*` | Ignore lastPath, fall back to preferred year |
+| lastPath points to deleted content | React Query will show "not found" UI gracefully |
+| Redirect loop prevention | Don't redirect if already on the target path |
+| User explicitly clicks Home | `skipAutoLogin` flag bypasses resume logic |
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/hooks/useRouteResume.ts` | **Create** | Core hook for tracking and restoring routes |
+| `src/pages/Home.tsx` | **Modify** | Add lastPath check before preferred-year logic |
+| `src/pages/Auth.tsx` | **Modify** | Redirect to lastPath after login, clear on signOut |
+| `src/components/layout/MainLayout.tsx` | **Modify** | Clear lastPath on logout |
+
+## Technical Details
+
+### localStorage Key
+```
+kalmhub:lastPath = "/module/abc123/chapter/xyz789"
+```
+
+### Route Validation
+```typescript
+function isValidResumePath(path: string, isAdmin: boolean): boolean {
+  // Check if path matches resumable patterns
+  const isResumable = RESUMABLE_ROUTES.some(r => path.startsWith(r));
+  const isAdminRoute = ADMIN_ROUTES.some(r => path.startsWith(r));
+  
+  // Admin routes only valid for admins
+  if (isAdminRoute && !isAdmin) return false;
+  
+  return isResumable || isAdminRoute;
+}
+```
+
+### Integration with Existing Auto-Login
+The existing `preferred_year_id` + `auto_login_to_year` feature becomes the fallback when no `lastPath` exists. This preserves the user's preference for fresh sessions while adding resume capability for interrupted sessions.
