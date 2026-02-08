@@ -162,35 +162,44 @@ async function inviteUser(
   const role = user.role || 'student';
 
   try {
-    // Check if user already exists using efficient single-user lookup
-    let existingUser: any = null;
+    // Try to create the user first - if it fails with "already registered", we know they exist
+    let userId: string;
     let isNewUser = false;
     
-    // Try to get user by email (efficient O(1) lookup instead of listing all users)
-    const { data: userByEmail, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-    
-    if (!lookupError && userByEmail?.user) {
-      existingUser = userByEmail.user;
-    }
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      email_confirm: false,
+      user_metadata: { full_name: fullName },
+    });
 
-    let userId: string;
-
-    if (existingUser) {
-      userId = existingUser.id;
-      console.log(`User ${email} already exists with id ${userId}`);
-    } else {
-      // Create new user without password (they'll set it via the link)
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        email_confirm: false,
-        user_metadata: { full_name: fullName },
-      });
-
-      if (createError) {
+    if (createError) {
+      // Check if user already exists
+      if (createError.message?.includes('already been registered') || 
+          createError.message?.includes('already exists') ||
+          createError.status === 422) {
+        // User exists - find them via listUsers (filtering by email)
+        const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error('Error listing users:', listError);
+          throw new Error('Failed to lookup existing user');
+        }
+        
+        const existingUser = listData.users.find(
+          (u: any) => u.email?.toLowerCase() === email
+        );
+        
+        if (!existingUser) {
+          throw new Error('User exists but could not be found');
+        }
+        
+        userId = existingUser.id;
+        console.log(`User ${email} already exists with id ${userId}`);
+      } else {
         console.error('Error creating user:', createError);
         throw new Error(createError.message);
       }
-
+    } else {
       userId = newUser.user.id;
       isNewUser = true;
       console.log(`Created new user ${email} with id ${userId}`);
