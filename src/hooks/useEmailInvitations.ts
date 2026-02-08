@@ -31,8 +31,17 @@ export function useEmailInvitations() {
       if (error) throw error;
       if (!invitations || invitations.length === 0) return [];
 
+      // Filter to only show direct invitations (not access request approvals)
+      const directInvitations = invitations.filter(inv => {
+        const metadata = inv.metadata as Record<string, unknown> | null;
+        const source = (metadata?.source as string) || 'direct';
+        return source === 'direct';
+      });
+
+      if (directInvitations.length === 0) return [];
+
       // Get all unique emails
-      const emails = invitations
+      const emails = directInvitations
         .map(i => {
           const metadata = i.metadata as Record<string, unknown> | null;
           return (metadata?.email as string)?.toLowerCase();
@@ -61,7 +70,7 @@ export function useEmailInvitations() {
       });
 
       // Merge invitations with delivery status
-      return invitations.map(inv => {
+      return directInvitations.map(inv => {
         const metadata = inv.metadata as Record<string, unknown> | null;
         const email = (metadata?.email as string) || '';
         
