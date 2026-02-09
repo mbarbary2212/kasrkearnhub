@@ -60,8 +60,11 @@ import {
   AccessRequest
 } from '@/hooks/useAccessRequests';
 import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
-import { useEmailInvitations } from '@/hooks/useEmailInvitations';
+import { useEmailInvitations, AccountStatus } from '@/hooks/useEmailInvitations';
 import { useResendInvitation } from '@/hooks/useUserProvisioning';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Users } from 'lucide-react';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
@@ -92,6 +95,32 @@ export function AccountsTab() {
   const allEmails = allRequests?.map(r => r.email) || [];
   const { data: bounceMap } = useEmailBouncesByEmail(allEmails);
   
+  // Fetch account status for all request emails
+  const approvedEmails = useMemo(() => {
+    return [...new Set((allRequests || []).filter(r => r.status === 'approved').map(r => r.email.toLowerCase()))];
+  }, [allRequests]);
+  
+  const { data: accountStatusMap } = useQuery({
+    queryKey: ['request-account-status', approvedEmails],
+    queryFn: async () => {
+      if (approvedEmails.length === 0) return new Map<string, { account_status: AccountStatus; last_sign_in_at: string | null }>();
+      const { data } = await supabase.functions.invoke('provision-user', {
+        body: { action: 'check-invite-status', users: approvedEmails },
+      });
+      const map = new Map<string, { account_status: AccountStatus; last_sign_in_at: string | null }>();
+      if (data?.statuses) {
+        data.statuses.forEach((s: any) => {
+          map.set(s.email.toLowerCase(), {
+            account_status: s.account_status,
+            last_sign_in_at: s.last_sign_in_at,
+          });
+        });
+      }
+      return map;
+    },
+    enabled: approvedEmails.length > 0,
+  });
+
   const approveRequest = useApproveAccessRequest();
   const rejectRequest = useRejectAccessRequest();
   const deleteRequest = useDeleteAccessRequest();
@@ -364,6 +393,7 @@ export function AccountsTab() {
                           )}
                         </div>
                       </TableHead>
+                      <TableHead>Account Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -397,6 +427,40 @@ export function AccountsTab() {
                         <TableCell>{getStatusBadge(request.status || 'pending')}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {format(new Date(request.created_at || ''), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {request.status === 'approved' ? (() => {
+                            const status = accountStatusMap?.get(request.email.toLowerCase());
+                            const accountStatus = status?.account_status || 'not_registered';
+                            if (accountStatus === 'active') {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge className="gap-1 bg-emerald-600 dark:bg-emerald-500">
+                                      <Users className="h-3 w-3" /> Active
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Last seen: {status?.last_sign_in_at ? format(new Date(status.last_sign_in_at), 'MMM d, yyyy h:mm a') : 'Unknown'}
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            } else if (accountStatus === 'registered') {
+                              return (
+                                <Badge className="gap-1 bg-blue-600 dark:bg-blue-500">
+                                  <Users className="h-3 w-3" /> Registered
+                                </Badge>
+                              );
+                            } else {
+                              return (
+                                <Badge variant="outline" className="gap-1">
+                                  <Users className="h-3 w-3" /> Not Registered
+                                </Badge>
+                              );
+                            }
+                          })() : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
