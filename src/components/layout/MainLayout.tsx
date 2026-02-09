@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Inbox, Shield, Settings, Trophy, GraduationCap, Activity } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, Trophy, GraduationCap } from 'lucide-react';
 import logo from '@/assets/kalm-hub-logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -209,20 +209,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
-                      <Inbox className="mr-2 h-4 w-4" />
-                      Feedback & Inquiries
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/activity-log')}>
-                      <Activity className="mr-2 h-4 w-4" />
-                      Activity Log
-                    </DropdownMenuItem>
-                    {!isTopicAdmin && (
-                      <DropdownMenuItem onClick={() => navigate('/admin')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin Panel
-                      </DropdownMenuItem>
-                    )}
                   </>
                 )}
                 <DropdownMenuSeparator />

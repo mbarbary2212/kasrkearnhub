@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,8 @@ import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
 import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
+import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
+import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -877,6 +880,7 @@ function IntegrityCheckTab() {
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, role, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [years, setYears] = useState<Year[]>([]);
@@ -1259,7 +1263,8 @@ export default function AdminPage() {
   }
 
   // Determine default tab based on role
-  const defaultTab = isTopicAdmin ? 'help' : 'users';
+  const urlTab = searchParams.get('tab');
+  const defaultTab = isTopicAdmin ? 'help' : (urlTab || 'users');
 
   // For topic admins, show a simplified view with just Help & Templates
   if (isTopicAdmin) {
@@ -1298,39 +1303,40 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
+          <TabsList className="flex-wrap h-auto gap-1 p-2">
+            {/* ── System Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">System</span>
             <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Layers className="w-4 h-4" />
-                Curriculum
+              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <UserPlus className="w-4 h-4" />
+                Accounts
               </TabsTrigger>
             )}
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Megaphone className="w-4 h-4" />
-                Announcements
-              </TabsTrigger>
-            )}
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="activity-log" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Activity className="w-4 h-4" />
-                Question Analytics
+                Activity Log
               </TabsTrigger>
             )}
             {isPlatformAdmin && (
               <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="w-4 h-4" />
-                Settings
+                Platform Settings
               </TabsTrigger>
             )}
-            {isSuperAdmin && (
-              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Sparkles className="w-4 h-4" />
-                AI Settings
+
+            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
+
+            {/* ── Content Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Content</span>
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Layers className="w-4 h-4" />
+                Curriculum
               </TabsTrigger>
             )}
             {(isPlatformAdmin || isModuleAdmin) && (
@@ -1339,20 +1345,43 @@ export default function AdminPage() {
                 PDF Library
               </TabsTrigger>
             )}
+            {isSuperAdmin && (
+              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Sparkles className="w-4 h-4" />
+                Content Factory
+              </TabsTrigger>
+            )}
             <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
             </TabsTrigger>
+            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <BarChart3 className="w-4 h-4" />
+                Question Analytics
+              </TabsTrigger>
+            )}
             {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
               <TabsTrigger value="integrity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <ShieldAlert className="w-4 h-4" />
-                Integrity
+                Content Integrity
+              </TabsTrigger>
+            )}
+
+            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
+
+            {/* ── Messaging Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Messaging</span>
+            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Megaphone className="w-4 h-4" />
+                Announcements
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <UserPlus className="w-4 h-4" />
-                Accounts
+              <TabsTrigger value="inbox" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <MessageSquare className="w-4 h-4" />
+                Feedback & Inquiries
               </TabsTrigger>
             )}
           </TabsList>
@@ -1790,6 +1819,20 @@ export default function AdminPage() {
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="accounts">
               <AccountsTab />
+            </TabsContent>
+          )}
+
+          {/* Inbox Tab - Feedback & Inquiries */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="inbox">
+              <AdminInboxTab />
+            </TabsContent>
+          )}
+
+          {/* Activity Log Tab */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="activity-log">
+              <ActivityLogTab />
             </TabsContent>
           )}
         </Tabs>
