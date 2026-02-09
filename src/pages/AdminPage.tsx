@@ -32,6 +32,8 @@ import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
 import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
+import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
+import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
 
 interface UserWithRole extends Profile {
   role: AppRole;
