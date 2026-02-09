@@ -886,6 +886,7 @@ export default function AdminPage() {
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [studentSearch, setStudentSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
 
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
