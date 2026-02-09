@@ -50,7 +50,7 @@ import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
 import { useTopicSectionsEnabled } from '@/hooks/useSections';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { SectionFilter } from '@/components/sections';
-import { TopicSettingsSheet } from '@/components/module/TopicSettingsSheet';
+import { SectionsManager } from '@/components/sections';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -330,14 +330,6 @@ export default function TopicDetailPage() {
               </>
             )}
           </div>
-          {/* Settings button for admins */}
-          {canManageContent && topicId && topic && (
-            <TopicSettingsSheet
-              topicId={topicId}
-              topicName={topic.name}
-              canManage={canManageContent}
-            />
-          )}
           {/* Ask Coach Button - visible in Resources and Practice sections */}
           {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
@@ -363,6 +355,11 @@ export default function TopicDetailPage() {
           videosTotal={topicProgress?.videosTotal || 0}
           isLoading={progressLoading}
         />
+
+        {/* Inline Sections Manager - Admin only */}
+        {canManageContent && topicId && (
+          <SectionsManager topicId={topicId} canManage={canManageContent} />
+        )}
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">
