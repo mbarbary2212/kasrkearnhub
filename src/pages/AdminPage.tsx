@@ -904,6 +904,13 @@ export default function AdminPage() {
   const resolvedDefault = isTopicAdmin ? 'help' : (urlTab || 'users');
   const [activeGroup, setActiveGroup] = useState<'system' | 'content' | 'messaging'>(() => tabToGroup(resolvedDefault));
 
+  // Auto-switch group when URL tab param changes (e.g. notification deep links)
+  useEffect(() => {
+    if (urlTab) {
+      setActiveGroup(tabToGroup(urlTab));
+    }
+  }, [urlTab]);
+
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
