@@ -1471,6 +1471,16 @@ export default function AdminPage() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {isSuperAdmin && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}
+                                      title="Set temporary password"
+                                    >
+                                      <KeyRound className="w-4 h-4" />
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
