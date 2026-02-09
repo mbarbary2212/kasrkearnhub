@@ -38,6 +38,9 @@ export default function Auth() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
 
+  // Auth error from hash fragment (e.g., expired tokens)
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
+
   const loginType = searchParams.get('type') || 'student';
   const viewParam = searchParams.get('view');
 
@@ -80,6 +83,22 @@ export default function Auth() {
     // Check if view parameter is set
     if (viewParam === 'change-password') {
       setAuthView('change-password');
+    }
+
+    // Parse hash fragment for auth errors (e.g., expired tokens from email links)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const errorDescription = hashParams.get('error_description');
+    const errorCode = hashParams.get('error_code');
+    
+    if (errorDescription) {
+      if (errorCode === 'otp_expired') {
+        setAuthErrorMessage('This link has expired. Please request a new password reset link below.');
+      } else {
+        setAuthErrorMessage(errorDescription.replace(/\+/g, ' '));
+      }
+      // Show the login view with the error, not the change-password view
+      setAuthView('login');
+      setShowForgotPassword(true);
     }
     
     // Check current session
@@ -498,6 +517,14 @@ export default function Auth() {
           </CardHeader>
           
           <CardContent>
+            {/* Auth error alert (e.g., expired link) */}
+            {authErrorMessage && (
+              <div className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <p className="font-medium">Link Expired</p>
+                <p>{authErrorMessage}</p>
+              </div>
+            )}
+
             {/* Login Form - No tabs, just the form */}
             <form ref={formRef} onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">

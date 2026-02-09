@@ -33,7 +33,10 @@ import ActivityLogPage from "./pages/ActivityLogPage";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Skip splash for auth pages (email links, direct login)
+    return !window.location.pathname.startsWith('/auth');
+  });
 
   const handleDismissSplash = () => {
     setShowSplash(false);
