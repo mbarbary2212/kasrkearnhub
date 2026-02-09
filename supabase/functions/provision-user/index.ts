@@ -229,6 +229,32 @@ async function inviteUser(
     const inviteLink = linkData.properties.action_link;
     console.log(`Generated invite link for ${email}`);
 
+    // Determine email content based on scenario
+    let emailSubject: string;
+    let emailHeading: string;
+    let emailIntro: string;
+    let emailAction: string;
+
+    if (!isNewUser) {
+      // Existing user - password reset
+      emailSubject = 'Reset your KALM Hub password';
+      emailHeading = 'Password Reset';
+      emailIntro = 'A password reset was requested for your account.';
+      emailAction = 'Reset your password';
+    } else if (source === 'access_request') {
+      // New user from approved access request
+      emailSubject = 'Your KALM Hub access is approved — set your password';
+      emailHeading = 'Welcome to KALM Hub';
+      emailIntro = 'Your access request to KALM Hub has been approved by the administration.';
+      emailAction = 'Set your password';
+    } else {
+      // New user from direct invitation
+      emailSubject = "You're invited to KALM Hub — set your password";
+      emailHeading = 'Welcome to KALM Hub';
+      emailIntro = 'You have been invited to join KALM Hub.';
+      emailAction = 'Set your password';
+    }
+
     // Send email via Resend
     const emailHtml = `
 <!DOCTYPE html>
@@ -239,17 +265,17 @@ async function inviteUser(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background-color: #f9fafb;">
   <div style="max-width: 560px; margin: 0 auto; background-color: white; border-radius: 8px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-    <h1 style="color: #111827; font-size: 24px; margin-bottom: 16px;">Welcome to KALM Hub</h1>
+    <h1 style="color: #111827; font-size: 24px; margin-bottom: 16px;">${emailHeading}</h1>
     <p style="color: #374151; font-size: 16px; line-height: 1.5;">Hello ${fullName},</p>
-    <p style="color: #374151; font-size: 16px; line-height: 1.5;">You are receiving this email because your access request to KALM Hub has been approved by the administration.</p>
-    <p style="color: #374151; font-size: 16px; line-height: 1.5;">Click the button below to set your password and activate your account:</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">${emailIntro}</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">Click the button below to ${emailAction.toLowerCase()}:</p>
     <p style="text-align: center; margin: 32px 0;">
       <a href="${inviteLink}" 
          style="display: inline-block; padding: 14px 28px; 
                 background-color: #4f46e5; color: white; 
                 text-decoration: none; border-radius: 8px;
                 font-weight: 500; font-size: 16px;">
-        Set your password
+        ${emailAction}
       </a>
     </p>
     <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
@@ -269,9 +295,9 @@ async function inviteUser(
 
     const emailText = `Hello ${fullName},
 
-You are receiving this email because your access request to KALM Hub has been approved by the administration.
+${emailIntro}
 
-Click the link below to set your password and activate your account:
+Click the link below to ${emailAction.toLowerCase()}:
 ${inviteLink}
 
 If you did not request this, you can safely ignore this email.
@@ -281,7 +307,7 @@ KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub`;
     const resendPayload: any = {
       from: resendFromEmail,
       to: [email],
-      subject: 'Your KALM Hub access is approved — set your password',
+      subject: emailSubject,
       html: emailHtml,
       text: emailText,
     };
