@@ -183,7 +183,62 @@ serve(async (req: Request) => {
       );
     }
 
-    throw new Error('Invalid action. Use "invite-single", "invite-bulk", or "check-invite-status"');
+    if (action === 'set-password') {
+      if (!user || !user.email || !user.password) {
+        throw new Error('Missing required fields: email and password');
+      }
+
+      const email = user.email.trim().toLowerCase();
+      const password = user.password;
+
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+
+      // Check caller is super_admin only
+      const isSuperAdmin = roles.some((r: any) => r.role === 'super_admin');
+      if (!isSuperAdmin) {
+        throw new Error('Unauthorized: Only super admins can set user passwords');
+      }
+
+      // Find the user
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      if (listError) throw new Error('Failed to list users');
+
+      const targetUser = listData.users.find((u: any) => u.email?.toLowerCase() === email);
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
+
+      // Update the password
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        password,
+        email_confirm: true,
+      });
+
+      if (updateError) {
+        console.error('Error setting password:', updateError);
+        throw new Error(updateError.message);
+      }
+
+      // Log to audit
+      await supabaseAdmin.from('audit_log').insert({
+        actor_id: caller.id,
+        action: 'PASSWORD_SET_BY_ADMIN',
+        entity_type: 'user',
+        entity_id: targetUser.id,
+        metadata: { email, set_by: caller.id },
+      });
+
+      console.log(`Password set for ${email} by admin ${caller.id}`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Password set successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", or "set-password"');
 
   } catch (error: any) {
     console.error('Error in provision-user:', error);
