@@ -92,8 +92,14 @@ export default function Auth() {
     checkSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
+      
+      // When user clicks password reset/invite link, Supabase fires PASSWORD_RECOVERY
+      // Automatically show password change form
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthView('change-password');
+      }
     });
 
     return () => subscription.unsubscribe();

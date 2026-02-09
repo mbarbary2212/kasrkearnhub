@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -23,7 +24,10 @@ import {
   Mail,
   AlertTriangle,
   RefreshCw,
-  UserPlus
+  UserPlus,
+  Search,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEmailInvitations, EmailInvitation } from '@/hooks/useEmailInvitations';
@@ -33,6 +37,49 @@ export function EmailInvitationsTable() {
   const { data: invitations, isLoading } = useEmailInvitations();
   const resendInvitation = useResendInvitation();
   const [resendingId, setResendingId] = useState<string | null>(null);
+  
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<'status' | 'date'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // Filter and sort invitations
+  const filteredInvitations = useMemo(() => {
+    let result = invitations ?? [];
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(r => r.full_name.toLowerCase().includes(query));
+    }
+    
+    // Sort
+    return [...result].sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'date') {
+        comparison = new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime();
+      } else {
+        // Sort by delivery status
+        const getStatusPriority = (inv: EmailInvitation) => {
+          if (!inv.delivery) return 1; // Pending
+          if (inv.delivery.event_type === 'email.delivered') return 0; // Delivered first
+          if (inv.delivery.event_type === 'email.bounced' || inv.delivery.event_type === 'email.complained') return 2; // Failed last
+          return 1;
+        };
+        comparison = getStatusPriority(a) - getStatusPriority(b);
+      }
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+  }, [invitations, searchQuery, sortField, sortOrder]);
+  
+  const handleSort = (field: 'status' | 'date') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
 
   const handleResend = async (invitation: EmailInvitation) => {
     setResendingId(invitation.id);
@@ -133,20 +180,57 @@ export function EmailInvitationsTable() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {invitations && invitations.length > 0 ? (
+        {/* Search Input */}
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+        
+        {filteredInvitations.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Sent</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex items-center gap-1">
+                    Sent
+                    {sortField === 'date' && (
+                      sortOrder === 'desc' 
+                        ? <ArrowDown className="h-3 w-3" /> 
+                        : <ArrowUp className="h-3 w-3" />
+                    )}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {sortField === 'status' && (
+                      sortOrder === 'desc' 
+                        ? <ArrowDown className="h-3 w-3" /> 
+                        : <ArrowUp className="h-3 w-3" />
+                    )}
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invitations.map((invitation) => (
+              {filteredInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -191,10 +275,12 @@ export function EmailInvitationsTable() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No invitations sent yet</p>
-            <p className="text-sm mt-1">
-              Use the "Invite User" or "Bulk Invite" buttons to send invitations
-            </p>
+            <p>{searchQuery ? 'No matching invitations found' : 'No invitations sent yet'}</p>
+            {!searchQuery && (
+              <p className="text-sm mt-1">
+                Use the "Invite User" or "Bulk Invite" buttons to send invitations
+              </p>
+            )}
           </div>
         )}
       </CardContent>
