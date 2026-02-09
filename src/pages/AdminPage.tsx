@@ -34,6 +34,7 @@ import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
+import { AdminTabsNavigation } from '@/components/admin/AdminTabsNavigation';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -892,6 +893,24 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
 
+  // Two-level tab navigation: map tab to group
+  const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
+    if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
+    if (['curriculum', 'pdf-library', 'ai-settings', 'help', 'question-analytics', 'integrity'].includes(tab)) return 'content';
+    if (['announcements', 'inbox'].includes(tab)) return 'messaging';
+    return 'system';
+  };
+  const urlTab = searchParams.get('tab');
+  const resolvedDefault = isTopicAdmin ? 'help' : (urlTab || 'users');
+  const [activeGroup, setActiveGroup] = useState<'system' | 'content' | 'messaging'>(() => tabToGroup(resolvedDefault));
+
+  // Auto-switch group when URL tab param changes (e.g. notification deep links)
+  useEffect(() => {
+    if (urlTab) {
+      setActiveGroup(tabToGroup(urlTab));
+    }
+  }, [urlTab]);
+
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
@@ -1263,7 +1282,6 @@ export default function AdminPage() {
   }
 
   // Determine default tab based on role
-  const urlTab = searchParams.get('tab');
   const defaultTab = isTopicAdmin ? 'help' : (urlTab || 'users');
 
   // For topic admins, show a simplified view with just Help & Templates
@@ -1303,88 +1321,15 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1 p-2">
-            {/* ── System Group ── */}
-            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">System</span>
-            <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Users className="w-4 h-4" />
-              Users
-            </TabsTrigger>
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <UserPlus className="w-4 h-4" />
-                Accounts
-              </TabsTrigger>
-            )}
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="activity-log" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Activity className="w-4 h-4" />
-                Activity Log
-              </TabsTrigger>
-            )}
-            {isPlatformAdmin && (
-              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Settings className="w-4 h-4" />
-                Platform Settings
-              </TabsTrigger>
-            )}
-
-            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
-
-            {/* ── Content Group ── */}
-            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Content</span>
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Layers className="w-4 h-4" />
-                Curriculum
-              </TabsTrigger>
-            )}
-            {(isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="pdf-library" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <FileText className="w-4 h-4" />
-                PDF Library
-              </TabsTrigger>
-            )}
-            {isSuperAdmin && (
-              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Sparkles className="w-4 h-4" />
-                Content Factory
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <HelpCircle className="w-4 h-4" />
-              Help & Templates
-            </TabsTrigger>
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <BarChart3 className="w-4 h-4" />
-                Question Analytics
-              </TabsTrigger>
-            )}
-            {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
-              <TabsTrigger value="integrity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <ShieldAlert className="w-4 h-4" />
-                Content Integrity
-              </TabsTrigger>
-            )}
-
-            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
-
-            {/* ── Messaging Group ── */}
-            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Messaging</span>
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Megaphone className="w-4 h-4" />
-                Announcements
-              </TabsTrigger>
-            )}
-            {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="inbox" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <MessageSquare className="w-4 h-4" />
-                Feedback & Inquiries
-              </TabsTrigger>
-            )}
-          </TabsList>
+          <AdminTabsNavigation
+            defaultTab={defaultTab}
+            isSuperAdmin={isSuperAdmin}
+            isPlatformAdmin={isPlatformAdmin}
+            isModuleAdmin={isModuleAdmin}
+            isTopicAdmin={isTopicAdmin}
+            activeGroup={activeGroup}
+            setActiveGroup={setActiveGroup}
+          />
 
           {/* Users Tab with Sub-tabs */}
           <TabsContent value="users">
