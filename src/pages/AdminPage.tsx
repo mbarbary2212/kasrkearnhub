@@ -1794,6 +1794,11 @@ export default function AdminPage() {
           )}
         </Tabs>
       </div>
+      <SetPasswordDialog
+        open={!!passwordDialogUser}
+        onOpenChange={(open) => { if (!open) setPasswordDialogUser(null); }}
+        user={passwordDialogUser}
+      />
     </MainLayout>
   );
 }
