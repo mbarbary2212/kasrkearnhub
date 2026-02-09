@@ -892,6 +892,17 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
 
+  // Two-level tab navigation: map tab to group
+  const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
+    if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
+    if (['curriculum', 'pdf-library', 'ai-settings', 'help', 'question-analytics', 'integrity'].includes(tab)) return 'content';
+    if (['announcements', 'inbox'].includes(tab)) return 'messaging';
+    return 'system';
+  };
+  const urlTab = searchParams.get('tab');
+  const resolvedDefault = isTopicAdmin ? 'help' : (urlTab || 'users');
+  const [activeGroup, setActiveGroup] = useState<'system' | 'content' | 'messaging'>(() => tabToGroup(resolvedDefault));
+
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
