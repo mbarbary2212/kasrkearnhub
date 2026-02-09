@@ -60,8 +60,11 @@ import {
   AccessRequest
 } from '@/hooks/useAccessRequests';
 import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
-import { useEmailInvitations } from '@/hooks/useEmailInvitations';
+import { useEmailInvitations, AccountStatus } from '@/hooks/useEmailInvitations';
 import { useResendInvitation } from '@/hooks/useUserProvisioning';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Users } from 'lucide-react';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
