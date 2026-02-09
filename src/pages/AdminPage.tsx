@@ -1352,7 +1352,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <AdminTabsNavigation
             defaultTab={defaultTab}
             isSuperAdmin={isSuperAdmin}
@@ -1360,7 +1360,7 @@ export default function AdminPage() {
             isModuleAdmin={isModuleAdmin}
             isTopicAdmin={isTopicAdmin}
             activeGroup={activeGroup}
-            setActiveGroup={setActiveGroup}
+            setActiveGroup={handleGroupChange}
           />
 
           {/* Users Tab with Sub-tabs */}
