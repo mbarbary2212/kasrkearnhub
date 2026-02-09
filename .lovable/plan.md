@@ -1,34 +1,63 @@
 
 
-# Unify Password Form Wording for New Accounts and Resets
+# Replace Gear Icon with Inline Sections Toggle
 
 ## Problem
-
-Both new account invitations and password resets lead to the same "Change Password" form. For a brand-new user, seeing "Change Password" is confusing since they haven't set one yet.
+The gear/settings icon in the chapter header is not intuitive for admins. Since "Sections" is the only setting, there's no need for a separate sheet/modal -- the toggle should be directly visible in the chapter header area.
 
 ## Solution
+Remove the `ChapterSettingsSheet` and `TopicSettingsSheet` components from the chapter/topic headers. Instead, render the `SectionsManager` card inline, directly below the progress bar (or below the header), visible only to admins. This keeps the toggle and section management always visible without requiring admins to hunt for a gear icon.
 
-Update the text on the password form to use neutral wording that works for both scenarios. No logic changes needed -- just text updates.
+## Design
 
-### Current vs New Wording
+The sections toggle and management will appear as an inline collapsible card below the chapter progress bar, admin-only:
 
-| Element | Current Text | New Text |
-|---------|-------------|----------|
-| Title | "Change Password" | "Set Your Password" |
-| Subtitle | "Enter your new password below" | "Create a secure password for your account" |
-| Success toast | "Password updated successfully!" | "Password set successfully!" |
-| Error toast | "Failed to reset password" | "Failed to set password" |
-| Signed-in button | "Change Password" | "Set Password" |
+```text
+Chapter 1: Esophagus
+[Progress bar]
 
-## File to Modify
+ Sections  [Enable toggle]
+ "Organize content into sections for students"
+ [section list + add section -- when enabled]
+```
+
+No gear icon, no sheet/modal. The `SectionsManager` component already has the correct UI (card with toggle, section list, add form) -- it just needs to be placed inline instead of inside a Sheet.
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Auth.tsx` | Update ~5 text strings on the password form (lines 378, 379, 232, 234, 461) |
+| `src/pages/ChapterPage.tsx` | Remove `ChapterSettingsSheet` import and usage. Import `SectionsManager` directly. Render it inline below the progress bar, admin-only. |
+| `src/pages/TopicDetailPage.tsx` | Same change: remove `TopicSettingsSheet`, render `SectionsManager` inline. |
+| `src/components/module/ChapterSettingsSheet.tsx` | Can be deleted (no longer used). |
+| `src/components/module/TopicSettingsSheet.tsx` | Can be deleted (no longer used). |
 
-## Why This Approach
+## Technical Details
 
-- Zero risk of breaking the auth flow -- only display text changes
-- Works naturally for both new users ("Set your password") and returning users ("Set your password" still makes sense for a reset)
-- No new routes, no logic changes, no redirectTo changes
+### ChapterPage.tsx (~line 335-342)
 
+Replace:
+```typescript
+{canManageContent && chapterId && chapter && (
+  <ChapterSettingsSheet
+    chapterId={chapterId}
+    chapterTitle={...}
+    canManage={canManageContent}
+  />
+)}
+```
+
+With inline SectionsManager rendered below the progress bar (~after line 365):
+```typescript
+{canManageContent && chapterId && (
+  <SectionsManager chapterId={chapterId} canManage={canManageContent} />
+)}
+```
+
+### TopicDetailPage.tsx (~line 333-339)
+
+Same pattern -- replace `TopicSettingsSheet` with inline `SectionsManager` using `topicId` prop.
+
+### Cleanup
+
+Remove imports for `ChapterSettingsSheet` and `TopicSettingsSheet`. The `SectionsManager` is already exported from `@/components/sections`. Delete the two Sheet component files since they will no longer be referenced.
