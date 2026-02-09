@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Mail, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -1240,18 +1240,6 @@ export default function AdminPage() {
     setShowModuleDialog(true);
   };
 
-  const handleSendPasswordReset = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?mode=reset`,
-      });
-      if (error) throw error;
-      toast.success(`Password reset email sent to ${email}`);
-    } catch (error) {
-      console.error('Error sending password reset:', error);
-      toast.error('Failed to send password reset email');
-    }
-  };
 
   if (authLoading || isLoading) {
 
@@ -1481,16 +1469,6 @@ export default function AdminPage() {
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  {isSuperAdmin && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleSendPasswordReset(u.email)}
-                                      title="Send password reset email"
-                                    >
-                                      <Mail className="w-4 h-4" />
-                                    </Button>
-                                  )}
                                 </>
                               )}
                             </div>
@@ -1555,16 +1533,6 @@ export default function AdminPage() {
                                   <Badge className={ROLE_COLORS.student}>
                                     {ROLE_LABELS.student}
                                   </Badge>
-                                  {isSuperAdmin && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleSendPasswordReset(u.email)}
-                                      title="Send password reset email"
-                                    >
-                                      <Mail className="w-4 h-4" />
-                                    </Button>
-                                  )}
                                 </div>
                               </div>
                             ))}

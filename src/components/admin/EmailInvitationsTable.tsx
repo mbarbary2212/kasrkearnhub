@@ -24,13 +24,15 @@ import {
   Mail,
   AlertTriangle,
   RefreshCw,
-  UserPlus,
   Search,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  UserCheck,
+  UserX,
+  UserCog,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useEmailInvitations, EmailInvitation } from '@/hooks/useEmailInvitations';
+import { useEmailInvitations, EmailInvitation, AccountStatus } from '@/hooks/useEmailInvitations';
 import { useResendInvitation } from '@/hooks/useUserProvisioning';
 
 export function EmailInvitationsTable() {
@@ -40,7 +42,7 @@ export function EmailInvitationsTable() {
   
   // Search and sort state
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<'status' | 'date'>('date');
+  const [sortField, setSortField] = useState<'status' | 'date' | 'account'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // Filter and sort invitations
@@ -58,12 +60,15 @@ export function EmailInvitationsTable() {
       let comparison = 0;
       if (sortField === 'date') {
         comparison = new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime();
+      } else if (sortField === 'account') {
+        const priority: Record<AccountStatus, number> = { active: 0, registered: 1, not_registered: 2 };
+        comparison = priority[a.account_status] - priority[b.account_status];
       } else {
         // Sort by delivery status
         const getStatusPriority = (inv: EmailInvitation) => {
-          if (!inv.delivery) return 1; // Pending
-          if (inv.delivery.event_type === 'email.delivered') return 0; // Delivered first
-          if (inv.delivery.event_type === 'email.bounced' || inv.delivery.event_type === 'email.complained') return 2; // Failed last
+          if (!inv.delivery) return 1;
+          if (inv.delivery.event_type === 'email.delivered') return 0;
+          if (inv.delivery.event_type === 'email.bounced' || inv.delivery.event_type === 'email.complained') return 2;
           return 1;
         };
         comparison = getStatusPriority(a) - getStatusPriority(b);
@@ -72,7 +77,7 @@ export function EmailInvitationsTable() {
     });
   }, [invitations, searchQuery, sortField, sortOrder]);
   
-  const handleSort = (field: 'status' | 'date') => {
+  const handleSort = (field: 'status' | 'date' | 'account') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -131,6 +136,41 @@ export function EmailInvitationsTable() {
         return (
           <Badge variant="secondary" className="gap-1">
             {invitation.delivery.event_type.replace('email.', '')}
+          </Badge>
+        );
+    }
+  };
+
+  const getAccountStatusBadge = (invitation: EmailInvitation) => {
+    switch (invitation.account_status) {
+      case 'active':
+        return (
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className="gap-1 bg-emerald-600 dark:bg-emerald-500">
+                <UserCheck className="h-3 w-3" /> Active
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">
+                Last sign-in: {invitation.last_sign_in_at 
+                  ? format(new Date(invitation.last_sign_in_at), 'MMM d, yyyy h:mm a')
+                  : 'Unknown'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case 'registered':
+        return (
+          <Badge className="gap-1 bg-blue-600 dark:bg-blue-500">
+            <UserCog className="h-3 w-3" /> Registered
+          </Badge>
+        );
+      case 'not_registered':
+      default:
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <UserX className="h-3 w-3" /> Not Registered
           </Badge>
         );
     }
@@ -218,8 +258,21 @@ export function EmailInvitationsTable() {
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
-                    Status
+                    Delivery
                     {sortField === 'status' && (
+                      sortOrder === 'desc' 
+                        ? <ArrowDown className="h-3 w-3" /> 
+                        : <ArrowUp className="h-3 w-3" />
+                    )}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 select-none"
+                  onClick={() => handleSort('account')}
+                >
+                  <div className="flex items-center gap-1">
+                    Account Status
+                    {sortField === 'account' && (
                       sortOrder === 'desc' 
                         ? <ArrowDown className="h-3 w-3" /> 
                         : <ArrowUp className="h-3 w-3" />
@@ -253,6 +306,7 @@ export function EmailInvitationsTable() {
                     {format(new Date(invitation.invited_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>{getStatusBadge(invitation)}</TableCell>
+                  <TableCell>{getAccountStatusBadge(invitation)}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
