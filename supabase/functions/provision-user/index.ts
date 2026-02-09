@@ -139,7 +139,51 @@ serve(async (req: Request) => {
       );
     }
 
-    throw new Error('Invalid action. Use "invite-single" or "invite-bulk"');
+    if (action === 'check-invite-status') {
+      if (!users || !Array.isArray(users) || users.length === 0) {
+        throw new Error('Missing or invalid users (emails) array');
+      }
+
+      // Look up each email in auth.users
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        perPage: 1000,
+      });
+
+      if (listError) {
+        throw new Error('Failed to list users');
+      }
+
+      const authUserMap = new Map<string, { confirmed_at: string | null; last_sign_in_at: string | null }>();
+      listData.users.forEach((u: any) => {
+        if (u.email) {
+          authUserMap.set(u.email.toLowerCase(), {
+            confirmed_at: u.email_confirmed_at || u.confirmed_at || null,
+            last_sign_in_at: u.last_sign_in_at || null,
+          });
+        }
+      });
+
+      const statuses = users.map((email: string) => {
+        const info = authUserMap.get(email.toLowerCase());
+        if (!info) {
+          return { email, account_status: 'not_registered', last_sign_in_at: null };
+        }
+        if (info.last_sign_in_at) {
+          return { email, account_status: 'active', last_sign_in_at: info.last_sign_in_at };
+        }
+        if (info.confirmed_at) {
+          return { email, account_status: 'registered', last_sign_in_at: null };
+        }
+        return { email, account_status: 'not_registered', last_sign_in_at: null };
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, statuses }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    throw new Error('Invalid action. Use "invite-single", "invite-bulk", or "check-invite-status"');
 
   } catch (error: any) {
     console.error('Error in provision-user:', error);
