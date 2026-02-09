@@ -1303,39 +1303,40 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
+          <TabsList className="flex-wrap h-auto gap-1 p-2">
+            {/* ── System Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">System</span>
             <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Users className="w-4 h-4" />
               Users
             </TabsTrigger>
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Layers className="w-4 h-4" />
-                Curriculum
+              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <UserPlus className="w-4 h-4" />
+                Accounts
               </TabsTrigger>
             )}
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Megaphone className="w-4 h-4" />
-                Announcements
-              </TabsTrigger>
-            )}
-            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="activity-log" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Activity className="w-4 h-4" />
-                Question Analytics
+                Activity Log
               </TabsTrigger>
             )}
             {isPlatformAdmin && (
               <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Settings className="w-4 h-4" />
-                Settings
+                Platform Settings
               </TabsTrigger>
             )}
-            {isSuperAdmin && (
-              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Sparkles className="w-4 h-4" />
-                AI Settings
+
+            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
+
+            {/* ── Content Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Content</span>
+            {(isSuperAdmin || isPlatformAdmin) && (
+              <TabsTrigger value="curriculum" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Layers className="w-4 h-4" />
+                Curriculum
               </TabsTrigger>
             )}
             {(isPlatformAdmin || isModuleAdmin) && (
@@ -1344,20 +1345,43 @@ export default function AdminPage() {
                 PDF Library
               </TabsTrigger>
             )}
+            {isSuperAdmin && (
+              <TabsTrigger value="ai-settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Sparkles className="w-4 h-4" />
+                Content Factory
+              </TabsTrigger>
+            )}
             <TabsTrigger value="help" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <HelpCircle className="w-4 h-4" />
               Help & Templates
             </TabsTrigger>
+            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+              <TabsTrigger value="question-analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <BarChart3 className="w-4 h-4" />
+                Question Analytics
+              </TabsTrigger>
+            )}
             {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
               <TabsTrigger value="integrity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <ShieldAlert className="w-4 h-4" />
-                Integrity
+                Content Integrity
+              </TabsTrigger>
+            )}
+
+            <Separator orientation="vertical" className="h-6 mx-1 self-center" />
+
+            {/* ── Messaging Group ── */}
+            <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider px-1 self-center">Messaging</span>
+            {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+              <TabsTrigger value="announcements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Megaphone className="w-4 h-4" />
+                Announcements
               </TabsTrigger>
             )}
             {(isSuperAdmin || isPlatformAdmin) && (
-              <TabsTrigger value="accounts" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <UserPlus className="w-4 h-4" />
-                Accounts
+              <TabsTrigger value="inbox" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <MessageSquare className="w-4 h-4" />
+                Feedback & Inquiries
               </TabsTrigger>
             )}
           </TabsList>
