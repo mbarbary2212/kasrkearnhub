@@ -149,6 +149,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Limit file sizes to prevent abuse
+    const MAX_EXCEL_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_ZIP_SIZE = 50 * 1024 * 1024; // 50MB
+    if (excelFile.size > MAX_EXCEL_SIZE) {
+      return new Response(JSON.stringify({ error: 'Excel file too large. Maximum 10MB.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (zipFile && zipFile.size > MAX_ZIP_SIZE) {
+      return new Response(JSON.stringify({ error: 'ZIP file too large. Maximum 50MB.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Create clean folder path
     const cleanModuleCode = moduleCode.replace(/[^a-zA-Z0-9-_]/g, '_');
     const cleanChapterTitle = chapterTitle.replace(/[^a-zA-Z0-9-_]/g, '_');
@@ -162,6 +178,14 @@ Deno.serve(async (req: Request) => {
     const excelRows = await parseExcel(excelFile);
     
     console.log(`Found ${excelRows.length} data rows in Excel`);
+
+    const MAX_OSCE_ROWS = 200;
+    if (excelRows.length > MAX_OSCE_ROWS) {
+      return new Response(JSON.stringify({ error: `Too many rows (${excelRows.length}). Maximum ${MAX_OSCE_ROWS} per import.` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Parse ZIP file if provided
     let zipFiles = new Map<string, Uint8Array>();
@@ -381,6 +405,19 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`Successfully imported ${importedCount} OSCE questions (${importedWithImage} with images, ${importedWithoutImage} without)`);
+
+    // Audit log the bulk import
+    try {
+      await supabase.from('audit_log').insert({
+        actor_id: user.id,
+        action: 'BULK_IMPORT_OSCE',
+        entity_type: 'osce_questions',
+        entity_id: moduleId,
+        metadata: { importedCount, importedWithImage, importedWithoutImage, chapterId: chapterId || null },
+      });
+    } catch (auditErr) {
+      console.error('Audit log error (non-fatal):', auditErr);
+    }
 
     return new Response(JSON.stringify({
       success: true,
