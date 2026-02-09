@@ -95,6 +95,32 @@ export function AccountsTab() {
   const allEmails = allRequests?.map(r => r.email) || [];
   const { data: bounceMap } = useEmailBouncesByEmail(allEmails);
   
+  // Fetch account status for all request emails
+  const approvedEmails = useMemo(() => {
+    return [...new Set((allRequests || []).filter(r => r.status === 'approved').map(r => r.email.toLowerCase()))];
+  }, [allRequests]);
+  
+  const { data: accountStatusMap } = useQuery({
+    queryKey: ['request-account-status', approvedEmails],
+    queryFn: async () => {
+      if (approvedEmails.length === 0) return new Map<string, { account_status: AccountStatus; last_sign_in_at: string | null }>();
+      const { data } = await supabase.functions.invoke('provision-user', {
+        body: { action: 'check-invite-status', users: approvedEmails },
+      });
+      const map = new Map<string, { account_status: AccountStatus; last_sign_in_at: string | null }>();
+      if (data?.statuses) {
+        data.statuses.forEach((s: any) => {
+          map.set(s.email.toLowerCase(), {
+            account_status: s.account_status,
+            last_sign_in_at: s.last_sign_in_at,
+          });
+        });
+      }
+      return map;
+    },
+    enabled: approvedEmails.length > 0,
+  });
+
   const approveRequest = useApproveAccessRequest();
   const rejectRequest = useRejectAccessRequest();
   const deleteRequest = useDeleteAccessRequest();
