@@ -428,6 +428,40 @@ export function AccountsTab() {
                         <TableCell className="text-muted-foreground">
                           {format(new Date(request.created_at || ''), 'MMM d, yyyy')}
                         </TableCell>
+                        <TableCell>
+                          {request.status === 'approved' ? (() => {
+                            const status = accountStatusMap?.get(request.email.toLowerCase());
+                            const accountStatus = status?.account_status || 'not_registered';
+                            if (accountStatus === 'active') {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge className="gap-1 bg-emerald-600 dark:bg-emerald-500">
+                                      <Users className="h-3 w-3" /> Active
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Last seen: {status?.last_sign_in_at ? format(new Date(status.last_sign_in_at), 'MMM d, yyyy h:mm a') : 'Unknown'}
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            } else if (accountStatus === 'registered') {
+                              return (
+                                <Badge className="gap-1 bg-blue-600 dark:bg-blue-500">
+                                  <Users className="h-3 w-3" /> Registered
+                                </Badge>
+                              );
+                            } else {
+                              return (
+                                <Badge variant="outline" className="gap-1">
+                                  <Users className="h-3 w-3" /> Not Registered
+                                </Badge>
+                              );
+                            }
+                          })() : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             {request.status === 'approved' && (
