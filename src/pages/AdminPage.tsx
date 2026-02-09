@@ -1302,15 +1302,16 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <AdminTabsNavigation
-          defaultTab={defaultTab}
-          isSuperAdmin={isSuperAdmin}
-          isPlatformAdmin={isPlatformAdmin}
-          isModuleAdmin={isModuleAdmin}
-          isTopicAdmin={isTopicAdmin}
-          activeGroup={activeGroup}
-          setActiveGroup={setActiveGroup}
-        />
+        <Tabs defaultValue={defaultTab} className="space-y-4">
+          <AdminTabsNavigation
+            defaultTab={defaultTab}
+            isSuperAdmin={isSuperAdmin}
+            isPlatformAdmin={isPlatformAdmin}
+            isModuleAdmin={isModuleAdmin}
+            isTopicAdmin={isTopicAdmin}
+            activeGroup={activeGroup}
+            setActiveGroup={setActiveGroup}
+          />
 
           {/* Users Tab with Sub-tabs */}
           <TabsContent value="users">
