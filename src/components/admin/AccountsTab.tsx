@@ -393,6 +393,7 @@ export function AccountsTab() {
                           )}
                         </div>
                       </TableHead>
+                      <TableHead>Account Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
