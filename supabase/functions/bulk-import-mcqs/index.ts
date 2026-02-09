@@ -103,6 +103,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Request size limit to prevent abuse
+    const MAX_BULK_MCQ_COUNT = 500;
+    if (mcqs.length > MAX_BULK_MCQ_COUNT) {
+      return new Response(
+        JSON.stringify({ error: `Too many MCQs. Maximum ${MAX_BULK_MCQ_COUNT} per request.` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!moduleId) {
       return new Response(
         JSON.stringify({ error: 'Module ID is required' }),
@@ -224,6 +233,19 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: `Failed to import MCQs: ${insertError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Audit log the bulk import
+    try {
+      await adminClient.from('audit_log').insert({
+        actor_id: user.id,
+        action: 'BULK_IMPORT_MCQ',
+        entity_type: 'mcqs',
+        entity_id: moduleId,
+        metadata: { count: mcqs.length, moduleId, chapterId: chapterId || null, topicId: topicId || null },
+      });
+    } catch (auditErr) {
+      console.error('Audit log error (non-fatal):', auditErr);
     }
 
     return new Response(
