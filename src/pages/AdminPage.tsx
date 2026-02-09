@@ -34,6 +34,7 @@ import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
+import { AdminTabsNavigation } from '@/components/admin/AdminTabsNavigation';
 
 interface UserWithRole extends Profile {
   role: AppRole;
