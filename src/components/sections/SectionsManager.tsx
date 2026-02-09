@@ -180,7 +180,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   if (!canManage) return null;
   
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 max-w-2xl">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
