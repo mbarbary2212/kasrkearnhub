@@ -903,11 +903,43 @@ export default function AdminPage() {
   const urlTab = searchParams.get('tab');
   const resolvedDefault = isTopicAdmin ? 'help' : (urlTab || 'users');
   const [activeGroup, setActiveGroup] = useState<'system' | 'content' | 'messaging'>(() => tabToGroup(resolvedDefault));
+  const [activeTab, setActiveTab] = useState(resolvedDefault);
+
+  // First visible tab per group (for auto-select on group switch)
+  const firstTabInGroup = (group: 'system' | 'content' | 'messaging'): string => {
+    const groupTabs: Record<string, { value: string; visible: boolean }[]> = {
+      system: [
+        { value: 'users', visible: true },
+        { value: 'accounts', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'activity-log', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'settings', visible: isPlatformAdmin },
+      ],
+      content: [
+        { value: 'curriculum', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'pdf-library', visible: isPlatformAdmin || isModuleAdmin },
+        { value: 'ai-settings', visible: isSuperAdmin },
+        { value: 'help', visible: true },
+        { value: 'question-analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+        { value: 'integrity', visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
+      ],
+      messaging: [
+        { value: 'announcements', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+        { value: 'inbox', visible: isSuperAdmin || isPlatformAdmin },
+      ],
+    };
+    return groupTabs[group]?.find(t => t.visible)?.value || 'users';
+  };
+
+  const handleGroupChange = (group: 'system' | 'content' | 'messaging') => {
+    setActiveGroup(group);
+    setActiveTab(firstTabInGroup(group));
+  };
 
   // Auto-switch group when URL tab param changes (e.g. notification deep links)
   useEffect(() => {
     if (urlTab) {
       setActiveGroup(tabToGroup(urlTab));
+      setActiveTab(urlTab);
     }
   }, [urlTab]);
 
