@@ -46,7 +46,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
     // Clear stored last path on logout
     clearLastPath();
     await signOut();
-    navigate('/');
+    // Full reload to show splash screen
+    window.location.href = '/';
   };
 
   const handleGoHome = () => {
