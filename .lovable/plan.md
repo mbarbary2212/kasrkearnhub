@@ -1,153 +1,158 @@
 
-# Separate Direct Invitations from Access Request Approvals
+
+# Fix Email Links and Differentiate Email Templates
 
 ## Summary
 
-Update the system to distinguish between **direct invitations** (from Invite User/Bulk Invite buttons) and **access request approvals** (when admins approve a user's request). This ensures the "Email Invitations" tab only shows proactive invites, not approval emails.
+Two issues to address:
+1. **localhost links** - Supabase uses Site URL (configured as localhost) as the base for auth links
+2. **Wrong email content** - All emails say "access request approved" even for password resets and direct invites
 
 ---
 
-## Changes Required
+## Issue 1: localhost Links
 
-### 1. Update Edge Function: `supabase/functions/provision-user/index.ts`
+### Root Cause
 
-**What changes:**
-- Accept an optional `source` parameter from the request body
-- Pass this source to the `inviteUser` function
-- Include `source` in the audit_log metadata
-
-**Code changes:**
-
-Line 82 - Extract source from request body:
+The code correctly passes `redirectTo` (line 220):
 ```typescript
-const { action, user, users, source } = await req.json();
+options: {
+  redirectTo: `${publicAppUrl}/auth?view=change-password`,
+}
 ```
 
-Lines 89-97 - Pass source to inviteUser for single invite:
-```typescript
-const result = await inviteUser(
-  supabaseAdmin, 
-  user, 
-  resendApiKey, 
-  resendFromEmail, 
-  resendReplyTo,
-  publicAppUrl,
-  caller.id,
-  source || 'direct'  // Add source parameter
-);
+But `generateLink()` returns an `action_link` whose **base domain** comes from the Supabase **Site URL** setting in the dashboard. The `redirectTo` only controls where users go *after* successful verification.
+
+```text
+Generated link structure:
+http://localhost:3000/auth/v1/verify?token=xxx&redirect_to=https://www.kalmhub.com/auth...
+      ↑                                              ↑
+      Site URL (wrong)                              redirectTo (correct, but never reached)
 ```
 
-Lines 122-130 - Pass source to inviteUser for bulk invite:
-```typescript
-const result = await inviteUser(
-  supabaseAdmin,
-  u,
-  resendApiKey,
-  resendFromEmail,
-  resendReplyTo,
-  publicAppUrl,
-  caller.id,
-  source || 'direct'  // Add source parameter
-);
-```
+### Solution (Manual - Dashboard Only)
 
-Line 151 - Add source parameter to function signature:
-```typescript
-async function inviteUser(
-  supabaseAdmin: any,
-  user: UserToInvite,
-  resendApiKey: string,
-  resendFromEmail: string,
-  resendReplyTo: string | undefined,
-  publicAppUrl: string,
-  adminId: string,
-  source: string  // New parameter
-): Promise<InviteResult>
-```
+No code changes needed. You must configure in Supabase Dashboard:
 
-Lines 328-340 - Include source in audit_log metadata:
-```typescript
-await supabaseAdmin.from('audit_log').insert({
-  actor_id: adminId,
-  action: 'USER_INVITED',
-  entity_type: 'user',
-  entity_id: userId,
-  metadata: {
-    email,
-    full_name: fullName,
-    role,
-    is_new_user: isNewUser,
-    link_type: linkType,
-    source,  // Add source field
-  },
-});
-```
+1. Go to **Authentication** → **URL Configuration**
+2. Set **Site URL** to: `https://www.kalmhub.com`
+3. Add to **Redirect URLs** (allowlist):
+   - `https://www.kalmhub.com/**`
+
+That's it - you do NOT need to add the Lovable published URL if you only want the custom domain.
 
 ---
 
-### 2. Update Access Request Approval: `src/hooks/useAccessRequests.ts`
+## Issue 2: Differentiated Email Templates
 
-**What changes:**
-- Add `source: 'access_request'` when calling provision-user during approval
+### Current Problem
 
-**Code changes (lines 61-70):**
+Lines 233-287 contain a single hardcoded email template that always says "your access request to KALM Hub has been approved" - even for password resets and direct invitations.
+
+### Solution: Conditional Templates
+
+I will update the Edge Function to generate different email content based on:
+
+| Scenario | Condition | Subject | Message |
+|----------|-----------|---------|---------|
+| **Password Reset** | `isNewUser === false` | Reset your KALM Hub password | A password reset was requested for your account |
+| **Access Approved** | `isNewUser === true` AND `source === 'access_request'` | Your KALM Hub access is approved | Your access request has been approved by the administration |
+| **Direct Invitation** | `isNewUser === true` AND `source === 'direct'` | You're invited to KALM Hub | You have been invited to join KALM Hub |
+
+### Code Changes
+
+**File: `supabase/functions/provision-user/index.ts`**
+
+Replace lines 232-287 with conditional logic:
+
 ```typescript
-const { data, error } = await supabase.functions.invoke('provision-user', {
-  body: {
-    action: 'invite-single',
-    user: {
-      email: request.email,
-      full_name: request.full_name,
-      role: role,
-    },
-    source: 'access_request',  // Mark as coming from access request
-  },
-});
+// Determine email content based on scenario
+let emailSubject: string;
+let emailHeading: string;
+let emailIntro: string;
+let emailAction: string;
+
+if (!isNewUser) {
+  // Existing user - password reset
+  emailSubject = 'Reset your KALM Hub password';
+  emailHeading = 'Password Reset';
+  emailIntro = 'A password reset was requested for your account.';
+  emailAction = 'Reset your password';
+} else if (source === 'access_request') {
+  // New user from approved access request
+  emailSubject = 'Your KALM Hub access is approved — set your password';
+  emailHeading = 'Welcome to KALM Hub';
+  emailIntro = 'Your access request to KALM Hub has been approved by the administration.';
+  emailAction = 'Set your password';
+} else {
+  // New user from direct invitation
+  emailSubject = "You're invited to KALM Hub — set your password";
+  emailHeading = 'Welcome to KALM Hub';
+  emailIntro = 'You have been invited to join KALM Hub.';
+  emailAction = 'Set your password';
+}
+
+// Build email HTML using these variables
+const emailHtml = `...${emailHeading}...${emailIntro}...${emailAction}...`;
 ```
 
 ---
 
-### 3. Update Email Invitations Hook: `src/hooks/useEmailInvitations.ts`
-
-**What changes:**
-- Filter to only show invitations where `source === 'direct'` or `source` is undefined (backwards compatibility)
-
-**Code changes (around line 44):**
-```typescript
-// Filter to only show direct invitations (not access request approvals)
-const directInvitations = invitations.filter(inv => {
-  const metadata = inv.metadata as Record<string, unknown> | null;
-  const source = (metadata?.source as string) || 'direct';
-  return source === 'direct';
-});
-```
-
-Then use `directInvitations` instead of `invitations` in the mapping.
-
----
-
-## Files Modified
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/provision-user/index.ts` | Accept `source` parameter, include in audit_log metadata |
-| `src/hooks/useAccessRequests.ts` | Pass `source: 'access_request'` when approving requests |
-| `src/hooks/useEmailInvitations.ts` | Filter to show only `source === 'direct'` invitations |
+| `supabase/functions/provision-user/index.ts` | Add conditional email templates based on `isNewUser` and `source` |
 
 ---
 
-## Backwards Compatibility
+## After Implementation
 
-Existing audit_log entries don't have a `source` field. The implementation treats missing `source` as `'direct'` so your existing invitation records will continue to appear in the Email Invitations tab.
+### Manual Steps Required
 
----
+1. **Update Supabase Dashboard:**
+   - Authentication → URL Configuration
+   - Site URL: `https://www.kalmhub.com`
+   - Redirect URLs: `https://www.kalmhub.com/**`
 
-## Result After Implementation
+2. **Resend to affected users:**
+   - `mohamed.elbarbary@rocketmail.com` (password reset)
+   - `amsnyelramly@yahoo.com`
 
-| Tab | Shows |
-|-----|-------|
-| **Pending Requests** | Users waiting for approval |
-| **All Requests** | All access request submissions |
-| **Email Invitations** | Only direct admin invites (Invite User / Bulk Invite buttons) |
+### Expected Email Results
 
-Access request approval emails will be tracked in the audit_log with `source: 'access_request'` but won't appear in the Email Invitations tab.
+**Password Reset (mohamed.elbarbary@rocketmail.com):**
+```
+Subject: Reset your KALM Hub password
+
+Hello Mohamed,
+
+A password reset was requested for your account.
+
+Click the button below to reset your password:
+
+[Reset your password]
+```
+
+**Access Approved (new user from request):**
+```
+Subject: Your KALM Hub access is approved — set your password
+
+Hello [Name],
+
+Your access request to KALM Hub has been approved by the administration.
+
+[Set your password]
+```
+
+**Direct Invitation (admin invites someone):**
+```
+Subject: You're invited to KALM Hub — set your password
+
+Hello [Name],
+
+You have been invited to join KALM Hub.
+
+[Set your password]
+```
+
