@@ -209,20 +209,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/admin/inbox')}>
-                      <Inbox className="mr-2 h-4 w-4" />
-                      Feedback & Inquiries
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/activity-log')}>
-                      <Activity className="mr-2 h-4 w-4" />
-                      Activity Log
-                    </DropdownMenuItem>
-                    {!isTopicAdmin && (
-                      <DropdownMenuItem onClick={() => navigate('/admin')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin Panel
-                      </DropdownMenuItem>
-                    )}
                   </>
                 )}
                 <DropdownMenuSeparator />
