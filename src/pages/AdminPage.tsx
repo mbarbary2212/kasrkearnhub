@@ -30,6 +30,7 @@ import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
 import { AccountsTab } from '@/components/admin/AccountsTab';
+import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 
 interface UserWithRole extends Profile {
   role: AppRole;
