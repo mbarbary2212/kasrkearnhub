@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,17 +45,23 @@ import {
   Mail,
   Trash2,
   AlertTriangle,
-  Send
+  Send,
+  RefreshCw,
+  Search,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
   useAccessRequests, 
   useApproveAccessRequest, 
   useRejectAccessRequest,
-  useDeleteAccessRequest 
+  useDeleteAccessRequest,
+  AccessRequest
 } from '@/hooks/useAccessRequests';
 import { useEmailBouncesByEmail } from '@/hooks/useEmailBounces';
 import { useEmailInvitations } from '@/hooks/useEmailInvitations';
+import { useResendInvitation } from '@/hooks/useUserProvisioning';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
@@ -70,6 +76,14 @@ export function AccountsTab() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState('student');
   const [rejectNotes, setRejectNotes] = useState('');
+  
+  // Resend state
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  
+  // Search and sort state for All Requests tab
+  const [allSearchQuery, setAllSearchQuery] = useState('');
+  const [allSortField, setAllSortField] = useState<'status' | 'date'>('date');
+  const [allSortOrder, setAllSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const { data: pendingRequests, isLoading: loadingPending } = useAccessRequests('pending');
   const { data: allRequests, isLoading: loadingAll } = useAccessRequests();
@@ -81,6 +95,51 @@ export function AccountsTab() {
   const approveRequest = useApproveAccessRequest();
   const rejectRequest = useRejectAccessRequest();
   const deleteRequest = useDeleteAccessRequest();
+  const resendInvitation = useResendInvitation();
+  
+  // Filter and sort All Requests
+  const filteredAllRequests = useMemo(() => {
+    let result = allRequests ?? [];
+    
+    // Search filter
+    if (allSearchQuery) {
+      const query = allSearchQuery.toLowerCase();
+      result = result.filter(r => r.full_name.toLowerCase().includes(query));
+    }
+    
+    // Sort
+    return [...result].sort((a, b) => {
+      let comparison = 0;
+      if (allSortField === 'date') {
+        comparison = new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime();
+      } else {
+        comparison = (a.status || '').localeCompare(b.status || '');
+      }
+      return allSortOrder === 'desc' ? -comparison : comparison;
+    });
+  }, [allRequests, allSearchQuery, allSortField, allSortOrder]);
+  
+  const handleAllSort = (field: 'status' | 'date') => {
+    if (allSortField === field) {
+      setAllSortOrder(allSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setAllSortField(field);
+      setAllSortOrder('desc');
+    }
+  };
+  
+  const handleResendRequest = async (request: AccessRequest) => {
+    setResendingId(request.id);
+    try {
+      await resendInvitation.mutateAsync({
+        email: request.email,
+        full_name: request.full_name,
+        role: request.request_type === 'faculty' ? 'teacher' : 'student',
+      });
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const handleApprove = (request: any) => {
     setSelectedRequest(request);
@@ -255,24 +314,61 @@ export function AccountsTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Search Input */}
+              <div className="mb-4">
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name..."
+                    value={allSearchQuery}
+                    onChange={(e) => setAllSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
               {loadingAll ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : allRequests && allRequests.length > 0 ? (
+              ) : filteredAllRequests.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Requested</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleAllSort('status')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Status
+                          {allSortField === 'status' && (
+                            allSortOrder === 'desc' 
+                              ? <ArrowDown className="h-3 w-3" /> 
+                              : <ArrowUp className="h-3 w-3" />
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleAllSort('date')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Requested
+                          {allSortField === 'date' && (
+                            allSortOrder === 'desc' 
+                              ? <ArrowDown className="h-3 w-3" /> 
+                              : <ArrowUp className="h-3 w-3" />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allRequests.map((request) => (
+                    {filteredAllRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.full_name}</TableCell>
                         <TableCell>
@@ -298,19 +394,38 @@ export function AccountsTab() {
                             {request.request_type === 'faculty' ? 'Faculty' : 'Student'}
                           </Badge>
                         </TableCell>
-                        <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        <TableCell>{getStatusBadge(request.status || 'pending')}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {format(new Date(request.created_at), 'MMM d, yyyy')}
+                          {format(new Date(request.created_at || ''), 'MMM d, yyyy')}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteRequest.mutate(request.id)}
-                            disabled={deleteRequest.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {request.status === 'approved' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                type="button"
+                                onClick={() => handleResendRequest(request)}
+                                disabled={resendingId === request.id}
+                              >
+                                {resendingId === request.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                                <span className="ml-1 hidden sm:inline">Resend</span>
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              type="button"
+                              onClick={() => deleteRequest.mutate(request.id)}
+                              disabled={deleteRequest.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -319,7 +434,7 @@ export function AccountsTab() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No access requests yet</p>
+                  <p>{allSearchQuery ? 'No matching requests found' : 'No access requests yet'}</p>
                 </div>
               )}
             </CardContent>
