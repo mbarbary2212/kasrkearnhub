@@ -1,63 +1,75 @@
 
+# Combined Plan: Account Status Tracking + Remove Broken Email Icon
 
-# Replace Gear Icon with Inline Sections Toggle
+## Overview
 
-## Problem
-The gear/settings icon in the chapter header is not intuitive for admins. Since "Sections" is the only setting, there's no need for a separate sheet/modal -- the toggle should be directly visible in the chapter header area.
+Two improvements to the admin user management experience:
+1. **Remove** the non-functional envelope (mail) icon from the Directory and Students tabs
+2. **Add** an "Account Status" column to the Email Invitations table so you can see who has accepted their invitation
 
-## Solution
-Remove the `ChapterSettingsSheet` and `TopicSettingsSheet` components from the chapter/topic headers. Instead, render the `SectionsManager` card inline, directly below the progress bar (or below the header), visible only to admins. This keeps the toggle and section management always visible without requiring admins to hunt for a gear icon.
+---
 
-## Design
+## Part 1: Remove Broken Email Reset Icon
 
-The sections toggle and management will appear as an inline collapsible card below the chapter progress bar, admin-only:
+The envelope icon in the Directory and Students tabs calls Supabase's built-in password reset, which doesn't work because the project uses Resend for emails. It will be removed entirely.
+
+### Changes in `src/pages/AdminPage.tsx`
+- Remove the `handleSendPasswordReset` function (lines 1243-1254)
+- Remove the Mail icon button in the Directory tab (lines 1484-1493)
+- Remove the Mail icon button in the Students tab (lines 1558-1567)
+- Remove `Mail` from the lucide-react import (line 14)
+
+---
+
+## Part 2: Account Status Column in Email Invitations
+
+### What You'll See
+
+A new **"Account Status"** column in the Email Invitations table with three states:
+
+| Badge | Meaning | Action Needed? |
+|-------|---------|---------------|
+| Gray "Not Registered" | User hasn't clicked the link or set a password | Yes -- resend or contact them |
+| Blue "Registered" | User set their password but hasn't signed in | Maybe -- they may just not have needed it yet |
+| Green "Active" | User has signed in (hover to see last sign-in date) | No -- they're good |
+
+### How It Works
 
 ```text
-Chapter 1: Esophagus
-[Progress bar]
-
- Sections  [Enable toggle]
- "Organize content into sections for students"
- [section list + add section -- when enabled]
+Admin sends invite --> Email delivered? --> User clicked link & set password? --> User signed in?
+     (existing)          (existing)              (NEW: confirmed_at)            (NEW: last_sign_in_at)
 ```
 
-No gear icon, no sheet/modal. The `SectionsManager` component already has the correct UI (card with toggle, section list, add form) -- it just needs to be placed inline instead of inside a Sheet.
+The system will call the server to check each invited user's authentication status (confirmed, last sign-in) and display it alongside the existing email delivery status.
 
-## Files to Modify
+### Technical Details
 
-| File | Changes |
-|------|---------|
-| `src/pages/ChapterPage.tsx` | Remove `ChapterSettingsSheet` import and usage. Import `SectionsManager` directly. Render it inline below the progress bar, admin-only. |
-| `src/pages/TopicDetailPage.tsx` | Same change: remove `TopicSettingsSheet`, render `SectionsManager` inline. |
-| `src/components/module/ChapterSettingsSheet.tsx` | Can be deleted (no longer used). |
-| `src/components/module/TopicSettingsSheet.tsx` | Can be deleted (no longer used). |
+#### 1. Edge Function: `supabase/functions/provision-user/index.ts`
 
-## Technical Details
+Add a new `check-invite-status` action that:
+- Accepts a list of email addresses
+- Looks up each in `auth.users` using the existing admin client
+- Returns `confirmed_at` and `last_sign_in_at` per email
+- Reuses the existing platform/super admin permission check
 
-### ChapterPage.tsx (~line 335-342)
+#### 2. Hook: `src/hooks/useEmailInvitations.ts`
 
-Replace:
-```typescript
-{canManageContent && chapterId && chapter && (
-  <ChapterSettingsSheet
-    chapterId={chapterId}
-    chapterTitle={...}
-    canManage={canManageContent}
-  />
-)}
-```
+- After fetching invitations, call the `check-invite-status` action with the list of emails
+- Merge the account status into each invitation record
+- Add `account_status` field (`not_registered` | `registered` | `active`) and `last_sign_in_at` to the `EmailInvitation` type
 
-With inline SectionsManager rendered below the progress bar (~after line 365):
-```typescript
-{canManageContent && chapterId && (
-  <SectionsManager chapterId={chapterId} canManage={canManageContent} />
-)}
-```
+#### 3. UI: `src/components/admin/EmailInvitationsTable.tsx`
 
-### TopicDetailPage.tsx (~line 333-339)
+- Add an "Account Status" column between "Status" and "Actions"
+- Render color-coded badges based on account status
+- Add a tooltip on "Active" badges showing last sign-in date
+- Make the column sortable like the existing columns
 
-Same pattern -- replace `TopicSettingsSheet` with inline `SectionsManager` using `topicId` prop.
+### Files Changed
 
-### Cleanup
-
-Remove imports for `ChapterSettingsSheet` and `TopicSettingsSheet`. The `SectionsManager` is already exported from `@/components/sections`. Delete the two Sheet component files since they will no longer be referenced.
+| File | Change |
+|------|--------|
+| `src/pages/AdminPage.tsx` | Remove Mail icon buttons and unused function |
+| `supabase/functions/provision-user/index.ts` | Add `check-invite-status` action |
+| `src/hooks/useEmailInvitations.ts` | Fetch and merge account status data |
+| `src/components/admin/EmailInvitationsTable.tsx` | Add Account Status column with badges |
