@@ -229,9 +229,9 @@ export default function Auth() {
 
     const { error } = await updatePassword(resetPassword);
     if (error) {
-      toast.error(error.message || 'Failed to reset password');
+      toast.error(error.message || 'Failed to set password');
     } else {
-      toast.success('Password updated successfully!');
+      toast.success('Password set successfully!');
       navigate('/');
     }
     setIsLoading(false);
@@ -375,8 +375,8 @@ export default function Auth() {
               <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
                 <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
               </div>
-              <CardTitle className="text-2xl font-heading font-bold">Change Password</CardTitle>
-              <CardDescription>Enter your new password below</CardDescription>
+              <CardTitle className="text-2xl font-heading font-bold">Set Your Password</CardTitle>
+              <CardDescription>Create a secure password for your account</CardDescription>
             </CardHeader>
             
             <CardContent>
@@ -458,7 +458,7 @@ export default function Auth() {
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setAuthView('change-password')}>
               <KeyRound className="mr-2 h-4 w-4" />
-              Change Password
+              Set Password
             </Button>
             <Button variant="outline" className="w-full" onClick={handleSignOut}>
               Sign Out
