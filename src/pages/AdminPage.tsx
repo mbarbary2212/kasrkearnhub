@@ -1821,6 +1821,20 @@ export default function AdminPage() {
               <AccountsTab />
             </TabsContent>
           )}
+
+          {/* Inbox Tab - Feedback & Inquiries */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="inbox">
+              <AdminInboxTab />
+            </TabsContent>
+          )}
+
+          {/* Activity Log Tab */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="activity-log">
+              <ActivityLogTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
       <SetPasswordDialog
