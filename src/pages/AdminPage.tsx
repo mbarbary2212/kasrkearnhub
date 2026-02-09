@@ -1263,7 +1263,8 @@ export default function AdminPage() {
   }
 
   // Determine default tab based on role
-  const defaultTab = isTopicAdmin ? 'help' : 'users';
+  const urlTab = searchParams.get('tab');
+  const defaultTab = isTopicAdmin ? 'help' : (urlTab || 'users');
 
   // For topic admins, show a simplified view with just Help & Templates
   if (isTopicAdmin) {
