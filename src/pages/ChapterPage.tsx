@@ -24,7 +24,7 @@ import { ResourcesDeleteManager, ResourceKind } from '@/components/content/Resou
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { SectionFilter } from '@/components/sections';
-import { ChapterSettingsSheet } from '@/components/module/ChapterSettingsSheet';
+import { SectionsManager } from '@/components/sections';
 import { useChapterSectionsEnabled } from '@/hooks/useSections';
 import { 
   useChapterLectures, 
@@ -332,14 +332,6 @@ export default function ChapterPage() {
               </>
             )}
           </div>
-          {/* Chapter Settings - Admin only */}
-          {canManageContent && chapterId && chapter && (
-            <ChapterSettingsSheet
-              chapterId={chapterId}
-              chapterTitle={`Chapter ${chapter.chapter_number}: ${chapter.title}`}
-              canManage={canManageContent}
-            />
-          )}
           {/* Ask Coach Button - visible in Resources and Practice sections */}
           {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
@@ -366,6 +358,11 @@ export default function ChapterPage() {
           videosTotal={chapterProgress?.videosTotal || 0}
           isLoading={progressLoading}
         />
+
+        {/* Inline Sections Manager - Admin only */}
+        {canManageContent && chapterId && (
+          <SectionsManager chapterId={chapterId} canManage={canManageContent} />
+        )}
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
         <div className="flex flex-col md:flex-row">
