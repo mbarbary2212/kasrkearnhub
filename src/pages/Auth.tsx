@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus, UserRound, UsersRound } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
@@ -41,7 +41,7 @@ export default function Auth() {
   // Auth error from hash fragment (e.g., expired tokens)
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
 
-  const loginType = searchParams.get('type') || 'student';
+  
   const viewParam = searchParams.get('view');
 
   // Sign in function
@@ -258,7 +258,7 @@ export default function Auth() {
         <div className="w-full max-w-md relative z-10">
           <AccessRequestForm 
             onBack={() => setAuthView('login')} 
-            defaultType={loginType === 'faculty' ? 'faculty' : 'student'}
+            defaultType="student"
           />
         </div>
       </div>
@@ -469,8 +469,6 @@ export default function Auth() {
     );
   }
 
-  const isStudent = loginType === 'student';
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="absolute inset-0 gradient-medical opacity-5" />
@@ -484,36 +482,6 @@ export default function Auth() {
               Welcome
             </CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
-            
-            {/* Login Type Selector */}
-            <div className="flex items-center justify-center gap-1 p-1 bg-muted rounded-lg mt-4">
-              <Button
-                type="button"
-                variant={isStudent ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex-1 transition-all",
-                  isStudent && "gradient-medical shadow-sm"
-                )}
-                onClick={() => navigate('/auth?type=student', { replace: true })}
-              >
-                <UserRound className="w-4 h-4 mr-2" />
-                Student
-              </Button>
-              <Button
-                type="button"
-                variant={!isStudent ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex-1 transition-all",
-                  !isStudent && "bg-medical-teal hover:bg-medical-teal/90 shadow-sm"
-                )}
-                onClick={() => navigate('/auth?type=faculty', { replace: true })}
-              >
-                <UsersRound className="w-4 h-4 mr-2" />
-                Faculty
-              </Button>
-            </div>
           </CardHeader>
           
           <CardContent>
@@ -574,7 +542,7 @@ export default function Auth() {
               
               <Button 
                 type="submit" 
-                className={`w-full ${isStudent ? 'gradient-medical' : 'bg-medical-teal hover:bg-medical-teal/90'}`}
+                className="w-full gradient-medical"
                 disabled={isLoading}
               >
                 {isLoading ? (

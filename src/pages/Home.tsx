@@ -70,7 +70,7 @@ export default function Home() {
 
   // If not logged in, redirect to auth page
   if (!user && !authLoading) {
-    navigate('/auth?type=student', { replace: true });
+    navigate('/auth', { replace: true });
     return null;
   }
 
