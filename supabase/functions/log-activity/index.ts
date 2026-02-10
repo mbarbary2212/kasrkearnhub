@@ -23,6 +23,7 @@ const MAX_METADATA_SIZE = 4096; // 4KB limit
 const ALLOWED_ENTITY_TYPES = [
   'mcq', 'essay', 'osce', 'flashcard',
   'resource', 'lecture', 'clinical_case', 'matching',
+  'department',
 ];
 
 const ALLOWED_ACTIONS = [
@@ -34,6 +35,8 @@ const ALLOWED_ACTIONS = [
   'created_osce', 'updated_osce', 'deleted_osce', 'bulk_upload_osce',
   // Flashcard
   'created_flashcard', 'updated_flashcard', 'deleted_flashcard', 'bulk_upload_flashcard',
+  // Department
+  'created_department', 'updated_department', 'deleted_department',
 ];
 
 // Map actions to friendly labels for notifications
@@ -54,6 +57,9 @@ const ACTION_LABELS: Record<string, string> = {
   updated_flashcard: 'updated a Flashcard',
   deleted_flashcard: 'deleted a Flashcard',
   bulk_upload_flashcard: 'bulk uploaded Flashcards',
+  created_department: 'created a Department',
+  updated_department: 'updated a Department',
+  deleted_department: 'deleted a Department',
 };
 
 Deno.serve(async (req) => {

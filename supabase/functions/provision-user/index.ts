@@ -378,71 +378,31 @@ serve(async (req: Request) => {
       }
 
       const targetUserId = user.user_id;
-      const mode = user.mode || 'soft'; // 'soft' or 'hard'
 
-      if (mode === 'soft') {
-        // Soft delete: set profile status to 'removed'
-        const { error } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            status: 'removed',
-            status_reason: user.reason || 'Deactivated by admin',
-            status_updated_at: new Date().toISOString(),
-            status_updated_by: caller.id,
-          })
-          .eq('id', targetUserId);
+      // Only soft delete is supported -- deactivates the account
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          status: 'removed',
+          status_reason: user.reason || 'Deactivated by admin',
+          status_updated_at: new Date().toISOString(),
+          status_updated_by: caller.id,
+        })
+        .eq('id', targetUserId);
 
-        if (error) throw new Error(error.message);
+      if (error) throw new Error(error.message);
 
-        await supabaseAdmin.from('admin_actions').insert({
-          admin_user_id: caller.id,
-          target_user_id: targetUserId,
-          action: 'SOFT_DELETE',
-          reason: user.reason || 'Deactivated by admin',
-        });
+      await supabaseAdmin.from('admin_actions').insert({
+        admin_user_id: caller.id,
+        target_user_id: targetUserId,
+        action: 'SOFT_DELETE',
+        reason: user.reason || 'Deactivated by admin',
+      });
 
-        return new Response(
-          JSON.stringify({ success: true, message: 'User deactivated (soft delete)' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (mode === 'hard') {
-        // Hard delete: super_admin only
-        const isSuperAdmin = roles.some((r: any) => r.role === 'super_admin');
-        if (!isSuperAdmin) {
-          throw new Error('Unauthorized: Only super admins can permanently delete users');
-        }
-
-        // Log before deletion (data will be gone after)
-        await supabaseAdmin.from('admin_actions').insert({
-          admin_user_id: caller.id,
-          target_user_id: targetUserId,
-          action: 'HARD_DELETE',
-          reason: user.reason || 'Permanently deleted by admin',
-        });
-
-        await supabaseAdmin.from('audit_log').insert({
-          actor_id: caller.id,
-          action: 'USER_HARD_DELETED',
-          entity_type: 'user',
-          entity_id: targetUserId,
-          metadata: { reason: user.reason, deleted_by: caller.id },
-        });
-
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
-        if (deleteError) {
-          console.error('Error hard-deleting user:', deleteError);
-          throw new Error(deleteError.message);
-        }
-
-        return new Response(
-          JSON.stringify({ success: true, message: 'User permanently deleted' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      throw new Error('Invalid delete mode. Use "soft" or "hard"');
+      return new Response(
+        JSON.stringify({ success: true, message: 'User deactivated' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", "set-password", "update-email", "reset-password", or "delete-user"');

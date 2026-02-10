@@ -897,6 +897,11 @@ export default function AdminPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [studentSortOrder, setStudentSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [moduleAdminSortOrder, setModuleAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [deactivatedSearch, setDeactivatedSearch] = useState('');
+  const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [editEmailUser, setEditEmailUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [deleteUserTarget, setDeleteUserTarget] = useState<{ id: string; email: string; full_name: string | null; status?: string } | null>(null);
@@ -1419,6 +1424,11 @@ export default function AdminPage() {
                         Analytics
                       </TabsTrigger>
                     )}
+                    {(isSuperAdmin || isPlatformAdmin) && (
+                      <TabsTrigger value="deactivated" className="data-[state=active]:bg-background">
+                        Deactivated
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   {/* Directory Sub-tab */}
@@ -1594,8 +1604,8 @@ export default function AdminPage() {
                   {/* Students Sub-tab */}
                   {(isSuperAdmin || isPlatformAdmin) && (
                     <TabsContent value="students" className="mt-4">
-                      <div className="mb-4">
-                        <div className="relative">
+                        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                           <Input
                             placeholder="Search by name or email..."
@@ -1604,6 +1614,15 @@ export default function AdminPage() {
                             className="pl-10"
                           />
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStudentSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="gap-2"
+                        >
+                          <ArrowUpDown className="w-4 h-4" />
+                          {studentSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                        </Button>
                       </div>
                       {(() => {
                         const studentUsers = users.filter(u => u.role === 'student');
@@ -1614,6 +1633,10 @@ export default function AdminPage() {
                             u.full_name?.toLowerCase().includes(search) ||
                             u.email.toLowerCase().includes(search)
                           );
+                        }).sort((a, b) => {
+                          const nameA = (a.full_name || a.email).toLowerCase();
+                          const nameB = (b.full_name || b.email).toLowerCase();
+                          return studentSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
                         });
                         
                         if (filteredStudents.length === 0) {
@@ -1669,62 +1692,31 @@ export default function AdminPage() {
                   {isSuperAdmin && (
                     <TabsContent value="module-admins" className="mt-4">
                       <div className="space-y-6">
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModuleAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            className="gap-2"
+                          >
+                            <ArrowUpDown className="w-4 h-4" />
+                            {moduleAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                          </Button>
+                        </div>
                         {users.filter(u => u.role === 'department_admin').length === 0 ? (
                           <p className="text-muted-foreground text-center py-8">
                             No module admins assigned. Change a user's role to "Module Admin" first.
                           </p>
                         ) : (
-                          users
-                            .filter(u => u.role === 'department_admin')
+                          [...users.filter(u => u.role === 'department_admin')]
+                            .sort((a, b) => {
+                              const nameA = (a.full_name || a.email).toLowerCase();
+                              const nameB = (b.full_name || b.email).toLowerCase();
+                              return moduleAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                            })
                             .map(u => (
                               <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="font-medium">{u.full_name || u.email}</p>
-                                    <p className="text-sm text-muted-foreground">{u.email}</p>
-                                  </div>
-                                  <Badge className={ROLE_COLORS.department_admin}>
-                                    Module Admin
-                                  </Badge>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium">Assigned Modules:</p>
-                                  {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
-                                    <div className="space-y-2">
-                                      {years.map(year => {
-                                        const yearAssignments = u.moduleAssignments?.filter(a => {
-                                          const mod = modules.find(m => m.id === a.module_id);
-                                          return mod?.year_id === year.id;
-                                        }) || [];
-                                        
-                                        if (yearAssignments.length === 0) return null;
-                                        
-                                        return (
-                                          <div key={year.id} className="space-y-1">
-                                            <p className="text-xs text-muted-foreground">{year.name}</p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {yearAssignments.map(a => (
-                                                <Badge key={a.id} variant="secondary" className="gap-1">
-                                                  {getModuleName(a.module_id)}
-                                                  <button
-                                                    onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
-                                                    className="ml-1 hover:text-destructive"
-                                                  >
-                                                    <Trash2 className="w-3 h-3" />
-                                                  </button>
-                                                </Badge>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground">No modules assigned</p>
-                                  )}
-                                </div>
-
+...
                                 <div className="flex gap-2">
                                   <Select
                                     value={selectedUser === u.id ? selectedModule : ''}
@@ -1782,13 +1774,28 @@ export default function AdminPage() {
                   {isSuperAdmin && (
                     <TabsContent value="platform-admins" className="mt-4">
                       <div className="space-y-4">
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPlatformAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            className="gap-2"
+                          >
+                            <ArrowUpDown className="w-4 h-4" />
+                            {platformAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                          </Button>
+                        </div>
                         {users.filter(u => u.role === 'platform_admin').length === 0 ? (
                           <p className="text-muted-foreground text-center py-8">
                             No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
                           </p>
                         ) : (
-                          users
-                            .filter(u => u.role === 'platform_admin')
+                          [...users.filter(u => u.role === 'platform_admin')]
+                            .sort((a, b) => {
+                              const nameA = (a.full_name || a.email).toLowerCase();
+                              const nameB = (b.full_name || b.email).toLowerCase();
+                              return platformAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                            })
                             .map(u => (
                               <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                                 <div className="flex items-center gap-3">
@@ -1816,6 +1823,107 @@ export default function AdminPage() {
                   {(isSuperAdmin || isPlatformAdmin) && (
                     <TabsContent value="analytics" className="mt-4">
                       <UserAnalyticsTab />
+                    </TabsContent>
+                  )}
+
+                  {/* Deactivated Users Sub-tab */}
+                  {(isSuperAdmin || isPlatformAdmin) && (
+                    <TabsContent value="deactivated" className="mt-4">
+                      <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search deactivated users..."
+                            value={deactivatedSearch}
+                            onChange={(e) => setDeactivatedSearch(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeactivatedSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="gap-2"
+                        >
+                          <ArrowUpDown className="w-4 h-4" />
+                          {deactivatedSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                        </Button>
+                      </div>
+                      {(() => {
+                        const deactivatedUsers = users.filter(u => (u as any).status === 'removed');
+                        const filtered = deactivatedUsers
+                          .filter(u => {
+                            if (!deactivatedSearch.trim()) return true;
+                            const search = deactivatedSearch.toLowerCase();
+                            return (
+                              u.full_name?.toLowerCase().includes(search) ||
+                              u.email.toLowerCase().includes(search)
+                            );
+                          })
+                          .sort((a, b) => {
+                            const nameA = (a.full_name || a.email).toLowerCase();
+                            const nameB = (b.full_name || b.email).toLowerCase();
+                            return deactivatedSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                          });
+
+                        if (deactivatedUsers.length === 0) {
+                          return (
+                            <p className="text-muted-foreground text-center py-8">
+                              No deactivated users.
+                            </p>
+                          );
+                        }
+
+                        if (filtered.length === 0) {
+                          return (
+                            <p className="text-muted-foreground text-center py-8">
+                              No deactivated users matching your search.
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {filtered.length} deactivated user{filtered.length !== 1 ? 's' : ''}
+                            </p>
+                            {filtered.map(u => (
+                              <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                                    <span className="font-semibold text-muted-foreground">
+                                      {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{u.full_name || 'No name'}</p>
+                                      <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                                        Deactivated
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{u.email}</p>
+                                    {(u as any).status_reason && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Reason: {(u as any).status_reason}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => setActionModalState({ open: true, action: 'restore', user: { id: u.id, full_name: u.full_name, email: u.email } })}
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                  Restore
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </TabsContent>
                   )}
                 </Tabs>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Department, DepartmentCategory } from '@/types/database';
+import { logActivity } from '@/lib/activityLog';
 
 export function useDepartments() {
   return useQuery({
@@ -86,8 +87,14 @@ export function useCreateDepartment() {
       if (error) throw error;
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      logActivity({
+        action: 'created_department',
+        entity_type: 'department',
+        entity_id: result.id,
+        metadata: { name: result.name },
+      });
     },
   });
 }
@@ -119,8 +126,14 @@ export function useUpdateDepartment() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      logActivity({
+        action: 'updated_department',
+        entity_type: 'department',
+        entity_id: result.id,
+        metadata: { name: result.name },
+      });
     },
   });
 }
@@ -136,9 +149,15 @@ export function useDeleteDepartment() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      logActivity({
+        action: 'deleted_department',
+        entity_type: 'department',
+        entity_id: id,
+      });
     },
   });
 }
