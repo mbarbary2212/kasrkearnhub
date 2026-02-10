@@ -1914,6 +1914,35 @@ export default function AdminPage() {
         onOpenChange={(open) => { if (!open) setPasswordDialogUser(null); }}
         user={passwordDialogUser}
       />
+      <EditEmailDialog
+        open={!!editEmailUser}
+        onOpenChange={(open) => { if (!open) setEditEmailUser(null); }}
+        user={editEmailUser}
+      />
+      <DeleteUserDialog
+        open={!!deleteUserTarget}
+        onOpenChange={(open) => { if (!open) setDeleteUserTarget(null); }}
+        user={deleteUserTarget}
+        isSuperAdmin={isSuperAdmin}
+      />
+      <UserActionModal
+        open={actionModalState.open}
+        onOpenChange={(open) => setActionModalState(prev => ({ ...prev, open }))}
+        action={actionModalState.action}
+        userName={actionModalState.user?.full_name || actionModalState.user?.email || ''}
+        onConfirm={async (reason, bannedUntil) => {
+          if (!actionModalState.user || !actionModalState.action) return;
+          const userId = actionModalState.user.id;
+          switch (actionModalState.action) {
+            case 'ban': await banUser.mutateAsync({ targetUserId: userId, reason, bannedUntil }); break;
+            case 'unban': await unbanUser.mutateAsync({ targetUserId: userId, reason }); break;
+            case 'remove': await removeUser.mutateAsync({ targetUserId: userId, reason }); break;
+            case 'restore': await restoreUser.mutateAsync({ targetUserId: userId, reason }); break;
+          }
+          setActionModalState({ open: false, action: null, user: null });
+        }}
+        isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
+      />
     </MainLayout>
   );
 }
