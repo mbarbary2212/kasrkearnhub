@@ -41,7 +41,7 @@ export default function Auth() {
   // Auth error from hash fragment (e.g., expired tokens)
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
 
-  const loginType = searchParams.get('type') || 'student';
+  
   const viewParam = searchParams.get('view');
 
   // Sign in function
