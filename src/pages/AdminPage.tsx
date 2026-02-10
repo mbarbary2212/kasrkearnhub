@@ -1423,8 +1423,8 @@ export default function AdminPage() {
 
                   {/* Directory Sub-tab */}
                   <TabsContent value="directory" className="mt-4">
-                    <div className="mb-4">
-                      <div className="relative">
+                    <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                      <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                           placeholder="Search by name or email..."
@@ -1433,11 +1433,20 @@ export default function AdminPage() {
                           className="pl-9"
                         />
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUserSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                        className="gap-2"
+                      >
+                        <ArrowUpDown className="w-4 h-4" />
+                        {userSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                      </Button>
                     </div>
                     {users.length === 0 ? (
                       <p className="text-muted-foreground text-center py-8">No users found</p>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {users
                           .filter(u => {
                             if (!userSearch.trim()) return true;
@@ -1447,7 +1456,14 @@ export default function AdminPage() {
                               (u.full_name?.toLowerCase().includes(search) ?? false)
                             );
                           })
-                          .map((u) => (
+                          .sort((a, b) => {
+                            const nameA = (a.full_name || a.email).toLowerCase();
+                            const nameB = (b.full_name || b.email).toLowerCase();
+                            return userSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                          })
+                          .map((u) => {
+                            const userStatus = (u as any).status || 'active';
+                            return (
                           <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
@@ -1456,7 +1472,19 @@ export default function AdminPage() {
                                 </span>
                               </div>
                               <div>
-                                <p className="font-medium">{u.full_name || 'No name'}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{u.full_name || 'No name'}</p>
+                                  {userStatus === 'banned' && (
+                                    <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs">
+                                      Suspended
+                                    </Badge>
+                                  )}
+                                  {userStatus === 'removed' && (
+                                    <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                                      Deactivated
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-sm text-muted-foreground">{u.email}</p>
                                 {u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
@@ -1492,21 +1520,73 @@ export default function AdminPage() {
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  {isSuperAdmin && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}
-                                      title="Set temporary password"
-                                    >
-                                      <KeyRound className="w-4 h-4" />
-                                    </Button>
-                                  )}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-52">
+                                      <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        Edit Email
+                                      </DropdownMenuItem>
+                                      {isSuperAdmin && (
+                                        <DropdownMenuItem onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+                                          <KeyRound className="h-4 w-4 mr-2" />
+                                          Set Temporary Password
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem onClick={() => resetPassword.mutate({ email: u.email, fullName: u.full_name || undefined, userId: u.id })}>
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Reset Password
+                                        {resetPassword.isPending && <Loader2 className="h-3 w-3 ml-auto animate-spin" />}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      {userStatus === 'active' && (
+                                        <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'ban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                                          <Ban className="h-4 w-4 mr-2" />
+                                          Suspend User
+                                        </DropdownMenuItem>
+                                      )}
+                                      {userStatus === 'banned' && (
+                                        <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'unban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                                          <UserCheck className="h-4 w-4 mr-2" />
+                                          Lift Suspension
+                                        </DropdownMenuItem>
+                                      )}
+                                      {userStatus !== 'removed' && (
+                                        <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'remove', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                                          <UserX className="h-4 w-4 mr-2" />
+                                          Deactivate Account
+                                        </DropdownMenuItem>
+                                      )}
+                                      {userStatus === 'removed' && (
+                                        <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'restore', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                                          <RotateCcw className="h-4 w-4 mr-2" />
+                                          Restore Account
+                                        </DropdownMenuItem>
+                                      )}
+                                      {isSuperAdmin && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={() => setDeleteUserTarget({ id: u.id, email: u.email, full_name: u.full_name, status: userStatus })}
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete User
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </>
                               )}
                             </div>
                           </div>
-                        ))}
+                            );
+                          })}
                       </div>
                     )}
                   </TabsContent>
