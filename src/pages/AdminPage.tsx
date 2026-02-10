@@ -897,6 +897,11 @@ export default function AdminPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [studentSortOrder, setStudentSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [moduleAdminSortOrder, setModuleAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [deactivatedSearch, setDeactivatedSearch] = useState('');
+  const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [editEmailUser, setEditEmailUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [deleteUserTarget, setDeleteUserTarget] = useState<{ id: string; email: string; full_name: string | null; status?: string } | null>(null);
