@@ -542,7 +542,7 @@ export default function Auth() {
               
               <Button 
                 type="submit" 
-                className={`w-full ${isStudent ? 'gradient-medical' : 'bg-medical-teal hover:bg-medical-teal/90'}`}
+                className="w-full gradient-medical"
                 disabled={isLoading}
               >
                 {isLoading ? (
