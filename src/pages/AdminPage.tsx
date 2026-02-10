@@ -1604,8 +1604,8 @@ export default function AdminPage() {
                   {/* Students Sub-tab */}
                   {(isSuperAdmin || isPlatformAdmin) && (
                     <TabsContent value="students" className="mt-4">
-                      <div className="mb-4">
-                        <div className="relative">
+                        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                           <Input
                             placeholder="Search by name or email..."
@@ -1614,6 +1614,15 @@ export default function AdminPage() {
                             className="pl-10"
                           />
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStudentSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="gap-2"
+                        >
+                          <ArrowUpDown className="w-4 h-4" />
+                          {studentSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                        </Button>
                       </div>
                       {(() => {
                         const studentUsers = users.filter(u => u.role === 'student');
@@ -1624,6 +1633,10 @@ export default function AdminPage() {
                             u.full_name?.toLowerCase().includes(search) ||
                             u.email.toLowerCase().includes(search)
                           );
+                        }).sort((a, b) => {
+                          const nameA = (a.full_name || a.email).toLowerCase();
+                          const nameB = (b.full_name || b.email).toLowerCase();
+                          return studentSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
                         });
                         
                         if (filteredStudents.length === 0) {
