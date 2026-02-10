@@ -1,108 +1,55 @@
 
+# Fix Hard Delete and Add Sorting to All User Tabs + Activity Log for Departments
 
-# Redesign User Management: Full Controls in Directory, Clean Analytics
+## 1. Remove Hard Delete, Replace with "Deactivated Users" Tab
 
-## Overview
+You're right -- permanently deleting a user who has created content (departments, MCQs, essays, etc.) is dangerous and causes database errors due to foreign key constraints. Instead of trying to work around those constraints, we'll:
 
-Centralize all user management controls (edit email, reset password, set temporary password, suspend, deactivate, delete) into the Directory tab. Strip the Analytics tab down to read-only data. Add alphabetical sorting and status badges to the Directory.
+- **Remove the hard delete option entirely** from the `DeleteUserDialog` -- it will only do soft delete (deactivate)
+- **Add a new "Deactivated" sub-tab** under Users that shows all deactivated/removed users in one place, with an option to restore them
+- The delete button in the Directory menu will simply deactivate the user (soft delete), and they'll move to the Deactivated tab
 
-## Changes Summary
+### Changes:
+- **`src/components/admin/DeleteUserDialog.tsx`**: Simplify to a single-step deactivation confirmation (no hard delete step). Remove the "permanently delete" flow entirely.
+- **`src/pages/AdminPage.tsx`**: Add a "Deactivated" sub-tab that filters users with `status === 'removed'`. Each deactivated user card will have a "Restore" button.
+- **`supabase/functions/provision-user/index.ts`**: Keep the soft delete handler, remove the hard delete code path to prevent accidental use.
 
-### 1. Directory Tab -- Full Control Hub (AdminPage.tsx)
+## 2. Add Alphabetical Sorting to All User Sub-tabs
 
-- Add **alphabetical sort toggle** (A-Z / Z-A by name, default A-Z)
-- Add **status badge** per user (Active / Suspended / Deactivated)
-- Replace the single password button with a **three-dot action menu** per user containing:
-  - **Edit Email** -- opens new dialog to update email
-  - **Set Temporary Password** -- existing SetPasswordDialog (super admin only)
-  - **Reset Password** -- sends a password reset email via provision-user (platform admin+)
-  - Separator
-  - **Suspend User** / **Lift Suspension** (contextual based on status)
-  - **Deactivate Account** / **Restore Account** (contextual based on status)
-  - Separator
-  - **Delete User** (super admin only, red text, two-step: soft-delete first, then hard-delete option)
+Currently only the Directory tab has A-Z/Z-A sorting. We'll add the same sort toggle to:
 
-### 2. Analytics Tab -- Read-Only (UserAnalyticsTab.tsx)
+- **Students tab** (in `AdminPage.tsx`): Add `studentSortOrder` state and sort toggle button
+- **Module Admins tab** (in `AdminPage.tsx`): Add `moduleAdminSortOrder` state and sort toggle button  
+- **Platform Admins tab** (in `AdminPage.tsx`): Add `platformAdminSortOrder` state and sort toggle button
+- **Topic Admins tab** (`TopicAdminsTab.tsx`): Add sort toggle to the topic admins list
 
-- Remove the three-dot dropdown menu with suspend/deactivate/restore actions
-- Remove `UserActionModal` usage and related state
-- Remove unused imports (`useUserAdminActions`, `Ban`, `UserX`, `UserCheck`, `MoreHorizontal`)
-- Keep: search, status filter, sort, stats summary, and all analytics columns
+Each tab will get the same A-Z/Z-A toggle button pattern used in the Directory tab.
 
-### 3. New Component: EditEmailDialog
+## 3. Add Department Actions to Activity Log
 
-- Dialog with current email shown (read-only) and new email input field
-- Calls `provision-user` edge function with new `update-email` action
-- Platform admin+ required
+Department creation/editing/deletion is not being logged because:
+- The `useDepartments.ts` hook doesn't call `logActivity()`
+- The `log-activity` edge function's allowlist doesn't include department-related actions
 
-### 4. New Component: DeleteUserDialog
+### Changes:
+- **`supabase/functions/log-activity/index.ts`**: Add `'department'` to `ALLOWED_ENTITY_TYPES` and add `'created_department'`, `'updated_department'`, `'deleted_department'` to `ALLOWED_ACTIONS` with corresponding labels
+- **`src/hooks/useDepartments.ts`**: Add `logActivity()` calls in the `onSuccess` callbacks of `useCreateDepartment`, `useUpdateDepartment`, and `useDeleteDepartment`
 
-- Two-step confirmation dialog:
-  - **Step 1 (Soft Delete)**: Deactivates the account (sets status to 'removed') -- reversible
-  - **Step 2 (Hard Delete)**: Permanently removes the user from auth.users -- irreversible, super admin only
-- Shows clear warnings about each step
-- Requires typing "DELETE" to confirm hard delete
+## Technical Summary
 
-### 5. Edge Function Updates (provision-user/index.ts)
+### Files to modify:
+1. **`src/components/admin/DeleteUserDialog.tsx`** -- Remove hard delete, simplify to deactivation-only
+2. **`src/pages/AdminPage.tsx`** -- Add Deactivated tab, add sort toggles to Students/Module Admins/Platform Admins
+3. **`src/components/admin/TopicAdminsTab.tsx`** -- Add sort toggle
+4. **`supabase/functions/provision-user/index.ts`** -- Remove hard delete code path
+5. **`supabase/functions/log-activity/index.ts`** -- Add department to allowlists
+6. **`src/hooks/useDepartments.ts`** -- Add activity logging calls
 
-Add three new actions:
-
-- **`update-email`**: Updates user email in auth.users and profiles table. Requires platform_admin+.
-- **`reset-password`**: Generates a recovery link and sends password reset email via Resend. Requires platform_admin+.
-- **`delete-user`**: Two modes:
-  - `soft`: Sets profile status to 'removed' via existing admin_remove_user RPC
-  - `hard`: Calls `supabase.auth.admin.deleteUser()` to permanently remove. Super admin only. Logs to admin_actions.
-
-### 6. Profile Type Update (database.ts)
-
-Add `status`, `banned_until`, `status_reason` fields to the `Profile` interface so the Directory tab can show status badges without a separate query.
-
-## Technical Details
-
-### Files to Create
-- `src/components/admin/EditEmailDialog.tsx`
-- `src/components/admin/DeleteUserDialog.tsx`
-
-### Files to Modify
-- `src/pages/AdminPage.tsx` -- Directory sub-tab: add sort, status badges, three-dot menu with all actions
-- `src/components/admin/UserAnalyticsTab.tsx` -- remove action controls, keep analytics only
-- `src/hooks/useUserAdminActions.ts` -- add `resetPassword` and `deleteUser` mutations
-- `supabase/functions/provision-user/index.ts` -- add `update-email`, `reset-password`, `delete-user` actions
-- `src/types/database.ts` -- extend Profile interface with status fields
-
-### Directory Action Menu Structure
-
+### Deactivated Users Tab Layout
 ```text
-[Edit Email]
-[Set Temporary Password]        (super admin only)
-[Reset Password]                (sends email)
----
-[Suspend User]                  (if active)
-[Lift Suspension]               (if suspended)
-[Deactivate Account]            (if active/suspended)
-[Restore Account]               (if deactivated)
----
-[Delete User]                   (super admin only, red)
+[Search bar]  [A-Z / Z-A sort]
+
+[Avatar] Deactivated User Name     [Deactivated badge]  [Restore button]
+         email@example.com
+         Reason: "Deactivated by admin"
 ```
-
-### Delete Flow
-
-```text
-User clicks "Delete User"
-  -> DeleteUserDialog opens
-  -> Step 1: "Deactivate first" (soft delete)
-     -> Sets status='removed' in profiles
-     -> User can still be restored
-  -> Step 2: "Permanently delete" (hard delete)
-     -> Requires typing "DELETE" to confirm
-     -> Calls auth.admin.deleteUser()
-     -> Profile cascade-deleted
-     -> Irreversible
-```
-
-### Edge Function Security
-- `update-email`: platform_admin or super_admin
-- `reset-password`: platform_admin or super_admin
-- `delete-user` (soft): platform_admin or super_admin
-- `delete-user` (hard): super_admin only
-
