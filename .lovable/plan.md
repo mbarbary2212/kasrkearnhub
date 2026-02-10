@@ -1,71 +1,30 @@
 
-# Compact Login Screen -- Remove Large Logo, Add Small Inline Logo
 
-## What Changes
+# Remove Student/Faculty Toggle from Login Screen
 
-Remove the large KALM Hub logo block from the top of the login card and instead place a small logo icon (using `kalm-logo-icon.png`) inline beside the "Welcome" heading.
+## Why
 
-This eliminates ~150px of vertical space so all important elements (email, password, sign in, forgot password, request access) are visible without scrolling on mobile.
+The Student/Faculty toggle on the login screen is cosmetic only -- it does not affect authentication or role assignment. Roles are managed by the super admin via the `user_roles` table. Removing it simplifies the UI, saves vertical space on mobile, and eliminates user confusion.
 
-## Affected Views
-
-The large logo appears in **5 places** inside `src/pages/Auth.tsx`:
-1. Main login form (line 482-484)
-2. Reset password view (line 289-291)
-3. Change password view (line 375-377)
-4. Already signed-in view (line 449-451)
-5. Access request form layout (no logo there, already clean)
-
-All four logo blocks will be removed and replaced with a small inline icon beside the title text.
-
-## Technical Details
+## Changes
 
 ### File: `src/pages/Auth.tsx`
 
-**Import change (line 14):**
-- Change from importing `kalm-hub-logo.png` to `kalm-logo-icon.png`
+1. **Remove the toggle UI** (lines 488-516): Delete the entire "Login Type Selector" `div` containing the Student and Faculty buttons
 
-**Main login form (lines 482-486):**
-- Remove the 3-line logo `div` block
-- Replace `<CardTitle>Welcome</CardTitle>` with a flex row containing the small logo icon (h-8) and "Welcome" text side by side
+2. **Remove unused imports**: Remove `UserRound`, `UsersRound` from the lucide-react import (line 9) since they are only used by the toggle
 
-**Reset password view (lines 289-293):**
-- Remove the logo block
-- Add small icon beside "Set New Password" title
+3. **Remove `loginType` variable** (line 44) and `isStudent` variable (line 472) since they are no longer needed
 
-**Change password view (lines 375-379):**
-- Remove the logo block
-- Add small icon beside "Set Your Password" title
+4. **Update Access Request default type** (line 261): Change `defaultType={loginType === 'faculty' ? 'faculty' : 'student'}` to simply `defaultType="student"` (the Access Request form has its own type selector so this is just the default)
 
-**Already signed-in view (lines 449-452):**
-- Remove the logo block
-- Add small icon beside "You're signed in" title
+5. **Clean up the redirect** in `AuthContext.tsx` or wherever unauthenticated users are sent: Change any `/auth?type=student` redirect to just `/auth`
 
-### Visual Result
+### File: `src/contexts/AuthContext.tsx` (if applicable)
 
-Before:
-```text
-  [  Large Logo + Text Block  ]
-       
-       Welcome
-   Sign in to KALM Hub
-   [Student] [Faculty]
-   Email: ...
-   Password: ...
-   [Sign In]
-   -- scrolling needed --
-   Forgot password?
-   Request Access
-```
+- Update any redirect from `/auth?type=student` to `/auth`
 
-After:
-```text
-   [icon] Welcome
-   Sign in to KALM Hub
-   [Student] [Faculty]
-   Email: ...
-   Password: ...
-   [Sign In]
-   Forgot password?
-   Request Access
-```
+### Result
+
+The login card will go straight from the "Welcome" heading to the email/password fields, saving another ~50px of vertical space and creating a cleaner, less confusing experience.
+
