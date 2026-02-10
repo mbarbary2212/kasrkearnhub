@@ -1692,62 +1692,31 @@ export default function AdminPage() {
                   {isSuperAdmin && (
                     <TabsContent value="module-admins" className="mt-4">
                       <div className="space-y-6">
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setModuleAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            className="gap-2"
+                          >
+                            <ArrowUpDown className="w-4 h-4" />
+                            {moduleAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                          </Button>
+                        </div>
                         {users.filter(u => u.role === 'department_admin').length === 0 ? (
                           <p className="text-muted-foreground text-center py-8">
                             No module admins assigned. Change a user's role to "Module Admin" first.
                           </p>
                         ) : (
-                          users
-                            .filter(u => u.role === 'department_admin')
+                          [...users.filter(u => u.role === 'department_admin')]
+                            .sort((a, b) => {
+                              const nameA = (a.full_name || a.email).toLowerCase();
+                              const nameB = (b.full_name || b.email).toLowerCase();
+                              return moduleAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                            })
                             .map(u => (
                               <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="font-medium">{u.full_name || u.email}</p>
-                                    <p className="text-sm text-muted-foreground">{u.email}</p>
-                                  </div>
-                                  <Badge className={ROLE_COLORS.department_admin}>
-                                    Module Admin
-                                  </Badge>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium">Assigned Modules:</p>
-                                  {u.moduleAssignments && u.moduleAssignments.length > 0 ? (
-                                    <div className="space-y-2">
-                                      {years.map(year => {
-                                        const yearAssignments = u.moduleAssignments?.filter(a => {
-                                          const mod = modules.find(m => m.id === a.module_id);
-                                          return mod?.year_id === year.id;
-                                        }) || [];
-                                        
-                                        if (yearAssignments.length === 0) return null;
-                                        
-                                        return (
-                                          <div key={year.id} className="space-y-1">
-                                            <p className="text-xs text-muted-foreground">{year.name}</p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {yearAssignments.map(a => (
-                                                <Badge key={a.id} variant="secondary" className="gap-1">
-                                                  {getModuleName(a.module_id)}
-                                                  <button
-                                                    onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
-                                                    className="ml-1 hover:text-destructive"
-                                                  >
-                                                    <Trash2 className="w-3 h-3" />
-                                                  </button>
-                                                </Badge>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground">No modules assigned</p>
-                                  )}
-                                </div>
-
+...
                                 <div className="flex gap-2">
                                   <Select
                                     value={selectedUser === u.id ? selectedModule : ''}
