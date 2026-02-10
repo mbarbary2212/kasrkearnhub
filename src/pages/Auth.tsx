@@ -258,7 +258,7 @@ export default function Auth() {
         <div className="w-full max-w-md relative z-10">
           <AccessRequestForm 
             onBack={() => setAuthView('login')} 
-            defaultType={loginType === 'faculty' ? 'faculty' : 'student'}
+            defaultType="student"
           />
         </div>
       </div>
