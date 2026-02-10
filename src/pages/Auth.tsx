@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { AccessRequestForm } from '@/components/auth/AccessRequestForm';
-import logo from '@/assets/kalm-hub-logo.png';
+import logo from '@/assets/kalm-logo-icon.png';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -286,10 +286,10 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-                <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-              </div>
-              <CardTitle className="text-2xl font-heading font-bold">Set New Password</CardTitle>
+              <CardTitle className="text-2xl font-heading font-bold flex items-center justify-center gap-2">
+                <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+                Set New Password
+              </CardTitle>
               <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
             
@@ -372,10 +372,10 @@ export default function Auth() {
 
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-2">
-              <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-                <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-              </div>
-              <CardTitle className="text-2xl font-heading font-bold">Set Your Password</CardTitle>
+              <CardTitle className="text-2xl font-heading font-bold flex items-center justify-center gap-2">
+                <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+                Set Your Password
+              </CardTitle>
               <CardDescription>Create a secure password for your account</CardDescription>
             </CardHeader>
             
@@ -446,10 +446,10 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-            </div>
-            <CardTitle>You're signed in</CardTitle>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+              You're signed in
+            </CardTitle>
             <CardDescription>What would you like to do?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -479,10 +479,10 @@ export default function Auth() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-            </div>
-            <CardTitle className="text-2xl font-heading font-bold">Welcome</CardTitle>
+            <CardTitle className="text-2xl font-heading font-bold flex items-center justify-center gap-2">
+              <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+              Welcome
+            </CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
             
             {/* Login Type Selector */}
