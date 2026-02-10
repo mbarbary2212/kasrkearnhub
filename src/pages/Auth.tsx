@@ -479,10 +479,10 @@ export default function Auth() {
 
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-            </div>
-            <CardTitle className="text-2xl font-heading font-bold">Welcome</CardTitle>
+            <CardTitle className="text-2xl font-heading font-bold flex items-center justify-center gap-2">
+              <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+              Welcome
+            </CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
             
             {/* Login Type Selector */}
