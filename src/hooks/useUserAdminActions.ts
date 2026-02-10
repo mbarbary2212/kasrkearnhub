@@ -5,6 +5,10 @@ import { toast } from 'sonner';
 export function useUserAdminActions() {
   const queryClient = useQueryClient();
 
+  const invalidateUsers = () => {
+    queryClient.invalidateQueries({ queryKey: ['user-analytics'] });
+  };
+
   const banUser = useMutation({
     mutationFn: async ({ 
       targetUserId, 
@@ -24,7 +28,7 @@ export function useUserAdminActions() {
     },
     onSuccess: () => {
       toast.success('User has been suspended');
-      queryClient.invalidateQueries({ queryKey: ['user-analytics'] });
+      invalidateUsers();
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to suspend user');
@@ -47,7 +51,7 @@ export function useUserAdminActions() {
     },
     onSuccess: () => {
       toast.success('User suspension has been lifted');
-      queryClient.invalidateQueries({ queryKey: ['user-analytics'] });
+      invalidateUsers();
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to lift suspension');
@@ -70,7 +74,7 @@ export function useUserAdminActions() {
     },
     onSuccess: () => {
       toast.success('User has been deactivated');
-      queryClient.invalidateQueries({ queryKey: ['user-analytics'] });
+      invalidateUsers();
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to deactivate user');
@@ -93,10 +97,94 @@ export function useUserAdminActions() {
     },
     onSuccess: () => {
       toast.success('User has been restored');
-      queryClient.invalidateQueries({ queryKey: ['user-analytics'] });
+      invalidateUsers();
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to restore user');
+    },
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async ({ 
+      email, 
+      fullName,
+      userId 
+    }: { 
+      email: string; 
+      fullName?: string;
+      userId?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('provision-user', {
+        body: {
+          action: 'reset-password',
+          user: { email, full_name: fullName, user_id: userId },
+        },
+      });
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Failed to send reset email');
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Password reset email sent');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to send reset email');
+    },
+  });
+
+  const updateEmail = useMutation({
+    mutationFn: async ({ 
+      userId, 
+      newEmail 
+    }: { 
+      userId: string; 
+      newEmail: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('provision-user', {
+        body: {
+          action: 'update-email',
+          user: { user_id: userId, new_email: newEmail },
+        },
+      });
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Failed to update email');
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Email updated successfully');
+      invalidateUsers();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update email');
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async ({ 
+      userId, 
+      mode, 
+      reason 
+    }: { 
+      userId: string; 
+      mode: 'soft' | 'hard'; 
+      reason: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('provision-user', {
+        body: {
+          action: 'delete-user',
+          user: { user_id: userId, mode, reason },
+        },
+      });
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Failed to delete user');
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(variables.mode === 'hard' ? 'User permanently deleted' : 'User deactivated');
+      invalidateUsers();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete user');
     },
   });
 
@@ -105,5 +193,8 @@ export function useUserAdminActions() {
     unbanUser,
     removeUser,
     restoreUser,
+    resetPassword,
+    updateEmail,
+    deleteUser,
   };
 }

@@ -238,7 +238,214 @@ serve(async (req: Request) => {
       );
     }
 
-    throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", or "set-password"');
+    if (action === 'update-email') {
+      if (!user || !user.user_id || !user.new_email) {
+        throw new Error('Missing required fields: user_id and new_email');
+      }
+
+      const newEmail = user.new_email.trim().toLowerCase();
+      const targetUserId = user.user_id;
+
+      // Update email in auth.users
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+        email: newEmail,
+        email_confirm: true,
+      });
+
+      if (updateError) {
+        console.error('Error updating email:', updateError);
+        throw new Error(updateError.message);
+      }
+
+      // Update email in profiles table
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ email: newEmail })
+        .eq('id', targetUserId);
+
+      if (profileError) {
+        console.error('Error updating profile email:', profileError);
+        // Don't throw - auth email was already updated
+      }
+
+      // Log to audit
+      await supabaseAdmin.from('audit_log').insert({
+        actor_id: caller.id,
+        action: 'EMAIL_UPDATED_BY_ADMIN',
+        entity_type: 'user',
+        entity_id: targetUserId,
+        metadata: { new_email: newEmail, updated_by: caller.id },
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email updated successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'reset-password') {
+      if (!user || !user.email) {
+        throw new Error('Missing required field: email');
+      }
+
+      const email = user.email.trim().toLowerCase();
+
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+          redirectTo: `${publicAppUrl}/auth?view=change-password`,
+        },
+      });
+
+      if (linkError) {
+        console.error('Error generating recovery link:', linkError);
+        throw new Error(linkError.message);
+      }
+
+      const resetLink = linkData.properties.action_link;
+      const fullName = user.full_name || email;
+
+      // Send email via Resend
+      const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background-color: #f9fafb;">
+  <div style="max-width: 560px; margin: 0 auto; background-color: white; border-radius: 8px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="color: #111827; font-size: 24px; margin-bottom: 16px;">Password Reset</h1>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">Hello ${fullName},</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">A password reset was requested for your account by an administrator.</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.5;">Click the button below to reset your password:</p>
+    <p style="text-align: center; margin: 32px 0;">
+      <a href="${resetLink}" style="display: inline-block; padding: 14px 28px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 16px;">Reset your password</a>
+    </p>
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+      Or copy this link into your browser:<br>
+      <a href="${resetLink}" style="color: #4f46e5; word-break: break-all;">${resetLink}</a>
+    </p>
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+    <p style="color: #9ca3af; font-size: 12px;">If you did not request this, you can safely ignore this email.</p>
+    <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 24px;">KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub</p>
+  </div>
+</body>
+</html>`;
+
+      const resendPayload: any = {
+        from: resendFromEmail,
+        to: [email],
+        subject: 'Reset your KALM Hub password',
+        html: emailHtml,
+        text: `Hello ${fullName},\n\nA password reset was requested for your account.\n\nClick this link to reset your password: ${resetLink}\n\nKALM Hub`,
+      };
+
+      if (resendReplyTo) {
+        resendPayload.reply_to = resendReplyTo;
+      }
+
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resendPayload),
+      });
+
+      if (!resendResponse.ok) {
+        const resendError = await resendResponse.text();
+        console.error('Resend error:', resendError);
+        throw new Error(`Failed to send reset email: ${resendError}`);
+      }
+
+      await supabaseAdmin.from('audit_log').insert({
+        actor_id: caller.id,
+        action: 'PASSWORD_RESET_EMAIL_SENT',
+        entity_type: 'user',
+        entity_id: user.user_id || null,
+        metadata: { email, sent_by: caller.id },
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Password reset email sent' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'delete-user') {
+      if (!user || !user.user_id) {
+        throw new Error('Missing required field: user_id');
+      }
+
+      const targetUserId = user.user_id;
+      const mode = user.mode || 'soft'; // 'soft' or 'hard'
+
+      if (mode === 'soft') {
+        // Soft delete: set profile status to 'removed'
+        const { error } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            status: 'removed',
+            status_reason: user.reason || 'Deactivated by admin',
+            status_updated_at: new Date().toISOString(),
+            status_updated_by: caller.id,
+          })
+          .eq('id', targetUserId);
+
+        if (error) throw new Error(error.message);
+
+        await supabaseAdmin.from('admin_actions').insert({
+          admin_user_id: caller.id,
+          target_user_id: targetUserId,
+          action: 'SOFT_DELETE',
+          reason: user.reason || 'Deactivated by admin',
+        });
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'User deactivated (soft delete)' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (mode === 'hard') {
+        // Hard delete: super_admin only
+        const isSuperAdmin = roles.some((r: any) => r.role === 'super_admin');
+        if (!isSuperAdmin) {
+          throw new Error('Unauthorized: Only super admins can permanently delete users');
+        }
+
+        // Log before deletion (data will be gone after)
+        await supabaseAdmin.from('admin_actions').insert({
+          admin_user_id: caller.id,
+          target_user_id: targetUserId,
+          action: 'HARD_DELETE',
+          reason: user.reason || 'Permanently deleted by admin',
+        });
+
+        await supabaseAdmin.from('audit_log').insert({
+          actor_id: caller.id,
+          action: 'USER_HARD_DELETED',
+          entity_type: 'user',
+          entity_id: targetUserId,
+          metadata: { reason: user.reason, deleted_by: caller.id },
+        });
+
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+        if (deleteError) {
+          console.error('Error hard-deleting user:', deleteError);
+          throw new Error(deleteError.message);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'User permanently deleted' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      throw new Error('Invalid delete mode. Use "soft" or "hard"');
+    }
+
+    throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", "set-password", "update-email", "reset-password", or "delete-user"');
 
   } catch (error: any) {
     console.error('Error in provision-user:', error);
