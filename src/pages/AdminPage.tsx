@@ -1424,6 +1424,11 @@ export default function AdminPage() {
                         Analytics
                       </TabsTrigger>
                     )}
+                    {(isSuperAdmin || isPlatformAdmin) && (
+                      <TabsTrigger value="deactivated" className="data-[state=active]:bg-background">
+                        Deactivated
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   {/* Directory Sub-tab */}
