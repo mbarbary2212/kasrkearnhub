@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
-import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Table,
@@ -11,14 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -27,8 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, Search, Ban, UserX, UserCheck, Shield, Clock, Calendar } from 'lucide-react';
-import { UserActionModal } from './UserActionModal';
+import { Search, Shield, Clock, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -53,19 +44,12 @@ function getInitials(name: string | null, email: string): string {
 
 export function UserAnalyticsTab() {
   const { data: users, isLoading } = useUserAnalytics();
-  const { user: currentUser, hasRole } = useAuth();
-  const { banUser, unbanUser, removeUser, restoreUser } = useUserAdminActions();
+  const { hasRole } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortField, setSortField] = useState<SortField>('last_seen');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  
-  const [modalState, setModalState] = useState<{
-    open: boolean;
-    action: 'ban' | 'unban' | 'remove' | 'restore' | null;
-    user: typeof users extends (infer T)[] ? T : never | null;
-  }>({ open: false, action: null, user: null });
 
   const canManageUsers = hasRole('platform_admin') || hasRole('super_admin');
 
@@ -73,19 +57,16 @@ export function UserAnalyticsTab() {
     if (!users) return [];
 
     let filtered = users.filter(user => {
-      // Search filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = 
         user.email.toLowerCase().includes(searchLower) ||
         (user.full_name?.toLowerCase().includes(searchLower) ?? false);
 
-      // Status filter
       const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
 
-    // Sort
     filtered.sort((a, b) => {
       let comparison = 0;
       
@@ -124,39 +105,12 @@ export function UserAnalyticsTab() {
     }
   };
 
-  const openActionModal = (action: 'ban' | 'unban' | 'remove' | 'restore', user: typeof users extends (infer T)[] ? T : never) => {
-    setModalState({ open: true, action, user });
-  };
-
-  const handleActionConfirm = async (reason: string, bannedUntil?: string) => {
-    if (!modalState.user || !modalState.action) return;
-
-    const userId = modalState.user.id;
-
-    switch (modalState.action) {
-      case 'ban':
-        await banUser.mutateAsync({ targetUserId: userId, reason, bannedUntil });
-        break;
-      case 'unban':
-        await unbanUser.mutateAsync({ targetUserId: userId, reason });
-        break;
-      case 'remove':
-        await removeUser.mutateAsync({ targetUserId: userId, reason });
-        break;
-      case 'restore':
-        await restoreUser.mutateAsync({ targetUserId: userId, reason });
-        break;
-    }
-
-    setModalState({ open: false, action: null, user: null });
-  };
-
   const getStatusBadge = (status: string, bannedUntil: string | null) => {
     switch (status) {
       case 'banned':
         return (
           <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
-            {bannedUntil ? 'Suspended' : 'Suspended'}
+            Suspended
           </Badge>
         );
       case 'removed':
@@ -289,7 +243,6 @@ export function UserAnalyticsTab() {
               >
                 Time (30d)
               </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -311,12 +264,11 @@ export function UserAnalyticsTab() {
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                  <TableCell></TableCell>
                 </TableRow>
               ))
             ) : filteredAndSortedUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -356,59 +308,12 @@ export function UserAnalyticsTab() {
                   <TableCell className="text-sm">{user.sessions_30d}</TableCell>
                   <TableCell className="text-sm">{formatDuration(user.total_time_7d)}</TableCell>
                   <TableCell className="text-sm">{formatDuration(user.total_time_30d)}</TableCell>
-                  <TableCell>
-                    {user.id !== currentUser?.id && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {user.status === 'active' && (
-                            <DropdownMenuItem onClick={() => openActionModal('ban', user)}>
-                              <Ban className="h-4 w-4 mr-2" />
-                              Suspend User
-                            </DropdownMenuItem>
-                          )}
-                          {user.status === 'banned' && (
-                            <DropdownMenuItem onClick={() => openActionModal('unban', user)}>
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Lift Suspension
-                            </DropdownMenuItem>
-                          )}
-                          {user.status !== 'removed' && (
-                            <DropdownMenuItem onClick={() => openActionModal('remove', user)}>
-                              <UserX className="h-4 w-4 mr-2" />
-                              Deactivate Account
-                            </DropdownMenuItem>
-                          )}
-                          {user.status === 'removed' && (
-                            <DropdownMenuItem onClick={() => openActionModal('restore', user)}>
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Restore Account
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
-
-      {/* Action Modal */}
-      <UserActionModal
-        open={modalState.open}
-        onOpenChange={(open) => setModalState(prev => ({ ...prev, open }))}
-        action={modalState.action}
-        userName={modalState.user?.full_name || modalState.user?.email || ''}
-        onConfirm={handleActionConfirm}
-        isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
-      />
     </div>
   );
 }

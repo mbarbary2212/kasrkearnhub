@@ -10,6 +10,9 @@ export interface Profile {
   avatar_url: string | null;
   preferred_year_id: string | null;
   auto_login_to_year: boolean;
+  status?: string;
+  banned_until?: string | null;
+  status_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
