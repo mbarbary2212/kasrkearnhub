@@ -446,10 +446,10 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto overflow-hidden h-[106px] md:h-[146px] flex items-center justify-center mb-2">
-              <img src={logo} alt="KALM Hub Logo" className="w-auto h-[132px] md:h-[182px] object-contain" />
-            </div>
-            <CardTitle>You're signed in</CardTitle>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <img src={logo} alt="KALM Hub" className="h-8 w-8 object-contain" />
+              You're signed in
+            </CardTitle>
             <CardDescription>What would you like to do?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
