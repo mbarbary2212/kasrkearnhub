@@ -36,6 +36,10 @@ import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
 import { AdminTabsNavigation } from '@/components/admin/AdminTabsNavigation';
+import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
+import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
+import { UserActionModal } from '@/components/admin/UserActionModal';
+import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 
 interface UserWithRole extends Profile {
   role: AppRole;
