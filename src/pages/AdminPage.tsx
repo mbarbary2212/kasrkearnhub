@@ -896,7 +896,17 @@ export default function AdminPage() {
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [studentSearch, setStudentSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
+  const [editEmailUser, setEditEmailUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
+  const [deleteUserTarget, setDeleteUserTarget] = useState<{ id: string; email: string; full_name: string | null; status?: string } | null>(null);
+  const [actionModalState, setActionModalState] = useState<{
+    open: boolean;
+    action: 'ban' | 'unban' | 'remove' | 'restore' | null;
+    user: { id: string; full_name: string | null; email: string } | null;
+  }>({ open: false, action: null, user: null });
+
+  const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
 
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
