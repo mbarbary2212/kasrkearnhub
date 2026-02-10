@@ -469,8 +469,6 @@ export default function Auth() {
     );
   }
 
-  const isStudent = loginType === 'student';
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="absolute inset-0 gradient-medical opacity-5" />
@@ -484,36 +482,6 @@ export default function Auth() {
               Welcome
             </CardTitle>
             <CardDescription>Sign in to access KALM Hub</CardDescription>
-            
-            {/* Login Type Selector */}
-            <div className="flex items-center justify-center gap-1 p-1 bg-muted rounded-lg mt-4">
-              <Button
-                type="button"
-                variant={isStudent ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex-1 transition-all",
-                  isStudent && "gradient-medical shadow-sm"
-                )}
-                onClick={() => navigate('/auth?type=student', { replace: true })}
-              >
-                <UserRound className="w-4 h-4 mr-2" />
-                Student
-              </Button>
-              <Button
-                type="button"
-                variant={!isStudent ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex-1 transition-all",
-                  !isStudent && "bg-medical-teal hover:bg-medical-teal/90 shadow-sm"
-                )}
-                onClick={() => navigate('/auth?type=faculty', { replace: true })}
-              >
-                <UsersRound className="w-4 h-4 mr-2" />
-                Faculty
-              </Button>
-            </div>
           </CardHeader>
           
           <CardContent>
