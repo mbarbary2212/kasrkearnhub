@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { AccessRequestForm } from '@/components/auth/AccessRequestForm';
-import logo from '@/assets/kalm-hub-logo.png';
+import logo from '@/assets/kalm-logo-icon.png';
 
 export default function Auth() {
   const navigate = useNavigate();
