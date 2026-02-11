@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers } from 'lucide-react';
+import { Plus, Layers, ChevronDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -53,6 +54,7 @@ interface SectionsManagerProps {
 }
 
 export function SectionsManager({ chapterId, topicId, canManage }: SectionsManagerProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [editName, setEditName] = useState('');
@@ -179,90 +181,104 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   
   if (!canManage) return null;
   
+  const sectionCount = sections?.length || 0;
+
   return (
-    <Card className="mt-6 max-w-2xl">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-lg">Sections</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="enable-sections" className="text-sm text-muted-foreground">
-              Enable
-            </Label>
-            <Switch
-              id="enable-sections"
-              checked={sectionsEnabled ?? false}
-              onCheckedChange={handleToggleSections}
-              disabled={toggleChapterSections.isPending || toggleTopicSections.isPending}
-            />
-          </div>
-        </div>
-        <CardDescription>
-          Organize content into sections for better student navigation
-        </CardDescription>
-      </CardHeader>
-      
-      {sectionsEnabled && (
-        <CardContent className="space-y-4">
-          {/* Section list with drag-and-drop */}
-          {sections && sections.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sections.map(s => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {sections.map((section) => (
-                    <SortableSectionItem
-                      key={section.id}
-                      section={section}
-                      editingSection={editingSection}
-                      editName={editName}
-                      setEditName={setEditName}
-                      handleUpdateSection={handleUpdateSection}
-                      setEditingSection={setEditingSection}
-                      startEdit={startEdit}
-                      setDeletingSection={setDeletingSection}
-                      isUpdating={updateSection.isPending}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <p className="text-sm text-muted-foreground py-2">
-              No sections yet. Add your first section below.
-            </p>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="mt-6 max-w-2xl">
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-lg">Sections</CardTitle>
+                {sectionCount > 0 && (
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {sectionCount}
+                  </span>
+                )}
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </div>
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <Label htmlFor="enable-sections" className="text-sm text-muted-foreground">
+                  Enable
+                </Label>
+                <Switch
+                  id="enable-sections"
+                  checked={sectionsEnabled ?? false}
+                  onCheckedChange={handleToggleSections}
+                  disabled={toggleChapterSections.isPending || toggleTopicSections.isPending}
+                />
+              </div>
+            </div>
+            <CardDescription>
+              Organize content into sections for better student navigation
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          {sectionsEnabled && (
+            <CardContent className="space-y-4">
+              {/* Section list with drag-and-drop */}
+              {sections && sections.length > 0 ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={sections.map(s => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {sections.map((section) => (
+                        <SortableSectionItem
+                          key={section.id}
+                          section={section}
+                          editingSection={editingSection}
+                          editName={editName}
+                          setEditName={setEditName}
+                          handleUpdateSection={handleUpdateSection}
+                          setEditingSection={setEditingSection}
+                          startEdit={startEdit}
+                          setDeletingSection={setDeletingSection}
+                          isUpdating={updateSection.isPending}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">
+                  No sections yet. Add your first section below.
+                </p>
+              )}
+              
+              {/* Add new section */}
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="New section name..."
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddSection();
+                  }}
+                />
+                <Button
+                  onClick={handleAddSection}
+                  disabled={createSection.isPending || !newSectionName.trim()}
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Section
+                </Button>
+              </div>
+            </CardContent>
           )}
-          
-          {/* Add new section */}
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="New section name..."
-              value={newSectionName}
-              onChange={(e) => setNewSectionName(e.target.value)}
-              className="flex-1"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddSection();
-              }}
-            />
-            <Button
-              onClick={handleAddSection}
-              disabled={createSection.isPending || !newSectionName.trim()}
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Section
-            </Button>
-          </div>
-        </CardContent>
-      )}
+        </CollapsibleContent>
+      </Card>
       
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deletingSection} onOpenChange={() => setDeletingSection(null)}>
@@ -285,6 +301,6 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </Collapsible>
   );
 }
