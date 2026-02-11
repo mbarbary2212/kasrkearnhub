@@ -45,7 +45,7 @@ export default function ModulePage() {
   const { canManageContent, isModuleAdmin } = useIsModuleAdmin(actualModuleId);
   
   // Platform admin can manage books/departments
-  const canManageBooks = isPlatformAdmin || isSuperAdmin;
+  const canManageBooks = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
 
