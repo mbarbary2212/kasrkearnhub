@@ -1,53 +1,42 @@
 
 
-# Hide Admin Badges + Add App Mind Map (Markdown to HTML)
+# Fix Chapter Numbering: Per-Department Instead of Per-Module
 
-## Part 1: Hide Badge/Trophy from Admin UI
+## Problem
 
-### File: `src/components/layout/MainLayout.tsx`
-- Wrap the trophy button (lines 121-139) with `{!isAdmin && ...}` so only students see it
-- Wrap the badge count indicator on avatar (lines 173-178) with `{!isAdmin && ...}`
-- Wrap `HeaderBadgesPanel` (line 244) with `{!isAdmin && ...}`
+The database has a unique constraint `(module_id, chapter_number)` which forces chapter numbers to be unique across the entire module. But you want each department to have its own numbering (e.g., Histology Ch 1-5, Anatomy Ch 1-3, Physiology Ch 1-4 -- all within the same module).
 
-No imports removed -- they're still used conditionally.
+## Solution
 
----
+### 1. Database Migration
 
-## Part 2: App Mind Map (Markdown rendered as HTML)
+Drop the existing constraint and replace it with one scoped to department:
 
-Instead of the interactive SVG-based Markmap library, we'll use `react-markdown` to render your Markdown content as clean, styled HTML inside a dialog.
+```sql
+ALTER TABLE module_chapters
+  DROP CONSTRAINT module_chapters_module_id_chapter_number_key;
 
-### Installation
-One package needed:
-- `react-markdown` -- converts Markdown to React/HTML elements
+ALTER TABLE module_chapters
+  ADD CONSTRAINT module_chapters_module_book_chapter_unique
+  UNIQUE (module_id, book_label, chapter_number);
+```
 
-### New file: `src/components/dashboard/AppMindMap.tsx`
-- Accepts `open` / `onOpenChange` props
-- Contains your app structure as a Markdown string (the same content you wrote)
-- Uses `react-markdown` to render it as formatted HTML (headings, nested lists)
-- Displayed inside a full-width `Dialog` with scroll support
-- Styled with Tailwind to look clean (indented lists, colored headings)
+This allows chapter number 1 to exist in multiple departments within the same module.
 
-### File: `src/pages/Home.tsx`
-- Add a small icon button (e.g., `Network` or `Map` icon from lucide-react) near the "Academic Years" heading
-- Clicking it opens the `AppMindMap` dialog
-- Only shown to logged-in users
+### 2. File: `src/components/module/ChapterFormModal.tsx`
 
-### What it will look like
-Your Markdown content rendered as a nicely formatted document with:
-- Hierarchical headings (h1, h2, h3, etc.)
-- Nested bullet lists for sub-items
-- Clean typography with proper spacing
-- Scrollable dialog that can be closed/collapsed
+The current auto-increment logic (lines 50-51) already filters by `book_label` -- so no code change needed here. It was correct all along; the database constraint was the only blocker.
 
----
+### 3. File: `src/hooks/useModuleBooks.ts`
 
-## Files Summary
+In `useAddBook` (around line 95), a placeholder chapter is created with `chapter_number: 1`. This is already correct since the new constraint scopes uniqueness to `(module_id, book_label, chapter_number)`.
 
-| File | Change |
-|------|--------|
-| `src/components/layout/MainLayout.tsx` | Hide trophy, badge count, badges panel for admins |
-| `src/components/dashboard/AppMindMap.tsx` | New -- Markdown-to-HTML mind map in a Dialog |
-| `src/pages/Home.tsx` | Add button to open the mind map dialog |
-| `package.json` | Add `react-markdown` |
+## Summary
+
+| Change | Detail |
+|--------|--------|
+| Database migration | Replace `UNIQUE(module_id, chapter_number)` with `UNIQUE(module_id, book_label, chapter_number)` |
+| Code changes | None needed -- existing logic already numbers per-department |
+
+This is a database-only fix. Each department will have independent chapter numbering (Ch 1, Ch 2, ...) regardless of how many departments a module has.
 
