@@ -73,7 +73,7 @@ import {
   Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+
 
 type SectionMode = 'resources' | 'practice' | 'test';
 
@@ -99,7 +99,7 @@ export default function TopicDetailPage() {
   const canManageContent = !!(auth.isTeacher || (topicId && auth.canManageTopic(topicId)));
 
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
-  const [isNavHovered, setIsNavHovered] = useState(false);
+  
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
@@ -392,43 +392,32 @@ export default function TopicDetailPage() {
             </nav>
           </div>
 
-          {/* Desktop: Collapsible Vertical Nav Rail */}
-          <TooltipProvider delayDuration={300}>
-            <div 
-              className="hidden md:block flex-shrink-0 transition-all duration-200 overflow-hidden"
-              style={{ width: isNavHovered ? 180 : 48 }}
-              onMouseEnter={() => setIsNavHovered(true)}
-              onMouseLeave={() => setIsNavHovered(false)}
-            >
-              <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
-                <div className="flex flex-col gap-1">
-                  {sectionNav.map((section) => {
-                    const Icon = section.icon;
-                    const isActive = activeSection === section.id;
-                    return (
-                      <Tooltip key={section.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => setActiveSection(section.id)}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
-                              isActive 
-                                ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            <Icon className="w-4 h-4 flex-shrink-0" />
-                            {isNavHovered && <span className="whitespace-nowrap">{section.label}</span>}
-                          </button>
-                        </TooltipTrigger>
-                        {!isNavHovered && <TooltipContent side="right">{section.label}</TooltipContent>}
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              </nav>
-            </div>
-          </TooltipProvider>
+          {/* Desktop: Fixed Vertical Navigation Rail */}
+          <div className="hidden md:block w-[180px] flex-shrink-0">
+            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
+              <div className="flex flex-col gap-1">
+                {sectionNav.map((section) => {
+                  const Icon = section.icon;
+                  const isActive = activeSection === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        isActive 
+                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="whitespace-nowrap">{section.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
 
           {/* Divider */}
           <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
