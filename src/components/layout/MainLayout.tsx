@@ -117,8 +117,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105 overflow-hidden h-[62px] md:h-[72px]">
               <img src={logo} alt="KALM Hub Logo" className="h-[92px] md:h-[110px] w-auto object-contain" />
             </button>
-            {/* Achievements Trophy Icon - Right of logo */}
-            {user && (
+            {/* Achievements Trophy Icon - Right of logo (students only) */}
+            {user && !isAdmin && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -170,8 +170,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Badge count indicator */}
-                  {earned > 0 && (
+                  {/* Badge count indicator (students only) */}
+                  {!isAdmin && earned > 0 && (
                     <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-500 text-white text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
                       {earned > 9 ? '9+' : earned}
                     </span>
@@ -240,8 +240,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
 
-      {/* Achievements Panel */}
-      <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />
+      {/* Achievements Panel (students only) */}
+      {!isAdmin && <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />}
     </div>
   );
 }

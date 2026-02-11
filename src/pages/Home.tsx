@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Network } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect, useState } from 'react';
+import { AppMindMap } from '@/components/dashboard/AppMindMap';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
@@ -111,6 +113,7 @@ function LoggedInHome() {
   const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
+  const [mindMapOpen, setMindMapOpen] = useState(false);
 
   // Color mapping for year accent borders
   const getYearColor = (color: string | null): string => {
@@ -218,7 +221,17 @@ function LoggedInHome() {
 
       {/* Year Selection */}
       <section className="max-w-3xl mx-auto">
-        <h2 className="text-lg md:text-xl font-heading font-semibold mb-3 md:mb-4">Academic Years</h2>
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <h2 className="text-lg md:text-xl font-heading font-semibold">Academic Years</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => setMindMapOpen(true)}
+          >
+            <Network className="h-4 w-4" />
+          </Button>
+        </div>
         
         {isLoading ? (
           <div className="space-y-4 md:space-y-6">
@@ -256,6 +269,8 @@ function LoggedInHome() {
           </div>
         )}
       </section>
+
+      <AppMindMap open={mindMapOpen} onOpenChange={setMindMapOpen} />
     </div>
   );
 }
