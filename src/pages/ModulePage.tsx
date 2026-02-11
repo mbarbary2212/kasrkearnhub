@@ -9,12 +9,15 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useYearById } from '@/hooks/useYears';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { useModules } from '@/hooks/useModules';
+import { LearningHubStudyPlan } from '@/components/dashboard/LearningHubStudyPlan';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
 import {
   ArrowLeft, 
   BookOpen,
+  CalendarDays,
   ClipboardCheck,
   MessageCircle,
   Megaphone,
@@ -22,7 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ModuleSection = 'learning' | 'formative' | 'connect';
+type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 
 export default function ModulePage() {
   const { moduleId } = useParams();
@@ -59,11 +62,16 @@ export default function ModulePage() {
     );
   }
 
+  // Fetch year modules for Study Coach
+  const { data: yearModules = [] } = useModules(module?.year_id);
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+
   // Section navigation items
   const sectionNav = [
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
     { id: 'connect' as ModuleSection, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
     { id: 'formative' as ModuleSection, label: 'Formative Assessment', mobileLabel: 'Formative', icon: ClipboardCheck },
+    ...(isStudent ? [{ id: 'coach' as ModuleSection, label: 'Study Coach', mobileLabel: 'Coach', icon: CalendarDays }] : []),
   ];
 
   return (
@@ -226,6 +234,22 @@ export default function ModulePage() {
                 moduleName={module?.name || ''}
                 moduleCode={module?.slug || ''}
                 yearId={module?.year_id}
+              />
+            )}
+
+            {/* Study Coach Section - Students only */}
+            {activeSection === 'coach' && actualModuleId && (
+              <LearningHubStudyPlan
+                moduleSelected={true}
+                modules={yearModules.map(m => ({
+                  id: m.id,
+                  name: m.name,
+                  workload_level: m.workload_level as 'light' | 'medium' | 'heavy' | 'heavy_plus' | null | undefined,
+                  page_count: m.page_count,
+                }))}
+                selectedYearName={year?.name || ''}
+                selectedYearId={module?.year_id}
+                selectedModuleId={actualModuleId}
               />
             )}
           </div>
