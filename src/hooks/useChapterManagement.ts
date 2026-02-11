@@ -49,6 +49,7 @@ export function useCreateChapter() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['module-chapters-for-book', variables.moduleId] });
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
     },
   });
@@ -77,6 +78,7 @@ export function useUpdateChapter() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['module-chapters-for-book', variables.moduleId] });
       queryClient.invalidateQueries({ queryKey: ['chapter', variables.chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
     },
@@ -99,6 +101,7 @@ export function useDeleteChapter() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['module-chapters', variables.moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['module-chapters-for-book', variables.moduleId] });
       queryClient.invalidateQueries({ queryKey: ['module-books', variables.moduleId] });
     },
   });
