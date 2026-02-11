@@ -470,25 +470,45 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
                   {chapters.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No chapters in this module</p>
                   ) : (
-                    <div className="space-y-2">
-                      {chapters.map(ch => (
-                        <div key={ch.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={ch.id}
-                            checked={selectedChapters.includes(ch.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedChapters(prev => [...prev, ch.id]);
-                              } else {
-                                setSelectedChapters(prev => prev.filter(id => id !== ch.id));
-                              }
-                            }}
-                          />
-                          <label htmlFor={ch.id} className="text-sm cursor-pointer">
-                            Ch. {ch.chapter_number}: {ch.title}
-                          </label>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {(() => {
+                        const grouped = chapters.reduce((acc, ch) => {
+                          const label = ch.book_label || 'General';
+                          if (!acc[label]) acc[label] = [];
+                          acc[label].push(ch);
+                          return acc;
+                        }, {} as Record<string, typeof chapters>);
+                        const labels = Object.keys(grouped);
+                        const hasMultipleGroups = labels.length > 1;
+                        
+                        return labels.map(label => (
+                          <div key={label}>
+                            {hasMultipleGroups && (
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
+                            )}
+                            <div className="space-y-2 mb-2">
+                              {grouped[label].map(ch => (
+                                <div key={ch.id} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={ch.id}
+                                    checked={selectedChapters.includes(ch.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedChapters(prev => [...prev, ch.id]);
+                                      } else {
+                                        setSelectedChapters(prev => prev.filter(id => id !== ch.id));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={ch.id} className="text-sm cursor-pointer">
+                                    Ch. {ch.chapter_number}: {ch.title}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
                 </ScrollArea>
