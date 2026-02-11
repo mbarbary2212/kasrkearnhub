@@ -344,17 +344,19 @@ export default function TopicDetailPage() {
           )}
         </div>
 
-        {/* Topic Progress Bar */}
-        <ChapterProgressBar
-          totalProgress={topicProgress?.totalProgress || 0}
-          practiceProgress={topicProgress?.practiceProgress || 0}
-          videoProgress={topicProgress?.videoProgress || 0}
-          practiceCompleted={topicProgress?.practiceCompleted || 0}
-          practiceTotal={topicProgress?.practiceTotal || 0}
-          videosCompleted={topicProgress?.videosCompleted || 0}
-          videosTotal={topicProgress?.videosTotal || 0}
-          isLoading={progressLoading}
-        />
+        {/* Topic Progress Bar - hidden for admins */}
+        {!canManageContent && (
+          <ChapterProgressBar
+            totalProgress={topicProgress?.totalProgress || 0}
+            practiceProgress={topicProgress?.practiceProgress || 0}
+            videoProgress={topicProgress?.videoProgress || 0}
+            practiceCompleted={topicProgress?.practiceCompleted || 0}
+            practiceTotal={topicProgress?.practiceTotal || 0}
+            videosCompleted={topicProgress?.videosCompleted || 0}
+            videosTotal={topicProgress?.videosTotal || 0}
+            isLoading={progressLoading}
+          />
+        )}
 
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && topicId && (
