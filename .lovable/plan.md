@@ -1,42 +1,59 @@
 
 
-# Fix Chapter Numbering: Per-Department Instead of Per-Module
+# Department Management Permissions + Chapter Assignment Grouping
 
-## Problem
+## Part 1: Allow Module Admins to Edit/Delete Departments
 
-The database has a unique constraint `(module_id, chapter_number)` which forces chapter numbers to be unique across the entire module. But you want each department to have its own numbering (e.g., Histology Ch 1-5, Anatomy Ch 1-3, Physiology Ch 1-4 -- all within the same module).
+Currently, `canManageBooks` in `ModulePage.tsx` (line 48) only allows Platform Admins and Super Admins. Module admins should also be able to manage departments within their modules.
 
-## Solution
+### File: `src/pages/ModulePage.tsx`
+- Change line 48 from:
+  ```
+  const canManageBooks = isPlatformAdmin || isSuperAdmin;
+  ```
+  to:
+  ```
+  const canManageBooks = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
+  ```
 
-### 1. Database Migration
+This gives module admins the ability to add, edit, delete, and reorder departments within their assigned modules.
 
-Drop the existing constraint and replace it with one scoped to department:
+---
 
-```sql
-ALTER TABLE module_chapters
-  DROP CONSTRAINT module_chapters_module_id_chapter_number_key;
+## Part 2: Group Chapters by Department in Topic Admin Assignment
 
-ALTER TABLE module_chapters
-  ADD CONSTRAINT module_chapters_module_book_chapter_unique
-  UNIQUE (module_id, book_label, chapter_number);
+When assigning a topic admin to chapters, the current dialog shows a flat list of all chapters. For modules with 2-3+ departments, this is confusing -- you cannot tell which chapter belongs to which department.
+
+### File: `src/components/admin/TopicAdminsTab.tsx`
+- In the chapter selection area (lines 466-495), group chapters by their `book_label` field
+- Show department name as a sub-heading with its chapters nested underneath
+- Each department section will have its own group of checkboxes
+
+Before (flat list):
+```
+[ ] Ch. 1: Introduction
+[ ] Ch. 2: Cell Biology  
+[ ] Ch. 1: Upper Limb
+[ ] Ch. 2: Lower Limb
 ```
 
-This allows chapter number 1 to exist in multiple departments within the same module.
+After (grouped by department):
+```
+Histology
+  [ ] Ch. 1: Introduction
+  [ ] Ch. 2: Cell Biology
 
-### 2. File: `src/components/module/ChapterFormModal.tsx`
+Anatomy
+  [ ] Ch. 1: Upper Limb
+  [ ] Ch. 2: Lower Limb
+```
 
-The current auto-increment logic (lines 50-51) already filters by `book_label` -- so no code change needed here. It was correct all along; the database constraint was the only blocker.
+---
 
-### 3. File: `src/hooks/useModuleBooks.ts`
+## Technical Summary
 
-In `useAddBook` (around line 95), a placeholder chapter is created with `chapter_number: 1`. This is already correct since the new constraint scopes uniqueness to `(module_id, book_label, chapter_number)`.
-
-## Summary
-
-| Change | Detail |
-|--------|--------|
-| Database migration | Replace `UNIQUE(module_id, chapter_number)` with `UNIQUE(module_id, book_label, chapter_number)` |
-| Code changes | None needed -- existing logic already numbers per-department |
-
-This is a database-only fix. Each department will have independent chapter numbering (Ch 1, Ch 2, ...) regardless of how many departments a module has.
+| File | Change |
+|------|--------|
+| `src/pages/ModulePage.tsx` | Add `isModuleAdmin` to `canManageBooks` check (line 48) |
+| `src/components/admin/TopicAdminsTab.tsx` | Group chapter checkboxes by `book_label` in assign dialog |
 
