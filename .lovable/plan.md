@@ -1,59 +1,28 @@
 
 
-# Department Management Permissions + Chapter Assignment Grouping
+# Fix: Lectures Not Appearing Immediately After Creation
 
-## Part 1: Allow Module Admins to Edit/Delete Departments
+## Root Cause
 
-Currently, `canManageBooks` in `ModulePage.tsx` (line 48) only allows Platform Admins and Super Admins. Module admins should also be able to manage departments within their modules.
+When a lecture is created, `useCreateChapter` invalidates the query key `['module-chapters', moduleId]`. However, the `BookLecturesView` component fetches its chapters with a different query key: `['module-chapters-for-book', moduleId, bookLabel]`. Since these keys don't match, the department's lecture list is never told to refetch, so the new lecture only appears after navigating away and back.
 
-### File: `src/pages/ModulePage.tsx`
-- Change line 48 from:
-  ```
-  const canManageBooks = isPlatformAdmin || isSuperAdmin;
-  ```
-  to:
-  ```
-  const canManageBooks = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
-  ```
+## Fix
 
-This gives module admins the ability to add, edit, delete, and reorder departments within their assigned modules.
+### File: `src/hooks/useChapterManagement.ts`
 
----
+Add invalidation of the book-specific query key in all three mutations (create, update, delete):
 
-## Part 2: Group Chapters by Department in Topic Admin Assignment
+- **`useCreateChapter` (line 51)**: Add `queryClient.invalidateQueries({ queryKey: ['module-chapters-for-book', variables.moduleId] })`
+- **`useUpdateChapter` (line 79)**: Add the same invalidation
+- **`useDeleteChapter` (line 101)**: Add the same invalidation
 
-When assigning a topic admin to chapters, the current dialog shows a flat list of all chapters. For modules with 2-3+ departments, this is confusing -- you cannot tell which chapter belongs to which department.
+By passing only the first two segments of the key (`['module-chapters-for-book', moduleId]`), React Query will match and invalidate all book variants for that module.
 
-### File: `src/components/admin/TopicAdminsTab.tsx`
-- In the chapter selection area (lines 466-495), group chapters by their `book_label` field
-- Show department name as a sub-heading with its chapters nested underneath
-- Each department section will have its own group of checkboxes
-
-Before (flat list):
-```
-[ ] Ch. 1: Introduction
-[ ] Ch. 2: Cell Biology  
-[ ] Ch. 1: Upper Limb
-[ ] Ch. 2: Lower Limb
-```
-
-After (grouped by department):
-```
-Histology
-  [ ] Ch. 1: Introduction
-  [ ] Ch. 2: Cell Biology
-
-Anatomy
-  [ ] Ch. 1: Upper Limb
-  [ ] Ch. 2: Lower Limb
-```
-
----
-
-## Technical Summary
+## Summary
 
 | File | Change |
 |------|--------|
-| `src/pages/ModulePage.tsx` | Add `isModuleAdmin` to `canManageBooks` check (line 48) |
-| `src/components/admin/TopicAdminsTab.tsx` | Group chapter checkboxes by `book_label` in assign dialog |
+| `src/hooks/useChapterManagement.ts` | Add `module-chapters-for-book` invalidation in create, update, and delete mutations |
+
+This is a one-line addition in each of the three mutation hooks. No other files need changes.
 
