@@ -1,71 +1,49 @@
 
-# Replace Mind Map Icon with "Explore App Structure" Pill Button and Rename to "App Architecture"
+# Rename "Lecture(s)" to "Chapter(s)" in All UI Labels
 
-## What Changes
+## Overview
 
-1. **Home Page** -- Replace the small network icon button next to "Academic Years" with a styled pill button labeled "Explore App Structure" using a Compass icon. Add hover effects (slight lift, stronger shadow) and a tooltip.
-
-2. **Rename labels** throughout the UI from "App Mind Map" / "App Structure" to "App Architecture" (display labels only, no DB key changes).
-
-3. **Subtle pulse glow** -- A very soft glow animation every ~12 seconds on the pill button.
+The items listed under each department/book on the module page are actually chapters (e.g., "Introduction", "Cytology", "Blood"), not lectures. This change renames all user-facing "Lecture" text to "Chapter" throughout the app. No database or routing changes needed -- this is purely a display label rename.
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/pages/Home.tsx` | Replace `Network` icon button with a styled pill `Button` using `Compass` icon + "Explore App Structure" label. Add tooltip wrapping. Add CSS classes for hover lift/glow. |
-| `src/components/dashboard/AppMindMap.tsx` | Rename dialog title from "App Structure" to "App Architecture" and description to match. |
-| `src/components/admin/HomeMindMapSettings.tsx` | Rename card title to "App Architecture", update description text, and rename version labels to "Student App Architecture" / "Admin App Architecture". |
-| `src/index.css` | Add a `@keyframes soft-glow-pulse` animation (runs every 12s) for the pill button. |
+### 1. `src/components/module/ModuleLearningTab.tsx`
+The main file with most visible "Lecture" labels:
+- Line 144: `'Lecture' : 'Lectures'` --> `'Chapter' : 'Chapters'`
+- Line 239: toast `'Lecture deleted successfully'` --> `'Chapter deleted successfully'`
+- Line 242: toast `'Failed to delete lecture'` --> `'Failed to delete chapter'`
+- Line 269: Button `Add Lecture` --> `Add Chapter`
+- Line 277: Label `Lectures` --> `Chapters`
+- Line 343: `No lectures available yet.` --> `No chapters available yet.`
+- Line 353: Button `Add First Lecture` --> `Add First Chapter`
+- Line 365: `chapterPrefix="Lecture"` --> `chapterPrefix="Chapter"`
+- Line 374: Dialog title `Delete Lecture` --> `Delete Chapter`
+- Line 377: Dialog description `...this lecture.` --> `...this chapter.`
+- Comments on lines 179, 208, 359, 655, 683: update for clarity
 
-## Technical Details
+### 2. `src/components/module/BookFormModal.tsx`
+- Line 31: `{ value: 'Lec', label: 'Lecture (Lec)' }` --> `{ value: 'Ch', label: 'Chapter (Ch)' }` (or remove the "Lec" option entirely since both are now "Chapter")
 
-### Home.tsx -- Pill Button
+### 3. `src/components/content/LectureList.tsx`
+- Line 228: `No lectures available yet.` --> `No chapters available yet.`
 
-Replace the ghost icon button (lines 226-233) with:
+### 4. `src/components/content/LecturesAdminTable.tsx`
+- Line 100: `emptyMessage="No lectures available"` --> `emptyMessage="No chapters available"`
 
-```typescript
-import { Compass } from 'lucide-react';
+### 5. `src/pages/AdminPage.tsx`
+- Any user-facing "Lecture" labels in the integrity/orphan check UI
 
-<TooltipProvider>
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        variant="ghost"
-        className="h-auto px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/15 shadow-sm
-                   hover:-translate-y-0.5 hover:shadow-md hover:border-primary/25
-                   transition-all duration-300 ease-out
-                   animate-[soft-glow-pulse_12s_ease-in-out_infinite] gap-2 text-sm font-medium"
-        onClick={() => setMindMapOpen(true)}
-      >
-        <Compass className="h-4 w-4" />
-        Explore App Structure
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent side="bottom">
-      <p>See how the platform is structured across years, modules, and chapters.</p>
-    </TooltipContent>
-  </Tooltip>
-</TooltipProvider>
-```
+### 6. `supabase/functions/integrity-orphaned-all/index.ts`
+- Line 63: `label: "Lecture"` --> `label: "Chapter"`
 
-### index.css -- Glow Keyframes
+## What Does NOT Change
 
-```css
-@keyframes soft-glow-pulse {
-  0%, 90%, 100% { box-shadow: 0 0 0 0 transparent; }
-  95% { box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.15); }
-}
-```
+- Database table names (`lectures`) stay the same
+- Query keys (`'lectures'`, `'chapter-lectures'`, etc.) stay the same
+- Internal type names and variable names stay the same
+- The tab label in ChapterPage is already "Videos" (not "Lectures"), so no change needed there
+- Route paths stay the same
 
-### AppMindMap.tsx -- Title Rename
+## Summary
 
-- "App Structure" -> "App Architecture"
-- "Overview of KALM Hub features and navigation" -> "Overview of KALM Hub architecture and navigation"
-
-### HomeMindMapSettings.tsx -- Admin Label Rename
-
-- Card title: "Home Mind Map" -> "App Architecture"
-- Card description updated
-- Version labels: "Student" -> "Student App Architecture", "Admin" -> "Admin App Architecture"
-- Toast messages updated accordingly
+This is a safe, display-only rename across approximately 6 files, changing all user-visible instances of "Lecture(s)" to "Chapter(s)" to accurately reflect the content structure.
