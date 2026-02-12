@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Upload, Network, Image, GitBranch, Search, Star } from 'lucide-react';
+import { Plus, Network, Image, GitBranch, Search, Star } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -150,10 +150,6 @@ export function VisualResourcesSection({
                   <Plus className="w-3 h-3 mr-1" />
                   Add Mind Map
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => onBulkUpload?.('mind_map')}>
-                  <Upload className="w-3 h-3 mr-1" />
-                  Bulk Upload
-                </Button>
               </div>
             )}
             <MindMapViewer
@@ -172,10 +168,6 @@ export function VisualResourcesSection({
                 <Button size="sm" variant="outline" onClick={() => onAdd?.('infographic')}>
                   <Plus className="w-3 h-3 mr-1" />
                   Add Infographic
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => onBulkUpload?.('infographic')}>
-                  <Upload className="w-3 h-3 mr-1" />
-                  Bulk Upload
                 </Button>
               </div>
             )}
@@ -197,10 +189,6 @@ export function VisualResourcesSection({
                 <Button size="sm" variant="outline" onClick={() => onAdd?.('algorithm')}>
                   <Plus className="w-3 h-3 mr-1" />
                   Add Algorithm
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => onBulkUpload?.('algorithm')}>
-                  <Upload className="w-3 h-3 mr-1" />
-                  Bulk Upload
                 </Button>
               </div>
             )}
