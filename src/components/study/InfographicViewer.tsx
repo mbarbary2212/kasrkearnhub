@@ -9,6 +9,7 @@ import {
   ZoomOut,
   RotateCcw,
   Download,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +22,6 @@ import {
 import { StudyResource, InfographicContent } from '@/hooks/useStudyResources';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { cn } from '@/lib/utils';
-
 const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 3;
@@ -36,12 +36,18 @@ interface InfographicViewerProps {
   onEdit?: (resource: StudyResource) => void;
   chapterId?: string;
   topicId?: string;
+  starredIds?: Set<string>;
+  onToggleStar?: (cardId: string, chapterId?: string, topicId?: string) => void;
 }
 
 export function InfographicViewer({
   resources,
   canManage = false,
   onEdit,
+  chapterId,
+  topicId,
+  starredIds,
+  onToggleStar,
 }: InfographicViewerProps) {
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -83,16 +89,32 @@ export function InfographicViewer({
                   <CardTitle className="text-sm font-medium truncate flex-1">
                     {resource.title}
                   </CardTitle>
-                  {canManage && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit?.(resource)}>
-                        <Edit2 className="w-3 h-3" />
+                  <div className="flex items-center gap-1">
+                    {/* Star button for students */}
+                    {onToggleStar && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStar(resource.id, resource.chapter_id || undefined, resource.topic_id || undefined);
+                        }}
+                      >
+                        <Star className={cn("w-3.5 h-3.5", starredIds?.has(resource.id) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(resource)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
+                    )}
+                    {canManage && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit?.(resource)}>
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(resource)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0">

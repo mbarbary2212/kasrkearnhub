@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, Edit2, GripVertical, ChevronDown, ChevronRight, Printer } from 'lucide-react';
+import { Trash2, Edit2, GripVertical, ChevronDown, ChevronRight, Printer, Star } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -44,6 +44,8 @@ interface StudyResourceTypeSectionProps {
   onEdit?: (resource: StudyResource) => void;
   chapterId?: string;
   topicId?: string;
+  starredIds?: Set<string>;
+  onToggleStar?: (cardId: string, chapterId?: string, topicId?: string) => void;
 }
 
 // Map study resource type to delete manager resource kind
@@ -65,6 +67,8 @@ export function StudyResourceTypeSection({
   canManage = false,
   onEdit,
   chapterId,
+  starredIds,
+  onToggleStar,
 }: StudyResourceTypeSectionProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
@@ -166,6 +170,8 @@ export function StudyResourceTypeSection({
               onEdit={() => onEdit?.(resource)}
               onDelete={() => handleDelete(resource)}
               onPrint={() => handlePrint(resource)}
+              isStarred={starredIds?.has(resource.id)}
+              onToggleStar={onToggleStar ? () => onToggleStar(resource.id, resource.chapter_id || undefined, resource.topic_id || undefined) : undefined}
             />
           ))}
         </div>
@@ -183,6 +189,8 @@ interface SortableResourceItemProps {
   onEdit: () => void;
   onDelete: () => void;
   onPrint: () => void;
+  isStarred?: boolean;
+  onToggleStar?: () => void;
 }
 
 function SortableResourceItem({
@@ -194,6 +202,8 @@ function SortableResourceItem({
   onEdit,
   onDelete,
   onPrint,
+  isStarred,
+  onToggleStar,
 }: SortableResourceItemProps) {
   const {
     attributes,
@@ -240,6 +250,16 @@ function SortableResourceItem({
                 </div>
               </CollapsibleTrigger>
               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                {onToggleStar && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={onToggleStar}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
