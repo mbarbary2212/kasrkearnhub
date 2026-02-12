@@ -40,6 +40,7 @@ import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
+import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -126,6 +127,9 @@ function PlatformSettingsTab() {
             disabled={isLoading || upsertSetting.isPending}
           />
         </div>
+
+        {/* Home Mind Map Settings - Platform/Super Admin */}
+        <HomeMindMapSettings />
 
         {/* Archive Legacy OSCE - Super Admin Only */}
         {isSuperAdmin && (

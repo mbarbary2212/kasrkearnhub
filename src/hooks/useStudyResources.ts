@@ -238,6 +238,33 @@ export function useTopicStudyResourcesByType(topicId?: string, resourceType?: St
   });
 }
 
+// Fetch app mind map setting by audience
+export function useAppMindMapSetting(audience: 'student' | 'admin') {
+  const key = audience === 'student' ? 'app_mindmap_student' : 'app_mindmap_admin';
+  return useQuery({
+    queryKey: ['study-settings', key],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('study_settings')
+        .select('value')
+        .eq('key', key)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.value) return null;
+      try {
+        return JSON.parse(data.value) as {
+          format: 'markdown' | 'file';
+          markdown_text?: string;
+          fileUrl?: string;
+          fileType?: 'html' | 'svg' | 'png' | 'pdf';
+        };
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
 // Fetch study settings (disclaimer)
 export function useStudySettings() {
   return useQuery({
