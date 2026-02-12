@@ -225,7 +225,7 @@ export function LectureList({
     return (
       <div className="text-center py-12">
         <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">No lectures available yet.</p>
+        <p className="text-muted-foreground">No chapters available yet.</p>
       </div>
     );
   }
