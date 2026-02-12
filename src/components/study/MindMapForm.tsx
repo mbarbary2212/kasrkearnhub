@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, Network, Image } from 'lucide-react';
+import { Upload, Network, Image, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,13 +16,27 @@ interface MindMapFormProps {
   uploading: boolean;
 }
 
+// Helper to get file URL from content (supports both fileUrl and legacy imageUrl)
+function getFileUrl(content: MindMapContent): string | undefined {
+  return content.fileUrl || content.imageUrl;
+}
+
+// Detect file type from URL
+function detectFileType(url: string): MindMapContent['fileType'] {
+  const lower = url.toLowerCase();
+  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html';
+  if (lower.endsWith('.svg')) return 'svg';
+  if (lower.endsWith('.pdf')) return 'pdf';
+  return 'png';
+}
+
 // Detect if content has structured nodes vs image
 function hasNodes(content: MindMapContent): boolean {
   return Array.isArray(content.nodes) && content.nodes.length > 0;
 }
 
 function hasImage(content: MindMapContent): boolean {
-  return !!content.imageUrl;
+  return !!getFileUrl(content);
 }
 
 export function MindMapForm({
@@ -40,6 +54,15 @@ export function MindMapForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Detect fileType from extension
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let fileType: MindMapContent['fileType'] = 'png';
+      if (ext === 'html' || ext === 'htm') fileType = 'html';
+      else if (ext === 'svg') fileType = 'svg';
+      else if (ext === 'pdf') fileType = 'pdf';
+      
+      // Store the fileType in content before upload
+      onChange({ ...content, fileType });
       onUpload(file);
     }
   };
@@ -48,7 +71,7 @@ export function MindMapForm({
     setMode(newMode as 'image' | 'editor');
     // Clear incompatible content when switching modes
     if (newMode === 'image' && hasNodes(content)) {
-      onChange({ imageUrl: '', description: content.description });
+      onChange({ fileUrl: '', description: content.description });
     } else if (newMode === 'editor' && hasImage(content)) {
       onChange({ 
         central_concept: '', 
@@ -58,7 +81,10 @@ export function MindMapForm({
     }
   };
 
-  const isPdf = content.imageUrl?.toLowerCase().endsWith('.pdf');
+  const fileUrl = getFileUrl(content);
+  const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
+  const isHtml = fileUrl?.toLowerCase().endsWith('.html') || fileUrl?.toLowerCase().endsWith('.htm');
+  const isSvg = fileUrl?.toLowerCase().endsWith('.svg');
 
   return (
     <div className="space-y-4">
@@ -66,7 +92,7 @@ export function MindMapForm({
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="image" className="gap-2">
             <Image className="w-4 h-4" />
-            Upload Image/PDF
+            Upload File
           </TabsTrigger>
           <TabsTrigger value="editor" className="gap-2">
             <Network className="w-4 h-4" />
@@ -76,14 +102,22 @@ export function MindMapForm({
 
         <TabsContent value="image" className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label>Mind Map (Image or PDF)</Label>
-            {content.imageUrl ? (
+            <Label>Mind Map (Image, PDF, SVG, or HTML)</Label>
+            {fileUrl ? (
               <div className="space-y-2">
-                {isPdf ? (
+                {isHtml ? (
+                  <div className="p-4 border rounded-lg bg-muted/50 flex items-center gap-3">
+                    <Globe className="w-8 h-8 text-primary flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Interactive Mind Map</p>
+                      <p className="text-xs text-muted-foreground">HTML file uploaded — click to view when saved</p>
+                    </div>
+                  </div>
+                ) : isPdf ? (
                   <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">PDF uploaded: {content.imageUrl.split('/').pop()}</p>
+                    <p className="text-sm text-muted-foreground">PDF uploaded: {fileUrl.split('/').pop()}</p>
                     <a 
-                      href={content.imageUrl} 
+                      href={fileUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline"
@@ -93,7 +127,7 @@ export function MindMapForm({
                   </div>
                 ) : (
                   <img
-                    src={content.imageUrl}
+                    src={fileUrl}
                     alt="Preview"
                     className="max-h-[200px] rounded-lg object-contain bg-muted"
                   />
@@ -101,7 +135,7 @@ export function MindMapForm({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onChange({ ...content, imageUrl: '' })}
+                  onClick={() => onChange({ ...content, fileUrl: '', imageUrl: '', fileType: undefined })}
                 >
                   Remove File
                 </Button>
@@ -109,10 +143,11 @@ export function MindMapForm({
             ) : (
               <div className="border-2 border-dashed rounded-lg p-6 text-center">
                 <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground mb-2">Upload a mind map image or PDF</p>
+                <p className="text-sm text-muted-foreground mb-2">Upload a mind map file</p>
+                <p className="text-xs text-muted-foreground mb-3">Supports: Images, PDF, SVG, HTML (Markmap)</p>
                 <input
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*,.pdf,.html,.htm,.svg"
                   onChange={handleFileChange}
                   className="hidden"
                   id="mindmap-upload"
@@ -129,8 +164,12 @@ export function MindMapForm({
           <div className="space-y-2">
             <Label>Or use external URL</Label>
             <Input
-              value={content.imageUrl || ''}
-              onChange={(e) => onChange({ ...content, imageUrl: e.target.value })}
+              value={fileUrl || ''}
+              onChange={(e) => {
+                const url = e.target.value;
+                const ft = url ? detectFileType(url) : undefined;
+                onChange({ ...content, fileUrl: url, imageUrl: url, fileType: ft });
+              }}
               placeholder="https://..."
             />
           </div>

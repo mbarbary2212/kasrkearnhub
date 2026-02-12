@@ -1,28 +1,25 @@
 
 
-# Fix: Lectures Not Appearing Immediately After Creation
+# Visual Resources Implementation Plan
 
-## Root Cause
+## Completed
 
-When a lecture is created, `useCreateChapter` invalidates the query key `['module-chapters', moduleId]`. However, the `BookLecturesView` component fetches its chapters with a different query key: `['module-chapters-for-book', moduleId, bookLabel]`. Since these keys don't match, the department's lecture list is never told to refetch, so the new lecture only appears after navigating away and back.
+- [x] Database migration: added `infographic` to `study_resource_type` enum
+- [x] Type updates: added `infographic` to `StudyResourceType`, `fileUrl`/`fileType` to `MindMapContent`, new `InfographicContent` interface
+- [x] Tab config: renamed "Visual Summaries" → "Visual Resources"
+- [x] Fixed `Record<StudyResourceType>` maps in `StudyResourceFormModal`, `StudyBulkUploadModal`, `StudyResourceTypeSection`
+- [x] Created `VisualResourcesSection.tsx` with 3 subtabs (Mind Maps, Infographics, Algorithms) + search + admin-only buttons
+- [x] Created `InfographicForm.tsx` (image/PDF upload only, uses `fileUrl`)
+- [x] Created `InfographicViewer.tsx` (card grid + fullscreen modal with zoom)
+- [x] Updated `MindMapForm.tsx`: accepts `.html/.htm/.svg`, detects `fileType`, shows HTML placeholder
+- [x] Updated `MindMapViewer.tsx`: HTML files render in sandboxed `<iframe>`, uses `getContentFileUrl()` for backward compat
+- [x] Updated `ChapterPage.tsx`: uses `VisualResourcesSection`, updated tab counts (mind_maps = mindMaps + infographics + algorithms), clinical_tools count excludes algorithms
+- [x] Updated `TopicDetailPage.tsx`: same changes as ChapterPage
 
-## Fix
+## Remaining
 
-### File: `src/hooks/useChapterManagement.ts`
-
-Add invalidation of the book-specific query key in all three mutations (create, update, delete):
-
-- **`useCreateChapter` (line 51)**: Add `queryClient.invalidateQueries({ queryKey: ['module-chapters-for-book', variables.moduleId] })`
-- **`useUpdateChapter` (line 79)**: Add the same invalidation
-- **`useDeleteChapter` (line 101)**: Add the same invalidation
-
-By passing only the first two segments of the key (`['module-chapters-for-book', moduleId]`), React Query will match and invalidate all book variants for that module.
-
-## Summary
-
-| File | Change |
-|------|--------|
-| `src/hooks/useChapterManagement.ts` | Add `module-chapters-for-book` invalidation in create, update, and delete mutations |
-
-This is a one-line addition in each of the three mutation hooks. No other files need changes.
-
+- [ ] Update `AppMindMap.tsx` to load from `study_settings` (database-driven, student/admin versions)
+- [ ] Add admin settings section for Home Mind Map (platform_admin/super_admin only)
+- [ ] Simplify `ClinicalToolsSection.tsx` to remove algorithms subtab (currently passing empty array)
+- [ ] Handle `infographic` type in `StudyResourceFormModal` form rendering (InfographicForm)
+- [ ] Update memory notes for visual-summaries → visual-resources naming

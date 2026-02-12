@@ -56,9 +56,25 @@ const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 3;
 
+// Helper to get file URL from content (supports both fileUrl and legacy imageUrl)
+function getContentFileUrl(content: MindMapContent): string | undefined {
+  return content.fileUrl || content.imageUrl;
+}
+
 // Check if mind map is AI-generated (has nodes) vs image-based
 function isNodeBasedMindMap(content: MindMapContent): boolean {
-  return !content.imageUrl && Array.isArray(content.nodes) && content.nodes.length > 0;
+  return !getContentFileUrl(content) && Array.isArray(content.nodes) && content.nodes.length > 0;
+}
+
+// Check if content is HTML file
+function isHtmlFile(content: MindMapContent): boolean {
+  const url = getContentFileUrl(content);
+  if (content.fileType === 'html') return true;
+  if (url) {
+    const lower = url.toLowerCase();
+    return lower.endsWith('.html') || lower.endsWith('.htm');
+  }
+  return false;
 }
 
 interface MindMapCardProps {
@@ -79,7 +95,9 @@ function MindMapCardInner({
   isDragging,
 }: MindMapCardProps) {
   const content = resource.content as MindMapContent;
-  const isPdf = content.imageUrl?.toLowerCase().endsWith('.pdf');
+  const fileUrl = getContentFileUrl(content);
+  const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
+  const isHtml = isHtmlFile(content);
   const isNodeBased = isNodeBasedMindMap(content);
 
   return (
@@ -105,7 +123,16 @@ function MindMapCardInner({
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        {isPdf ? (
+        {isHtml ? (
+          <div 
+            className="flex flex-col items-center justify-center gap-2 h-32 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer relative group"
+            onClick={() => onFullscreen(resource)}
+          >
+            <Network className="w-10 h-10 text-primary" />
+            <span className="text-sm font-medium">Interactive Mind Map</span>
+            <span className="text-xs text-muted-foreground">Click to view</span>
+          </div>
+        ) : isPdf ? (
           <div 
             className="flex flex-col items-center justify-center gap-2 h-32 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer relative group"
             onClick={() => onFullscreen(resource)}
@@ -162,10 +189,10 @@ function MindMapCardInner({
               <Maximize2 className="w-3 h-3" />
             </Button>
           </div>
-        ) : content.imageUrl ? (
+        ) : fileUrl ? (
           <div className="relative">
             <img
-              src={content.imageUrl}
+              src={fileUrl}
               alt={resource.title}
               className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => onFullscreen(resource)}
@@ -450,7 +477,9 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
 
   const fullscreenContent = fullscreenResource?.content as MindMapContent | null;
   const isNodeBased = fullscreenContent && isNodeBasedMindMap(fullscreenContent);
-  const isPdf = fullscreenContent?.imageUrl?.toLowerCase().endsWith('.pdf');
+  const fullscreenFileUrl = fullscreenContent ? getContentFileUrl(fullscreenContent) : undefined;
+  const isPdf = fullscreenFileUrl?.toLowerCase().endsWith('.pdf');
+  const isHtml = fullscreenContent && isHtmlFile(fullscreenContent);
 
   return (
     <div className="space-y-4">
@@ -468,13 +497,13 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
         <DialogContent 
           className={cn(
             "max-w-[95vw] max-h-[95vh] flex flex-col",
-            isPdf ? "p-2" : "p-4"
+            (isPdf || isHtml) ? "p-2" : "p-4"
           )}
-          closeClassName={isPdf ? "text-white bg-black/50 hover:bg-black/70 rounded-full p-1" : undefined}
+          closeClassName={(isPdf || isHtml) ? "text-white bg-black/50 hover:bg-black/70 rounded-full p-1" : undefined}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
-          {/* Only show header for non-PDF files */}
-          {!isPdf && (
+          {/* Only show header for non-PDF and non-HTML files */}
+          {!isPdf && !isHtml && (
             <DialogHeader className="flex-shrink-0">
               <div className="flex items-center justify-between gap-4 pr-8">
                 <DialogTitle className="truncate">{fullscreenResource?.title}</DialogTitle>
@@ -516,7 +545,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                   </>
                   
                   {/* Drawing controls - only for images (not node-based) */}
-                  {!isNodeBased && fullscreenContent?.imageUrl && (
+                  {!isNodeBased && !isHtml && fullscreenFileUrl && (
                     <>
                       <div className="w-px h-6 bg-border mx-1" />
                       <Button
@@ -575,7 +604,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                       </Button>
                     </>
                   )}
-                  {!isNodeBased && fullscreenContent?.imageUrl && (
+                  {!isNodeBased && !isHtml && fullscreenFileUrl && (
                     <Button
                       size="icon"
                       variant="outline"
@@ -605,23 +634,31 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
             </DialogHeader>
           )}
           
-          {/* Hidden title for PDF accessibility */}
-          {isPdf && (
+          {/* Hidden title for PDF/HTML accessibility */}
+          {(isPdf || isHtml) && (
             <DialogTitle className="sr-only">{fullscreenResource?.title}</DialogTitle>
           )}
           
           <div 
             className={cn(
               "flex-1 overflow-auto rounded-lg",
-              isPdf ? "bg-white" : "bg-muted/30 mt-4"
+              (isPdf || isHtml) ? "bg-white" : "bg-muted/30 mt-4"
             )}
-            style={{ minHeight: isPdf ? 'calc(95vh - 40px)' : '60vh' }}
+            style={{ minHeight: (isPdf || isHtml) ? 'calc(95vh - 40px)' : '60vh' }}
           >
             {fullscreenContent && (
               <>
-                {isPdf ? (
+                {isHtml && fullscreenFileUrl ? (
                   <iframe
-                    src={`${fullscreenContent.imageUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                    src={fullscreenFileUrl}
+                    sandbox="allow-scripts"
+                    className="w-full h-full border-0"
+                    style={{ minHeight: 'calc(95vh - 40px)' }}
+                    title={fullscreenResource?.title}
+                  />
+                ) : isPdf && fullscreenFileUrl ? (
+                  <iframe
+                    src={`${fullscreenFileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
                     className="w-full h-full border-0 bg-white rounded"
                     style={{ minHeight: 'calc(95vh - 40px)' }}
                     title={fullscreenResource?.title}
@@ -647,7 +684,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                       />
                     </div>
                   </div>
-                ) : fullscreenContent.imageUrl ? (
+                ) : fullscreenFileUrl ? (
                   <div 
                     className="relative flex items-center justify-center p-4" 
                     style={{ minHeight: '60vh' }}
@@ -668,14 +705,14 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                           height="100%"
                           strokeWidth={3}
                           strokeColor={strokeColor}
-                          backgroundImage={fullscreenContent.imageUrl}
+                          backgroundImage={fullscreenFileUrl}
                           preserveBackgroundImageAspectRatio="xMidYMid meet"
                           canvasColor="transparent"
                         />
                       </div>
                     ) : (
                       <img
-                        src={fullscreenContent.imageUrl}
+                        src={fullscreenFileUrl}
                         alt={fullscreenResource?.title}
                         style={{ 
                           transform: `scale(${zoom})`, 

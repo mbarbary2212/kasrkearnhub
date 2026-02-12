@@ -1,0 +1,1 @@
+ALTER TYPE study_resource_type ADD VALUE IF NOT EXISTS 'infographic';

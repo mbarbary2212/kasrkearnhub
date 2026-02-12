@@ -54,6 +54,7 @@ const typeToKind: Record<StudyResourceType, ResourceKind> = {
   exam_tip: 'exam_tip',
   key_image: 'key_image',
   mind_map: 'mind_map',
+  infographic: 'mind_map' as ResourceKind,
   clinical_case_worked: 'clinical_case_worked',
   guided_explanation: 'guided_explanation' as ResourceKind,
 };

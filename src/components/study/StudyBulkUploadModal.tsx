@@ -58,6 +58,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   exam_tip: 'Exam Tips',
   key_image: 'Key Images',
   mind_map: 'Mind Maps',
+  infographic: 'Infographics',
   clinical_case_worked: 'Worked Cases',
   guided_explanation: 'Guided Explanations',
 };
@@ -69,6 +70,7 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
   exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
   key_image: 'Not supported for bulk upload',
   mind_map: 'Not supported for bulk upload',
+  infographic: 'Not supported for bulk upload',
   clinical_case_worked: 'Not supported for bulk upload',
   guided_explanation: 'Not supported for bulk upload',
 };
