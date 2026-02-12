@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { MindMapForm } from './MindMapForm';
+import { InfographicForm } from './InfographicForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
 import { GuidedExplanationForm } from './GuidedExplanationForm';
 import { SectionSelector } from '@/components/sections';
@@ -233,6 +234,15 @@ export function StudyResourceFormModal({
             />
           )}
 
+          {resourceType === 'infographic' && (
+            <InfographicForm
+              content={content as import('@/hooks/useStudyResources').InfographicContent}
+              onChange={(c) => setContent(c)}
+              onUpload={handleImageUpload}
+              uploading={uploading}
+            />
+          )}
+
           {resourceType === 'clinical_case_worked' && (
             <WorkedCaseForm
               content={content as ClinicalCaseWorkedContent}
@@ -278,6 +288,8 @@ function getDefaultContent(type: StudyResourceType): ResourceContent {
       return { imageUrl: '', caption: '', labels: [] };
     case 'mind_map':
       return { imageUrl: '', description: '', central_concept: '', nodes: [] };
+    case 'infographic':
+      return { fileUrl: '', description: '' };
     case 'clinical_case_worked':
       return {
         history: '',

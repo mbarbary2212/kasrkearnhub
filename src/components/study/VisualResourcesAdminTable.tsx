@@ -38,7 +38,7 @@ import {
   useUpdateStudyResource,
 } from '@/hooks/useStudyResources';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
-import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
+import { requestResourceDelete, type ResourceKind } from '@/components/content/ResourcesDeleteManager';
 
 const VISUAL_TYPES: { value: StudyResourceType; label: string; icon: React.ReactNode }[] = [
   { value: 'mind_map', label: 'Mind Map', icon: <Network className="w-3 h-3" /> },
@@ -276,7 +276,7 @@ export function VisualResourcesAdminTable({
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 text-destructive"
-                      onClick={() => requestResourceDelete('mind_map', resource.id, resource.title)}
+                      onClick={() => requestResourceDelete(resource.resource_type as ResourceKind, resource.id, resource.title)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
