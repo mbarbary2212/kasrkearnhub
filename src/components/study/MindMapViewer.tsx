@@ -377,19 +377,44 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
   const handlePrint = useCallback(() => {
     if (!fullscreenResource) return;
     const content = fullscreenResource.content as MindMapContent;
-    const imageUrl = content.imageUrl;
-    const isPdfFile = imageUrl?.toLowerCase().endsWith('.pdf');
+    const fileUrl = getContentFileUrl(content);
+    const isPdfFile = fileUrl?.toLowerCase().endsWith('.pdf');
+    const isHtmlFile_ = isHtmlFile(content);
     
-    if (isPdfFile && imageUrl) {
-      // For PDFs, open in new window and trigger print
-      const printWindow = window.open(imageUrl, '_blank');
+    if (isHtmlFile_ && fileUrl) {
+      // For HTML/Markmap mind maps: fetch content and open in print window
+      fetch(fileUrl)
+        .then(res => res.text())
+        .then(html => {
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            // Inject a print-friendly style and auto-print
+            const printHtml = html.replace('</head>', `
+              <style>
+                @media print {
+                  body, html { width: 100%; height: 100%; margin: 0; padding: 0; }
+                  svg#mindmap { width: 100% !important; height: 100% !important; }
+                }
+              </style>
+              </head>`);
+            printWindow.document.write(printHtml);
+            printWindow.document.close();
+            // Wait for scripts to load and render, then print
+            setTimeout(() => {
+              printWindow.focus();
+              printWindow.print();
+            }, 2000);
+          }
+        })
+        .catch(() => toast.error('Failed to load mind map for printing'));
+    } else if (isPdfFile && fileUrl) {
+      const printWindow = window.open(fileUrl, '_blank');
       if (printWindow) {
         printWindow.onload = () => {
           setTimeout(() => printWindow.print(), 500);
         };
       }
     } else {
-      // For images, use existing print logic
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(`
@@ -404,7 +429,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
               </style>
             </head>
             <body>
-              <img src="${imageUrl}" alt="${fullscreenResource.title}" onload="window.print(); window.close();" />
+              <img src="${fileUrl}" alt="${fullscreenResource.title}" onload="window.print(); window.close();" />
             </body>
           </html>
         `);
@@ -707,7 +732,18 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
             {fullscreenContent && (
               <>
                 {isHtml && fullscreenFileUrl ? (
-                  <HtmlIframe url={fullscreenFileUrl} title={fullscreenResource?.title || 'Mind Map'} />
+                  <div className="relative w-full h-full">
+                    <HtmlIframe url={fullscreenFileUrl} title={fullscreenResource?.title || 'Mind Map'} />
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute top-2 right-12 h-8 w-8 z-10 shadow-md"
+                      onClick={handlePrint}
+                      title="Print mind map"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ) : isPdf && fullscreenFileUrl ? (
                   <iframe
                     src={`${fullscreenFileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
