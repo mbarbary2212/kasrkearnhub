@@ -142,6 +142,12 @@
     transform: rotateY(180deg);
   }
 
+  /* Soft glow pulse for pill button */
+  @keyframes soft-glow-pulse {
+    0%, 90%, 100% { box-shadow: 0 0 0 0 transparent; }
+    95% { box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.15); }
+  }
+
   /* Global Modal & Scroll Utilities */
   .modal-scroll-content {
     @apply overflow-y-auto overscroll-contain;

@@ -103,8 +103,8 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
       }>
         {!isHtmlFile && (
           <DialogHeader>
-            <DialogTitle className="text-xl font-heading">App Structure</DialogTitle>
-            <DialogDescription>Overview of KALM Hub features and navigation</DialogDescription>
+            <DialogTitle className="text-xl font-heading">App Architecture</DialogTitle>
+            <DialogDescription>Overview of KALM Hub architecture and navigation</DialogDescription>
           </DialogHeader>
         )}
 

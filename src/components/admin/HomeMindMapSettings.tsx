@@ -225,15 +225,15 @@ export function HomeMindMapSettings() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Network className="w-5 h-5" />
-          Home Mind Map
+          App Architecture
         </CardTitle>
         <CardDescription>
-          Configure the interactive mind map shown on the Home page. Students and admins can see different versions.
+          Configure the app architecture view shown on the Home page. Students and admins can see different versions.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <MindMapVersionEditor audience="student" label="Student" />
-        <MindMapVersionEditor audience="admin" label="Admin" />
+        <MindMapVersionEditor audience="student" label="Student App Architecture" />
+        <MindMapVersionEditor audience="admin" label="Admin App Architecture" />
       </CardContent>
     </Card>
   );
