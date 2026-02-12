@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Network } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -223,14 +223,26 @@ function LoggedInHome() {
       <section className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <h2 className="text-lg md:text-xl font-heading font-semibold">Academic Years</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary"
-            onClick={() => setMindMapOpen(true)}
-          >
-            <Network className="h-4 w-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/15 shadow-sm
+                             hover:-translate-y-0.5 hover:shadow-md hover:border-primary/25
+                             transition-all duration-300 ease-out
+                             animate-[soft-glow-pulse_12s_ease-in-out_infinite] gap-2 text-sm font-medium"
+                  onClick={() => setMindMapOpen(true)}
+                >
+                  <Compass className="h-4 w-4" />
+                  Explore App Structure
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>See how the platform is structured across years, modules, and chapters.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         
         {isLoading ? (
