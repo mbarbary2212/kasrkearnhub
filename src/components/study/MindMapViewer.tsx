@@ -732,18 +732,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
             {fullscreenContent && (
               <>
                 {isHtml && fullscreenFileUrl ? (
-                  <div className="relative w-full h-full">
-                    <HtmlIframe url={fullscreenFileUrl} title={fullscreenResource?.title || 'Mind Map'} />
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="absolute top-2 right-12 h-8 w-8 z-10 shadow-md"
-                      onClick={handlePrint}
-                      title="Print mind map"
-                    >
-                      <Printer className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <HtmlIframe url={fullscreenFileUrl} title={fullscreenResource?.title || 'Mind Map'} />
                 ) : isPdf && fullscreenFileUrl ? (
                   <iframe
                     src={`${fullscreenFileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
