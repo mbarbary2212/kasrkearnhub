@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Network, Upload, Trash2, Save, Loader2, Eye, EyeOff, FileText } from 'lucide-react';
+import { Network, Trash2, Save, Loader2, Eye, EyeOff, FileText } from 'lucide-react';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppMindMapSetting, useUpsertStudySetting } from '@/hooks/useStudyResources';
@@ -41,10 +42,7 @@ function MindMapVersionEditor({ audience, label }: { audience: 'student' | 'admi
     }
   }, [setting]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase();
     const allowedExts = ['html', 'htm', 'svg', 'png', 'jpg', 'jpeg', 'pdf'];
     if (!ext || !allowedExts.includes(ext)) {
@@ -137,30 +135,30 @@ function MindMapVersionEditor({ audience, label }: { audience: 'student' | 'admi
       {isFileMode ? (
         <div className="space-y-3">
           {fileUrl ? (
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm truncate flex-1">{fileUrl.split('/').pop()}</span>
-              <Badge variant="outline" className="text-xs">{fileType}</Badge>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm truncate flex-1">{fileUrl.split('/').pop()}</span>
+                <Badge variant="outline" className="text-xs">{fileType}</Badge>
+              </div>
+              <DragDropZone
+                id={`mindmap-replace-${audience}`}
+                accept=".html,.htm,.svg,.png,.jpg,.jpeg,.pdf"
+                acceptedTypes={['.html', '.htm', '.svg', '.png', '.jpg', '.jpeg', '.pdf']}
+                maxSizeMB={50}
+                fileName={fileUrl.split('/').pop()}
+                onFileSelect={uploadFile}
+              />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No file uploaded yet.</p>
+            <DragDropZone
+              id={`mindmap-upload-${audience}`}
+              accept=".html,.htm,.svg,.png,.jpg,.jpeg,.pdf"
+              acceptedTypes={['.html', '.htm', '.svg', '.png', '.jpg', '.jpeg', '.pdf']}
+              maxSizeMB={50}
+              onFileSelect={uploadFile}
+            />
           )}
-          <div>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".html,.htm,.svg,.png,.jpg,.jpeg,.pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <Button variant="outline" size="sm" className="gap-2" asChild disabled={uploading}>
-                <span>
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {fileUrl ? 'Replace File' : 'Upload File'}
-                </span>
-              </Button>
-            </label>
-          </div>
         </div>
       ) : (
         <div className="space-y-2">

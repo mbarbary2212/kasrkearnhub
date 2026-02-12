@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Upload, Network, Image, Globe } from 'lucide-react';
+import { Network, Image, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MindMapContent } from '@/hooks/useStudyResources';
 import { MindMapEditor, MindMapStructuredContent } from './MindMapEditor';
@@ -141,23 +142,21 @@ export function MindMapForm({
                 </Button>
               </div>
             ) : (
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground mb-2">Upload a mind map file</p>
-                <p className="text-xs text-muted-foreground mb-3">Supports: Images, PDF, SVG, HTML (Markmap)</p>
-                <input
-                  type="file"
-                  accept="image/*,.pdf,.html,.htm,.svg"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="mindmap-upload"
-                />
-                <Button size="sm" variant="outline" disabled={uploading} asChild>
-                  <label htmlFor="mindmap-upload" className="cursor-pointer">
-                    {uploading ? 'Uploading...' : 'Choose File'}
-                  </label>
-                </Button>
-              </div>
+              <DragDropZone
+                id="mindmap-upload"
+                accept="image/*,.pdf,.html,.htm,.svg"
+                acceptedTypes={['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.pdf', '.html', '.htm']}
+                maxSizeMB={50}
+                onFileSelect={(file) => {
+                  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                  let ft: MindMapContent['fileType'] = 'png';
+                  if (ext === 'html' || ext === 'htm') ft = 'html';
+                  else if (ext === 'svg') ft = 'svg';
+                  else if (ext === 'pdf') ft = 'pdf';
+                  onChange({ ...content, fileType: ft });
+                  onUpload(file);
+                }}
+              />
             )}
           </div>
 
