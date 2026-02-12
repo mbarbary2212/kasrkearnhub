@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Dialog,
@@ -7,8 +8,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2 } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useAppMindMapSetting } from '@/hooks/useStudyResources';
 
-const appStructureMarkdown = `
+const fallbackMarkdown = `
 # KALM Hub
 
 ## 🏠 Home
@@ -59,24 +63,82 @@ interface AppMindMapProps {
 }
 
 export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
+  const { isAdmin, role } = useAuthContext();
+  const audience = isAdmin ? 'admin' : 'student';
+  const { data: setting, isLoading } = useAppMindMapSetting(audience);
+  const [iframeLoading, setIframeLoading] = useState(true);
+
+  const isFileMode = setting?.format === 'file' && setting?.fileUrl;
+  const isHtmlFile = isFileMode && setting?.fileType === 'html';
+  const isImageFile = isFileMode && ['png', 'svg'].includes(setting?.fileType);
+  const isPdfFile = isFileMode && setting?.fileType === 'pdf';
+
+  const markdownText = setting?.format === 'markdown' && setting?.markdown_text
+    ? setting.markdown_text
+    : !setting ? fallbackMarkdown : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-heading">App Structure</DialogTitle>
-          <DialogDescription>Overview of KALM Hub features and navigation</DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="flex-1 min-h-0 pr-4">
-          <div className="prose prose-sm dark:prose-invert max-w-none
-            [&_h1]:text-2xl [&_h1]:font-heading [&_h1]:text-primary [&_h1]:mb-4 [&_h1]:pb-2 [&_h1]:border-b [&_h1]:border-border
-            [&_h2]:text-lg [&_h2]:font-heading [&_h2]:text-foreground [&_h2]:mt-6 [&_h2]:mb-2
-            [&_ul]:space-y-1 [&_ul]:text-muted-foreground
-            [&_li]:text-sm
-            [&_strong]:text-foreground
-          ">
-            <ReactMarkdown>{appStructureMarkdown}</ReactMarkdown>
+      <DialogContent className={
+        isHtmlFile
+          ? 'max-w-[95vw] w-[95vw] h-[90vh] flex flex-col p-0'
+          : 'max-w-2xl max-h-[85vh] flex flex-col'
+      }>
+        {!isHtmlFile && (
+          <DialogHeader>
+            <DialogTitle className="text-xl font-heading">App Structure</DialogTitle>
+            <DialogDescription>Overview of KALM Hub features and navigation</DialogDescription>
+          </DialogHeader>
+        )}
+
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        </ScrollArea>
+        ) : isHtmlFile ? (
+          <div className="flex-1 relative">
+            {iframeLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <iframe
+              src={setting.fileUrl}
+              className="w-full h-full border-0 rounded-b-lg"
+              sandbox="allow-scripts"
+              onLoad={() => setIframeLoading(false)}
+              title="App Mind Map"
+            />
+          </div>
+        ) : isImageFile ? (
+          <ScrollArea className="flex-1 min-h-0 pr-4">
+            <img
+              src={setting.fileUrl}
+              alt="App Structure"
+              className="w-full h-auto rounded-md"
+            />
+          </ScrollArea>
+        ) : isPdfFile ? (
+          <div className="flex-1 min-h-0">
+            <iframe
+              src={setting.fileUrl}
+              className="w-full h-full border-0"
+              title="App Structure PDF"
+            />
+          </div>
+        ) : markdownText ? (
+          <ScrollArea className="flex-1 min-h-0 pr-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none
+              [&_h1]:text-2xl [&_h1]:font-heading [&_h1]:text-primary [&_h1]:mb-4 [&_h1]:pb-2 [&_h1]:border-b [&_h1]:border-border
+              [&_h2]:text-lg [&_h2]:font-heading [&_h2]:text-foreground [&_h2]:mt-6 [&_h2]:mb-2
+              [&_ul]:space-y-1 [&_ul]:text-muted-foreground
+              [&_li]:text-sm
+              [&_strong]:text-foreground
+            ">
+              <ReactMarkdown>{markdownText}</ReactMarkdown>
+            </div>
+          </ScrollArea>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
