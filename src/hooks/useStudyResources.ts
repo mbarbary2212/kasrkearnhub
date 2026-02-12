@@ -11,6 +11,7 @@ export type StudyResourceType =
   | 'exam_tip' 
   | 'key_image'
   | 'mind_map'
+  | 'infographic'
   | 'clinical_case_worked'
   | 'guided_explanation';
 
@@ -54,14 +55,23 @@ export interface MindMapConnection {
 }
 
 export interface MindMapContent {
-  // Original format (uploaded images)
+  // File-based format
+  fileUrl?: string;
+  /** @deprecated Use fileUrl instead */
   imageUrl?: string;
+  fileType?: 'png' | 'svg' | 'html' | 'pdf';
   description?: string;
   
   // AI-generated format (structured nodes)
   central_concept?: string;
   nodes?: MindMapNode[];
   connections?: MindMapConnection[];
+}
+
+export interface InfographicContent {
+  fileUrl?: string;
+  fileType?: 'png' | 'svg' | 'pdf';
+  description?: string;
 }
 
 export interface ClinicalCaseWorkedContent {
@@ -104,6 +114,7 @@ export type ResourceContent =
   | ExamTipContent 
   | KeyImageContent 
   | MindMapContent
+  | InfographicContent
   | ClinicalCaseWorkedContent
   | GuidedExplanationContent;
 

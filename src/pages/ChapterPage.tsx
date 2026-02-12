@@ -39,7 +39,7 @@ import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
-import { MindMapViewer } from '@/components/study/MindMapViewer';
+import { VisualResourcesSection } from '@/components/study/VisualResourcesSection';
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
@@ -249,10 +249,10 @@ export default function ChapterPage() {
     return createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps: mindMaps.length,
+      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0) + algorithms.length,
       guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
       reference_materials: documentsCount,
-      clinical_tools: algorithms.length + workedCases.length,
+      clinical_tools: workedCases.length,
     });
   }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, algorithms.length, workedCases.length]);
 
@@ -550,43 +550,30 @@ export default function ChapterPage() {
 
                 {/* Mind Maps Content */}
                 {resourcesTab === 'mind_maps' && chapterId && (
-                  <div className="space-y-4">
-                    {canManageContent && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            guardAdd(() => {
-                              setEditingFlashcard(null);
-                              (window as any).__pendingResourceType = 'mind_map';
-                              setFlashcardFormOpen(true);
-                            })
-                          }
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add Mind Map
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => guardAdd(() => setMindMapBulkOpen(true))}
-                        >
-                          <Upload className="w-3 h-3 mr-1" />
-                          Bulk Upload PDFs
-                        </Button>
-                      </div>
-                    )}
-                    {studyResourcesLoading ? (
-                      <QuestionListSkeleton count={2} type="mcq" />
-                    ) : (
-                      <MindMapViewer
-                        resources={filterBySection(mindMaps)}
-                        canManage={canManageContent}
-                        onEdit={handleEditFlashcard}
-                      />
-                    )}
-                  </div>
+                  <VisualResourcesSection
+                    mindMaps={filterBySection(mindMaps)}
+                    infographics={filterBySection(studyResources?.filter(r => r.resource_type === 'infographic') || [])}
+                    algorithms={filterBySection(algorithms)}
+                    canManage={canManageContent}
+                    onEdit={handleEditFlashcard}
+                    onAdd={(type) => {
+                      setEditingFlashcard(null);
+                      guardAdd(() => {
+                        (window as any).__pendingResourceType = type;
+                        setFlashcardFormOpen(true);
+                      });
+                    }}
+                    onBulkUpload={(type) => {
+                      if (type === 'mind_map') {
+                        guardAdd(() => setMindMapBulkOpen(true));
+                      } else {
+                        guardAdd(() => setFlashcardBulkOpen(true));
+                      }
+                    }}
+                    chapterId={chapterId}
+                    filterBySection={filterBySection}
+                    isLoading={studyResourcesLoading}
+                  />
                 )}
 
                 {/* Guided Explanations Content */}
@@ -625,7 +612,7 @@ export default function ChapterPage() {
                 {/* Clinical Tools Content */}
                 {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
                   <ClinicalToolsSection
-                    algorithms={filterBySection(algorithms)}
+                    algorithms={[]}
                     workedCases={filterBySection(workedCases)}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
@@ -633,7 +620,6 @@ export default function ChapterPage() {
                       setEditingFlashcard(null);
                       guardAdd(() => {
                         setFlashcardFormOpen(true);
-                        // Set the resource type for the modal
                         (window as any).__pendingResourceType = type;
                       });
                     }}

@@ -53,6 +53,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   exam_tip: 'Exam Tip',
   key_image: 'Key Image',
   mind_map: 'Mind Map',
+  infographic: 'Infographic',
   clinical_case_worked: 'Worked Case',
   guided_explanation: 'Guided Explanation',
 };
