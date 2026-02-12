@@ -141,7 +141,7 @@ function SortableBookCard({
             <p className="text-sm text-muted-foreground">
               {isPharmacology 
                 ? `${topicCount || 0} ${(topicCount || 0) === 1 ? 'Topic' : 'Topics'}`
-                : `${lectureCount} ${lectureCount === 1 ? 'Lecture' : 'Lectures'}`
+                : `${lectureCount} ${lectureCount === 1 ? 'Chapter' : 'Chapters'}`
               }
             </p>
           </div>
@@ -236,10 +236,10 @@ function BookLecturesView({
   const handleDeleteChapter = async (chapter: ModuleChapter) => {
     try {
       await deleteChapter.mutateAsync({ chapterId: chapter.id, moduleId });
-      toast.success('Lecture deleted successfully');
+      toast.success('Chapter deleted successfully');
       setDeleteChapterDialog(null);
     } catch {
-      toast.error('Failed to delete lecture');
+      toast.error('Failed to delete chapter');
     }
   };
 
@@ -266,7 +266,7 @@ function BookLecturesView({
             }}
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add Lecture
+            Add Chapter
           </Button>
         )}
       </div>
@@ -274,7 +274,7 @@ function BookLecturesView({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted-foreground">
           <BookOpen className="w-4 h-4" />
-          <span className="text-sm font-medium">Lectures</span>
+          <span className="text-sm font-medium">Chapters</span>
           {chapters && chapters.length > 0 && (
             <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
               {chapters.length}
@@ -340,7 +340,7 @@ function BookLecturesView({
       ) : (
         <div className="text-center py-12 border rounded-lg">
           <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No lectures available yet.</p>
+          <p className="text-muted-foreground">No chapters available yet.</p>
           {canManage && (
             <Button 
               className="mt-4" 
@@ -350,7 +350,7 @@ function BookLecturesView({
               }}
             >
               <Plus className="w-4 h-4 mr-1" />
-              Add First Lecture
+              Add First Chapter
             </Button>
           )}
         </div>
@@ -362,7 +362,7 @@ function BookLecturesView({
         onOpenChange={setChapterModalOpen}
         moduleId={moduleId}
         bookLabel={bookLabel}
-        chapterPrefix="Lecture"
+        chapterPrefix="Chapter"
         editingChapter={editingChapter}
         existingChapters={chapters}
       />
@@ -371,10 +371,10 @@ function BookLecturesView({
       <AlertDialog open={!!deleteChapterDialog} onOpenChange={() => setDeleteChapterDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lecture</AlertDialogTitle>
+            <AlertDialogTitle>Delete Chapter</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteChapterDialog?.title}"? 
-              This will also delete all content (videos, resources, assessments) associated with this lecture.
+              This will also delete all content (videos, resources, assessments) associated with this chapter.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

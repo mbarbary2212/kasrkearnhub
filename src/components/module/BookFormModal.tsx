@@ -28,7 +28,7 @@ interface BookFormModalProps {
 
 const CHAPTER_PREFIXES = [
   { value: 'Ch', label: 'Chapter (Ch)' },
-  { value: 'Lec', label: 'Lecture (Lec)' },
+  { value: 'Ch', label: 'Chapter (Ch)' },
 ];
 
 export function BookFormModal({

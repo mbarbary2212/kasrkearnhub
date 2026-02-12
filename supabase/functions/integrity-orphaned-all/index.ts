@@ -60,7 +60,7 @@ const checkConfigs: Record<OrphanCheckType, CheckConfig> = {
     table: "lectures", 
     hasIsDeleted: true, 
     previewField: "title",
-    label: "Lecture"
+    label: "Chapter"
   },
   matching: { 
     table: "matching_questions", 

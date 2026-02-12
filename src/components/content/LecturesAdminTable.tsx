@@ -97,7 +97,7 @@ export function LecturesAdminTable({
         filename: `lectures-${chapterId || 'export'}`,
         columns: LECTURE_EXPORT_COLUMNS as any,
       }}
-      emptyMessage="No lectures available"
+      emptyMessage="No chapters available"
     />
   );
 }
