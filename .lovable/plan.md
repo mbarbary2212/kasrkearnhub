@@ -1,90 +1,71 @@
 
-# Fix Visual Resources: Infographic Crash, Delete Labels, and Type Re-tagging
+# Replace Mind Map Icon with "Explore App Structure" Pill Button and Rename to "App Architecture"
 
-## Problems Found
+## What Changes
 
-1. **Crash when adding/cancelling infographic**: The form modal (`StudyResourceFormModal.tsx`) never renders the `InfographicForm` component for the `infographic` type, and `getDefaultContent()` has no case for `'infographic'` -- returning `undefined` which crashes React.
+1. **Home Page** -- Replace the small network icon button next to "Academic Years" with a styled pill button labeled "Explore App Structure" using a Compass icon. Add hover effects (slight lift, stronger shadow) and a tooltip.
 
-2. **"Flashcard deleted" toast for mind maps**: The delete button in `VisualResourcesAdminTable.tsx` hardcodes `'mind_map'` as the kind for every row, regardless of actual type. Also, `ResourcesDeleteManager.tsx` doesn't include `'infographic'` in its type or label map.
+2. **Rename labels** throughout the UI from "App Mind Map" / "App Structure" to "App Architecture" (display labels only, no DB key changes).
 
-3. **Re-tagging already works** in the admin table view via the Type dropdown. It just needs the above bugs fixed to function properly.
+3. **Subtle pulse glow** -- A very soft glow animation every ~12 seconds on the pill button.
 
----
-
-## Fix 1: Add Infographic Support to StudyResourceFormModal
-
-**File**: `src/components/study/StudyResourceFormModal.tsx`
-
-- Import `InfographicForm` and `InfographicContent`
-- Add a rendering block for `resourceType === 'infographic'` that shows the `InfographicForm` (similar to the mind_map block)
-- Add `case 'infographic'` to `getDefaultContent()` returning `{ fileUrl: '', description: '' }`
-
-## Fix 2: Correct Delete Labels
-
-**File**: `src/components/study/VisualResourcesAdminTable.tsx`
-
-- Change line 279 from hardcoded `'mind_map'` to `resource.resource_type` so each row uses its actual type
-
-**File**: `src/components/content/ResourcesDeleteManager.tsx`
-
-- Add `'infographic'` to the `ResourceKind` type union
-- Add `infographic: "infographic"` to the `kindLabels` map
-
-## Fix 3: Batch Move Existing Mind Maps to Infographics
-
-Since you mentioned you'd like to move existing mind maps to infographics and re-add mind maps manually:
-- The admin table's Type dropdown already supports this (once the bugs above are fixed)
-- You can switch to Table view, and use the Type dropdown on each row to change it from "Mind Map" to "Infographic"
-
----
-
-## Technical Details
-
-### StudyResourceFormModal.tsx changes
-
-Add after the mind_map block (~line 234):
-```typescript
-{resourceType === 'infographic' && (
-  <InfographicForm
-    content={content as InfographicContent}
-    onChange={(c) => setContent(c)}
-    onUpload={handleImageUpload}
-    uploading={uploading}
-  />
-)}
-```
-
-Add to `getDefaultContent`:
-```typescript
-case 'infographic':
-  return { fileUrl: '', description: '' };
-```
-
-### ResourcesDeleteManager.tsx changes
-
-Update type to include `'infographic'`:
-```typescript
-export type ResourceKind = "flashcard" | "table" | "algorithm" | "exam_tip" | "key_image" | "mind_map" | "infographic" | "clinical_case_worked";
-```
-
-Add to kindLabels:
-```typescript
-infographic: "infographic",
-```
-
-### VisualResourcesAdminTable.tsx change
-
-Line 279 -- use actual resource type:
-```typescript
-onClick={() => requestResourceDelete(resource.resource_type as any, resource.id, resource.title)}
-```
-
----
-
-## Files Summary
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/study/StudyResourceFormModal.tsx` | Add infographic form rendering + default content |
-| `src/components/content/ResourcesDeleteManager.tsx` | Add 'infographic' to type + labels |
-| `src/components/study/VisualResourcesAdminTable.tsx` | Fix hardcoded delete kind |
+| `src/pages/Home.tsx` | Replace `Network` icon button with a styled pill `Button` using `Compass` icon + "Explore App Structure" label. Add tooltip wrapping. Add CSS classes for hover lift/glow. |
+| `src/components/dashboard/AppMindMap.tsx` | Rename dialog title from "App Structure" to "App Architecture" and description to match. |
+| `src/components/admin/HomeMindMapSettings.tsx` | Rename card title to "App Architecture", update description text, and rename version labels to "Student App Architecture" / "Admin App Architecture". |
+| `src/index.css` | Add a `@keyframes soft-glow-pulse` animation (runs every 12s) for the pill button. |
+
+## Technical Details
+
+### Home.tsx -- Pill Button
+
+Replace the ghost icon button (lines 226-233) with:
+
+```typescript
+import { Compass } from 'lucide-react';
+
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        variant="ghost"
+        className="h-auto px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/15 shadow-sm
+                   hover:-translate-y-0.5 hover:shadow-md hover:border-primary/25
+                   transition-all duration-300 ease-out
+                   animate-[soft-glow-pulse_12s_ease-in-out_infinite] gap-2 text-sm font-medium"
+        onClick={() => setMindMapOpen(true)}
+      >
+        <Compass className="h-4 w-4" />
+        Explore App Structure
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent side="bottom">
+      <p>See how the platform is structured across years, modules, and chapters.</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+### index.css -- Glow Keyframes
+
+```css
+@keyframes soft-glow-pulse {
+  0%, 90%, 100% { box-shadow: 0 0 0 0 transparent; }
+  95% { box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.15); }
+}
+```
+
+### AppMindMap.tsx -- Title Rename
+
+- "App Structure" -> "App Architecture"
+- "Overview of KALM Hub features and navigation" -> "Overview of KALM Hub architecture and navigation"
+
+### HomeMindMapSettings.tsx -- Admin Label Rename
+
+- Card title: "Home Mind Map" -> "App Architecture"
+- Card description updated
+- Version labels: "Student" -> "Student App Architecture", "Admin" -> "Admin App Architecture"
+- Toast messages updated accordingly
