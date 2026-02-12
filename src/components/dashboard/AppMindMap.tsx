@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Dialog,
@@ -67,6 +67,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
   const audience = isAdmin ? 'admin' : 'student';
   const { data: setting, isLoading } = useAppMindMapSetting(audience);
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [htmlSrcdoc, setHtmlSrcdoc] = useState<string | null>(null);
 
   const isFileMode = setting?.format === 'file' && setting?.fileUrl;
   const isHtmlFile = isFileMode && setting?.fileType === 'html';
@@ -76,6 +77,22 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
   const markdownText = setting?.format === 'markdown' && setting?.markdown_text
     ? setting.markdown_text
     : !setting ? fallbackMarkdown : null;
+
+  // For HTML files, fetch content to handle wrong content-type from storage
+  useEffect(() => {
+    if (!isHtmlFile || !setting?.fileUrl) return;
+    setHtmlSrcdoc(null);
+    setIframeLoading(true);
+    fetch(setting.fileUrl)
+      .then(res => {
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('text/html')) {
+          return res.text().then(html => setHtmlSrcdoc(html));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIframeLoading(false));
+  }, [isHtmlFile, setting?.fileUrl]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,7 +120,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
               </div>
             )}
             <iframe
-              src={setting.fileUrl}
+              {...(htmlSrcdoc ? { srcDoc: htmlSrcdoc } : { src: setting.fileUrl })}
               className="w-full h-full border-0 rounded-b-lg"
               sandbox="allow-scripts"
               onLoad={() => setIframeLoading(false)}
