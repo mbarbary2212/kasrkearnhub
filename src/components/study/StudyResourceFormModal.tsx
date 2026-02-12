@@ -140,7 +140,7 @@ export function StudyResourceFormModal({
 
       const { error: uploadError } = await supabase.storage
         .from('study-resources')
-        .upload(filePath, file);
+        .upload(filePath, file, { contentType: file.type || undefined });
 
       if (uploadError) throw uploadError;
 

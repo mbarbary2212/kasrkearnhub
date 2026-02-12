@@ -131,7 +131,7 @@ export function MindMapBulkUploadModal({
 
         const { error: uploadError } = await supabase.storage
           .from('study-resources')
-          .upload(filePath, item.file);
+          .upload(filePath, item.file, { contentType: item.file.type || undefined });
 
         if (uploadError) throw uploadError;
 

@@ -15,6 +15,7 @@ import {
   Pencil,
   Undo2,
   Eraser,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +52,63 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ReactSketchCanvas, ReactSketchCanvasRef } from 'react-sketch-canvas';
+
+// Component that fetches HTML and renders via srcdoc to handle wrong content-type from storage
+function HtmlIframe({ url, title }: { url: string; title: string }) {
+  const [srcdoc, setSrcdoc] = useState<string | null>(null);
+  const [useSrc, setUseSrc] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(url)
+      .then(res => {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('text/html')) {
+          // Correct content type, use src directly
+          if (!cancelled) setUseSrc(true);
+        } else {
+          // Wrong content type, fetch and use srcdoc
+          return res.text().then(html => {
+            if (!cancelled) setSrcdoc(html);
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUseSrc(true); // fallback to src
+      });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (useSrc) {
+    return (
+      <iframe
+        src={url}
+        sandbox="allow-scripts"
+        className="w-full h-full border-0"
+        style={{ minHeight: 'calc(95vh - 40px)' }}
+        title={title}
+      />
+    );
+  }
+
+  if (srcdoc) {
+    return (
+      <iframe
+        srcDoc={srcdoc}
+        sandbox="allow-scripts"
+        className="w-full h-full border-0"
+        style={{ minHeight: 'calc(95vh - 40px)' }}
+        title={title}
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center h-full" style={{ minHeight: 'calc(95vh - 40px)' }}>
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.25;
@@ -649,13 +707,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
             {fullscreenContent && (
               <>
                 {isHtml && fullscreenFileUrl ? (
-                  <iframe
-                    src={fullscreenFileUrl}
-                    sandbox="allow-scripts"
-                    className="w-full h-full border-0"
-                    style={{ minHeight: 'calc(95vh - 40px)' }}
-                    title={fullscreenResource?.title}
-                  />
+                  <HtmlIframe url={fullscreenFileUrl} title={fullscreenResource?.title || 'Mind Map'} />
                 ) : isPdf && fullscreenFileUrl ? (
                   <iframe
                     src={`${fullscreenFileUrl}#toolbar=1&navpanes=0&scrollbar=1`}

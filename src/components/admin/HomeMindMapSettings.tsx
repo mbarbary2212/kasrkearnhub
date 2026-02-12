@@ -57,7 +57,7 @@ function MindMapVersionEditor({ audience, label }: { audience: 'student' | 'admi
       const storagePath = `home-mindmap/${audience}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('study-resources')
-        .upload(storagePath, file, { upsert: true });
+        .upload(storagePath, file, { upsert: true, contentType: file.type || undefined });
 
       if (uploadError) throw uploadError;
 
