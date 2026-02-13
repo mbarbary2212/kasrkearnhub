@@ -84,6 +84,9 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
       'study_coach_disabled_message',
       'study_coach_provider',
       'study_coach_model',
+      'ai_provider',
+      'gemini_model',
+      'lovable_model',
     ]);
 
   const defaults: CoachSettings = {
@@ -95,6 +98,13 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
   };
 
   if (error || !data) return defaults;
+
+  // Track feature-specific vs global settings separately
+  let featureProvider: string | null = null;
+  let featureModel: string | null = null;
+  let globalProvider: string | null = null;
+  let globalGeminiModel: string | null = null;
+  let globalLovableModel: string | null = null;
 
   for (const row of data) {
     const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
@@ -109,12 +119,34 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
         defaults.disabledMessage = value || defaults.disabledMessage;
         break;
       case 'study_coach_provider':
-        defaults.provider = value === 'gemini' ? 'gemini' : 'lovable';
+        featureProvider = value || null;
         break;
       case 'study_coach_model':
-        defaults.model = value || defaults.model;
+        featureModel = value || null;
+        break;
+      case 'ai_provider':
+        globalProvider = value || null;
+        break;
+      case 'gemini_model':
+        globalGeminiModel = value || null;
+        break;
+      case 'lovable_model':
+        globalLovableModel = value || null;
         break;
     }
+  }
+
+  // Resolve provider: feature-specific > global > default
+  const resolvedProvider = featureProvider ?? globalProvider ?? 'lovable';
+  defaults.provider = resolvedProvider === 'gemini' ? 'gemini' : 'lovable';
+
+  // Resolve model: feature-specific > global (based on provider) > default
+  if (featureModel) {
+    defaults.model = featureModel;
+  } else if (defaults.provider === 'gemini' && globalGeminiModel) {
+    defaults.model = globalGeminiModel;
+  } else if (defaults.provider === 'lovable' && globalLovableModel) {
+    defaults.model = globalLovableModel;
   }
 
   return defaults;
