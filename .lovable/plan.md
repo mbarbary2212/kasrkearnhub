@@ -1,46 +1,46 @@
 
 
-# Add Progress, Readiness & Unlocks to Module Study Coach Tab
+# Make Coach and Tutor Follow Content Factory AI Provider Setting
 
 ## Problem
 
-The "Study Coach" tab on the module page currently only shows the **Study Plan** (planning). The full Personal Study Coach page (`/progress`) has three sub-tabs -- **Overview** (progress & readiness), **Study Plan** (planning), and **Unlocks** -- but only the Study Plan was carried over to the module page.
+When you select "Gemini" in the admin AI Settings panel, only the Content Factory switches to Gemini. The Study Coach and MedGPT Tutor remain on Lovable because they read their own separate settings (`study_coach_provider` and `tutor_provider`), which are never exposed in the admin panel.
 
 ## Solution
 
-Embed the same three-tab layout (`LearningHubTabs`) used in the Personal Study Coach page directly into the module page's Study Coach section. This gives students access to all three features (planning, progress/readiness, unlocks) without leaving the module page.
+Update both edge functions (`coach-chat` and `chat-with-moderation`) to fall back to the global `ai_provider` and model settings when no feature-specific provider is set. This way, changing the provider in the admin panel applies to all AI features automatically.
 
-## What Changes
-
-The module page's "Study Coach" section (lines 241-254 of `ModulePage.tsx`) currently renders only `LearningHubStudyPlan`. It will be replaced with `LearningHubTabs`, which includes all three tabs:
-
-1. **Overview** -- Readiness score, coverage, progress map, needs practice, insights
-2. **Study Plan** -- Planning wizard, timeline, schedule
-3. **Unlocks** -- Formative assessment unlock levels
-
-## File to Modify
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/ModulePage.tsx` | Replace `LearningHubStudyPlan` with `LearningHubTabs` in the coach section. Add required imports and pass additional props (`dashboard`, `onNavigate`). |
+| `supabase/functions/coach-chat/index.ts` | Read `ai_provider` / `gemini_model` / `lovable_model` from ai_settings as fallbacks when `study_coach_provider` / `study_coach_model` are not explicitly set |
+| `supabase/functions/chat-with-moderation/index.ts` | Same fallback logic for tutor settings |
 
 ## Technical Details
 
-### ModulePage.tsx
+### coach-chat/index.ts -- `getCoachSettings()`
 
-1. **Import change**: Replace `LearningHubStudyPlan` import with `LearningHubTabs` import. Also import `useStudentDashboard`.
+Currently reads only `study_coach_provider` and `study_coach_model`. Will be updated to also read `ai_provider`, `gemini_model`, and `lovable_model` from the same query, then apply this logic:
 
-2. **Add dashboard hook**: Inside the component, call `useStudentDashboard` with the current module context so the Overview and Unlocks tabs have data:
-   ```typescript
-   const { data: coachDashboard } = useStudentDashboard({
-     yearId: module?.year_id,
-     moduleId: actualModuleId,
-   });
-   ```
+```text
+provider = study_coach_provider ?? ai_provider ?? 'lovable'
+model    = study_coach_model    ?? (provider === 'gemini' ? gemini_model : lovable_model) ?? default
+```
 
-3. **Replace the coach section rendering** (lines 241-254): Swap `LearningHubStudyPlan` for `LearningHubTabs`, passing all required props including `dashboard`, `modules`, year info, and an `onNavigate` callback.
+Since the query already fetches all rows from `ai_settings`, we just need to handle the additional keys in the switch statement and apply fallback logic after the loop.
 
-### No Other Files Change
+### chat-with-moderation/index.ts -- `getTutorSettings()`
 
-`LearningHubTabs` and all its child components (`LearningHubOverview`, `LearningHubStudyPlan`, `LearningHubUnlocks`) already exist and work correctly -- they just need to be wired up in the module page.
+Same approach: read `ai_provider`, `gemini_model`, `lovable_model` as fallbacks for `tutor_provider` and `tutor_model`.
+
+### No Admin Panel Changes Needed
+
+The existing AI Settings panel already lets admins choose the provider and model. The coach and tutor will now automatically follow those global settings. The feature-specific DB keys (`study_coach_provider`, `tutor_provider`) remain as optional overrides if needed in the future, but will no longer block the global setting from taking effect.
+
+### What Changes for the User
+
+- Admin selects "Gemini" + model in Settings panel -> Coach and Tutor both use Gemini
+- Admin selects "Lovable" + model -> Coach and Tutor both use Lovable
+- No new UI elements needed
 
