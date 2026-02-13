@@ -33,6 +33,46 @@ Always remind students when discussing clinical scenarios: "This is a study aid.
 - If they write in Arabic, respond in Arabic
 - If they write in English, respond in English`;
 
+async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data } = await serviceClient
+    .from('ai_settings')
+    .select('key, value')
+    .in('key', ['ai_provider', 'gemini_model', 'lovable_model']);
+
+  let provider: 'lovable' | 'gemini' = 'lovable';
+  let geminiModel: string | null = null;
+  let lovableModel: string | null = null;
+
+  if (data) {
+    for (const row of data) {
+      const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+      switch (row.key) {
+        case 'ai_provider':
+          provider = value === 'gemini' ? 'gemini' : 'lovable';
+          break;
+        case 'gemini_model':
+          geminiModel = value || null;
+          break;
+        case 'lovable_model':
+          lovableModel = value || null;
+          break;
+      }
+    }
+  }
+
+  const model = provider === 'gemini'
+    ? (geminiModel || 'gemini-2.5-flash')
+    : (lovableModel || 'google/gemini-3-flash-preview');
+
+  return { provider, model };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,11 +80,76 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const settings = await getGlobalAISettings();
+
+    if (settings.provider === 'gemini') {
+      const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+      if (!GOOGLE_API_KEY) throw new Error("GOOGLE_API_KEY is not configured");
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:streamGenerateContent?alt=sse`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-goog-api-key': GOOGLE_API_KEY,
+        },
+        body: JSON.stringify({
+          contents: [
+            { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+            ...messages.map((m: any) => ({
+              role: m.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: m.content }],
+            })),
+          ],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini API error:', response.status, errorText);
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: 'AI service is busy. Please try again in a moment.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Transform Gemini SSE to OpenAI-compatible SSE
+      const transformStream = new TransformStream({
+        transform(chunk, controller) {
+          const text = new TextDecoder().decode(chunk);
+          for (const line of text.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (content) {
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`));
+              }
+            } catch { /* skip */ }
+          }
+        },
+        flush(controller) {
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+        },
+      });
+
+      return new Response(response.body?.pipeThrough(transformStream), {
+        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      });
     }
+
+    // Lovable AI Gateway (default)
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -53,7 +158,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: settings.model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,
