@@ -7,6 +7,8 @@ import { LearningHubUnlocks } from './LearningHubUnlocks';
 interface Module {
   id: string;
   name: string;
+  workload_level?: 'light' | 'medium' | 'heavy' | 'heavy_plus' | null;
+  page_count?: number | null;
 }
 
 interface LearningHubTabsProps {

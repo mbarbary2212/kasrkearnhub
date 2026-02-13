@@ -10,7 +10,8 @@ import { useYearById } from '@/hooks/useYears';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useModules } from '@/hooks/useModules';
-import { LearningHubStudyPlan } from '@/components/dashboard/LearningHubStudyPlan';
+import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
+import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
@@ -65,6 +66,12 @@ export default function ModulePage() {
   // Fetch year modules for Study Coach
   const { data: yearModules = [] } = useModules(module?.year_id);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+
+  // Dashboard data for Study Coach tabs (Overview & Unlocks)
+  const { data: coachDashboard } = useStudentDashboard({
+    yearId: module?.year_id,
+    moduleId: actualModuleId,
+  });
 
   // Section navigation items
   const sectionNav = [
@@ -238,8 +245,9 @@ export default function ModulePage() {
             )}
 
             {/* Study Coach Section - Students only */}
-            {activeSection === 'coach' && actualModuleId && (
-              <LearningHubStudyPlan
+            {activeSection === 'coach' && actualModuleId && coachDashboard && (
+              <LearningHubTabs
+                dashboard={coachDashboard}
                 moduleSelected={true}
                 modules={yearModules.map(m => ({
                   id: m.id,
@@ -250,6 +258,9 @@ export default function ModulePage() {
                 selectedYearName={year?.name || ''}
                 selectedYearId={module?.year_id}
                 selectedModuleId={actualModuleId}
+                onNavigate={(moduleId, chapterId, tab) => {
+                  navigate(`/module/${moduleId}/chapter/${chapterId}${tab ? `?tab=${tab}` : ''}`);
+                }}
               />
             )}
           </div>
