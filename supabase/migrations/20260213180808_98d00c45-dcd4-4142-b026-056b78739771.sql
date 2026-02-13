@@ -1,0 +1,2 @@
+-- Clear the feature-specific provider/model overrides so global ai_provider takes effect
+DELETE FROM ai_settings WHERE key IN ('study_coach_provider', 'study_coach_model', 'tutor_provider', 'tutor_model');
