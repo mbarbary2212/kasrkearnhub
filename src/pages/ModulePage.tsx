@@ -23,6 +23,7 @@ import {
   MessageCircle,
   Megaphone,
   Mail,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -124,7 +125,9 @@ export default function ModulePage() {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
                 const isConnect = section.id === 'connect';
+                const isCoach = section.id === 'coach';
                 const colors = sectionColors[section.id];
+                const coachBadgeCount = coachDashboard?.suggestions?.length || 0;
                 
                 return (
                   <button
@@ -157,6 +160,16 @@ export default function ModulePage() {
                         )}
                       </div>
                     )}
+                    
+                    {/* Study Coach badge */}
+                    {isCoach && coachBadgeCount > 0 && (
+                      <div className="absolute -top-1 -right-1">
+                        <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full">
+                          <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                          {coachBadgeCount}
+                        </span>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -171,7 +184,9 @@ export default function ModulePage() {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
                   const isConnect = section.id === 'connect';
+                  const isCoach = section.id === 'coach';
                   const colors = sectionColors[section.id];
+                  const coachBadgeCount = coachDashboard?.suggestions?.length || 0;
                   
                   return (
                     <button
@@ -209,6 +224,17 @@ export default function ModulePage() {
                             </span>
                           )}
                         </div>
+                      )}
+                      
+                      {/* Study Coach badge */}
+                      {isCoach && coachBadgeCount > 0 && (
+                        <span className={cn(
+                          "flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full",
+                          isActive ? "bg-amber-200/40 text-amber-900" : "bg-amber-500 text-white"
+                        )}>
+                          <Sparkles className="w-3 h-3 mr-0.5" />
+                          {coachBadgeCount}
+                        </span>
                       )}
                     </button>
                   );

@@ -244,6 +244,13 @@ export default function ChapterPage() {
     { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
 
+  // Per-section color map for visual hierarchy
+  const sectionColors: Record<SectionMode, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
+    resources: { activeBg: 'bg-blue-50',    activeBgDark: 'dark:bg-blue-950/30',    border: 'border-l-blue-600',    text: 'text-blue-700 dark:text-blue-300',    icon: 'text-blue-600 dark:text-blue-400',    mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+    practice:  { activeBg: 'bg-emerald-50', activeBgDark: 'dark:bg-emerald-950/30', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400', mobileBg: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
+    test:      { activeBg: 'bg-violet-50',  activeBgDark: 'dark:bg-violet-950/30',  border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300',  icon: 'text-violet-500 dark:text-violet-400',  mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
+  };
+
   // Use unified tab configuration - create all tabs first
   const allResourcesTabs = useMemo(() => {
     return createResourceTabs({
@@ -306,7 +313,7 @@ export default function ChapterPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 animate-fade-in">
+      <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}`)}>
@@ -372,22 +379,23 @@ export default function ChapterPage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs (only on small screens) */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-muted/50 border border-border/50 rounded-xl p-1.5 shadow-sm">
+            <nav className="flex gap-1.5 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
+                const colors = sectionColors[section.id];
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-colors",
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150",
                       isActive 
-                        ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? cn("font-semibold shadow-sm", colors.mobileBg)
+                        : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
                     )}
                   >
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
                     <span>{section.mobileLabel}</span>
                   </button>
                 );
@@ -397,23 +405,24 @@ export default function ChapterPage() {
 
           {/* Desktop: Fixed Vertical Navigation Rail */}
           <div className="hidden md:block w-[180px] flex-shrink-0">
-            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
-              <div className="flex flex-col gap-1">
+            <nav className="sticky top-4 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
+              <div className="flex flex-col gap-0.5">
                 {sectionNav.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
+                  const colors = sectionColors[section.id];
                   return (
                     <button
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
                       className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left",
                         isActive 
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          ? cn("font-semibold border-l-4", colors.activeBg, colors.activeBgDark, colors.border, colors.text)
+                          : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5 hover:translate-y-[-1px]"
                       )}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
                       <span className="whitespace-nowrap">{section.label}</span>
                     </button>
                   );
@@ -423,7 +432,7 @@ export default function ChapterPage() {
           </div>
 
           {/* Vertical Divider (hidden on mobile) */}
-          <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
+          <div className="hidden md:block w-px bg-transparent mx-4 self-stretch min-h-[200px] shadow-[2px_0_12px_-2px_rgba(0,0,0,0.08)]" />
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
