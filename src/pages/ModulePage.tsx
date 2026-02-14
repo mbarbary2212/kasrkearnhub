@@ -111,7 +111,7 @@ export default function ModulePage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-muted/30 rounded-lg p-1.5">
+            <nav className="flex gap-1.5 bg-card rounded-xl border border-border shadow-sm p-1.5">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -156,8 +156,8 @@ export default function ModulePage() {
 
           {/* Desktop: Vertical Navigation Rail */}
           <div className="hidden md:block w-[200px] flex-shrink-0">
-            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
-              <div className="flex flex-col gap-1">
+            <nav className="sticky top-4 bg-card rounded-xl border border-border shadow-sm p-1.5">
+              <div className="flex flex-col gap-0.5">
                 {sectionNav.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
@@ -168,10 +168,10 @@ export default function ModulePage() {
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
                       className={cn(
-                        "relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        "relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left",
                         isActive 
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          ? "bg-primary text-primary-foreground font-semibold shadow-md" 
+                          : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
                       )}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
