@@ -202,7 +202,7 @@ serve(async (req: Request) => {
       }
 
       // Find the user
-      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
       if (listError) throw new Error('Failed to list users');
 
       const targetUser = listData.users.find((u: any) => u.email?.toLowerCase() === email);
