@@ -73,6 +73,14 @@ export default function ModulePage() {
     moduleId: actualModuleId,
   });
 
+  // Per-section color map
+  const sectionColors: Record<ModuleSection, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
+    learning:  { activeBg: 'bg-blue-50',   activeBgDark: 'dark:bg-blue-950/30',   border: 'border-l-blue-600',   text: 'text-blue-700 dark:text-blue-300',   icon: 'text-blue-600 dark:text-blue-400',   mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+    connect:   { activeBg: 'bg-teal-50',   activeBgDark: 'dark:bg-teal-950/30',   border: 'border-l-teal-500',   text: 'text-teal-700 dark:text-teal-300',   icon: 'text-teal-500 dark:text-teal-400',   mobileBg: 'bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300' },
+    formative: { activeBg: 'bg-violet-50', activeBgDark: 'dark:bg-violet-950/30', border: 'border-l-violet-500', text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500 dark:text-violet-400', mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
+    coach:     { activeBg: 'bg-amber-50',  activeBgDark: 'dark:bg-amber-950/30',  border: 'border-l-amber-500',  text: 'text-amber-700 dark:text-amber-300',  icon: 'text-amber-500 dark:text-amber-400',  mobileBg: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
+  };
+
   // Section navigation items
   const sectionNav = [
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
@@ -111,24 +119,25 @@ export default function ModulePage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-card rounded-xl border border-border shadow-sm p-1.5">
+            <nav className="flex gap-1.5 bg-gradient-to-r from-blue-50/80 to-white/60 dark:from-blue-950/20 dark:to-background/60 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 shadow-sm p-1.5">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
                 const isConnect = section.id === 'connect';
+                const colors = sectionColors[section.id];
                 
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-colors",
+                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150",
                       isActive 
-                        ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? cn("font-semibold shadow-sm", colors.mobileBg)
+                        : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
                     )}
                   >
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
                     <span>{section.mobileLabel}</span>
                     
                     {/* Connect badges */}
@@ -156,12 +165,13 @@ export default function ModulePage() {
 
           {/* Desktop: Vertical Navigation Rail */}
           <div className="hidden md:block w-[200px] flex-shrink-0">
-            <nav className="sticky top-4 bg-card rounded-xl border border-border shadow-sm p-1.5">
+            <nav className="sticky top-4 bg-gradient-to-b from-blue-50/80 to-white/60 dark:from-blue-950/20 dark:to-background/60 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 shadow-sm p-1.5">
               <div className="flex flex-col gap-0.5">
                 {sectionNav.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
                   const isConnect = section.id === 'connect';
+                  const colors = sectionColors[section.id];
                   
                   return (
                     <button
@@ -170,11 +180,11 @@ export default function ModulePage() {
                       className={cn(
                         "relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left",
                         isActive 
-                          ? "bg-primary text-primary-foreground font-semibold shadow-md" 
-                          : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                          ? cn("font-semibold border-l-4", colors.activeBg, colors.activeBgDark, colors.border, colors.text)
+                          : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5 hover:translate-y-[-1px]"
                       )}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
                       <span className="flex-1">{section.label}</span>
                       
                       {/* Connect badges */}
@@ -208,7 +218,7 @@ export default function ModulePage() {
           </div>
 
           {/* Vertical Divider (desktop only) */}
-          <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
+          <div className="hidden md:block w-px bg-transparent mx-4 self-stretch min-h-[200px] shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)]" />
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
