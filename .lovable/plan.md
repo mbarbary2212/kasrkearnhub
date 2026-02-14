@@ -1,46 +1,74 @@
 
 
-# Make Coach and Tutor Follow Content Factory AI Provider Setting
+# Redesign Student Module Page Sidebar -- Visual Hierarchy Enhancement
 
-## Problem
+## Overview
 
-When you select "Gemini" in the admin AI Settings panel, only the Content Factory switches to Gemini. The Study Coach and MedGPT Tutor remain on Lovable because they read their own separate settings (`study_coach_provider` and `tutor_provider`), which are never exposed in the admin panel.
+Enhance the desktop sidebar and mobile tabs with a hierarchical visual system using per-section color accents, a glass-effect background, a 4px active indicator bar, and subtle hover animations. No changes to routing, content, or admin views.
 
-## Solution
+## Desktop Sidebar Changes
 
-Update both edge functions (`coach-chat` and `chat-with-moderation`) to fall back to the global `ai_provider` and model settings when no feature-specific provider is set. This way, changing the provider in the admin panel applies to all AI features automatically.
+### Container (`nav` wrapper)
 
-## Files to Modify
+- Replace `bg-card rounded-xl border border-border shadow-sm` with a glass-effect gradient:
+  - `bg-gradient-to-b from-blue-50/80 to-white/60`
+  - `backdrop-blur-md`
+  - `border border-white/40`
+  - `shadow-sm rounded-xl`
 
-| File | Change |
-|------|--------|
-| `supabase/functions/coach-chat/index.ts` | Read `ai_provider` / `gemini_model` / `lovable_model` from ai_settings as fallbacks when `study_coach_provider` / `study_coach_model` are not explicitly set |
-| `supabase/functions/chat-with-moderation/index.ts` | Same fallback logic for tutor settings |
+### Vertical Divider (line 211)
 
-## Technical Details
+- Replace the hard `w-px bg-border/50` divider with a soft shadow edge:
+  - `w-px bg-transparent shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)]`
 
-### coach-chat/index.ts -- `getCoachSettings()`
+### Per-Section Color Map
 
-Currently reads only `study_coach_provider` and `study_coach_model`. Will be updated to also read `ai_provider`, `gemini_model`, and `lovable_model` from the same query, then apply this logic:
+Each section gets a unique accent applied to the active indicator bar, icon color, and active background:
 
-```text
-provider = study_coach_provider ?? ai_provider ?? 'lovable'
-model    = study_coach_model    ?? (provider === 'gemini' ? gemini_model : lovable_model) ?? default
-```
+| Section | Accent Color | Active BG | Icon Class |
+|---------|-------------|-----------|------------|
+| Learning | `bg-blue-600` | `bg-blue-50` | `text-blue-600` |
+| Connect | `bg-teal-500` | `bg-teal-50` | `text-teal-500` |
+| Formative | `bg-violet-500` | `bg-violet-50` | `text-violet-500` |
+| Coach | `bg-amber-500` | `bg-amber-50` | `text-amber-500` |
 
-Since the query already fetches all rows from `ai_settings`, we just need to handle the additional keys in the switch statement and apply fallback logic after the loop.
+### Button Styling
 
-### chat-with-moderation/index.ts -- `getTutorSettings()`
+- **Active state**: Remove the current `bg-primary text-primary-foreground`. Replace with:
+  - Section-specific light background (e.g., `bg-blue-50`)
+  - 4px left border indicator (`border-l-4 border-l-blue-600`)
+  - Section-colored text (`text-blue-700`)
+  - `font-semibold`
+- **Inactive state**: 
+  - `text-muted-foreground`
+  - Icon at `opacity-70`
+  - Hover: `hover:bg-gray-50/80 hover:translate-y-[-1px]` with `transition-all duration-150`
 
-Same approach: read `ai_provider`, `gemini_model`, `lovable_model` as fallbacks for `tutor_provider` and `tutor_model`.
+### Icons
 
-### No Admin Panel Changes Needed
+- Active: full color per section
+- Inactive: `opacity-70` applied via class
 
-The existing AI Settings panel already lets admins choose the provider and model. The coach and tutor will now automatically follow those global settings. The feature-specific DB keys (`study_coach_provider`, `tutor_provider`) remain as optional overrides if needed in the future, but will no longer block the global setting from taking effect.
+## Mobile Tabs
 
-### What Changes for the User
+- Apply matching section colors to the active mobile tab background (e.g., `bg-blue-100 text-blue-700` for Learning)
+- Keep the same glass-effect container styling as desktop
 
-- Admin selects "Gemini" + model in Settings panel -> Coach and Tutor both use Gemini
-- Admin selects "Lovable" + model -> Coach and Tutor both use Lovable
-- No new UI elements needed
+## Dark Mode Compatibility
+
+- Use `/80` and `/60` opacity suffixes so the gradient fades gracefully in dark mode
+- Active backgrounds use dark-safe variants: `dark:bg-blue-950/30`, etc.
+
+## File Modified
+
+**`src/pages/ModulePage.tsx`** only -- approximately 30 lines changed across the nav container, button classNames, icon classNames, and divider. A small `sectionColors` lookup map (6 lines) will be added near the `sectionNav` definition.
+
+## What Stays Unchanged
+
+- All routing and `setActiveSection` logic
+- `sectionNav` array structure
+- Admin/teacher sidebar path
+- Connect badge rendering
+- Content area and all child components
+- Mobile layout structure (only colors change)
 
