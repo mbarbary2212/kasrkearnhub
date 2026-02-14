@@ -171,43 +171,6 @@ export function ModuleFormativeTab({
         </Card>
       )}
 
-      {/* Chapter-level Practice Section */}
-      {chapters && chapters.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Chapter Practice
-            </CardTitle>
-            <CardDescription>
-              Practice chapter-specific content in the Practice tab of each chapter
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {chapters.slice(0, 6).map((chapter) => (
-                <Button
-                  key={chapter.id}
-                  variant="outline"
-                  className="w-full justify-between text-left h-auto py-3"
-                  onClick={() => handleGoToChapter(chapter.id)}
-                >
-                  <span className="flex-1 truncate">
-                    Ch. {chapter.chapter_number}: {chapter.title}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground ml-2" />
-                </Button>
-              ))}
-              {chapters.length > 6 && (
-                <p className="text-xs text-muted-foreground text-center pt-2">
-                  + {chapters.length - 6} more chapters
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Admin Settings */}
       {isAdmin && settings && (
         <MockExamAdminSettings moduleId={moduleId} settings={settings} />
