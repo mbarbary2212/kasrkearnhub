@@ -91,7 +91,7 @@ export default function ModulePage() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 animate-fade-in">
+      <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
 
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -119,7 +119,7 @@ export default function ModulePage() {
         <div className="flex flex-col md:flex-row">
           {/* Mobile: Horizontal Navigation Tabs */}
           <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-gradient-to-r from-blue-50/80 to-white/60 dark:from-blue-950/20 dark:to-background/60 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 shadow-sm p-1.5">
+            <nav className="flex gap-1.5 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
               {sectionNav.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -165,7 +165,7 @@ export default function ModulePage() {
 
           {/* Desktop: Vertical Navigation Rail */}
           <div className="hidden md:block w-[200px] flex-shrink-0">
-            <nav className="sticky top-4 bg-gradient-to-b from-blue-50/80 to-white/60 dark:from-blue-950/20 dark:to-background/60 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 shadow-sm p-1.5">
+            <nav className="sticky top-4 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
               <div className="flex flex-col gap-0.5">
                 {sectionNav.map((section) => {
                   const Icon = section.icon;
@@ -218,7 +218,7 @@ export default function ModulePage() {
           </div>
 
           {/* Vertical Divider (desktop only) */}
-          <div className="hidden md:block w-px bg-transparent mx-4 self-stretch min-h-[200px] shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)]" />
+          <div className="hidden md:block w-px bg-transparent mx-4 self-stretch min-h-[200px] shadow-[2px_0_12px_-2px_rgba(0,0,0,0.08)]" />
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
