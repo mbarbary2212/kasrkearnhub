@@ -2536,6 +2536,7 @@ export type Database = {
       }
       mock_exam_settings: {
         Row: {
+          blueprint_config: Json | null
           created_at: string
           id: string
           module_id: string
@@ -2545,6 +2546,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          blueprint_config?: Json | null
           created_at?: string
           id?: string
           module_id: string
@@ -2554,6 +2556,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          blueprint_config?: Json | null
           created_at?: string
           id?: string
           module_id?: string

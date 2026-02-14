@@ -9,6 +9,7 @@ export interface MockExamSettings {
   module_id: string;
   question_count: number;
   seconds_per_question: number;
+  blueprint_config: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +68,7 @@ export function useMockExamSettings(moduleId?: string) {
         module_id: moduleId!,
         question_count: globalSettings?.default_question_count ?? 50,
         seconds_per_question: globalSettings?.default_seconds_per_question ?? 60,
+        blueprint_config: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       } as MockExamSettings;
@@ -184,21 +186,27 @@ export function useUpdateMockExamSettings() {
     mutationFn: async ({ 
       moduleId, 
       questionCount, 
-      secondsPerQuestion 
+      secondsPerQuestion,
+      blueprintConfig,
     }: { 
       moduleId: string; 
       questionCount: number; 
       secondsPerQuestion: number;
+      blueprintConfig?: Record<string, unknown> | null;
     }) => {
+      const payload: Record<string, unknown> = {
+        module_id: moduleId,
+        question_count: questionCount,
+        seconds_per_question: secondsPerQuestion,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+      if (blueprintConfig !== undefined) {
+        payload.blueprint_config = blueprintConfig;
+      }
       const { data, error } = await supabase
         .from('mock_exam_settings')
-        .upsert({
-          module_id: moduleId,
-          question_count: questionCount,
-          seconds_per_question: secondsPerQuestion,
-          updated_by: user?.id,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'module_id' })
+        .upsert(payload as any, { onConflict: 'module_id' })
         .select()
         .single();
 

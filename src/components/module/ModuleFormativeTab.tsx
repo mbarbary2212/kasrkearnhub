@@ -173,7 +173,7 @@ export function ModuleFormativeTab({
 
       {/* Admin Settings */}
       {isAdmin && settings && (
-        <MockExamAdminSettings moduleId={moduleId} settings={settings} />
+        <MockExamAdminSettings moduleId={moduleId} settings={settings} chapters={chapters} />
       )}
     </div>
   );
