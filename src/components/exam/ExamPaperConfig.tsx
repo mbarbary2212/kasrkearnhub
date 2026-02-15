@@ -84,6 +84,7 @@ export function ExamPaperConfig({ paper, index, chapters, onChange, onRemove }: 
           <Input value={paper.name} onChange={(e) => update({ name: e.target.value })} />
         </div>
 
+        {/* Question Types and Counts */}
         {isWritten ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
@@ -136,24 +137,7 @@ export function ExamPaperConfig({ paper, index, chapters, onChange, onRemove }: 
           </div>
         )}
 
-        {/* Duration */}
-        <div className="space-y-1">
-          <Label className="text-xs">Duration (minutes)</Label>
-          <Input type="number" min={1} value={paper.duration_minutes} onChange={(e) => update({ duration_minutes: parseInt(e.target.value) || 60 })} />
-        </div>
-
-        {/* Instructions */}
-        <div className="space-y-1">
-          <Label className="text-xs">Instructions</Label>
-          <Textarea
-            value={paper.instructions}
-            onChange={(e) => update({ instructions: e.target.value })}
-            placeholder="Answer all questions..."
-            rows={2}
-          />
-        </div>
-
-        {/* Chapter scope */}
+        {/* Chapter/Book Scope */}
         {chapters.length > 0 && (
           <div className="space-y-1">
             <Label className="text-xs">Chapter Scope</Label>
@@ -164,6 +148,23 @@ export function ExamPaperConfig({ paper, index, chapters, onChange, onRemove }: 
             />
           </div>
         )}
+
+        {/* Duration */}
+        <div className="space-y-1">
+          <Label className="text-xs">Duration (minutes)</Label>
+          <Input type="number" min={1} value={paper.duration_minutes} onChange={(e) => update({ duration_minutes: parseInt(e.target.value) || 60 })} />
+        </div>
+
+        {/* Special Instructions */}
+        <div className="space-y-1">
+          <Label className="text-xs">Special Instructions</Label>
+          <Textarea
+            value={paper.instructions}
+            onChange={(e) => update({ instructions: e.target.value })}
+            placeholder="Answer all questions..."
+            rows={2}
+          />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
