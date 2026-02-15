@@ -1,34 +1,34 @@
 import { useNavigate } from 'react-router-dom';
-import { PaperConfig } from '@/components/exam/ExamPaperConfig';
+import { PaperConfig, ExamPaperConfig } from '@/components/exam/ExamPaperConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   Clock, 
   GraduationCap,
   ChevronRight,
-  ChevronDown,
   History,
   Target,
   Pencil,
   BookOpen,
-  Settings,
-  FileText,
+  Plus,
+  ArrowLeft,
+  Save,
+  Trash2,
 } from 'lucide-react';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleMcqs } from '@/hooks/useMcqs';
 import { 
   useMockExamSettings, 
   useMockExamAttempts, 
+  useUpdateMockExamSettings,
   formatDuration,
 } from '@/hooks/useMockExam';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { MockExamAdminSettings } from '@/components/exam';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface ModuleFormativeTabProps {
   moduleId: string;
@@ -52,11 +52,90 @@ export function ModuleFormativeTab({
   const isAdmin = auth.isPlatformAdmin || auth.isSuperAdmin;
   const isLoading = mcqsLoading || settingsLoading;
 
-  const [existingOpen, setExistingOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const updateSettings = useUpdateMockExamSettings();
 
-  const bp = settings?.blueprint_config as { categories?: string[]; papers?: PaperConfig[] } | null;
-  const papers = bp?.papers || [];
+  // Admin state
+  const [activeCategory, setActiveCategory] = useState<'written' | 'practical'>('written');
+  const [editingPaperIndex, setEditingPaperIndex] = useState<number | null>(null);
+  const [localPapers, setLocalPapers] = useState<PaperConfig[]>([]);
+  const [papersInitialized, setPapersInitialized] = useState(false);
+
+  // Initialize local papers from settings
+  if (!papersInitialized && settings) {
+    const bp = settings.blueprint_config as { papers?: PaperConfig[] } | null;
+    setLocalPapers(bp?.papers || []);
+    setPapersInitialized(true);
+  }
+
+  const writtenPapers = localPapers.filter(p => p.category === 'written');
+  const practicalPapers = localPapers.filter(p => p.category === 'practical');
+  const activePapers = activeCategory === 'written' ? writtenPapers : practicalPapers;
+
+  const totalMarks = useMemo(() => localPapers.reduce((sum, p) => {
+    const c = p.components;
+    if (p.category === 'written') return sum + c.mcq_count * c.mcq_points + c.essay_count * c.essay_points;
+    return sum + (c.osce_count || 0) * (c.osce_points || 0) + (c.clinical_case_count || 0) * (c.clinical_case_points || 0) + (c.poxa_count || 0) * (c.poxa_points || 0);
+  }, 0), [localPapers]);
+
+  const totalMinutes = useMemo(() => localPapers.reduce((s, p) => s + p.duration_minutes, 0), [localPapers]);
+
+  const defaultWrittenComponents = { mcq_count: 50, mcq_points: 1, essay_count: 0, essay_points: 5 };
+  const defaultPracticalComponents = { mcq_count: 0, mcq_points: 0, essay_count: 0, essay_points: 0, osce_count: 15, osce_points: 10, osce_seconds_per_station: 150, clinical_case_count: 2, clinical_case_points: 20, poxa_count: 0, poxa_points: 5 };
+
+  const addPaper = (category: 'written' | 'practical') => {
+    const isWritten = category === 'written';
+    const count = localPapers.filter(p => p.category === category).length;
+    const newPaper: PaperConfig = {
+      name: isWritten ? `Written Paper ${count + 1}` : `OSCE ${count + 1}`,
+      category,
+      order: count + 1,
+      duration_minutes: isWritten ? 180 : 90,
+      instructions: '',
+      chapter_ids: [],
+      question_order: 'essays_first',
+      components: isWritten ? { ...defaultWrittenComponents } : { ...defaultPracticalComponents },
+    };
+    const updated = [...localPapers, newPaper];
+    setLocalPapers(updated);
+    setEditingPaperIndex(updated.length - 1);
+  };
+
+  const removePaper = (globalIdx: number) => {
+    setLocalPapers(localPapers.filter((_, i) => i !== globalIdx));
+    setEditingPaperIndex(null);
+  };
+
+  const updatePaper = (globalIdx: number, paper: PaperConfig) => {
+    const next = [...localPapers];
+    next[globalIdx] = paper;
+    setLocalPapers(next);
+  };
+
+  const handleSave = () => {
+    const categories: string[] = [];
+    if (writtenPapers.length > 0) categories.push('written');
+    if (practicalPapers.length > 0) categories.push('practical');
+
+    const blueprintConfig = localPapers.length > 0
+      ? { categories, papers: localPapers.map((p, i) => ({ ...p, order: i + 1 })) }
+      : null;
+
+    updateSettings.mutate({
+      moduleId,
+      questionCount: settings?.question_count ?? 50,
+      secondsPerQuestion: settings?.seconds_per_question ?? 60,
+      blueprintConfig,
+    });
+  };
+
+  const calcPaperMarks = (paper: PaperConfig) => {
+    const c = paper.components;
+    if (paper.category === 'written') return c.mcq_count * c.mcq_points + c.essay_count * c.essay_points;
+    return (c.osce_count || 0) * (c.osce_points || 0) + (c.clinical_case_count || 0) * (c.clinical_case_points || 0) + (c.poxa_count || 0) * (c.poxa_points || 0);
+  };
+
+  // Get global index for a paper shown in the active category
+  const getGlobalIndex = (categoryPaper: PaperConfig) => localPapers.indexOf(categoryPaper);
 
   if (isLoading) {
     return (
@@ -72,123 +151,97 @@ export function ModuleFormativeTab({
 
   // ── ADMIN VIEW ──
   if (isAdmin) {
+    // Editing a single paper
+    if (editingPaperIndex !== null && localPapers[editingPaperIndex]) {
+      const paper = localPapers[editingPaperIndex];
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setEditingPaperIndex(null)} className="gap-1">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <h3 className="text-lg font-semibold flex-1">{paper.name || 'Untitled Paper'}</h3>
+            <Button variant="destructive" size="sm" onClick={() => removePaper(editingPaperIndex)} className="gap-1">
+              <Trash2 className="w-3.5 h-3.5" /> Remove
+            </Button>
+          </div>
+
+          <ExamPaperConfig
+            paper={paper}
+            index={editingPaperIndex}
+            chapters={chapters || []}
+            onChange={(updated) => updatePaper(editingPaperIndex, updated)}
+            onRemove={() => removePaper(editingPaperIndex)}
+          />
+
+          <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2 w-full sm:w-auto">
+            <Save className="w-4 h-4" />
+            {updateSettings.isPending ? 'Saving...' : 'Save Settings'}
+          </Button>
+        </div>
+      );
+    }
+
+    // Main tabbed view
     return (
       <div className="space-y-6">
-        <div className="text-center mb-6">
+        <div className="text-center mb-2">
           <h2 className="text-xl font-semibold mb-2">Exam Management</h2>
-          <p className="text-muted-foreground text-sm">
-            Configure exam blueprints for students
-          </p>
+          <p className="text-muted-foreground text-sm">Configure exam blueprints for students</p>
         </div>
 
-        {/* Existing Exam Papers - Collapsible */}
-        <Collapsible open={existingOpen} onOpenChange={setExistingOpen}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Existing Exam Papers
-                    {papers.length > 0 && (
-                      <Badge variant="secondary" className="ml-1">{papers.length}</Badge>
-                    )}
-                  </CardTitle>
-                  {existingOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                </div>
-                <CardDescription>
-                  {papers.length > 0 
-                    ? 'Review the exam papers currently configured for students' 
-                    : 'No exam papers configured yet'}
-                </CardDescription>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="space-y-3 pt-0">
-                {papers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    No papers yet. Use the Blueprint Settings below to create exam papers.
-                  </p>
-                ) : (
-                  papers.map((paper, idx) => {
-                    const c = paper.components;
-                    const isWritten = paper.category === 'written';
-                    const totalMarks = isWritten
-                      ? c.mcq_count * c.mcq_points + c.essay_count * c.essay_points
-                      : (c.osce_count || 0) * (c.osce_points || 0) +
-                        (c.clinical_case_count || 0) * (c.clinical_case_points || 0) +
-                        (c.poxa_count || 0) * (c.poxa_points || 0);
+        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as 'written' | 'practical')}>
+          <TabsList className="w-full">
+            <TabsTrigger value="written" className="flex-1 gap-1">
+              Written
+              {writtenPapers.length > 0 && <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">{writtenPapers.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="practical" className="flex-1 gap-1">
+              Practical
+              {practicalPapers.length > 0 && <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">{practicalPapers.length}</Badge>}
+            </TabsTrigger>
+          </TabsList>
 
-                    return (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{paper.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {isWritten ? 'Written' : 'Practical'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <Target className="w-3 h-3" />
-                            {totalMarks} marks
-                          </Badge>
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <Clock className="w-3 h-3" />
-                            {paper.duration_minutes} min
-                          </Badge>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSettingsOpen(true);
-                                }}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit Blueprint</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
+          <TabsContent value="written">
+            <AdminPaperList
+              papers={writtenPapers}
+              category="written"
+              onEdit={(paper) => setEditingPaperIndex(getGlobalIndex(paper))}
+              onAdd={() => addPaper('written')}
+              calcMarks={calcPaperMarks}
+            />
+          </TabsContent>
 
-        {/* Blueprint Settings - Collapsible */}
-        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/30 transition-colors">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
-                    Blueprint Settings
-                  </CardTitle>
-                  {settingsOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                </div>
-                <CardDescription>Create or edit exam blueprints</CardDescription>
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3">
-            {settings && (
-              <MockExamAdminSettings moduleId={moduleId} settings={settings} chapters={chapters} />
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+          <TabsContent value="practical">
+            <AdminPaperList
+              papers={practicalPapers}
+              category="practical"
+              onEdit={(paper) => setEditingPaperIndex(getGlobalIndex(paper))}
+              onAdd={() => addPaper('practical')}
+              calcMarks={calcPaperMarks}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* Summary */}
+        {localPapers.length > 0 && (
+          <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
+            <Badge variant="secondary" className="gap-1">
+              <Target className="w-3 h-3" /> {totalMarks} Total Marks
+            </Badge>
+            <Badge variant="secondary" className="gap-1">
+              <Clock className="w-3 h-3" /> {totalMinutes} min Total
+            </Badge>
+            <Badge variant="secondary">
+              {localPapers.length} Paper{localPapers.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        )}
+
+        <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2 w-full sm:w-auto">
+          <Save className="w-4 h-4" />
+          {updateSettings.isPending ? 'Saving...' : 'Save Settings'}
+        </Button>
       </div>
     );
   }
@@ -204,7 +257,7 @@ export function ModuleFormativeTab({
       </div>
 
       {/* Blueprint Final Exam Cards */}
-      {papers.length === 0 && (
+      {localPapers.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center">
             <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
@@ -215,7 +268,7 @@ export function ModuleFormativeTab({
         </Card>
       )}
 
-      {papers.map((paper, idx) => {
+      {localPapers.map((paper, idx) => {
         const c = paper.components;
         const isWritten = paper.category === 'written';
         const totalMarks = isWritten
@@ -313,5 +366,61 @@ export function ModuleFormativeTab({
         </Card>
       )}
     </div>
+  );
+}
+
+// ── Admin Paper List sub-component ──
+function AdminPaperList({
+  papers,
+  category,
+  onEdit,
+  onAdd,
+  calcMarks,
+}: {
+  papers: PaperConfig[];
+  category: 'written' | 'practical';
+  onEdit: (paper: PaperConfig) => void;
+  onAdd: () => void;
+  calcMarks: (paper: PaperConfig) => number;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">
+            {category === 'written' ? 'Written' : 'Practical'} Papers
+          </CardTitle>
+          <Button variant="outline" size="sm" className="gap-1 h-8 text-xs" onClick={onAdd}>
+            <Plus className="w-3 h-3" /> New Paper
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 pt-0">
+        {papers.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No {category} papers yet. Click "New Paper" to create one.
+          </p>
+        ) : (
+          papers.map((paper, idx) => (
+            <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{paper.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {calcMarks(paper)} marks · {paper.duration_minutes} min
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(paper)} className="gap-1">
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </Button>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
