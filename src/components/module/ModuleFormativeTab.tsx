@@ -78,12 +78,12 @@ export function ModuleFormativeTab({
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold mb-2">Formative Assessment</h2>
         <p className="text-muted-foreground text-sm">
-          Test your knowledge with timed exams or chapter-level practice
+          Test your knowledge with timed exam simulations
         </p>
       </div>
 
-      {/* Mock Timed Exam Card - Full Module */}
-      <Card className="hover:shadow-md transition-all">
+      {/* Mock Timed Exam Card - Full Module (Admin only) */}
+      {isAdmin && <Card className="hover:shadow-md transition-all">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -127,7 +127,7 @@ export function ModuleFormativeTab({
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Blueprint Final Exam Cards */}
       {(() => {
