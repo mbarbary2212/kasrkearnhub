@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Clock, 
@@ -12,6 +13,7 @@ import {
   ChevronDown,
   History,
   Target,
+  Pencil,
   BookOpen,
   Settings,
   FileText,
@@ -130,7 +132,7 @@ export function ModuleFormativeTab({
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="gap-1 text-xs">
                             <Target className="w-3 h-3" />
                             {totalMarks} marks
@@ -139,6 +141,19 @@ export function ModuleFormativeTab({
                             <Clock className="w-3 h-3" />
                             {paper.duration_minutes} min
                           </Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setSettingsOpen(true)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Blueprint</TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     );
