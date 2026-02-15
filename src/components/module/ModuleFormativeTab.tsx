@@ -147,7 +147,10 @@ export function ModuleFormativeTab({
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => setSettingsOpen(true)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSettingsOpen(true);
+                                }}
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </Button>
