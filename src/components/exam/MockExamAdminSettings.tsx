@@ -45,6 +45,7 @@ function makePaper(category: 'written' | 'practical', order: number): PaperConfi
     duration_minutes: category === 'written' ? 180 : 90,
     instructions: '',
     chapter_ids: [],
+    question_order: 'essays_first',
     components: category === 'written' ? { ...defaultWrittenComponents } : { ...defaultPracticalComponents },
   };
 }

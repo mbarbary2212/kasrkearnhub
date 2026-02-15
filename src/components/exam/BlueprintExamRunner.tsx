@@ -94,10 +94,8 @@ export function BlueprintExamRunner({
 
   const autosaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Build ordered exam items: MCQs first, then Essays
+  // Build ordered exam items based on admin-configured question_order
   const examItems = useMemo<ExamItem[]>(() => {
-    const items: ExamItem[] = [];
-
     // Select MCQs based on chapter scope
     let filteredMcqs = mcqs;
     if (paper.chapter_ids.length > 0) {
@@ -105,7 +103,7 @@ export function BlueprintExamRunner({
     }
     const shuffledMcqs = [...filteredMcqs].sort(() => Math.random() - 0.5);
     const selectedMcqs = shuffledMcqs.slice(0, paper.components.mcq_count);
-    selectedMcqs.forEach(m => items.push({ type: 'mcq', id: m.id, data: m }));
+    const mcqItems: ExamItem[] = selectedMcqs.map(m => ({ type: 'mcq', id: m.id, data: m }));
 
     // Select Essays based on chapter scope
     let filteredEssays = essays;
@@ -114,9 +112,25 @@ export function BlueprintExamRunner({
     }
     const shuffledEssays = [...filteredEssays].sort(() => Math.random() - 0.5);
     const selectedEssays = shuffledEssays.slice(0, paper.components.essay_count);
-    selectedEssays.forEach(e => items.push({ type: 'essay', id: e.id, data: e }));
+    const essayExamItems: ExamItem[] = selectedEssays.map(e => ({ type: 'essay', id: e.id, data: e }));
 
-    return items;
+    const order = paper.question_order || 'essays_first';
+    if (order === 'essays_first') {
+      return [...essayExamItems, ...mcqItems];
+    } else if (order === 'mcqs_first') {
+      return [...mcqItems, ...essayExamItems];
+    } else {
+      // mixed: interleave
+      const mixed: ExamItem[] = [];
+      const a = essayExamItems;
+      const b = mcqItems;
+      const maxLen = Math.max(a.length, b.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < a.length) mixed.push(a[i]);
+        if (i < b.length) mixed.push(b[i]);
+      }
+      return mixed;
+    }
   }, [mcqs, essays, paper]);
 
   const mcqItems = examItems.filter(i => i.type === 'mcq');
