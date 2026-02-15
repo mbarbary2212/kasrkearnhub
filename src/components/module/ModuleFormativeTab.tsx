@@ -82,53 +82,6 @@ export function ModuleFormativeTab({
         </p>
       </div>
 
-      {/* Mock Timed Exam Card - Full Module (Admin only) */}
-      {isAdmin && <Card className="hover:shadow-md transition-all">
-        <CardHeader className="pb-3">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-7 h-7 text-primary" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-lg">Full Module Mock Exam</CardTitle>
-              <CardDescription className="mt-1">
-                Simulate real exam conditions with a timed MCQ assessment
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {hasEnoughQuestions ? (
-            <>
-              <div className="flex flex-wrap gap-3">
-                <Badge variant="secondary" className="gap-1">
-                  <Target className="w-3 h-3" />
-                  {questionCount} Questions
-                </Badge>
-                <Badge variant="secondary" className="gap-1">
-                  <Clock className="w-3 h-3" />
-                  {formatDuration(totalTime)}
-                </Badge>
-              </div>
-              <Button onClick={handleStartExam} className="w-full gap-2">
-                <ClipboardCheck className="w-4 h-4" />
-                Start Exam
-                <ChevronRight className="w-4 h-4 ml-auto" />
-              </Button>
-            </>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground text-sm">
-                Mock exam is not available yet for this module.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                No MCQ questions have been added.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>}
-
       {/* Blueprint Final Exam Cards */}
       {(() => {
         const bp = settings?.blueprint_config as { categories?: string[]; papers?: PaperConfig[] } | null;
