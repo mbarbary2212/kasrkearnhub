@@ -20,6 +20,7 @@ import ModulePage from "./pages/ModulePage";
 import ChapterPage from "./pages/ChapterPage";
 import TopicDetailPage from "./pages/TopicDetailPage";
 import MockExamPage from "./pages/MockExamPage";
+import BlueprintExamPage from "./pages/BlueprintExamPage";
 import AdminPage from "./pages/AdminPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import AdminInboxPage from "./pages/AdminInboxPage";
@@ -82,6 +83,7 @@ const App = () => {
                 <Route path="/year/:yearId" element={<YearPage />} />
                 <Route path="/module/:moduleId" element={<ModulePage />} />
                 <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
+                <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<BlueprintExamPage />} />
                 <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
                 <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
                 <Route path="/admin" element={<AdminPage />} />

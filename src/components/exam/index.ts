@@ -12,5 +12,6 @@ export { OsceExamResults } from './OsceExamResults';
 export { HardModeOsceQuestion } from './HardModeOsceQuestion';
 export { EssayAnswerQuestion } from './EssayAnswerQuestion';
 export { ExamCoverPage } from './ExamCoverPage';
+export { BlueprintExamRunner } from './BlueprintExamRunner';
 export type { EssayAnswer } from './EssayAnswerQuestion';
 export type { TestMode } from './TestModeSelector';

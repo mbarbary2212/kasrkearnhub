@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { PaperConfig } from '@/components/exam/ExamPaperConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -127,6 +128,68 @@ export function ModuleFormativeTab({
           )}
         </CardContent>
       </Card>
+
+      {/* Blueprint Final Exam Cards */}
+      {(() => {
+        const bp = settings?.blueprint_config as { categories?: string[]; papers?: PaperConfig[] } | null;
+        const papers = bp?.papers || [];
+        if (papers.length === 0) return null;
+
+        return papers.map((paper, idx) => {
+          const c = paper.components;
+          const isWritten = paper.category === 'written';
+          const totalMarks = isWritten
+            ? c.mcq_count * c.mcq_points + c.essay_count * c.essay_points
+            : (c.osce_count || 0) * (c.osce_points || 0) +
+              (c.clinical_case_count || 0) * (c.clinical_case_points || 0) +
+              (c.poxa_count || 0) * (c.poxa_points || 0);
+
+          return (
+            <Card key={idx} className="hover:shadow-md transition-all border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-7 h-7 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{paper.name}</CardTitle>
+                    <CardDescription className="mt-1">
+                      Final Exam Simulator · {paper.category === 'written' ? 'Written' : 'Practical'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Badge variant="secondary" className="gap-1">
+                    <Target className="w-3 h-3" />
+                    {totalMarks} Marks
+                  </Badge>
+                  <Badge variant="secondary" className="gap-1">
+                    <Clock className="w-3 h-3" />
+                    {paper.duration_minutes} min
+                  </Badge>
+                  {isWritten && c.mcq_count > 0 && (
+                    <Badge variant="outline">{c.mcq_count} MCQs</Badge>
+                  )}
+                  {isWritten && c.essay_count > 0 && (
+                    <Badge variant="outline">{c.essay_count} Essays</Badge>
+                  )}
+                </div>
+                <Button
+                  onClick={() => navigate(`/module/${moduleId}/blueprint-exam/${idx}`)}
+                  className="w-full gap-2"
+                  variant="default"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  Start Exam
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        });
+      })()}
 
       {/* Previous Attempts */}
       {!attemptsLoading && attempts && attempts.length > 0 && (
