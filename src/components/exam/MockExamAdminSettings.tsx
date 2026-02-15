@@ -140,26 +140,8 @@ export function MockExamAdminSettings({ moduleId, settings, chapters = [] }: Moc
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Legacy simple settings */}
-        <div>
-          <h4 className="text-sm font-medium mb-3">Practice Mock Exam</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="questionCount" className="text-xs">Number of Questions</Label>
-              <Input id="questionCount" type="number" min={1} max={200} value={questionCount} onChange={(e) => setQuestionCount(parseInt(e.target.value) || 50)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="secondsPerQuestion" className="text-xs">Seconds per Question</Label>
-              <Input id="secondsPerQuestion" type="number" min={10} max={300} value={secondsPerQuestion} onChange={(e) => setSecondsPerQuestion(parseInt(e.target.value) || 60)} />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Total: {Math.floor((questionCount * secondsPerQuestion) / 60)} minutes
-          </p>
-        </div>
-
         {/* Blueprint Section */}
-        <div className="border-t pt-4">
+        <div>
           <h4 className="text-sm font-medium mb-3">Final Exam Blueprint</h4>
 
           {/* Category toggles */}
