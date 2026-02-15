@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   Save,
   Trash2,
+  Eye,
+  BarChart3,
 } from 'lucide-react';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleMcqs } from '@/hooks/useMcqs';
@@ -29,6 +31,7 @@ import {
 import { useAuthContext } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { useState, useMemo } from 'react';
+import { AdminExamResultsTab } from '@/components/exam/AdminExamResultsTab';
 
 interface ModuleFormativeTabProps {
   moduleId: string;
@@ -55,7 +58,7 @@ export function ModuleFormativeTab({
   const updateSettings = useUpdateMockExamSettings();
 
   // Admin state
-  const [activeCategory, setActiveCategory] = useState<'written' | 'practical'>('written');
+  const [activeCategory, setActiveCategory] = useState<'written' | 'practical' | 'results'>('written');
   const [editingPaperIndex, setEditingPaperIndex] = useState<number | null>(null);
   const [localPapers, setLocalPapers] = useState<PaperConfig[]>([]);
   const [papersInitialized, setPapersInitialized] = useState(false);
@@ -191,7 +194,7 @@ export function ModuleFormativeTab({
           <p className="text-muted-foreground text-sm">Configure exam blueprints for students</p>
         </div>
 
-        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as 'written' | 'practical')}>
+        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as 'written' | 'practical' | 'results')}>
           <TabsList className="w-full">
             <TabsTrigger value="written" className="flex-1 gap-1">
               Written
@@ -200,6 +203,10 @@ export function ModuleFormativeTab({
             <TabsTrigger value="practical" className="flex-1 gap-1">
               Practical
               {practicalPapers.length > 0 && <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">{practicalPapers.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="results" className="flex-1 gap-1">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Results
             </TabsTrigger>
           </TabsList>
 
@@ -221,6 +228,10 @@ export function ModuleFormativeTab({
               onAdd={() => addPaper('practical')}
               calcMarks={calcPaperMarks}
             />
+          </TabsContent>
+
+          <TabsContent value="results">
+            <AdminExamResultsTab moduleId={moduleId} />
           </TabsContent>
         </Tabs>
 
@@ -369,11 +380,22 @@ export function ModuleFormativeTab({
                       </p>
                       <p className="text-xs text-muted-foreground">{date}</p>
                     </div>
-                    {attempt.duration_seconds && (
-                      <Badge variant="outline">
-                        {formatDuration(attempt.duration_seconds)}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {attempt.duration_seconds && (
+                        <Badge variant="outline">
+                          {formatDuration(attempt.duration_seconds)}
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => navigate(`/module/${moduleId}/exam-results/${attempt.id}`)}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

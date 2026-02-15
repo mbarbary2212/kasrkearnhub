@@ -24,6 +24,8 @@ import {
 import { Clock, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDuration, useCreateMockExamAttempt, useSubmitMockExam } from '@/hooks/useMockExam';
+import { gradeWithRubric } from '@/lib/rubricMarking';
+import { VPRubric } from '@/types/virtualPatient';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { toast } from '@/hooks/use-toast';
 
@@ -298,17 +300,75 @@ export function BlueprintExamRunner({
   }, [phase, performAutosave]);
 
   // === SCORE CALCULATION ===
-  const calculateScore = useCallback(() => {
-    let score = 0;
+  const calculateScoreAndMarkEssays = useCallback(async () => {
+    let mcqScore = 0;
     mcqItems.forEach(item => {
       const mcq = item.data as Mcq;
       if (mcqAnswers[item.id] === mcq.correct_key) {
-        score += paper.components.mcq_points;
+        mcqScore += paper.components.mcq_points;
       }
     });
-    // Essay scoring would be done later (rubric-based), for now count answered ones
-    return score;
-  }, [mcqItems, mcqAnswers, paper.components.mcq_points]);
+
+    // Auto-mark essays using rubric engine
+    let essayScore = 0;
+    const essayMarkingRows: Array<{ question_id: string; score: number; max_score: number; marking_feedback: Record<string, unknown>; marked_at: string }> = [];
+
+    for (const item of essayItems) {
+      const essay = item.data as Essay;
+      const answer = essayAnswers[item.id];
+      const answerText = answer?.typed_text || answer?.typed_summary || '';
+      const maxPoints = paper.components.essay_points;
+
+      if (essay.keywords && essay.keywords.length > 0 && answerText.trim()) {
+        const rubric: VPRubric = {
+          required_concepts: essay.keywords,
+          optional_concepts: [],
+        };
+        const result = gradeWithRubric(answerText, rubric);
+        const points = Math.round(result.score * maxPoints);
+        essayScore += points;
+
+        essayMarkingRows.push({
+          question_id: item.id,
+          score: points,
+          max_score: maxPoints,
+          marking_feedback: {
+            matched_required: result.matched_required,
+            missing_required: result.missing_required,
+            matched_optional: result.matched_optional,
+            rubric_score: result.score,
+          },
+          marked_at: new Date().toISOString(),
+        });
+      } else {
+        essayMarkingRows.push({
+          question_id: item.id,
+          score: 0,
+          max_score: maxPoints,
+          marking_feedback: { matched_required: [], missing_required: essay.keywords || [], matched_optional: [] },
+          marked_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Update essay answers with scores
+    if (attemptId && essayMarkingRows.length > 0) {
+      for (const row of essayMarkingRows) {
+        await supabase
+          .from('exam_attempt_answers')
+          .update({
+            score: row.score,
+            max_score: row.max_score,
+            marking_feedback: row.marking_feedback as any,
+            marked_at: row.marked_at,
+          })
+          .eq('attempt_id', attemptId)
+          .eq('question_id', row.question_id);
+      }
+    }
+
+    return mcqScore + essayScore;
+  }, [mcqItems, essayItems, mcqAnswers, essayAnswers, paper.components, attemptId]);
 
   // === START EXAM ===
   const handleStart = async () => {
@@ -331,11 +391,11 @@ export function BlueprintExamRunner({
   const handleSubmit = async () => {
     if (!attemptId || !startTime) return;
 
-    const score = calculateScore();
-    const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
-
     // Final autosave
     await performAutosave();
+
+    const score = await calculateScoreAndMarkEssays();
+    const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
 
     try {
       await submitExam.mutateAsync({
@@ -355,10 +415,11 @@ export function BlueprintExamRunner({
 
   const handleAutoSubmit = async () => {
     if (!attemptId || !startTime || phase !== 'in-progress') return;
-    const score = calculateScore();
-    const duration = paper.duration_minutes * 60;
 
     await performAutosave();
+
+    const score = await calculateScoreAndMarkEssays();
+    const duration = paper.duration_minutes * 60;
 
     try {
       await submitExam.mutateAsync({
