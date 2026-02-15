@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -23,6 +24,8 @@ export interface PaperComponents {
   poxa_points?: number;
 }
 
+export type QuestionOrder = 'essays_first' | 'mcqs_first' | 'mixed';
+
 export interface PaperConfig {
   name: string;
   category: 'written' | 'practical';
@@ -30,6 +33,7 @@ export interface PaperConfig {
   duration_minutes: number;
   instructions: string;
   chapter_ids: string[];
+  question_order: QuestionOrder;
   components: PaperComponents;
 }
 
@@ -146,6 +150,23 @@ export function ExamPaperConfig({ paper, index, chapters, onChange, onRemove }: 
               selectedIds={paper.chapter_ids}
               onChange={(ids) => update({ chapter_ids: ids })}
             />
+          </div>
+        )}
+
+        {/* Question Order */}
+        {isWritten && (
+          <div className="space-y-1">
+            <Label className="text-xs">Question Arrangement</Label>
+            <Select value={paper.question_order || 'essays_first'} onValueChange={(v) => update({ question_order: v as PaperConfig['question_order'] })}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="essays_first">Essays First, then MCQs</SelectItem>
+                <SelectItem value="mcqs_first">MCQs First, then Essays</SelectItem>
+                <SelectItem value="mixed">Mixed / Interleaved</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
