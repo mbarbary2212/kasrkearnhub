@@ -59,6 +59,7 @@ export function ModuleFormativeTab({
   const [editingPaperIndex, setEditingPaperIndex] = useState<number | null>(null);
   const [localPapers, setLocalPapers] = useState<PaperConfig[]>([]);
   const [papersInitialized, setPapersInitialized] = useState(false);
+  const [studentTab, setStudentTab] = useState<'written' | 'practical'>('written');
 
   // Initialize local papers from settings
   if (!papersInitialized && settings) {
@@ -247,82 +248,97 @@ export function ModuleFormativeTab({
   }
 
   // ── STUDENT VIEW ──
-  return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold mb-2">Formative Assessment</h2>
-        <p className="text-muted-foreground text-sm">
-          Test your knowledge with timed exam simulations
-        </p>
-      </div>
+  const studentWritten = localPapers.filter(p => p.category === 'written');
+  const studentPractical = localPapers.filter(p => p.category === 'practical');
 
-      {/* Blueprint Final Exam Cards */}
-      {localPapers.length === 0 && (
+  const renderStudentPapers = (paperList: PaperConfig[]) => {
+    if (paperList.length === 0) {
+      return (
         <Card>
           <CardContent className="py-8 text-center">
             <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground text-sm">
-              No exams are available for this module yet.
+              No exams available in this category yet.
             </p>
           </CardContent>
         </Card>
+      );
+    }
+    return paperList.map((paper) => {
+      const globalIdx = localPapers.indexOf(paper);
+      const c = paper.components;
+      const isWritten = paper.category === 'written';
+      const marks = isWritten
+        ? c.mcq_count * c.mcq_points + c.essay_count * c.essay_points
+        : (c.osce_count || 0) * (c.osce_points || 0) +
+          (c.clinical_case_count || 0) * (c.clinical_case_points || 0) +
+          (c.poxa_count || 0) * (c.poxa_points || 0);
+
+      return (
+        <Card key={globalIdx} className="hover:shadow-md transition-all border-primary/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                <BookOpen className="w-7 h-7 text-primary" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-lg">{paper.name}</CardTitle>
+                <CardDescription className="mt-1">Final Exam Simulator</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <Badge variant="secondary" className="gap-1"><Target className="w-3 h-3" />{marks} Marks</Badge>
+              <Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" />{paper.duration_minutes} min</Badge>
+              {isWritten && c.mcq_count > 0 && <Badge variant="outline">{c.mcq_count} MCQs</Badge>}
+              {isWritten && c.essay_count > 0 && <Badge variant="outline">{c.essay_count} Essays</Badge>}
+            </div>
+            <Button onClick={() => navigate(`/module/${moduleId}/blueprint-exam/${globalIdx}`)} className="w-full gap-2" variant="default">
+              <GraduationCap className="w-4 h-4" />
+              Start Exam
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-2">
+        <h2 className="text-xl font-semibold mb-2">Formative Assessment</h2>
+        <p className="text-muted-foreground text-sm">Test your knowledge with timed exam simulations</p>
+      </div>
+
+      {localPapers.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <GraduationCap className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">No exams are available for this module yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Tabs value={studentTab} onValueChange={(v) => setStudentTab(v as 'written' | 'practical')}>
+          <TabsList className="w-full">
+            <TabsTrigger value="written" className="flex-1">
+              Written
+              {studentWritten.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{studentWritten.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="practical" className="flex-1">
+              Practical
+              {studentPractical.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{studentPractical.length}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="written" className="space-y-4">
+            {renderStudentPapers(studentWritten)}
+          </TabsContent>
+          <TabsContent value="practical" className="space-y-4">
+            {renderStudentPapers(studentPractical)}
+          </TabsContent>
+        </Tabs>
       )}
-
-      {localPapers.map((paper, idx) => {
-        const c = paper.components;
-        const isWritten = paper.category === 'written';
-        const totalMarks = isWritten
-          ? c.mcq_count * c.mcq_points + c.essay_count * c.essay_points
-          : (c.osce_count || 0) * (c.osce_points || 0) +
-            (c.clinical_case_count || 0) * (c.clinical_case_points || 0) +
-            (c.poxa_count || 0) * (c.poxa_points || 0);
-
-        return (
-          <Card key={idx} className="hover:shadow-md transition-all border-primary/20">
-            <CardHeader className="pb-3">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{paper.name}</CardTitle>
-                  <CardDescription className="mt-1">
-                    Final Exam Simulator · {isWritten ? 'Written' : 'Practical'}
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                <Badge variant="secondary" className="gap-1">
-                  <Target className="w-3 h-3" />
-                  {totalMarks} Marks
-                </Badge>
-                <Badge variant="secondary" className="gap-1">
-                  <Clock className="w-3 h-3" />
-                  {paper.duration_minutes} min
-                </Badge>
-                {isWritten && c.mcq_count > 0 && (
-                  <Badge variant="outline">{c.mcq_count} MCQs</Badge>
-                )}
-                {isWritten && c.essay_count > 0 && (
-                  <Badge variant="outline">{c.essay_count} Essays</Badge>
-                )}
-              </div>
-              <Button
-                onClick={() => navigate(`/module/${moduleId}/blueprint-exam/${idx}`)}
-                className="w-full gap-2"
-                variant="default"
-              >
-                <GraduationCap className="w-4 h-4" />
-                Start Exam
-                <ChevronRight className="w-4 h-4 ml-auto" />
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      })}
-
       {/* Previous Attempts */}
       {!attemptsLoading && attempts && attempts.length > 0 && (
         <Card>
