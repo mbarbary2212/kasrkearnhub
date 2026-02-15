@@ -10,4 +10,7 @@ export { OsceTimedExam } from './OsceTimedExam';
 export { OsceExamQuestion } from './OsceExamQuestion';
 export { OsceExamResults } from './OsceExamResults';
 export { HardModeOsceQuestion } from './HardModeOsceQuestion';
+export { EssayAnswerQuestion } from './EssayAnswerQuestion';
+export { ExamCoverPage } from './ExamCoverPage';
+export type { EssayAnswer } from './EssayAnswerQuestion';
 export type { TestMode } from './TestModeSelector';

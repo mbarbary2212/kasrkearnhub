@@ -1368,6 +1368,74 @@ export type Database = {
           },
         ]
       }
+      exam_attempt_answers: {
+        Row: {
+          answer_mode: string | null
+          attempt_id: string
+          created_at: string
+          finalized_at: string | null
+          handwriting_data: string | null
+          id: string
+          is_finalized: boolean
+          last_autosave_at: string | null
+          max_score: number | null
+          question_id: string
+          question_type: string
+          revision_count: number
+          score: number | null
+          selected_key: string | null
+          typed_summary: string | null
+          typed_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          answer_mode?: string | null
+          attempt_id: string
+          created_at?: string
+          finalized_at?: string | null
+          handwriting_data?: string | null
+          id?: string
+          is_finalized?: boolean
+          last_autosave_at?: string | null
+          max_score?: number | null
+          question_id: string
+          question_type?: string
+          revision_count?: number
+          score?: number | null
+          selected_key?: string | null
+          typed_summary?: string | null
+          typed_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answer_mode?: string | null
+          attempt_id?: string
+          created_at?: string
+          finalized_at?: string | null
+          handwriting_data?: string | null
+          id?: string
+          is_finalized?: boolean
+          last_autosave_at?: string | null
+          max_score?: number | null
+          question_id?: string
+          question_type?: string
+          revision_count?: number
+          score?: number | null
+          selected_key?: string | null
+          typed_summary?: string | null
+          typed_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "mock_exam_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           admin_notes: string | null

@@ -61,16 +61,24 @@ export function MockExamAdminSettings({ moduleId, settings, chapters = [] }: Moc
   const [practicalEnabled, setPracticalEnabled] = useState(false);
   const [papers, setPapers] = useState<PaperConfig[]>([]);
 
+  // Essay settings
+  const [handwritingEnabled, setHandwritingEnabled] = useState(true);
+  const [revisionEnabled, setRevisionEnabled] = useState(true);
+  const [maxRevisions, setMaxRevisions] = useState(1);
+
   // Initialize from saved blueprint_config
   useEffect(() => {
     setQuestionCount(settings.question_count);
     setSecondsPerQuestion(settings.seconds_per_question);
 
-    const bp = settings.blueprint_config as { categories?: string[]; papers?: PaperConfig[] } | null;
+    const bp = settings.blueprint_config as { categories?: string[]; papers?: PaperConfig[]; essay_settings?: { handwriting_enabled?: boolean; revision_enabled?: boolean; max_revisions?: number } } | null;
     if (bp) {
       setWrittenEnabled(bp.categories?.includes('written') ?? false);
       setPracticalEnabled(bp.categories?.includes('practical') ?? false);
       setPapers(bp.papers ?? []);
+      setHandwritingEnabled(bp.essay_settings?.handwriting_enabled ?? true);
+      setRevisionEnabled(bp.essay_settings?.revision_enabled ?? true);
+      setMaxRevisions(bp.essay_settings?.max_revisions ?? 1);
     }
   }, [settings]);
 
@@ -115,7 +123,15 @@ export function MockExamAdminSettings({ moduleId, settings, chapters = [] }: Moc
     if (practicalEnabled) categories.push('practical');
 
     const blueprintConfig = categories.length > 0
-      ? { categories, papers: papers.map((p, i) => ({ ...p, order: i + 1 })) }
+      ? {
+          categories,
+          papers: papers.map((p, i) => ({ ...p, order: i + 1 })),
+          essay_settings: {
+            handwriting_enabled: handwritingEnabled,
+            revision_enabled: revisionEnabled,
+            max_revisions: maxRevisions,
+          },
+        }
       : null;
 
     updateSettings.mutate({
@@ -224,6 +240,45 @@ export function MockExamAdminSettings({ moduleId, settings, chapters = [] }: Moc
               <Badge variant="secondary">
                 {papers.length} Paper{papers.length !== 1 ? 's' : ''}
               </Badge>
+            </div>
+          )}
+
+          {/* Essay Answer Settings */}
+          {hasBlueprintCategories && (
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-medium">Essay Answer Settings</h4>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hw-enabled"
+                    checked={handwritingEnabled}
+                    onCheckedChange={(v) => setHandwritingEnabled(!!v)}
+                  />
+                  <Label htmlFor="hw-enabled" className="text-sm">Enable handwriting mode for essays</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="rev-enabled"
+                    checked={revisionEnabled}
+                    onCheckedChange={(v) => setRevisionEnabled(!!v)}
+                  />
+                  <Label htmlFor="rev-enabled" className="text-sm">Allow answer revision after finalizing</Label>
+                </div>
+                {revisionEnabled && (
+                  <div className="space-y-1 ml-6">
+                    <Label htmlFor="max-rev" className="text-xs">Max revisions per answer</Label>
+                    <Input
+                      id="max-rev"
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={maxRevisions}
+                      onChange={(e) => setMaxRevisions(parseInt(e.target.value) || 1)}
+                      className="w-20"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
