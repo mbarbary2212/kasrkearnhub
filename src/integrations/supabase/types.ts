@@ -1378,6 +1378,8 @@ export type Database = {
           id: string
           is_finalized: boolean
           last_autosave_at: string | null
+          marked_at: string | null
+          marking_feedback: Json | null
           max_score: number | null
           question_id: string
           question_type: string
@@ -1397,6 +1399,8 @@ export type Database = {
           id?: string
           is_finalized?: boolean
           last_autosave_at?: string | null
+          marked_at?: string | null
+          marking_feedback?: Json | null
           max_score?: number | null
           question_id: string
           question_type?: string
@@ -1416,6 +1420,8 @@ export type Database = {
           id?: string
           is_finalized?: boolean
           last_autosave_at?: string | null
+          marked_at?: string | null
+          marking_feedback?: Json | null
           max_score?: number | null
           question_id?: string
           question_type?: string
@@ -1429,6 +1435,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "exam_attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "mock_exam_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_recheck_requests: {
+        Row: {
+          admin_response: string | null
+          answer_id: string
+          attempt_id: string
+          created_at: string
+          id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          answer_id: string
+          attempt_id: string
+          created_at?: string
+          id?: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          answer_id?: string
+          attempt_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_recheck_requests_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "exam_attempt_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_recheck_requests_attempt_id_fkey"
             columns: ["attempt_id"]
             isOneToOne: false
             referencedRelation: "mock_exam_attempts"
@@ -2529,6 +2589,7 @@ export type Database = {
           id: string
           is_completed: boolean
           module_id: string
+          paper_index: number | null
           question_ids: string[]
           score: number
           started_at: string
@@ -2544,6 +2605,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           module_id: string
+          paper_index?: number | null
           question_ids?: string[]
           score?: number
           started_at?: string
@@ -2559,6 +2621,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           module_id?: string
+          paper_index?: number | null
           question_ids?: string[]
           score?: number
           started_at?: string

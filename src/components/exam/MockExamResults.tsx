@@ -28,6 +28,8 @@ interface MockExamResultsProps {
   totalQuestions: number;
   durationSeconds: number;
   chapters?: ModuleChapter[];
+  essayScore?: number;
+  essayMaxScore?: number;
 }
 
 export function MockExamResults({
@@ -39,9 +41,13 @@ export function MockExamResults({
   totalQuestions,
   durationSeconds,
   chapters = [],
+  essayScore = 0,
+  essayMaxScore = 0,
 }: MockExamResultsProps) {
   const navigate = useNavigate();
-  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  const totalScore = score + essayScore;
+  const totalMax = totalQuestions + essayMaxScore;
+  const percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
 
   // Compute focus areas (group wrong answers by chapter)
   const focusAreas = useMemo(() => {
@@ -101,7 +107,8 @@ export function MockExamResults({
             {percentage}%
           </CardTitle>
           <CardDescription className="text-lg">
-            {score} of {totalQuestions} correct
+            {score}/{totalQuestions} MCQs correct
+            {essayMaxScore > 0 && ` · ${essayScore}/${essayMaxScore} Essay marks`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

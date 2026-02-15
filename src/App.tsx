@@ -30,6 +30,7 @@ import VirtualPatientPage from "./pages/VirtualPatientPage";
 import NotFound from "./pages/NotFound";
 import IntegrityReportPage from "./pages/IntegrityReportPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
+import ExamResultsPage from "./pages/ExamResultsPage";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => {
                 <Route path="/module/:moduleId" element={<ModulePage />} />
                 <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
                 <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<BlueprintExamPage />} />
+                <Route path="/module/:moduleId/exam-results/:attemptId" element={<ExamResultsPage />} />
                 <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
                 <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
                 <Route path="/admin" element={<AdminPage />} />
