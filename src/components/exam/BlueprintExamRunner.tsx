@@ -478,32 +478,62 @@ export function BlueprintExamRunner({
         <Progress value={progressPercent} className="h-2" />
       </div>
 
-      {/* Question navigator dots */}
-      <div className="flex flex-wrap gap-1 justify-center">
-        {examItems.map((item, idx) => {
-          const isAnswered = item.type === 'mcq'
-            ? !!mcqAnswers[item.id]
-            : !!essayAnswers[item.id]?.typed_text?.trim();
-          const isCurrent = idx === currentIndex;
-          const isEssay = item.type === 'essay';
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentIndex(idx)}
-              className={cn(
-                "w-8 h-8 text-xs font-medium transition-all",
-                isEssay ? "rounded-md" : "rounded-full",
-                isCurrent && "ring-2 ring-primary ring-offset-2",
-                isAnswered && "bg-primary text-primary-foreground",
-                !isAnswered && "bg-muted text-muted-foreground"
-              )}
-              title={`${item.type === 'mcq' ? 'MCQ' : 'Essay'} ${idx + 1}`}
-            >
-              {idx + 1}
-            </button>
-          );
-        })}
+      {/* Question navigator - separate rows per type */}
+      <div className="space-y-3">
+        {essayItems.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1.5">Essays</p>
+            <div className="flex flex-wrap gap-1">
+              {essayItems.map((item, localIdx) => {
+                const globalIdx = examItems.indexOf(item);
+                const isAnswered = !!essayAnswers[item.id]?.typed_text?.trim();
+                const isCurrent = globalIdx === currentIndex;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setCurrentIndex(globalIdx)}
+                    className={cn(
+                      "w-8 h-8 text-xs font-medium rounded-md transition-all",
+                      isCurrent && "ring-2 ring-amber-500 ring-offset-2",
+                      isAnswered && "bg-amber-500 text-white",
+                      !isAnswered && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                    )}
+                    title={`Essay ${localIdx + 1}`}
+                  >
+                    {localIdx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {mcqItems.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-primary mb-1.5">MCQs</p>
+            <div className="flex flex-wrap gap-1">
+              {mcqItems.map((item, localIdx) => {
+                const globalIdx = examItems.indexOf(item);
+                const isAnswered = !!mcqAnswers[item.id];
+                const isCurrent = globalIdx === currentIndex;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setCurrentIndex(globalIdx)}
+                    className={cn(
+                      "w-8 h-8 text-xs font-medium rounded-full transition-all",
+                      isCurrent && "ring-2 ring-primary ring-offset-2",
+                      isAnswered && "bg-primary text-primary-foreground",
+                      !isAnswered && "bg-muted text-muted-foreground"
+                    )}
+                    title={`MCQ ${localIdx + 1}`}
+                  >
+                    {localIdx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Current question */}
