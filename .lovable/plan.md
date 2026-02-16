@@ -1,43 +1,44 @@
 
 
-## Fix Scrolling in All Clinical Case Modals and Consolidate Edit Options
+## Fix: Admin Exam Results Showing "0 Completed Attempts"
 
-### Problem 1: Scrolling Only Works on Scrollbar
+### Root Cause
 
-Three modals still use Radix `ScrollArea`, which restricts mouse wheel/trackpad scrolling to only work when the cursor is directly over the scrollbar. The fix (already proven in `ClinicalCaseBuilderModal`) is to replace `ScrollArea` with a native `div` using `overflow-y-auto`.
+The `useModuleExamAttempts` hook in `src/hooks/useExamResults.ts` uses this query:
 
-**Files to fix:**
+```
+.select('*, profiles:user_id(full_name, avatar_url)')
+```
 
-| File | Line | Current | Replace with |
-|------|------|---------|-------------|
-| `ClinicalCaseFormModal.tsx` | 194 | `<ScrollArea className="flex-1 min-h-0">` | `<div className="flex-1 min-h-0 overflow-y-auto">` |
-| `ClinicalCaseFormModal.tsx` | 359 | `</ScrollArea>` | `</div>` |
-| `ClinicalCaseStageFormModal.tsx` | 266 | `<ScrollArea className="flex-1 min-h-0">` | `<div className="flex-1 min-h-0 overflow-y-auto">` |
-| `ClinicalCaseStageFormModal.tsx` | ~closing tag | `</ScrollArea>` | `</div>` |
+This tells PostgREST to join `profiles` via the `user_id` foreign key. However, the FK on `mock_exam_attempts.user_id` points to `auth.users`, **not** `profiles`. PostgREST returns a **400 error** ("Could not find a relationship between 'mock_exam_attempts' and 'user_id'"), and the error is silently swallowed, resulting in an empty array -- hence "0 completed attempts."
 
-Also remove the unused `ScrollArea` import from both files.
+The database actually contains **11 completed attempts** for this module.
 
----
+### Fix
 
-### Problem 2: Two Edit Buttons Per Case
+**File: `src/hooks/useExamResults.ts`** -- `useModuleExamAttempts` function
 
-Currently each case card in the admin list shows:
-- **"Edit Stages"** button -- opens the Case Builder (which already contains an "Edit Details" button inside)
-- **Edit icon** -- opens the Case Form directly
+Change the query to a two-step approach:
 
-Since the Builder already lets admins edit case details via its "Edit Details" button, the separate Edit icon is redundant and confusing.
+1. Fetch all completed attempts (without the broken join)
+2. Collect unique `user_id` values, then fetch their profiles separately
+3. Merge the profile data (name, avatar) into the attempt objects before returning
 
-**Fix in `ClinicalCaseAdminList.tsx`:**
-- Remove the standalone Edit icon button (lines 321-325)
-- Rename the remaining button from "Edit Stages" / "Build Stages" to just **"Edit Case"** -- this single entry point opens the Builder, which handles both metadata editing and stage management
+This avoids requiring a PostgREST foreign key relationship between `mock_exam_attempts` and `profiles`, which doesn't exist.
 
----
+### Technical Detail
 
-### Summary
+```text
+Step 1: SELECT * FROM mock_exam_attempts
+        WHERE module_id = ? AND is_completed = true
+        ORDER BY submitted_at DESC
 
-| File | Change |
-|------|--------|
-| `ClinicalCaseFormModal.tsx` | Replace `ScrollArea` with native `div` for proper scrolling |
-| `ClinicalCaseStageFormModal.tsx` | Replace `ScrollArea` with native `div` for proper scrolling |
-| `ClinicalCaseAdminList.tsx` | Remove duplicate Edit icon button, rename remaining button to "Edit Case" |
+Step 2: SELECT id, full_name, avatar_url FROM profiles
+        WHERE id IN (unique user_ids from step 1)
+
+Step 3: Merge -- attach profile info to each attempt object
+        as attempt.profiles = { full_name, avatar_url }
+```
+
+No database migration needed. No other files need changes since `AdminExamResultsTab.tsx` already reads `attempt.profiles?.full_name`, which will work with the merged data.
 
