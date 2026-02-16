@@ -38,6 +38,20 @@ const DialogContent = React.forwardRef<
 >(({ className, overlayClassName, closeClassName, children, ...props }, ref) => {
   // If the className contains a high z-index, apply it to the overlay too
   const hasHighZIndex = className?.includes('z-[99999]');
+
+  // Safety cleanup: remove stale scroll locks when dialog unmounts unexpectedly
+  React.useEffect(() => {
+    return () => {
+      // Use requestAnimationFrame to check after Radix has finished its cleanup
+      requestAnimationFrame(() => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.removeAttribute('data-scroll-locked');
+          document.body.style.removeProperty('pointer-events');
+          document.body.style.removeProperty('overflow');
+        }
+      });
+    };
+  }, []);
   
   return (
     <DialogPortal>
