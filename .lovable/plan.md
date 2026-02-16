@@ -1,44 +1,38 @@
 
 
-## Fix: Admin Exam Results Showing "0 Completed Attempts"
+## Add Per-Question Detail View with Exam Type to Admin Results
 
-### Root Cause
+### What Changes
 
-The `useModuleExamAttempts` hook in `src/hooks/useExamResults.ts` uses this query:
+1. **Add "Exam Type" column** to the existing attempts table so admins can see whether each attempt was Easy, Hard, or Blueprint mode
+2. **Make rows clickable** -- clicking opens a detail modal showing the full question-by-question breakdown for that student
+3. **New component** to render the detail modal with MCQ review and essay review
 
-```
-.select('*, profiles:user_id(full_name, avatar_url)')
-```
+### Attempts Table Enhancement
 
-This tells PostgREST to join `profiles` via the `user_id` foreign key. However, the FK on `mock_exam_attempts.user_id` points to `auth.users`, **not** `profiles`. PostgREST returns a **400 error** ("Could not find a relationship between 'mock_exam_attempts' and 'user_id'"), and the error is silently swallowed, resulting in an empty array -- hence "0 completed attempts."
+The `test_mode` column already exists on `mock_exam_attempts` (values: `easy`, `hard`, `blueprint`). A new "Type" column will display this as a styled badge (e.g., green for Easy, amber for Hard, blue for Blueprint).
 
-The database actually contains **11 completed attempts** for this module.
+### Detail Modal: `AdminAttemptDetailModal.tsx`
 
-### Fix
+When an admin clicks a row, a full-screen dialog opens showing:
 
-**File: `src/hooks/useExamResults.ts`** -- `useModuleExamAttempts` function
+- **Header**: Student name, exam type badge, overall score %, duration, date
+- **MCQ Section**: Fetches question data from `mcqs` table using `question_ids` from the attempt. Displays each question with the student's selected answer (from `user_answers` JSONB) highlighted -- green for correct, red for incorrect -- plus the explanation. Uses the same visual pattern as `MockExamResults`.
+- **Essay Section**: Fetches answers from `exam_attempt_answers` and essay questions from `essays` table. Shows the student's typed response, score, matched/missing concepts -- same pattern as `EssayResultsSection` but without the recheck button (admin view).
 
-Change the query to a two-step approach:
+### Data Flow
 
-1. Fetch all completed attempts (without the broken join)
-2. Collect unique `user_id` values, then fetch their profiles separately
-3. Merge the profile data (name, avatar) into the attempt objects before returning
+For MCQ-based attempts (easy/hard mode), answers are stored in `mock_exam_attempts.user_answers` (JSONB mapping question_id to selected key). The question IDs come from `mock_exam_attempts.question_ids` (array).
 
-This avoids requiring a PostgREST foreign key relationship between `mock_exam_attempts` and `profiles`, which doesn't exist.
+For blueprint attempts with essays, individual answers also exist in `exam_attempt_answers` with scoring metadata.
 
-### Technical Detail
+### Files
 
-```text
-Step 1: SELECT * FROM mock_exam_attempts
-        WHERE module_id = ? AND is_completed = true
-        ORDER BY submitted_at DESC
+| File | Change |
+|------|--------|
+| `src/components/exam/AdminAttemptDetailModal.tsx` | **New** -- Detail modal fetching MCQ questions + essay answers and rendering full review |
+| `src/components/exam/AdminExamResultsTab.tsx` | Add "Type" column, make rows clickable, render detail modal |
+| `src/components/exam/index.ts` | Export new component |
 
-Step 2: SELECT id, full_name, avatar_url FROM profiles
-        WHERE id IN (unique user_ids from step 1)
-
-Step 3: Merge -- attach profile info to each attempt object
-        as attempt.profiles = { full_name, avatar_url }
-```
-
-No database migration needed. No other files need changes since `AdminExamResultsTab.tsx` already reads `attempt.profiles?.full_name`, which will work with the merged data.
+No database changes needed. All data already exists.
 
