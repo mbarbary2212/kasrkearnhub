@@ -25,7 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Loader2, X, Info, AlertCircle } from 'lucide-react';
 import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
@@ -191,7 +191,7 @@ export function ClinicalCaseFormModal({
           <DialogTitle>{isEditing ? 'Edit' : 'Create'} Virtual Patient Case</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4 pr-4 pb-4">
             {/* Step 1 Helper for new cases */}
             {!isEditing && (
@@ -356,7 +356,7 @@ export function ClinicalCaseFormModal({
               </Alert>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

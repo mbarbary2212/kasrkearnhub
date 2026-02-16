@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Loader2, Plus, X, Trash2, HelpCircle } from 'lucide-react';
 import { ClinicalCaseStage, ClinicalCaseStageFormData, CaseStageType, CaseChoice, CaseRubric } from '@/types/clinicalCase';
 import { useCreateClinicalCaseStage, useUpdateClinicalCaseStage } from '@/hooks/useClinicalCases';
@@ -263,7 +263,7 @@ export function ClinicalCaseStageFormModal({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4 pr-4 pb-4">
             {/* Stage Type */}
             <div>
@@ -476,7 +476,7 @@ export function ClinicalCaseStageFormModal({
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

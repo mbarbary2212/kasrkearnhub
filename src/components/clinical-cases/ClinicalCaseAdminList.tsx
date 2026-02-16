@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   Plus, 
-  Edit2, 
+   
   Trash2, 
   Settings, 
   User,
@@ -316,14 +316,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
                       onClick={() => handleOpenBuilder(clinicalCase.id)}
                     >
                       <Settings className="w-4 h-4 mr-1" />
-                      {isIncomplete ? 'Build Stages' : 'Edit Stages'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEditCase(clinicalCase)}
-                    >
-                      <Edit2 className="w-4 h-4" />
+                      Edit Case
                     </Button>
                     <Button
                       variant="outline"
