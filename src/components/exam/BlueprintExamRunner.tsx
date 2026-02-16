@@ -281,12 +281,12 @@ export function BlueprintExamRunner({
       }
     });
 
-    try {
-      await supabase
-        .from('exam_attempt_answers')
-        .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
-    } catch (error) {
-      console.error('Autosave failed:', error);
+    const { error } = await supabase
+      .from('exam_attempt_answers')
+      .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
+
+    if (error) {
+      console.error('Autosave failed:', error.message, error.details);
     }
   }, [attemptId, user?.id, examItems, mcqAnswers, essayAnswers]);
 
@@ -354,7 +354,7 @@ export function BlueprintExamRunner({
     // Update essay answers with scores
     if (attemptId && essayMarkingRows.length > 0) {
       for (const row of essayMarkingRows) {
-        await supabase
+        const { error } = await supabase
           .from('exam_attempt_answers')
           .update({
             score: row.score,
@@ -364,6 +364,9 @@ export function BlueprintExamRunner({
           })
           .eq('attempt_id', attemptId)
           .eq('question_id', row.question_id);
+        if (error) {
+          console.error('Essay marking update failed:', row.question_id, error.message);
+        }
       }
     }
 
@@ -391,8 +394,50 @@ export function BlueprintExamRunner({
   const handleSubmit = async () => {
     if (!attemptId || !startTime) return;
 
-    // Final autosave
+    // Final autosave with fallback
     await performAutosave();
+
+    // Verify rows exist; if not, do a direct insert as fallback
+    if (attemptId) {
+      const { count } = await supabase
+        .from('exam_attempt_answers')
+        .select('id', { count: 'exact', head: true })
+        .eq('attempt_id', attemptId);
+
+      if (!count || count === 0) {
+        console.warn('Autosave rows missing, attempting direct insert fallback');
+        const fallbackRows = examItems.map(item => {
+          if (item.type === 'mcq') {
+            return {
+              attempt_id: attemptId,
+              question_id: item.id,
+              question_type: 'mcq',
+              answer_mode: 'typed',
+              selected_key: mcqAnswers[item.id] || null,
+            };
+          } else {
+            const ea = essayAnswers[item.id];
+            return {
+              attempt_id: attemptId,
+              question_id: item.id,
+              question_type: 'essay',
+              answer_mode: ea?.mode || 'typed',
+              typed_text: ea?.typed_text || null,
+              handwriting_data: ea?.handwriting_data || null,
+              typed_summary: ea?.typed_summary || null,
+              revision_count: ea?.revision_count || 0,
+              is_finalized: ea?.is_finalized || false,
+            };
+          }
+        });
+        const { error: insertError } = await supabase
+          .from('exam_attempt_answers')
+          .insert(fallbackRows as any);
+        if (insertError) {
+          console.error('Fallback insert also failed:', insertError.message, insertError.details);
+        }
+      }
+    }
 
     const score = await calculateScoreAndMarkEssays();
     const duration = Math.floor((Date.now() - startTime.getTime()) / 1000);
