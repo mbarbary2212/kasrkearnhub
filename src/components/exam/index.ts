@@ -16,5 +16,6 @@ export { BlueprintExamRunner } from './BlueprintExamRunner';
 export { EssayResultsSection } from './EssayResultsSection';
 export { RecheckRequestModal } from './RecheckRequestModal';
 export { AdminExamResultsTab } from './AdminExamResultsTab';
+export { AdminAttemptDetailModal } from './AdminAttemptDetailModal';
 export type { EssayAnswer } from './EssayAnswerQuestion';
 export type { TestMode } from './TestModeSelector';

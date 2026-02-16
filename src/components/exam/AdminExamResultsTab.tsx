@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { BarChart3, RotateCcw, Check, X, Clock, Users } from 'lucide-react';
+import { BarChart3, RotateCcw, Check, X, Clock, Users, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatDuration } from '@/hooks/useMockExam';
 import {
@@ -30,6 +30,13 @@ import {
   useRecheckRequests,
   useResolveRecheckRequest,
 } from '@/hooks/useExamResults';
+import { AdminAttemptDetailModal } from './AdminAttemptDetailModal';
+
+const TEST_MODE_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  easy: { label: 'Easy', variant: 'secondary' },
+  hard: { label: 'Hard', variant: 'destructive' },
+  blueprint: { label: 'Blueprint', variant: 'default' },
+};
 
 interface AdminExamResultsTabProps {
   moduleId: string;
@@ -41,6 +48,7 @@ export function AdminExamResultsTab({ moduleId }: AdminExamResultsTabProps) {
   const resolveRequest = useResolveRecheckRequest();
 
   const [activeSubTab, setActiveSubTab] = useState<'attempts' | 'rechecks'>('attempts');
+  const [selectedAttempt, setSelectedAttempt] = useState<any>(null);
   const [resolveModal, setResolveModal] = useState<{
     open: boolean;
     requestId: string;
@@ -109,9 +117,11 @@ export function AdminExamResultsTab({ moduleId }: AdminExamResultsTabProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Score</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -120,10 +130,18 @@ export function AdminExamResultsTab({ moduleId }: AdminExamResultsTabProps) {
                       const percentage = attempt.total_questions > 0
                         ? Math.round((attempt.score / attempt.total_questions) * 100)
                         : 0;
+                      const modeInfo = TEST_MODE_LABELS[attempt.test_mode] || { label: attempt.test_mode, variant: 'outline' as const };
                       return (
-                        <TableRow key={attempt.id}>
+                        <TableRow
+                          key={attempt.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedAttempt(attempt)}
+                        >
                           <TableCell className="font-medium">
                             {profile?.full_name || 'Unknown'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={modeInfo.variant}>{modeInfo.label}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={percentage >= 60 ? 'default' : 'destructive'}>
@@ -140,6 +158,9 @@ export function AdminExamResultsTab({ moduleId }: AdminExamResultsTabProps) {
                             {attempt.submitted_at
                               ? format(new Date(attempt.submitted_at), 'MMM d, yyyy h:mm a')
                               : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Eye className="w-4 h-4 text-muted-foreground" />
                           </TableCell>
                         </TableRow>
                       );
@@ -269,6 +290,13 @@ export function AdminExamResultsTab({ moduleId }: AdminExamResultsTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Attempt Detail Modal */}
+      <AdminAttemptDetailModal
+        open={!!selectedAttempt}
+        onOpenChange={(open) => { if (!open) setSelectedAttempt(null); }}
+        attempt={selectedAttempt}
+      />
     </div>
   );
 }
