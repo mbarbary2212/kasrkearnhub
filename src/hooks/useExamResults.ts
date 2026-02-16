@@ -58,15 +58,27 @@ export function useModuleExamAttempts(moduleId?: string, enabled = true) {
   return useQuery({
     queryKey: ['module-exam-attempts', moduleId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: attempts, error } = await supabase
         .from('mock_exam_attempts')
-        .select('*, profiles:user_id(full_name, avatar_url)')
+        .select('*')
         .eq('module_id', moduleId!)
         .eq('is_completed', true)
         .order('submitted_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      if (!attempts || attempts.length === 0) return [];
+
+      const userIds = [...new Set(attempts.map(a => a.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      const profileMap = Object.fromEntries(
+        (profiles || []).map(p => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }])
+      );
+
+      return attempts.map(a => ({ ...a, profiles: profileMap[a.user_id] || null }));
     },
     enabled: !!moduleId && enabled,
   });
