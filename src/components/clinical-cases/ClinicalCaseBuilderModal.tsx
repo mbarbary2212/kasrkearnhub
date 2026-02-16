@@ -276,7 +276,7 @@ export function ClinicalCaseBuilderModal({
               </Button>
             </div>
           ) : (
-            <ScrollArea className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="space-y-6 pr-4 pb-4">
                 {/* Case Info Section */}
                 <div className="p-4 border rounded-lg bg-muted/30">
@@ -375,7 +375,7 @@ export function ClinicalCaseBuilderModal({
                   )}
                 </div>
               </div>
-            </ScrollArea>
+            </div>
           )}
 
           <div className="flex justify-between gap-2 pt-4 border-t">
