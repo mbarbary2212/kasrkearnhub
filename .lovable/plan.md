@@ -1,180 +1,43 @@
 
 
-## Exam Results, Marking, and Rechecking System
+## Fix Scrolling Issue and Add Missing Templates
 
-This plan adds a complete post-exam workflow: auto-marking essays with the existing rubric engine, displaying results for students with a rechecking request option, and giving admins a dashboard to review all student attempts.
+### Problem 1: Scrolling Not Working Across Tabs
 
----
+The scrolling stops working after opening and closing modal dialogs (like the Case Builder, Edit Case, Stage Form). This is caused by Radix UI Dialog's scroll lock mechanism: when a dialog opens, it sets `data-scroll-locked` on the `<body>` element and disables pointer events. With nested dialogs (e.g., Case Builder opens Edit Details or Add Stage sub-modals), closing the inner dialog can leave the scroll lock stuck on the body.
 
-### Current State
+**Fix**: Add `modal={false}` or use `onCloseAutoFocus` to prevent scroll lock conflicts in nested dialogs. The most reliable fix is to ensure all nested dialogs inside ClinicalCaseBuilderModal use `onOpenChange` handlers that don't interfere with the parent dialog's scroll lock. Additionally, add a safety cleanup in the main layout or ScrollToTop component that removes stale `data-scroll-locked` attributes on route changes.
 
-- `mock_exam_attempts` stores each attempt (user_id, module_id, score, duration, etc.) but lacks paper-level metadata
-- `exam_attempt_answers` stores per-question answers with `score`, `max_score`, `question_type` fields (already supports essay scoring)
-- MCQ scoring is already done at submit time; essay scoring returns 0 (comment in code: "Essay scoring would be done later")
-- `MockExamResults` only shows MCQ review; no essay results
-- No rechecking/appeal system exists
-- Question Analytics already covers MCQ, OSCE, and Matching in the admin panel
-
----
-
-### Database Changes
-
-**1. Add `paper_index` to `mock_exam_attempts`**
-Track which paper within a module the attempt belongs to.
-
-```sql
-ALTER TABLE mock_exam_attempts
-ADD COLUMN paper_index integer DEFAULT 0;
-```
-
-**2. Add essay marking fields to `exam_attempt_answers`**
-Store rubric-based auto-marking details.
-
-```sql
-ALTER TABLE exam_attempt_answers
-ADD COLUMN marking_feedback jsonb DEFAULT NULL,
-ADD COLUMN marked_at timestamptz DEFAULT NULL;
-```
-
-**3. Create `exam_recheck_requests` table**
-Allow students to request rechecking of specific answers.
-
-```sql
-CREATE TABLE exam_recheck_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  attempt_id uuid NOT NULL REFERENCES mock_exam_attempts(id),
-  answer_id uuid NOT NULL REFERENCES exam_attempt_answers(id),
-  user_id uuid NOT NULL,
-  reason text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',
-  admin_response text,
-  reviewed_by uuid,
-  reviewed_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE exam_recheck_requests ENABLE ROW LEVEL SECURITY;
-
--- Students can create and view their own requests
-CREATE POLICY "Students manage own recheck requests"
-ON exam_recheck_requests FOR ALL
-USING (user_id = auth.uid());
-
--- Admins can view and update all requests
-CREATE POLICY "Admins manage all recheck requests"
-ON exam_recheck_requests FOR ALL
-USING (is_platform_admin_or_higher(auth.uid()));
-```
+**Files to modify:**
+- `src/components/ScrollToTop.tsx` -- Add cleanup of `data-scroll-locked` attribute on pathname change as a safety net
+- `src/components/clinical-cases/ClinicalCaseBuilderModal.tsx` -- Ensure child dialogs (ClinicalCaseFormModal, ClinicalCaseStageFormModal, ClinicalCaseQuickBuildModal) don't interfere with parent dialog scroll lock by rendering them outside the parent Dialog
+- `src/components/clinical-cases/ClinicalCaseFormModal.tsx` -- Check and fix any scroll lock issues
+- `src/components/ui/dialog.tsx` -- Add a cleanup effect to DialogContent that removes scroll lock when unmounted unexpectedly
 
 ---
 
-### Auto-Marking Essays on Submit
+### Problem 2: Add Short Answer and True/False Templates
 
-**File: `src/components/exam/BlueprintExamRunner.tsx`**
+The Help and Templates section is missing bulk upload templates for **Short Answer Questions** (essays) and **True/False Questions**. Clinical Cases template already exists.
 
-When the exam is submitted, before calling `submitExam.mutateAsync`, run the rubric engine against each essay answer:
+**File to modify:** `src/components/admin/HelpTemplatesTab.tsx`
 
-- For each essay item, fetch the essay's `keywords` (already loaded as `Essay.keywords`)
-- Build a simple rubric from keywords and call `gradeWithRubric()` from `src/lib/rubricMarking.ts`
-- Calculate score as `(matched_required / total_required) * max_score`
-- Update `exam_attempt_answers` with `score`, `max_score`, `marking_feedback` (matched/missing concepts), and `marked_at`
-- Add essay scores to the total score before submitting the attempt
+**Add to TEMPLATE_SCHEMAS:**
+- `essay` (Short Answer) schema with columns: `title`, `scenario_text`, `questions`, `model_answer`, `keywords`, `rating`, `section_name`, `section_number`
+- `true_false` schema with columns: `statement`, `correct_answer`, `explanation`, `difficulty`, `section_name`, `section_number`
 
----
-
-### Enhanced Results View
-
-**File: `src/components/exam/MockExamResults.tsx`**
-
-Extend the existing results component to handle both MCQs and essays:
-
-- Accept essay answers and essay data as new props
-- Add an "Essays" section below the MCQ review accordion
-- For each essay: show the question, the student's typed answer, the auto-mark score, matched/missing keywords with green/red badges
-- Add a "Request Rechecking" button on each essay answer card that opens a modal to submit a reason
-
-**New file: `src/components/exam/RecheckRequestModal.tsx`**
-
-A simple dialog with:
-- The question title and current score displayed
-- A textarea for the student's reason
-- Submit button that inserts into `exam_recheck_requests`
+**Add to BUILTIN_TEMPLATES:**
+- Short Answer Questions Template (.csv) -- for bulk uploading essay-type questions with scenario, questions, model answer, and keywords
+- True/False Questions Template (.csv) -- for bulk uploading true/false statements with explanations
 
 ---
 
-### Student View - Previous Attempts (Inside Formative Tab)
+### Summary of Changes
 
-**File: `src/components/module/ModuleFormativeTab.tsx`**
-
-The "Previous Attempts" section already exists at the bottom of the student view. Enhance it:
-
-- Show paper name alongside the score
-- Add a "View Results" button on each attempt that navigates to `/module/:moduleId/exam-results/:attemptId`
-- Show separate MCQ score and Essay score breakdowns
-
-**New file: `src/pages/ExamResultsPage.tsx`**
-
-A dedicated page that:
-- Fetches the attempt by ID from `mock_exam_attempts`
-- Fetches all `exam_attempt_answers` for that attempt
-- Fetches the corresponding MCQ and Essay data
-- Renders the enhanced `MockExamResults` component
-- Shows any existing recheck requests and their status
-
-**File: `src/App.tsx`**
-
-Add route: `/module/:moduleId/exam-results/:attemptId`
-
----
-
-### Admin View - Exam Attempts Dashboard
-
-**File: `src/components/module/ModuleFormativeTab.tsx`** (Admin section)
-
-Add a third primary tab alongside "Written" and "Practical": **"Results"**
-
-This tab shows:
-- A table of all student attempts for this module (fetched without user_id filter)
-- Columns: Student Name, Paper, Score (MCQ + Essay), Date, Duration, Status
-- Click a row to expand and see per-question breakdown
-- Filter by paper, date range
-- Recheck requests section: list of pending requests with Approve/Reject actions
-
-**New hook: `src/hooks/useExamResults.ts`**
-
-- `useModuleExamAttempts(moduleId)` - admin: all attempts for module (joins profiles for student name)
-- `useExamAttemptAnswers(attemptId)` - fetch all answers for an attempt
-- `useRecheckRequests(moduleId)` - admin: all recheck requests for module
-- `useSubmitRecheckRequest()` - student mutation
-- `useResolveRecheckRequest()` - admin mutation
-
----
-
-### Analytics Integration
-
-**File: `src/hooks/useMcqAnalytics.ts`**
-
-The existing MCQ analytics already track per-question performance from `question_attempts`. The blueprint exam's MCQ answers are saved to `exam_attempt_answers`, which is a separate table. To integrate:
-
-- After exam submission, also insert records into the existing `question_attempts` table for each MCQ answered in the exam, so they appear in the MCQ Analytics dashboard automatically
-- This keeps analytics unified: practice MCQs and exam MCQs all feed the same analytics pipeline
-
----
-
-### Files to Create
-- `src/pages/ExamResultsPage.tsx` - Detailed results page for a single attempt
-- `src/components/exam/RecheckRequestModal.tsx` - Rechecking request dialog
-- `src/hooks/useExamResults.ts` - Data hooks for results, answers, and recheck requests
-
-### Files to Modify
-- `src/components/exam/BlueprintExamRunner.tsx` - Add essay auto-marking on submit, save to question_attempts
-- `src/components/exam/MockExamResults.tsx` - Add essay review section and recheck button
-- `src/components/module/ModuleFormativeTab.tsx` - Enhance student attempts list; add admin "Results" tab
-- `src/App.tsx` - Add exam results route
-- `src/hooks/useMockExam.ts` - Update attempt query to include paper_index
-
-### Database Migration
-- Add `paper_index` column to `mock_exam_attempts`
-- Add `marking_feedback`, `marked_at` columns to `exam_attempt_answers`
-- Create `exam_recheck_requests` table with RLS policies
+| File | Change |
+|------|--------|
+| `ScrollToTop.tsx` | Remove stale `data-scroll-locked` on route change |
+| `dialog.tsx` | Add unmount cleanup for scroll lock |
+| `ClinicalCaseBuilderModal.tsx` | Move child dialogs outside parent Dialog to prevent nested lock conflicts |
+| `HelpTemplatesTab.tsx` | Add `essay` and `true_false` template schemas and built-in template entries |
 
