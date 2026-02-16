@@ -1,38 +1,63 @@
 
 
-## Add Per-Question Detail View with Exam Type to Admin Results
+## Fix: Essay Answers Not Saving to Database
 
-### What Changes
+### Root Cause
 
-1. **Add "Exam Type" column** to the existing attempts table so admins can see whether each attempt was Easy, Hard, or Blueprint mode
-2. **Make rows clickable** -- clicking opens a detail modal showing the full question-by-question breakdown for that student
-3. **New component** to render the detail modal with MCQ review and essay review
+The `performAutosave` function in `BlueprintExamRunner.tsx` (line 284-290) does this:
 
-### Attempts Table Enhancement
+```typescript
+try {
+  await supabase
+    .from('exam_attempt_answers')
+    .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
+} catch (error) {
+  console.error('Autosave failed:', error);
+}
+```
 
-The `test_mode` column already exists on `mock_exam_attempts` (values: `easy`, `hard`, `blueprint`). A new "Type" column will display this as a styled badge (e.g., green for Easy, amber for Hard, blue for Blueprint).
+The Supabase JS client does **not throw** on API errors -- it returns `{ data, error }`. The `try/catch` only catches network failures. The upsert is returning an error in the response object that is never checked, so it silently fails. As a result, `exam_attempt_answers` has **zero rows** across all attempts. The essay marking step (`calculateScoreAndMarkEssays`) then tries to UPDATE rows that don't exist, also failing silently.
 
-### Detail Modal: `AdminAttemptDetailModal.tsx`
+This means:
+- No essay answers are saved
+- No essay scores/feedback are saved
+- The admin detail modal correctly shows nothing for essays (there is no data)
 
-When an admin clicks a row, a full-screen dialog opens showing:
+### Fix
 
-- **Header**: Student name, exam type badge, overall score %, duration, date
-- **MCQ Section**: Fetches question data from `mcqs` table using `question_ids` from the attempt. Displays each question with the student's selected answer (from `user_answers` JSONB) highlighted -- green for correct, red for incorrect -- plus the explanation. Uses the same visual pattern as `MockExamResults`.
-- **Essay Section**: Fetches answers from `exam_attempt_answers` and essay questions from `essays` table. Shows the student's typed response, score, matched/missing concepts -- same pattern as `EssayResultsSection` but without the recheck button (admin view).
+**File: `src/components/exam/BlueprintExamRunner.tsx`**
 
-### Data Flow
+1. **Fix autosave** -- Check the `.error` property from the upsert response and log it properly:
 
-For MCQ-based attempts (easy/hard mode), answers are stored in `mock_exam_attempts.user_answers` (JSONB mapping question_id to selected key). The question IDs come from `mock_exam_attempts.question_ids` (array).
+```typescript
+const { error } = await supabase
+  .from('exam_attempt_answers')
+  .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
 
-For blueprint attempts with essays, individual answers also exist in `exam_attempt_answers` with scoring metadata.
+if (error) {
+  console.error('Autosave failed:', error.message);
+}
+```
 
-### Files
+2. **Fix final save on submit** -- In `handleSubmit`, after calling `performAutosave()`, verify rows were actually created before proceeding with essay marking. If the autosave fails, do a direct insert as a fallback to ensure data is saved on submission.
+
+3. **Fix essay marking updates** -- In `calculateScoreAndMarkEssays`, also check the `.error` from the update calls so marking failures are surfaced.
+
+### What This Fixes
+
+- Future blueprint exam attempts will properly save all MCQ and essay answer rows
+- Essay marking (scores, matched/missing concepts) will be persisted
+- The admin detail modal will show essay results for new attempts
+- Errors will be properly logged for debugging
+
+### Important Note
+
+Existing completed attempts have no essay data saved -- that data existed only in React state during the exam and is unrecoverable. Only future attempts will have full essay data visible to admins.
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/exam/AdminAttemptDetailModal.tsx` | **New** -- Detail modal fetching MCQ questions + essay answers and rendering full review |
-| `src/components/exam/AdminExamResultsTab.tsx` | Add "Type" column, make rows clickable, render detail modal |
-| `src/components/exam/index.ts` | Export new component |
+| `src/components/exam/BlueprintExamRunner.tsx` | Fix error handling in autosave upsert, add fallback insert on submit, fix error handling in essay marking updates |
 
-No database changes needed. All data already exists.
-
+No database changes needed. The table schema and RLS policies are correct.
