@@ -13,6 +13,10 @@ export const ScrollToTop = () => {
   const { pathname } = useLocation();
 
   useEffect(() => {
+    // Clean up stale scroll locks left by Radix UI dialogs
+    document.body.removeAttribute('data-scroll-locked');
+    document.body.style.removeProperty('pointer-events');
+    document.body.style.removeProperty('overflow');
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname]);
 

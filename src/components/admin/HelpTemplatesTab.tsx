@@ -162,6 +162,46 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ],
     ],
   },
+  essay: {
+    columns: ['title', 'scenario_text', 'questions', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number'],
+    required: ['title', 'scenario_text', 'questions', 'model_answer'],
+    optional: ['keywords', 'rating', 'section_name', 'section_number'],
+    examples: [
+      [
+        'Diabetic Ketoacidosis Management',
+        'A 22-year-old female with Type 1 diabetes presents to the emergency department with nausea, vomiting, and abdominal pain. Her blood glucose is 450 mg/dL, pH 7.1, and she has ketonuria.',
+        'Outline the immediate management steps for this patient including fluid resuscitation, insulin therapy, and electrolyte monitoring.',
+        'Immediate management includes: 1) IV normal saline bolus for fluid resuscitation, 2) Continuous IV insulin infusion at 0.1 units/kg/hr, 3) Potassium replacement once K+ < 5.3 mEq/L, 4) Monitor blood glucose hourly, 5) Check electrolytes every 2-4 hours, 6) Switch to dextrose-containing fluids when glucose < 250 mg/dL.',
+        'DKA, insulin, fluid resuscitation, potassium, electrolyte monitoring',
+        '3',
+        'Endocrine Emergencies',
+        '1'
+      ],
+    ],
+  },
+  true_false: {
+    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    required: ['statement', 'correct_answer'],
+    optional: ['explanation', 'difficulty', 'section_name', 'section_number'],
+    examples: [
+      [
+        'The left recurrent laryngeal nerve loops around the aortic arch before ascending to the larynx.',
+        'TRUE',
+        'The left recurrent laryngeal nerve hooks around the aortic arch (ligamentum arteriosum), while the right hooks around the subclavian artery.',
+        'medium',
+        'Head and Neck Anatomy',
+        '1'
+      ],
+      [
+        'Insulin is secreted by alpha cells of the pancreatic islets.',
+        'FALSE',
+        'Insulin is secreted by beta cells. Alpha cells secrete glucagon.',
+        'easy',
+        'Endocrine Physiology',
+        '2'
+      ],
+    ],
+  },
   user_invite: {
     columns: ['full_name', 'email', 'role'],
     required: ['full_name', 'email'],
@@ -247,6 +287,20 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     description: 'Multi-stage clinical case scenarios with MCQ, short answer, and read-only stages',
     format: 'txt',
     icon: 'file',
+  },
+  {
+    id: 'essay',
+    title: 'Short Answer Questions Template',
+    description: 'Essay-type questions with scenario, model answer, and keywords',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'true_false',
+    title: 'True/False Questions Template',
+    description: 'True/False statements with explanations and difficulty levels',
+    format: 'csv',
+    icon: 'spreadsheet',
   },
 ];
 
@@ -393,6 +447,8 @@ function generateTemplateDownload(templateId: string) {
     case 'algorithm':
     case 'exam_tip':
     case 'matching':
+    case 'essay':
+    case 'true_false':
       // All CSV-based templates use the schema system
       if (schema) {
         downloadCsv(`${templateId}_template.csv`, generateCsvFromSchema(schema));
