@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { Plus, Trash2, Upload, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +34,8 @@ import {
   GuidedExplanationContent,
   useCreateStudyResource,
   useUpdateStudyResource,
+  useChapterStudyResources,
+  useTopicStudyResources,
 } from '@/hooks/useStudyResources';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -77,8 +89,16 @@ export function StudyResourceFormModal({
   const [content, setContent] = useState<ResourceContent>(getDefaultContent(resourceType));
   const [uploading, setUploading] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const isEditing = !!resource;
+
+  // Fetch existing resources for duplicate detection
+  const { data: chapterResources } = useChapterStudyResources(chapterId);
+  const { data: topicResources } = useTopicStudyResources(topicId);
+  const existingResources = (chapterResources || topicResources || []).filter(
+    r => r.resource_type === resourceType && !r.is_deleted
+  );
 
   useEffect(() => {
     if (resource) {
@@ -92,12 +112,34 @@ export function StudyResourceFormModal({
     }
   }, [resource, resourceType, open]);
 
+  const checkForDuplicates = (): string | null => {
+    if (isEditing) return null;
+    const normalizedTitle = title.trim().toLowerCase();
+    const match = existingResources.find(r => r.title.trim().toLowerCase() === normalizedTitle);
+    if (match) return `A resource with the title "${match.title}" already exists.`;
+    return null;
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       toast.error('Please enter a title');
       return;
     }
 
+    // Check for duplicates before creating
+    if (!isEditing) {
+      const warning = checkForDuplicates();
+      if (warning) {
+        setDuplicateWarning(warning);
+        return;
+      }
+    }
+
+    await performSave();
+  };
+
+  const performSave = async () => {
+    setDuplicateWarning(null);
     try {
       if (isEditing) {
         await updateResource.mutateAsync({
@@ -162,6 +204,7 @@ export function StudyResourceFormModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -271,6 +314,25 @@ export function StudyResourceFormModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!duplicateWarning} onOpenChange={() => setDuplicateWarning(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+            Possible Duplicate
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {duplicateWarning} Do you want to upload anyway?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={performSave}>Upload Anyway</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

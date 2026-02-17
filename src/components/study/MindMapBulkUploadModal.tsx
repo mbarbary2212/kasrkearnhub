@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Upload, X, Check, AlertCircle, FileText } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Upload, X, Check, AlertCircle, FileText, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulkCreateStudyResources } from '@/hooks/useStudyResources';
+import { useBulkCreateStudyResources, useChapterStudyResources, useTopicStudyResources } from '@/hooks/useStudyResources';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,7 @@ interface UploadItem {
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
   url?: string;
+  isDuplicate?: boolean;
 }
 
 function generateTitleFromFilename(filename: string): string {
@@ -59,6 +61,21 @@ export function MindMapBulkUploadModal({
 
   const bulkCreate = useBulkCreateStudyResources();
 
+  // Fetch existing resources for duplicate detection
+  const { data: chapterResources } = useChapterStudyResources(chapterId);
+  const { data: topicResources } = useTopicStudyResources(topicId);
+  const existingResources = useMemo(
+    () => (chapterResources || topicResources || []).filter(
+      r => (r.resource_type === 'mind_map' || r.resource_type === 'infographic' || r.resource_type === 'algorithm') && !r.is_deleted
+    ),
+    [chapterResources, topicResources]
+  );
+
+  const checkDuplicate = useCallback((title: string): boolean => {
+    const normalized = title.trim().toLowerCase();
+    return existingResources.some(r => r.title.trim().toLowerCase() === normalized);
+  }, [existingResources]);
+
   const handleFilesSelected = useCallback((files: File[]) => {
     const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
     
@@ -67,14 +84,18 @@ export function MindMapBulkUploadModal({
       return;
     }
 
-    const newItems: UploadItem[] = pdfFiles.map(file => ({
-      file,
-      title: generateTitleFromFilename(file.name),
-      status: 'pending',
-    }));
+    const newItems: UploadItem[] = pdfFiles.map(file => {
+      const title = generateTitleFromFilename(file.name);
+      return {
+        file,
+        title,
+        status: 'pending' as const,
+        isDuplicate: checkDuplicate(title),
+      };
+    });
 
     setItems(prev => [...prev, ...newItems]);
-  }, []);
+  }, [checkDuplicate]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -99,9 +120,9 @@ export function MindMapBulkUploadModal({
     e.target.value = ''; // Reset to allow selecting same files
   }, [handleFilesSelected]);
 
-  const updateItemTitle = (index: number, title: string) => {
+  const updateItemTitle = (index: number, newTitle: string) => {
     setItems(prev => prev.map((item, i) => 
-      i === index ? { ...item, title } : item
+      i === index ? { ...item, title: newTitle, isDuplicate: checkDuplicate(newTitle) } : item
     ));
   };
 
@@ -199,6 +220,7 @@ export function MindMapBulkUploadModal({
   const pendingCount = items.filter(i => i.status === 'pending').length;
   const successCount = items.filter(i => i.status === 'success').length;
   const errorCount = items.filter(i => i.status === 'error').length;
+  const duplicateCount = items.filter(i => i.status === 'pending' && i.isDuplicate).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -285,10 +307,17 @@ export function MindMapBulkUploadModal({
                         <Input
                           value={item.title}
                           onChange={e => updateItemTitle(index, e.target.value)}
-                          className="h-7 text-sm"
+                          className={cn("h-7 text-sm", item.isDuplicate && "border-yellow-400")}
                         />
                       ) : (
                         <p className="text-sm font-medium truncate">{item.title}</p>
+                      )}
+                      
+                      {item.isDuplicate && item.status === 'pending' && (
+                        <div className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400">Possible duplicate</span>
+                        </div>
                       )}
                       
                       {item.error && (
@@ -315,10 +344,18 @@ export function MindMapBulkUploadModal({
           {/* Summary */}
           {items.length > 0 && (
             <div className="flex items-center justify-between pt-2 border-t">
-              <div className="text-sm text-muted-foreground">
-                {pendingCount > 0 && `${pendingCount} pending`}
-                {successCount > 0 && ` • ${successCount} uploaded`}
-                {errorCount > 0 && ` • ${errorCount} failed`}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {pendingCount > 0 && `${pendingCount} pending`}
+                  {successCount > 0 && ` • ${successCount} uploaded`}
+                  {errorCount > 0 && ` • ${errorCount} failed`}
+                </span>
+                {duplicateCount > 0 && (
+                  <Badge variant="outline" className="text-yellow-600 border-yellow-400 gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {duplicateCount} duplicate{duplicateCount !== 1 ? 's' : ''}
+                  </Badge>
+                )}
               </div>
               
               <div className="flex gap-2">
