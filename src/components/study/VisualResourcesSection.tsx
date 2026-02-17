@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { StudyResource, StudyResourceType } from '@/hooks/useStudyResources';
 import { useFlashcardStars } from '@/hooks/useFlashcardStars';
+import { useChapterSections } from '@/hooks/useSections';
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
+import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MindMapViewer } from './MindMapViewer';
 import { InfographicViewer } from './InfographicViewer';
 import { StudyResourceTypeSection } from './StudyResourceTypeSection';
@@ -52,6 +54,9 @@ export function VisualResourcesSection({
   // Star support for students (reuses flashcard stars infrastructure)
   const { starredIds, toggleStar, isStarred } = useFlashcardStars({ chapterId, topicId });
 
+  // Sections for admin table
+  const { data: sections = [] } = useChapterSections(chapterId);
+
   const filterItems = (items: StudyResource[]) => {
     let filtered = filterBySection ? filterBySection(items) : items;
     if (searchQuery.trim()) {
@@ -68,16 +73,7 @@ export function VisualResourcesSection({
   const filteredInfographics = useMemo(() => filterItems(infographics), [infographics, searchQuery, filterBySection, showStarredOnly, starredIds]);
   const filteredAlgorithms = useMemo(() => filterItems(algorithms), [algorithms, searchQuery, filterBySection, showStarredOnly, starredIds]);
 
-  // All visual resources combined for table view
-  const allResources = useMemo(() => [...mindMaps, ...infographics, ...algorithms], [mindMaps, infographics, algorithms]);
-  const filteredAllResources = useMemo(() => {
-    let items = filterBySection ? filterBySection(allResources) : allResources;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(r => r.title.toLowerCase().includes(q));
-    }
-    return items;
-  }, [allResources, searchQuery, filterBySection]);
+
 
   return (
     <div className="space-y-4">
@@ -110,48 +106,49 @@ export function VisualResourcesSection({
         )}
       </div>
 
-      {/* Admin table view - shows ALL types in one table */}
-      {canManage && viewMode === 'table' ? (
-        <VisualResourcesAdminTable
-          resources={filteredAllResources}
-          chapterId={chapterId}
-          topicId={topicId}
-          moduleId={allResources[0]?.module_id}
-          onEdit={onEdit}
-        />
-      ) : (
-        <Tabs defaultValue="mind_map" className="w-full">
-          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
-            {SUBTABS.map(({ type, label, icon: Icon }) => {
-              const count = type === 'mind_map' ? mindMaps.length
-                : type === 'infographic' ? infographics.length
-                : algorithms.length;
-              return (
-                <TabsTrigger
-                  key={type}
-                  value={type}
-                  className="flex items-center gap-2 px-3 py-2 whitespace-nowrap"
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-xs sm:text-sm">{label}</span>
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {count}
-                  </Badge>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+      <Tabs defaultValue="mind_map" className="w-full">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
+          {SUBTABS.map(({ type, label, icon: Icon }) => {
+            const count = type === 'mind_map' ? mindMaps.length
+              : type === 'infographic' ? infographics.length
+              : algorithms.length;
+            return (
+              <TabsTrigger
+                key={type}
+                value={type}
+                className="flex items-center gap-2 px-3 py-2 whitespace-nowrap"
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-xs sm:text-sm">{label}</span>
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {count}
+                </Badge>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-          {/* Mind Maps */}
-          <TabsContent value="mind_map" className="mt-4">
-            {canManage && (
-              <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Mind Map
-                </Button>
-              </div>
-            )}
+        {/* Mind Maps */}
+        <TabsContent value="mind_map" className="mt-4">
+          {canManage && (
+            <div className="flex gap-2 mb-4">
+              <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
+                <Plus className="w-3 h-3 mr-1" />
+                Add Mind Map
+              </Button>
+            </div>
+          )}
+          {canManage && viewMode === 'table' ? (
+            <VisualResourcesAdminTable
+              resources={filteredMindMaps}
+              sections={sections}
+              chapterId={chapterId}
+              topicId={topicId}
+              moduleId={mindMaps[0]?.module_id}
+              onEdit={onEdit}
+              onDelete={onEdit ? (r) => requestResourceDelete(r.resource_type as any, r.id, r.title) : undefined}
+            />
+          ) : (
             <MindMapViewer
               resources={filteredMindMaps}
               canManage={canManage}
@@ -159,18 +156,30 @@ export function VisualResourcesSection({
               chapterId={chapterId}
               topicId={topicId}
             />
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          {/* Infographics */}
-          <TabsContent value="infographic" className="mt-4">
-            {canManage && (
-              <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={() => onAdd?.('infographic')}>
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Infographic
-                </Button>
-              </div>
-            )}
+        {/* Infographics */}
+        <TabsContent value="infographic" className="mt-4">
+          {canManage && (
+            <div className="flex gap-2 mb-4">
+              <Button size="sm" variant="outline" onClick={() => onAdd?.('infographic')}>
+                <Plus className="w-3 h-3 mr-1" />
+                Add Infographic
+              </Button>
+            </div>
+          )}
+          {canManage && viewMode === 'table' ? (
+            <VisualResourcesAdminTable
+              resources={filteredInfographics}
+              sections={sections}
+              chapterId={chapterId}
+              topicId={topicId}
+              moduleId={infographics[0]?.module_id}
+              onEdit={onEdit}
+              onDelete={onEdit ? (r) => requestResourceDelete(r.resource_type as any, r.id, r.title) : undefined}
+            />
+          ) : (
             <InfographicViewer
               resources={filteredInfographics}
               canManage={canManage}
@@ -180,18 +189,30 @@ export function VisualResourcesSection({
               starredIds={starredIds}
               onToggleStar={!canManage ? toggleStar : undefined}
             />
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          {/* Algorithms */}
-          <TabsContent value="algorithm" className="mt-4">
-            {canManage && (
-              <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={() => onAdd?.('algorithm')}>
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Algorithm
-                </Button>
-              </div>
-            )}
+        {/* Algorithms */}
+        <TabsContent value="algorithm" className="mt-4">
+          {canManage && (
+            <div className="flex gap-2 mb-4">
+              <Button size="sm" variant="outline" onClick={() => onAdd?.('algorithm')}>
+                <Plus className="w-3 h-3 mr-1" />
+                Add Algorithm
+              </Button>
+            </div>
+          )}
+          {canManage && viewMode === 'table' ? (
+            <VisualResourcesAdminTable
+              resources={filteredAlgorithms}
+              sections={sections}
+              chapterId={chapterId}
+              topicId={topicId}
+              moduleId={algorithms[0]?.module_id}
+              onEdit={onEdit}
+              onDelete={onEdit ? (r) => requestResourceDelete(r.resource_type as any, r.id, r.title) : undefined}
+            />
+          ) : (
             <StudyResourceTypeSection
               resources={filteredAlgorithms}
               resourceType="algorithm"
@@ -202,9 +223,9 @@ export function VisualResourcesSection({
               starredIds={starredIds}
               onToggleStar={!canManage ? toggleStar : undefined}
             />
-          </TabsContent>
-        </Tabs>
-      )}
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
