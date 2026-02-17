@@ -1,41 +1,47 @@
 
 
-## Unify Visual Resources Admin Tables
+## 1. Duplicate Detection for Visual Resource Uploads (Mind Maps, Infographics, Algorithms)
 
-### Problem
+### How It Works
 
-There are two separate admin table views with different features:
-1. **Mind Map subtab table** (`MindMapAdminTable`) -- has section assignment, CSV export, uses the standardized `ContentAdminTable`
-2. **Top-level table** (`VisualResourcesAdminTable`) -- has inline rename, type change dropdown, preview thumbnails, but no section assignment or CSV export
+When an admin uploads a file (image/PDF/HTML/SVG) for any of the three visual resource types, the app will check for duplicates **by title and by file name** against existing resources in the same chapter/topic before saving.
 
-These should be one consistent table that appears under each subtab (Mind Maps, Infographics, Algorithms), filtered to show only items of that type.
-
-### Solution
-
-Replace both tables with a single enhanced `VisualResourcesAdminTable` that combines the best features of both:
-- Checkboxes + bulk delete (both have this)
-- Type dropdown to re-tag items (from `VisualResourcesAdminTable`)
-- Preview thumbnails (from `VisualResourcesAdminTable`)
-- Section assignment column (from `MindMapAdminTable`)
-- CSV export (from `MindMapAdminTable`)
-- Inline rename (from `VisualResourcesAdminTable`)
-- Bulk type change for selected items
-
-Each subtab will show the table filtered to its own type, but admins can re-tag items to move them between types.
+- **Title match**: Compares the entered title against existing resource titles (case-insensitive, trimmed) of the same type within the same chapter/topic
+- **File name match**: Compares the uploaded file's name against existing file URLs (extracts the original filename from storage paths)
+- If a match is found, a confirmation dialog appears showing the matched item(s) and asking "This appears to be a duplicate. Upload anyway?"
+- The admin can proceed or cancel
 
 ### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/study/VisualResourcesAdminTable.tsx` | Rewrite to use `ContentAdminTable` as base (like `MindMapAdminTable`), adding type-change dropdown column, preview column, section column, and CSV export. Accept a `sections` prop. |
-| `src/components/study/VisualResourcesSection.tsx` | Remove the top-level table toggle. Instead, pass the table view mode down to each subtab. Render `VisualResourcesAdminTable` inside each `TabsContent` when in table mode, filtered by type. Keep the Cards/Table toggle but always show subtabs. |
-| `src/components/study/MindMapViewer.tsx` | Remove its own Cards/Table toggle and `MindMapAdminTable` usage -- the parent (`VisualResourcesSection`) now handles table mode. Accept a `viewMode` prop to decide whether to render cards or nothing (table is handled by parent). |
-| `src/components/study/MindMapAdminTable.tsx` | Delete this file -- its functionality is absorbed into the unified `VisualResourcesAdminTable`. |
+| `src/components/study/StudyResourceFormModal.tsx` | Before calling `createResource.mutateAsync`, query existing resources in the same chapter/topic and type. If a title match (normalized) is found, show an `AlertDialog` warning with the matched title. Admin can confirm to proceed or cancel. |
+| `src/hooks/useStudyResources.ts` | No changes needed -- `useChapterStudyResources` and `useTopicStudyResources` already fetch all resources for the container, which can be filtered client-side. |
+| `src/components/study/MindMapBulkUploadModal.tsx` | Add duplicate check before processing each file in the bulk upload loop. Compare each file's name against existing resource titles. Flag duplicates with a warning icon in the preview list, but still allow the admin to proceed. |
 
-### What the Admin Sees
+### Duplicate Check Logic
 
-1. Opens Visual Resources tab with Mind Maps / Infographics / Algorithms subtabs (always visible)
-2. Toggles to Table view using the Cards/Table button
-3. Each subtab shows a table of its items with columns: Checkbox, Title (inline editable), Type (dropdown to re-tag), Preview, Section (dropdown), Actions (edit/delete)
-4. Select multiple items to bulk delete or bulk change type (e.g., move all selected from Mind Maps to Infographics)
-5. CSV export available per subtab
+```
+1. Admin fills in title + uploads file, clicks "Create"
+2. Before saving, fetch existing resources for this chapter/topic filtered to the same resource_type
+3. Check: does any existing resource have a normalized title matching the new title?
+4. Check: does any existing resource's fileUrl contain the same file name?
+5. If either match found -> show AlertDialog: "A resource with a similar title already exists: [title]. Continue anyway?"
+6. If admin confirms -> proceed with create
+7. If admin cancels -> stay on form
+```
+
+### What About the Bulk Upload Modal?
+
+The `MindMapBulkUploadModal` (used for bulk visual resource uploads) processes multiple files at once. For this flow:
+- After files are selected and before the "Upload All" action, each file's name is compared against existing resources
+- Duplicates are flagged with a warning badge in the file list preview
+- A summary shows "X of Y files may be duplicates"
+- The admin can remove individual flagged files or proceed with all
+
+## 2. OSCE Template Format
+
+Both the **Help Templates tab** and the **OSCE Bulk Upload modal** already generate the same format: **XLSX** (`osce_template.xlsx`). There is no mismatch -- they are consistent. XLSX is the correct choice for OSCE because it has 15+ columns (history, 5 statements, 5 answers, 5 explanations, section info) which would be hard to manage in CSV.
+
+No changes needed here.
+
