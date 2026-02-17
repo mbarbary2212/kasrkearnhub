@@ -1,63 +1,41 @@
 
 
-## Fix: Essay Answers Not Saving to Database
+## Unify Visual Resources Admin Tables
 
-### Root Cause
+### Problem
 
-The `performAutosave` function in `BlueprintExamRunner.tsx` (line 284-290) does this:
+There are two separate admin table views with different features:
+1. **Mind Map subtab table** (`MindMapAdminTable`) -- has section assignment, CSV export, uses the standardized `ContentAdminTable`
+2. **Top-level table** (`VisualResourcesAdminTable`) -- has inline rename, type change dropdown, preview thumbnails, but no section assignment or CSV export
 
-```typescript
-try {
-  await supabase
-    .from('exam_attempt_answers')
-    .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
-} catch (error) {
-  console.error('Autosave failed:', error);
-}
-```
+These should be one consistent table that appears under each subtab (Mind Maps, Infographics, Algorithms), filtered to show only items of that type.
 
-The Supabase JS client does **not throw** on API errors -- it returns `{ data, error }`. The `try/catch` only catches network failures. The upsert is returning an error in the response object that is never checked, so it silently fails. As a result, `exam_attempt_answers` has **zero rows** across all attempts. The essay marking step (`calculateScoreAndMarkEssays`) then tries to UPDATE rows that don't exist, also failing silently.
+### Solution
 
-This means:
-- No essay answers are saved
-- No essay scores/feedback are saved
-- The admin detail modal correctly shows nothing for essays (there is no data)
+Replace both tables with a single enhanced `VisualResourcesAdminTable` that combines the best features of both:
+- Checkboxes + bulk delete (both have this)
+- Type dropdown to re-tag items (from `VisualResourcesAdminTable`)
+- Preview thumbnails (from `VisualResourcesAdminTable`)
+- Section assignment column (from `MindMapAdminTable`)
+- CSV export (from `MindMapAdminTable`)
+- Inline rename (from `VisualResourcesAdminTable`)
+- Bulk type change for selected items
 
-### Fix
+Each subtab will show the table filtered to its own type, but admins can re-tag items to move them between types.
 
-**File: `src/components/exam/BlueprintExamRunner.tsx`**
-
-1. **Fix autosave** -- Check the `.error` property from the upsert response and log it properly:
-
-```typescript
-const { error } = await supabase
-  .from('exam_attempt_answers')
-  .upsert(rows as any, { onConflict: 'attempt_id,question_id' });
-
-if (error) {
-  console.error('Autosave failed:', error.message);
-}
-```
-
-2. **Fix final save on submit** -- In `handleSubmit`, after calling `performAutosave()`, verify rows were actually created before proceeding with essay marking. If the autosave fails, do a direct insert as a fallback to ensure data is saved on submission.
-
-3. **Fix essay marking updates** -- In `calculateScoreAndMarkEssays`, also check the `.error` from the update calls so marking failures are surfaced.
-
-### What This Fixes
-
-- Future blueprint exam attempts will properly save all MCQ and essay answer rows
-- Essay marking (scores, matched/missing concepts) will be persisted
-- The admin detail modal will show essay results for new attempts
-- Errors will be properly logged for debugging
-
-### Important Note
-
-Existing completed attempts have no essay data saved -- that data existed only in React state during the exam and is unrecoverable. Only future attempts will have full essay data visible to admins.
-
-### Files Changed
+### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/exam/BlueprintExamRunner.tsx` | Fix error handling in autosave upsert, add fallback insert on submit, fix error handling in essay marking updates |
+| `src/components/study/VisualResourcesAdminTable.tsx` | Rewrite to use `ContentAdminTable` as base (like `MindMapAdminTable`), adding type-change dropdown column, preview column, section column, and CSV export. Accept a `sections` prop. |
+| `src/components/study/VisualResourcesSection.tsx` | Remove the top-level table toggle. Instead, pass the table view mode down to each subtab. Render `VisualResourcesAdminTable` inside each `TabsContent` when in table mode, filtered by type. Keep the Cards/Table toggle but always show subtabs. |
+| `src/components/study/MindMapViewer.tsx` | Remove its own Cards/Table toggle and `MindMapAdminTable` usage -- the parent (`VisualResourcesSection`) now handles table mode. Accept a `viewMode` prop to decide whether to render cards or nothing (table is handled by parent). |
+| `src/components/study/MindMapAdminTable.tsx` | Delete this file -- its functionality is absorbed into the unified `VisualResourcesAdminTable`. |
 
-No database changes needed. The table schema and RLS policies are correct.
+### What the Admin Sees
+
+1. Opens Visual Resources tab with Mind Maps / Infographics / Algorithms subtabs (always visible)
+2. Toggles to Table view using the Cards/Table button
+3. Each subtab shows a table of its items with columns: Checkbox, Title (inline editable), Type (dropdown to re-tag), Preview, Section (dropdown), Actions (edit/delete)
+4. Select multiple items to bulk delete or bulk change type (e.g., move all selected from Mind Maps to Infographics)
+5. CSV export available per subtab
