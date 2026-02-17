@@ -227,12 +227,15 @@ export function AIContentFactoryModal({
 
       setProgressState('generating');
 
+      const maxQty = (contentType === 'virtual_patient' || contentType === 'clinical_case') ? 5 : 20;
+      const parsedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
+
       const data = await invokeWithAuth('generate-content-from-pdf', {
         document_id: selectedDocId,
         content_type: contentType,
         module_id: moduleId,
         chapter_id: chapterId || null,
-        quantity: parseInt(quantity),
+        quantity: parsedQty,
         additional_instructions: additionalInstructions || null,
         socratic_mode: socraticMode,
       });
@@ -567,12 +570,12 @@ export function AIContentFactoryModal({
                   <Input
                     type="number"
                     min="1"
-                    max={contentType === 'virtual_patient' ? '5' : '20'}
+                    max={(contentType === 'virtual_patient' || contentType === 'clinical_case') ? '5' : '20'}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Maximum {contentType === 'virtual_patient' ? '5' : '20'} items per generation
+                    Maximum {(contentType === 'virtual_patient' || contentType === 'clinical_case') ? '5' : '20'} items per generation
                   </p>
                 </div>
                 <div className="space-y-2">
