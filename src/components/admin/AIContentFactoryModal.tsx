@@ -29,13 +29,15 @@ import {
   Network,
   Stethoscope,
   GraduationCap,
-  MessageCircleQuestion
+  MessageCircleQuestion,
+  Info
 } from 'lucide-react';
 import { AIContentPreviewCard } from './AIContentPreviewCard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useModules } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { useChapterSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -102,14 +104,24 @@ export function AIContentFactoryModal({
   const [progressState, setProgressState] = useState<ProgressState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [socraticMode, setSocraticMode] = useState(false);
+  const [perSection, setPerSection] = useState(false);
+  const [sectionProgress, setSectionProgress] = useState<string | null>(null);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(moduleId || undefined);
+  const { data: sections } = useChapterSections(chapterId || undefined);
 
   const selectedContentType = CONTENT_TYPES.find(t => t.value === contentType);
   const requiresChapter = selectedContentType?.requiresChapter ?? false;
+
+  const isLowCapType = contentType === 'virtual_patient' || contentType === 'clinical_case';
+  const maxQty = isLowCapType ? 5 : 50;
+
+  const hasSections = sections && sections.length > 0;
+  const parsedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
+  const estimatedTotal = perSection && hasSections ? parsedQty * sections.length : parsedQty;
 
   // Fetch available documents
   const { data: documents } = useQuery({
@@ -126,17 +138,14 @@ export function AIContentFactoryModal({
     enabled: open,
   });
 
-  // Fetch selected document details
   const selectedDoc = documents?.find(d => d.id === selectedDocId);
 
-  // Update state when props change
   useEffect(() => {
     if (documentId) setSelectedDocId(documentId);
     if (prefilledModuleId) setModuleId(prefilledModuleId);
     if (prefilledChapterId) setChapterId(prefilledChapterId);
   }, [documentId, prefilledModuleId, prefilledChapterId]);
 
-  // Auto-fill module/chapter from selected document
   useEffect(() => {
     if (selectedDoc && !prefilledModuleId) {
       if (selectedDoc.module_id) setModuleId(selectedDoc.module_id);
@@ -144,73 +153,35 @@ export function AIContentFactoryModal({
     }
   }, [selectedDoc, prefilledModuleId]);
 
-  // Get fresh session with retry logic
   const getValidSession = useCallback(async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (session?.access_token) {
-      return session;
-    }
-
-    console.log('No active session, attempting refresh...');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) return session;
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError) {
-      console.error('Session refresh failed:', refreshError);
-      throw new Error('Session expired. Please sign in again.');
-    }
-    
-    if (!refreshData.session?.access_token) {
-      throw new Error('Session expired. Please sign in again.');
-    }
-
+    if (refreshError) throw new Error('Session expired. Please sign in again.');
+    if (!refreshData.session?.access_token) throw new Error('Session expired. Please sign in again.');
     return refreshData.session;
   }, []);
 
-  // Invoke edge function with proper auth and retry
   const invokeWithAuth = useCallback(
     async (functionName: string, payload: any, retryCount = 0): Promise<any> => {
       const session = await getValidSession();
-
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) {
         const errorMsg = error.message || '';
-
-        if (
-          errorMsg.includes('Unauthorized') ||
-          errorMsg.includes('session') ||
-          errorMsg.includes('401') ||
-          errorMsg.includes('403')
-        ) {
-          if (retryCount === 0) {
-            console.log('Auth error, refreshing session and retrying...');
-            await supabase.auth.refreshSession();
-            return invokeWithAuth(functionName, payload, 1);
-          }
-          throw new Error('Your session has expired. Please refresh the page and sign in again.');
+        if ((errorMsg.includes('Unauthorized') || errorMsg.includes('session') || errorMsg.includes('401') || errorMsg.includes('403')) && retryCount === 0) {
+          await supabase.auth.refreshSession();
+          return invokeWithAuth(functionName, payload, 1);
         }
-
-        if (
-          retryCount === 0 &&
-          (errorMsg.includes('network') ||
-            errorMsg.includes('500') ||
-            errorMsg.includes('502') ||
-            errorMsg.includes('503'))
-        ) {
-          console.log('Transient error, retrying once...');
+        if (retryCount === 0 && (errorMsg.includes('network') || errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503'))) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           return invokeWithAuth(functionName, payload, 1);
         }
-
         throw error;
       }
-
       return data;
     },
     [getValidSession]
@@ -224,39 +195,80 @@ export function AIContentFactoryModal({
 
       setProgressState('preparing');
       setErrorMessage(null);
-
       setProgressState('generating');
 
-      const maxQty = (contentType === 'virtual_patient' || contentType === 'clinical_case') ? 5 : 20;
-      const parsedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
+      const clampedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
 
+      // Per-section mode: loop through sections sequentially
+      if (perSection && hasSections && sections.length > 0) {
+        const allItems: any[] = [];
+        const allWarnings: string[] = [];
+        let lastJobId: string | null = null;
+
+        for (let i = 0; i < sections.length; i++) {
+          const sec = sections[i];
+          setSectionProgress(`Generating section ${sec.section_number || sec.name}... (${i + 1}/${sections.length})`);
+
+          const data = await invokeWithAuth('generate-content-from-pdf', {
+            document_id: selectedDocId,
+            content_type: contentType,
+            module_id: moduleId,
+            chapter_id: chapterId || null,
+            quantity: clampedQty,
+            additional_instructions: additionalInstructions || null,
+            socratic_mode: socraticMode,
+            target_section_number: sec.section_number || null,
+          });
+
+          if (data?.error) {
+            allWarnings.push(`Section ${sec.section_number}: ${data.error}`);
+            continue;
+          }
+
+          if (Array.isArray(data?.items)) {
+            allItems.push(...data.items);
+          }
+          if (Array.isArray(data?.warnings)) {
+            allWarnings.push(...data.warnings);
+          }
+          if (data?.job_id) lastJobId = data.job_id;
+
+          // Small delay between section calls
+          if (i < sections.length - 1) {
+            await new Promise(r => setTimeout(r, 500));
+          }
+        }
+
+        setSectionProgress(null);
+
+        if (allItems.length === 0) {
+          throw new Error('No items generated across any section. Please retry.');
+        }
+
+        setJobId(lastJobId);
+        setGeneratedContent({ items: allItems, warnings: allWarnings, job_id: lastJobId, content_type: contentType });
+        setProgressState('complete');
+        return { items: allItems, job_id: lastJobId };
+      }
+
+      // Standard single-call mode
       const data = await invokeWithAuth('generate-content-from-pdf', {
         document_id: selectedDocId,
         content_type: contentType,
         module_id: moduleId,
         chapter_id: chapterId || null,
-        quantity: parsedQty,
+        quantity: clampedQty,
         additional_instructions: additionalInstructions || null,
         socratic_mode: socraticMode,
       });
 
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      if (!data?.job_id) {
-        throw new Error('Generation returned no job id. Please retry.');
-      }
-
-      if (!Array.isArray(data?.items)) {
-        console.error('Invalid generation payload (items is not an array):', data);
-        throw new Error('Generation produced an invalid payload. Please retry.');
-      }
+      if (data?.error) throw new Error(data.error);
+      if (!data?.job_id) throw new Error('Generation returned no job id. Please retry.');
+      if (!Array.isArray(data?.items)) throw new Error('Generation produced an invalid payload. Please retry.');
 
       setJobId(data.job_id);
       setGeneratedContent(data);
       setProgressState('complete');
-
       return data;
     },
     onSuccess: () => {
@@ -266,7 +278,7 @@ export function AIContentFactoryModal({
       console.error('Generation error:', error);
       setProgressState('error');
       setErrorMessage(error.message);
-
+      setSectionProgress(null);
       if (error.message.includes('session') || error.message.includes('sign in')) {
         toast.error('Session expired. Please refresh the page and sign in again.');
       } else {
@@ -278,31 +290,16 @@ export function AIContentFactoryModal({
   const approveMutation = useMutation({
     mutationFn: async () => {
       if (!jobId) throw new Error('No generation job to approve');
-
       setProgressState('saving');
 
-      const items =
-        generatedContent &&
-        typeof generatedContent === 'object' &&
-        Array.isArray((generatedContent as any).items)
-          ? ((generatedContent as any).items as any[])
-          : null;
-
-      if (!items || items.length === 0) {
-        console.error('Invalid generated payload (missing items[]):', generatedContent);
+      const items = generatedContent?.items;
+      if (!Array.isArray(items) || items.length === 0) {
         throw new Error('Generation produced an invalid payload. Please retry.');
       }
 
       const data = await invokeWithAuth('approve-ai-content', { job_id: jobId });
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      if (!Array.isArray(data?.items)) {
-        console.error('Invalid approval payload (items is not an array):', data);
-        throw new Error('Approval returned an invalid payload. Please retry.');
-      }
+      if (data?.error) throw new Error(data.error);
+      if (!Array.isArray(data?.items)) throw new Error('Approval returned an invalid payload. Please retry.');
 
       setProgressState('complete');
       return data;
@@ -311,31 +308,16 @@ export function AIContentFactoryModal({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['ai_generation_jobs'] }),
         queryClient.invalidateQueries({ queryKey: ['mcqs'] }),
-        queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', moduleId] }),
-        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['study-resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] }),
-        queryClient.invalidateQueries({ queryKey: ['study-resources', 'module', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['flashcards'] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
-        queryClient.invalidateQueries({ queryKey: ['clinical-cases', 'chapter', chapterId] }),
-        queryClient.invalidateQueries({ queryKey: ['clinical-cases', 'module', moduleId] }),
-        queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['essays'] }),
         queryClient.invalidateQueries({ queryKey: ['chapter-content', chapterId] }),
         queryClient.invalidateQueries({ queryKey: ['module-content', moduleId] }),
         queryClient.invalidateQueries({ queryKey: ['osce-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['guided-explanations'] }),
-        queryClient.invalidateQueries({ queryKey: ['guided-explanations', 'chapter', chapterId] }),
       ]);
-
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['ai_generation_jobs'] }),
-        queryClient.refetchQueries({ queryKey: ['chapter-content', chapterId] }),
-        queryClient.refetchQueries({ queryKey: ['module-content', moduleId] }),
-      ]);
-
       toast.success('Content approved and saved!');
       handleClose();
     },
@@ -358,6 +340,8 @@ export function AIContentFactoryModal({
     setProgressState('idle');
     setErrorMessage(null);
     setSocraticMode(false);
+    setPerSection(false);
+    setSectionProgress(null);
     onOpenChange(false);
   };
 
@@ -366,9 +350,11 @@ export function AIContentFactoryModal({
     setErrorMessage(null);
     setGeneratedContent(null);
     setJobId(null);
+    setSectionProgress(null);
   };
 
   const getProgressLabel = () => {
+    if (sectionProgress) return sectionProgress;
     switch (progressState) {
       case 'preparing': return 'Preparing request...';
       case 'generating': return 'Generating content with AI...';
@@ -382,7 +368,6 @@ export function AIContentFactoryModal({
   const practiceTypes = CONTENT_TYPES.filter(t => t.category === 'practice');
   const resourceTypes = CONTENT_TYPES.filter(t => t.category === 'resources');
 
-  // Handle item update from edit
   const handleItemUpdate = (index: number, updatedItem: any) => {
     if (!generatedContent?.items) return;
     const updatedItems = [...generatedContent.items];
@@ -390,7 +375,6 @@ export function AIContentFactoryModal({
     setGeneratedContent({ ...generatedContent, items: updatedItems });
   };
 
-  // Handle item deletion
   const handleItemDelete = (index: number) => {
     if (!generatedContent?.items) return;
     const updatedItems = generatedContent.items.filter((_: any, i: number) => i !== index);
@@ -535,7 +519,7 @@ export function AIContentFactoryModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Target Module *</Label>
-                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); }}>
+                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); setPerSection(false); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
@@ -550,7 +534,7 @@ export function AIContentFactoryModal({
                   <Label>
                     Target Chapter {requiresChapter ? '*' : '(Optional)'}
                   </Label>
-                  <Select value={chapterId} onValueChange={setChapterId} disabled={!moduleId}>
+                  <Select value={chapterId} onValueChange={(v) => { setChapterId(v); setPerSection(false); }} disabled={!moduleId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select chapter" />
                     </SelectTrigger>
@@ -563,19 +547,60 @@ export function AIContentFactoryModal({
                 </div>
               </div>
 
+              {/* Per-Section Toggle */}
+              {chapterId && hasSections && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      Chapter Sections ({sections.length})
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="per-section-factory"
+                        checked={perSection}
+                        onCheckedChange={setPerSection}
+                      />
+                      <Label htmlFor="per-section-factory" className="text-sm">
+                        Generate per section
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 p-3 bg-muted/30 rounded-lg max-h-24 overflow-y-auto">
+                    {sections.map(s => (
+                      <Badge key={s.id} variant="outline" className="text-xs">
+                        {s.section_number}: {s.name}
+                      </Badge>
+                    ))}
+                  </div>
+                  {perSection && (
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Estimated Output</span>
+                        <Badge variant="default">~{estimatedTotal} items</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        {parsedQty} items × {sections.length} sections = {estimatedTotal} total
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Quantity & Socratic Mode */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Number of Items</Label>
+                  <Label>Number of Items {perSection ? '(per section)' : ''}</Label>
                   <Input
                     type="number"
                     min="1"
-                    max={(contentType === 'virtual_patient' || contentType === 'clinical_case') ? '5' : '20'}
+                    max={String(maxQty)}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Maximum {(contentType === 'virtual_patient' || contentType === 'clinical_case') ? '5' : '20'} items per generation
+                    Maximum {maxQty} items {perSection ? 'per section' : 'per generation'}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -617,6 +642,17 @@ export function AIContentFactoryModal({
                 <span className="font-medium">Content Generated Successfully</span>
                 <Badge variant="outline" className="ml-2">{generatedContent?.items?.length || 0} items</Badge>
               </div>
+
+              {/* Generation Stats */}
+              {generatedContent?.generation_stats && (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
+                  Requested: {generatedContent.generation_stats.requested} | 
+                  Raw: {generatedContent.generation_stats.raw_generated} | 
+                  After dedup: {generatedContent.generation_stats.after_dedup} | 
+                  Chunks: {generatedContent.generation_stats.chunks_used}
+                  {generatedContent.generation_stats.topup_rounds > 0 && ` | Top-ups: ${generatedContent.generation_stats.topup_rounds}`}
+                </div>
+              )}
               
               <Tabs defaultValue="preview">
                 <TabsList>
@@ -681,7 +717,7 @@ export function AIContentFactoryModal({
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Content
+                  Generate {perSection && hasSections ? `~${estimatedTotal} Items` : 'Content'}
                 </>
               )}
             </Button>
