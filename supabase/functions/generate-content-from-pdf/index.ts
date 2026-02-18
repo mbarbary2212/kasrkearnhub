@@ -23,15 +23,22 @@ type ContentType =
   | "guided_explanation";
 
 interface GenerateRequest {
-  document_id: string;
+  document_id?: string;
   content_type: ContentType;
-  module_id: string;
+  module_id?: string;
   chapter_id?: string | null;
-  quantity: number;
+  quantity?: number;
   additional_instructions?: string | null;
   socratic_mode?: boolean;
   test_mode?: boolean;
   target_section_number?: string | null;
+  // Chunked generation params
+  job_id?: string;
+  dedup_fingerprints?: string[];
+  action?: "generate" | "finalize";
+  // Finalize params
+  items?: any[];
+  generation_stats?: any;
 }
 
 // Schema definitions for each content type - AI must output ONLY these fields
@@ -152,7 +159,6 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
   },
 };
 
-// Virtual Patient stage schema for reference in prompts
 const VP_STAGE_SCHEMA = {
   stage_order: "number - 1-based order",
   stage_type: "string - 'mcq', 'multi_select', or 'short_answer'",
@@ -166,7 +172,7 @@ const VP_STAGE_SCHEMA = {
 };
 
 // ============================================
-// NBME PEDAGOGICAL GUIDELINES (Content-type specific)
+// NBME PEDAGOGICAL GUIDELINES
 // ============================================
 
 function getNbmeGuidelines(contentType: ContentType): string {
@@ -198,7 +204,7 @@ STRICT AVOID LIST (NBME Technical Item Flaws):
     case 'essay':
       return `
 PEDAGOGICAL GUIDELINES (Written Exam Standards):
-- Use Bloom's taxonomy action verbs appropriate to the cognitive level tested (e.g., "Describe", "Compare", "Evaluate", "Justify")
+- Use Bloom's taxonomy action verbs appropriate to the cognitive level tested
 - Include a comprehensive model answer with possible alternative acceptable answers
 - Specify the key concepts that must be covered
 - Allocate marks/keywords by importance and time needed
@@ -208,8 +214,8 @@ PEDAGOGICAL GUIDELINES (Written Exam Standards):
       return `
 PEDAGOGICAL GUIDELINES (Clinical Assessment Standards):
 - Each statement must be ABSOLUTELY true or false with no ambiguity
-- Ensure a MIX of true and false answers across the 5 statements (not all true or all false)
-- Statements should test different aspects of the clinical scenario (diagnosis, investigation, management, prognosis, complications)
+- Ensure a MIX of true and false answers across the 5 statements
+- Statements should test different aspects of the clinical scenario
 - AVOID vague terms: "associated with", "usually", "frequently", "can sometimes"
 - Each explanation must clearly justify why the statement is true or false`;
 
@@ -218,14 +224,14 @@ PEDAGOGICAL GUIDELINES (Clinical Assessment Standards):
 PEDAGOGICAL GUIDELINES (EMQ Standards):
 - Include a clear theme and task instruction
 - Provide at least 6 options in each column to reduce guessing probability
-- Options should be HOMOGENEOUS (same category/type) and PARALLEL in structure
+- Options should be HOMOGENEOUS and PARALLEL in structure
 - Each option should be plausible for multiple stems
 - Avoid giving away answers through option ordering`;
 
     case 'flashcard':
       return `
 PEDAGOGICAL GUIDELINES:
-- Use Bloom's taxonomy for question formulation (not just recall - include application and analysis)
+- Use Bloom's taxonomy for question formulation
 - Vary difficulty across the set
 - Front should be a clear, focused question or prompt
 - Back should be concise but complete`;
@@ -265,7 +271,6 @@ function validateMcqItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Check choices is an array
   if (!Array.isArray(item.choices)) {
     if (item.choices && typeof item.choices === 'object') {
       warnings.push(`MCQ #${index + 1}: choices was an object, converting to array format`);
@@ -424,7 +429,7 @@ function validateVirtualPatientItem(item: any, index: number): ValidationResult 
       }
       if (stage.stage_type === 'short_answer') {
         if (!stage.correct_answer || (typeof stage.correct_answer !== 'string' && !Array.isArray(stage.correct_answer))) {
-          errors.push(`VP Case #${index + 1}, Stage #${s + 1}: short_answer must have a correct_answer (string or array)`);
+          errors.push(`VP Case #${index + 1}, Stage #${s + 1}: short_answer must have a correct_answer`);
         }
       }
     }
@@ -624,22 +629,35 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
 }
 
 // ============================================
-// CHUNKED GENERATION HELPERS
+// FINGERPRINT HELPERS (kept for dedup context)
 // ============================================
 
-const CHUNK_SIZE = 10;
-const CHUNK_DELAY_MS = 1500;
-const MAX_TOPUP_ROUNDS = 2;
+function extractKeyConcept(text: string): string {
+  if (!text) return 'general';
+  const cleaned = text
+    .replace(/^(a |an |the |which |what |how |why |when |where |describe |explain |compare |evaluate |identify |list |name |define |discuss |outline )/i, '')
+    .replace(/^(of the following|is the most|would be the|is true about|regarding|concerning|with respect to) /i, '')
+    .trim();
+  const short = cleaned.substring(0, 40).replace(/[.?!,;:]+$/, '').trim();
+  return short || 'general';
+}
 
-/**
- * Build a compact fingerprint for dedup context between chunks.
- * Format: key_concept="..." | task="..." | stem_prefix="..."
- */
+function classifyTask(stem: string): string {
+  const lower = stem.toLowerCase();
+  if (/next (best )?step|management|treatment|therapy|prescribe/.test(lower)) return 'next step';
+  if (/diagnos|most likely|best explains/.test(lower)) return 'diagnosis';
+  if (/mechanism|pathophysiology|cause|etiology/.test(lower)) return 'mechanism';
+  if (/complication|adverse|side effect|risk/.test(lower)) return 'complication';
+  if (/interpret|finding|result|lab|image|ecg|x-ray/.test(lower)) return 'interpretation';
+  if (/prognos|outcome|survival/.test(lower)) return 'prognosis';
+  if (/prevent|screen|prophylax/.test(lower)) return 'prevention';
+  return 'recall';
+}
+
 function buildItemFingerprint(item: any, contentType: ContentType): string {
   switch (contentType) {
     case 'mcq': {
       const stem = (item.stem || '').substring(0, 80);
-      // Attempt to extract key concept and task from stem
       const concept = extractKeyConcept(item.stem || '');
       const task = classifyTask(item.stem || '');
       return `key_concept="${concept}" | task="${task}" | stem_prefix="${stem}"`;
@@ -677,45 +695,6 @@ function buildItemFingerprint(item: any, contentType: ContentType): string {
 }
 
 /**
- * Extract a short key concept phrase from text (first meaningful noun phrase)
- */
-function extractKeyConcept(text: string): string {
-  if (!text) return 'general';
-  // Take up to 40 chars of meaningful content, stripping common lead-ins
-  const cleaned = text
-    .replace(/^(a |an |the |which |what |how |why |when |where |describe |explain |compare |evaluate |identify |list |name |define |discuss |outline )/i, '')
-    .replace(/^(of the following|is the most|would be the|is true about|regarding|concerning|with respect to) /i, '')
-    .trim();
-  const short = cleaned.substring(0, 40).replace(/[.?!,;:]+$/, '').trim();
-  return short || 'general';
-}
-
-/**
- * Classify the cognitive task tested by a question stem
- */
-function classifyTask(stem: string): string {
-  const lower = stem.toLowerCase();
-  if (/next (best )?step|management|treatment|therapy|prescribe/.test(lower)) return 'next step';
-  if (/diagnos|most likely|best explains/.test(lower)) return 'diagnosis';
-  if (/mechanism|pathophysiology|cause|etiology/.test(lower)) return 'mechanism';
-  if (/complication|adverse|side effect|risk/.test(lower)) return 'complication';
-  if (/interpret|finding|result|lab|image|ecg|x-ray/.test(lower)) return 'interpretation';
-  if (/prognos|outcome|survival/.test(lower)) return 'prognosis';
-  if (/prevent|screen|prophylax/.test(lower)) return 'prevention';
-  return 'recall';
-}
-
-/**
- * Build dedup context string from accumulated items
- */
-function buildDedupContext(items: any[], contentType: ContentType): string {
-  if (items.length === 0) return '';
-  const fingerprints = items.map((item, i) => `${i + 1}) ${buildItemFingerprint(item, contentType)}`);
-  return `\n\nALREADY GENERATED (DO NOT DUPLICATE concept, scenario, or wording):
-${fingerprints.join('\n')}`;
-}
-
-/**
  * Parse AI response text into array of items
  */
 function parseAIResponse(text: string): any[] {
@@ -734,83 +713,6 @@ function parseAIResponse(text: string): any[] {
       (parsed ? [parsed] : []);
 
   return Array.isArray(normalized) ? normalized : [];
-}
-
-/**
- * Simple Levenshtein-based similarity for intra-batch near-duplicate detection
- */
-function quickSimilarity(a: string, b: string): number {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const la = a.toLowerCase().trim();
-  const lb = b.toLowerCase().trim();
-  if (la === lb) return 1;
-  const maxLen = Math.max(la.length, lb.length);
-  if (maxLen === 0) return 1;
-  // For performance, skip Levenshtein for very long strings
-  if (maxLen > 500) {
-    // Use token overlap instead
-    const tokensA = new Set(la.split(/\s+/));
-    const tokensB = new Set(lb.split(/\s+/));
-    let overlap = 0;
-    for (const t of tokensA) { if (tokensB.has(t)) overlap++; }
-    return overlap / Math.max(tokensA.size, tokensB.size);
-  }
-  // Levenshtein
-  const matrix: number[][] = [];
-  for (let i = 0; i <= lb.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= la.length; j++) matrix[0][j] = j;
-  for (let i = 1; i <= lb.length; i++) {
-    for (let j = 1; j <= la.length; j++) {
-      if (lb[i-1] === la[j-1]) matrix[i][j] = matrix[i-1][j-1];
-      else matrix[i][j] = Math.min(matrix[i-1][j-1]+1, matrix[i][j-1]+1, matrix[i-1][j]+1);
-    }
-  }
-  return 1 - matrix[lb.length][la.length] / maxLen;
-}
-
-/**
- * Get the primary text field for a content type (for similarity checks)
- */
-function getPrimaryText(item: any, contentType: ContentType): string {
-  switch (contentType) {
-    case 'mcq': return item.stem || '';
-    case 'flashcard': return item.front || '';
-    case 'essay': return item.question || '';
-    case 'osce': return item.history_text || '';
-    case 'matching': return item.instruction || '';
-    case 'case_scenario':
-    case 'clinical_case':
-    case 'virtual_patient': return item.title || '';
-    case 'mind_map': return item.title || '';
-    case 'worked_case': return item.title || '';
-    case 'guided_explanation': return item.topic || '';
-    default: return JSON.stringify(item).substring(0, 200);
-  }
-}
-
-/**
- * Deduplicate items within a batch using similarity threshold
- */
-function deduplicateMergedItems(items: any[], contentType: ContentType, threshold = 0.85): { unique: any[]; removedCount: number } {
-  const unique: any[] = [];
-  let removedCount = 0;
-
-  for (const item of items) {
-    const text = getPrimaryText(item, contentType);
-    let isDup = false;
-    for (const existing of unique) {
-      const existingText = getPrimaryText(existing, contentType);
-      if (quickSimilarity(text, existingText) >= threshold) {
-        isDup = true;
-        removedCount++;
-        break;
-      }
-    }
-    if (!isDup) unique.push(item);
-  }
-
-  return { unique, removedCount };
 }
 
 // ============================================
@@ -877,7 +779,70 @@ serve(async (req) => {
     document_id, content_type, module_id, chapter_id,
     quantity, additional_instructions, socratic_mode, test_mode,
     target_section_number,
+    // Chunked params
+    job_id: existingJobId, dedup_fingerprints, action,
+    // Finalize params
+    items: finalizeItems, generation_stats,
   } = body;
+
+  // ============================================
+  // ACTION: FINALIZE (no AI call, just validate + save)
+  // ============================================
+  if (action === "finalize" && existingJobId) {
+    console.log(`[${existingJobId}] Finalize: validating and saving ${finalizeItems?.length || 0} items`);
+
+    if (!Array.isArray(finalizeItems) || finalizeItems.length === 0) {
+      return jsonResponse({ error: "No items to finalize", step: "finalize", job_id: existingJobId, items: [], warnings: [] }, 400);
+    }
+
+    // Validate all items
+    const validation = validateItems(finalizeItems, content_type);
+    const allWarnings = [...(validation.warnings || [])];
+
+    if (!validation.isValid) {
+      const errorSummary = validation.errors.slice(0, 5).join('; ');
+      const msg = `Validation failed: ${errorSummary}${validation.errors.length > 5 ? ` (and ${validation.errors.length - 5} more)` : ''}`;
+      console.error(`[${existingJobId}] Finalize validation errors:`, validation.errors);
+      await serviceClient.from("ai_generation_jobs")
+        .update({ status: "failed", error_message: `[finalize] ${msg}`, completed_at: new Date().toISOString() })
+        .eq("id", existingJobId);
+      return jsonResponse({ error: msg, step: "validation", job_id: existingJobId, items: [], warnings: allWarnings, validation_errors: validation.errors }, 400);
+    }
+
+    // Save to job
+    const outputData = {
+      items: finalizeItems,
+      content_type,
+      source_pdf_id: document_id,
+      warnings: allWarnings,
+      test_mode: test_mode ?? false,
+      generation_stats: generation_stats || {},
+    };
+
+    const { error: updateError } = await serviceClient
+      .from("ai_generation_jobs")
+      .update({ status: "completed", output_data: outputData, completed_at: new Date().toISOString() })
+      .eq("id", existingJobId);
+
+    if (updateError) {
+      console.error(`[${existingJobId}] Failed to update job:`, updateError.message);
+      return jsonResponse({ error: "Failed to persist generation output", step: "job_update", job_id: existingJobId, items: [], warnings: [] }, 500);
+    }
+
+    console.log(`[${existingJobId}] Finalize complete: ${finalizeItems.length} items saved`);
+
+    return jsonResponse({
+      job_id: existingJobId,
+      content_type,
+      items: finalizeItems,
+      warnings: allWarnings,
+      generation_stats: generation_stats || {},
+    });
+  }
+
+  // ============================================
+  // ACTION: GENERATE (single chunk, up to 10 items)
+  // ============================================
 
   if (!document_id || !content_type || !module_id) {
     return jsonResponse({ error: "Missing required fields: document_id, content_type, or module_id", step: "validation", items: [], warnings: [] }, 400);
@@ -887,11 +852,9 @@ serve(async (req) => {
     return jsonResponse({ error: `Invalid content_type: ${content_type}`, step: "validation", items: [], warnings: [] }, 400);
   }
 
-  // Raised limits: VP/clinical_case = 5, everything else = 50
-  const maxQuantity = (content_type === "virtual_patient" || content_type === "clinical_case") ? 5 : 50;
-  if (!Number.isFinite(quantity) || quantity < 1 || quantity > maxQuantity) {
-    return jsonResponse({ error: `Quantity must be between 1 and ${maxQuantity}`, step: "validation", items: [], warnings: [] }, 400);
-  }
+  // Cap at 10 per call — the frontend orchestrates multiple calls
+  const MAX_PER_CALL = 10;
+  const clampedQuantity = Math.min(MAX_PER_CALL, Math.max(1, quantity || 5));
 
   // Validate module exists
   const { data: moduleCheck, error: moduleError } = await serviceClient
@@ -927,31 +890,40 @@ serve(async (req) => {
     return jsonResponse({ error: "Document not found", step: "document", items: [], warnings: [] }, 404);
   }
 
-  // Create job row
-  const inputMetadata = {
-    module_id, chapter_id: chapter_id ?? null, quantity,
-    additional_instructions: additional_instructions ?? null,
-    socratic_mode: socratic_mode ?? false,
-    test_mode: test_mode ?? false,
-    target_section_number: target_section_number ?? null,
-  };
+  // Create or reuse job
+  let jobId: string;
+  if (existingJobId) {
+    // Subsequent chunk — reuse existing job
+    jobId = existingJobId;
+  } else {
+    // First chunk — create new job
+    const inputMetadata = {
+      module_id, chapter_id: chapter_id ?? null, quantity: clampedQuantity,
+      additional_instructions: additional_instructions ?? null,
+      socratic_mode: socratic_mode ?? false,
+      test_mode: test_mode ?? false,
+      target_section_number: target_section_number ?? null,
+    };
 
-  const { data: job, error: jobError } = await serviceClient
-    .from("ai_generation_jobs")
-    .insert({ document_id, admin_id: user.id, job_type: content_type, status: "processing", input_metadata: inputMetadata })
-    .select("id").single();
+    const { data: job, error: jobError } = await serviceClient
+      .from("ai_generation_jobs")
+      .insert({ document_id, admin_id: user.id, job_type: content_type, status: "processing", input_metadata: inputMetadata })
+      .select("id").single();
 
-  if (jobError || !job) {
-    console.error("Failed to create job:", jobError?.message);
-    return jsonResponse({ error: "Failed to create generation job", step: "job_create", items: [], warnings: [] }, 500);
+    if (jobError || !job) {
+      console.error("Failed to create job:", jobError?.message);
+      return jsonResponse({ error: "Failed to create generation job", step: "job_create", items: [], warnings: [] }, 500);
+    }
+    jobId = job.id;
   }
 
-  const jobId = job.id;
-
   const failJob = async (msg: string, step: string) => {
-    await serviceClient.from("ai_generation_jobs")
-      .update({ status: "failed", error_message: `[${step}] ${msg}`, completed_at: new Date().toISOString() })
-      .eq("id", jobId);
+    // Only fail the job if we created it (first chunk)
+    if (!existingJobId) {
+      await serviceClient.from("ai_generation_jobs")
+        .update({ status: "failed", error_message: `[${step}] ${msg}`, completed_at: new Date().toISOString() })
+        .eq("id", jobId);
+    }
   };
 
   try {
@@ -973,7 +945,7 @@ serve(async (req) => {
     }
 
     // SECURITY: Validate input limits
-    const inputErrors = validateInputLimits(additional_instructions, quantity);
+    const inputErrors = validateInputLimits(additional_instructions, clampedQuantity);
     if (inputErrors.length > 0) {
       const errorMsg = inputErrors.map(e => e.message).join('; ');
       await failJob(errorMsg, "validation");
@@ -1014,7 +986,7 @@ If content doesn't fit any specific section, set section_number to null.`;
     const schema = CONTENT_SCHEMAS[content_type];
 
     const socraticInstruction = socratic_mode
-      ? `\n\nSOCRATIC METHOD: Generate explanations using the Socratic method. Instead of stating facts directly, use guiding questions that lead students to discover the answer themselves.`
+      ? `\n\nSOCRATIC METHOD: Generate explanations using the Socratic method.`
       : "";
 
     const vpStageInfo =
@@ -1048,6 +1020,13 @@ RULES:
     // NBME pedagogical guidelines
     const nbmeGuidelines = getNbmeGuidelines(content_type);
 
+    // Build dedup context from frontend-provided fingerprints
+    let dedupContext = '';
+    if (dedup_fingerprints && dedup_fingerprints.length > 0) {
+      dedupContext = `\n\nALREADY GENERATED (DO NOT DUPLICATE concept, scenario, or wording):
+${dedup_fingerprints.map((fp, i) => `${i + 1}) ${fp}`).join('\n')}`;
+    }
+
     const baseSystemPrompt = `You are an AI assistant that generates medical education content.
 
 CRITICAL SAFETY RULES:
@@ -1059,32 +1038,14 @@ CRITICAL SAFETY RULES:
 ${nbmeGuidelines}
 
 OUTPUT SCHEMA (you MUST use exactly these fields):
-${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}`;
+${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
+
+You must output a JSON array of ${clampedQuantity} items, each matching the schema above.
+Example format: [{ ...item1 }, { ...item2 }]`;
 
     const contentTypeLabel = content_type.replace(/_/g, " ");
 
-    // ============================================
-    // CHUNKED GENERATION: Generate-Merge-Dedup-TopUp
-    // ============================================
-
-    const totalChunks = Math.ceil(quantity / CHUNK_SIZE);
-    const allGeneratedItems: any[] = [];
-    const allWarnings: string[] = [];
-    let chunkFailures = 0;
-
-    console.log(`[${jobId}] Starting chunked generation: ${quantity} items in ${totalChunks} chunk(s) (${aiProvider.name}/${aiProvider.model})`);
-
-    // PHASE 1: Generate chunks
-    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-      const chunkQty = Math.min(CHUNK_SIZE, quantity - (chunkIdx * CHUNK_SIZE));
-      const dedupContext = buildDedupContext(allGeneratedItems, content_type);
-
-      const chunkSystemPrompt = `${baseSystemPrompt}
-
-You must output a JSON array of ${chunkQty} items, each matching the schema above.
-Example format: [{ ...item1 }, { ...item2 }]`;
-
-      const userPrompt = `Generate ${chunkQty} ${contentTypeLabel}${chunkQty > 1 ? "s" : ""} for:
+    const userPrompt = `Generate ${clampedQuantity} ${contentTypeLabel}${clampedQuantity > 1 ? "s" : ""} for:
 - Module: ${moduleCheck.name || "Unknown Module"}
 ${chapterInfo ? `- Chapter: ${chapterInfo.chapter_number}. ${chapterInfo.title}` : ""}
 ${additional_instructions ? `\nAdditional instructions: ${additional_instructions}` : ""}
@@ -1096,172 +1057,36 @@ ${pdfTextPlaceholder}
 ${dedupContext}
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;
 
-      console.log(`[${jobId}] Chunk ${chunkIdx + 1}/${totalChunks}: generating ${chunkQty} items...`);
+    console.log(`[${jobId}] Generating ${clampedQuantity} ${content_type} items (single chunk, ${aiProvider.name}/${aiProvider.model})`);
 
-      try {
-        const aiResult = await callAI(chunkSystemPrompt, userPrompt, aiProvider);
+    const aiResult = await callAI(baseSystemPrompt, userPrompt, aiProvider);
 
-        if (!aiResult.success || !aiResult.content) {
-          console.error(`[${jobId}] Chunk ${chunkIdx + 1} AI call failed:`, aiResult.error);
-          chunkFailures++;
-          allWarnings.push(`Chunk ${chunkIdx + 1} failed: ${aiResult.error || 'empty response'}`);
-          continue;
-        }
-
-        const chunkItems = parseAIResponse(aiResult.content);
-        if (chunkItems.length > 0) {
-          allGeneratedItems.push(...chunkItems);
-          console.log(`[${jobId}] Chunk ${chunkIdx + 1}: got ${chunkItems.length} items (total: ${allGeneratedItems.length})`);
-        } else {
-          chunkFailures++;
-          allWarnings.push(`Chunk ${chunkIdx + 1} returned empty result`);
-        }
-      } catch (chunkError) {
-        console.error(`[${jobId}] Chunk ${chunkIdx + 1} error:`, chunkError);
-        chunkFailures++;
-        allWarnings.push(`Chunk ${chunkIdx + 1} error: ${chunkError instanceof Error ? chunkError.message : 'unknown'}`);
-      }
-
-      // Delay between chunks (except last)
-      if (chunkIdx < totalChunks - 1) {
-        await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
-      }
-    }
-
-    // If all chunks failed
-    if (allGeneratedItems.length === 0) {
-      const msg = "All generation chunks failed. No items produced.";
+    if (!aiResult.success || !aiResult.content) {
+      const msg = `AI call failed: ${aiResult.error || 'empty response'}`;
+      console.error(`[${jobId}] ${msg}`);
       await failJob(msg, "ai_gateway");
-      return jsonResponse({ error: msg, step: "ai_gateway", job_id: jobId, items: [], warnings: allWarnings }, 500);
+      return jsonResponse({ error: msg, step: "ai_gateway", job_id: jobId, items: [], warnings: [] }, 500);
     }
 
-    // PHASE 2: Merge + Dedup
-    console.log(`[${jobId}] Phase 2: Deduplicating ${allGeneratedItems.length} raw items...`);
-    let { unique: uniqueItems, removedCount } = deduplicateMergedItems(allGeneratedItems, content_type);
-    if (removedCount > 0) {
-      console.log(`[${jobId}] Removed ${removedCount} near-duplicates, ${uniqueItems.length} unique remain`);
-      allWarnings.push(`Removed ${removedCount} near-duplicate(s) during merge`);
+    const items = parseAIResponse(aiResult.content);
+    if (items.length === 0) {
+      const msg = "AI returned no parseable items";
+      await failJob(msg, "parse");
+      return jsonResponse({ error: msg, step: "parse", job_id: jobId, items: [], warnings: [] }, 500);
     }
 
-    // PHASE 3: Top-Up if shortfall
-    let shortfall = quantity - uniqueItems.length;
-    let topUpRound = 0;
+    // Build fingerprints for the items we just generated (frontend will use these)
+    const fingerprints = items.map(item => buildItemFingerprint(item, content_type));
 
-    while (shortfall > 0 && topUpRound < MAX_TOPUP_ROUNDS) {
-      topUpRound++;
-      // Generate in small batches: ≤3 at a time
-      const topUpBatchSize = Math.min(3, shortfall);
-      console.log(`[${jobId}] Top-up round ${topUpRound}: generating ${topUpBatchSize} replacement(s) (shortfall: ${shortfall})`);
+    console.log(`[${jobId}] Generated ${items.length} items, returning to frontend`);
 
-      const dedupContext = buildDedupContext(uniqueItems, content_type);
-      const topUpSystemPrompt = `${baseSystemPrompt}
-
-You must output a JSON array of ${topUpBatchSize} items, each matching the schema above.
-Example format: [{ ...item1 }, { ...item2 }]`;
-
-      const topUpUserPrompt = `Generate ${topUpBatchSize} UNIQUE ${contentTypeLabel}${topUpBatchSize > 1 ? "s" : ""} for:
-- Module: ${moduleCheck.name || "Unknown Module"}
-${chapterInfo ? `- Chapter: ${chapterInfo.chapter_number}. ${chapterInfo.title}` : ""}
-${additional_instructions ? `\nAdditional instructions: ${additional_instructions}` : ""}
-
-Reference material from document "${doc.title}":
----
-${pdfTextPlaceholder}
----
-${dedupContext}
-IMPORTANT: These are REPLACEMENT items. You MUST create items that are DIFFERENT from all items listed above.
-Output ONLY a valid JSON array. No explanations, no markdown, just pure JSON.`;
-
-      try {
-        await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
-        const topUpResult = await callAI(topUpSystemPrompt, topUpUserPrompt, aiProvider);
-
-        if (topUpResult.success && topUpResult.content) {
-          const topUpItems = parseAIResponse(topUpResult.content);
-          if (topUpItems.length > 0) {
-            // Merge and dedup again
-            const combined = [...uniqueItems, ...topUpItems];
-            const { unique: rededuced, removedCount: topUpRemoved } = deduplicateMergedItems(combined, content_type);
-            uniqueItems = rededuced;
-            if (topUpRemoved > 0) {
-              allWarnings.push(`Top-up round ${topUpRound}: removed ${topUpRemoved} duplicate(s)`);
-            }
-            console.log(`[${jobId}] Top-up round ${topUpRound}: now have ${uniqueItems.length} unique items`);
-          }
-        } else {
-          allWarnings.push(`Top-up round ${topUpRound} failed: ${topUpResult.error || 'empty'}`);
-        }
-      } catch (topUpError) {
-        allWarnings.push(`Top-up round ${topUpRound} error: ${topUpError instanceof Error ? topUpError.message : 'unknown'}`);
-      }
-
-      // Recalculate shortfall; for next iteration, continue generating in batches of 3
-      shortfall = quantity - uniqueItems.length;
-      if (shortfall > 0 && topUpRound < MAX_TOPUP_ROUNDS) {
-        // Still short, will loop again
-      }
-    }
-
-    // Final shortfall warning
-    if (uniqueItems.length < quantity) {
-      allWarnings.push(`Generated ${uniqueItems.length} of ${quantity} requested items (${quantity - uniqueItems.length} removed as duplicates after ${MAX_TOPUP_ROUNDS} top-up rounds)`);
-    }
-
-    // Trim to requested quantity (in case top-up over-produced)
-    const items = uniqueItems.slice(0, quantity);
-
-    console.log(`[${jobId}] Final: ${items.length} items, validating...`);
-
-    // PHASE 4: Validate
-    const validation = validateItems(items, content_type);
-
-    if (!validation.isValid) {
-      const errorSummary = validation.errors.slice(0, 5).join('; ');
-      const msg = `Validation failed: ${errorSummary}${validation.errors.length > 5 ? ` (and ${validation.errors.length - 5} more)` : ''}`;
-      console.error(`[${jobId}] Validation errors:`, validation.errors);
-      await failJob(msg, "validation");
-      return jsonResponse({ error: msg, step: "validation", job_id: jobId, items: [], warnings: [...allWarnings, ...validation.warnings], validation_errors: validation.errors }, 400);
-    }
-
-    allWarnings.push(...validation.warnings);
-
-    // PHASE 5: Save once
-    const outputData = {
-      items,
-      content_type,
-      source_pdf_id: document_id,
-      warnings: allWarnings,
-      test_mode: test_mode ?? false,
-      generation_stats: {
-        requested: quantity,
-        raw_generated: allGeneratedItems.length,
-        after_dedup: items.length,
-        chunks_used: totalChunks,
-        chunk_failures: chunkFailures,
-        topup_rounds: topUpRound,
-      },
-    };
-
-    const { error: updateError } = await serviceClient
-      .from("ai_generation_jobs")
-      .update({ status: "completed", output_data: outputData, completed_at: new Date().toISOString() })
-      .eq("id", jobId);
-
-    if (updateError) {
-      console.error(`[${jobId}] Failed to update job output:`, updateError.message);
-      return jsonResponse({ error: "Failed to persist generation output", step: "job_update", job_id: jobId, items: [], warnings: [] }, 500);
-    }
-
-    console.log(`[${jobId}] Generation completed: ${items.length}/${quantity} items`);
-
+    // Return items + fingerprints to frontend (don't save to job yet — frontend finalizes)
     return jsonResponse({
       job_id: jobId,
       content_type,
-      source_pdf_id: document_id,
       items,
-      warnings: allWarnings,
-      test_mode: test_mode ?? false,
-      generation_stats: outputData.generation_stats,
+      fingerprints,
+      warnings: [],
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";

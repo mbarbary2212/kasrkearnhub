@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
 import { 
   Sparkles, 
   FileText, 
@@ -70,21 +71,88 @@ interface ContentTypeOption {
 }
 
 const CONTENT_TYPES: ContentTypeOption[] = [
-  // Practice Types
   { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Multiple choice questions (A-E)', category: 'practice' },
   { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
   { value: 'clinical_case', label: 'Clinical Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
   { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
-  
-  // Resource Types
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
   { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
   { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
 ];
 
-type ProgressState = 'idle' | 'preparing' | 'generating' | 'saving' | 'complete' | 'error';
+const CHUNK_SIZE = 10;
+const MAX_TOPUP_ROUNDS = 2;
+const SIMILARITY_THRESHOLD = 0.85;
+
+type ProgressState = 'idle' | 'preparing' | 'generating' | 'deduplicating' | 'top-up' | 'finalizing' | 'saving' | 'complete' | 'error';
+
+interface ChunkProgress {
+  phase: ProgressState;
+  currentChunk: number;
+  totalChunks: number;
+  itemsSoFar: number;
+  targetQuantity: number;
+  currentSection?: string;
+  totalSections?: number;
+  currentSectionIdx?: number;
+}
+
+// ============================================
+// CLIENT-SIDE DEDUP UTILITIES
+// ============================================
+
+function getPrimaryText(item: any, contentType: string): string {
+  switch (contentType) {
+    case 'mcq': return item.stem || '';
+    case 'flashcard': return item.front || '';
+    case 'essay': return item.question || '';
+    case 'osce': return item.history_text || '';
+    case 'matching': return item.instruction || '';
+    case 'case_scenario':
+    case 'clinical_case':
+    case 'virtual_patient': return item.title || '';
+    case 'mind_map': return item.title || '';
+    case 'worked_case': return item.title || '';
+    case 'guided_explanation': return item.topic || '';
+    default: return JSON.stringify(item).substring(0, 200);
+  }
+}
+
+function tokenOverlapSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const la = a.toLowerCase().trim();
+  const lb = b.toLowerCase().trim();
+  if (la === lb) return 1;
+  const tokensA = new Set(la.split(/\s+/).filter(t => t.length > 2));
+  const tokensB = new Set(lb.split(/\s+/).filter(t => t.length > 2));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let overlap = 0;
+  for (const t of tokensA) { if (tokensB.has(t)) overlap++; }
+  return overlap / Math.max(tokensA.size, tokensB.size);
+}
+
+function clientSideDedup(items: any[], contentType: string): { unique: any[]; removedCount: number } {
+  const unique: any[] = [];
+  let removedCount = 0;
+
+  for (const item of items) {
+    const text = getPrimaryText(item, contentType);
+    let isDup = false;
+    for (const existing of unique) {
+      const existingText = getPrimaryText(existing, contentType);
+      if (tokenOverlapSimilarity(text, existingText) >= SIMILARITY_THRESHOLD) {
+        isDup = true;
+        removedCount++;
+        break;
+      }
+    }
+    if (!isDup) unique.push(item);
+  }
+
+  return { unique, removedCount };
+}
 
 export function AIContentFactoryModal({ 
   open, 
@@ -105,7 +173,7 @@ export function AIContentFactoryModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [socraticMode, setSocraticMode] = useState(false);
   const [perSection, setPerSection] = useState(false);
-  const [sectionProgress, setSectionProgress] = useState<string | null>(null);
+  const [chunkProgress, setChunkProgress] = useState<ChunkProgress | null>(null);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
@@ -123,7 +191,6 @@ export function AIContentFactoryModal({
   const parsedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
   const estimatedTotal = perSection && hasSections ? parsedQty * sections.length : parsedQty;
 
-  // Fetch available documents
   const { data: documents } = useQuery({
     queryKey: ['admin-documents-for-factory'],
     queryFn: async () => {
@@ -187,89 +254,248 @@ export function AIContentFactoryModal({
     [getValidSession]
   );
 
+  // ============================================
+  // CHUNKED GENERATION ORCHESTRATOR
+  // ============================================
+
+  const generateChunked = useCallback(async (
+    targetQuantity: number,
+    targetSectionNumber?: string | null,
+    sectionLabel?: string,
+  ): Promise<{ items: any[]; warnings: string[]; jobId: string | null; fingerprints: string[] }> => {
+    const totalChunks = Math.ceil(targetQuantity / CHUNK_SIZE);
+    const allItems: any[] = [];
+    const allWarnings: string[] = [];
+    const allFingerprints: string[] = [];
+    let currentJobId: string | null = null;
+
+    // Phase 1: Generate chunks
+    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      const chunkQty = Math.min(CHUNK_SIZE, targetQuantity - (chunkIdx * CHUNK_SIZE));
+
+      setChunkProgress(prev => ({
+        phase: 'generating',
+        currentChunk: chunkIdx + 1,
+        totalChunks,
+        itemsSoFar: allItems.length,
+        targetQuantity,
+        currentSection: sectionLabel || prev?.currentSection,
+        totalSections: prev?.totalSections,
+        currentSectionIdx: prev?.currentSectionIdx,
+      }));
+
+      const payload: any = {
+        document_id: selectedDocId,
+        content_type: contentType,
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        quantity: chunkQty,
+        additional_instructions: additionalInstructions || null,
+        socratic_mode: socraticMode,
+        target_section_number: targetSectionNumber || null,
+        action: 'generate',
+      };
+
+      if (currentJobId) {
+        payload.job_id = currentJobId;
+      }
+      if (allFingerprints.length > 0) {
+        payload.dedup_fingerprints = allFingerprints;
+      }
+
+      try {
+        const data = await invokeWithAuth('generate-content-from-pdf', payload);
+
+        if (data?.error) {
+          allWarnings.push(`Chunk ${chunkIdx + 1}: ${data.error}`);
+          // Retry once
+          if (chunkIdx < totalChunks - 1) {
+            await new Promise(r => setTimeout(r, 1000));
+            try {
+              const retryData = await invokeWithAuth('generate-content-from-pdf', payload);
+              if (retryData?.items && Array.isArray(retryData.items)) {
+                allItems.push(...retryData.items);
+                if (retryData.fingerprints) allFingerprints.push(...retryData.fingerprints);
+                if (retryData.job_id && !currentJobId) currentJobId = retryData.job_id;
+              }
+            } catch {
+              // Continue to next chunk
+            }
+          }
+          continue;
+        }
+
+        if (data?.items && Array.isArray(data.items)) {
+          allItems.push(...data.items);
+        }
+        if (data?.fingerprints && Array.isArray(data.fingerprints)) {
+          allFingerprints.push(...data.fingerprints);
+        }
+        if (data?.job_id && !currentJobId) {
+          currentJobId = data.job_id;
+        }
+      } catch (err) {
+        allWarnings.push(`Chunk ${chunkIdx + 1} error: ${err instanceof Error ? err.message : 'unknown'}`);
+        // Continue with remaining chunks
+      }
+
+      // Small delay between chunks
+      if (chunkIdx < totalChunks - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // Phase 2: Client-side dedup
+    setChunkProgress(prev => prev ? { ...prev, phase: 'deduplicating', itemsSoFar: allItems.length } : null);
+    const { unique, removedCount } = clientSideDedup(allItems, contentType);
+    if (removedCount > 0) {
+      allWarnings.push(`Removed ${removedCount} near-duplicate(s) during merge`);
+    }
+
+    // Phase 3: Top-up if shortfall
+    let finalItems = unique;
+    let shortfall = targetQuantity - finalItems.length;
+    let topUpRound = 0;
+
+    while (shortfall > 0 && topUpRound < MAX_TOPUP_ROUNDS) {
+      topUpRound++;
+      const topUpBatchSize = Math.min(3, shortfall);
+
+      setChunkProgress(prev => prev ? { ...prev, phase: 'top-up', itemsSoFar: finalItems.length } : null);
+
+      try {
+        const topUpPayload: any = {
+          document_id: selectedDocId,
+          content_type: contentType,
+          module_id: moduleId,
+          chapter_id: chapterId || null,
+          quantity: topUpBatchSize,
+          additional_instructions: additionalInstructions || null,
+          socratic_mode: socraticMode,
+          target_section_number: targetSectionNumber || null,
+          action: 'generate',
+          job_id: currentJobId,
+          dedup_fingerprints: allFingerprints,
+        };
+
+        await new Promise(r => setTimeout(r, 500));
+        const topUpData = await invokeWithAuth('generate-content-from-pdf', topUpPayload);
+
+        if (topUpData?.items && Array.isArray(topUpData.items)) {
+          const combined = [...finalItems, ...topUpData.items];
+          const { unique: rededuced, removedCount: topUpRemoved } = clientSideDedup(combined, contentType);
+          finalItems = rededuced;
+          if (topUpData.fingerprints) allFingerprints.push(...topUpData.fingerprints);
+          if (topUpRemoved > 0) {
+            allWarnings.push(`Top-up round ${topUpRound}: removed ${topUpRemoved} duplicate(s)`);
+          }
+        }
+      } catch {
+        allWarnings.push(`Top-up round ${topUpRound} failed`);
+      }
+
+      shortfall = targetQuantity - finalItems.length;
+    }
+
+    // Trim to target
+    finalItems = finalItems.slice(0, targetQuantity);
+
+    return { items: finalItems, warnings: allWarnings, jobId: currentJobId, fingerprints: allFingerprints };
+  }, [selectedDocId, contentType, moduleId, chapterId, additionalInstructions, socraticMode, invokeWithAuth]);
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedDocId) throw new Error('Please select a source document');
       if (!moduleId) throw new Error('Please select a target module');
       if (requiresChapter && !chapterId) throw new Error(`Please select a chapter (required for ${selectedContentType?.label})`);
 
-      setProgressState('preparing');
-      setErrorMessage(null);
       setProgressState('generating');
+      setErrorMessage(null);
 
       const clampedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
 
-      // Per-section mode: loop through sections sequentially
-      if (perSection && hasSections && sections.length > 0) {
-        const allItems: any[] = [];
-        const allWarnings: string[] = [];
-        let lastJobId: string | null = null;
+      let allItems: any[] = [];
+      let allWarnings: string[] = [];
+      let lastJobId: string | null = null;
 
+      // Per-section mode: loop through sections
+      if (perSection && hasSections && sections.length > 0) {
         for (let i = 0; i < sections.length; i++) {
           const sec = sections[i];
-          setSectionProgress(`Generating section ${sec.section_number || sec.name}... (${i + 1}/${sections.length})`);
-
-          const data = await invokeWithAuth('generate-content-from-pdf', {
-            document_id: selectedDocId,
-            content_type: contentType,
-            module_id: moduleId,
-            chapter_id: chapterId || null,
-            quantity: clampedQty,
-            additional_instructions: additionalInstructions || null,
-            socratic_mode: socraticMode,
-            target_section_number: sec.section_number || null,
+          setChunkProgress({
+            phase: 'generating',
+            currentChunk: 0,
+            totalChunks: Math.ceil(clampedQty / CHUNK_SIZE),
+            itemsSoFar: allItems.length,
+            targetQuantity: clampedQty * sections.length,
+            currentSection: sec.section_number || sec.name,
+            totalSections: sections.length,
+            currentSectionIdx: i + 1,
           });
 
-          if (data?.error) {
-            allWarnings.push(`Section ${sec.section_number}: ${data.error}`);
-            continue;
-          }
+          const result = await generateChunked(
+            clampedQty,
+            sec.section_number || null,
+            `Section ${sec.section_number || sec.name}`
+          );
 
-          if (Array.isArray(data?.items)) {
-            allItems.push(...data.items);
-          }
-          if (Array.isArray(data?.warnings)) {
-            allWarnings.push(...data.warnings);
-          }
-          if (data?.job_id) lastJobId = data.job_id;
+          allItems.push(...result.items);
+          allWarnings.push(...result.warnings);
+          if (result.jobId) lastJobId = result.jobId;
 
-          // Small delay between section calls
+          // Small delay between sections
           if (i < sections.length - 1) {
             await new Promise(r => setTimeout(r, 500));
           }
         }
-
-        setSectionProgress(null);
-
-        if (allItems.length === 0) {
-          throw new Error('No items generated across any section. Please retry.');
-        }
-
-        setJobId(lastJobId);
-        setGeneratedContent({ items: allItems, warnings: allWarnings, job_id: lastJobId, content_type: contentType });
-        setProgressState('complete');
-        return { items: allItems, job_id: lastJobId };
+      } else {
+        // Standard mode: single chunked generation
+        const result = await generateChunked(clampedQty);
+        allItems = result.items;
+        allWarnings = result.warnings;
+        lastJobId = result.jobId;
       }
 
-      // Standard single-call mode
-      const data = await invokeWithAuth('generate-content-from-pdf', {
-        document_id: selectedDocId,
+      if (allItems.length === 0) {
+        throw new Error('No items generated. Please retry.');
+      }
+
+      // Phase 4: Finalize (validate + save to job)
+      setChunkProgress(prev => prev ? { ...prev, phase: 'finalizing', itemsSoFar: allItems.length } : null);
+      setProgressState('finalizing');
+
+      const generationStats = {
+        requested: perSection && hasSections ? clampedQty * sections.length : clampedQty,
+        raw_generated: allItems.length,
+        after_dedup: allItems.length,
+        chunks_used: Math.ceil(clampedQty / CHUNK_SIZE) * (perSection && hasSections ? sections.length : 1),
+      };
+
+      if (lastJobId) {
+        const finalizeData = await invokeWithAuth('generate-content-from-pdf', {
+          job_id: lastJobId,
+          action: 'finalize',
+          items: allItems,
+          content_type: contentType,
+          generation_stats: generationStats,
+        });
+
+        if (finalizeData?.error) {
+          allWarnings.push(`Finalize warning: ${finalizeData.error}`);
+        }
+      }
+
+      setJobId(lastJobId);
+      setGeneratedContent({
+        items: allItems,
+        warnings: allWarnings,
+        job_id: lastJobId,
         content_type: contentType,
-        module_id: moduleId,
-        chapter_id: chapterId || null,
-        quantity: clampedQty,
-        additional_instructions: additionalInstructions || null,
-        socratic_mode: socraticMode,
+        generation_stats: generationStats,
       });
-
-      if (data?.error) throw new Error(data.error);
-      if (!data?.job_id) throw new Error('Generation returned no job id. Please retry.');
-      if (!Array.isArray(data?.items)) throw new Error('Generation produced an invalid payload. Please retry.');
-
-      setJobId(data.job_id);
-      setGeneratedContent(data);
       setProgressState('complete');
-      return data;
+      setChunkProgress(null);
+      return { items: allItems, job_id: lastJobId };
     },
     onSuccess: () => {
       toast.success('Content generated! Review before approving.');
@@ -278,7 +504,7 @@ export function AIContentFactoryModal({
       console.error('Generation error:', error);
       setProgressState('error');
       setErrorMessage(error.message);
-      setSectionProgress(null);
+      setChunkProgress(null);
       if (error.message.includes('session') || error.message.includes('sign in')) {
         toast.error('Session expired. Please refresh the page and sign in again.');
       } else {
@@ -341,7 +567,7 @@ export function AIContentFactoryModal({
     setErrorMessage(null);
     setSocraticMode(false);
     setPerSection(false);
-    setSectionProgress(null);
+    setChunkProgress(null);
     onOpenChange(false);
   };
 
@@ -350,19 +576,43 @@ export function AIContentFactoryModal({
     setErrorMessage(null);
     setGeneratedContent(null);
     setJobId(null);
-    setSectionProgress(null);
+    setChunkProgress(null);
   };
 
   const getProgressLabel = () => {
-    if (sectionProgress) return sectionProgress;
+    if (chunkProgress) {
+      const sectionLabel = chunkProgress.currentSection && chunkProgress.totalSections
+        ? ` [Section ${chunkProgress.currentSectionIdx}/${chunkProgress.totalSections}: ${chunkProgress.currentSection}]`
+        : '';
+
+      switch (chunkProgress.phase) {
+        case 'generating':
+          return `Generating... (chunk ${chunkProgress.currentChunk}/${chunkProgress.totalChunks}, ${chunkProgress.itemsSoFar} items so far)${sectionLabel}`;
+        case 'deduplicating':
+          return `Deduplicating ${chunkProgress.itemsSoFar} items...${sectionLabel}`;
+        case 'top-up':
+          return `Top-up generation (${chunkProgress.itemsSoFar}/${chunkProgress.targetQuantity} items)${sectionLabel}`;
+        case 'finalizing':
+          return `Finalizing ${chunkProgress.itemsSoFar} items...`;
+        default:
+          return 'Processing...';
+      }
+    }
     switch (progressState) {
       case 'preparing': return 'Preparing request...';
       case 'generating': return 'Generating content with AI...';
+      case 'finalizing': return 'Finalizing content...';
       case 'saving': return 'Saving to chapter...';
       case 'complete': return 'Complete!';
       case 'error': return 'Error occurred';
       default: return '';
     }
+  };
+
+  const getProgressPercent = (): number => {
+    if (!chunkProgress) return 0;
+    const { itemsSoFar, targetQuantity } = chunkProgress;
+    return Math.min(95, Math.round((itemsSoFar / Math.max(1, targetQuantity)) * 100));
   };
 
   const practiceTypes = CONTENT_TYPES.filter(t => t.category === 'practice');
@@ -405,17 +655,22 @@ export function AIContentFactoryModal({
           </div>
         </div>
 
-        {/* Progress Indicator */}
+        {/* Progress Indicator with chunk details */}
         {progressState !== 'idle' && progressState !== 'complete' && (
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            {progressState === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-destructive" />
-            ) : (
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              {progressState === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              ) : (
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              )}
+              <span className={`text-sm ${progressState === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {getProgressLabel()}
+              </span>
+            </div>
+            {chunkProgress && progressState !== 'error' && (
+              <Progress value={getProgressPercent()} className="h-2" />
             )}
-            <span className={progressState === 'error' ? 'text-destructive' : 'text-muted-foreground'}>
-              {getProgressLabel()}
-            </span>
           </div>
         )}
 
@@ -647,10 +902,9 @@ export function AIContentFactoryModal({
               {generatedContent?.generation_stats && (
                 <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
                   Requested: {generatedContent.generation_stats.requested} | 
-                  Raw: {generatedContent.generation_stats.raw_generated} | 
-                  After dedup: {generatedContent.generation_stats.after_dedup} | 
+                  Generated: {generatedContent.generation_stats.raw_generated} | 
+                  Final: {generatedContent.generation_stats.after_dedup} | 
                   Chunks: {generatedContent.generation_stats.chunks_used}
-                  {generatedContent.generation_stats.topup_rounds > 0 && ` | Top-ups: ${generatedContent.generation_stats.topup_rounds}`}
                 </div>
               )}
               
