@@ -698,13 +698,62 @@ function buildItemFingerprint(item: any, contentType: ContentType): string {
  * Parse AI response text into array of items
  */
 function parseAIResponse(text: string): any[] {
-  let cleanedText = text.trim();
-  if (cleanedText.startsWith("```json")) cleanedText = cleanedText.slice(7);
-  else if (cleanedText.startsWith("```")) cleanedText = cleanedText.slice(3);
-  if (cleanedText.endsWith("```")) cleanedText = cleanedText.slice(0, -3);
-  cleanedText = cleanedText.trim();
+  // Strip markdown code fences
+  let cleaned = text
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
 
-  const parsed = JSON.parse(cleanedText);
+  // Find JSON boundaries
+  const jsonStart = cleaned.search(/[\{\[]/);
+  if (jsonStart === -1) throw new Error("No JSON object found in AI response");
+
+  const openChar = cleaned[jsonStart];
+  const closeChar = openChar === '[' ? ']' : '}';
+  const jsonEnd = cleaned.lastIndexOf(closeChar);
+
+  if (jsonEnd <= jsonStart) {
+    // No closing bracket found — the response was likely truncated
+    cleaned = cleaned.substring(jsonStart);
+  } else {
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  }
+
+  // Try parsing, with progressive repair on failure
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (_e1) {
+    // Fix trailing commas and control characters
+    cleaned = cleaned
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, (c) => c === '\n' || c === '\t' ? c : "");
+
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (_e2) {
+      // Repair unbalanced braces/brackets (truncated output)
+      let braces = 0, brackets = 0;
+      for (const ch of cleaned) {
+        if (ch === '{') braces++;
+        if (ch === '}') braces--;
+        if (ch === '[') brackets++;
+        if (ch === ']') brackets--;
+      }
+      let repaired = cleaned;
+      while (brackets > 0) { repaired += ']'; brackets--; }
+      while (braces > 0) { repaired += '}'; braces--; }
+
+      try {
+        parsed = JSON.parse(repaired);
+      } catch (finalErr) {
+        console.error("JSON repair failed. First 500 chars:", cleaned.substring(0, 500));
+        throw new Error(`Failed to parse AI JSON: ${finalErr instanceof Error ? finalErr.message : finalErr}`);
+      }
+    }
+  }
+
   const normalized = Array.isArray(parsed)
     ? parsed
     : parsed?.items || parsed?.questions || parsed?.flashcards || parsed?.cases ||
