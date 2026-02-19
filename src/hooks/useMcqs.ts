@@ -34,6 +34,7 @@ export interface McqFormData {
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
+  concept_id?: string | null;
 }
 
 // Helper to convert DB row to Mcq type
@@ -141,13 +142,14 @@ export function useCreateMcq() {
         chapter_id: data.chapter_id || null,
         topic_id: data.topic_id || null,
         section_id: data.section_id || null,
+        concept_id: data.concept_id || null,
         stem: data.stem,
         choices: data.choices as unknown as Json,
         correct_key: data.correct_key,
         explanation: data.explanation,
         difficulty: data.difficulty,
         created_by: user?.id,
-      }).select('id').single();
+      } as never).select('id').single();
 
       if (error) throw error;
       return { ...data, id: result.id };
@@ -198,8 +200,9 @@ export function useUpdateMcq() {
           explanation: data.explanation,
           difficulty: data.difficulty,
           section_id: data.section_id || null,
+          concept_id: data.concept_id || null,
           updated_by: user?.id,
-        })
+        } as never)
         .eq('id', id);
 
       if (error) throw error;
