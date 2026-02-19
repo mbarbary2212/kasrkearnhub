@@ -381,14 +381,14 @@ export default function ChapterPage() {
           />
         )}
 
-        {/* Inline Sections Manager - Admin only */}
+        {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
         {canManageContent && chapterId && (
-          <SectionsManager chapterId={chapterId} canManage={canManageContent} />
-        )}
-
-        {/* Inline Concepts Manager - Admin only */}
-        {canManageContent && chapterId && moduleId && (
-          <ConceptsManager chapterId={chapterId} moduleId={moduleId} canManage={canManageContent} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <SectionsManager chapterId={chapterId} canManage={canManageContent} />
+            {moduleId && (
+              <ConceptsManager chapterId={chapterId} moduleId={moduleId} canManage={canManageContent} />
+            )}
+          </div>
         )}
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}

@@ -185,7 +185,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="mt-6 max-w-2xl">
+      <Card className="mt-6 min-w-0">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
             <div className="flex items-center justify-between">
