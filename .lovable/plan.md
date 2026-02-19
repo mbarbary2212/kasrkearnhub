@@ -1,79 +1,113 @@
 
+# Unified Case Builder Redesign
 
-# Case Content Consolidation Plan
+## Problem
+The current Case Builder requires navigating through 3 separate modal windows to manage a single case:
+1. **Case Builder modal** -- shows summary + stages list
+2. **Edit Details modal** (opened from Builder) -- title, intro, chapter, section, level, time, tags, published toggle
+3. **Stage Form modal** (opened from Builder) -- individual stage editing
 
-## Summary
+This is counter-intuitive. The "Edit Details" modal also lacks a **Concept** selector, and the "tags" field is unclear. Scrolling may also be broken in the edit flow.
 
-Merge `case_scenarios` (20 records) into `virtual_patient_cases` as read-only cases, drop the empty `clinical_cases` table, and keep Worked Cases in `study_resources` where they already live.
+## Solution
+Consolidate everything into a **single-modal tabbed interface** with two tabs:
 
-## Answer: Where do Worked Cases store data?
+### Tab 1: "Details" (inline, no sub-modal)
+All case metadata fields displayed directly inside the builder:
+- Title
+- Introduction text
+- Chapter selector
+- Section selector (conditional)
+- Concept selector (new -- requires adding `concept_id` column to `virtual_patient_cases`)
+- Difficulty level
+- Estimated time
+- Tags (with clarifying label: "Search Tags")
+- Published toggle (with stage-count validation)
 
-Worked Cases are stored in the **`study_resources`** table with `resource_type = 'clinical_case_worked'`. Their structured content (history, examination, diagnosis, investigations, management plan, learning points) is stored as JSON in the `content` column. This is the correct home for them -- they are static reference material, not interactive practice. Currently 0 records exist but the full CRUD UI is already built and functional.
+### Tab 2: "Stages" (current stage list)
+- Drag-and-drop stage list (unchanged)
+- Add Stage / Quick Build buttons
+- Stage edit/delete actions
+- Empty state with prompts
 
----
+The stage edit form remains a sub-modal (it's a complex form with dynamic fields) -- this is fine since it's an intentional drill-down action.
 
-## Phase 1: Data Migration (SQL)
-
-Migrate the 20 active `case_scenarios` into `virtual_patient_cases` as `read_case` mode entries:
-
-- `case_scenarios.title` -> `virtual_patient_cases.title`
-- `case_scenarios.case_history` -> `virtual_patient_cases.intro_text`
-- `case_scenarios.module_id`, `chapter_id` -> same columns
-- `case_scenarios.id` -> `virtual_patient_cases.legacy_case_scenario_id` (for traceability)
-- `case_mode` = `'read_case'`
-- Create one `virtual_patient_stage` per case containing `case_questions` + `model_answer`
-
-## Phase 2: Drop `clinical_cases` table (SQL)
-
-- The table has 0 records and no active UI writes
-- Drop with CASCADE (removes the `concept_id` FK we just added)
-
-## Phase 3: Remove `case_scenarios` from frontend
-
-### Files to delete
-- `src/hooks/useCaseScenarios.ts`
-- `src/components/content/CaseScenarioList.tsx`
-- `src/components/content/CaseScenarioDetailModal.tsx`
-- `src/components/content/CaseScenarioFormModal.tsx`
-- `src/components/content/CaseScenarioBulkUploadModal.tsx`
-
-### Files to edit (remove `case_scenarios` references)
-- `src/hooks/useChapterProgress.ts` -- remove case_scenarios count/attempt queries
-- `src/hooks/useContentProgress.ts` -- remove case_scenarios queries
-- `src/hooks/useNeedsPractice.ts` -- remove case_scenarios section
-- `src/hooks/useStudentDashboard.ts` -- remove case_scenarios from content counts
-- `src/hooks/useModuleWorkload.ts` -- remove case_scenarios query
-- `src/hooks/useContentBulkOperations.ts` -- remove `case_scenarios` from type unions if present
-- `src/components/admin/MissingConceptsAudit.tsx` -- remove `clinical_cases` and `case_scenarios` entries
-- `src/pages/AdminPage.tsx` -- remove orphan/quality check state for `case_scenarios` and `clinical_cases`
-- `supabase/functions/approve-ai-content/index.ts` -- redirect case scenario AI content to `virtual_patient_cases`
-- `supabase/functions/integrity-pilot-v2/index.ts` -- remove case_scenarios/clinical_cases references
-
-### What stays unchanged
-- **Worked Cases** remain in `study_resources` (type `clinical_case_worked`) under Resources > Clinical Tools
-- **Virtual Patient Cases** remain the single source of truth for all interactive and read-only clinical cases
-- `ClinicalCaseList`, `ClinicalCaseAdminList`, `ClinicalCaseBuilderModal` and all VP components are untouched
+## Database Change
+Add `concept_id` column to `virtual_patient_cases` table with a foreign key to `concepts(id)`.
 
 ## Technical Details
 
-### Data migration SQL sketch
-
+### Migration SQL
 ```text
--- Insert case_scenarios into virtual_patient_cases
-INSERT INTO virtual_patient_cases (title, intro_text, module_id, chapter_id, case_mode, legacy_case_scenario_id, ...)
-SELECT title, case_history, module_id, chapter_id, 'read_case', id, ...
-FROM case_scenarios WHERE is_deleted = false;
-
--- Create one stage per migrated case with questions + model answer
-INSERT INTO virtual_patient_stages (case_id, stage_order, title, content, ...)
-SELECT vpc.id, 1, 'Questions', jsonb_build_object('questions', cs.case_questions, 'model_answer', cs.model_answer), ...
-FROM virtual_patient_cases vpc
-JOIN case_scenarios cs ON cs.id = vpc.legacy_case_scenario_id;
-
--- Drop clinical_cases (0 records)
-DROP TABLE IF EXISTS clinical_cases CASCADE;
+ALTER TABLE virtual_patient_cases
+ADD COLUMN concept_id UUID REFERENCES concepts(id) ON DELETE SET NULL;
 ```
 
-### Scope of progress hook changes
-The progress hooks currently count `case_scenarios` separately. After migration, these counts come from `virtual_patient_cases` which is already counted in the clinical cases section. The fix is simply removing the duplicate `case_scenarios` queries -- no new queries needed.
+### Files to edit
 
+**1. `supabase/migrations/` -- new migration**
+- Add `concept_id` column to `virtual_patient_cases`
+
+**2. `src/integrations/supabase/types.ts`**
+- Add `concept_id` to `virtual_patient_cases` Row/Insert/Update types and Relationships
+
+**3. `src/types/clinicalCase.ts`**
+- Add `concept_id?: string | null` to `ClinicalCase` interface
+- Add `concept_id?: string` to `ClinicalCaseFormData` interface
+
+**4. `src/components/clinical-cases/ClinicalCaseBuilderModal.tsx` -- major rewrite**
+- Remove the `ClinicalCaseFormModal` sub-modal import and usage
+- Add a `Tabs` component with "Details" and "Stages" tabs
+- **Details tab**: inline all fields from `ClinicalCaseFormModal` (title, intro, chapter, section, concept, level, time, tags, published toggle) with a "Save" button
+- **Stages tab**: keep the existing drag-and-drop stage list, Add Stage, Quick Build, and empty state
+- Use native `div` with `flex-1 min-h-0 overflow-y-auto` for scrolling (per project convention)
+- Remove the "Edit Details" button from the case info summary card
+
+**5. `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
+- Keep this file for the "Create new case" flow (step 1 of 2) -- it's still needed when creating a brand-new case from the admin list
+- Add `ConceptSelect` component
+- Rename tags label to "Search Tags (optional)" for clarity
+
+**6. `src/hooks/useClinicalCases.ts`**
+- Include `concept_id` in create/update mutation payloads
+- Include `concept:concepts(id, title)` in the select query for `useClinicalCase`
+
+**7. `src/components/admin/MissingConceptsAudit.tsx`**
+- Add `virtual_patient_cases` to the content types checked for missing concepts
+
+### UI Layout (Details tab inside Builder)
+
+```text
++------------------------------------------+
+| Case Builder    [Draft]  [3 stages]    X |
+|------------------------------------------|
+| [Details]  [Stages]                      |
+|------------------------------------------|
+|  Title *                                 |
+|  [________________________]              |
+|                                          |
+|  Introduction *                          |
+|  [________________________]              |
+|  [________________________]              |
+|                                          |
+|  Chapter        | Difficulty             |
+|  [v Chapter 14] | [v Beginner]           |
+|                                          |
+|  Section        | Est. Time              |
+|  [v Chronic..]  | [15] min               |
+|                                          |
+|  Concept (optional)                      |
+|  [Select concept...]                     |
+|                                          |
+|  Search Tags (optional)                  |
+|  [tag input] [Add]                       |
+|  [tag1] [tag2]                           |
+|                                          |
+|  Published   .................. [toggle]  |
+|------------------------------------------|
+|                          [Save Changes]  |
++------------------------------------------+
+```
+
+### Scrolling fix
+The Details tab content uses a native `div` with `flex-1 min-h-0 overflow-y-auto` to ensure scrolling works from anywhere in the content area, following the project's established scroll hierarchy pattern.
