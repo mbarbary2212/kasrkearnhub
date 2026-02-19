@@ -89,7 +89,7 @@ export function ConceptBulkUploadModal({
   topicId,
   existingConcepts,
 }: ConceptBulkUploadModalProps) {
-  const [mode, setMode] = useState<InputMode>('lines');
+  const [mode, setMode] = useState<InputMode>('file');
   const [linesText, setLinesText] = useState('');
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState('');
