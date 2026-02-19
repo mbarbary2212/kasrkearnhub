@@ -317,7 +317,7 @@ export function ConceptBulkUploadModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Concepts</DialogTitle>
         </DialogHeader>
@@ -440,8 +440,8 @@ export function ConceptBulkUploadModal({
             )}
 
             {/* Preview table */}
-            <div className="border rounded-lg max-h-64 overflow-y-auto">
-              <Table>
+            <div className="border rounded-lg max-h-64 overflow-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
