@@ -42,7 +42,6 @@ interface ModuleContentCount {
   mcqCount: number;
   essayCount: number;
   practicalCount: number;
-  caseScenarioCount: number;
   lectureCount: number;
   totalItems: number;
 }
@@ -64,7 +63,7 @@ export function useModuleContentCounts(yearId: string | null) {
 
       const moduleIds = modules.map(m => m.id);
 
-      const [chapters, mcqs, essays, practicals, caseScenarios, lectures] = await Promise.all([
+      const [chapters, mcqs, essays, practicals, lectures] = await Promise.all([
         supabase
           .from('module_chapters')
           .select('id, module_id')
@@ -85,11 +84,6 @@ export function useModuleContentCounts(yearId: string | null) {
           .in('module_id', moduleIds)
           .eq('is_deleted', false),
         supabase
-          .from('case_scenarios')
-          .select('id, module_id')
-          .in('module_id', moduleIds)
-          .eq('is_deleted', false),
-        supabase
           .from('lectures')
           .select('id, module_id')
           .in('module_id', moduleIds)
@@ -101,7 +95,6 @@ export function useModuleContentCounts(yearId: string | null) {
         const mcqCount = mcqs.data?.filter(m => m.module_id === moduleId).length || 0;
         const essayCount = essays.data?.filter(e => e.module_id === moduleId).length || 0;
         const practicalCount = practicals.data?.filter(p => p.module_id === moduleId).length || 0;
-        const caseScenarioCount = caseScenarios.data?.filter(c => c.module_id === moduleId).length || 0;
         const lectureCount = lectures.data?.filter(l => l.module_id === moduleId).length || 0;
 
         const totalItems = 
@@ -109,7 +102,6 @@ export function useModuleContentCounts(yearId: string | null) {
           mcqCount * 0.1 + 
           essayCount * 1 + 
           practicalCount * 2 + 
-          caseScenarioCount * 1.5 + 
           lectureCount * 1.5;
 
         return {
@@ -118,7 +110,6 @@ export function useModuleContentCounts(yearId: string | null) {
           mcqCount,
           essayCount,
           practicalCount,
-          caseScenarioCount,
           lectureCount,
           totalItems,
         };

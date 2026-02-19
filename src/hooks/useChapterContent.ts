@@ -104,21 +104,3 @@ export function useChapterPracticals(chapterId?: string, includeDeleted = false)
   });
 }
 
-// Fetch clinical cases for a chapter
-export function useChapterClinicalCases(chapterId?: string) {
-  return useQuery({
-    queryKey: ['chapter-clinical-cases', chapterId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clinical_cases')
-        .select('*')
-        .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!chapterId,
-  });
-}
