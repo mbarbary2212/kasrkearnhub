@@ -1,113 +1,44 @@
 
-# Unified Case Builder Redesign
 
-## Problem
-The current Case Builder requires navigating through 3 separate modal windows to manage a single case:
-1. **Case Builder modal** -- shows summary + stages list
-2. **Edit Details modal** (opened from Builder) -- title, intro, chapter, section, level, time, tags, published toggle
-3. **Stage Form modal** (opened from Builder) -- individual stage editing
+# Drop Legacy `case_scenarios` Table
 
-This is counter-intuitive. The "Edit Details" modal also lacks a **Concept** selector, and the "tags" field is unclear. Scrolling may also be broken in the edit flow.
+All 31 case scenario records have been successfully migrated to `virtual_patient_cases` (confirmed via `legacy_case_scenario_id` references). The `case_scenarios` table can now be safely removed.
 
-## Solution
-Consolidate everything into a **single-modal tabbed interface** with two tabs:
+## What Changes
 
-### Tab 1: "Details" (inline, no sub-modal)
-All case metadata fields displayed directly inside the builder:
-- Title
-- Introduction text
-- Chapter selector
-- Section selector (conditional)
-- Concept selector (new -- requires adding `concept_id` column to `virtual_patient_cases`)
-- Difficulty level
-- Estimated time
-- Tags (with clarifying label: "Search Tags")
-- Published toggle (with stage-count validation)
+### 1. Database Migration
+- Drop the `case_scenarios` table entirely (all data already lives in `virtual_patient_cases`)
 
-### Tab 2: "Stages" (current stage list)
-- Drag-and-drop stage list (unchanged)
-- Add Stage / Quick Build buttons
-- Stage edit/delete actions
-- Empty state with prompts
+### 2. Code Cleanup (4 files)
 
-The stage edit form remains a sub-modal (it's a complex form with dynamic fields) -- this is fine since it's an intentional drill-down action.
+**`src/pages/AdminPage.tsx`**
+- Remove `case_scenarios` from the `OrphanCheckType` and `QualityCheckType` unions
+- Remove all associated state variables (`orphanCaseScenariosRunning`, etc.)
+- Remove the "Case Scenarios" entry from the orphan checks list and quality checks list
 
-## Database Change
-Add `concept_id` column to `virtual_patient_cases` table with a foreign key to `concepts(id)`.
+**`supabase/functions/approve-ai-content/index.ts`**
+- Update AI content approval to insert into `virtual_patient_cases` instead of `case_scenarios`
+
+**`supabase/functions/cache-readiness/index.ts`**
+- Replace `case_scenarios` query with `virtual_patient_cases` for readiness calculations
+
+**`supabase/functions/integrity-pilot-v2/index.ts`**
+- Replace `case_scenarios` integrity checks with `virtual_patient_cases` equivalents, or remove redundant checks if already covered by `clinical_cases` checks
+
+### 3. Live Environment Consideration
+Since both Test and Live share the same Supabase project, the migration will drop the table in both environments. The 31 records are already migrated, so no data loss will occur.
 
 ## Technical Details
 
 ### Migration SQL
 ```text
-ALTER TABLE virtual_patient_cases
-ADD COLUMN concept_id UUID REFERENCES concepts(id) ON DELETE SET NULL;
+DROP TABLE IF EXISTS public.case_scenarios;
 ```
 
-### Files to edit
+### Files Modified
+- `supabase/migrations/` -- new migration to drop table
+- `src/pages/AdminPage.tsx` -- remove ~30 lines of case_scenarios references
+- `supabase/functions/approve-ai-content/index.ts` -- redirect inserts to virtual_patient_cases
+- `supabase/functions/cache-readiness/index.ts` -- query virtual_patient_cases instead
+- `supabase/functions/integrity-pilot-v2/index.ts` -- update or remove case_scenarios checks
 
-**1. `supabase/migrations/` -- new migration**
-- Add `concept_id` column to `virtual_patient_cases`
-
-**2. `src/integrations/supabase/types.ts`**
-- Add `concept_id` to `virtual_patient_cases` Row/Insert/Update types and Relationships
-
-**3. `src/types/clinicalCase.ts`**
-- Add `concept_id?: string | null` to `ClinicalCase` interface
-- Add `concept_id?: string` to `ClinicalCaseFormData` interface
-
-**4. `src/components/clinical-cases/ClinicalCaseBuilderModal.tsx` -- major rewrite**
-- Remove the `ClinicalCaseFormModal` sub-modal import and usage
-- Add a `Tabs` component with "Details" and "Stages" tabs
-- **Details tab**: inline all fields from `ClinicalCaseFormModal` (title, intro, chapter, section, concept, level, time, tags, published toggle) with a "Save" button
-- **Stages tab**: keep the existing drag-and-drop stage list, Add Stage, Quick Build, and empty state
-- Use native `div` with `flex-1 min-h-0 overflow-y-auto` for scrolling (per project convention)
-- Remove the "Edit Details" button from the case info summary card
-
-**5. `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-- Keep this file for the "Create new case" flow (step 1 of 2) -- it's still needed when creating a brand-new case from the admin list
-- Add `ConceptSelect` component
-- Rename tags label to "Search Tags (optional)" for clarity
-
-**6. `src/hooks/useClinicalCases.ts`**
-- Include `concept_id` in create/update mutation payloads
-- Include `concept:concepts(id, title)` in the select query for `useClinicalCase`
-
-**7. `src/components/admin/MissingConceptsAudit.tsx`**
-- Add `virtual_patient_cases` to the content types checked for missing concepts
-
-### UI Layout (Details tab inside Builder)
-
-```text
-+------------------------------------------+
-| Case Builder    [Draft]  [3 stages]    X |
-|------------------------------------------|
-| [Details]  [Stages]                      |
-|------------------------------------------|
-|  Title *                                 |
-|  [________________________]              |
-|                                          |
-|  Introduction *                          |
-|  [________________________]              |
-|  [________________________]              |
-|                                          |
-|  Chapter        | Difficulty             |
-|  [v Chapter 14] | [v Beginner]           |
-|                                          |
-|  Section        | Est. Time              |
-|  [v Chronic..]  | [15] min               |
-|                                          |
-|  Concept (optional)                      |
-|  [Select concept...]                     |
-|                                          |
-|  Search Tags (optional)                  |
-|  [tag input] [Add]                       |
-|  [tag1] [tag2]                           |
-|                                          |
-|  Published   .................. [toggle]  |
-|------------------------------------------|
-|                          [Save Changes]  |
-+------------------------------------------+
-```
-
-### Scrolling fix
-The Details tab content uses a native `div` with `flex-1 min-h-0 overflow-y-auto` to ensure scrolling works from anywhere in the content area, following the project's established scroll hierarchy pattern.
