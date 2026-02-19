@@ -372,7 +372,7 @@ export function ClinicalCaseBuilderModal({
               </Button>
             </div>
           ) : (
-            <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
+            <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <TabsList className="flex-shrink-0 w-full justify-start">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="stages" className="flex items-center gap-1.5">
@@ -384,8 +384,8 @@ export function ClinicalCaseBuilderModal({
               </TabsList>
 
               {/* ====== DETAILS TAB ====== */}
-              <TabsContent value="details" className="flex-1 min-h-0 mt-0">
-                <div className="flex-1 min-h-0 overflow-y-auto h-full">
+              <TabsContent value="details" className="flex-1 min-h-0 mt-0 flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-y-auto">
                   <div className="space-y-4 pr-2 pb-4 pt-4">
                     {/* Title */}
                     <div>
@@ -567,7 +567,7 @@ export function ClinicalCaseBuilderModal({
               </TabsContent>
 
               {/* ====== STAGES TAB ====== */}
-              <TabsContent value="stages" className="flex-1 min-h-0 mt-0 flex flex-col">
+              <TabsContent value="stages" className="flex-1 min-h-0 mt-0 flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between py-3 flex-shrink-0">
                   <h4 className="font-medium">Stages ({stages.length})</h4>
                   <div className="flex items-center gap-2">
