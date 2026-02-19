@@ -1,85 +1,53 @@
 
-# Concepts Bulk Upload + Side-by-Side Layout
 
-## Overview
-Add a bulk upload modal to the ConceptsManager supporting three input modes (line-by-line, CSV paste, file upload), and place the Sections and Concepts manager cards side-by-side on tablet/desktop.
+# Extended Concept Bulk Upload + Updated Template
 
-## Layout Change
+## What Changes
 
-Wrap `SectionsManager` and `ConceptsManager` in a responsive grid on both `ChapterPage.tsx` and `TopicDetailPage.tsx`:
+### 1. Update Help Template (`HelpTemplatesTab.tsx`)
 
-```text
-Before (stacked):               After (side-by-side on md+):
-[SectionsManager]                [SectionsManager] [ConceptsManager]
-[ConceptsManager]                (single column on mobile)
+Expand the concept schema to match ChatGPT's output format:
+
+- Columns: `concept_key, title, section_hint, description`
+- Required: `concept_key, title`
+- Optional: `section_hint, description`
+- Update examples to include all 4 columns with realistic medical data from the uploaded file
+
+### 2. Update Bulk Upload Modal (`ConceptBulkUploadModal.tsx`)
+
+**ParsedRow interface** -- add optional `sectionHint` and `description` fields for display purposes only (not inserted to DB).
+
+**CSV parsing** -- detect header row to determine column order:
+- If header contains `concept_key` as first column: use `concept_key,title,section_hint,description` order
+- If header contains `title` as first column: use `title,concept_key` order (backward compatible)
+- If no header detected: fall back to `title,concept_key` order
+- Handle quoted CSV values (the description field may contain commas)
+
+**File upload parsing** -- already handles column names via `xlsx`, just add extraction of `section_hint` and `description` fields.
+
+**Duplicate detection** -- add a new `'duplicate'` status for in-file duplicates (distinct from `'exists'` which means already in DB). This makes the distinction clearer.
+
+**Preview table** -- add Section Hint and Description columns (only shown when any row has those values, to keep the table clean for simple uploads).
+
+### 3. CSV Placeholder Update
+
+Update the CSV mode placeholder text to show the extended format:
+```
+concept_key,title,section_hint,description
+virchow_triad,Virchow Triad,Venous thrombosis,Stasis hypercoagulability...
 ```
 
-Remove `max-w-2xl` from both cards and add `min-w-0` to prevent overflow.
+## Files to Modify
 
-## Bulk Upload Modal
-
-### Input Modes (tabs within modal)
-
-1. **Lines (default)** -- Textarea where each line becomes a concept. Primary workflow for pasting from ChatGPT.
-2. **CSV** -- Textarea for `title,concept_key` format. Missing keys auto-generated.
-3. **File Upload** -- Drag-and-drop for `.csv` / `.xlsx` files using existing `DragDropZone` and `xlsx` package.
-
-### Normalization Helper
-
-A shared `normalizeConceptKey(text)` function applied to ALL input modes:
-- Lowercase, trim
-- Replace `&` with `and`
-- Remove punctuation (except underscores)
-- Spaces/dashes become `_`
-- Collapse multiple underscores
-- Max length 64 characters
-- Empty result = validation error
-
-This helper will also replace the inline normalization currently in `ConceptsManager` (lines 101 and 125).
-
-### Preview Table
-
-Columns: Title | Concept Key | Status
-
-Status badges:
-- Green "New" -- will be created
-- Yellow "Exists" -- already in chapter (skipped or updated)
-- Red "Invalid" -- missing title or empty key
-
-Confirm button disabled if any red rows exist.
-
-### Duplicate Policy
-
-Radio group in preview step:
-- **Skip duplicates** (default) -- existing concepts are ignored
-- **Update existing title** -- uses `useUpdateConcept` to rename matches
-
-### Display Order
-
-New concepts get `display_order = maxExistingDisplayOrder + 1 + rowIndex` so they append after existing concepts without disrupting current ordering.
-
-### Success
-
-- Close modal
-- Invalidate concepts query (auto-refresh)
-- Toast: "12 concepts created, 3 skipped"
-
-## Files
-
-| File | Action |
+| File | Change |
 |---|---|
-| `src/components/concepts/ConceptBulkUploadModal.tsx` | Create -- modal with 3 input tabs, preview table, confirm |
-| `src/lib/conceptNormalization.ts` | Create -- `normalizeConceptKey()` helper |
-| `src/components/concepts/ConceptsManager.tsx` | Modify -- add Upload button, remove `max-w-2xl`, use shared normalizer |
-| `src/components/sections/SectionsManager.tsx` | Modify -- remove `max-w-2xl` |
-| `src/pages/ChapterPage.tsx` | Modify -- wrap managers in `grid gap-4 md:grid-cols-2` |
-| `src/pages/TopicDetailPage.tsx` | Modify -- same grid wrapper |
-| `src/components/concepts/index.ts` | Modify -- export `ConceptBulkUploadModal` |
+| `src/components/concepts/ConceptBulkUploadModal.tsx` | Extended ParsedRow, smarter CSV parser with header detection, quoted value handling, extra columns in preview |
+| `src/components/admin/HelpTemplatesTab.tsx` | Expand concept schema to 4 columns with richer examples |
 
-## Technical Details
+## Key Rules Preserved
 
-- Uses existing `xlsx` package for XLSX parsing
-- Uses existing `DragDropZone` component for file upload
-- Uses existing `useCreateConcept` and `useUpdateConcept` mutations (sequential inserts)
-- No database changes needed
-- No new dependencies needed
+- Only `concept_key` and `title` are inserted to DB
+- `section_hint` and `description` are display-only in preview
+- Missing `concept_key` auto-generates from title via `normalizeConceptKey()`
+- Extra columns never break the upload
+- Backward compatible with the old 2-column format
