@@ -4655,6 +4655,7 @@ export type Database = {
         Row: {
           case_mode: string | null
           chapter_id: string | null
+          concept_id: string | null
           created_at: string
           created_by: string | null
           estimated_minutes: number
@@ -4679,6 +4680,7 @@ export type Database = {
         Insert: {
           case_mode?: string | null
           chapter_id?: string | null
+          concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
@@ -4703,6 +4705,7 @@ export type Database = {
         Update: {
           case_mode?: string | null
           chapter_id?: string | null
+          concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
@@ -4730,6 +4733,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
