@@ -810,6 +810,7 @@ export type Database = {
           concept_key: string
           created_at: string | null
           created_by: string | null
+          display_order: number | null
           id: string
           module_id: string
           section_id: string | null
@@ -820,6 +821,7 @@ export type Database = {
           concept_key: string
           created_at?: string | null
           created_by?: string | null
+          display_order?: number | null
           id?: string
           module_id: string
           section_id?: string | null
@@ -830,6 +832,7 @@ export type Database = {
           concept_key?: string
           created_at?: string | null
           created_by?: string | null
+          display_order?: number | null
           id?: string
           module_id?: string
           section_id?: string | null
