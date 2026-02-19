@@ -27,6 +27,7 @@ import {
   type MatchItem,
 } from '@/hooks/useMatchingQuestions';
 import { SectionSelector } from '@/components/sections';
+import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface MatchingQuestionFormModalProps {
   open: boolean;
@@ -63,6 +64,7 @@ export function MatchingQuestionFormModal({
   const [showExplanation, setShowExplanation] = useState(true);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | null>(null);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [conceptId, setConceptId] = useState<string | null>(null);
 
   useEffect(() => {
     if (question) {
@@ -74,6 +76,7 @@ export function MatchingQuestionFormModal({
       setShowExplanation(question.show_explanation);
       setDifficulty(question.difficulty);
       setSectionId((question as any).section_id || null);
+      setConceptId((question as any).concept_id || null);
     } else {
       // Reset form
       setInstruction('Match the items in Column A with the correct items in Column B');
@@ -90,6 +93,7 @@ export function MatchingQuestionFormModal({
       setShowExplanation(true);
       setDifficulty(null);
       setSectionId(null);
+      setConceptId(null);
     }
   }, [question, open]);
 
@@ -147,6 +151,7 @@ export function MatchingQuestionFormModal({
       difficulty,
       topic_id: topicId,
       section_id: sectionId,
+      concept_id: conceptId,
     };
 
     if (question) {
@@ -176,14 +181,15 @@ export function MatchingQuestionFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             {question ? 'Edit Matching Question' : 'Add Matching Question'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="space-y-6 py-4 pr-2">
           {/* Instruction */}
           <div className="space-y-2">
             <Label>Instruction / Question</Label>
@@ -341,9 +347,19 @@ export function MatchingQuestionFormModal({
               </Select>
             </div>
           )}
+
+          {/* Concept */}
+          <ConceptSelect
+            moduleId={moduleId}
+            chapterId={chapterId || undefined}
+            sectionId={sectionId}
+            value={conceptId}
+            onChange={setConceptId}
+          />
+        </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
