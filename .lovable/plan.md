@@ -1,53 +1,101 @@
 
+# Fix Concept Tagging Across Edit Forms, Admin Tables, Exports, and Templates
 
-# Extended Concept Bulk Upload + Updated Template
+## Problems Found
 
-## What Changes
+1. **ConceptSelect shows "No concepts found" in edit forms** -- The `useConcepts` hook filters by `sectionId` when one is passed, but concepts are created at the chapter level (with `section_id = null`). When editing a flashcard or MCQ that belongs to a section, the ConceptSelect passes that section to `useConcepts`, which returns zero results.
 
-### 1. Update Help Template (`HelpTemplatesTab.tsx`)
+2. **No concept column in any admin table** -- MCQ, Flashcard, True/False, Essay, OSCE, Matching, Visual Resources, and Guided Explanation tables all lack a "Concept" column.
 
-Expand the concept schema to match ChatGPT's output format:
+3. **No concept in CSV exports** -- None of the export configurations include `concept_name`.
 
-- Columns: `concept_key, title, section_hint, description`
-- Required: `concept_key, title`
-- Optional: `section_hint, description`
-- Update examples to include all 4 columns with realistic medical data from the uploaded file
+4. **TrueFalseFormModal missing ConceptSelect entirely** -- The True/False edit form never included a ConceptSelect field.
 
-### 2. Update Bulk Upload Modal (`ConceptBulkUploadModal.tsx`)
+5. **Templates missing concept_name column** -- The help templates for MCQ, Flashcard, True/False, Essay, OSCE, Matching don't include a `concept_name` column for round-trip editing.
 
-**ParsedRow interface** -- add optional `sectionHint` and `description` fields for display purposes only (not inserted to DB).
+## Fix 1: ConceptSelect -- Stop Filtering by Section
 
-**CSV parsing** -- detect header row to determine column order:
-- If header contains `concept_key` as first column: use `concept_key,title,section_hint,description` order
-- If header contains `title` as first column: use `title,concept_key` order (backward compatible)
-- If no header detected: fall back to `title,concept_key` order
-- Handle quoted CSV values (the description field may contain commas)
+**File:** `src/components/content/ConceptSelect.tsx`
 
-**File upload parsing** -- already handles column names via `xlsx`, just add extraction of `section_hint` and `description` fields.
-
-**Duplicate detection** -- add a new `'duplicate'` status for in-file duplicates (distinct from `'exists'` which means already in DB). This makes the distinction clearer.
-
-**Preview table** -- add Section Hint and Description columns (only shown when any row has those values, to keep the table clean for simple uploads).
-
-### 3. CSV Placeholder Update
-
-Update the CSV mode placeholder text to show the extended format:
+Change the hook call from:
 ```
-concept_key,title,section_hint,description
-virchow_triad,Virchow Triad,Venous thrombosis,Stasis hypercoagulability...
+useConcepts(moduleId, chapterId, sectionId ?? undefined)
+```
+to:
+```
+useConcepts(moduleId, chapterId)
 ```
 
-## Files to Modify
+This ensures ALL chapter-level concepts are shown regardless of which section the content item belongs to. The same fix applies to `BulkConceptAssignment.tsx`.
+
+## Fix 2: Add Concept Column to ContentAdminTable
+
+**File:** `src/components/admin/ContentAdminTable.tsx`
+
+Add built-in support for a `'concept'` column key (similar to how `'section'` works):
+- Accept a `concepts` prop (array of Concept objects)
+- Render the concept name as a badge when present
+- Resolve `concept_id` from each data item
+
+**File:** `src/hooks/useConcepts.ts`
+
+The existing `useChapterConcepts` hook is sufficient for resolving concept names in tables.
+
+## Fix 3: Add Concept Column to All Admin Tables
+
+Each admin table will:
+- Fetch concepts via `useChapterConcepts(chapterId)`
+- Add a `{ key: 'concept', header: 'Concept' }` column
+- Pass `concepts` to `ContentAdminTable`
+- Add `concept_name` to CSV export config
+
+**Files to update:**
+- `McqAdminTable.tsx`
+- `FlashcardsAdminTable.tsx`
+- `TrueFalseAdminTable.tsx`
+- `EssaysAdminTable.tsx`
+- `OsceAdminTable.tsx`
+- `MatchingAdminTable.tsx`
+- `VisualResourcesAdminTable.tsx`
+- `GuidedExplanationAdminTable.tsx`
+- `LecturesAdminTable.tsx`
+
+## Fix 4: Add ConceptSelect to TrueFalseFormModal
+
+**File:** `src/components/content/TrueFalseFormModal.tsx`
+
+Add `conceptId` state, load from `question.concept_id` on edit, include in submit data, and render `ConceptSelect` in the form.
+
+## Fix 5: Update CSV Export Configs
+
+**File:** `src/lib/csvExport.ts`
+
+Add a `concept_name` column to `FLASHCARD_EXPORT_COLUMNS`, `MCQ_EXPORT_COLUMNS`, `ESSAY_EXPORT_COLUMNS`, and `LECTURE_EXPORT_COLUMNS`. The `getValue` function will accept a concepts list and resolve `concept_id` to a name.
+
+Update `exportToCsv` signature to optionally accept a concepts array.
+
+## Fix 6: Update Help Templates
+
+**File:** `src/components/admin/HelpTemplatesTab.tsx`
+
+Add `concept_name` as an optional column to every content template schema (MCQ, flashcard, true_false, essay, osce, matching) so that downloaded templates include the concept column for round-trip editing.
+
+## Files Summary
 
 | File | Change |
 |---|---|
-| `src/components/concepts/ConceptBulkUploadModal.tsx` | Extended ParsedRow, smarter CSV parser with header detection, quoted value handling, extra columns in preview |
-| `src/components/admin/HelpTemplatesTab.tsx` | Expand concept schema to 4 columns with richer examples |
-
-## Key Rules Preserved
-
-- Only `concept_key` and `title` are inserted to DB
-- `section_hint` and `description` are display-only in preview
-- Missing `concept_key` auto-generates from title via `normalizeConceptKey()`
-- Extra columns never break the upload
-- Backward compatible with the old 2-column format
+| `src/components/content/ConceptSelect.tsx` | Remove sectionId from useConcepts call |
+| `src/components/content/BulkConceptAssignment.tsx` | Remove sectionId from ConceptSelect |
+| `src/components/admin/ContentAdminTable.tsx` | Add concept column support + concepts prop |
+| `src/lib/csvExport.ts` | Add concept_name to all export column configs |
+| `src/components/content/McqAdminTable.tsx` | Add concept column + export |
+| `src/components/study/FlashcardsAdminTable.tsx` | Add concept column + export |
+| `src/components/content/TrueFalseAdminTable.tsx` | Add concept column + export |
+| `src/components/content/TrueFalseFormModal.tsx` | Add ConceptSelect field |
+| `src/components/content/EssaysAdminTable.tsx` | Add concept column + export |
+| `src/components/content/OsceAdminTable.tsx` | Add concept column + export |
+| `src/components/content/MatchingAdminTable.tsx` | Add concept column + export |
+| `src/components/study/VisualResourcesAdminTable.tsx` | Add concept column + export |
+| `src/components/study/GuidedExplanationAdminTable.tsx` | Add concept column + export |
+| `src/components/content/LecturesAdminTable.tsx` | Add concept column + export |
+| `src/components/admin/HelpTemplatesTab.tsx` | Add concept_name to all template schemas |
