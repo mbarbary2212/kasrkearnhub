@@ -202,6 +202,17 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ],
     ],
   },
+  concept: {
+    columns: ['title', 'concept_key'],
+    required: ['title'],
+    optional: ['concept_key'],
+    examples: [
+      ['Varicose veins', 'varicose_veins'],
+      ['Deep vein thrombosis', 'deep_vein_thrombosis'],
+      ['Chronic venous insufficiency', 'chronic_venous_insufficiency'],
+      ['Venous ulcer', 'venous_ulcer'],
+    ],
+  },
   user_invite: {
     columns: ['full_name', 'email', 'role'],
     required: ['full_name', 'email'],
@@ -299,6 +310,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     id: 'true_false',
     title: 'True/False Questions Template',
     description: 'True/False statements with explanations and difficulty levels',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'concept',
+    title: 'Concepts Template',
+    description: 'Bulk upload concepts with title and optional concept_key (auto-generated if missing)',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -449,6 +467,7 @@ function generateTemplateDownload(templateId: string) {
     case 'matching':
     case 'essay':
     case 'true_false':
+    case 'concept':
       // All CSV-based templates use the schema system
       if (schema) {
         downloadCsv(`${templateId}_template.csv`, generateCsvFromSchema(schema));
