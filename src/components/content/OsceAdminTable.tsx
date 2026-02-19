@@ -3,6 +3,7 @@ import { Image } from 'lucide-react';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { OsceQuestion } from '@/hooks/useOsceQuestions';
 import type { Section } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 
 interface OsceAdminTableProps {
   questions: OsceQuestion[];
@@ -23,6 +24,8 @@ export function OsceAdminTable({
   onEdit,
   onDelete,
 }: OsceAdminTableProps) {
+  const { data: concepts = [] } = useChapterConcepts(chapterId);
+
   const columns: ColumnConfig<OsceQuestion>[] = [
     {
       key: 'select',
@@ -69,6 +72,11 @@ export function OsceAdminTable({
       },
     },
     {
+      key: 'concept',
+      header: 'Concept',
+      className: 'w-32',
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
@@ -89,6 +97,7 @@ export function OsceAdminTable({
       topicId={topicId}
       moduleId={moduleId}
       sections={sections}
+      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{
@@ -105,6 +114,14 @@ export function OsceAdminTable({
           { key: 'answer_4', header: 'Answer 4' },
           { key: 'statement_5', header: 'Statement 5' },
           { key: 'answer_5', header: 'Answer 5' },
+          { 
+            key: 'concept_name', 
+            header: 'Concept',
+            getValue: (item) => {
+              const concept = concepts.find(c => c.id === (item as any).concept_id);
+              return concept?.title || '';
+            }
+          },
           { 
             key: 'section_name', 
             header: 'Section',

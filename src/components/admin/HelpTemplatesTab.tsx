@@ -44,9 +44,9 @@ interface TemplateSchema {
 
 export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
   mcq: {
-    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'concept_name', 'section_name', 'section_number'],
     required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
-    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'concept_name', 'section_name', 'section_number'],
     examples: [
       [
         'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
@@ -58,15 +58,16 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'A',
         'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
         'medium',
+        'Acute Coronary Syndrome',
         'Cardiac Emergencies',
         '1'
       ],
     ],
   },
   osce: {
-    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'concept_name', 'section_name', 'section_number'],
     required: ['image_filename', 'history_text', 'statement_1', 'answer_1'],
-    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'concept_name', 'section_name', 'section_number'],
     examples: [
       [
         'chest_xray_001.jpg',
@@ -86,18 +87,19 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'This is consistent with pneumonia',
         'FALSE',
         'The findings are more consistent with COPD/emphysema.',
+        'COPD',
         'Radiology',
         '2'
       ],
     ],
   },
   flashcard: {
-    columns: ['title', 'front', 'back', 'section_name', 'section_number'],
+    columns: ['title', 'front', 'back', 'concept_name', 'section_name', 'section_number'],
     required: ['title', 'front', 'back'],
-    optional: ['section_name', 'section_number'],
+    optional: ['concept_name', 'section_name', 'section_number'],
     examples: [
-      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Heart Basics', '1'],
-      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Basics', '1'],
+      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Cardiac Output', 'Heart Basics', '1'],
+      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Anatomy', 'Heart Basics', '1'],
     ],
   },
   table: {
@@ -143,9 +145,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   matching: {
-    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'concept_name', 'section_name', 'section_number'],
     required: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2'],
-    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'concept_name', 'section_name', 'section_number'],
     examples: [
       [
         'Heart Sounds',
@@ -157,15 +159,16 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'Pulmonary hypertension',
         'Fixed split S2',
         'ASD',
+        'Cardiac Auscultation',
         'Auscultation',
         '2'
       ],
     ],
   },
   essay: {
-    columns: ['title', 'scenario_text', 'questions', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number'],
+    columns: ['title', 'scenario_text', 'questions', 'model_answer', 'keywords', 'rating', 'concept_name', 'section_name', 'section_number'],
     required: ['title', 'scenario_text', 'questions', 'model_answer'],
-    optional: ['keywords', 'rating', 'section_name', 'section_number'],
+    optional: ['keywords', 'rating', 'concept_name', 'section_name', 'section_number'],
     examples: [
       [
         'Diabetic Ketoacidosis Management',
@@ -174,21 +177,23 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'Immediate management includes: 1) IV normal saline bolus for fluid resuscitation, 2) Continuous IV insulin infusion at 0.1 units/kg/hr, 3) Potassium replacement once K+ < 5.3 mEq/L, 4) Monitor blood glucose hourly, 5) Check electrolytes every 2-4 hours, 6) Switch to dextrose-containing fluids when glucose < 250 mg/dL.',
         'DKA, insulin, fluid resuscitation, potassium, electrolyte monitoring',
         '3',
+        'Diabetic Ketoacidosis',
         'Endocrine Emergencies',
         '1'
       ],
     ],
   },
   true_false: {
-    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'concept_name', 'section_name', 'section_number'],
     required: ['statement', 'correct_answer'],
-    optional: ['explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['explanation', 'difficulty', 'concept_name', 'section_name', 'section_number'],
     examples: [
       [
         'The left recurrent laryngeal nerve loops around the aortic arch before ascending to the larynx.',
         'TRUE',
         'The left recurrent laryngeal nerve hooks around the aortic arch (ligamentum arteriosum), while the right hooks around the subclavian artery.',
         'medium',
+        'Recurrent Laryngeal Nerve',
         'Head and Neck Anatomy',
         '1'
       ],
@@ -197,6 +202,7 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'FALSE',
         'Insulin is secreted by beta cells. Alpha cells secrete glucagon.',
         'easy',
+        'Insulin Secretion',
         'Endocrine Physiology',
         '2'
       ],

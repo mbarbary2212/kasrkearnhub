@@ -40,7 +40,7 @@ export function ConceptSelect({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data: concepts = [] } = useConcepts(moduleId, chapterId, sectionId ?? undefined);
+  const { data: concepts = [] } = useConcepts(moduleId, chapterId);
   const createConcept = useCreateConcept();
 
   const selected = useMemo(

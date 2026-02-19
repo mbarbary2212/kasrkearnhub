@@ -17,6 +17,7 @@ import {
   useUpdateStudyResource,
 } from '@/hooks/useStudyResources';
 import type { Section } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 
 const VISUAL_TYPES: { value: StudyResourceType; label: string; icon: React.ReactNode }[] = [
   { value: 'mind_map', label: 'Mind Map', icon: <Network className="w-3 h-3" /> },
@@ -95,6 +96,8 @@ export function VisualResourcesAdminTable({
   onEdit,
   onDelete,
 }: VisualResourcesAdminTableProps) {
+  const { data: concepts = [] } = useChapterConcepts(chapterId);
+
   const columns: ColumnConfig<StudyResource>[] = [
     {
       key: 'select',
@@ -133,6 +136,11 @@ export function VisualResourcesAdminTable({
       },
     },
     {
+      key: 'concept',
+      header: 'Concept',
+      className: 'w-32',
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
@@ -153,6 +161,7 @@ export function VisualResourcesAdminTable({
       topicId={topicId}
       moduleId={moduleId}
       sections={sections}
+      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{
@@ -173,6 +182,14 @@ export function VisualResourcesAdminTable({
             getValue: (item) => {
               const content = item.content as MindMapContent;
               return content.description || '';
+            },
+          },
+          {
+            key: 'concept_name',
+            header: 'Concept',
+            getValue: (item) => {
+              const concept = concepts.find(c => c.id === (item as any).concept_id);
+              return concept?.title || '';
             },
           },
           {

@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseFormSchema } from '@/lib/validators';
 import { SectionSelector } from '@/components/sections';
+import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface TrueFalseFormModalProps {
   open: boolean;
@@ -51,7 +52,7 @@ export function TrueFalseFormModal({
   const [explanation, setExplanation] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [sectionId, setSectionId] = useState<string | null>(null);
-
+  const [conceptId, setConceptId] = useState<string | null>(null);
   const createMutation = useCreateTrueFalseQuestion();
   const updateMutation = useUpdateTrueFalseQuestion();
 
@@ -63,6 +64,7 @@ export function TrueFalseFormModal({
       setExplanation(question.explanation || '');
       setDifficulty(question.difficulty || 'medium');
       setSectionId(question.section_id || null);
+      setConceptId((question as any).concept_id || null);
     } else {
       // Reset form for new question
       setStatement('');
@@ -70,6 +72,7 @@ export function TrueFalseFormModal({
       setExplanation('');
       setDifficulty('medium');
       setSectionId(null);
+      setConceptId(null);
     }
   }, [question, open]);
 
@@ -82,6 +85,7 @@ export function TrueFalseFormModal({
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
       section_id: sectionId,
+      concept_id: conceptId,
     };
 
     // Validate before submission
@@ -186,6 +190,16 @@ export function TrueFalseFormModal({
               topicId={topicId || undefined}
               value={sectionId}
               onChange={setSectionId}
+            />
+          )}
+
+          {/* Concept Selector - Admin only */}
+          {isAdmin && moduleId && (
+            <ConceptSelect
+              moduleId={moduleId}
+              chapterId={chapterId || undefined}
+              value={conceptId}
+              onChange={setConceptId}
             />
           )}
 
