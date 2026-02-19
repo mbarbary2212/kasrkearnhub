@@ -21,18 +21,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, Copy } from 'lucide-react';
 import { normalizeConceptKey } from '@/lib/conceptNormalization';
 import { useCreateConcept, useUpdateConcept, Concept } from '@/hooks/useConcepts';
 import * as XLSX from 'xlsx';
 
 type InputMode = 'lines' | 'csv' | 'file';
 type DuplicatePolicy = 'skip' | 'update';
-type RowStatus = 'new' | 'exists' | 'invalid';
+type RowStatus = 'new' | 'exists' | 'duplicate' | 'invalid';
 
 interface ParsedRow {
   title: string;
   conceptKey: string;
+  sectionHint?: string;
+  description?: string;
   status: RowStatus;
   existingId?: string;
 }
@@ -44,6 +46,39 @@ interface ConceptBulkUploadModalProps {
   chapterId?: string;
   topicId?: string;
   existingConcepts: Concept[];
+}
+
+/** Parse a single CSV line respecting quoted fields */
+function parseQuotedCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
 }
 
 export function ConceptBulkUploadModal({
@@ -72,14 +107,14 @@ export function ConceptBulkUploadModal({
     return map;
   }, [existingConcepts]);
 
-  const classifyRows = (rows: { title: string; conceptKey: string }[]): ParsedRow[] => {
+  const classifyRows = (rows: Omit<ParsedRow, 'status' | 'existingId'>[]): ParsedRow[] => {
     const seenKeys = new Set<string>();
     return rows.map(row => {
       if (!row.title.trim() || !row.conceptKey) {
         return { ...row, status: 'invalid' as RowStatus };
       }
       if (seenKeys.has(row.conceptKey)) {
-        return { ...row, status: 'exists' as RowStatus };
+        return { ...row, status: 'duplicate' as RowStatus };
       }
       seenKeys.add(row.conceptKey);
       const existing = existingKeyMap.get(row.conceptKey);
@@ -101,14 +136,57 @@ export function ConceptBulkUploadModal({
 
   const parseCsv = (text: string): ParsedRow[] => {
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    // Skip header if it looks like one
-    const start = lines[0]?.toLowerCase().includes('title') ? 1 : 0;
-    const rows = lines.slice(start).map(line => {
-      const parts = line.split(',').map(p => p.trim());
-      const title = parts[0] || '';
-      const conceptKey = parts[1] ? normalizeConceptKey(parts[1]) : normalizeConceptKey(title);
-      return { title, conceptKey };
+    if (lines.length === 0) return [];
+
+    // Detect header
+    const firstLineLower = lines[0].toLowerCase();
+    const hasHeader = firstLineLower.includes('concept_key') || firstLineLower.includes('title');
+    const headerFields = hasHeader ? parseQuotedCsvLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_')) : [];
+
+    // Determine column indices
+    let keyIdx = -1, titleIdx = -1, hintIdx = -1, descIdx = -1;
+    if (hasHeader) {
+      keyIdx = headerFields.indexOf('concept_key');
+      titleIdx = headerFields.indexOf('title');
+      hintIdx = headerFields.indexOf('section_hint');
+      descIdx = headerFields.indexOf('description');
+    }
+
+    // If no header or missing columns, use positional: concept_key first check
+    const conceptKeyFirst = hasHeader && keyIdx !== -1 && (titleIdx === -1 || keyIdx < titleIdx);
+
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    const rows = dataLines.filter(Boolean).map(line => {
+      const parts = parseQuotedCsvLine(line);
+
+      let title = '';
+      let rawKey = '';
+      let sectionHint: string | undefined;
+      let description: string | undefined;
+
+      if (hasHeader && keyIdx !== -1 && titleIdx !== -1) {
+        // Use detected column positions
+        rawKey = parts[keyIdx] || '';
+        title = parts[titleIdx] || '';
+        if (hintIdx !== -1) sectionHint = parts[hintIdx] || undefined;
+        if (descIdx !== -1) description = parts[descIdx] || undefined;
+      } else if (conceptKeyFirst || (hasHeader && keyIdx === 0)) {
+        // concept_key,title,section_hint,description
+        rawKey = parts[0] || '';
+        title = parts[1] || '';
+        sectionHint = parts[2] || undefined;
+        description = parts[3] || undefined;
+      } else {
+        // title,concept_key (backward compatible)
+        title = parts[0] || '';
+        rawKey = parts[1] || '';
+      }
+
+      const conceptKey = rawKey ? normalizeConceptKey(rawKey) : normalizeConceptKey(title);
+      return { title: title.trim(), conceptKey, sectionHint, description };
     });
+
     return classifyRows(rows);
   };
 
@@ -124,8 +202,10 @@ export function ConceptBulkUploadModal({
         const rows = json.map(row => {
           const title = (row.title || row.Title || row.name || row.Name || Object.values(row)[0] || '').toString().trim();
           const rawKey = (row.concept_key || row.key || row.Key || '').toString().trim();
+          const sectionHint = (row.section_hint || row.Section_Hint || '').toString().trim() || undefined;
+          const description = (row.description || row.Description || '').toString().trim() || undefined;
           const conceptKey = rawKey ? normalizeConceptKey(rawKey) : normalizeConceptKey(title);
-          return { title, conceptKey };
+          return { title, conceptKey, sectionHint, description };
         });
 
         const classified = classifyRows(rows);
@@ -159,8 +239,11 @@ export function ConceptBulkUploadModal({
   };
 
   const hasInvalid = parsedRows.some(r => r.status === 'invalid');
+  const hasDuplicate = parsedRows.some(r => r.status === 'duplicate');
   const newRows = parsedRows.filter(r => r.status === 'new');
   const existsRows = parsedRows.filter(r => r.status === 'exists');
+  const duplicateRows = parsedRows.filter(r => r.status === 'duplicate');
+  const hasExtended = parsedRows.some(r => r.sectionHint || r.description);
 
   const handleConfirm = async () => {
     setIsImporting(true);
@@ -172,7 +255,7 @@ export function ConceptBulkUploadModal({
     try {
       for (let i = 0; i < parsedRows.length; i++) {
         const row = parsedRows[i];
-        if (row.status === 'invalid') continue;
+        if (row.status === 'invalid' || row.status === 'duplicate') continue;
 
         if (row.status === 'exists') {
           if (duplicatePolicy === 'update' && row.existingId) {
@@ -220,6 +303,11 @@ export function ConceptBulkUploadModal({
     setDuplicatePolicy('skip');
     onOpenChange(false);
   };
+
+  const canConfirm =
+    !hasInvalid &&
+    !hasDuplicate &&
+    (newRows.length > 0 || (duplicatePolicy === 'update' && existsRows.length > 0));
 
   const modeButtons: { id: InputMode; label: string }[] = [
     { id: 'lines', label: 'Lines' },
@@ -271,10 +359,10 @@ export function ConceptBulkUploadModal({
             {mode === 'csv' && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Paste CSV with <code className="text-xs bg-muted px-1 rounded">title,concept_key</code> columns. Missing keys are auto-generated.
+                  Paste CSV with <code className="text-xs bg-muted px-1 rounded">concept_key,title,section_hint,description</code> columns. Missing keys are auto-generated. Only <code className="text-xs bg-muted px-1 rounded">concept_key</code> and <code className="text-xs bg-muted px-1 rounded">title</code> are required.
                 </p>
                 <Textarea
-                  placeholder={"title,concept_key\nVaricose veins,varicose_veins\nDeep vein thrombosis,"}
+                  placeholder={'concept_key,title,section_hint,description\nvirchow_triad,Virchow Triad,Venous thrombosis,"Stasis, hypercoagulability, and endothelial injury"\nvaricose_veins,Varicose Veins,,'}
                   value={csvText}
                   onChange={e => setCsvText(e.target.value)}
                   rows={10}
@@ -286,7 +374,7 @@ export function ConceptBulkUploadModal({
             {mode === 'file' && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Upload a <code className="text-xs bg-muted px-1 rounded">.csv</code> or <code className="text-xs bg-muted px-1 rounded">.xlsx</code> file with a <strong>title</strong> column.
+                  Upload a <code className="text-xs bg-muted px-1 rounded">.csv</code> or <code className="text-xs bg-muted px-1 rounded">.xlsx</code> file with <strong>concept_key</strong> and <strong>title</strong> columns. Optional: <strong>section_hint</strong>, <strong>description</strong>.
                 </p>
                 <DragDropZone
                   id="concept-bulk-upload"
@@ -322,6 +410,11 @@ export function ConceptBulkUploadModal({
               <Badge variant="outline" className="gap-1 border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
                 <AlertTriangle className="h-3 w-3" /> {existsRows.length} existing
               </Badge>
+              {duplicateRows.length > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <Copy className="h-3 w-3" /> {duplicateRows.length} duplicate in file
+                </Badge>
+              )}
               {hasInvalid && (
                 <Badge variant="destructive" className="gap-1">
                   <XCircle className="h-3 w-3" /> {parsedRows.filter(r => r.status === 'invalid').length} invalid
@@ -353,6 +446,8 @@ export function ConceptBulkUploadModal({
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Concept Key</TableHead>
+                    {hasExtended && <TableHead>Section Hint</TableHead>}
+                    {hasExtended && <TableHead>Description</TableHead>}
                     <TableHead className="w-24">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -361,12 +456,17 @@ export function ConceptBulkUploadModal({
                     <TableRow key={i}>
                       <TableCell className="font-medium text-sm">{row.title || '—'}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{row.conceptKey || '—'}</TableCell>
+                      {hasExtended && <TableCell className="text-xs text-muted-foreground">{row.sectionHint || '—'}</TableCell>}
+                      {hasExtended && <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{row.description || '—'}</TableCell>}
                       <TableCell>
                         {row.status === 'new' && (
                           <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-500/30 text-xs">New</Badge>
                         )}
                         {row.status === 'exists' && (
                           <Badge variant="outline" className="text-yellow-700 dark:text-yellow-400 border-yellow-500/30 text-xs">Exists</Badge>
+                        )}
+                        {row.status === 'duplicate' && (
+                          <Badge variant="destructive" className="text-xs">Duplicate</Badge>
                         )}
                         {row.status === 'invalid' && (
                           <Badge variant="destructive" className="text-xs">Invalid</Badge>
@@ -382,7 +482,7 @@ export function ConceptBulkUploadModal({
               <Button variant="outline" onClick={() => setStep('input')}>Back</Button>
               <Button
                 onClick={handleConfirm}
-                disabled={hasInvalid || newRows.length === 0 && (duplicatePolicy !== 'update' || existsRows.length === 0) || isImporting}
+                disabled={!canConfirm || isImporting}
               >
                 {isImporting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Confirm Import

@@ -203,14 +203,14 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   concept: {
-    columns: ['title', 'concept_key'],
-    required: ['title'],
-    optional: ['concept_key'],
+    columns: ['concept_key', 'title', 'section_hint', 'description'],
+    required: ['concept_key', 'title'],
+    optional: ['section_hint', 'description'],
     examples: [
-      ['Varicose veins', 'varicose_veins'],
-      ['Deep vein thrombosis', 'deep_vein_thrombosis'],
-      ['Chronic venous insufficiency', 'chronic_venous_insufficiency'],
-      ['Venous ulcer', 'venous_ulcer'],
+      ['virchow_triad', 'Virchow Triad', 'Venous thrombosis', 'Stasis, hypercoagulability, and endothelial injury as mechanisms of thrombosis.'],
+      ['duplex_ultrasound', 'Duplex Ultrasound', 'Venous thrombosis', 'Primary imaging test to diagnose venous thrombosis and reflux.'],
+      ['varicose_veins', 'Varicose Veins', 'Varicose veins', 'Dilated, tortuous superficial veins due to valvular incompetence.'],
+      ['venous_ulcer', 'Venous Ulcer', 'Chronic venous insufficiency', 'Open wound on the lower leg caused by sustained venous hypertension.'],
     ],
   },
   user_invite: {
@@ -316,7 +316,7 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   {
     id: 'concept',
     title: 'Concepts Template',
-    description: 'Bulk upload concepts with title and optional concept_key (auto-generated if missing)',
+    description: 'Bulk upload concepts with concept_key, title, and optional section_hint & description',
     format: 'csv',
     icon: 'spreadsheet',
   },
