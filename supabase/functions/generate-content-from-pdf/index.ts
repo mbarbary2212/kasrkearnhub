@@ -56,11 +56,13 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     explanation: "string - explanation of the correct answer",
     difficulty: "string - easy, medium, or hard",
     section_number: "string (optional) - section number from the provided list (e.g., '3.1', '3.2'). DO NOT invent.",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   flashcard: {
     front: "string - the question or term",
     back: "string - the answer or definition",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   case_scenario: {
     title: "string - case title",
@@ -68,6 +70,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     case_questions: "string - questions about the case",
     model_answer: "string - expected answers",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   essay: {
     title: "string - question title",
@@ -75,6 +78,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     model_answer: "string - model answer",
     keywords: "array of strings - key terms expected in answer",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   osce: {
     history_text: "string - patient history, presentation, and examination findings",
@@ -94,6 +98,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     answer_5: "boolean - true or false",
     explanation_5: "string - explanation",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   matching: {
     instruction: "string - instruction text for the matching exercise",
@@ -103,6 +108,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     explanation: "string - explanation of correct matches",
     difficulty: "string - easy, medium, or hard",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   virtual_patient: {
     title: "string - case title",
@@ -112,6 +118,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     tags: "array of strings - relevant tags/topics",
     stages: "array of stage objects - each stage is MCQ, multi_select, or short_answer type",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   clinical_case: {
     title: "string - case title (at least 10 characters)",
@@ -130,12 +137,14 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
       - explanation: string - detailed explanation of why the answer is correct
       - teaching_points: array of 2-4 strings - key learning points`,
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   mind_map: {
     title: "string - topic title",
     central_concept: "string - main concept at the center",
     nodes: "array of objects - [{ id: string, label: string, parent_id: string | null, color: string }]",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   worked_case: {
     title: "string - case title",
@@ -143,6 +152,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     steps: "array of objects - [{ step_number: number, heading: string, content: string, key_points: array }]",
     learning_objectives: "array of strings - learning objectives covered",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
   guided_explanation: {
     topic: "string - main topic being explained",
@@ -160,6 +170,7 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     summary: "string - synthesis of what was learned (at least 30 words)",
     key_takeaways: "array of 3-5 strings - main points to remember",
     section_number: "string (optional) - section number from the provided list",
+    concept_key: "string or null (optional) - concept_key from the provided concept list. DO NOT invent.",
   },
 };
 
@@ -1025,6 +1036,30 @@ If content doesn't fit any specific section, set section_number to null.`;
       }
     }
 
+    // CONCEPT AWARENESS: Fetch concepts for this module/chapter
+    let conceptsList = "";
+    let conceptsData: { concept_key: string; title: string }[] = [];
+    
+    {
+      let conceptQuery = serviceClient
+        .from("concepts")
+        .select("concept_key, title")
+        .eq("module_id", module_id)
+        .order("title");
+      
+      if (chapter_id) {
+        conceptQuery = conceptQuery.eq("chapter_id", chapter_id);
+      }
+      
+      const { data: concepts } = await conceptQuery;
+      
+      if (concepts && concepts.length > 0) {
+        conceptsData = concepts as any[];
+        conceptsList = `\n\nCONCEPT TAGGING: Match each item to ONE concept from this list using the concept_key field. If no concept fits, set concept_key to null.
+${conceptsData.map(c => `- "${c.concept_key}" -> "${c.title}"`).join('\n')}`;
+      }
+    }
+
     // Section-focused instruction
     let sectionFocusInstruction = '';
     if (target_section_number && sectionsData.length > 0) {
@@ -1091,7 +1126,7 @@ CRITICAL SAFETY RULES:
 ${nbmeGuidelines}
 
 OUTPUT SCHEMA (you MUST use exactly these fields):
-${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
+${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${conceptsList}${sectionFocusInstruction}${socraticInstruction}
 
 You must output a JSON array of ${clampedQuantity} items, each matching the schema above.
 Example format: [{ ...item1 }, { ...item2 }]`;

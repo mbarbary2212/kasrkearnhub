@@ -593,7 +593,19 @@ export function AIContentPreviewCard({
       <Card className="relative">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
-            <Badge variant="secondary" className="shrink-0">{typeLabel} #{index + 1}</Badge>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge variant="secondary" className="shrink-0">{typeLabel} #{index + 1}</Badge>
+              {item.concept_key && (
+                <Badge variant="outline" className="shrink-0 text-xs bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300">
+                  {item.concept_key}
+                </Badge>
+              )}
+              {item.section_number && (
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  §{item.section_number}
+                </Badge>
+              )}
+            </div>
             <div className="flex gap-1">
               <Button
                 size="icon"
