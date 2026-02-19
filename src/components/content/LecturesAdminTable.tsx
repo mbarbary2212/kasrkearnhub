@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Video, Youtube, HardDrive } from 'lucide-react';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { useChapterSections } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 import { LECTURE_EXPORT_COLUMNS } from '@/lib/csvExport';
 import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 
@@ -13,6 +14,7 @@ interface Lecture {
   videoUrl?: string | null;
   duration?: string | null;
   section_id?: string | null;
+  concept_id?: string | null;
 }
 
 interface LecturesAdminTableProps {
@@ -31,6 +33,7 @@ export function LecturesAdminTable({
   onDelete,
 }: LecturesAdminTableProps) {
   const { data: sections = [] } = useChapterSections(chapterId);
+  const { data: concepts = [] } = useChapterConcepts(chapterId);
 
   const columns: ColumnConfig<Lecture>[] = useMemo(() => [
     {
@@ -73,6 +76,11 @@ export function LecturesAdminTable({
       },
     },
     {
+      key: 'concept',
+      header: 'Concept',
+      className: 'w-32',
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-32',
@@ -90,7 +98,9 @@ export function LecturesAdminTable({
       columns={columns}
       contentTable="lectures"
       chapterId={chapterId}
+      moduleId={moduleId}
       sections={sections}
+      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{

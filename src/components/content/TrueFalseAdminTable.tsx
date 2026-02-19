@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { TrueFalseQuestion } from '@/hooks/useTrueFalseQuestions';
 import type { Section } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 
 interface TrueFalseAdminTableProps {
   questions: TrueFalseQuestion[];
@@ -29,6 +30,8 @@ export function TrueFalseAdminTable({
   onEdit,
   onDelete,
 }: TrueFalseAdminTableProps) {
+  const { data: concepts = [] } = useChapterConcepts(chapterId);
+
   const columns: ColumnConfig<TrueFalseQuestion>[] = [
     {
       key: 'select',
@@ -67,6 +70,11 @@ export function TrueFalseAdminTable({
       ),
     },
     {
+      key: 'concept',
+      header: 'Concept',
+      className: 'w-32',
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
@@ -87,6 +95,7 @@ export function TrueFalseAdminTable({
       topicId={topicId}
       moduleId={moduleId}
       sections={sections}
+      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{
@@ -100,6 +109,14 @@ export function TrueFalseAdminTable({
           },
           { key: 'difficulty', header: 'Difficulty' },
           { key: 'explanation', header: 'Explanation' },
+          { 
+            key: 'concept_name', 
+            header: 'Concept',
+            getValue: (item) => {
+              const concept = concepts.find(c => c.id === (item as any).concept_id);
+              return concept?.title || '';
+            }
+          },
           { 
             key: 'section_name', 
             header: 'Section',

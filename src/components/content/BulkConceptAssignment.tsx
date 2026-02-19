@@ -103,7 +103,6 @@ export function BulkConceptAssignment({
           <ConceptSelect
             moduleId={moduleId}
             chapterId={chapterId}
-            sectionId={sectionId}
             value={conceptId}
             onChange={setConceptId}
           />

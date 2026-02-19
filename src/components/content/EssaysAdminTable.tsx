@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Check, X } from 'lucide-react';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { useChapterSections } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 import { ESSAY_EXPORT_COLUMNS } from '@/lib/csvExport';
 
 interface Essay {
@@ -12,6 +13,7 @@ interface Essay {
   rating?: number | null;
   is_deleted?: boolean;
   section_id?: string | null;
+  concept_id?: string | null;
 }
 
 interface EssaysAdminTableProps {
@@ -30,6 +32,7 @@ export function EssaysAdminTable({
   onDelete,
 }: EssaysAdminTableProps) {
   const { data: sections = [] } = useChapterSections(chapterId);
+  const { data: concepts = [] } = useChapterConcepts(chapterId);
 
   const columns: ColumnConfig<Essay>[] = useMemo(() => [
     {
@@ -69,6 +72,11 @@ export function EssaysAdminTable({
       ),
     },
     {
+      key: 'concept',
+      header: 'Concept',
+      className: 'w-32',
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-32',
@@ -86,7 +94,9 @@ export function EssaysAdminTable({
       columns={columns}
       contentTable="essays"
       chapterId={chapterId}
+      moduleId={moduleId}
       sections={sections}
+      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{

@@ -36,13 +36,18 @@ import { BulkSectionAssignment } from '@/components/sections';
 import { BulkConceptAssignment } from '@/components/content/BulkConceptAssignment';
 
 export interface ColumnConfig<T> {
-  key: keyof T | 'actions' | 'select' | 'section';
+  key: keyof T | 'actions' | 'select' | 'section' | 'concept';
   header: string;
   render?: (item: T) => React.ReactNode;
   className?: string;
 }
 
-interface ContentAdminTableProps<T extends { id: string; section_id?: string | null }> {
+interface ConceptInfo {
+  id: string;
+  title: string;
+}
+
+interface ContentAdminTableProps<T extends { id: string; section_id?: string | null; concept_id?: string | null }> {
   data: T[];
   columns: ColumnConfig<T>[];
   contentTable: ContentTableName;
@@ -52,6 +57,7 @@ interface ContentAdminTableProps<T extends { id: string; section_id?: string | n
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   sections?: Section[];
+  concepts?: ConceptInfo[];
   csvExportConfig?: {
     filename: string;
     columns: ExportColumn<T>[];
@@ -59,7 +65,7 @@ interface ContentAdminTableProps<T extends { id: string; section_id?: string | n
   emptyMessage?: string;
 }
 
-export function ContentAdminTable<T extends { id: string; section_id?: string | null }>({
+export function ContentAdminTable<T extends { id: string; section_id?: string | null; concept_id?: string | null }>({
   data,
   columns,
   contentTable,
@@ -69,6 +75,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   onEdit,
   onDelete,
   sections = [],
+  concepts = [],
   csvExportConfig,
   emptyMessage = 'No items found',
 }: ContentAdminTableProps<T>) {
@@ -141,6 +148,11 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
     return sections.find(s => s.id === sectionId)?.name || null;
   }, [sections]);
 
+  const getConceptName = useCallback((conceptId: string | null | undefined) => {
+    if (!conceptId) return null;
+    return concepts.find(c => c.id === conceptId)?.title || null;
+  }, [concepts]);
+
   // Render column cell content
   const renderCell = (item: T, column: ColumnConfig<T>) => {
     if (column.key === 'select') {
@@ -150,6 +162,15 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
           onCheckedChange={(checked) => toggleOne(item.id, !!checked)}
           aria-label="Select row"
         />
+      );
+    }
+
+    if (column.key === 'concept') {
+      const conceptName = getConceptName((item as any).concept_id);
+      return conceptName ? (
+        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800">{conceptName}</Badge>
+      ) : (
+        <span className="text-muted-foreground text-xs">—</span>
       );
     }
 
