@@ -78,6 +78,34 @@ export function useBulkDeleteContent(tableName: ContentTableName) {
   });
 }
 
+// Bulk update concept assignment
+export function useBulkUpdateConcept(tableName: ContentTableName) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ ids, conceptId }: { 
+      ids: string[]; 
+      conceptId: string | null;
+    }) => {
+      const { error } = await supabase
+        .from(tableName)
+        .update({ concept_id: conceptId } as never)
+        .in('id', ids);
+      
+      if (error) throw error;
+      return { ids, conceptId };
+    },
+    onSuccess: () => {
+      const patterns = QUERY_INVALIDATION_MAP[tableName] || [];
+      patterns.forEach(pattern => {
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)
+        });
+      });
+    },
+  });
+}
+
 // Bulk update section assignment
 export function useBulkUpdateSection(tableName: ContentTableName) {
   const queryClient = useQueryClient();

@@ -102,6 +102,7 @@ export function FlashcardsAdminTable({
       columns={columns}
       contentTable="study_resources"
       chapterId={chapterId}
+      moduleId={moduleId}
       sections={sections}
       onEdit={onEdit ? (row) => onEdit(row.resource) : undefined}
       onDelete={onDelete ? (row) => onDelete(row.resource) : undefined}
