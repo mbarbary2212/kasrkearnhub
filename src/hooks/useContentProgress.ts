@@ -85,11 +85,6 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         ? supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
 
-      // case_scenarios doesn't have topic_id, only chapter_id
-      const caseScenariosQuery = chapterId
-        ? supabase.from('case_scenarios').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : Promise.resolve({ count: 0, data: null, error: null }); // Topics don't have case_scenarios
-
       const matchingQuery = chapterId
         ? supabase.from('matching_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('matching_questions').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
@@ -102,14 +97,12 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         mcqsRes,
         essaysRes,
         oscesRes,
-        caseScenariosRes,
         matchingRes,
         lecturesRes,
       ] = await Promise.all([
         mcqsQuery,
         essaysQuery,
         oscesQuery,
-        caseScenariosQuery,
         matchingQuery,
         lecturesQuery,
       ]);
@@ -127,20 +120,14 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         ? supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('osce_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
 
-      // case_scenarios doesn't have topic_id
-      const caseIdsQuery = chapterId
-        ? supabase.from('case_scenarios').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : Promise.resolve({ data: [], error: null });
-
       const matchingIdsQuery = chapterId
         ? supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('matching_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
 
-      const [mcqIds, essayIds, osceIds, caseIds, matchingIds] = await Promise.all([
+      const [mcqIds, essayIds, osceIds, matchingIds] = await Promise.all([
         mcqIdsQuery,
         essayIdsQuery,
         osceIdsQuery,
-        caseIdsQuery,
         matchingIdsQuery,
       ]);
 
@@ -149,7 +136,6 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         mcqAttempts,
         essayAttempts,
         osceAttempts,
-        caseAttempts,
         matchingAttempts,
         videoProgressRes,
       ] = await Promise.all([
@@ -175,12 +161,6 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('question_type', 'osce')
-          .in('question_id', caseIds.data?.map(c => c.id) || []),
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
           .eq('question_type', 'mcq')
           .in('question_id', matchingIds.data?.map(m => m.id) || []),
         supabase
@@ -193,17 +173,15 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
       const mcqTotal = mcqsRes.count || 0;
       const essayTotal = essaysRes.count || 0;
       const osceTotal = oscesRes.count || 0;
-      const caseTotal = caseScenariosRes.count || 0;
       const matchingTotal = matchingRes.count || 0;
-      const practiceTotal = mcqTotal + essayTotal + osceTotal + caseTotal + matchingTotal;
+      const practiceTotal = mcqTotal + essayTotal + osceTotal + matchingTotal;
 
       // Calculate completed (unique items)
       const mcqCompleted = new Set(mcqAttempts.data?.map(a => a.question_id) || []).size;
       const essayCompleted = new Set(essayAttempts.data?.map(a => a.question_id) || []).size;
       const osceCompleted = new Set(osceAttempts.data?.map(a => a.question_id) || []).size;
-      const caseCompleted = new Set(caseAttempts.data?.map(a => a.question_id) || []).size;
       const matchingCompleted = new Set(matchingAttempts.data?.map(a => a.question_id) || []).size;
-      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + caseCompleted + matchingCompleted;
+      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + matchingCompleted;
 
       // Video progress
       const lectures = lecturesRes.data || [];

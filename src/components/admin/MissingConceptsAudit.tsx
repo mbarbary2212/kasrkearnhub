@@ -29,10 +29,8 @@ const CONTENT_TYPES = [
   { key: 'study_resources', label: 'Flashcards / Study Resources', titleCol: 'title' },
   { key: 'mcqs', label: 'MCQs', titleCol: 'question' },
   { key: 'osce_questions', label: 'OSCE Stations', titleCol: 'title' },
-  { key: 'clinical_cases', label: 'Clinical Cases', titleCol: 'title' },
   { key: 'matching_questions', label: 'Matching Questions', titleCol: 'title' },
   { key: 'essays', label: 'Short Answer / Essays', titleCol: 'title' },
-  { key: 'case_scenarios', label: 'Case Scenarios', titleCol: 'title' },
 ] as const;
 
 const SAMPLE_LIMIT = 20;
