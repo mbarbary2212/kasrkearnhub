@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { useCreateOsceQuestion, useUpdateOsceQuestion, uploadOsceImage, OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { SectionSelector } from '@/components/sections';
 import { ConceptSelect } from '@/components/content/ConceptSelect';
 
@@ -192,7 +192,7 @@ export function OsceFormModal({
           <DialogTitle>{isEditing ? 'Edit' : 'Add'} OSCE Question</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-6 pr-4 pb-4">
             {/* Image Upload */}
             <div>
@@ -324,7 +324,7 @@ export function OsceFormModal({
               ))}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Submit - Fixed at bottom */}
         <div className="flex justify-end gap-2 pt-4 border-t shrink-0">
