@@ -1,70 +1,85 @@
 
-
-# Add Concepts Manager + Student Concept Filter
+# Concepts Bulk Upload + Side-by-Side Layout
 
 ## Overview
-Create a **ConceptsManager** (admin CRUD panel) mirroring the existing SectionsManager, and a **ConceptFilter** (student-facing dropdown) shown alongside the SectionFilter. Both filters appear simultaneously so students can combine them (e.g., filter by Section 3.1 AND Concept "Hypertension").
+Add a bulk upload modal to the ConceptsManager supporting three input modes (line-by-line, CSV paste, file upload), and place the Sections and Concepts manager cards side-by-side on tablet/desktop.
 
-## What Gets Built
+## Layout Change
 
-### 1. New Component: `ConceptsManager` (Admin CRUD)
-**File:** `src/components/concepts/ConceptsManager.tsx`
+Wrap `SectionsManager` and `ConceptsManager` in a responsive grid on both `ChapterPage.tsx` and `TopicDetailPage.tsx`:
 
-A collapsible card identical in structure to `SectionsManager`, placed right below it on Chapter and Topic pages (admin only). Features:
-- Enable/disable toggle (requires a new `concepts_enabled` column on `module_chapters` and `topics` tables, or we reuse the existing concepts presence as the "enabled" indicator)
-- List existing concepts for the chapter/topic with edit and delete buttons
-- Inline "Add Concept" input with create-on-enter
-- Drag-and-drop reordering (using dnd-kit, same as sections)
-- Delete confirmation dialog
-- Uses the existing `useConcepts` hook and adds `useUpdateConcept` and `useDeleteConcept` mutations
+```text
+Before (stacked):               After (side-by-side on md+):
+[SectionsManager]                [SectionsManager] [ConceptsManager]
+[ConceptsManager]                (single column on mobile)
+```
 
-### 2. New Component: `ConceptFilter` (Student-Facing)
-**File:** `src/components/concepts/ConceptFilter.tsx`
+Remove `max-w-2xl` from both cards and add `min-w-0` to prevent overflow.
 
-A dropdown pill styled identically to `SectionFilter` but with a different icon (e.g., `Tag` or `Bookmark` from lucide). Shows "All Concepts" by default, lists all concepts for the chapter/topic, and lets the student pick one to filter content.
+## Bulk Upload Modal
 
-### 3. New Hooks: Update + Delete Concept
-**File:** `src/hooks/useConcepts.ts` (existing, extend)
+### Input Modes (tabs within modal)
 
-Add:
-- `useUpdateConcept()` -- rename a concept
-- `useDeleteConcept()` -- remove a concept (content becomes untagged)
-- `useReorderConcepts()` -- update `display_order` (requires adding a `display_order` column to `concepts` table)
+1. **Lines (default)** -- Textarea where each line becomes a concept. Primary workflow for pasting from ChatGPT.
+2. **CSV** -- Textarea for `title,concept_key` format. Missing keys auto-generated.
+3. **File Upload** -- Drag-and-drop for `.csv` / `.xlsx` files using existing `DragDropZone` and `xlsx` package.
 
-### 4. Database Migration
-- Add `display_order INTEGER DEFAULT 0` column to `concepts` table (for drag-and-drop ordering)
-- No `concepts_enabled` toggle needed -- if concepts exist, the filter shows; if none exist, it hides (same pattern as SectionFilter)
+### Normalization Helper
 
-### 5. Wire Into Chapter + Topic Pages
-**Files:** `src/pages/ChapterPage.tsx`, `src/pages/TopicDetailPage.tsx`
+A shared `normalizeConceptKey(text)` function applied to ALL input modes:
+- Lowercase, trim
+- Replace `&` with `and`
+- Remove punctuation (except underscores)
+- Spaces/dashes become `_`
+- Collapse multiple underscores
+- Max length 64 characters
+- Empty result = validation error
 
-- Import `ConceptsManager` and render below `SectionsManager` (admin only)
-- Import `ConceptFilter` and render next to `SectionFilter` in both Resources and Practice sections
-- Add `selectedConceptId` state
-- Pass `selectedConceptId` down to content list components for filtering
+This helper will also replace the inline normalization currently in `ConceptsManager` (lines 101 and 125).
 
-### 6. Content Filtering by Concept
-Update content list components / hooks to accept an optional `conceptId` filter parameter and add `.eq('concept_id', conceptId)` to their Supabase queries when set.
+### Preview Table
 
-### 7. Barrel Export
-**File:** `src/components/concepts/index.ts`
+Columns: Title | Concept Key | Status
 
-Export `ConceptsManager` and `ConceptFilter`.
+Status badges:
+- Green "New" -- will be created
+- Yellow "Exists" -- already in chapter (skipped or updated)
+- Red "Invalid" -- missing title or empty key
+
+Confirm button disabled if any red rows exist.
+
+### Duplicate Policy
+
+Radio group in preview step:
+- **Skip duplicates** (default) -- existing concepts are ignored
+- **Update existing title** -- uses `useUpdateConcept` to rename matches
+
+### Display Order
+
+New concepts get `display_order = maxExistingDisplayOrder + 1 + rowIndex` so they append after existing concepts without disrupting current ordering.
+
+### Success
+
+- Close modal
+- Invalidate concepts query (auto-refresh)
+- Toast: "12 concepts created, 3 skipped"
+
+## Files
+
+| File | Action |
+|---|---|
+| `src/components/concepts/ConceptBulkUploadModal.tsx` | Create -- modal with 3 input tabs, preview table, confirm |
+| `src/lib/conceptNormalization.ts` | Create -- `normalizeConceptKey()` helper |
+| `src/components/concepts/ConceptsManager.tsx` | Modify -- add Upload button, remove `max-w-2xl`, use shared normalizer |
+| `src/components/sections/SectionsManager.tsx` | Modify -- remove `max-w-2xl` |
+| `src/pages/ChapterPage.tsx` | Modify -- wrap managers in `grid gap-4 md:grid-cols-2` |
+| `src/pages/TopicDetailPage.tsx` | Modify -- same grid wrapper |
+| `src/components/concepts/index.ts` | Modify -- export `ConceptBulkUploadModal` |
 
 ## Technical Details
 
-```text
-Chapter/Topic Page Layout (Admin View)
-+---------------------------------------+
-| [SectionsManager - collapsible card]  |
-| [ConceptsManager - collapsible card]  |  <-- NEW
-+---------------------------------------+
-| Nav Rail | Content Area               |
-|          | [SectionFilter] [ConceptFilter] <-- side by side
-|          | [Sub-tabs: Videos, MCQs...] |
-|          | [Content List]              |
-+---------------------------------------+
-```
-
-The ConceptFilter only renders when concepts exist for the chapter/topic (same auto-hide logic as SectionFilter). Students can use both filters simultaneously -- content is filtered by section AND concept when both are selected.
-
+- Uses existing `xlsx` package for XLSX parsing
+- Uses existing `DragDropZone` component for file upload
+- Uses existing `useCreateConcept` and `useUpdateConcept` mutations (sequential inserts)
+- No database changes needed
+- No new dependencies needed
