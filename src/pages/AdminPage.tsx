@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare, MoreHorizontal, Mail, Ban, UserX, UserCheck, ArrowUpDown, RotateCcw, Send } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare, MoreHorizontal, Mail, Ban, UserX, UserCheck, ArrowUpDown, RotateCcw, Send, Tag } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,6 +41,7 @@ import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
+import { MissingConceptsAudit } from '@/components/admin/MissingConceptsAudit';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -260,7 +261,7 @@ type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 
 
 // Integrity Check Tab Component (All Admins)
 function IntegrityCheckTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'orphaned' | 'quality'>('orphaned');
+  const [activeSubTab, setActiveSubTab] = useState<'orphaned' | 'quality' | 'concepts'>('orphaned');
 
   // ===== ORPHAN CHECK STATES =====
   const [orphanMcqsRunning, setOrphanMcqsRunning] = useState(false);
@@ -813,8 +814,8 @@ function IntegrityCheckTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'orphaned' | 'quality')}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+          <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'orphaned' | 'quality' | 'concepts')}>
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="orphaned" className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
                 Orphaned Records
@@ -822,6 +823,10 @@ function IntegrityCheckTab() {
               <TabsTrigger value="quality" className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Content Quality
+              </TabsTrigger>
+              <TabsTrigger value="concepts" className="flex items-center gap-2">
+                <Tag className="w-4 h-4" />
+                Missing Concepts
               </TabsTrigger>
             </TabsList>
 
@@ -879,6 +884,10 @@ function IntegrityCheckTab() {
                   </div>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="concepts" className="space-y-4">
+              <MissingConceptsAudit />
             </TabsContent>
           </Tabs>
         </CardContent>
