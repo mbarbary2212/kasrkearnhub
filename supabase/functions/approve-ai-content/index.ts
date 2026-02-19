@@ -153,7 +153,7 @@ serve(async (req) => {
     );
   }
 
-  let body: { job_id?: string };
+   let body: { job_id?: string; concept_id?: string };
   try {
     body = await req.json();
   } catch {
@@ -161,6 +161,7 @@ serve(async (req) => {
   }
 
   const jobId = body?.job_id;
+  const manualConceptId = body?.concept_id || null;
   if (!jobId) {
     return jsonResponse({ error: "Missing job_id", step: "validation", items: [], warnings: [] }, 400);
   }
@@ -281,11 +282,15 @@ serve(async (req) => {
     return sectionLookup.get(sectionNum) || null;
   };
 
-  // Helper to map concept_key string to concept_id UUID
+  // Helper to map concept_key string to concept_id UUID, falling back to manual selection
   const getConceptId = (item: any): string | null => {
-    if (!item.concept_key) return null;
-    const key = String(item.concept_key).trim();
-    return conceptLookup.get(key) || null;
+    if (item.concept_key) {
+      const key = String(item.concept_key).trim();
+      const resolved = conceptLookup.get(key);
+      if (resolved) return resolved;
+    }
+    // Fall back to manually selected concept_id from the request
+    return manualConceptId;
   };
 
   // Insert into target tables

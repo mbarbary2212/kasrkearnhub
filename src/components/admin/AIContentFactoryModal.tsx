@@ -40,6 +40,7 @@ import { useModules } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useChapterSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { ConceptSelect } from '@/components/content/ConceptSelect';
 import { toast } from 'sonner';
 
 interface AdminDocument {
@@ -327,6 +328,7 @@ export function AIContentFactoryModal({
   const [chunkProgress, setChunkProgress] = useState<ChunkProgress | null>(null);
   const [isStrictMode, setIsStrictMode] = useState(true);
   const [lastAppliedDefault, setLastAppliedDefault] = useState("");
+  const [conceptId, setConceptId] = useState<string | null>(null);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
@@ -691,7 +693,7 @@ export function AIContentFactoryModal({
         throw new Error('Generation produced an invalid payload. Please retry.');
       }
 
-      const data = await invokeWithAuth('approve-ai-content', { job_id: jobId });
+      const data = await invokeWithAuth('approve-ai-content', { job_id: jobId, concept_id: conceptId || undefined });
       if (data?.error) throw new Error(data.error);
       if (!Array.isArray(data?.items)) throw new Error('Approval returned an invalid payload. Please retry.');
 
@@ -727,6 +729,7 @@ export function AIContentFactoryModal({
     setContentType('mcq');
     setModuleId('');
     setChapterId('');
+    setConceptId(null);
     setQuantity('5');
     setAdditionalInstructions('');
     setGeneratedContent(null);
@@ -944,7 +947,7 @@ export function AIContentFactoryModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Target Module *</Label>
-                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); setPerSection(false); }}>
+                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); setPerSection(false); setConceptId(null); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
@@ -959,7 +962,7 @@ export function AIContentFactoryModal({
                   <Label>
                     Target Chapter {requiresChapter ? '*' : '(Optional)'}
                   </Label>
-                  <Select value={chapterId} onValueChange={(v) => { setChapterId(v); setPerSection(false); }} disabled={!moduleId}>
+                  <Select value={chapterId} onValueChange={(v) => { setChapterId(v); setPerSection(false); setConceptId(null); }} disabled={!moduleId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select chapter" />
                     </SelectTrigger>
@@ -971,6 +974,17 @@ export function AIContentFactoryModal({
                   </Select>
                 </div>
               </div>
+
+              {/* Concept Selector */}
+              {moduleId && (
+                <ConceptSelect
+                  moduleId={moduleId}
+                  chapterId={chapterId || undefined}
+                  sectionId={null}
+                  value={conceptId}
+                  onChange={setConceptId}
+                />
+              )}
 
               {/* Per-Section Toggle */}
               {chapterId && hasSections && (
