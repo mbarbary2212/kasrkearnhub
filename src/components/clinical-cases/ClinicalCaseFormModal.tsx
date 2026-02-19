@@ -286,9 +286,9 @@ export function ClinicalCaseFormModal({
               />
             </div>
 
-            {/* Tags */}
+            {/* Search Tags */}
             <div>
-              <Label>Tags</Label>
+              <Label>Search Tags (optional)</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   value={tagInput}

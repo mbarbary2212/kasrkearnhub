@@ -31,6 +31,7 @@ const CONTENT_TYPES = [
   { key: 'osce_questions', label: 'OSCE Stations', titleCol: 'title' },
   { key: 'matching_questions', label: 'Matching Questions', titleCol: 'title' },
   { key: 'essays', label: 'Short Answer / Essays', titleCol: 'title' },
+  { key: 'virtual_patient_cases', label: 'Virtual Patient Cases', titleCol: 'title' },
 ] as const;
 
 const SAMPLE_LIMIT = 20;
