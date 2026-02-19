@@ -33,6 +33,7 @@ import { useBulkDeleteContent, useBulkUpdateSection, type ContentTableName } fro
 import { exportToCsv, type ExportColumn } from '@/lib/csvExport';
 import type { Section } from '@/hooks/useSections';
 import { BulkSectionAssignment } from '@/components/sections';
+import { BulkConceptAssignment } from '@/components/content/BulkConceptAssignment';
 
 export interface ColumnConfig<T> {
   key: keyof T | 'actions' | 'select' | 'section';
@@ -262,6 +263,15 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                 <BulkSectionAssignment
                   chapterId={chapterId}
                   topicId={topicId}
+                  selectedIds={Array.from(selectedIds)}
+                  contentTable={contentTable}
+                  onComplete={clearSelection}
+                />
+              )}
+              {moduleId && (
+                <BulkConceptAssignment
+                  moduleId={moduleId}
+                  chapterId={chapterId}
                   selectedIds={Array.from(selectedIds)}
                   contentTable={contentTable}
                   onComplete={clearSelection}
