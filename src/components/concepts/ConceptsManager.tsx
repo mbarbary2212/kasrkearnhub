@@ -14,7 +14,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Tag, ChevronDown } from 'lucide-react';
+import { Plus, Tag, ChevronDown, Upload } from 'lucide-react';
+import { normalizeConceptKey } from '@/lib/conceptNormalization';
+import { ConceptBulkUploadModal } from './ConceptBulkUploadModal';
 import {
   DndContext,
   closestCenter,
@@ -53,6 +55,7 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
   const [editingConcept, setEditingConcept] = useState<Concept | null>(null);
   const [editName, setEditName] = useState('');
   const [deletingConcept, setDeletingConcept] = useState<Concept | null>(null);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   // Fetch concepts for this chapter
   const { data: concepts } = useChapterConcepts(chapterId);
@@ -98,7 +101,7 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
       return;
     }
 
-    const conceptKey = newConceptName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const conceptKey = normalizeConceptKey(newConceptName.trim());
 
     try {
       await createConcept.mutateAsync({
@@ -122,7 +125,7 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
       await updateConcept.mutateAsync({
         id: editingConcept.id,
         title: editName.trim(),
-        concept_key: editName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+        concept_key: normalizeConceptKey(editName.trim()),
       });
       setEditingConcept(null);
       setEditName('');
@@ -155,7 +158,7 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="mt-4 max-w-2xl">
+      <Card className="mt-4 min-w-0">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
             <div className="flex items-center justify-between">
@@ -230,7 +233,15 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Add Concept
+                Add
+              </Button>
+              <Button
+                onClick={() => setBulkUploadOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Upload
               </Button>
             </div>
           </CardContent>
@@ -258,6 +269,16 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Upload Modal */}
+      <ConceptBulkUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        moduleId={moduleId}
+        chapterId={chapterId}
+        topicId={topicId}
+        existingConcepts={concepts || []}
+      />
     </Collapsible>
   );
 }

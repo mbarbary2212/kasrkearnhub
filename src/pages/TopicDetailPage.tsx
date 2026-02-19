@@ -371,14 +371,14 @@ export default function TopicDetailPage() {
           />
         )}
 
-        {/* Inline Sections Manager - Admin only */}
+        {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
         {canManageContent && topicId && (
-          <SectionsManager topicId={topicId} canManage={canManageContent} />
-        )}
-
-        {/* Inline Concepts Manager - Admin only */}
-        {canManageContent && topicId && moduleId && (
-          <ConceptsManager topicId={topicId} moduleId={moduleId} canManage={canManageContent} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <SectionsManager topicId={topicId} canManage={canManageContent} />
+            {moduleId && (
+              <ConceptsManager topicId={topicId} moduleId={moduleId} canManage={canManageContent} />
+            )}
+          </div>
         )}
 
         {/* Main Content Layout */}
