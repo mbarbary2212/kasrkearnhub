@@ -88,7 +88,7 @@ export function useBulkUpdateConcept(tableName: ContentTableName) {
     }) => {
       const { error } = await supabase
         .from(tableName)
-        .update({ concept_id: conceptId } as never)
+        .update({ concept_id: conceptId, concept_auto_assigned: false, concept_ai_confidence: null } as never)
         .in('id', ids);
       
       if (error) throw error;
