@@ -15,6 +15,9 @@ export interface Mcq {
   module_id: string;
   chapter_id: string | null;
   section_id: string | null;
+  concept_id: string | null;
+  concept_auto_assigned: boolean | null;
+  concept_ai_confidence: number | null;
   stem: string;
   choices: McqChoice[];
   correct_key: string;
@@ -44,6 +47,9 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     module_id: row.module_id as string,
     chapter_id: row.chapter_id as string | null,
     section_id: row.section_id as string | null,
+    concept_id: row.concept_id as string | null,
+    concept_auto_assigned: row.concept_auto_assigned as boolean | null,
+    concept_ai_confidence: row.concept_ai_confidence as number | null,
     stem: row.stem as string,
     choices: row.choices as McqChoice[],
     correct_key: row.correct_key as string,
