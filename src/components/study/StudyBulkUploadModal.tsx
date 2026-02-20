@@ -25,6 +25,7 @@ import {
 import { isFlashcardDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
+import { normalizeConceptKey } from '@/lib/conceptNormalization';
 import { toast } from 'sonner';
 
 interface ConceptLookup {
@@ -51,6 +52,7 @@ interface ParsedItem {
   sectionName?: string;
   sectionNumber?: string;
   conceptKey?: string;
+  conceptTitle?: string;
   error?: string;
 }
 
@@ -72,7 +74,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
-  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"',
+  flashcard: 'title,front,back,section_name,section_number,concept_key\n"Card Title","Question text","Answer text","Section Name","1","concept_key"',
   table: 'title,headers,row1,row2,section_name,section_number\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6","",""',
   algorithm: 'title,steps,section_name,section_number\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc","",""',
   exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
@@ -109,9 +111,26 @@ export function StudyBulkUploadModal({
     setFileName('');
   };
 
+  // Resolve concept by key or title
+  const resolveConceptId = useCallback((conceptKey?: string, conceptTitle?: string): string | null => {
+    if (!concepts.length) return null;
+    // Priority 1: match by concept_key
+    if (conceptKey) {
+      const normalizedKey = normalizeConceptKey(conceptKey);
+      const matched = concepts.find(c => c.concept_key.toLowerCase() === normalizedKey.toLowerCase());
+      if (matched) return matched.id;
+    }
+    // Priority 2: match by concept_title (case-insensitive)
+    if (conceptTitle) {
+      const normalizedTitle = conceptTitle.trim().toLowerCase();
+      const matched = concepts.find(c => c.title.toLowerCase().trim() === normalizedTitle);
+      if (matched) return matched.id;
+    }
+    return null;
+  }, [concepts]);
+
   const detectDuplicates = useCallback((parsed: ParsedItem[]): DuplicateResult<ParsedItem>[] => {
     if (resourceType !== 'flashcard' || !existingResources) {
-      // For non-flashcard types, just return without duplicate detection
       return parsed.map((item, index) => ({
         item,
         rowIndex: index + 1,
@@ -122,7 +141,6 @@ export function StudyBulkUploadModal({
       }));
     }
 
-    // For flashcards, do duplicate detection
     const existingForComparison = existingResources.map(r => ({
       id: r.id,
       front: (r.content as FlashcardContent).front || '',
@@ -159,7 +177,6 @@ export function StudyBulkUploadModal({
       const parsed: ParsedItem[] = [];
       const parseErrors: ParseError[] = [];
       
-      // Check if first line is a header and build mapping
       const firstLine = lines[0];
       const hasHeader = isHeaderLine(firstLine);
       const headerMapping = hasHeader ? buildHeaderMapping(firstLine) : undefined;
@@ -233,16 +250,8 @@ export function StudyBulkUploadModal({
 
     try {
       const resources: StudyResourceInsert[] = toImport.map((item) => {
-        // Resolve section from parsed data
         const sectionId = resolveSectionId(sections, item.item.sectionName, item.item.sectionNumber);
-        
-        // Resolve concept from parsed data
-        let conceptId: string | null = null;
-        if (item.item.conceptKey && concepts.length > 0) {
-          const normalizedKey = item.item.conceptKey.trim().toLowerCase();
-          const matched = concepts.find(c => c.concept_key.toLowerCase() === normalizedKey);
-          if (matched) conceptId = matched.id;
-        }
+        const conceptId = resolveConceptId(item.item.conceptKey, item.item.conceptTitle);
         
         return {
           module_id: moduleId,
@@ -272,9 +281,24 @@ export function StudyBulkUploadModal({
     onOpenChange(false);
   };
 
+  // Preview resolution for display
+  const previewRows = useMemo(() => {
+    return parsedData.map(item => {
+      const sectionId = resolveSectionId(sections, item.item.sectionName, item.item.sectionNumber);
+      const conceptId = resolveConceptId(item.item.conceptKey, item.item.conceptTitle);
+      const sectionMatch = sectionId ? sections.find(s => s.id === sectionId) : null;
+      const conceptMatch = conceptId ? concepts.find(c => c.id === conceptId) : null;
+      return {
+        ...item,
+        resolvedSectionName: sectionMatch?.name || null,
+        resolvedConceptName: conceptMatch?.title || null,
+      };
+    });
+  }, [parsedData, sections, concepts, resolveConceptId]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Bulk Upload {TYPE_LABELS[resourceType]}</DialogTitle>
         </DialogHeader>
@@ -339,55 +363,107 @@ export function StudyBulkUploadModal({
             </Alert>
           )}
 
-          {/* Preview */}
-          {parsedData.length > 0 && (
+          {/* Preview Table */}
+          {previewRows.length > 0 && (
             <div className="border rounded-lg">
               <div className="px-4 py-2 bg-muted border-b flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium">
-                  {parsedData.length} items parsed, {itemsToImport} will be imported
+                  {previewRows.length} items parsed, {itemsToImport} will be imported
                 </span>
               </div>
-              <ScrollArea className="h-48">
-                <div className="p-2 space-y-1">
-                  {parsedData.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`text-sm px-3 py-2 rounded flex items-center gap-3 ${
-                        item.isExactDuplicate 
-                          ? 'bg-red-50 border border-red-200' 
-                          : item.isPossibleDuplicate 
-                            ? 'bg-amber-50 border border-amber-200' 
-                            : 'bg-accent/30'
-                      }`}
-                    >
-                      <Checkbox
-                        checked={item.status !== 'skip'}
-                        onCheckedChange={() => toggleItemStatus(index)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs">
-                            {index + 1}.
-                          </span>
-                          <span className="font-medium truncate">{item.item.title}</span>
-                        </div>
-                        {item.isExactDuplicate && (
-                          <Badge variant="destructive" className="mt-1 text-xs">
-                            <Copy className="h-3 w-3 mr-1" />
-                            Exact duplicate
-                          </Badge>
-                        )}
-                        {item.isPossibleDuplicate && !item.isExactDuplicate && (
-                          <Badge variant="outline" className="mt-1 text-xs bg-amber-100 text-amber-800 border-amber-300">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            {Math.round(item.similarity * 100)}% similar
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <ScrollArea className="h-64">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left w-8"></th>
+                      <th className="px-2 py-1.5 text-left w-8">#</th>
+                      <th className="px-2 py-1.5 text-left">Title</th>
+                      {resourceType === 'flashcard' && (
+                        <>
+                          <th className="px-2 py-1.5 text-left">Front</th>
+                          <th className="px-2 py-1.5 text-left">Back</th>
+                        </>
+                      )}
+                      <th className="px-2 py-1.5 text-left">Section</th>
+                      <th className="px-2 py-1.5 text-left">Concept</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((item, index) => {
+                      const fc = item.item.content as FlashcardContent;
+                      return (
+                        <tr
+                          key={index}
+                          className={`border-b last:border-0 ${
+                            item.isExactDuplicate 
+                              ? 'bg-red-50' 
+                              : item.isPossibleDuplicate 
+                                ? 'bg-amber-50' 
+                                : item.status === 'skip' ? 'opacity-40' : ''
+                          }`}
+                        >
+                          <td className="px-2 py-1.5">
+                            <Checkbox
+                              checked={item.status !== 'skip'}
+                              onCheckedChange={() => toggleItemStatus(index)}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-muted-foreground">{index + 1}</td>
+                          <td className="px-2 py-1.5 font-medium max-w-[120px] truncate" title={item.item.title}>
+                            {item.item.title}
+                            {item.isExactDuplicate && (
+                              <Badge variant="destructive" className="ml-1 text-[10px] px-1">
+                                <Copy className="h-2.5 w-2.5 mr-0.5" />dup
+                              </Badge>
+                            )}
+                            {item.isPossibleDuplicate && !item.isExactDuplicate && (
+                              <Badge variant="outline" className="ml-1 text-[10px] px-1 bg-amber-100 text-amber-800 border-amber-300">
+                                {Math.round(item.similarity * 100)}%
+                              </Badge>
+                            )}
+                          </td>
+                          {resourceType === 'flashcard' && (
+                            <>
+                              <td className="px-2 py-1.5 max-w-[120px] truncate text-muted-foreground" title={fc?.front}>
+                                {fc?.front ? fc.front.slice(0, 40) : <span className="text-destructive">MISSING</span>}
+                              </td>
+                              <td className="px-2 py-1.5 max-w-[120px] truncate text-muted-foreground" title={fc?.back}>
+                                {fc?.back ? fc.back.slice(0, 40) : <span className="text-destructive">MISSING</span>}
+                              </td>
+                            </>
+                          )}
+                          <td className="px-2 py-1.5 max-w-[100px] truncate">
+                            {item.resolvedSectionName ? (
+                              <Badge variant="outline" className="text-[10px] px-1 bg-green-50 text-green-700 border-green-300">
+                                ✓ {item.resolvedSectionName}
+                              </Badge>
+                            ) : item.item.sectionName || item.item.sectionNumber ? (
+                              <Badge variant="outline" className="text-[10px] px-1 bg-amber-50 text-amber-700 border-amber-300">
+                                ✗ {item.item.sectionName || item.item.sectionNumber}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 max-w-[100px] truncate">
+                            {item.resolvedConceptName ? (
+                              <Badge variant="outline" className="text-[10px] px-1 bg-green-50 text-green-700 border-green-300">
+                                ✓ {item.resolvedConceptName}
+                              </Badge>
+                            ) : item.item.conceptKey || item.item.conceptTitle ? (
+                              <Badge variant="outline" className="text-[10px] px-1 bg-amber-50 text-amber-700 border-amber-300">
+                                ✗ {item.item.conceptKey || item.item.conceptTitle}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </ScrollArea>
             </div>
           )}
@@ -435,23 +511,27 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// Parse line based on resource type
+// Parse line based on resource type - uses header mapping when available
 function parseLineByType(
   values: string[],
   type: StudyResourceType,
   rowNum: number,
   headerMapping?: Record<string, number>
 ): ParsedItem {
-  if (values.length < 2) {
-    return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
-  }
+  // Use header mapping to get values by column name, falling back to positional
+  const getVal = (mappedKey: string, positionalIndex: number): string => {
+    if (headerMapping && headerMapping[mappedKey] !== undefined) {
+      return values[headerMapping[mappedKey]]?.trim() || '';
+    }
+    return values[positionalIndex]?.trim() || '';
+  };
 
-  const title = values[0];
+  const title = getVal('title', 0);
   if (!title) {
     return { title: '', content: { front: '', back: '' }, error: 'Title is required' };
   }
   
-  // Extract section info - check header mapping first, then fall back to last columns
+  // Extract section info
   const getSectionInfo = (): { sectionName?: string; sectionNumber?: string } => {
     if (headerMapping) {
       const sectionNameIdx = headerMapping['section_name'];
@@ -464,7 +544,6 @@ function parseLineByType(
         const prefixMatch = sectionName.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
         if (prefixMatch) {
           sectionNumber = prefixMatch[1];
-          // Keep full sectionName for fuzzy matching fallback
         }
       }
       
@@ -478,77 +557,80 @@ function parseLineByType(
   
   const { sectionName, sectionNumber } = getSectionInfo();
 
-  // Extract concept key from header mapping
-  const getConceptKey = (): string | undefined => {
+  // Extract concept key and title from header mapping
+  const getConceptInfo = (): { conceptKey?: string; conceptTitle?: string } => {
     if (headerMapping) {
       const conceptKeyIdx = headerMapping['concept_key'];
-      if (conceptKeyIdx !== undefined) return values[conceptKeyIdx]?.trim() || undefined;
+      const conceptTitleIdx = headerMapping['concept_title'];
+      return {
+        conceptKey: conceptKeyIdx !== undefined ? values[conceptKeyIdx]?.trim() || undefined : undefined,
+        conceptTitle: conceptTitleIdx !== undefined ? values[conceptTitleIdx]?.trim() || undefined : undefined,
+      };
     }
-    return undefined;
+    return {};
   };
-  const conceptKey = getConceptKey();
+  const { conceptKey, conceptTitle } = getConceptInfo();
 
   switch (type) {
     case 'flashcard': {
-      if (values.length < 3) {
-        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back' };
+      const front = getVal('front', 1);
+      const back = getVal('back', 2);
+      if (!front || !back) {
+        return { title, content: { front: '', back: '' }, error: `Flashcard requires front and back (front=${front ? 'OK' : 'MISSING'}, back=${back ? 'OK' : 'MISSING'})` };
       }
       return {
         title,
-        content: { front: values[1], back: values[2] } as FlashcardContent,
+        content: { front, back } as FlashcardContent,
         sectionName,
         sectionNumber,
         conceptKey,
+        conceptTitle,
       };
     }
     case 'table': {
-      if (values.length < 3) {
-        return { title, content: { headers: [], rows: [] }, error: 'Table requires at least title, headers, and one row' };
+      const headersVal = getVal('headers', 1);
+      if (!headersVal) {
+        return { title, content: { headers: [], rows: [] }, error: 'Table requires at least headers' };
       }
-      // For table, need to find where section columns end and row data begins
-      const headers = values[1].split('|').map((h) => h.trim());
-      // Find rows - exclude section_name and section_number columns if present
+      const headers = headersVal.split('|').map((h) => h.trim());
+      // Find rows - exclude known non-row columns
       let rowEndIndex = values.length;
       if (headerMapping) {
-        const sectionCols = [headerMapping['section_name'], headerMapping['section_number']].filter(i => i !== undefined);
-        if (sectionCols.length > 0) {
-          rowEndIndex = Math.min(...sectionCols);
+        const nonRowCols = ['title', 'headers', 'section_name', 'section_number', 'concept_key', 'concept_title']
+          .map(k => headerMapping[k])
+          .filter((i): i is number => i !== undefined);
+        // Row columns are everything not in nonRowCols, starting after headers column
+        const headersIdx = headerMapping['headers'] ?? 1;
+        const rowValues: string[] = [];
+        for (let i = headersIdx + 1; i < values.length; i++) {
+          if (!nonRowCols.includes(i) && values[i]?.trim()) {
+            rowValues.push(values[i]);
+          }
         }
+        const rows = rowValues.map((r) => r.split('|').map((c) => c.trim()));
+        return { title, content: { headers, rows } as TableContent, sectionName, sectionNumber, conceptKey, conceptTitle };
       }
-      const rows = values.slice(2, rowEndIndex).filter(r => r.trim()).map((r) => r.split('|').map((c) => c.trim()));
-      return {
-        title,
-        content: { headers, rows } as TableContent,
-        sectionName,
-        sectionNumber,
-      };
+      const rows = values.slice(2).filter(r => r.trim()).map((r) => r.split('|').map((c) => c.trim()));
+      return { title, content: { headers, rows } as TableContent, sectionName, sectionNumber, conceptKey, conceptTitle };
     }
     case 'algorithm': {
-      if (values.length < 2) {
-        return { title, content: { steps: [] }, error: 'Algorithm requires title and steps' };
+      const stepsVal = getVal('steps', 1);
+      if (!stepsVal) {
+        return { title, content: { steps: [] }, error: 'Algorithm requires steps' };
       }
-      const steps = values[1].split('|').map((s) => {
+      const steps = stepsVal.split('|').map((s) => {
         const [stepTitle, description = ''] = s.split('::').map((x) => x.trim());
         return { title: stepTitle, description };
       });
-      return {
-        title,
-        content: { steps } as AlgorithmContent,
-        sectionName,
-        sectionNumber,
-      };
+      return { title, content: { steps } as AlgorithmContent, sectionName, sectionNumber, conceptKey, conceptTitle };
     }
     case 'exam_tip': {
-      if (values.length < 2) {
-        return { title, content: { tips: [] }, error: 'Exam tips require title and tips' };
+      const tipsVal = getVal('tips', 1);
+      if (!tipsVal) {
+        return { title, content: { tips: [] }, error: 'Exam tips require tips' };
       }
-      const tips = values[1].split('|').map((t) => t.trim());
-      return {
-        title,
-        content: { tips } as ExamTipContent,
-        sectionName,
-        sectionNumber,
-      };
+      const tips = tipsVal.split('|').map((t) => t.trim());
+      return { title, content: { tips } as ExamTipContent, sectionName, sectionNumber, conceptKey, conceptTitle };
     }
     default:
       return { title: '', content: { front: '', back: '' }, error: `Unsupported type: ${type}` };
@@ -563,7 +645,11 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
   const columnMappings: Record<string, string> = {
     'title': 'title',
     'front': 'front',
+    'question': 'front',
+    'prompt': 'front',
     'back': 'back',
+    'answer': 'back',
+    'response': 'back',
     'headers': 'headers',
     'steps': 'steps',
     'tips': 'tips',
@@ -598,9 +684,12 @@ function isHeaderLine(line: string): boolean {
   const lower = line.toLowerCase();
   return lower.includes('title') && (
     lower.includes('front') || 
+    lower.includes('question') ||
     lower.includes('headers') || 
     lower.includes('steps') || 
     lower.includes('tips') ||
-    lower.includes('concept')
+    lower.includes('concept') ||
+    lower.includes('back') ||
+    lower.includes('answer')
   );
 }

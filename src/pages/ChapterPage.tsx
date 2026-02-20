@@ -27,6 +27,7 @@ import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
 import { ConceptsManager, ConceptFilter } from '@/components/concepts';
 import { useChapterSectionsEnabled } from '@/hooks/useSections';
+import { useChapterConcepts } from '@/hooks/useConcepts';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -152,6 +153,7 @@ export default function ChapterPage() {
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
+  const { data: chapterConcepts } = useChapterConcepts(chapterId);
   
   // Filter clinical cases by chapter
   const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
@@ -884,6 +886,7 @@ export default function ChapterPage() {
               chapterId={chapterId}
               moduleId={moduleId}
               resourceType="flashcard"
+              concepts={chapterConcepts?.map(c => ({ id: c.id, concept_key: c.concept_key, title: c.title })) || []}
             />
             <MindMapBulkUploadModal
               open={mindMapBulkOpen}
