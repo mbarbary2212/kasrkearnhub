@@ -96,13 +96,13 @@ export function useModulePracticals(moduleId?: string) {
   });
 }
 
-// Fetch clinical cases for a module
+// Fetch virtual patient cases for a module
 export function useModuleClinicalCases(moduleId?: string) {
   return useQuery({
     queryKey: ['module-clinical-cases', moduleId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('clinical_cases')
+        .from('virtual_patient_cases')
         .select('*')
         .eq('module_id', moduleId!)
         .eq('is_deleted', false)

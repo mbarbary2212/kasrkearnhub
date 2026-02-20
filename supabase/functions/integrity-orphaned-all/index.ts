@@ -14,8 +14,6 @@ type OrphanCheckType =
   | "flashcards" 
   | "lectures" 
   | "matching" 
-  | "case_scenarios" 
-  | "clinical_cases" 
   | "study_resources";
 
 interface CheckConfig {
@@ -68,18 +66,6 @@ const checkConfigs: Record<OrphanCheckType, CheckConfig> = {
     previewField: "instruction",
     label: "Matching Question"
   },
-  case_scenarios: { 
-    table: "case_scenarios", 
-    hasIsDeleted: true, 
-    previewField: "title",
-    label: "Case Scenario"
-  },
-  clinical_cases: { 
-    table: "clinical_cases", 
-    hasIsDeleted: true, 
-    previewField: "title",
-    label: "Clinical Case"
-  },
   study_resources: { 
     table: "study_resources", 
     hasIsDeleted: true, 
@@ -87,6 +73,7 @@ const checkConfigs: Record<OrphanCheckType, CheckConfig> = {
     label: "Study Resource"
   },
 };
+
 
 interface OrphanedLocation {
   id: string;

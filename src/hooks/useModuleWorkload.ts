@@ -85,7 +85,7 @@ export function useModuleContentCounts(yearId: string | null) {
           .in('module_id', moduleIds)
           .eq('is_deleted', false),
         supabase
-          .from('case_scenarios')
+          .from('virtual_patient_cases')
           .select('id, module_id')
           .in('module_id', moduleIds)
           .eq('is_deleted', false),

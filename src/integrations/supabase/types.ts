@@ -708,69 +708,6 @@ export type Database = {
         }
         Relationships: []
       }
-      case_scenarios: {
-        Row: {
-          case_history: string
-          case_questions: string
-          chapter_id: string | null
-          created_at: string | null
-          created_by: string | null
-          display_order: number | null
-          id: string
-          is_deleted: boolean
-          model_answer: string
-          module_id: string | null
-          rating: number | null
-          title: string
-          updated_by: string | null
-        }
-        Insert: {
-          case_history: string
-          case_questions: string
-          chapter_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          display_order?: number | null
-          id?: string
-          is_deleted?: boolean
-          model_answer: string
-          module_id?: string | null
-          rating?: number | null
-          title: string
-          updated_by?: string | null
-        }
-        Update: {
-          case_history?: string
-          case_questions?: string
-          chapter_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          display_order?: number | null
-          id?: string
-          is_deleted?: boolean
-          model_answer?: string
-          module_id?: string | null
-          rating?: number | null
-          title?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "case_scenarios_chapter_id_fkey"
-            columns: ["chapter_id"]
-            isOneToOne: false
-            referencedRelation: "module_chapters"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "case_scenarios_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chapter_attempts: {
         Row: {
           attempt_number: number
@@ -840,111 +777,6 @@ export type Database = {
           },
         ]
       }
-      clinical_cases: {
-        Row: {
-          chapter_id: string | null
-          contributing_department_id: string | null
-          created_at: string | null
-          created_by: string | null
-          differential_diagnosis: string[] | null
-          display_order: number | null
-          examination: string | null
-          final_diagnosis: string | null
-          history: string | null
-          id: string
-          investigations: string | null
-          is_deleted: boolean
-          management: string | null
-          module_id: string | null
-          presentation: string
-          section_id: string | null
-          title: string
-          title_ar: string | null
-          topic_id: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          chapter_id?: string | null
-          contributing_department_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          differential_diagnosis?: string[] | null
-          display_order?: number | null
-          examination?: string | null
-          final_diagnosis?: string | null
-          history?: string | null
-          id?: string
-          investigations?: string | null
-          is_deleted?: boolean
-          management?: string | null
-          module_id?: string | null
-          presentation: string
-          section_id?: string | null
-          title: string
-          title_ar?: string | null
-          topic_id?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          chapter_id?: string | null
-          contributing_department_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          differential_diagnosis?: string[] | null
-          display_order?: number | null
-          examination?: string | null
-          final_diagnosis?: string | null
-          history?: string | null
-          id?: string
-          investigations?: string | null
-          is_deleted?: boolean
-          management?: string | null
-          module_id?: string | null
-          presentation?: string
-          section_id?: string | null
-          title?: string
-          title_ar?: string | null
-          topic_id?: string | null
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clinical_cases_chapter_id_fkey"
-            columns: ["chapter_id"]
-            isOneToOne: false
-            referencedRelation: "module_chapters"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clinical_cases_contributing_department_id_fkey"
-            columns: ["contributing_department_id"]
-            isOneToOne: false
-            referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clinical_cases_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clinical_cases_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "sections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clinical_cases_topic_id_fkey"
-            columns: ["topic_id"]
-            isOneToOne: false
-            referencedRelation: "topics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       coach_usage: {
         Row: {
           created_at: string
@@ -971,6 +803,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      concepts: {
+        Row: {
+          chapter_id: string | null
+          concept_key: string
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          id: string
+          module_id: string
+          section_id: string | null
+          title: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          concept_key: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          module_id: string
+          section_id?: string | null
+          title: string
+        }
+        Update: {
+          chapter_id?: string | null
+          concept_key?: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          id?: string
+          module_id?: string
+          section_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concepts_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concepts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concepts_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       department_admins: {
         Row: {
@@ -1269,6 +1159,9 @@ export type Database = {
       essays: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -1290,6 +1183,9 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1311,6 +1207,9 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1336,6 +1235,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "essays_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -1716,6 +1622,8 @@ export type Database = {
         Row: {
           back: string
           chapter_id: string | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           created_at: string | null
           created_by: string | null
           display_order: number | null
@@ -1729,6 +1637,8 @@ export type Database = {
         Insert: {
           back: string
           chapter_id?: string | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -1742,6 +1652,8 @@ export type Database = {
         Update: {
           back?: string
           chapter_id?: string | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -1758,6 +1670,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -1994,6 +1913,9 @@ export type Database = {
       lectures: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           contributing_department_id: string | null
           created_at: string | null
           created_by: string | null
@@ -2013,6 +1935,9 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2032,6 +1957,9 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2055,6 +1983,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lectures_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -2092,6 +2027,9 @@ export type Database = {
           chapter_id: string | null
           column_a_items: Json
           column_b_items: Json
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           contributing_department_id: string | null
           correct_matches: Json
           created_at: string | null
@@ -2112,6 +2050,9 @@ export type Database = {
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           correct_matches?: Json
           created_at?: string | null
@@ -2132,6 +2073,9 @@ export type Database = {
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           correct_matches?: Json
           created_at?: string | null
@@ -2154,6 +2098,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matching_questions_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -2503,6 +2454,9 @@ export type Database = {
         Row: {
           chapter_id: string | null
           choices: Json
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           correct_key: string
           created_at: string
           created_by: string | null
@@ -2520,6 +2474,9 @@ export type Database = {
         Insert: {
           chapter_id?: string | null
           choices?: Json
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           correct_key: string
           created_at?: string
           created_by?: string | null
@@ -2537,6 +2494,9 @@ export type Database = {
         Update: {
           chapter_id?: string | null
           choices?: Json
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           correct_key?: string
           created_at?: string
           created_by?: string | null
@@ -2557,6 +2517,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcqs_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -2914,6 +2881,9 @@ export type Database = {
           answer_4: boolean
           answer_5: boolean
           chapter_id: string | null
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           created_at: string | null
           created_by: string | null
           display_order: number | null
@@ -2945,6 +2915,9 @@ export type Database = {
           answer_4: boolean
           answer_5: boolean
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -2976,6 +2949,9 @@ export type Database = {
           answer_4?: boolean
           answer_5?: boolean
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
           display_order?: number | null
@@ -3006,6 +2982,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "osce_questions_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -3996,6 +3979,9 @@ export type Database = {
       study_resources: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           content: Json
           created_at: string | null
           created_by: string | null
@@ -4013,6 +3999,9 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           content?: Json
           created_at?: string | null
           created_by?: string | null
@@ -4030,6 +4019,9 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           content?: Json
           created_at?: string | null
           created_by?: string | null
@@ -4051,6 +4043,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_resources_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -4297,6 +4296,9 @@ export type Database = {
       true_false_questions: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
+          concept_auto_assigned: boolean | null
+          concept_id: string | null
           contributing_department_id: string | null
           correct_answer: boolean
           created_at: string | null
@@ -4315,6 +4317,9 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           correct_answer: boolean
           created_at?: string | null
@@ -4333,6 +4338,9 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
+          concept_auto_assigned?: boolean | null
+          concept_id?: string | null
           contributing_department_id?: string | null
           correct_answer?: boolean
           created_at?: string | null
@@ -4355,6 +4363,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "true_false_questions_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {
@@ -4645,6 +4660,7 @@ export type Database = {
         Row: {
           case_mode: string | null
           chapter_id: string | null
+          concept_id: string | null
           created_at: string
           created_by: string | null
           estimated_minutes: number
@@ -4669,6 +4685,7 @@ export type Database = {
         Insert: {
           case_mode?: string | null
           chapter_id?: string | null
+          concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
@@ -4693,6 +4710,7 @@ export type Database = {
         Update: {
           case_mode?: string | null
           chapter_id?: string | null
+          concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
@@ -4720,6 +4738,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concepts"
             referencedColumns: ["id"]
           },
           {

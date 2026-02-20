@@ -54,18 +54,6 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-export interface ClinicalCase {
-  id: string;
-  topicId: string;
-  title: string;
-  presentation: string;
-  history: string;
-  examination: string;
-  investigations: string;
-  differentialDiagnosis: string[];
-  finalDiagnosis: string;
-  management: string;
-}
 
 // Progress Types
 export interface UserProgress {

@@ -1,4 +1,4 @@
-import { Department, Topic, VideoLesson, Quiz, ClinicalCase } from '@/types';
+import { Department, Topic, VideoLesson, Quiz } from '@/types';
 
 export const departments: Department[] = [
   // Basic Sciences
@@ -225,33 +225,6 @@ export const quizzes: Quiz[] = [
   },
 ];
 
-export const clinicalCases: ClinicalCase[] = [
-  {
-    id: 'case-1',
-    topicId: 'cardiology',
-    title: 'Chest Pain in a 55-Year-Old Man',
-    presentation: 'A 55-year-old man presents to the emergency department with crushing chest pain radiating to his left arm for the past 2 hours.',
-    history: 'The patient has a history of hypertension and type 2 diabetes mellitus. He is a smoker with a 30 pack-year history. He takes metformin and lisinopril.',
-    examination: 'BP: 150/95 mmHg, HR: 100 bpm, RR: 22/min. Patient appears diaphoretic and anxious. Heart sounds are normal. Lungs are clear.',
-    investigations: 'ECG shows ST-segment elevation in leads V1-V4. Troponin I is elevated at 2.5 ng/mL.',
-    differentialDiagnosis: ['Acute MI (STEMI)', 'Unstable angina', 'Aortic dissection', 'Pulmonary embolism'],
-    finalDiagnosis: 'Anterior STEMI',
-    management: 'Immediate PCI recommended. Start dual antiplatelet therapy (aspirin + P2Y12 inhibitor), anticoagulation, and consider beta-blockers after stabilization.',
-  },
-  {
-    id: 'case-2',
-    topicId: 'neonatology',
-    title: 'Respiratory Distress in a Newborn',
-    presentation: 'A newborn delivered at 32 weeks gestation develops respiratory distress shortly after birth.',
-    history: 'Mother had premature rupture of membranes 24 hours before delivery. No antenatal steroids were given.',
-    examination: 'RR: 70/min, O2 saturation: 85% on room air. Nasal flaring, intercostal retractions, and grunting are observed.',
-    investigations: 'Chest X-ray shows diffuse ground-glass appearance with air bronchograms.',
-    differentialDiagnosis: ['Respiratory Distress Syndrome (RDS)', 'Transient tachypnea of newborn', 'Pneumonia', 'Meconium aspiration'],
-    finalDiagnosis: 'Respiratory Distress Syndrome (RDS)',
-    management: 'Administer surfactant via endotracheal tube. Provide respiratory support (CPAP or mechanical ventilation). Maintain temperature and glucose homeostasis.',
-  },
-];
-
 export const getTopicsByDepartment = (departmentId: string) => {
   return topics.filter(t => t.departmentId === departmentId).sort((a, b) => a.order - b.order);
 };
@@ -266,8 +239,4 @@ export const getVideosByTopic = (topicId: string) => {
 
 export const getQuizzesByTopic = (topicId: string) => {
   return quizzes.filter(q => q.topicId === topicId);
-};
-
-export const getCasesByTopic = (topicId: string) => {
-  return clinicalCases.filter(c => c.topicId === topicId);
 };

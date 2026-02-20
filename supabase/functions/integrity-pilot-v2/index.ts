@@ -380,50 +380,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ========== CASE SCENARIOS CHECK ==========
-    if (!checkType || checkType === "case_scenarios") {
-      const { data: caseScenarios } = await supabase
-        .from("case_scenarios")
-        .select("id, title, case_history, case_questions, model_answer, module_id, chapter_id")
-        .eq("is_deleted", false);
-
-      const caseIssues: Location[] = [];
-
-      for (const cs of caseScenarios || []) {
-        if (!isInScope(cs.module_id, cs.chapter_id)) continue;
-
-        const problems: string[] = [];
-
-        if (!cs.title?.trim()) problems.push("empty title");
-        if (!cs.case_history?.trim()) problems.push("empty history");
-        if (!cs.case_questions?.trim()) problems.push("no questions");
-        if (!cs.model_answer?.trim()) problems.push("no model answer");
-        if (!cs.chapter_id && !cs.module_id) problems.push("no location");
-
-        if (problems.length > 0) {
-          caseIssues.push(
-            buildLocation(
-              cs.id,
-              `[${problems.join(", ")}] ${cs.title?.substring(0, 50) || "(no title)"}`,
-              cs.module_id,
-              cs.chapter_id,
-              null
-            )
-          );
-        }
-      }
-
-      if (caseIssues.length > 0) {
-        issues.push({
-          type: "case_scenario_integrity",
-          severity: caseIssues.some((l) => l.preview.includes("empty")) ? "critical" : "warning",
-          count: caseIssues.length,
-          description: `${caseIssues.length} case scenario(s) have missing or invalid fields`,
-          locations: caseIssues.slice(0, 50),
-        });
-      }
-    }
-
     // ========== MCQ SETS CHECK ==========
     if (!checkType || checkType === "mcq_sets") {
       const { data: mcqSets } = await supabase

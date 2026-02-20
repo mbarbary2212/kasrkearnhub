@@ -85,10 +85,9 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         ? supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
 
-      // case_scenarios doesn't have topic_id, only chapter_id
-      const caseScenariosQuery = chapterId
-        ? supabase.from('case_scenarios').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : Promise.resolve({ count: 0, data: null, error: null }); // Topics don't have case_scenarios
+      const virtualPatientQuery = chapterId
+        ? supabase.from('virtual_patient_cases').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
+        : supabase.from('virtual_patient_cases').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
 
       const matchingQuery = chapterId
         ? supabase.from('matching_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
@@ -102,14 +101,14 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         mcqsRes,
         essaysRes,
         oscesRes,
-        caseScenariosRes,
+        vpCasesRes,
         matchingRes,
         lecturesRes,
       ] = await Promise.all([
         mcqsQuery,
         essaysQuery,
         oscesQuery,
-        caseScenariosQuery,
+        virtualPatientQuery,
         matchingQuery,
         lecturesQuery,
       ]);
@@ -127,20 +126,19 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         ? supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('osce_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
 
-      // case_scenarios doesn't have topic_id
-      const caseIdsQuery = chapterId
-        ? supabase.from('case_scenarios').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : Promise.resolve({ data: [], error: null });
+      const vpCaseIdsQuery = chapterId
+        ? supabase.from('virtual_patient_cases').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
+        : supabase.from('virtual_patient_cases').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
 
       const matchingIdsQuery = chapterId
         ? supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
         : supabase.from('matching_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
 
-      const [mcqIds, essayIds, osceIds, caseIds, matchingIds] = await Promise.all([
+      const [mcqIds, essayIds, osceIds, vpCaseIds, matchingIds] = await Promise.all([
         mcqIdsQuery,
         essayIdsQuery,
         osceIdsQuery,
-        caseIdsQuery,
+        vpCaseIdsQuery,
         matchingIdsQuery,
       ]);
 
@@ -176,7 +174,7 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
           .select('question_id')
           .eq('user_id', user.id)
           .eq('question_type', 'osce')
-          .in('question_id', caseIds.data?.map(c => c.id) || []),
+          .in('question_id', vpCaseIds.data?.map(c => c.id) || []),
         supabase
           .from('question_attempts')
           .select('question_id')
@@ -193,7 +191,7 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
       const mcqTotal = mcqsRes.count || 0;
       const essayTotal = essaysRes.count || 0;
       const osceTotal = oscesRes.count || 0;
-      const caseTotal = caseScenariosRes.count || 0;
+      const caseTotal = vpCasesRes.count || 0;
       const matchingTotal = matchingRes.count || 0;
       const practiceTotal = mcqTotal + essayTotal + osceTotal + caseTotal + matchingTotal;
 

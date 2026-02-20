@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases';
+type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals';
 
 type QueryKeyMap = {
   topic: string;
@@ -17,7 +17,6 @@ const QUERY_KEYS: Record<ContentTable, QueryKeyMap> = {
   mcq_sets: { topic: 'mcq_sets', chapter: 'chapter-mcq-sets', module: 'module-mcq-sets' },
   essays: { topic: 'essays', chapter: 'chapter-essays', module: 'module-essays' },
   practicals: { topic: 'practicals', chapter: 'chapter-practicals', module: 'module-practicals' },
-  clinical_cases: { topic: 'clinical_cases', chapter: 'chapter-clinical-cases', module: 'module-clinical-cases' },
 };
 
 const TABLE_LABELS: Record<ContentTable, string> = {
@@ -26,7 +25,6 @@ const TABLE_LABELS: Record<ContentTable, string> = {
   mcq_sets: 'MCQ set',
   essays: 'Short question',
   practicals: 'Practical',
-  clinical_cases: 'Clinical case',
 };
 
 interface DeleteState {
