@@ -42,16 +42,7 @@ export function resolveSectionId(
   sectionName?: string,
   sectionNumber?: number | string
 ): string | null {
-  // Priority 1: Match by section_number (now stored as TEXT, e.g., "3.1", "3.10")
-  if (sectionNumber !== undefined && sectionNumber !== '') {
-    const sectionNumStr = String(sectionNumber).trim();
-    if (sectionNumStr) {
-      const match = sections.find(s => s.section_number === sectionNumStr);
-      if (match) return match.id;
-    }
-  }
-  
-  // Priority 2: Match by section_name (case-insensitive, exact)
+  // Priority 1: Match by section_name (case-insensitive, exact)
   if (sectionName && sectionName.trim()) {
     const normalizedInput = sectionName.toLowerCase().trim();
     const exactMatch = sections.find(s => 
@@ -59,17 +50,22 @@ export function resolveSectionId(
     );
     if (exactMatch) return exactMatch.id;
 
-    // Priority 3: Partial/contains match on section_name
     // Strip leading number prefix (e.g., "3.2 Deep Vein Thrombosis" → "Deep Vein Thrombosis")
     const strippedInput = normalizedInput.replace(/^\d+(\.\d+)?\s+/, '');
     
-    // Find best partial match (longest DB name that is contained in the input, or vice versa)
+    // Check stripped input for exact match
+    const strippedExact = sections.find(s => 
+      s.name.toLowerCase().trim() === strippedInput
+    );
+    if (strippedExact) return strippedExact.id;
+
+    // Partial/contains match on section_name
     let bestMatch: Section | null = null;
     let bestLength = 0;
     
     for (const s of sections) {
       const dbName = s.name.toLowerCase().trim();
-      if (dbName.length < 3) continue; // skip very short names to avoid false positives
+      if (dbName.length < 3) continue;
       
       if (strippedInput.includes(dbName) || dbName.includes(strippedInput)) {
         const matchLen = Math.min(dbName.length, strippedInput.length);
@@ -81,6 +77,35 @@ export function resolveSectionId(
     }
     
     if (bestMatch) return bestMatch.id;
+    
+    // Word-overlap scoring: match sections sharing significant words
+    const stopWords = new Set(['of', 'the', 'and', 'in', 'a', 'an', 'to', 'for', 'with', 'on']);
+    const inputWords = strippedInput.replace(/[(),-]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+    
+    if (inputWords.length > 0) {
+      let bestOverlap = 0;
+      let bestOverlapSection: Section | null = null;
+      
+      for (const s of sections) {
+        const dbWords = s.name.toLowerCase().replace(/[(),-]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+        const overlap = inputWords.filter(w => dbWords.some(dw => dw.includes(w) || w.includes(dw))).length;
+        if (overlap >= 2 && overlap > bestOverlap) {
+          bestOverlap = overlap;
+          bestOverlapSection = s;
+        }
+      }
+      
+      if (bestOverlapSection) return bestOverlapSection.id;
+    }
+  }
+  
+  // Fallback: Match by section_number (optional)
+  if (sectionNumber !== undefined && sectionNumber !== '') {
+    const sectionNumStr = String(sectionNumber).trim();
+    if (sectionNumStr) {
+      const match = sections.find(s => s.section_number === sectionNumStr);
+      if (match) return match.id;
+    }
   }
   
   return null;
