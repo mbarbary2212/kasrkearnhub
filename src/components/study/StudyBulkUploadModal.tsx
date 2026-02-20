@@ -49,7 +49,7 @@ interface ParsedItem {
   title: string;
   content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent;
   sectionName?: string;
-  sectionNumber?: number;
+  sectionNumber?: string;
   conceptKey?: string;
   error?: string;
 }
@@ -452,16 +452,25 @@ function parseLineByType(
   }
   
   // Extract section info - check header mapping first, then fall back to last columns
-  const getSectionInfo = (): { sectionName?: string; sectionNumber?: number } => {
+  const getSectionInfo = (): { sectionName?: string; sectionNumber?: string } => {
     if (headerMapping) {
       const sectionNameIdx = headerMapping['section_name'];
       const sectionNumIdx = headerMapping['section_number'];
-      const sectionName = sectionNameIdx !== undefined ? values[sectionNameIdx]?.trim() : undefined;
-      const sectionNumRaw = sectionNumIdx !== undefined ? values[sectionNumIdx]?.trim() : undefined;
-      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
+      let sectionName = sectionNameIdx !== undefined ? values[sectionNameIdx]?.trim() : undefined;
+      let sectionNumber = sectionNumIdx !== undefined ? values[sectionNumIdx]?.trim() : undefined;
+      
+      // If sectionName starts with a number prefix like "3.2 Deep Vein...", extract it
+      if (sectionName && !sectionNumber) {
+        const prefixMatch = sectionName.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+        if (prefixMatch) {
+          sectionNumber = prefixMatch[1];
+          // Keep full sectionName for fuzzy matching fallback
+        }
+      }
+      
       return { 
         sectionName: sectionName || undefined, 
-        sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined 
+        sectionNumber: sectionNumber || undefined,
       };
     }
     return {};
