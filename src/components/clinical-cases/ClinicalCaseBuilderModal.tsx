@@ -7,9 +7,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,29 +19,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { 
-  Plus, 
-  GripVertical, 
-  Edit2, 
-  Trash2, 
-  Loader2, 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Plus,
+  GripVertical,
+  Edit2,
+  Trash2,
+  Loader2,
   HelpCircle,
   CheckSquare,
   MessageSquare,
-  Settings,
   FileText,
   Layers,
-  X,
+  Settings,
 } from 'lucide-react';
-import { ClinicalCase, ClinicalCaseStage, CaseStageType } from '@/types/clinicalCase';
-import { 
-  useClinicalCase, 
+import { ClinicalCaseStage, CaseStageType } from '@/types/clinicalCase';
+import {
+  useClinicalCase,
   useDeleteClinicalCaseStage,
   useReorderClinicalCaseStages,
 } from '@/hooks/useClinicalCases';
-import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
-import { ClinicalCaseStageFormModal } from './ClinicalCaseStageFormModal';
 import { ClinicalCaseQuickBuildModal } from './ClinicalCaseQuickBuildModal';
+import { CaseBuilderDetailsTab } from './CaseBuilderDetailsTab';
+import { CaseBuilderStageEditor } from './CaseBuilderStageEditor';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -86,10 +85,12 @@ const stageTypeLabels: Record<CaseStageType, string> = {
 
 function SortableStageItem({
   stage,
+  isEditing,
   onEdit,
   onDelete,
 }: {
   stage: ClinicalCaseStage;
+  isEditing: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -115,7 +116,8 @@ function SortableStageItem({
       style={style}
       className={cn(
         "flex items-center gap-3 p-3 rounded-lg border bg-card",
-        isDragging && "opacity-50 shadow-lg"
+        isDragging && "opacity-50 shadow-lg",
+        isEditing && "border-primary"
       )}
     >
       <button
@@ -125,11 +127,11 @@ function SortableStageItem({
       >
         <GripVertical className="w-5 h-5" />
       </button>
-      
+
       <Badge variant="outline" className="shrink-0">
         Stage {stage.stage_order}
       </Badge>
-      
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Icon className="w-4 h-4 text-muted-foreground" />
@@ -139,7 +141,7 @@ function SortableStageItem({
         </div>
         <p className="text-sm truncate">{stage.prompt}</p>
       </div>
-      
+
       <div className="flex items-center gap-1 shrink-0">
         <Button variant="ghost" size="icon" onClick={onEdit}>
           <Edit2 className="w-4 h-4" />
@@ -162,18 +164,19 @@ export function ClinicalCaseBuilderModal({
   const deleteStage = useDeleteClinicalCaseStage();
   const reorderStages = useReorderClinicalCaseStages();
 
-  const [caseFormOpen, setCaseFormOpen] = useState(false);
-  const [stageFormOpen, setStageFormOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('stages');
   const [quickBuildOpen, setQuickBuildOpen] = useState(false);
-  const [editingStage, setEditingStage] = useState<ClinicalCaseStage | null>(null);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [addingNewStage, setAddingNewStage] = useState(false);
   const [deleteConfirmStage, setDeleteConfirmStage] = useState<ClinicalCaseStage | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const stages = clinicalCase?.stages || [];
+  const nextStageOrder = stages.length + 1;
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -185,26 +188,12 @@ export function ClinicalCaseBuilderModal({
     if (oldIndex !== newIndex) {
       const newOrder = arrayMove(clinicalCase.stages, oldIndex, newIndex);
       try {
-        await reorderStages.mutateAsync({
-          caseId,
-          stageIds: newOrder.map(s => s.id),
-        });
+        await reorderStages.mutateAsync({ caseId, stageIds: newOrder.map(s => s.id) });
         toast.success('Stages reordered');
-      } catch (error) {
-        console.error('Failed to reorder stages:', error);
+      } catch {
         toast.error('Failed to reorder stages');
       }
     }
-  };
-
-  const handleAddStage = () => {
-    setEditingStage(null);
-    setStageFormOpen(true);
-  };
-
-  const handleEditStage = (stage: ClinicalCaseStage) => {
-    setEditingStage(stage);
-    setStageFormOpen(true);
   };
 
   const handleDeleteStage = async () => {
@@ -213,54 +202,40 @@ export function ClinicalCaseBuilderModal({
       await deleteStage.mutateAsync({ id: deleteConfirmStage.id, caseId });
       toast.success('Stage deleted');
       setDeleteConfirmStage(null);
-      // Mutations now handle refetch automatically
-    } catch (error) {
-      console.error('Failed to delete stage:', error);
+      if (editingStageId === deleteConfirmStage.id) setEditingStageId(null);
+    } catch {
       toast.error('Failed to delete stage');
     }
   };
 
-  const handleSkipForNow = () => {
-    onOpenChange(false);
+  const handleAddStage = () => {
+    setEditingStageId(null);
+    setAddingNewStage(true);
   };
 
-  const stages = clinicalCase?.stages || [];
-  const nextStageOrder = stages.length + 1;
+  const handleEditStage = (stageId: string) => {
+    setAddingNewStage(false);
+    setEditingStageId(editingStageId === stageId ? null : stageId);
+  };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-8">
-            <div className="flex items-center gap-2">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between gap-4 pr-8">
               <DialogTitle className="flex items-center gap-2">
                 Case Builder
                 {clinicalCase && !clinicalCase.is_published && (
                   <Badge variant="secondary">Draft</Badge>
                 )}
+                {clinicalCase && (
+                  <Badge variant="outline">
+                    {stages.length} stage{stages.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
               </DialogTitle>
-              {clinicalCase && (
-                <Badge variant="outline" className="ml-2">
-                  {stages.length} stage{stages.length !== 1 ? 's' : ''}
-                </Badge>
-              )}
             </div>
-            {clinicalCase && (
-              <div className="flex items-center gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => setQuickBuildOpen(true)}
-                >
-                  <FileText className="w-4 h-4 mr-1" />
-                  Quick Build
-                </Button>
-                <Button size="sm" onClick={handleAddStage}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Stage
-                </Button>
-              </div>
-            )}
           </DialogHeader>
 
           {isLoading ? (
@@ -270,67 +245,50 @@ export function ClinicalCaseBuilderModal({
           ) : !clinicalCase ? (
             <div className="text-center py-12">
               <p className="text-destructive font-medium mb-2">Failed to load case</p>
-              <p className="text-muted-foreground text-sm">Case ID: {caseId}</p>
               <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
             </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="space-y-6 pr-4 pb-4">
-                {/* Case Info Section */}
-                <div className="p-4 border rounded-lg bg-muted/30">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold text-lg">{clinicalCase.title}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="capitalize">
-                          {clinicalCase.level}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          ~{clinicalCase.estimated_minutes} min
-                        </span>
-                        {clinicalCase.chapter && (
-                          <span className="text-sm text-muted-foreground">
-                            • Chapter {clinicalCase.chapter.chapter_number}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setCaseFormOpen(true)}>
-                      <Settings className="w-4 h-4 mr-1" />
-                      Edit Details
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
+              <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+                <TabsTrigger value="details" className="gap-1.5">
+                  <Settings className="w-4 h-4" />
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="stages" className="gap-1.5">
+                  <Layers className="w-4 h-4" />
+                  Stages ({stages.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Details Tab */}
+              <TabsContent value="details" className="flex-1 min-h-0 overflow-y-auto mt-4">
+                <CaseBuilderDetailsTab clinicalCase={clinicalCase} moduleId={moduleId} />
+              </TabsContent>
+
+              {/* Stages Tab */}
+              <TabsContent value="stages" className="flex-1 min-h-0 overflow-y-auto mt-4">
+                <div className="space-y-4 pb-4">
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button size="sm" variant="outline" onClick={() => setQuickBuildOpen(true)}>
+                      <FileText className="w-4 h-4 mr-1" />
+                      Quick Build
+                    </Button>
+                    <Button size="sm" onClick={handleAddStage}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Stage
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {clinicalCase.intro_text}
-                  </p>
-                  {clinicalCase.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {clinicalCase.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <Separator />
-
-                {/* Stages Section */}
-                <div>
-                  <h4 className="font-medium mb-4">
-                    Stages ({stages.length})
-                  </h4>
-
-                  {stages.length === 0 ? (
+                  {stages.length === 0 && !addingNewStage ? (
                     <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
                       <CardHeader className="text-center pb-2">
                         <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-2">
                           <Layers className="w-8 h-8 text-primary" />
                         </div>
-                        <CardTitle className="text-lg">Now Add Stage 1</CardTitle>
+                        <CardTitle className="text-lg">Add Your First Stage</CardTitle>
                         <CardDescription className="text-base">
                           Stages are the steps of the scenario: history, exam, investigations, diagnosis, management.
                         </CardDescription>
@@ -340,79 +298,64 @@ export function ClinicalCaseBuilderModal({
                           <Plus className="w-4 h-4 mr-1" />
                           Add First Stage
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setQuickBuildOpen(true)} 
-                          className="w-full"
-                        >
+                        <Button variant="outline" onClick={() => setQuickBuildOpen(true)} className="w-full">
                           <FileText className="w-4 h-4 mr-1" />
                           Quick Build (Paste Template)
                         </Button>
                       </CardContent>
                     </Card>
                   ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={stages.map(s => s.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-2">
                           {stages.map((stage) => (
-                            <SortableStageItem
-                              key={stage.id}
-                              stage={stage}
-                              onEdit={() => handleEditStage(stage)}
-                              onDelete={() => setDeleteConfirmStage(stage)}
-                            />
+                            <div key={stage.id}>
+                              <SortableStageItem
+                                stage={stage}
+                                isEditing={editingStageId === stage.id}
+                                onEdit={() => handleEditStage(stage.id)}
+                                onDelete={() => setDeleteConfirmStage(stage)}
+                              />
+                              {editingStageId === stage.id && (
+                                <div className="mt-2">
+                                  <CaseBuilderStageEditor
+                                    caseId={caseId}
+                                    stageOrder={stage.stage_order}
+                                    stage={stage}
+                                    onClose={() => setEditingStageId(null)}
+                                  />
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </SortableContext>
                     </DndContext>
                   )}
+
+                  {/* Inline new stage editor */}
+                  {addingNewStage && (
+                    <>
+                      <Separator />
+                      <CaseBuilderStageEditor
+                        caseId={caseId}
+                        stageOrder={nextStageOrder}
+                        onClose={() => setAddingNewStage(false)}
+                      />
+                    </>
+                  )}
                 </div>
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
 
-          <div className="flex justify-between gap-2 pt-4 border-t">
-            {stages.length === 0 ? (
-              <Button variant="ghost" size="sm" onClick={handleSkipForNow} className="text-muted-foreground">
-                <X className="w-4 h-4 mr-1" />
-                Skip for now
-              </Button>
-            ) : (
-              <div />
-            )}
+          <div className="flex justify-end pt-4 border-t flex-shrink-0">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {stages.length === 0 ? 'Close' : 'Done'}
+              Done
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Case Form Modal */}
-      {clinicalCase && (
-        <ClinicalCaseFormModal
-          open={caseFormOpen}
-          onOpenChange={setCaseFormOpen}
-          moduleId={moduleId}
-          chapterId={clinicalCase.chapter_id || undefined}
-          clinicalCase={clinicalCase}
-        />
-      )}
-
-      {/* Stage Form Modal */}
-      <ClinicalCaseStageFormModal
-        open={stageFormOpen}
-        onOpenChange={setStageFormOpen}
-        caseId={caseId}
-        stageOrder={editingStage?.stage_order || nextStageOrder}
-        stage={editingStage}
-      />
 
       {/* Quick Build Modal */}
       <ClinicalCaseQuickBuildModal
