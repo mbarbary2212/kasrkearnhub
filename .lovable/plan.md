@@ -1,71 +1,41 @@
 
 
-# Fix Flashcard Bulk Upload: Section, Concept, and Export
+# Fix: Bulk Insert Mutation Drops Concept Fields
 
-## Problems Found
+## Root Cause
 
-### Problem 1: CSV Export Missing concept_id
-In `FlashcardsAdminTable.tsx` (lines 104-110), the `csvData` mapping creates objects with only `title`, `content`, and `section_id`. It never includes `concept_id`. When the export runs, the `FLASHCARD_EXPORT_COLUMNS` resolver tries to read `(item as any).concept_id` but it is `undefined`, resulting in empty concept columns in the downloaded CSV.
+The `useBulkCreateStudyResources` mutation in `src/hooks/useStudyResources.ts` (lines 425-436) explicitly maps each field into the insert payload. It includes `section_id` but **omits** `concept_id`, `concept_auto_assigned`, and `concept_ai_confidence`. This means:
 
-### Problem 2: Section Resolution Fails During Upload
-The sections in this chapter have `section_number = null` in the database. The uploaded CSV has:
-- `section_name`: "3.2 Deep Vein Thrombosis (DVT)" 
-- `section_number`: "3.2"
+- The upload modal correctly resolves and passes these fields
+- The preview table correctly shows them
+- But they are silently dropped right before the Supabase `.insert()` call
 
-The `resolveSectionId` function tries:
-1. Match `section_number "3.2"` against DB `section_number` -- fails because DB has `null`
-2. Match `section_name "3.2 Deep Vein Thrombosis (DVT)"` against DB name `"Venous thrombosis-general principles"` -- fails because names don't match
+## Fix
 
-There is no fuzzy or partial matching, so all flashcards get `section_id = null`.
+### File: `src/hooks/useStudyResources.ts` (lines 425-436)
 
-### Problem 3: Concept data not passed to export
-Same as Problem 1 -- since `concept_id` is missing from the exported data objects, concepts appear blank in downloads.
-
-## Technical Changes
-
-### File 1: `src/components/study/FlashcardsAdminTable.tsx`
-**Fix `csvData` mapping** (lines 104-110) to include `concept_id` so the CSV export resolver can access it:
+Add the three missing concept fields to the `resourcesWithUser` mapping:
 
 ```typescript
-const csvData = useMemo(() => {
-  return rows.map(row => ({
-    title: row.title,
-    content: { front: row.front, back: row.back },
-    section_id: row.section_id,
-    concept_id: row.concept_id,
-  }));
-}, [rows]);
+const resourcesWithUser = resources.map((r) => ({
+  module_id: r.module_id,
+  chapter_id: r.chapter_id || null,
+  topic_id: r.topic_id || null,
+  resource_type: r.resource_type,
+  title: r.title,
+  content: r.content,
+  display_order: r.display_order,
+  section_id: r.section_id || null,
+  concept_id: r.concept_id || null,                       // ADD
+  concept_auto_assigned: r.concept_auto_assigned ?? null,  // ADD
+  concept_ai_confidence: r.concept_ai_confidence ?? null,  // ADD
+  created_by: userData.user?.id,
+  folder: r.folder,
+}));
 ```
 
-### File 2: `src/lib/csvExport.ts`
-**Improve `resolveSectionId`** to add fuzzy/partial matching as a fallback:
-- After exact name match fails, try a "contains" match: check if the CSV section_name contains the DB section name, or vice versa
-- Example: CSV `"3.2 Deep Vein Thrombosis (DVT)"` contains DB `"Venous thrombosis"` -- partial match
+That is the **only** change needed. No other files require modification -- the upload modal, preview, type definitions, and export are all already correct.
 
-```text
-Priority 1: Exact section_number match (existing)
-Priority 2: Exact section_name match (existing)
-Priority 3 (NEW): Partial/contains match on section_name
-  - Normalize both strings to lowercase
-  - Check if CSV name contains DB name, or DB name contains CSV name
-  - Use the longest match to avoid false positives
-```
+## What Was Stripping the Fields
 
-### File 3: `src/components/study/StudyBulkUploadModal.tsx`
-**Improve section name extraction** in `parseLineByType`: The CSV `section_name` column contains values like "3.2 Deep Vein Thrombosis (DVT)" which is a composite of number + name. Strip the leading number prefix before passing to `resolveSectionId` so the name-based match can work.
-
-Add logic in `getSectionInfo()`:
-```text
-If sectionName starts with a number pattern like "3.2 " or "3.1 ":
-  - Extract the number part as sectionNumber (if not already set)
-  - Extract the remaining text as the actual sectionName
-```
-
-## Files Summary
-
-| File | Change |
-|---|---|
-| `src/components/study/FlashcardsAdminTable.tsx` | Add `concept_id` to csvData mapping |
-| `src/lib/csvExport.ts` | Add fuzzy/partial section name matching in `resolveSectionId` |
-| `src/components/study/StudyBulkUploadModal.tsx` | Parse composite section_name values (strip number prefix) |
-
+The explicit field-by-field mapping in lines 425-436 acted as an allowlist. Since `concept_id`, `concept_auto_assigned`, and `concept_ai_confidence` were never listed, they were dropped before reaching Supabase, even though the `StudyResourceInsert` type and calling code included them.
