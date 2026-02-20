@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       supabase.from('user_progress').select('content_id, completed, completed_at').eq('user_id', userId),
       supabase.from('mcqs').select('id').eq('module_id', moduleId).eq('is_deleted', false),
       supabase.from('essays').select('id').eq('module_id', moduleId).eq('is_deleted', false),
-      supabase.from('case_scenarios').select('id').eq('module_id', moduleId).eq('is_deleted', false),
+      supabase.from('virtual_patient_cases').select('id').eq('module_id', moduleId).eq('is_deleted', false),
       supabase.from('question_attempts').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
 
@@ -103,14 +103,14 @@ Deno.serve(async (req) => {
     const userProgress = userProgressRes.data || [];
     const mcqs = mcqsRes.data || [];
     const essays = essaysRes.data || [];
-    const caseScenarios = caseScenariosRes.data || [];
+    const vpCases = caseScenariosRes.data || [];
     const questionAttempts = questionAttemptsRes.data || [];
 
     // Calculate content IDs for this module
     const contentIds = new Set([
       ...mcqs.map(m => m.id),
       ...essays.map(e => e.id),
-      ...caseScenarios.map(c => c.id),
+      ...vpCases.map(c => c.id),
     ]);
 
     // Calculate coverage

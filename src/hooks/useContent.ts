@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Lecture, Resource, McqSet, McqQuestion, Essay, Practical, ClinicalCase } from '@/types/database';
+import { Lecture, Resource, McqSet, McqQuestion, Essay, Practical } from '@/types/database';
 
 export function useLectures(topicId: string | undefined) {
   return useQuery({
@@ -121,21 +121,21 @@ export function usePracticals(topicId: string | undefined) {
   });
 }
 
-export function useClinicalCases(topicId: string | undefined) {
+export function useVirtualPatientCases(topicId: string | undefined) {
   return useQuery({
-    queryKey: ['clinical_cases', topicId],
+    queryKey: ['virtual-patient-cases', topicId],
     queryFn: async () => {
       if (!topicId) return [];
 
       const { data, error } = await supabase
-        .from('clinical_cases')
+        .from('virtual_patient_cases')
         .select('*')
         .eq('topic_id', topicId)
         .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
-      return data as ClinicalCase[];
+      return data;
     },
     enabled: !!topicId,
   });

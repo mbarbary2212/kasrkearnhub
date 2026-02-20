@@ -71,7 +71,7 @@ const CONTENT_TYPE_TABLES: Record<string, string> = {
   matching: 'matching_questions',
   clinical_case: 'virtual_patient_cases',
   virtual_patient: 'virtual_patient_cases',
-  case_scenario: 'case_scenarios',
+  case_scenario: 'virtual_patient_cases',
   mind_map: 'mind_maps',
   guided_explanation: 'guided_explanations',
   worked_case: 'worked_cases',

@@ -136,7 +136,7 @@ export function useChapterProgress(chapterId?: string) {
           .eq('chapter_id', chapterId)
           .eq('is_deleted', false),
         supabase
-          .from('case_scenarios')
+          .from('virtual_patient_cases')
           .select('id', { count: 'exact', head: true })
           .eq('chapter_id', chapterId)
           .eq('is_deleted', false),
@@ -198,7 +198,7 @@ export function useChapterProgress(chapterId?: string) {
           .eq('question_type', 'osce')
           .in('question_id',
             (await supabase
-              .from('case_scenarios')
+              .from('virtual_patient_cases')
               .select('id')
               .eq('chapter_id', chapterId)
               .eq('is_deleted', false)

@@ -319,20 +319,24 @@ serve(async (req) => {
         throw new Error(`Failed to insert flashcards: ${error.message}`);
       }
     } else if (contentType === "case_scenario") {
+      // Case scenarios now go into virtual_patient_cases as read_case
       const casesToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
         title: item.title,
-        case_history: item.case_history,
-        case_questions: item.case_questions,
-        model_answer: item.model_answer,
+        intro_text: item.case_history,
+        case_mode: 'read_case',
+        level: 'intermediate',
+        estimated_minutes: 10,
+        tags: [],
+        is_published: true,
         display_order: idx,
         created_by: user.id,
         is_deleted: false,
       }));
 
       const { error } = await serviceClient
-        .from("case_scenarios")
+        .from("virtual_patient_cases")
         .insert(casesToInsert);
       if (error) {
         console.error(`[${jobId}] Case scenario insert error:`, error.message);

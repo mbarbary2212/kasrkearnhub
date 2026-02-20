@@ -152,9 +152,9 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .select('id, title, chapter_id')
           .eq('module_id', moduleId)
           .eq('is_deleted', false),
-        // Case scenarios for this module
+        // Virtual patient cases for this module
         supabase
-          .from('case_scenarios')
+          .from('virtual_patient_cases')
           .select('id, title, chapter_id')
           .eq('module_id', moduleId)
           .eq('is_deleted', false),

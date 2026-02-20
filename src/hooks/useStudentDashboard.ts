@@ -127,7 +127,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         mcqsRes,
         essaysRes,
         practicalsRes,
-        caseScenariosRes,
+        vpCasesRes,
         lecturesRes,
         yearRes,
         // Fetch question attempts for performance calculation
@@ -138,7 +138,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         supabase.from('mcqs').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('essays').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
-        supabase.from('case_scenarios').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('virtual_patient_cases').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
         // Get question attempts for this user
@@ -154,7 +154,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
       const mcqs = mcqsRes.data || [];
       const essays = essaysRes.data || [];
       const practicals = practicalsRes.data || [];
-      const caseScenarios = caseScenariosRes.data || [];
+      const caseScenarios = vpCasesRes.data || [];
       const lectures = lecturesRes.data || [];
       const questionAttempts = questionAttemptsRes.data || [];
 
