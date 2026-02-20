@@ -133,6 +133,9 @@ export interface StudyResource {
   is_deleted: boolean;
   folder?: string | null;
   section_id?: string | null;
+  concept_id?: string | null;
+  concept_auto_assigned?: boolean | null;
+  concept_ai_confidence?: number | null;
 }
 
 export interface StudyResourceInsert {
@@ -146,6 +149,9 @@ export interface StudyResourceInsert {
   created_by?: string;
   folder?: string | null;
   section_id?: string | null;
+  concept_id?: string | null;
+  concept_auto_assigned?: boolean;
+  concept_ai_confidence?: number | null;
 }
 
 // Fetch study resources for a chapter (optionally include deleted)

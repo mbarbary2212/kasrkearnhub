@@ -153,6 +153,7 @@ export function MatchingQuestionFormModal({
       section_id: sectionId,
       concept_id: conceptId,
       concept_auto_assigned: false,
+      concept_ai_confidence: null,
     };
 
     if (question) {

@@ -1,9 +1,14 @@
 import type { Section } from '@/hooks/useSections';
 
+export interface ConceptLookup {
+  id: string;
+  title: string;
+}
+
 export interface ExportColumn<T> {
   key: keyof T | string;
   header: string;
-  getValue?: (item: T, sections?: Section[]) => string;
+  getValue?: (item: T, sections?: Section[], concepts?: ConceptLookup[]) => string;
 }
 
 // Escape a CSV field value
@@ -58,11 +63,21 @@ export function resolveSectionId(
 }
 
 // Generic CSV export function
+export function resolveConceptName(
+  conceptId: string | null | undefined,
+  concepts: ConceptLookup[]
+): string {
+  if (!conceptId) return '';
+  const concept = concepts.find(c => c.id === conceptId);
+  return concept?.title || '';
+}
+
 export function exportToCsv<T>(
   items: T[],
   columns: ExportColumn<T>[],
   filename: string,
-  sections?: Section[]
+  sections?: Section[],
+  concepts?: ConceptLookup[]
 ): void {
   // Generate header row
   const headers = columns.map(col => escapeField(col.header)).join(',');
@@ -71,7 +86,7 @@ export function exportToCsv<T>(
   const rows = items.map(item => {
     return columns.map(col => {
       if (col.getValue) {
-        return escapeField(col.getValue(item, sections));
+        return escapeField(col.getValue(item, sections, concepts));
       }
       const key = col.key as keyof T;
       const value = item[key];
@@ -113,6 +128,11 @@ export const FLASHCARD_EXPORT_COLUMNS: ExportColumn<{
     getValue: (item) => item.content?.back || ''
   },
   {
+    key: 'concept_name',
+    header: 'concept_name',
+    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
+  },
+  {
     key: 'section_name',
     header: 'section_name',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).name
@@ -146,6 +166,11 @@ export const MCQ_EXPORT_COLUMNS: ExportColumn<{
   { key: 'explanation', header: 'explanation' },
   { key: 'difficulty', header: 'difficulty' },
   {
+    key: 'concept_name',
+    header: 'concept_name',
+    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
+  },
+  {
     key: 'section_name',
     header: 'section_name',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).name
@@ -167,6 +192,11 @@ export const LECTURE_EXPORT_COLUMNS: ExportColumn<{
   { key: 'duration', header: 'duration' },
   { key: 'video_url', header: 'video_url' },
   {
+    key: 'concept_name',
+    header: 'concept_name',
+    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
+  },
+  {
     key: 'section_name',
     header: 'section_name',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).name
@@ -187,6 +217,11 @@ export const ESSAY_EXPORT_COLUMNS: ExportColumn<{
   { key: 'title', header: 'title' },
   { key: 'question', header: 'question' },
   { key: 'model_answer', header: 'model_answer' },
+  {
+    key: 'concept_name',
+    header: 'concept_name',
+    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
+  },
   {
     key: 'section_name',
     header: 'section_name',

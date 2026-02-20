@@ -249,6 +249,7 @@ Items:
               .update({
                 concept_id: conceptId,
                 concept_auto_assigned: true,
+                concept_ai_confidence: match.confidence,
               } as any)
               .eq("id", match.item_id);
 

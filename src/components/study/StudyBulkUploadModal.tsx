@@ -27,6 +27,12 @@ import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
 import { toast } from 'sonner';
 
+interface ConceptLookup {
+  id: string;
+  concept_key: string;
+  title: string;
+}
+
 interface StudyBulkUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +42,7 @@ interface StudyBulkUploadModalProps {
   topicId?: string;
   moduleId: string;
   resourceType: StudyResourceType;
+  concepts?: ConceptLookup[];
 }
 
 interface ParsedItem {
@@ -43,6 +50,7 @@ interface ParsedItem {
   content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent;
   sectionName?: string;
   sectionNumber?: number;
+  conceptKey?: string;
   error?: string;
 }
 
@@ -84,6 +92,7 @@ export function StudyBulkUploadModal({
   topicId,
   moduleId,
   resourceType,
+  concepts = [],
 }: StudyBulkUploadModalProps) {
   const containerId = chapterId || topicId;
   const bulkCreate = useBulkCreateStudyResources();
@@ -227,6 +236,14 @@ export function StudyBulkUploadModal({
         // Resolve section from parsed data
         const sectionId = resolveSectionId(sections, item.item.sectionName, item.item.sectionNumber);
         
+        // Resolve concept from parsed data
+        let conceptId: string | null = null;
+        if (item.item.conceptKey && concepts.length > 0) {
+          const normalizedKey = item.item.conceptKey.trim().toLowerCase();
+          const matched = concepts.find(c => c.concept_key.toLowerCase() === normalizedKey);
+          if (matched) conceptId = matched.id;
+        }
+        
         return {
           module_id: moduleId,
           chapter_id: chapterId || null,
@@ -235,6 +252,9 @@ export function StudyBulkUploadModal({
           title: item.item.title,
           content: item.item.content,
           section_id: sectionId,
+          concept_id: conceptId,
+          concept_auto_assigned: conceptId ? false : undefined,
+          concept_ai_confidence: null,
         };
       });
 
@@ -449,6 +469,16 @@ function parseLineByType(
   
   const { sectionName, sectionNumber } = getSectionInfo();
 
+  // Extract concept key from header mapping
+  const getConceptKey = (): string | undefined => {
+    if (headerMapping) {
+      const conceptKeyIdx = headerMapping['concept_key'];
+      if (conceptKeyIdx !== undefined) return values[conceptKeyIdx]?.trim() || undefined;
+    }
+    return undefined;
+  };
+  const conceptKey = getConceptKey();
+
   switch (type) {
     case 'flashcard': {
       if (values.length < 3) {
@@ -459,6 +489,7 @@ function parseLineByType(
         content: { front: values[1], back: values[2] } as FlashcardContent,
         sectionName,
         sectionNumber,
+        conceptKey,
       };
     }
     case 'table': {
@@ -533,6 +564,13 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
     'section_number': 'section_number',
     'sectionnumber': 'section_number',
     'section_num': 'section_number',
+    'concept_key': 'concept_key',
+    'conceptkey': 'concept_key',
+    'concept_id_key': 'concept_key',
+    'concept_title': 'concept_title',
+    'concepttitle': 'concept_title',
+    'concept_name': 'concept_title',
+    'conceptname': 'concept_title',
   };
   
   headers.forEach((header, index) => {
@@ -553,6 +591,7 @@ function isHeaderLine(line: string): boolean {
     lower.includes('front') || 
     lower.includes('headers') || 
     lower.includes('steps') || 
-    lower.includes('tips')
+    lower.includes('tips') ||
+    lower.includes('concept')
   );
 }
