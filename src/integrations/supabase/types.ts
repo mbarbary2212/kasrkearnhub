@@ -1159,6 +1159,7 @@ export type Database = {
       essays: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           contributing_department_id: string | null
@@ -1182,6 +1183,7 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -1205,6 +1207,7 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -1910,6 +1913,7 @@ export type Database = {
       lectures: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           contributing_department_id: string | null
@@ -1931,6 +1935,7 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -1952,6 +1957,7 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -2021,6 +2027,7 @@ export type Database = {
           chapter_id: string | null
           column_a_items: Json
           column_b_items: Json
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           contributing_department_id: string | null
@@ -2043,6 +2050,7 @@ export type Database = {
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -2065,6 +2073,7 @@ export type Database = {
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -2445,6 +2454,7 @@ export type Database = {
         Row: {
           chapter_id: string | null
           choices: Json
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           correct_key: string
@@ -2464,6 +2474,7 @@ export type Database = {
         Insert: {
           chapter_id?: string | null
           choices?: Json
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           correct_key: string
@@ -2483,6 +2494,7 @@ export type Database = {
         Update: {
           chapter_id?: string | null
           choices?: Json
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           correct_key?: string
@@ -2869,6 +2881,7 @@ export type Database = {
           answer_4: boolean
           answer_5: boolean
           chapter_id: string | null
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           created_at: string | null
@@ -2902,6 +2915,7 @@ export type Database = {
           answer_4: boolean
           answer_5: boolean
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           created_at?: string | null
@@ -2935,6 +2949,7 @@ export type Database = {
           answer_4?: boolean
           answer_5?: boolean
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           created_at?: string | null
@@ -3964,6 +3979,7 @@ export type Database = {
       study_resources: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           content: Json
@@ -3983,6 +3999,7 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           content?: Json
@@ -4002,6 +4019,7 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           content?: Json
@@ -4278,6 +4296,7 @@ export type Database = {
       true_false_questions: {
         Row: {
           chapter_id: string | null
+          concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
           concept_id: string | null
           contributing_department_id: string | null
@@ -4298,6 +4317,7 @@ export type Database = {
         }
         Insert: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null
@@ -4318,6 +4338,7 @@ export type Database = {
         }
         Update: {
           chapter_id?: string | null
+          concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
           concept_id?: string | null
           contributing_department_id?: string | null

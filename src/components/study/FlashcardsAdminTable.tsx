@@ -21,6 +21,8 @@ interface FlashcardRow {
   back: string;
   section_id: string | null;
   concept_id: string | null;
+  concept_auto_assigned: boolean | null;
+  concept_ai_confidence: number | null;
   resource: StudyResource;
 }
 
@@ -44,7 +46,9 @@ export function FlashcardsAdminTable({
         front: content?.front || '',
         back: content?.back || '',
         section_id: resource.section_id || null,
-        concept_id: (resource as any).concept_id || null,
+        concept_id: resource.concept_id || null,
+        concept_auto_assigned: resource.concept_auto_assigned ?? null,
+        concept_ai_confidence: resource.concept_ai_confidence ?? null,
         resource,
       };
     });

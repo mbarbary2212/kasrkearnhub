@@ -104,6 +104,7 @@ export function McqFormModal({
       section_id: sectionId,
       concept_id: conceptId,
       concept_auto_assigned: false,
+      concept_ai_confidence: null,
     };
 
     // Validate before submission
