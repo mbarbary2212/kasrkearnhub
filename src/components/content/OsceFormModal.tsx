@@ -161,6 +161,7 @@ export function OsceFormModal({
         updated_by: auth.user?.id || null,
         section_id: sectionId,
         concept_id: conceptId,
+        concept_auto_assigned: false,
       };
 
       if (isEditing && editingQuestion) {

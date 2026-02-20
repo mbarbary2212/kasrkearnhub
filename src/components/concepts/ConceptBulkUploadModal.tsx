@@ -21,9 +21,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, Copy } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, Copy, Wand2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { normalizeConceptKey } from '@/lib/conceptNormalization';
-import { useCreateConcept, useUpdateConcept, Concept } from '@/hooks/useConcepts';
+import { useCreateConcept, useUpdateConcept, useAutoAlignConcepts, useChapterConcepts, Concept } from '@/hooks/useConcepts';
 import * as XLSX from 'xlsx';
 
 type InputMode = 'lines' | 'csv' | 'file';
@@ -96,10 +97,12 @@ export function ConceptBulkUploadModal({
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [duplicatePolicy, setDuplicatePolicy] = useState<DuplicatePolicy>('skip');
   const [isImporting, setIsImporting] = useState(false);
-  const [step, setStep] = useState<'input' | 'preview'>('input');
+  const [step, setStep] = useState<'input' | 'preview' | 'align-prompt'>('input');
 
   const createConcept = useCreateConcept();
   const updateConcept = useUpdateConcept();
+  const autoAlign = useAutoAlignConcepts();
+  const { data: latestConcepts } = useChapterConcepts(chapterId);
 
   const existingKeyMap = useMemo(() => {
     const map = new Map<string, Concept>();
@@ -286,7 +289,13 @@ export function ConceptBulkUploadModal({
       if (updated > 0) parts.push(`${updated} updated`);
       if (skipped > 0) parts.push(`${skipped} skipped`);
       toast.success(parts.join(', '));
-      handleClose();
+
+      // Move to alignment prompt step if we created concepts and have a chapterId
+      if (created > 0 && chapterId) {
+        setStep('align-prompt');
+      } else {
+        handleClose();
+      }
     } catch {
       toast.error('Import failed partway through');
     } finally {
@@ -487,6 +496,75 @@ export function ConceptBulkUploadModal({
                 {isImporting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Confirm Import
               </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 'align-prompt' && (
+          <div className="space-y-4 py-4">
+            <div className="text-center space-y-3">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <h3 className="text-lg font-semibold">Concepts Imported!</h3>
+              <p className="text-sm text-muted-foreground">
+                Would you like AI to automatically tag existing content in this chapter with the relevant concepts?
+                Items the AI is unsure about will be left untagged.
+              </p>
+            </div>
+
+            {autoAlign.isPending && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm">Auto-aligning content…</span>
+                </div>
+                <Progress className="h-2" />
+              </div>
+            )}
+
+            {autoAlign.isSuccess && autoAlign.data && (
+              <div className="rounded-lg border p-3 space-y-1 text-sm">
+                <p className="font-medium">Results:</p>
+                <p className="text-green-600 dark:text-green-400">✓ {autoAlign.data.tagged} items tagged</p>
+                {autoAlign.data.skipped_low_confidence > 0 && (
+                  <p className="text-yellow-600 dark:text-yellow-400">⚠ {autoAlign.data.skipped_low_confidence} skipped (low confidence)</p>
+                )}
+                {autoAlign.data.already_tagged > 0 && (
+                  <p className="text-muted-foreground">• {autoAlign.data.already_tagged} already tagged</p>
+                )}
+                {autoAlign.data.errors > 0 && (
+                  <p className="text-destructive">✗ {autoAlign.data.errors} errors</p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                {autoAlign.isSuccess ? 'Done' : 'Skip'}
+              </Button>
+              {!autoAlign.isSuccess && (
+                <Button
+                  onClick={async () => {
+                    const conceptsToUse = latestConcepts || existingConcepts;
+                    if (!chapterId || conceptsToUse.length === 0) return;
+                    try {
+                      await autoAlign.mutateAsync({
+                        chapterId,
+                        conceptList: conceptsToUse.map(c => ({
+                          id: c.id,
+                          title: c.title,
+                          concept_key: c.concept_key,
+                        })),
+                      });
+                    } catch {
+                      toast.error('Auto-align failed');
+                    }
+                  }}
+                  disabled={autoAlign.isPending}
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  Align Now
+                </Button>
+              )}
             </DialogFooter>
           </div>
         )}

@@ -103,6 +103,7 @@ export function McqFormModal({
       difficulty: isAdmin ? difficulty : null,
       section_id: sectionId,
       concept_id: conceptId,
+      concept_auto_assigned: false,
     };
 
     // Validate before submission
