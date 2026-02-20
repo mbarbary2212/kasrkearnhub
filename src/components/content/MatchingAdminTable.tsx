@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
-import { useChapterConcepts } from '@/hooks/useConcepts';
 import type { MatchingQuestion } from '@/hooks/useMatchingQuestions';
 
 interface MatchingAdminTableProps {
@@ -25,7 +24,6 @@ export function MatchingAdminTable({
   const { data: chapterSections = [] } = useChapterSections(chapterId ?? undefined);
   const { data: topicSections = [] } = useTopicSections(topicId ?? undefined);
   const sections = chapterId ? chapterSections : topicSections;
-  const { data: concepts = [] } = useChapterConcepts(chapterId ?? undefined);
 
   const columns: ColumnConfig<MatchingQuestion>[] = useMemo(() => [
     {
@@ -74,11 +72,6 @@ export function MatchingAdminTable({
       },
     },
     {
-      key: 'concept',
-      header: 'Concept',
-      className: 'w-32',
-    },
-    {
       key: 'section',
       header: 'Section',
       className: 'w-32',
@@ -99,7 +92,6 @@ export function MatchingAdminTable({
       topicId={topicId ?? undefined}
       moduleId={moduleId}
       sections={sections}
-      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{
@@ -107,14 +99,6 @@ export function MatchingAdminTable({
         columns: [
           { key: 'instruction', header: 'Instruction' },
           { key: 'difficulty', header: 'Difficulty' },
-          {
-            key: 'concept_name',
-            header: 'Concept',
-            getValue: (item) => {
-              const concept = concepts.find(c => c.id === (item as any).concept_id);
-              return concept?.title || '';
-            }
-          },
           {
             key: 'section_name',
             header: 'Section',

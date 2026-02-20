@@ -27,7 +27,6 @@ import {
   type MatchItem,
 } from '@/hooks/useMatchingQuestions';
 import { SectionSelector } from '@/components/sections';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface MatchingQuestionFormModalProps {
   open: boolean;
@@ -64,7 +63,6 @@ export function MatchingQuestionFormModal({
   const [showExplanation, setShowExplanation] = useState(true);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | null>(null);
   const [sectionId, setSectionId] = useState<string | null>(null);
-  const [conceptId, setConceptId] = useState<string | null>(null);
 
   useEffect(() => {
     if (question) {
@@ -76,7 +74,6 @@ export function MatchingQuestionFormModal({
       setShowExplanation(question.show_explanation);
       setDifficulty(question.difficulty);
       setSectionId((question as any).section_id || null);
-      setConceptId((question as any).concept_id || null);
     } else {
       // Reset form
       setInstruction('Match the items in Column A with the correct items in Column B');
@@ -93,7 +90,6 @@ export function MatchingQuestionFormModal({
       setShowExplanation(true);
       setDifficulty(null);
       setSectionId(null);
-      setConceptId(null);
     }
   }, [question, open]);
 
@@ -151,9 +147,6 @@ export function MatchingQuestionFormModal({
       difficulty,
       topic_id: topicId,
       section_id: sectionId,
-      concept_id: conceptId,
-      concept_auto_assigned: false,
-      concept_ai_confidence: null,
     };
 
     if (question) {
@@ -350,14 +343,6 @@ export function MatchingQuestionFormModal({
             </div>
           )}
 
-          {/* Concept */}
-          <ConceptSelect
-            moduleId={moduleId}
-            chapterId={chapterId || undefined}
-            sectionId={sectionId}
-            value={conceptId}
-            onChange={setConceptId}
-          />
         </div>
         </div>
 

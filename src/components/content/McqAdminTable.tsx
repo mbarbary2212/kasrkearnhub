@@ -2,7 +2,6 @@ import { Badge } from '@/components/ui/badge';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { Mcq } from '@/hooks/useMcqs';
 import type { Section } from '@/hooks/useSections';
-import { useChapterConcepts } from '@/hooks/useConcepts';
 
 interface McqAdminTableProps {
   mcqs: Mcq[];
@@ -29,8 +28,6 @@ export function McqAdminTable({
   onEdit,
   onDelete,
 }: McqAdminTableProps) {
-  const { data: concepts = [] } = useChapterConcepts(chapterId);
-
   const columns: ColumnConfig<Mcq>[] = [
     {
       key: 'select',
@@ -55,11 +52,6 @@ export function McqAdminTable({
       ),
     },
     {
-      key: 'concept',
-      header: 'Concept',
-      className: 'w-32',
-    },
-    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
@@ -80,7 +72,6 @@ export function McqAdminTable({
       topicId={topicId}
       moduleId={moduleId}
       sections={sections}
-      concepts={concepts}
       onEdit={onEdit}
       onDelete={onDelete}
       csvExportConfig={{
@@ -90,14 +81,6 @@ export function McqAdminTable({
           { key: 'correct_key', header: 'Correct Key' },
           { key: 'difficulty', header: 'Difficulty' },
           { key: 'explanation', header: 'Explanation' },
-          { 
-            key: 'concept_name', 
-            header: 'Concept',
-            getValue: (item) => {
-              const concept = concepts.find(c => c.id === (item as any).concept_id);
-              return concept?.title || '';
-            }
-          },
           { 
             key: 'section_name', 
             header: 'Section',

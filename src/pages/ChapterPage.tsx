@@ -25,9 +25,7 @@ import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdow
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
-import { ConceptsManager, ConceptFilter } from '@/components/concepts';
 import { useChapterSectionsEnabled } from '@/hooks/useSections';
-import { useChapterConcepts } from '@/hooks/useConcepts';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -122,7 +120,7 @@ export default function ChapterPage() {
   
   // Section filter state (only for Resources and Practice, NOT for Test)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -153,7 +151,7 @@ export default function ChapterPage() {
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
-  const { data: chapterConcepts } = useChapterConcepts(chapterId);
+  
   
   // Filter clinical cases by chapter
   const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
@@ -172,14 +170,8 @@ export default function ChapterPage() {
         return sectionable.section_id === selectedSectionId;
       });
     }
-    if (selectedConceptId) {
-      filtered = filtered.filter(item => {
-        const conceptable = item as unknown as { concept_id?: string | null };
-        return conceptable.concept_id === selectedConceptId;
-      });
-    }
     return filtered;
-  }, [selectedSectionId, sectionsEnabled, selectedConceptId]);
+  }, [selectedSectionId, sectionsEnabled]);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
@@ -385,11 +377,8 @@ export default function ChapterPage() {
 
         {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
         {canManageContent && chapterId && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div>
             <SectionsManager chapterId={chapterId} canManage={canManageContent} />
-            {moduleId && (
-              <ConceptsManager chapterId={chapterId} moduleId={moduleId} canManage={canManageContent} />
-            )}
           </div>
         )}
 
@@ -466,12 +455,6 @@ export default function ChapterPage() {
                       onSectionChange={setSelectedSectionId}
                     />
                   )}
-                  <ConceptFilter
-                    chapterId={chapterId}
-                    moduleId={moduleId}
-                    selectedConceptId={selectedConceptId}
-                    onConceptChange={setSelectedConceptId}
-                  />
                 </div>
                 
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
@@ -676,12 +659,6 @@ export default function ChapterPage() {
                       onSectionChange={setSelectedSectionId}
                     />
                   )}
-                  <ConceptFilter
-                    chapterId={chapterId}
-                    moduleId={moduleId}
-                    selectedConceptId={selectedConceptId}
-                    onConceptChange={setSelectedConceptId}
-                  />
                 </div>
                 
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
@@ -886,7 +863,7 @@ export default function ChapterPage() {
               chapterId={chapterId}
               moduleId={moduleId}
               resourceType="flashcard"
-              concepts={chapterConcepts?.map(c => ({ id: c.id, concept_key: c.concept_key, title: c.title })) || []}
+              resourceType="flashcard"
             />
             <MindMapBulkUploadModal
               open={mindMapBulkOpen}

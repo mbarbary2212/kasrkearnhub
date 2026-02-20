@@ -20,7 +20,6 @@ import { toast } from 'sonner';
 import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
 import { McqFormSchema } from '@/lib/validators';
 import { SectionSelector } from '@/components/sections';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface McqFormModalProps {
   open: boolean;
@@ -54,7 +53,6 @@ export function McqFormModal({
   const [explanation, setExplanation] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [sectionId, setSectionId] = useState<string | null>(null);
-  const [conceptId, setConceptId] = useState<string | null>(null);
 
   const createMutation = useCreateMcq();
   const updateMutation = useUpdateMcq();
@@ -68,7 +66,6 @@ export function McqFormModal({
       setExplanation(mcq.explanation || '');
       setDifficulty(mcq.difficulty || 'medium');
       setSectionId(mcq.section_id || null);
-      setConceptId((mcq as any).concept_id || null);
     } else {
       // Reset form for new MCQ
       setStem('');
@@ -77,7 +74,6 @@ export function McqFormModal({
       setExplanation('');
       setDifficulty('medium');
       setSectionId(null);
-      setConceptId(null);
     }
   }, [mcq, open]);
 
@@ -102,9 +98,6 @@ export function McqFormModal({
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
       section_id: sectionId,
-      concept_id: conceptId,
-      concept_auto_assigned: false,
-      concept_ai_confidence: null,
     };
 
     // Validate before submission
@@ -229,17 +222,6 @@ export function McqFormModal({
               topicId={topicId || undefined}
               value={sectionId}
               onChange={setSectionId}
-            />
-          )}
-
-          {/* Concept Selector - Admin only */}
-          {isAdmin && (
-            <ConceptSelect
-              moduleId={moduleId}
-              chapterId={chapterId || undefined}
-              sectionId={sectionId}
-              value={conceptId}
-              onChange={setConceptId}
             />
           )}
 

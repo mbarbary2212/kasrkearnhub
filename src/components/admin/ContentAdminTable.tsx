@@ -33,21 +33,15 @@ import { useBulkDeleteContent, useBulkUpdateSection, type ContentTableName } fro
 import { exportToCsv, type ExportColumn } from '@/lib/csvExport';
 import type { Section } from '@/hooks/useSections';
 import { BulkSectionAssignment } from '@/components/sections';
-import { BulkConceptAssignment } from '@/components/content/BulkConceptAssignment';
 
 export interface ColumnConfig<T> {
-  key: keyof T | 'actions' | 'select' | 'section' | 'concept';
+  key: keyof T | 'actions' | 'select' | 'section';
   header: string;
   render?: (item: T) => React.ReactNode;
   className?: string;
 }
 
-interface ConceptInfo {
-  id: string;
-  title: string;
-}
-
-interface ContentAdminTableProps<T extends { id: string; section_id?: string | null; concept_id?: string | null }> {
+interface ContentAdminTableProps<T extends { id: string; section_id?: string | null }> {
   data: T[];
   columns: ColumnConfig<T>[];
   contentTable: ContentTableName;
@@ -57,7 +51,7 @@ interface ContentAdminTableProps<T extends { id: string; section_id?: string | n
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   sections?: Section[];
-  concepts?: ConceptInfo[];
+  
   csvExportConfig?: {
     filename: string;
     columns: ExportColumn<T>[];
@@ -65,7 +59,7 @@ interface ContentAdminTableProps<T extends { id: string; section_id?: string | n
   emptyMessage?: string;
 }
 
-export function ContentAdminTable<T extends { id: string; section_id?: string | null; concept_id?: string | null }>({
+export function ContentAdminTable<T extends { id: string; section_id?: string | null }>({
   data,
   columns,
   contentTable,
@@ -75,7 +69,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   onEdit,
   onDelete,
   sections = [],
-  concepts = [],
+  
   csvExportConfig,
   emptyMessage = 'No items found',
 }: ContentAdminTableProps<T>) {
@@ -139,7 +133,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 
   const handleExportCsv = () => {
     if (!csvExportConfig) return;
-    exportToCsv(data, csvExportConfig.columns, csvExportConfig.filename, sections, concepts);
+    exportToCsv(data, csvExportConfig.columns, csvExportConfig.filename, sections);
     toast.success('CSV exported');
   };
 
@@ -148,10 +142,6 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
     return sections.find(s => s.id === sectionId)?.name || null;
   }, [sections]);
 
-  const getConceptName = useCallback((conceptId: string | null | undefined) => {
-    if (!conceptId) return null;
-    return concepts.find(c => c.id === conceptId)?.title || null;
-  }, [concepts]);
 
   // Render column cell content
   const renderCell = (item: T, column: ColumnConfig<T>) => {
@@ -162,26 +152,6 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
           onCheckedChange={(checked) => toggleOne(item.id, !!checked)}
           aria-label="Select row"
         />
-      );
-    }
-
-    if (column.key === 'concept') {
-      const conceptName = getConceptName((item as any).concept_id);
-      const isAutoAssigned = (item as any).concept_auto_assigned === true;
-      const confidence = (item as any).concept_ai_confidence;
-      return conceptName ? (
-        <div className="flex items-center gap-1 flex-wrap">
-          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800">{conceptName}</Badge>
-          {isAutoAssigned ? (
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 rounded" title={confidence != null ? `AI confidence: ${Math.round(confidence * 100)}%` : 'AI-assigned'}>
-              AI{confidence != null ? ` ${Math.round(confidence * 100)}%` : ''}
-            </span>
-          ) : (
-            <span className="text-[10px] font-medium text-primary/60 bg-primary/5 px-1 rounded">Manual</span>
-          )}
-        </div>
-      ) : (
-        <span className="text-muted-foreground text-xs">—</span>
       );
     }
 
@@ -295,15 +265,6 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                 <BulkSectionAssignment
                   chapterId={chapterId}
                   topicId={topicId}
-                  selectedIds={Array.from(selectedIds)}
-                  contentTable={contentTable}
-                  onComplete={clearSelection}
-                />
-              )}
-              {moduleId && (
-                <BulkConceptAssignment
-                  moduleId={moduleId}
-                  chapterId={chapterId}
                   selectedIds={Array.from(selectedIds)}
                   contentTable={contentTable}
                   onComplete={clearSelection}

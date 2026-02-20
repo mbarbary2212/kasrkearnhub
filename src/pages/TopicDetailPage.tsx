@@ -51,7 +51,7 @@ import { useTopicSectionsEnabled } from '@/hooks/useSections';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
-import { ConceptsManager, ConceptFilter } from '@/components/concepts';
+
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -107,7 +107,7 @@ export default function TopicDetailPage() {
   
   // Section and concept filter state
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  
 
   // Deleted items toggle state
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
@@ -207,14 +207,8 @@ export default function TopicDetailPage() {
         return sectionableItem.section_id === selectedSectionId;
       });
     }
-    if (selectedConceptId) {
-      filtered = filtered.filter(item => {
-        const conceptable = item as unknown as { concept_id?: string | null };
-        return conceptable.concept_id === selectedConceptId;
-      });
-    }
     return filtered;
-  }, [selectedSectionId, sectionsEnabled, selectedConceptId]);
+  }, [selectedSectionId, sectionsEnabled]);
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -373,11 +367,8 @@ export default function TopicDetailPage() {
 
         {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
         {canManageContent && topicId && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div>
             <SectionsManager topicId={topicId} canManage={canManageContent} />
-            {moduleId && (
-              <ConceptsManager topicId={topicId} moduleId={moduleId} canManage={canManageContent} />
-            )}
           </div>
         )}
 
@@ -452,12 +443,6 @@ export default function TopicDetailPage() {
                       onSectionChange={setSelectedSectionId}
                     />
                   )}
-                  <ConceptFilter
-                    topicId={topicId}
-                    moduleId={moduleId}
-                    selectedConceptId={selectedConceptId}
-                    onConceptChange={setSelectedConceptId}
-                  />
                 </div>
                 
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
@@ -663,12 +648,6 @@ export default function TopicDetailPage() {
                       onSectionChange={setSelectedSectionId}
                     />
                   )}
-                  <ConceptFilter
-                    topicId={topicId}
-                    moduleId={moduleId}
-                    selectedConceptId={selectedConceptId}
-                    onConceptChange={setSelectedConceptId}
-                  />
                 </div>
                 
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}

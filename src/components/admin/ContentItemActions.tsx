@@ -24,7 +24,7 @@ import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { SectionSelector } from '@/components/sections';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
+
 
 interface ContentItemActionsProps {
   id: string;
@@ -34,7 +34,7 @@ interface ContentItemActionsProps {
   videoUrl?: string | null;
   fileUrl?: string | null;
   sectionId?: string | null;
-  conceptId?: string | null;
+  
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
@@ -68,7 +68,7 @@ export default function ContentItemActions({
   videoUrl,
   fileUrl,
   sectionId,
-  conceptId,
+  
   contentType,
   moduleId,
   chapterId,
@@ -100,7 +100,7 @@ export default function ContentItemActions({
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
   const [editSectionId, setEditSectionId] = useState<string | null>(sectionId || null);
-  const [editConceptId, setEditConceptId] = useState<string | null>(conceptId || null);
+  
 
   // Sync edit state with props when dialog opens
   const handleOpenEdit = () => {
@@ -110,7 +110,7 @@ export default function ContentItemActions({
     setEditVideoUrl(videoUrl || '');
     setEditFileUrl(fileUrl || '');
     setEditSectionId(sectionId || null);
-    setEditConceptId(conceptId || null);
+    
     setEditOpen(true);
   };
 
@@ -153,9 +153,6 @@ export default function ContentItemActions({
       }
 
       data.section_id = editSectionId;
-      if (contentType === 'essay') {
-        data.concept_id = editConceptId;
-      }
 
       await updateContent.mutateAsync({ id, data, moduleId, chapterId });
       toast.success('Updated successfully');
@@ -294,15 +291,6 @@ export default function ContentItemActions({
                 value={editSectionId}
                 onChange={setEditSectionId}
               />
-              {contentType === 'essay' && (
-                <ConceptSelect
-                  moduleId={moduleId}
-                  chapterId={chapterId}
-                  sectionId={editSectionId}
-                  value={editConceptId}
-                  onChange={setEditConceptId}
-                />
-              )}
             </div>
           </div>
           <div className="shrink-0 pt-2 border-t">

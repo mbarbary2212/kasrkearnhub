@@ -10,7 +10,6 @@ import { useCreateOsceQuestion, useUpdateOsceQuestion, uploadOsceImage, OsceQues
 import { useAuthContext } from '@/contexts/AuthContext';
 
 import { SectionSelector } from '@/components/sections';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface OsceFormModalProps {
   open: boolean;
@@ -40,7 +39,6 @@ export function OsceFormModal({
   const [uploading, setUploading] = useState(false);
   const [showImageReplace, setShowImageReplace] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
-  const [conceptId, setConceptId] = useState<string | null>(null);
 
   const isEditing = !!editingQuestion;
 
@@ -71,7 +69,6 @@ export function OsceFormModal({
       ]);
       setShowImageReplace(false);
       setSectionId((editingQuestion as any).section_id || null);
-      setConceptId((editingQuestion as any).concept_id || null);
     } else {
       resetForm();
     }
@@ -86,7 +83,6 @@ export function OsceFormModal({
     setExplanations(['', '', '', '', '']);
     setShowImageReplace(false);
     setSectionId(null);
-    setConceptId(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,9 +156,6 @@ export function OsceFormModal({
         explanation_5: explanations[4].trim() || null,
         updated_by: auth.user?.id || null,
         section_id: sectionId,
-        concept_id: conceptId,
-        concept_auto_assigned: false,
-        concept_ai_confidence: null,
       };
 
       if (isEditing && editingQuestion) {
@@ -281,15 +274,6 @@ export function OsceFormModal({
               chapterId={chapterId}
               value={sectionId}
               onChange={setSectionId}
-            />
-
-            {/* Concept Selector */}
-            <ConceptSelect
-              moduleId={moduleId}
-              chapterId={chapterId}
-              sectionId={sectionId}
-              value={conceptId}
-              onChange={setConceptId}
             />
 
             {/* Statements */}
