@@ -42,7 +42,6 @@ import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 
-
 interface UserWithRole extends Profile {
   role: AppRole;
   departmentAssignments?: DepartmentAdmin[];
@@ -254,10 +253,10 @@ interface V2CheckResult {
 }
 
 // Orphan check types
-type OrphanCheckType = 'mcqs' | 'mcq_sets' | 'essays' | 'osce' | 'flashcards' | 'lectures' | 'matching' | 'clinical_cases' | 'study_resources';
+type OrphanCheckType = 'mcqs' | 'mcq_sets' | 'essays' | 'osce' | 'flashcards' | 'lectures' | 'matching' | 'case_scenarios' | 'clinical_cases' | 'study_resources';
 
 // Quality check types
-type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
+type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'case_scenarios' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
 
 // Integrity Check Tab Component (All Admins)
 function IntegrityCheckTab() {
@@ -299,6 +298,10 @@ function IntegrityCheckTab() {
   const [orphanMatchingError, setOrphanMatchingError] = useState<string | null>(null);
   const [orphanMatchingHasRun, setOrphanMatchingHasRun] = useState(false);
 
+  const [orphanCaseScenariosRunning, setOrphanCaseScenariosRunning] = useState(false);
+  const [orphanCaseScenariosResult, setOrphanCaseScenariosResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanCaseScenariosError, setOrphanCaseScenariosError] = useState<string | null>(null);
+  const [orphanCaseScenariosHasRun, setOrphanCaseScenariosHasRun] = useState(false);
 
   const [orphanClinicalCasesRunning, setOrphanClinicalCasesRunning] = useState(false);
   const [orphanClinicalCasesResult, setOrphanClinicalCasesResult] = useState<OrphanCheckResult | null>(null);
@@ -336,6 +339,10 @@ function IntegrityCheckTab() {
   const [qualityMatchingError, setQualityMatchingError] = useState<string | null>(null);
   const [qualityMatchingHasRun, setQualityMatchingHasRun] = useState(false);
 
+  const [qualityCaseScenariosRunning, setQualityCaseScenariosRunning] = useState(false);
+  const [qualityCaseScenariosResult, setQualityCaseScenariosResult] = useState<IntegrityIssue | null>(null);
+  const [qualityCaseScenariosError, setQualityCaseScenariosError] = useState<string | null>(null);
+  const [qualityCaseScenariosHasRun, setQualityCaseScenariosHasRun] = useState(false);
 
   const [qualityMcqSetsRunning, setQualityMcqSetsRunning] = useState(false);
   const [qualityMcqSetsResult, setQualityMcqSetsResult] = useState<IntegrityIssue | null>(null);
@@ -373,6 +380,7 @@ function IntegrityCheckTab() {
     flashcards: { setRunning: setOrphanFlashcardsRunning, setResult: setOrphanFlashcardsResult, setError: setOrphanFlashcardsError, setHasRun: setOrphanFlashcardsHasRun },
     lectures: { setRunning: setOrphanLecturesRunning, setResult: setOrphanLecturesResult, setError: setOrphanLecturesError, setHasRun: setOrphanLecturesHasRun },
     matching: { setRunning: setOrphanMatchingRunning, setResult: setOrphanMatchingResult, setError: setOrphanMatchingError, setHasRun: setOrphanMatchingHasRun },
+    case_scenarios: { setRunning: setOrphanCaseScenariosRunning, setResult: setOrphanCaseScenariosResult, setError: setOrphanCaseScenariosError, setHasRun: setOrphanCaseScenariosHasRun },
     clinical_cases: { setRunning: setOrphanClinicalCasesRunning, setResult: setOrphanClinicalCasesResult, setError: setOrphanClinicalCasesError, setHasRun: setOrphanClinicalCasesHasRun },
     study_resources: { setRunning: setOrphanStudyResourcesRunning, setResult: setOrphanStudyResourcesResult, setError: setOrphanStudyResourcesError, setHasRun: setOrphanStudyResourcesHasRun },
   };
@@ -390,6 +398,7 @@ function IntegrityCheckTab() {
     clinical_cases: { setRunning: setQualityClinicalRunning, setResult: setQualityClinicalResult, setError: setQualityClinicalError, setHasRun: setQualityClinicalHasRun, issueType: 'clinical_case_integrity' },
     lectures: { setRunning: setQualityLecturesRunning, setResult: setQualityLecturesResult, setError: setQualityLecturesError, setHasRun: setQualityLecturesHasRun, issueType: 'lecture_integrity' },
     matching: { setRunning: setQualityMatchingRunning, setResult: setQualityMatchingResult, setError: setQualityMatchingError, setHasRun: setQualityMatchingHasRun, issueType: 'matching_integrity' },
+    case_scenarios: { setRunning: setQualityCaseScenariosRunning, setResult: setQualityCaseScenariosResult, setError: setQualityCaseScenariosError, setHasRun: setQualityCaseScenariosHasRun, issueType: 'case_scenario_integrity' },
     mcq_sets: { setRunning: setQualityMcqSetsRunning, setResult: setQualityMcqSetsResult, setError: setQualityMcqSetsError, setHasRun: setQualityMcqSetsHasRun, issueType: 'mcq_set_integrity' },
     guided_explanation: { setRunning: setQualityGuidedRunning, setResult: setQualityGuidedResult, setError: setQualityGuidedError, setHasRun: setQualityGuidedHasRun, issueType: 'guided_explanation_integrity' },
     mind_map: { setRunning: setQualityMindMapRunning, setResult: setQualityMindMapResult, setError: setQualityMindMapError, setHasRun: setQualityMindMapHasRun, issueType: 'mind_map_integrity' },
@@ -773,6 +782,7 @@ function IntegrityCheckTab() {
     { type: 'flashcards', title: 'Flashcards', description: 'Flashcards pointing to deleted chapters', icon: <Layers className="w-4 h-4" />, running: orphanFlashcardsRunning, result: orphanFlashcardsResult, error: orphanFlashcardsError, hasRun: orphanFlashcardsHasRun },
     { type: 'lectures', title: 'Chapters', description: 'Chapter videos pointing to deleted chapters', icon: <Video className="w-4 h-4" />, running: orphanLecturesRunning, result: orphanLecturesResult, error: orphanLecturesError, hasRun: orphanLecturesHasRun },
     { type: 'matching', title: 'Matching Questions', description: 'Matching questions pointing to deleted chapters', icon: <ArrowLeftRight className="w-4 h-4" />, running: orphanMatchingRunning, result: orphanMatchingResult, error: orphanMatchingError, hasRun: orphanMatchingHasRun },
+    { type: 'case_scenarios', title: 'Case Scenarios', description: 'Case scenarios pointing to deleted chapters', icon: <FileText className="w-4 h-4" />, running: orphanCaseScenariosRunning, result: orphanCaseScenariosResult, error: orphanCaseScenariosError, hasRun: orphanCaseScenariosHasRun },
     { type: 'clinical_cases', title: 'Clinical Cases', description: 'Clinical cases pointing to deleted chapters', icon: <HeartPulse className="w-4 h-4" />, running: orphanClinicalCasesRunning, result: orphanClinicalCasesResult, error: orphanClinicalCasesError, hasRun: orphanClinicalCasesHasRun },
     { type: 'study_resources', title: 'Study Resources', description: 'Study resources pointing to deleted chapters', icon: <BookOpen className="w-4 h-4" />, running: orphanStudyResourcesRunning, result: orphanStudyResourcesResult, error: orphanStudyResourcesError, hasRun: orphanStudyResourcesHasRun },
   ];
@@ -785,6 +795,7 @@ function IntegrityCheckTab() {
     { type: 'clinical_cases', title: 'Clinical Case Quality', description: 'Cases with empty titles, introductions, or no location', icon: <HeartPulse className="w-4 h-4" />, running: qualityClinicalRunning, result: qualityClinicalResult, error: qualityClinicalError, hasRun: qualityClinicalHasRun },
     { type: 'lectures', title: 'Chapter Quality', description: 'Videos with missing titles, no URL, or no location', icon: <Video className="w-4 h-4" />, running: qualityLecturesRunning, result: qualityLecturesResult, error: qualityLecturesError, hasRun: qualityLecturesHasRun },
     { type: 'matching', title: 'Matching Question Quality', description: 'Questions with empty columns or no match pairs', icon: <ArrowLeftRight className="w-4 h-4" />, running: qualityMatchingRunning, result: qualityMatchingResult, error: qualityMatchingError, hasRun: qualityMatchingHasRun },
+    { type: 'case_scenarios', title: 'Case Scenario Quality', description: 'Scenarios with missing history or model answers', icon: <FileText className="w-4 h-4" />, running: qualityCaseScenariosRunning, result: qualityCaseScenariosResult, error: qualityCaseScenariosError, hasRun: qualityCaseScenariosHasRun },
     { type: 'guided_explanation', title: 'Guided Explanation Quality', description: 'Explanations with missing topics or fewer than 3 questions', icon: <Lightbulb className="w-4 h-4" />, running: qualityGuidedRunning, result: qualityGuidedResult, error: qualityGuidedError, hasRun: qualityGuidedHasRun },
     { type: 'mind_map', title: 'Mind Map Quality', description: 'Maps with no image and no structured content', icon: <Network className="w-4 h-4" />, running: qualityMindMapRunning, result: qualityMindMapResult, error: qualityMindMapError, hasRun: qualityMindMapHasRun },
   ];
@@ -869,7 +880,6 @@ function IntegrityCheckTab() {
                 ))}
               </div>
             </TabsContent>
-
           </Tabs>
         </CardContent>
       </Card>

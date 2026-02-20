@@ -90,25 +90,9 @@ export function MatchingAdminTable({
       contentTable="matching_questions"
       chapterId={chapterId ?? undefined}
       topicId={topicId ?? undefined}
-      moduleId={moduleId}
       sections={sections}
       onEdit={onEdit}
       onDelete={onDelete}
-      csvExportConfig={{
-        filename: 'matching-questions-export',
-        columns: [
-          { key: 'instruction', header: 'Instruction' },
-          { key: 'difficulty', header: 'Difficulty' },
-          {
-            key: 'section_name',
-            header: 'Section',
-            getValue: (item, sectionsList) => {
-              const section = sectionsList?.find(s => s.id === item.section_id);
-              return section?.name || '';
-            }
-          },
-        ],
-      }}
       emptyMessage="No matching questions available"
     />
   );

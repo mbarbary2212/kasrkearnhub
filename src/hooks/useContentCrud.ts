@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLog';
 
-type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals';
+type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals' | 'clinical_cases';
 
 export function useUpdateContent(table: ContentTable) {
   const queryClient = useQueryClient();

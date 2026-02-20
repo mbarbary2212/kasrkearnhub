@@ -1,14 +1,9 @@
 import type { Section } from '@/hooks/useSections';
 
-export interface ConceptLookup {
-  id: string;
-  title: string;
-}
-
 export interface ExportColumn<T> {
   key: keyof T | string;
   header: string;
-  getValue?: (item: T, sections?: Section[], concepts?: ConceptLookup[]) => string;
+  getValue?: (item: T, sections?: Section[]) => string;
 }
 
 // Escape a CSV field value
@@ -42,64 +37,7 @@ export function resolveSectionId(
   sectionName?: string,
   sectionNumber?: number | string
 ): string | null {
-  // Priority 1: Match by section_name (case-insensitive, exact)
-  if (sectionName && sectionName.trim()) {
-    const normalizedInput = sectionName.toLowerCase().trim();
-    const exactMatch = sections.find(s => 
-      s.name.toLowerCase().trim() === normalizedInput
-    );
-    if (exactMatch) return exactMatch.id;
-
-    // Strip leading number prefix (e.g., "3.2 Deep Vein Thrombosis" → "Deep Vein Thrombosis")
-    const strippedInput = normalizedInput.replace(/^\d+(\.\d+)?\s+/, '');
-    
-    // Check stripped input for exact match
-    const strippedExact = sections.find(s => 
-      s.name.toLowerCase().trim() === strippedInput
-    );
-    if (strippedExact) return strippedExact.id;
-
-    // Partial/contains match on section_name
-    let bestMatch: Section | null = null;
-    let bestLength = 0;
-    
-    for (const s of sections) {
-      const dbName = s.name.toLowerCase().trim();
-      if (dbName.length < 3) continue;
-      
-      if (strippedInput.includes(dbName) || dbName.includes(strippedInput)) {
-        const matchLen = Math.min(dbName.length, strippedInput.length);
-        if (matchLen > bestLength) {
-          bestLength = matchLen;
-          bestMatch = s;
-        }
-      }
-    }
-    
-    if (bestMatch) return bestMatch.id;
-    
-    // Word-overlap scoring: match sections sharing significant words
-    const stopWords = new Set(['of', 'the', 'and', 'in', 'a', 'an', 'to', 'for', 'with', 'on']);
-    const inputWords = strippedInput.replace(/[(),-]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
-    
-    if (inputWords.length > 0) {
-      let bestOverlap = 0;
-      let bestOverlapSection: Section | null = null;
-      
-      for (const s of sections) {
-        const dbWords = s.name.toLowerCase().replace(/[(),-]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
-        const overlap = inputWords.filter(w => dbWords.some(dw => dw.includes(w) || w.includes(dw))).length;
-        if (overlap >= 2 && overlap > bestOverlap) {
-          bestOverlap = overlap;
-          bestOverlapSection = s;
-        }
-      }
-      
-      if (bestOverlapSection) return bestOverlapSection.id;
-    }
-  }
-  
-  // Fallback: Match by section_number (optional)
+  // Priority 1: Match by section_number (now stored as TEXT, e.g., "3.1", "3.10")
   if (sectionNumber !== undefined && sectionNumber !== '') {
     const sectionNumStr = String(sectionNumber).trim();
     if (sectionNumStr) {
@@ -108,25 +46,23 @@ export function resolveSectionId(
     }
   }
   
+  // Priority 2: Match by section_name (case-insensitive)
+  if (sectionName && sectionName.trim()) {
+    const match = sections.find(s => 
+      s.name.toLowerCase().trim() === sectionName.toLowerCase().trim()
+    );
+    if (match) return match.id;
+  }
+  
   return null;
 }
 
 // Generic CSV export function
-export function resolveConceptName(
-  conceptId: string | null | undefined,
-  concepts: ConceptLookup[]
-): string {
-  if (!conceptId) return '';
-  const concept = concepts.find(c => c.id === conceptId);
-  return concept?.title || '';
-}
-
 export function exportToCsv<T>(
   items: T[],
   columns: ExportColumn<T>[],
   filename: string,
-  sections?: Section[],
-  concepts?: ConceptLookup[]
+  sections?: Section[]
 ): void {
   // Generate header row
   const headers = columns.map(col => escapeField(col.header)).join(',');
@@ -135,7 +71,7 @@ export function exportToCsv<T>(
   const rows = items.map(item => {
     return columns.map(col => {
       if (col.getValue) {
-        return escapeField(col.getValue(item, sections, concepts));
+        return escapeField(col.getValue(item, sections));
       }
       const key = col.key as keyof T;
       const value = item[key];
@@ -162,26 +98,19 @@ export function exportToCsv<T>(
 // Pre-defined column configurations for common content types
 export const FLASHCARD_EXPORT_COLUMNS: ExportColumn<{
   title: string;
-  content?: { front?: string; back?: string };
-  front?: string;
-  back?: string;
+  content: { front?: string; back?: string };
   section_id?: string | null;
 }>[] = [
   { key: 'title', header: 'title' },
   { 
     key: 'front', 
     header: 'front',
-    getValue: (item) => item.content?.front || (item as any).front || ''
+    getValue: (item) => item.content?.front || ''
   },
   { 
     key: 'back', 
     header: 'back',
-    getValue: (item) => item.content?.back || (item as any).back || ''
-  },
-  {
-    key: 'concept_name',
-    header: 'concept_name',
-    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
+    getValue: (item) => item.content?.back || ''
   },
   {
     key: 'section_name',
@@ -217,11 +146,6 @@ export const MCQ_EXPORT_COLUMNS: ExportColumn<{
   { key: 'explanation', header: 'explanation' },
   { key: 'difficulty', header: 'difficulty' },
   {
-    key: 'concept_name',
-    header: 'concept_name',
-    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
-  },
-  {
     key: 'section_name',
     header: 'section_name',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).name
@@ -243,11 +167,6 @@ export const LECTURE_EXPORT_COLUMNS: ExportColumn<{
   { key: 'duration', header: 'duration' },
   { key: 'video_url', header: 'video_url' },
   {
-    key: 'concept_name',
-    header: 'concept_name',
-    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
-  },
-  {
     key: 'section_name',
     header: 'section_name',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).name
@@ -268,11 +187,6 @@ export const ESSAY_EXPORT_COLUMNS: ExportColumn<{
   { key: 'title', header: 'title' },
   { key: 'question', header: 'question' },
   { key: 'model_answer', header: 'model_answer' },
-  {
-    key: 'concept_name',
-    header: 'concept_name',
-    getValue: (item, _sections, concepts) => resolveConceptName((item as any).concept_id, concepts || [])
-  },
   {
     key: 'section_name',
     header: 'section_name',

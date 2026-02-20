@@ -133,9 +133,6 @@ export interface StudyResource {
   is_deleted: boolean;
   folder?: string | null;
   section_id?: string | null;
-  concept_id?: string | null;
-  concept_auto_assigned?: boolean | null;
-  concept_ai_confidence?: number | null;
 }
 
 export interface StudyResourceInsert {
@@ -149,9 +146,6 @@ export interface StudyResourceInsert {
   created_by?: string;
   folder?: string | null;
   section_id?: string | null;
-  concept_id?: string | null;
-  concept_auto_assigned?: boolean;
-  concept_ai_confidence?: number | null;
 }
 
 // Fetch study resources for a chapter (optionally include deleted)
@@ -431,9 +425,6 @@ export function useBulkCreateStudyResources() {
         content: r.content,
         display_order: r.display_order,
         section_id: r.section_id || null,
-        concept_id: r.concept_id || null,
-        concept_auto_assigned: r.concept_auto_assigned ?? null,
-        concept_ai_confidence: r.concept_ai_confidence ?? null,
         created_by: userData.user?.id,
         folder: r.folder,
       }));

@@ -35,7 +35,6 @@ export interface ClinicalCase {
   chapter_id: string | null;
   topic_id: string | null;
   section_id: string | null;
-  concept_id: string | null;
   case_mode: CaseMode;
   level: CaseLevel;
   estimated_minutes: number;
@@ -58,7 +57,6 @@ export interface ClinicalCase {
   module?: { name: string } | null;
   chapter?: { title: string; chapter_number: number } | null;
   topic?: { name: string } | null;
-  concept?: { id: string; title: string } | null;
   stages?: ClinicalCaseStage[];
   stage_count?: number;
 }
@@ -112,7 +110,6 @@ export interface ClinicalCaseFormData {
   chapter_id?: string;
   topic_id?: string;
   section_id?: string;
-  concept_id?: string;
   case_mode: CaseMode;
   level: CaseLevel;
   estimated_minutes: number;

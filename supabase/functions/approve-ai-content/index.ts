@@ -153,7 +153,7 @@ serve(async (req) => {
     );
   }
 
-   let body: { job_id?: string; concept_id?: string };
+  let body: { job_id?: string };
   try {
     body = await req.json();
   } catch {
@@ -161,7 +161,6 @@ serve(async (req) => {
   }
 
   const jobId = body?.job_id;
-  const manualConceptId = body?.concept_id || null;
   if (!jobId) {
     return jsonResponse({ error: "Missing job_id", step: "validation", items: [], warnings: [] }, 400);
   }
@@ -255,42 +254,11 @@ serve(async (req) => {
     );
   }
 
-  // Build concept lookup map (concept_key TEXT → concept_id UUID)
-  let conceptLookup = new Map<string, string>();
-  {
-    let conceptQuery = serviceClient
-      .from("concepts")
-      .select("id, concept_key")
-      .eq("module_id", moduleId);
-    
-    if (chapterId) {
-      conceptQuery = conceptQuery.eq("chapter_id", chapterId);
-    }
-    
-    const { data: concepts } = await conceptQuery;
-    conceptLookup = new Map(
-      (concepts || [])
-        .filter((c: any) => c.concept_key)
-        .map((c: any) => [c.concept_key, c.id])
-    );
-  }
-
   // Helper to map section_number string to section_id UUID
   const getSectionId = (item: any): string | null => {
     if (!item.section_number) return null;
     const sectionNum = String(item.section_number).trim();
     return sectionLookup.get(sectionNum) || null;
-  };
-
-  // Helper to map concept_key string to concept_id UUID, falling back to manual selection
-  const getConceptId = (item: any): string | null => {
-    if (item.concept_key) {
-      const key = String(item.concept_key).trim();
-      const resolved = conceptLookup.get(key);
-      if (resolved) return resolved;
-    }
-    // Fall back to manually selected concept_id from the request
-    return manualConceptId;
   };
 
   // Insert into target tables
@@ -306,7 +274,6 @@ serve(async (req) => {
           module_id: moduleId,
           chapter_id: chapterId,
           section_id: getSectionId(normalized),
-          concept_id: getConceptId(normalized),
           stem: normalized.stem,
           choices: normalized.choices,
           correct_key: normalized.correct_key,
@@ -336,7 +303,6 @@ serve(async (req) => {
       const flashcardsToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         resource_type: "flashcard",
         title: (item.front?.substring(0, 50) || "Flashcard") as string,
         content: { front: item.front, back: item.back },
@@ -353,22 +319,20 @@ serve(async (req) => {
         throw new Error(`Failed to insert flashcards: ${error.message}`);
       }
     } else if (contentType === "case_scenario") {
-      // Legacy case_scenario type now inserts into virtual_patient_cases
       const casesToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
         title: item.title,
-        intro_text: item.case_history || item.intro_text || "",
-        level: "intermediate",
-        estimated_minutes: 15,
-        tags: [],
-        is_published: false,
-        is_deleted: false,
+        case_history: item.case_history,
+        case_questions: item.case_questions,
+        model_answer: item.model_answer,
+        display_order: idx,
         created_by: user.id,
+        is_deleted: false,
       }));
 
       const { error } = await serviceClient
-        .from("virtual_patient_cases")
+        .from("case_scenarios")
         .insert(casesToInsert);
       if (error) {
         console.error(`[${jobId}] Case scenario insert error:`, error.message);
@@ -378,7 +342,6 @@ serve(async (req) => {
       const essaysToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         title: item.title,
         question: item.question,
         model_answer: item.model_answer || null,
@@ -408,7 +371,6 @@ serve(async (req) => {
         return {
           module_id: moduleId,
           chapter_id: chapterId,
-          concept_id: getConceptId(normalized),
           history_text: normalized.history_text,
           statement_1: normalized.statement_1,
           answer_1: normalized.answer_1,
@@ -442,7 +404,6 @@ serve(async (req) => {
       const matchingToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         instruction: item.instruction,
         column_a_items: ensureArray(item.column_a_items),
         column_b_items: ensureArray(item.column_b_items),
@@ -589,7 +550,6 @@ serve(async (req) => {
       const mindMapsToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         resource_type: "mind_map",
         title: item.title,
         content: {
@@ -619,7 +579,6 @@ serve(async (req) => {
       const workedCasesToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         resource_type: "worked_case",
         title: item.title,
         content: {
@@ -650,7 +609,6 @@ serve(async (req) => {
       const guidedExplanationsToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
         chapter_id: chapterId,
-        concept_id: getConceptId(item),
         resource_type: "guided_explanation",
         title: item.topic,
         content: {

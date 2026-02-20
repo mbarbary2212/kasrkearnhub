@@ -176,15 +176,14 @@ export function MatchingQuestionFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <DialogTitle>
             {question ? 'Edit Matching Question' : 'Add Matching Question'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="space-y-6 py-4 pr-2">
+        <div className="space-y-6 py-4">
           {/* Instruction */}
           <div className="space-y-2">
             <Label>Instruction / Question</Label>
@@ -342,11 +341,9 @@ export function MatchingQuestionFormModal({
               </Select>
             </div>
           )}
-
-        </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

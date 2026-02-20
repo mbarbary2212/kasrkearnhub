@@ -24,7 +24,7 @@ interface DashboardNeedsPracticeProps {
   starredFlashcards: NeedsPracticeItem[];
   matchingToComplete: NeedsPracticeItem[];
   essaysToReview: NeedsPracticeItem[];
-  
+  casesToReview: NeedsPracticeItem[];
   counts: ContentCounts;
   onNavigate: (moduleId: string, chapterId: string, tab?: string) => void;
 }
@@ -36,7 +36,7 @@ export function DashboardNeedsPractice({
   starredFlashcards,
   matchingToComplete,
   essaysToReview,
-  
+  casesToReview,
   counts,
   onNavigate,
 }: DashboardNeedsPracticeProps) {
@@ -59,7 +59,7 @@ export function DashboardNeedsPractice({
     counts.flashcardTotal > 0 || 
     counts.matchingTotal > 0 || 
     counts.essayTotal > 0 || 
-    counts.essayTotal > 0;
+    counts.caseScenarioTotal > 0;
 
   if (!hasAnyContent) {
     return null;
@@ -71,7 +71,7 @@ export function DashboardNeedsPractice({
   const allVideosComplete = counts.videoTotal > 0 && videosToComplete.length === 0;
   const allMatchingComplete = counts.matchingTotal > 0 && matchingToComplete.length === 0;
   const allEssaysComplete = counts.essayTotal > 0 && essaysToReview.length === 0;
-  
+  const allCasesComplete = counts.caseScenarioTotal > 0 && casesToReview.length === 0;
 
   // Only show sections with content
   const showMcq = counts.mcqTotal > 0;
@@ -80,7 +80,7 @@ export function DashboardNeedsPractice({
   const showFlashcards = counts.flashcardTotal > 0 && starredFlashcards.length > 0;
   const showMatching = counts.matchingTotal > 0;
   const showEssays = counts.essayTotal > 0;
-  
+  const showCases = counts.caseScenarioTotal > 0;
 
   // Render an "All Clear" card for completed sections
   const AllClearBadge = ({ message }: { message: string }) => (
@@ -426,6 +426,57 @@ export function DashboardNeedsPractice({
         </Card>
       )}
 
+      {/* Case Scenarios to Explore */}
+      {showCases && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Briefcase className="h-4 w-4 text-primary" />
+              Cases to Explore
+              {casesToReview.length > 0 && (
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {casesToReview.length}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {allCasesComplete ? (
+              <AllClearBadge message="All cases explored!" />
+            ) : (
+              <>
+                {casesToReview.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-muted-foreground truncate">
+                        {item.chapterTitle}
+                      </p>
+                      <p className="text-sm truncate">{item.title}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={() => onNavigate(item.moduleId, item.chapterId, 'cases')}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Explore
+                    </Button>
+                  </div>
+                ))}
+                {casesToReview.length > 5 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    +{casesToReview.length - 5} more to explore
+                  </p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

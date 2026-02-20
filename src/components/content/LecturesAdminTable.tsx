@@ -90,7 +90,6 @@ export function LecturesAdminTable({
       columns={columns}
       contentTable="lectures"
       chapterId={chapterId}
-      moduleId={moduleId}
       sections={sections}
       onEdit={onEdit}
       onDelete={onDelete}

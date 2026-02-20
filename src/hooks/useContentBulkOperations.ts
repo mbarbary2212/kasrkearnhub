@@ -8,6 +8,7 @@ export type ContentTableName =
   | 'study_resources'
   | 'mcqs'
   | 'essays'
+  | 'clinical_cases'
   | 'osce_questions'
   | 'matching_questions'
   | 'virtual_patient_cases'
@@ -20,7 +21,7 @@ const QUERY_INVALIDATION_MAP: Record<ContentTableName, string[]> = {
   study_resources: ['study-resources', 'study-resource-folders'],
   mcqs: ['mcqs'],
   essays: ['chapter-essays'],
-  
+  clinical_cases: ['chapter-clinical-cases'],
   osce_questions: ['chapter-osce-questions'],
   matching_questions: ['matching-questions'],
   virtual_patient_cases: ['clinical-cases', 'virtual-patient-cases'],
@@ -69,34 +70,6 @@ export function useBulkDeleteContent(tableName: ContentTableName) {
           queryClient.invalidateQueries({ queryKey: [pattern, variables.topicId] });
         }
         // Also use predicate-based invalidation for flexibility
-        queryClient.invalidateQueries({
-          predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)
-        });
-      });
-    },
-  });
-}
-
-// Bulk update concept assignment
-export function useBulkUpdateConcept(tableName: ContentTableName) {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ ids, conceptId }: { 
-      ids: string[]; 
-      conceptId: string | null;
-    }) => {
-      const { error } = await supabase
-        .from(tableName)
-        .update({ concept_id: conceptId, concept_auto_assigned: false, concept_ai_confidence: null } as never)
-        .in('id', ids);
-      
-      if (error) throw error;
-      return { ids, conceptId };
-    },
-    onSuccess: () => {
-      const patterns = QUERY_INVALIDATION_MAP[tableName] || [];
-      patterns.forEach(pattern => {
         queryClient.invalidateQueries({
           predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)
         });

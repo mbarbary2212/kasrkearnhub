@@ -51,7 +51,6 @@ interface ContentAdminTableProps<T extends { id: string; section_id?: string | n
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   sections?: Section[];
-  
   csvExportConfig?: {
     filename: string;
     columns: ExportColumn<T>[];
@@ -69,7 +68,6 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   onEdit,
   onDelete,
   sections = [],
-  
   csvExportConfig,
   emptyMessage = 'No items found',
 }: ContentAdminTableProps<T>) {
@@ -141,7 +139,6 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
     if (!sectionId) return null;
     return sections.find(s => s.id === sectionId)?.name || null;
   }, [sections]);
-
 
   // Render column cell content
   const renderCell = (item: T, column: ColumnConfig<T>) => {

@@ -40,7 +40,6 @@ import { useModules } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useChapterSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
 import { toast } from 'sonner';
 
 interface AdminDocument {
@@ -86,157 +85,6 @@ const CONTENT_TYPES: ContentTypeOption[] = [
 const CHUNK_SIZE = 10;
 const MAX_TOPUP_ROUNDS = 2;
 const SIMILARITY_THRESHOLD = 0.85;
-
-// ============================================
-// DEFAULT AI INSTRUCTIONS
-// ============================================
-const DEFAULTS_VERSION = "2026-02-19-v1";
-
-const GLOBAL_DEFAULT =
-`You are an academic medical educator generating structured curriculum material for final-year medical students and surgical residents.
-
-SOURCE LIMITATION: Use ONLY the uploaded PDF content. Do not introduce external information.
-STRUCTURE RULES: Respect the PDF chapter hierarchy. Detect real sections automatically. Do NOT invent headings or sections.
-QUALITY: High-yield, clinically relevant, examination-oriented, structured and concise.
-FAIL-SAFE: If the PDF does not contain the requested detail, omit it rather than guessing.`;
-
-const STRICT_SUFFIX =
-`STRICT OUTPUT: Return ONLY the required structured output. No commentary or extra text.`;
-
-const DRAFT_SUFFIX =
-`DRAFT OUTPUT: You may add brief admin-facing notes only if needed.`;
-
-const TYPE_DEFAULTS: Record<string, string> = {
-  mcq:
-`MCQ GENERATION MODE (Single Best Answer, A–E)
-
-Generate Single Best Answer MCQs (A–E) based ONLY on the uploaded PDF.
-
-Requirements per question:
-- stem (clinical vignette or conceptual stem)
-- options A–E (one best answer)
-- correct_option (A–E)
-- brief explanation (1–3 sentences) based on PDF content
-
-Rules:
-- Avoid recall-only trivia; prioritize diagnosis, investigations, management, complications
-- No 'all of the above' or 'none of the above'
-- Distractors must be plausible and within chapter scope
-- If the PDF lacks sufficient detail, omit that question rather than guessing`,
-
-  flashcard:
-`FLASHCARD GENERATION MODE
-
-Generate concept-based flashcards from ONLY the uploaded PDF.
-
-Each item must include:
-- title: short concept heading (NOT a question; stable wording)
-- front: exam-style question (one concept only)
-- back: concise structured answer (bullets preferred)
-
-Rules:
-- Do not create multiple titles for the same concept within the same section
-- Do not invent sections; follow PDF headings
-- Output must be immediately app-ready with no extra text`,
-
-  osce:
-`OSCE STATION GENERATION MODE
-
-Generate OSCE stations based ONLY on the uploaded PDF.
-
-Each station must include:
-- station_title
-- candidate_instructions
-- scenario
-- 5 key assessment points (or 5 True/False statements)
-- examiner_checklist (marking points)
-- model_answers
-- red_flags (critical errors)
-
-Focus on clinical reasoning and safe decision-making.
-Do not invent details not supported by the PDF.`,
-
-  clinical_case:
-`CLINICAL CASE MODE
-
-Generate progressive clinical cases based ONLY on the uploaded PDF.
-
-Structure:
-1) Presentation
-2) Focused history prompts
-3) Examination findings
-4) Investigations (as per PDF)
-5) Decision points (what to do next + why)
-6) Management plan
-7) Key learning points (3–6 bullets)
-
-Avoid adding investigations or treatments not present in the PDF.`,
-
-  matching:
-`MATCHING QUESTION MODE
-
-Create matching questions using ONLY the uploaded PDF.
-
-- Column A: terms/conditions/findings
-- Column B: definitions/investigations/management steps
-
-Rules:
-- One-to-one mapping (each option used once)
-- No ambiguous pairs
-- Keep within one section/topic per set`,
-
-  essay:
-`SHORT ANSWER / ESSAY MODE
-
-Generate short-answer / essay questions using ONLY the uploaded PDF.
-
-For each question include:
-- question_prompt
-- model_answer (structured headings + bullets)
-- key_marking_points (5–10)
-
-Focus on exam-ready structure, not narrative.`,
-
-  mind_map:
-`MIND MAP MODE
-
-Generate a hierarchical mind map outline from ONLY the uploaded PDF.
-
-Format:
-- Main Topic
-  - Section
-    - Subsection
-      - Key points
-
-Rules:
-- Follow PDF headings
-- No invented branches
-- Keep nodes short and exam-relevant`,
-
-  worked_case:
-`WORKED CASE MODE
-
-Generate a step-by-step expert clinical reasoning walkthrough based ONLY on the uploaded PDF.
-
-Structure:
-- Problem representation
-- Differential diagnosis reasoning
-- Investigations and interpretation (as per PDF)
-- Management decisions
-- Key pitfalls / red flags
-
-Keep it structured and clinically realistic.`,
-
-  guided_explanation:
-`GUIDED EXPLANATION MODE (Socratic)
-
-Generate Socratic-style guided explanations based ONLY on the uploaded PDF.
-
-Rules:
-- Use guided questions to lead to understanding
-- Keep each step short (1–2 questions + brief feedback)
-- Do not introduce facts not present in the PDF`
-};
 
 type ProgressState = 'idle' | 'preparing' | 'generating' | 'deduplicating' | 'top-up' | 'finalizing' | 'saving' | 'complete' | 'error';
 
@@ -326,21 +174,12 @@ export function AIContentFactoryModal({
   const [socraticMode, setSocraticMode] = useState(false);
   const [perSection, setPerSection] = useState(false);
   const [chunkProgress, setChunkProgress] = useState<ChunkProgress | null>(null);
-  const [isStrictMode, setIsStrictMode] = useState(true);
-  const [lastAppliedDefault, setLastAppliedDefault] = useState("");
-  const [conceptId, setConceptId] = useState<string | null>(null);
 
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(moduleId || undefined);
   const { data: sections } = useChapterSections(chapterId || undefined);
-
-  const computeDefaultInstructions = useCallback((type: string, strict: boolean) => {
-    const typeBlock = TYPE_DEFAULTS[type] ?? "";
-    const suffix = strict ? STRICT_SUFFIX : DRAFT_SUFFIX;
-    return `${GLOBAL_DEFAULT}\n\n---\n\n${typeBlock}\n\n---\n\n${suffix}`.trim();
-  }, []);
 
   const selectedContentType = CONTENT_TYPES.find(t => t.value === contentType);
   const requiresChapter = selectedContentType?.requiresChapter ?? false;
@@ -373,15 +212,6 @@ export function AIContentFactoryModal({
     if (prefilledModuleId) setModuleId(prefilledModuleId);
     if (prefilledChapterId) setChapterId(prefilledChapterId);
   }, [documentId, prefilledModuleId, prefilledChapterId]);
-
-  // Auto-fill default instructions when contentType or strictMode changes
-  useEffect(() => {
-    const nextDefault = computeDefaultInstructions(contentType, isStrictMode);
-    if (additionalInstructions.trim() === "" || additionalInstructions === lastAppliedDefault) {
-      setAdditionalInstructions(nextDefault);
-      setLastAppliedDefault(nextDefault);
-    }
-  }, [contentType, isStrictMode, computeDefaultInstructions]);
 
   useEffect(() => {
     if (selectedDoc && !prefilledModuleId) {
@@ -693,7 +523,7 @@ export function AIContentFactoryModal({
         throw new Error('Generation produced an invalid payload. Please retry.');
       }
 
-      const data = await invokeWithAuth('approve-ai-content', { job_id: jobId, concept_id: conceptId || undefined });
+      const data = await invokeWithAuth('approve-ai-content', { job_id: jobId });
       if (data?.error) throw new Error(data.error);
       if (!Array.isArray(data?.items)) throw new Error('Approval returned an invalid payload. Please retry.');
 
@@ -729,7 +559,6 @@ export function AIContentFactoryModal({
     setContentType('mcq');
     setModuleId('');
     setChapterId('');
-    setConceptId(null);
     setQuantity('5');
     setAdditionalInstructions('');
     setGeneratedContent(null);
@@ -739,8 +568,6 @@ export function AIContentFactoryModal({
     setSocraticMode(false);
     setPerSection(false);
     setChunkProgress(null);
-    setIsStrictMode(true);
-    setLastAppliedDefault('');
     onOpenChange(false);
   };
 
@@ -947,7 +774,7 @@ export function AIContentFactoryModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Target Module *</Label>
-                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); setPerSection(false); setConceptId(null); }}>
+                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); setPerSection(false); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
@@ -962,7 +789,7 @@ export function AIContentFactoryModal({
                   <Label>
                     Target Chapter {requiresChapter ? '*' : '(Optional)'}
                   </Label>
-                  <Select value={chapterId} onValueChange={(v) => { setChapterId(v); setPerSection(false); setConceptId(null); }} disabled={!moduleId}>
+                  <Select value={chapterId} onValueChange={(v) => { setChapterId(v); setPerSection(false); }} disabled={!moduleId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select chapter" />
                     </SelectTrigger>
@@ -974,17 +801,6 @@ export function AIContentFactoryModal({
                   </Select>
                 </div>
               </div>
-
-              {/* Concept Selector */}
-              {moduleId && (
-                <ConceptSelect
-                  moduleId={moduleId}
-                  chapterId={chapterId || undefined}
-                  sectionId={null}
-                  value={conceptId}
-                  onChange={setConceptId}
-                />
-              )}
 
               {/* Per-Section Toggle */}
               {chapterId && hasSections && (
@@ -1062,52 +878,15 @@ export function AIContentFactoryModal({
                 </div>
               </div>
 
-              {/* Generation Instructions */}
+              {/* Additional Instructions */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Generation Instructions</Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {isStrictMode ? 'Strict' : 'Draft'}
-                    </span>
-                    <Switch
-                      checked={isStrictMode}
-                      onCheckedChange={setIsStrictMode}
-                    />
-                  </div>
-                </div>
+                <Label>Additional Instructions (Optional)</Label>
                 <Textarea
                   placeholder="e.g., Focus on pharmacology topics, include clinical scenarios, target beginner level..."
                   value={additionalInstructions}
                   onChange={(e) => setAdditionalInstructions(e.target.value)}
-                  rows={6}
-                  className="text-xs font-mono"
+                  rows={3}
                 />
-                <div className="flex items-center justify-between">
-                  {additionalInstructions === lastAppliedDefault ? (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Info className="w-3 h-3" />
-                      Default instructions loaded ({DEFAULTS_VERSION})
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  {additionalInstructions !== lastAppliedDefault && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        const def = computeDefaultInstructions(contentType, isStrictMode);
-                        setAdditionalInstructions(def);
-                        setLastAppliedDefault(def);
-                      }}
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                      Reset to default
-                    </Button>
-                  )}
-                </div>
               </div>
             </div>
           ) : (

@@ -25,7 +25,6 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { SectionSelector } from '@/components/sections';
 
-
 interface ContentItemActionsProps {
   id: string;
   title: string;
@@ -34,7 +33,6 @@ interface ContentItemActionsProps {
   videoUrl?: string | null;
   fileUrl?: string | null;
   sectionId?: string | null;
-  
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
@@ -68,7 +66,6 @@ export default function ContentItemActions({
   videoUrl,
   fileUrl,
   sectionId,
-  
   contentType,
   moduleId,
   chapterId,
@@ -100,7 +97,6 @@ export default function ContentItemActions({
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
   const [editSectionId, setEditSectionId] = useState<string | null>(sectionId || null);
-  
 
   // Sync edit state with props when dialog opens
   const handleOpenEdit = () => {
@@ -110,7 +106,6 @@ export default function ContentItemActions({
     setEditVideoUrl(videoUrl || '');
     setEditFileUrl(fileUrl || '');
     setEditSectionId(sectionId || null);
-    
     setEditOpen(true);
   };
 
@@ -240,60 +235,56 @@ export default function ContentItemActions({
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader className="shrink-0">
+        <DialogContent onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
             <DialogTitle>Edit {contentType}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <div className="space-y-4 pt-2 pr-1 pb-2">
-              <div>
-                <Label>Title</Label>
-                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label>{contentType === 'essay' ? 'Question' : 'Description'}</Label>
-                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1" />
-              </div>
-              {contentType === 'essay' && (
-                <div>
-                  <Label>Model Answer (optional)</Label>
-                  <Textarea 
-                    value={editModelAnswer} 
-                    onChange={(e) => setEditModelAnswer(e.target.value)} 
-                    placeholder="Enter the model answer that students can reveal"
-                    rows={4}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-              {(contentType === 'lecture' || contentType === 'practical') && (
-                <div>
-                  <Label>Video URL</Label>
-                  <Input 
-                    value={editVideoUrl} 
-                    onChange={(e) => setEditVideoUrl(e.target.value)} 
-                    placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)" 
-                    className="mt-1" 
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You can paste iframe embed codes - the URL will be extracted automatically.
-                  </p>
-                </div>
-              )}
-              {contentType === 'resource' && (
-                <div>
-                  <Label>File/External URL</Label>
-                  <Input value={editFileUrl} onChange={(e) => setEditFileUrl(e.target.value)} className="mt-1" />
-                </div>
-              )}
-              <SectionSelector
-                chapterId={chapterId}
-                value={editSectionId}
-                onChange={setEditSectionId}
-              />
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Title</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1" />
             </div>
-          </div>
-          <div className="shrink-0 pt-2 border-t">
+            <div>
+              <Label>{contentType === 'essay' ? 'Question' : 'Description'}</Label>
+              <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1" />
+            </div>
+            {contentType === 'essay' && (
+              <div>
+                <Label>Model Answer (optional)</Label>
+                <Textarea 
+                  value={editModelAnswer} 
+                  onChange={(e) => setEditModelAnswer(e.target.value)} 
+                  placeholder="Enter the model answer that students can reveal"
+                  rows={4}
+                  className="mt-1"
+                />
+              </div>
+            )}
+            {(contentType === 'lecture' || contentType === 'practical') && (
+              <div>
+                <Label>Video URL</Label>
+                <Input 
+                  value={editVideoUrl} 
+                  onChange={(e) => setEditVideoUrl(e.target.value)} 
+                  placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)" 
+                  className="mt-1" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can paste iframe embed codes - the URL will be extracted automatically.
+                </p>
+              </div>
+            )}
+            {contentType === 'resource' && (
+              <div>
+                <Label>File/External URL</Label>
+                <Input value={editFileUrl} onChange={(e) => setEditFileUrl(e.target.value)} className="mt-1" />
+              </div>
+            )}
+            <SectionSelector
+              chapterId={chapterId}
+              value={editSectionId}
+              onChange={setEditSectionId}
+            />
             <Button onClick={handleEdit} className="w-full" disabled={updateContent.isPending}>
               {updateContent.isPending ? 'Saving...' : 'Save Changes'}
             </Button>

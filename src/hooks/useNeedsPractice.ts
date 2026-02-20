@@ -4,7 +4,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 
 export interface NeedsPracticeItem {
   id: string;
-  type: 'mcq' | 'osce' | 'video' | 'flashcard' | 'matching' | 'essay';
+  type: 'mcq' | 'osce' | 'video' | 'flashcard' | 'matching' | 'essay' | 'case_scenario';
   title: string;
   chapterId: string;
   chapterTitle: string;
@@ -22,6 +22,7 @@ export interface ContentCounts {
   flashcardTotal: number;
   matchingTotal: number;
   essayTotal: number;
+  caseScenarioTotal: number;
 }
 
 interface UseNeedsPracticeResult {
@@ -31,6 +32,7 @@ interface UseNeedsPracticeResult {
   starredFlashcards: NeedsPracticeItem[];
   matchingToComplete: NeedsPracticeItem[];
   essaysToReview: NeedsPracticeItem[];
+  casesToReview: NeedsPracticeItem[];
   counts: ContentCounts;
   isLoading: boolean;
 }
@@ -42,6 +44,7 @@ const EMPTY_COUNTS: ContentCounts = {
   flashcardTotal: 0,
   matchingTotal: 0,
   essayTotal: 0,
+  caseScenarioTotal: 0,
 };
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
@@ -58,7 +61,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           flashcards: [],
           matching: [],
           essays: [],
-          
+          cases: [],
           counts: EMPTY_COUNTS,
         };
       }
@@ -76,6 +79,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         flashcardStarsRes,
         matchingRes,
         essaysRes,
+        casesRes,
         userProgressRes,
       ] = await Promise.all([
         // MCQ attempts - incorrect ones
@@ -148,6 +152,12 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .select('id, title, chapter_id')
           .eq('module_id', moduleId)
           .eq('is_deleted', false),
+        // Case scenarios for this module
+        supabase
+          .from('case_scenarios')
+          .select('id, title, chapter_id')
+          .eq('module_id', moduleId)
+          .eq('is_deleted', false),
         // User progress for all content types
         supabase
           .from('user_progress')
@@ -167,6 +177,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       const flashcardStars = flashcardStarsRes.data || [];
       const matchingQuestions = matchingRes.data || [];
       const essays = essaysRes.data || [];
+      const cases = casesRes.data || [];
       const userProgress = userProgressRes.data || [];
 
       // Create lookup maps
@@ -192,7 +203,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         flashcardTotal: flashcards.length,
         matchingTotal: matchingQuestions.length,
         essayTotal: essays.length,
-        
+        caseScenarioTotal: cases.length,
       };
 
       // --- MCQ Needs Practice ---
@@ -328,8 +339,22 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         }
       });
 
-
-
+      // --- Case Scenarios to Review ---
+      const casesToReview: NeedsPracticeItem[] = [];
+      cases.forEach(caseItem => {
+        if (!caseItem.chapter_id) return;
+        const isCompleted = completedContent.has(`case_scenario:${caseItem.id}`);
+        if (!isCompleted) {
+          casesToReview.push({
+            id: caseItem.id,
+            type: 'case_scenario',
+            title: caseItem.title,
+            chapterId: caseItem.chapter_id,
+            chapterTitle: chapterMap.get(caseItem.chapter_id) || 'Unknown Chapter',
+            moduleId: moduleId,
+          });
+        }
+      });
 
       return {
         mcq: mcqNeedsPractice.slice(0, 10),
@@ -338,6 +363,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         flashcards: starredFlashcards.slice(0, 10),
         matching: matchingToComplete.slice(0, 10),
         essays: essaysToReview.slice(0, 10),
+        cases: casesToReview.slice(0, 10),
         counts,
       };
     },
@@ -352,7 +378,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
     starredFlashcards: data?.flashcards || [],
     matchingToComplete: data?.matching || [],
     essaysToReview: data?.essays || [],
-    
+    casesToReview: data?.cases || [],
     counts: data?.counts || EMPTY_COUNTS,
     isLoading,
   };

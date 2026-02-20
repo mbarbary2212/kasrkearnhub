@@ -138,7 +138,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         supabase.from('mcqs').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('essays').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
-        supabase.from('practicals').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
+        supabase.from('case_scenarios').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
         // Get question attempts for this user
@@ -154,7 +154,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
       const mcqs = mcqsRes.data || [];
       const essays = essaysRes.data || [];
       const practicals = practicalsRes.data || [];
-      const additionalPracticals = caseScenariosRes.data || [];
+      const caseScenarios = caseScenariosRes.data || [];
       const lectures = lecturesRes.data || [];
       const questionAttempts = questionAttemptsRes.data || [];
 
@@ -171,7 +171,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         const chapterMcqs = mcqs.filter(m => m.chapter_id === chapter.id);
         const chapterEssays = essays.filter(e => e.chapter_id === chapter.id);
         const chapterPracticals = practicals.filter(p => p.chapter_id === chapter.id);
-        const chapterCases = [] as typeof practicals;
+        const chapterCases = caseScenarios.filter(c => c.chapter_id === chapter.id);
 
         const practiceIds = [
           ...chapterMcqs.map(m => m.id),
@@ -210,7 +210,7 @@ export function useStudentDashboard(filters?: DashboardFilters) {
         ...mcqs.map(m => m.id),
         ...essays.map(e => e.id),
         ...practicals.map(p => p.id),
-        ...practicals.map(p => p.id),
+        ...caseScenarios.map(c => c.id),
       ]);
 
       // Calculate overall metrics - ITEM-BASED coverage
@@ -332,8 +332,8 @@ export function useStudentDashboard(filters?: DashboardFilters) {
             if (essay) return essay.chapter_id;
             const practical = practicals.find(pr => pr.id === p.content_id);
             if (practical) return practical.chapter_id;
-            const practical2 = practicals.find(pr => pr.id === p.content_id);
-            if (practical2) return practical2.chapter_id;
+            const cs = caseScenarios.find(c => c.id === p.content_id);
+            if (cs) return cs.chapter_id;
             return null;
           })
           .filter(Boolean)

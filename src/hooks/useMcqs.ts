@@ -15,9 +15,6 @@ export interface Mcq {
   module_id: string;
   chapter_id: string | null;
   section_id: string | null;
-  concept_id: string | null;
-  concept_auto_assigned: boolean | null;
-  concept_ai_confidence: number | null;
   stem: string;
   choices: McqChoice[];
   correct_key: string;
@@ -37,7 +34,6 @@ export interface McqFormData {
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
-  concept_id?: string | null;
 }
 
 // Helper to convert DB row to Mcq type
@@ -47,9 +43,6 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     module_id: row.module_id as string,
     chapter_id: row.chapter_id as string | null,
     section_id: row.section_id as string | null,
-    concept_id: row.concept_id as string | null,
-    concept_auto_assigned: row.concept_auto_assigned as boolean | null,
-    concept_ai_confidence: row.concept_ai_confidence as number | null,
     stem: row.stem as string,
     choices: row.choices as McqChoice[],
     correct_key: row.correct_key as string,
@@ -148,14 +141,13 @@ export function useCreateMcq() {
         chapter_id: data.chapter_id || null,
         topic_id: data.topic_id || null,
         section_id: data.section_id || null,
-        concept_id: data.concept_id || null,
         stem: data.stem,
         choices: data.choices as unknown as Json,
         correct_key: data.correct_key,
         explanation: data.explanation,
         difficulty: data.difficulty,
         created_by: user?.id,
-      } as never).select('id').single();
+      }).select('id').single();
 
       if (error) throw error;
       return { ...data, id: result.id };
@@ -206,9 +198,8 @@ export function useUpdateMcq() {
           explanation: data.explanation,
           difficulty: data.difficulty,
           section_id: data.section_id || null,
-          concept_id: data.concept_id || null,
           updated_by: user?.id,
-        } as never)
+        })
         .eq('id', id);
 
       if (error) throw error;

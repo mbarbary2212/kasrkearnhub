@@ -46,7 +46,6 @@ import { InfographicForm } from './InfographicForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
 import { GuidedExplanationForm } from './GuidedExplanationForm';
 import { SectionSelector } from '@/components/sections';
-import { ConceptSelect } from '@/components/content/ConceptSelect';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -90,7 +89,6 @@ export function StudyResourceFormModal({
   const [content, setContent] = useState<ResourceContent>(getDefaultContent(resourceType));
   const [uploading, setUploading] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
-  const [conceptId, setConceptId] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const isEditing = !!resource;
@@ -107,12 +105,10 @@ export function StudyResourceFormModal({
       setTitle(resource.title);
       setContent(resource.content);
       setSectionId((resource as any).section_id || null);
-      setConceptId((resource as any).concept_id || null);
     } else {
       setTitle('');
       setContent(getDefaultContent(resourceType));
       setSectionId(null);
-      setConceptId(null);
     }
   }, [resource, resourceType, open]);
 
@@ -151,10 +147,7 @@ export function StudyResourceFormModal({
           title,
           content,
           section_id: sectionId,
-          concept_id: conceptId,
-          concept_auto_assigned: false,
-          concept_ai_confidence: null,
-        } as any);
+        });
         toast.success('Resource updated');
       } else {
         await createResource.mutateAsync({
@@ -166,10 +159,7 @@ export function StudyResourceFormModal({
           content,
           folder: null,
           section_id: sectionId,
-          concept_id: conceptId,
-          concept_auto_assigned: false,
-          concept_ai_confidence: null,
-        } as any);
+        });
         toast.success('Resource created');
       }
       onOpenChange(false);
@@ -239,14 +229,6 @@ export function StudyResourceFormModal({
             topicId={topicId}
             value={sectionId}
             onChange={setSectionId}
-          />
-
-          <ConceptSelect
-            moduleId={moduleId}
-            chapterId={chapterId}
-            sectionId={sectionId}
-            value={conceptId}
-            onChange={setConceptId}
           />
 
           {resourceType === 'flashcard' && (

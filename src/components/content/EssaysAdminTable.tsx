@@ -86,7 +86,6 @@ export function EssaysAdminTable({
       columns={columns}
       contentTable="essays"
       chapterId={chapterId}
-      moduleId={moduleId}
       sections={sections}
       onEdit={onEdit}
       onDelete={onDelete}

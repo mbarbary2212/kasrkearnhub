@@ -51,7 +51,6 @@ import { useTopicSectionsEnabled } from '@/hooks/useSections';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
-
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -105,9 +104,8 @@ export default function TopicDetailPage() {
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   
-  // Section and concept filter state
+  // Section filter state (only for Resources and Practice, NOT for Test)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  
 
   // Deleted items toggle state
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
@@ -198,16 +196,13 @@ export default function TopicDetailPage() {
     }
   }, [module, topic, activeSection, setStudyContext]);
   
-  // Helper function to filter content by section and concept
+  // Helper function to filter content by section
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {
-    let filtered = items;
-    if (selectedSectionId && sectionsEnabled) {
-      filtered = filtered.filter(item => {
-        const sectionableItem = item as unknown as { section_id?: string | null };
-        return sectionableItem.section_id === selectedSectionId;
-      });
-    }
-    return filtered;
+    if (!selectedSectionId || !sectionsEnabled) return items;
+    return items.filter(item => {
+      const sectionableItem = item as unknown as { section_id?: string | null };
+      return sectionableItem.section_id === selectedSectionId;
+    });
   }, [selectedSectionId, sectionsEnabled]);
 
   const handleEditFlashcard = (resource: StudyResource) => {
@@ -365,11 +360,9 @@ export default function TopicDetailPage() {
           />
         )}
 
-        {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
+        {/* Inline Sections Manager - Admin only */}
         {canManageContent && topicId && (
-          <div>
-            <SectionsManager topicId={topicId} canManage={canManageContent} />
-          </div>
+          <SectionsManager topicId={topicId} canManage={canManageContent} />
         )}
 
         {/* Main Content Layout */}
@@ -434,16 +427,15 @@ export default function TopicDetailPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
-                {/* Section & Concept Filters */}
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      topicId={topicId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                    />
-                  )}
-                </div>
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    topicId={topicId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
                 
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
@@ -639,16 +631,15 @@ export default function TopicDetailPage() {
             {/* Self Assessment Section */}
             {activeSection === 'practice' && (
               <div className="space-y-4">
-                {/* Section & Concept Filters */}
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      topicId={topicId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                    />
-                  )}
-                </div>
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    topicId={topicId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
                 
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">

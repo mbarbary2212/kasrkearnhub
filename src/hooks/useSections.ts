@@ -297,7 +297,7 @@ export function useBulkAssignSection() {
       itemIds, 
       sectionId 
     }: { 
-      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'study_resources' | 'osce_questions' | 'matching_questions' | 'virtual_patient_cases' | 'true_false_questions';
+      table: 'lectures' | 'resources' | 'mcq_sets' | 'mcqs' | 'essays' | 'practicals' | 'clinical_cases' | 'study_resources' | 'osce_questions' | 'matching_questions' | 'virtual_patient_cases' | 'true_false_questions';
       itemIds: string[];
       sectionId: string | null;
     }) => {
@@ -315,7 +315,7 @@ export function useBulkAssignSection() {
       queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-essays'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-practicals'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-cases'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-study-resources'] });
       queryClient.invalidateQueries({ queryKey: ['matching-questions'] });
       queryClient.invalidateQueries({ queryKey: ['module-lectures'] });

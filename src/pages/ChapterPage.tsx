@@ -120,7 +120,6 @@ export default function ChapterPage() {
   
   // Section filter state (only for Resources and Practice, NOT for Test)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  
 
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
@@ -152,7 +151,6 @@ export default function ChapterPage() {
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   
-  
   // Filter clinical cases by chapter
   const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
   
@@ -161,16 +159,13 @@ export default function ChapterPage() {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
   
-  // Helper function to filter content by section and concept
+  // Helper function to filter content by section - uses type assertion for flexibility
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {
-    let filtered = items;
-    if (selectedSectionId && sectionsEnabled) {
-      filtered = filtered.filter(item => {
-        const sectionable = item as unknown as { section_id?: string | null };
-        return sectionable.section_id === selectedSectionId;
-      });
-    }
-    return filtered;
+    if (!selectedSectionId || !sectionsEnabled) return items;
+    return items.filter(item => {
+      const sectionable = item as unknown as { section_id?: string | null };
+      return sectionable.section_id === selectedSectionId;
+    });
   }, [selectedSectionId, sectionsEnabled]);
 
   // Filter deleted MCQs only (exclude active ones)
@@ -375,11 +370,9 @@ export default function ChapterPage() {
           />
         )}
 
-        {/* Inline Sections & Concepts Managers - Admin only, side by side on md+ */}
+        {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && (
-          <div>
-            <SectionsManager chapterId={chapterId} canManage={canManageContent} />
-          </div>
+          <SectionsManager chapterId={chapterId} canManage={canManageContent} />
         )}
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
@@ -446,16 +439,15 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
-                {/* Section & Concept Filters */}
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      chapterId={chapterId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                    />
-                  )}
-                </div>
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    chapterId={chapterId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
                 
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
@@ -650,16 +642,15 @@ export default function ChapterPage() {
             {/* Practice Section */}
             {activeSection === 'practice' && (
               <div className="space-y-4">
-                {/* Section & Concept Filters */}
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      chapterId={chapterId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                    />
-                  )}
-                </div>
+                {/* Section Filter - shown when sections are enabled */}
+                {sectionsEnabled && (
+                  <SectionFilter
+                    chapterId={chapterId}
+                    selectedSectionId={selectedSectionId}
+                    onSectionChange={setSelectedSectionId}
+                    className="mb-2"
+                  />
+                )}
                 
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
@@ -862,7 +853,6 @@ export default function ChapterPage() {
               onOpenChange={setFlashcardBulkOpen}
               chapterId={chapterId}
               moduleId={moduleId}
-              resourceType="flashcard"
               resourceType="flashcard"
             />
             <MindMapBulkUploadModal

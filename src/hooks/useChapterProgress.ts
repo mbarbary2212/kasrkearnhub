@@ -48,6 +48,7 @@ export type TrackableContentType =
   | 'essay' 
   | 'practical' 
   | 'osce' 
+  | 'case_scenario' 
   | 'matching';
 
 interface ChapterProgressData {
@@ -106,12 +107,14 @@ export function useChapterProgress(chapterId?: string) {
         mcqsRes,
         essaysRes,
         oscesRes,
+        caseScenariosRes,
         matchingRes,
         lecturesRes,
         // Attempt counts
         mcqAttemptsRes,
         essayAttemptsRes,
         osceAttemptsRes,
+        caseAttemptsRes,
         matchingAttemptsRes,
         // Video progress
         videoProgressRes,
@@ -133,6 +136,11 @@ export function useChapterProgress(chapterId?: string) {
           .eq('chapter_id', chapterId)
           .eq('is_deleted', false),
         supabase
+          .from('case_scenarios')
+          .select('id', { count: 'exact', head: true })
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false),
+        supabase
           .from('matching_questions')
           .select('id', { count: 'exact', head: true })
           .eq('chapter_id', chapterId)
@@ -149,6 +157,7 @@ export function useChapterProgress(chapterId?: string) {
           .eq('user_id', user.id)
           .eq('question_type', 'mcq')
           .in('question_id', 
+            // Subquery simulation - we'll filter after
             (await supabase
               .from('mcqs')
               .select('id')
@@ -186,6 +195,19 @@ export function useChapterProgress(chapterId?: string) {
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
+          .eq('question_type', 'osce')
+          .in('question_id',
+            (await supabase
+              .from('case_scenarios')
+              .select('id')
+              .eq('chapter_id', chapterId)
+              .eq('is_deleted', false)
+            ).data?.map(c => c.id) || []
+          ),
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
           .eq('question_type', 'mcq')
           .in('question_id',
             (await supabase
@@ -206,15 +228,17 @@ export function useChapterProgress(chapterId?: string) {
       const mcqTotal = mcqsRes.count || 0;
       const essayTotal = essaysRes.count || 0;
       const osceTotal = oscesRes.count || 0;
+      const caseTotal = caseScenariosRes.count || 0;
       const matchingTotal = matchingRes.count || 0;
-      const practiceTotal = mcqTotal + essayTotal + osceTotal + matchingTotal;
+      const practiceTotal = mcqTotal + essayTotal + osceTotal + caseTotal + matchingTotal;
 
       // Calculate practice completed (unique items)
       const mcqCompleted = new Set(mcqAttemptsRes.data?.map(a => a.question_id) || []).size;
       const essayCompleted = new Set(essayAttemptsRes.data?.map(a => a.question_id) || []).size;
       const osceCompleted = new Set(osceAttemptsRes.data?.map(a => a.question_id) || []).size;
+      const caseCompleted = new Set(caseAttemptsRes.data?.map(a => a.question_id) || []).size;
       const matchingCompleted = new Set(matchingAttemptsRes.data?.map(a => a.question_id) || []).size;
-      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + matchingCompleted;
+      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + caseCompleted + matchingCompleted;
 
       // Calculate video progress
       const lectures = lecturesRes.data || [];
@@ -316,7 +340,7 @@ export function useMarkItemComplete() {
       selectedAnswer,
     }: {
       questionId: string;
-      questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'matching';
+      questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'case_scenario' | 'matching';
       chapterId?: string;
       isCorrect?: boolean;
       selectedAnswer?: unknown;
@@ -328,7 +352,7 @@ export function useMarkItemComplete() {
       let dbQuestionType: 'mcq' | 'osce' | 'guided_explanation';
       if (questionType === 'true_false') {
         dbQuestionType = 'mcq';
-      } else if (questionType === 'osce') {
+      } else if (questionType === 'osce' || questionType === 'case_scenario') {
         dbQuestionType = 'osce';
       } else {
         dbQuestionType = 'mcq';
@@ -362,7 +386,7 @@ export function useMarkItemComplete() {
   // Wrapper function that accepts simple arguments for backward compatibility
   const markComplete = (
     questionId: string,
-    questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'matching',
+    questionType: 'mcq' | 'true_false' | 'essay' | 'osce' | 'case_scenario' | 'matching',
     chapterId?: string
   ) => {
     mutation.mutate({ questionId, questionType, chapterId });

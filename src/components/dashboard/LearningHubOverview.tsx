@@ -28,7 +28,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
     starredFlashcards,
     matchingToComplete,
     essaysToReview,
-    
+    casesToReview,
     counts,
   } = useNeedsPractice(moduleId);
 
@@ -86,7 +86,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         starredFlashcards={starredFlashcards}
         matchingToComplete={matchingToComplete}
         essaysToReview={essaysToReview}
-        
+        casesToReview={casesToReview}
         counts={counts}
         onNavigate={onNavigate}
       />

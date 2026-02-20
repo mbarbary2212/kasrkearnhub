@@ -19,7 +19,6 @@ import {
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
-
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -75,7 +74,6 @@ export function ResourcesTabContent({
   const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId });
 
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
-  
   const deleteStudyResource = useDeleteStudyResource();
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -305,7 +303,6 @@ export function ResourcesTabContent({
         chapterId={chapterId}
         moduleId={moduleId}
         resourceType={selectedType}
-        
       />
     </div>
   );

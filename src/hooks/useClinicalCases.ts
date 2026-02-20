@@ -95,8 +95,7 @@ export function useClinicalCase(caseId?: string) {
           *,
           module:modules(name),
           chapter:module_chapters(title, chapter_number),
-          topic:topics(name),
-          concept:concepts(id, title)
+          topic:topics(name)
         `)
         .eq('id', caseId!)
         .single();

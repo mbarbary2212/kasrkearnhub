@@ -197,6 +197,22 @@ export interface Practical {
   created_at: string;
 }
 
+export interface ClinicalCase {
+  id: string;
+  topic_id: string;
+  title: string;
+  title_ar: string | null;
+  presentation: string;
+  history: string | null;
+  examination: string | null;
+  investigations: string | null;
+  differential_diagnosis: string[] | null;
+  final_diagnosis: string | null;
+  management: string | null;
+  display_order: number;
+  created_by: string | null;
+  created_at: string;
+}
 
 export interface UserProgress {
   id: string;
