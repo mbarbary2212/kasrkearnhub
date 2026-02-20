@@ -51,12 +51,36 @@ export function resolveSectionId(
     }
   }
   
-  // Priority 2: Match by section_name (case-insensitive)
+  // Priority 2: Match by section_name (case-insensitive, exact)
   if (sectionName && sectionName.trim()) {
-    const match = sections.find(s => 
-      s.name.toLowerCase().trim() === sectionName.toLowerCase().trim()
+    const normalizedInput = sectionName.toLowerCase().trim();
+    const exactMatch = sections.find(s => 
+      s.name.toLowerCase().trim() === normalizedInput
     );
-    if (match) return match.id;
+    if (exactMatch) return exactMatch.id;
+
+    // Priority 3: Partial/contains match on section_name
+    // Strip leading number prefix (e.g., "3.2 Deep Vein Thrombosis" → "Deep Vein Thrombosis")
+    const strippedInput = normalizedInput.replace(/^\d+(\.\d+)?\s+/, '');
+    
+    // Find best partial match (longest DB name that is contained in the input, or vice versa)
+    let bestMatch: Section | null = null;
+    let bestLength = 0;
+    
+    for (const s of sections) {
+      const dbName = s.name.toLowerCase().trim();
+      if (dbName.length < 3) continue; // skip very short names to avoid false positives
+      
+      if (strippedInput.includes(dbName) || dbName.includes(strippedInput)) {
+        const matchLen = Math.min(dbName.length, strippedInput.length);
+        if (matchLen > bestLength) {
+          bestLength = matchLen;
+          bestMatch = s;
+        }
+      }
+    }
+    
+    if (bestMatch) return bestMatch.id;
   }
   
   return null;

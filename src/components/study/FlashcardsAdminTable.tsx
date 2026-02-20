@@ -106,6 +106,7 @@ export function FlashcardsAdminTable({
       title: row.title,
       content: { front: row.front, back: row.back },
       section_id: row.section_id,
+      concept_id: row.concept_id,
     }));
   }, [rows]);
 
