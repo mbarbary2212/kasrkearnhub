@@ -431,6 +431,9 @@ export function useBulkCreateStudyResources() {
         content: r.content,
         display_order: r.display_order,
         section_id: r.section_id || null,
+        concept_id: r.concept_id || null,
+        concept_auto_assigned: r.concept_auto_assigned ?? null,
+        concept_ai_confidence: r.concept_ai_confidence ?? null,
         created_by: userData.user?.id,
         folder: r.folder,
       }));
