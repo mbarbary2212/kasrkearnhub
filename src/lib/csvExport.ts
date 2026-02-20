@@ -137,19 +137,21 @@ export function exportToCsv<T>(
 // Pre-defined column configurations for common content types
 export const FLASHCARD_EXPORT_COLUMNS: ExportColumn<{
   title: string;
-  content: { front?: string; back?: string };
+  content?: { front?: string; back?: string };
+  front?: string;
+  back?: string;
   section_id?: string | null;
 }>[] = [
   { key: 'title', header: 'title' },
   { 
     key: 'front', 
     header: 'front',
-    getValue: (item) => item.content?.front || ''
+    getValue: (item) => item.content?.front || (item as any).front || ''
   },
   { 
     key: 'back', 
     header: 'back',
-    getValue: (item) => item.content?.back || ''
+    getValue: (item) => item.content?.back || (item as any).back || ''
   },
   {
     key: 'concept_name',
