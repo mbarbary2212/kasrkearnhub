@@ -167,8 +167,14 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 
     if (column.key === 'concept') {
       const conceptName = getConceptName((item as any).concept_id);
+      const isAutoAssigned = (item as any).concept_auto_assigned === true;
       return conceptName ? (
-        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800">{conceptName}</Badge>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800">{conceptName}</Badge>
+          {isAutoAssigned && (
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 rounded" title="AI-assigned">AI</span>
+          )}
+        </div>
       ) : (
         <span className="text-muted-foreground text-xs">—</span>
       );

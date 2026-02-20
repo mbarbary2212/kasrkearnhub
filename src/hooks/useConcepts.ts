@@ -174,3 +174,43 @@ export function useReorderConcepts() {
     },
   });
 }
+
+/** Auto-align existing content to concepts using AI */
+export function useAutoAlignConcepts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      chapterId: string;
+      conceptList: { id: string; title: string; concept_key: string }[];
+      retag_all?: boolean;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('auto-align-concepts', {
+        body: {
+          chapterId: input.chapterId,
+          conceptList: input.conceptList,
+          retag_all: input.retag_all ?? false,
+        },
+      });
+
+      if (error) throw error;
+      return data as {
+        tagged: number;
+        skipped_low_confidence: number;
+        already_tagged: number;
+        errors: number;
+      };
+    },
+    onSuccess: () => {
+      // Invalidate all content queries so tables refresh
+      queryClient.invalidateQueries({ queryKey: ['mcqs'] });
+      queryClient.invalidateQueries({ queryKey: ['essays'] });
+      queryClient.invalidateQueries({ queryKey: ['osce-questions'] });
+      queryClient.invalidateQueries({ queryKey: ['matching-questions'] });
+      queryClient.invalidateQueries({ queryKey: ['study-resources'] });
+      queryClient.invalidateQueries({ queryKey: ['flashcards'] });
+      queryClient.invalidateQueries({ queryKey: ['true-false-questions'] });
+      queryClient.invalidateQueries({ queryKey: ['lectures'] });
+    },
+  });
+}

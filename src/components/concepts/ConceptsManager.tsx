@@ -14,7 +14,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Tag, ChevronDown, Upload } from 'lucide-react';
+import { Plus, Tag, ChevronDown, Upload, Wand2, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { normalizeConceptKey } from '@/lib/conceptNormalization';
 import { ConceptBulkUploadModal } from './ConceptBulkUploadModal';
 import {
@@ -38,6 +39,7 @@ import {
   useUpdateConcept,
   useDeleteConcept,
   useReorderConcepts,
+  useAutoAlignConcepts,
   Concept,
 } from '@/hooks/useConcepts';
 import { SortableConceptItem } from './SortableConceptItem';
@@ -60,11 +62,37 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
   // Fetch concepts for this chapter
   const { data: concepts } = useChapterConcepts(chapterId);
 
+  const [alignConfirmOpen, setAlignConfirmOpen] = useState(false);
+  const [alignResult, setAlignResult] = useState<{ tagged: number; skipped_low_confidence: number; already_tagged: number; errors: number } | null>(null);
+
   // Mutations
   const createConcept = useCreateConcept();
   const updateConcept = useUpdateConcept();
   const deleteConcept = useDeleteConcept();
   const reorderConcepts = useReorderConcepts();
+  const autoAlign = useAutoAlignConcepts();
+
+  const handleAutoAlign = async (retagAll = false) => {
+    if (!chapterId || !concepts || concepts.length === 0) return;
+    setAlignConfirmOpen(false);
+    setAlignResult(null);
+    try {
+      const result = await autoAlign.mutateAsync({
+        chapterId,
+        conceptList: concepts.map(c => ({ id: c.id, title: c.title, concept_key: c.concept_key })),
+        retag_all: retagAll,
+      });
+      setAlignResult(result);
+      const parts: string[] = [];
+      if (result.tagged > 0) parts.push(`${result.tagged} tagged`);
+      if (result.skipped_low_confidence > 0) parts.push(`${result.skipped_low_confidence} skipped (low confidence)`);
+      if (result.already_tagged > 0) parts.push(`${result.already_tagged} already tagged`);
+      if (result.errors > 0) parts.push(`${result.errors} errors`);
+      toast.success(`Auto-align complete: ${parts.join(', ')}`);
+    } catch {
+      toast.error('Auto-align failed');
+    }
+  };
 
   // DnD sensors
   const sensors = useSensors(
@@ -243,6 +271,21 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
                 <Upload className="h-4 w-4 mr-1" />
                 Upload
               </Button>
+              {chapterId && concepts && concepts.length > 0 && (
+                <Button
+                  onClick={() => setAlignConfirmOpen(true)}
+                  size="sm"
+                  variant="outline"
+                  disabled={autoAlign.isPending}
+                >
+                  {autoAlign.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4 mr-1" />
+                  )}
+                  Auto-Align
+                </Button>
+              )}
             </div>
           </CardContent>
         </CollapsibleContent>
@@ -279,6 +322,46 @@ export function ConceptsManager({ chapterId, topicId, moduleId, canManage }: Con
         topicId={topicId}
         existingConcepts={concepts || []}
       />
+
+      {/* Auto-Align Confirmation Dialog */}
+      <AlertDialog open={alignConfirmOpen} onOpenChange={setAlignConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Auto-Align Content to Concepts</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will use AI to scan all untagged content in this chapter and automatically assign the most relevant concept to each item. Items the AI is unsure about (confidence &lt; 60%) will be left untagged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleAutoAlign(false)}>
+              Align Untagged Only
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => handleAutoAlign(true)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Re-tag All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Auto-Align Progress */}
+      {autoAlign.isPending && (
+        <Card className="mt-2">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Auto-aligning content…</p>
+                <p className="text-xs text-muted-foreground">Processing all content tables with AI</p>
+                <Progress className="mt-2 h-2" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </Collapsible>
   );
 }

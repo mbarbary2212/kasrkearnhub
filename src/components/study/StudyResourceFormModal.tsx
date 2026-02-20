@@ -152,6 +152,7 @@ export function StudyResourceFormModal({
           content,
           section_id: sectionId,
           concept_id: conceptId,
+          concept_auto_assigned: false,
         } as any);
         toast.success('Resource updated');
       } else {
@@ -165,6 +166,7 @@ export function StudyResourceFormModal({
           folder: null,
           section_id: sectionId,
           concept_id: conceptId,
+          concept_auto_assigned: false,
         } as any);
         toast.success('Resource created');
       }
