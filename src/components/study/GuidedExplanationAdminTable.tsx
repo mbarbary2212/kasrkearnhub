@@ -3,7 +3,6 @@ import { BookOpen, MessageCircleQuestion } from 'lucide-react';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { StudyResource, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import type { Section } from '@/hooks/useSections';
-import { useChapterConcepts } from '@/hooks/useConcepts';
 
 interface GuidedExplanationAdminTableProps {
   resources: StudyResource[];
@@ -22,8 +21,6 @@ export function GuidedExplanationAdminTable({
   onEdit,
   onDelete,
 }: GuidedExplanationAdminTableProps) {
-  const { data: concepts = [] } = useChapterConcepts(chapterId);
-
   const columns: ColumnConfig<StudyResource>[] = [
     {
       key: 'select',
@@ -71,11 +68,6 @@ export function GuidedExplanationAdminTable({
       },
     },
     {
-      key: 'concept',
-      header: 'Concept',
-      className: 'w-32',
-    },
-    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
@@ -100,7 +92,6 @@ export function GuidedExplanationAdminTable({
       chapterId={chapterId}
       moduleId={moduleId}
       sections={sections}
-      concepts={concepts}
       onEdit={onEdit}
       onDelete={handleDelete}
       csvExportConfig={{
@@ -129,14 +120,6 @@ export function GuidedExplanationAdminTable({
             getValue: (item) => {
               const content = item.content as GuidedExplanationContent;
               return content.introduction || '';
-            }
-          },
-          {
-            key: 'concept_name',
-            header: 'Concept',
-            getValue: (item) => {
-              const concept = concepts.find(c => c.id === (item as any).concept_id);
-              return concept?.title || '';
             }
           },
           { 

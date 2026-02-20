@@ -18,7 +18,7 @@ import {
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
-import { useChapterConcepts } from '@/hooks/useConcepts';
+
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 
@@ -57,7 +57,7 @@ export function StudyResourcesSection({
   const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId });
 
   const { data: resources, isLoading } = useChapterStudyResources(chapterId);
-  const { data: concepts = [] } = useChapterConcepts(chapterId);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -219,7 +219,7 @@ export function StudyResourcesSection({
         chapterId={chapterId}
         moduleId={moduleId}
         resourceType={selectedType}
-        concepts={concepts}
+        
       />
     </div>
   );

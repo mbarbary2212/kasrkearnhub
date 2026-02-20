@@ -19,7 +19,7 @@ import {
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
-import { useChapterConcepts } from '@/hooks/useConcepts';
+
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -75,7 +75,7 @@ export function ResourcesTabContent({
   const { guard, dialog } = useAddPermissionGuard({ moduleId, chapterId });
 
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
-  const { data: conceptsRaw = [] } = useChapterConcepts(chapterId);
+  
   const deleteStudyResource = useDeleteStudyResource();
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -305,7 +305,7 @@ export function ResourcesTabContent({
         chapterId={chapterId}
         moduleId={moduleId}
         resourceType={selectedType}
-        concepts={conceptsRaw.map(c => ({ id: c.id, concept_key: c.concept_key, title: c.title }))}
+        
       />
     </div>
   );
