@@ -1,33 +1,58 @@
 
 
-## Add Gemini 3.1 Pro Preview and Set as Default
+## Fix MCQ Choices Displaying as "[object Object]" in Approve Section
 
-Your new paid-tier API key is already configured in Supabase secrets. Now the plan updates the model across the app.
+### Problem
 
-### Important caveat
+The AI generates MCQ choices as an array of objects (`[{key: 'A', text: '...'}, ...]`) but the approve/preview card uses `Object.entries(item.choices)` which expects a dictionary (`{A: 'text', B: 'text'}`). This causes choices to render as `[object Object]`.
 
-The model ID `gemini-3.1-pro-preview` is not a confirmed public Google model name. If generation fails with a 400/404 error after this change, you can instantly switch back to `gemini-2.5-pro` from Admin > AI Settings without needing any code changes.
+### Solution
 
-### Changes
+Add a `normalizeChoices()` helper function to `AIContentPreviewCard.tsx` that converts both formats into a consistent dictionary. Apply it in three locations:
 
-**1. `src/components/admin/AISettingsPanel.tsx`**
-- Add `gemini-3.1-pro-preview` (labeled "Gemini 3.1 Pro Preview (Advanced)") to the `GEMINI_MODELS` dropdown array.
+**File: `src/components/admin/AIContentPreviewCard.tsx`**
 
-**2. `supabase/functions/_shared/ai-provider.ts`**
-- Change `DEFAULT_SETTINGS.gemini_model` from `gemini-2.5-flash` to `gemini-3.1-pro-preview`.
+1. Add helper function (after imports, before the component):
 
-**3. `supabase/functions/med-tutor-chat/index.ts`**
-- Change the fallback model from `gemini-2.5-flash` to `gemini-3.1-pro-preview`.
+```text
+function normalizeChoices(choices: any): Record<string, string> {
+  if (!choices) return {};
+  if (Array.isArray(choices)) {
+    const result: Record<string, string> = {};
+    choices.forEach((c: any) => {
+      if (c && typeof c === 'object' && c.key) {
+        result[c.key] = c.text || '';
+      }
+    });
+    return result;
+  }
+  if (typeof choices === 'object') {
+    const result: Record<string, string> = {};
+    for (const [k, v] of Object.entries(choices)) {
+      result[k] = typeof v === 'object' && v !== null
+        ? (v as any).text || String(v)
+        : String(v);
+    }
+    return result;
+  }
+  return {};
+}
+```
 
-**4. Database update**
-- Update the `ai_settings` row where `key = 'gemini_model'` to set `value` to `gemini-3.1-pro-preview`, making it immediately active.
+2. **Line 87 (collapsed preview)** -- change `Object.keys(item.choices || {}).length` to `Object.keys(normalizeChoices(item.choices)).length`
 
-### Technical summary
+3. **Lines 196-212 (edit form)** -- replace `Object.entries(editedItem.choices || {})` with `Object.entries(normalizeChoices(editedItem.choices))`, and update the onChange to write back normalized format
 
-| File | What changes |
-|------|-------------|
-| `AISettingsPanel.tsx` line 36-40 | Add new entry to GEMINI_MODELS array |
-| `ai-provider.ts` line 24 | Change default gemini_model |
-| `med-tutor-chat/index.ts` line ~72 | Change fallback model |
-| Database `ai_settings` table | UPDATE value for key `gemini_model` |
+4. **Lines 497-506 (full view panel)** -- replace `Object.entries(item.choices || {})` with `Object.entries(normalizeChoices(item.choices))`
 
+5. **Initialize editedItem with normalized choices** -- in `useState` or via an effect, ensure `editedItem.choices` is normalized to dictionary format on mount so edits write back correctly
+
+### Summary
+
+| Location | Current Code | Fix |
+|---|---|---|
+| Line 87 | `Object.keys(item.choices \|\| {}).length` | Use `normalizeChoices(item.choices)` |
+| Line 196 | `Object.entries(editedItem.choices \|\| {})` | Use `normalizeChoices(editedItem.choices)` |
+| Line 497 | `Object.entries(item.choices \|\| {})` | Use `normalizeChoices(item.choices)` |
+
+Only `AIContentPreviewCard.tsx` is modified. No AI model or settings changes.
