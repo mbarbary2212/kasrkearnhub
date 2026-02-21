@@ -8,6 +8,7 @@ export interface ModuleChapter {
   title: string;
   order_index: number;
   book_label: string | null;
+  icon_url: string | null;
   created_at: string | null;
 }
 

@@ -2746,6 +2746,7 @@ export type Database = {
           chapter_number: number
           created_at: string | null
           enable_sections: boolean
+          icon_url: string | null
           id: string
           module_id: string
           order_index: number
@@ -2756,6 +2757,7 @@ export type Database = {
           chapter_number: number
           created_at?: string | null
           enable_sections?: boolean
+          icon_url?: string | null
           id?: string
           module_id: string
           order_index: number
@@ -2766,6 +2768,7 @@ export type Database = {
           chapter_number?: number
           created_at?: string | null
           enable_sections?: boolean
+          icon_url?: string | null
           id?: string
           module_id?: string
           order_index?: number
