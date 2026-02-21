@@ -299,9 +299,17 @@ function BookLecturesView({
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left"
               >
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
-                  {index + 1}
-                </span>
+                {chapter.icon_url ? (
+                  <img 
+                    src={chapter.icon_url} 
+                    alt="" 
+                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                    {index + 1}
+                  </span>
+                )}
                 <span className="flex-1 text-[15px] font-medium truncate">
                   {chapter.title}
                 </span>

@@ -341,14 +341,24 @@ export default function ChapterPage() {
                 {/* Desktop: Full two-line header */}
                 <div className="hidden md:block">
                   <p className="text-sm text-muted-foreground">{module?.name}</p>
-                  <h1 className="text-2xl font-heading font-semibold">
-                    Chapter {chapter?.chapter_number}: {chapter?.title}
-                  </h1>
+                  <div className="flex items-center gap-3">
+                    {chapter?.icon_url && (
+                      <img src={chapter.icon_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                    <h1 className="text-2xl font-heading font-semibold">
+                      Chapter {chapter?.chapter_number}: {chapter?.title}
+                    </h1>
+                  </div>
                 </div>
                 {/* Mobile: Just the chapter title, smaller */}
-                <h1 className="md:hidden text-lg font-heading font-semibold line-clamp-1">
-                  {chapter?.title}
-                </h1>
+                <div className="md:hidden flex items-center gap-2">
+                  {chapter?.icon_url && (
+                    <img src={chapter.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                  )}
+                  <h1 className="text-lg font-heading font-semibold line-clamp-1">
+                    {chapter?.title}
+                  </h1>
+                </div>
               </>
             )}
           </div>
