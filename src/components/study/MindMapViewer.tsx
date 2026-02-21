@@ -737,17 +737,16 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                   </div>
                 ) : fullscreenFileUrl ? (
                   <div 
-                    className="relative flex items-center justify-center p-4" 
+                    className="relative p-4" 
                     style={{ minHeight: '60vh' }}
                   >
                     {isDrawingMode ? (
                       <div 
                         style={{ 
-                          transform: `scale(${zoom})`,
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.2s ease-out',
-                          width: '100%',
+                          width: `${zoom * 100}%`,
+                          maxWidth: 'none',
                           height: '70vh',
+                          transition: 'width 0.2s ease-out',
                         }}
                       >
                         <ReactSketchCanvas
@@ -766,12 +765,11 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
                         src={fullscreenFileUrl}
                         alt={fullscreenResource?.title}
                         style={{ 
-                          transform: `scale(${zoom})`, 
-                          transformOrigin: 'center center',
-                          transition: 'transform 0.2s ease-out',
-                          maxWidth: '100%',
-                          maxHeight: '75vh',
-                          objectFit: 'contain',
+                          width: `${zoom * 100}%`,
+                          maxWidth: 'none',
+                          height: 'auto',
+                          transition: 'width 0.2s ease-out',
+                          display: 'block',
                         }}
                       />
                     )}
