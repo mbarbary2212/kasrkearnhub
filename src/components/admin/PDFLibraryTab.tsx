@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAdminDocuments, useUploadAdminDocument, useDeleteAdminDocument, getSignedUrl, AdminDocument } from '@/hooks/useAdminDocuments';
 import { useModules } from '@/hooks/useModules';
+import { useYears } from '@/hooks/useYears';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -60,6 +61,7 @@ function UploadModal({ open, onOpenChange }: UploadModalProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const { data: modules } = useModules();
+  const { data: years } = useYears();
   const { data: chapters } = useModuleChapters(selectedModuleId || undefined);
   const uploadMutation = useUploadAdminDocument();
 
@@ -234,9 +236,22 @@ function UploadModal({ open, onOpenChange }: UploadModalProps) {
                   <SelectValue placeholder="Select module" />
                 </SelectTrigger>
                 <SelectContent>
-                  {modules?.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
+                  {years?.sort((a, b) => a.number - b.number).map(year => {
+                    const yearModules = modules
+                      ?.filter(m => m.year_id === year.id)
+                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                    if (!yearModules?.length) return null;
+                    return (
+                      <div key={year.id}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                          {year.name}
+                        </div>
+                        {yearModules.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
