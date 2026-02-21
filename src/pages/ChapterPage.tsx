@@ -600,7 +600,10 @@ export default function ChapterPage() {
                       if (type === 'mind_map') {
                         guardAdd(() => setMindMapBulkOpen(true));
                       } else {
-                        guardAdd(() => setFlashcardBulkOpen(true));
+                        guardAdd(() => {
+                          (window as any).__pendingBulkResourceType = type;
+                          setFlashcardBulkOpen(true);
+                        });
                       }
                     }}
                     chapterId={chapterId}
@@ -656,7 +659,10 @@ export default function ChapterPage() {
                         (window as any).__pendingResourceType = type;
                       });
                     }}
-                    onBulkUpload={(type) => guardAdd(() => setFlashcardBulkOpen(true))}
+                    onBulkUpload={(type) => guardAdd(() => {
+                      (window as any).__pendingBulkResourceType = type;
+                      setFlashcardBulkOpen(true);
+                    })}
                     chapterId={chapterId}
                   />
                 )}
@@ -877,7 +883,7 @@ export default function ChapterPage() {
               onOpenChange={setFlashcardBulkOpen}
               chapterId={chapterId}
               moduleId={moduleId}
-              resourceType="flashcard"
+              resourceType={(window as any).__pendingBulkResourceType || 'flashcard'}
             />
             <MindMapBulkUploadModal
               open={mindMapBulkOpen}

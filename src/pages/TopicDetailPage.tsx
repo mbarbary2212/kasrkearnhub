@@ -552,7 +552,10 @@ export default function TopicDetailPage() {
                       if (type === 'mind_map') {
                         guardAdd(() => setMindMapBulkOpen(true));
                       } else {
-                        guardAdd(() => setFlashcardBulkOpen(true));
+                        guardAdd(() => {
+                          (window as any).__pendingBulkResourceType = type;
+                          setFlashcardBulkOpen(true);
+                        });
                       }
                     }}
                     topicId={topicId}
@@ -621,7 +624,10 @@ export default function TopicDetailPage() {
                         (window as any).__pendingResourceType = type;
                       });
                     }}
-                    onBulkUpload={(type) => guardAdd(() => setFlashcardBulkOpen(true))}
+                    onBulkUpload={(type) => guardAdd(() => {
+                      (window as any).__pendingBulkResourceType = type;
+                      setFlashcardBulkOpen(true);
+                    })}
                     topicId={topicId}
                   />
                 )}
@@ -843,7 +849,7 @@ export default function TopicDetailPage() {
               onOpenChange={setFlashcardBulkOpen}
               topicId={topicId}
               moduleId={moduleId}
-              resourceType="flashcard"
+              resourceType={(window as any).__pendingBulkResourceType || 'flashcard'}
             />
             <MindMapBulkUploadModal
               open={mindMapBulkOpen}
