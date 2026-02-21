@@ -1,26 +1,33 @@
 
 
-## Render the API Key Guide with Proper Formatting
+## Add Gemini 3.1 Pro Preview and Set as Default
 
-The detailed guide you added to the cost message is already saved in the database. The issue is that it currently displays as plain unformatted text in the admin's Account page alert. This plan improves both the display and the editing experience.
+Your new paid-tier API key is already configured in Supabase secrets. Now the plan updates the model across the app.
+
+### Important caveat
+
+The model ID `gemini-3.1-pro-preview` is not a confirmed public Google model name. If generation fails with a 400/404 error after this change, you can instantly switch back to `gemini-2.5-pro` from Admin > AI Settings without needing any code changes.
 
 ### Changes
 
-**1. Account Page - Render the message with markdown formatting**
+**1. `src/components/admin/AISettingsPanel.tsx`**
+- Add `gemini-3.1-pro-preview` (labeled "Gemini 3.1 Pro Preview (Advanced)") to the `GEMINI_MODELS` dropdown array.
 
-In `src/pages/AccountPage.tsx`, the alert that shows the `global_key_disabled_message` will be updated to use the `react-markdown` library (already installed) so that numbered lists, bold text, links, and headings render properly instead of appearing as a wall of plain text.
+**2. `supabase/functions/_shared/ai-provider.ts`**
+- Change `DEFAULT_SETTINGS.gemini_model` from `gemini-2.5-flash` to `gemini-3.1-pro-preview`.
 
-The alert will also be made expandable/collapsible — showing a short summary line with a "Read setup guide" toggle to expand the full formatted instructions, so it doesn't overwhelm the page.
+**3. `supabase/functions/med-tutor-chat/index.ts`**
+- Change the fallback model from `gemini-2.5-flash` to `gemini-3.1-pro-preview`.
 
-**2. AI Settings Panel - Expand the textarea**
+**4. Database update**
+- Update the `ai_settings` row where `key = 'gemini_model'` to set `value` to `gemini-3.1-pro-preview`, making it immediately active.
 
-In `src/components/admin/AISettingsPanel.tsx`, the cost message `Textarea` rows will be increased from 3 to 12 so superadmins can comfortably view and edit the full multi-step guide.
+### Technical summary
 
-### Technical Details
+| File | What changes |
+|------|-------------|
+| `AISettingsPanel.tsx` line 36-40 | Add new entry to GEMINI_MODELS array |
+| `ai-provider.ts` line 24 | Change default gemini_model |
+| `med-tutor-chat/index.ts` line ~72 | Change fallback model |
+| Database `ai_settings` table | UPDATE value for key `gemini_model` |
 
-| File | Change |
-|------|--------|
-| `src/pages/AccountPage.tsx` | Import `ReactMarkdown`, wrap `global_key_disabled_message` in a `ReactMarkdown` component inside a collapsible section. Style with `prose` classes for proper list/heading rendering. |
-| `src/components/admin/AISettingsPanel.tsx` | Change Textarea `rows={3}` to `rows={12}` for the cost message editor. |
-
-No new dependencies needed — `react-markdown` is already installed.
