@@ -67,7 +67,7 @@ async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; 
   }
 
   const model = provider === 'gemini'
-    ? (geminiModel || 'gemini-2.5-flash')
+    ? (geminiModel || 'gemini-3.1-pro-preview')
     : (lovableModel || 'google/gemini-3-flash-preview');
 
   return { provider, model };

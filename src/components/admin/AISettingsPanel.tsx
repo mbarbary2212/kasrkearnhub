@@ -34,6 +34,7 @@ const LOVABLE_MODELS = [
 ];
 
 const GEMINI_MODELS = [
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Advanced)' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
