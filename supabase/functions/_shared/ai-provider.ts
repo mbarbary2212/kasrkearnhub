@@ -207,6 +207,43 @@ export async function logAIUsage(
 /**
  * Load active AI rules for a content type with precedence: chapter > module > global
  */
+/**
+ * Get the model for a specific content type, falling back to the global default.
+ * Reads the 'content_type_model_overrides' setting from AISettings.
+ */
+export function getModelForContentType(
+  settings: AISettings,
+  contentType: string,
+  overrides?: Record<string, string>,
+): string {
+  if (overrides && overrides[contentType] && overrides[contentType] !== 'default') {
+    return overrides[contentType];
+  }
+  // Fall back to global model
+  return settings.ai_provider === 'gemini'
+    ? settings.gemini_model
+    : settings.lovable_model;
+}
+
+/**
+ * Fetch content_type_model_overrides from ai_settings
+ */
+export async function getContentTypeOverrides(serviceClient: any): Promise<Record<string, string>> {
+  const { data, error } = await serviceClient
+    .from('ai_settings')
+    .select('value')
+    .eq('key', 'content_type_model_overrides')
+    .single();
+
+  if (error || !data?.value) return {};
+
+  let value = data.value;
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { return {}; }
+  }
+  return (typeof value === 'object' && !Array.isArray(value)) ? value as Record<string, string> : {};
+}
+
 export async function loadAIRules(
   serviceClient: any,
   contentType: string,

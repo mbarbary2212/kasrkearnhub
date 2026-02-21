@@ -35,6 +35,7 @@ const LOVABLE_MODELS = [
 
 const GEMINI_MODELS = [
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Advanced)' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Fast)' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
@@ -48,6 +49,10 @@ const CONTENT_TYPES = [
   { value: 'flashcard', label: 'Flashcards' },
   { value: 'clinical_case', label: 'Clinical Cases' },
   { value: 'guided_explanation', label: 'Guided Explanations' },
+  { value: 'virtual_patient', label: 'Virtual Patient' },
+  { value: 'mind_map', label: 'Mind Maps' },
+  { value: 'worked_case', label: 'Worked Cases' },
+  { value: 'case_scenario', label: 'Case Scenarios' },
 ];
 
 export function AISettingsPanel() {
@@ -301,6 +306,9 @@ export function AISettingsPanel() {
         </CardContent>
       </Card>
 
+      {/* Model per Content Type */}
+      <ContentTypeModelSection provider={provider as string} />
+
       {/* Content Type Rules Section */}
       <ContentRulesSection />
     </div>
@@ -365,6 +373,63 @@ function GlobalAIPolicySection() {
             onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
             rows={12}
           />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================
+// Model per Content Type
+// ============================================
+
+function ContentTypeModelSection({ provider }: { provider: string }) {
+  const { data: settings } = useAISettings();
+  const updateSetting = useUpdateAISetting();
+  
+  const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
+  
+  const models = provider === 'gemini' ? GEMINI_MODELS : LOVABLE_MODELS;
+
+  const handleModelChange = (contentType: string, model: string) => {
+    const newOverrides = { ...overrides, [contentType]: model };
+    updateSetting.mutate({ key: 'content_type_model_overrides', value: newOverrides });
+  };
+
+  const globalModel = provider === 'gemini'
+    ? getSettingValue(settings, 'gemini_model', 'gemini-2.5-flash')
+    : getSettingValue(settings, 'lovable_model', 'google/gemini-3-flash-preview');
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Model per Content Type
+        </CardTitle>
+        <CardDescription>
+          Automatically select the best model for each content type. "Use Global Default" falls back to: <Badge variant="outline" className="ml-1">{String(globalModel)}</Badge>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {CONTENT_TYPES.map(ct => {
+            const current = overrides[ct.value] || 'default';
+            return (
+              <div key={ct.value} className="flex items-center gap-2">
+                <Label className="w-36 text-sm shrink-0">{ct.label}</Label>
+                <Select value={current} onValueChange={(v) => handleModelChange(ct.value, v)} disabled={updateSetting.isPending}>
+                  <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Use Global Default</SelectItem>
+                    {models.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getAISettings, getAIProvider, callAI, resolveApiKey, logAIUsage, loadAIRules } from "../_shared/ai-provider.ts";
+import { getAISettings, getAIProvider, callAI, resolveApiKey, logAIUsage, loadAIRules, getContentTypeOverrides, getModelForContentType } from "../_shared/ai-provider.ts";
 import { detectPromptInjection, validateInputLimits, validateStrictSchema, sanitizeSectionNumber } from "../_shared/security.ts";
 import { checkDatabaseDuplicates, checkIntraBatchDuplicates } from "../_shared/duplicates.ts";
 
@@ -792,6 +792,11 @@ serve(async (req) => {
   }
 
   const aiProvider = getAIProvider(aiSettings);
+
+  // Override model based on content type mapping
+  const contentTypeOverrides = await getContentTypeOverrides(serviceClientEarly);
+  aiProvider.model = getModelForContentType(aiSettings, content_type, contentTypeOverrides);
+  console.log(`[model-select] content_type=${content_type} → model=${aiProvider.model}`);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
