@@ -1,0 +1,1 @@
+UPDATE ai_settings SET value = '"gemini-3.1-pro-preview"', updated_at = now() WHERE key = 'gemini_model';
