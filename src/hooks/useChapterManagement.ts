@@ -14,6 +14,7 @@ export interface UpdateChapterData {
   title?: string;
   chapterNumber?: number;
   bookLabel?: string;
+  iconUrl?: string | null;
 }
 
 // Create a new chapter
@@ -65,6 +66,7 @@ export function useUpdateChapter() {
       if (data.title !== undefined) updateData.title = data.title;
       if (data.chapterNumber !== undefined) updateData.chapter_number = data.chapterNumber;
       if (data.bookLabel !== undefined) updateData.book_label = data.bookLabel;
+      if (data.iconUrl !== undefined) updateData.icon_url = data.iconUrl;
 
       const { data: chapter, error } = await supabase
         .from('module_chapters')
