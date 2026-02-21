@@ -1,73 +1,66 @@
 
 
-## Auto-Select AI Model by Content Type
+## Fix Short Questions Bulk Upload and Template
 
-Instead of manually switching models, the system will automatically pick the best model for each content type based on a configurable mapping stored in the database.
+### Problem
 
-### How It Works
+Two issues:
 
-- A new `ai_settings` row called `content_type_model_overrides` stores a JSON mapping like:
-  ```
-  {
-    "mcq": "gemini-2.5-flash",
-    "flashcard": "gemini-2.5-flash",
-    "osce": "gemini-3.1-pro-preview",
-    "clinical_case": "gemini-3.1-pro-preview",
-    "essay": "gemini-2.5-flash",
-    "matching": "gemini-2.5-flash",
-    "guided_explanation": "gemini-3.1-pro-preview",
-    "virtual_patient": "gemini-3.1-pro-preview",
-    "mind_map": "gemini-2.5-flash",
-    "worked_case": "gemini-2.5-flash",
-    "case_scenario": "gemini-3.1-pro-preview"
-  }
-  ```
-- When generating content, the edge function checks this mapping for the current content type. If a match exists, it overrides the global model. Otherwise, it falls back to the global default.
-- The Admin AI Settings panel gets a new "Model per Content Type" section showing each content type with a dropdown to pick its model (or "Use Default").
+1. **The Help Templates tab defines the wrong format** for Short Questions -- it uses a clinical scenario format (`title, scenario_text, questions, model_answer, keywords, rating, section_name, section_number`) which is suited for clinical cases, not short answer questions.
 
-### Changes
+2. **The bulk upload parser only reads 3 columns** (`title, question, model_answer`) by position, so when a CSV following the template is uploaded, columns get misaligned -- `scenario_text` ends up in the `question` field, and `questions` ends up in `model_answer`.
 
-**1. Add more Gemini models to dropdowns** (`src/components/admin/AISettingsPanel.tsx`)
-- Add `gemini-3-flash-preview` and `gemini-2.5-flash-lite` to the `GEMINI_MODELS` array (these are valid direct Google API model IDs).
+Your CSV file follows the template format, so the data was mapped incorrectly during upload.
 
-**2. New database setting** (migration)
-- Insert a new row into `ai_settings` with key `content_type_model_overrides` and the default JSON mapping above.
+### What Changes
 
-**3. Update AI provider abstraction** (`supabase/functions/_shared/ai-provider.ts`)
-- Add a new function `getModelForContentType(settings, contentType)` that reads the overrides and returns the appropriate model, falling back to the global default.
-- Export this function.
+**1. Fix the Help Templates tab** (`src/components/admin/HelpTemplatesTab.tsx`)
 
-**4. Use per-content-type model in generation** (`supabase/functions/generate-content-from-pdf/index.ts`)
-- After resolving the AI provider, call `getModelForContentType(aiSettings, content_type)` to override `aiProvider.model` with the content-type-specific model.
+Simplify the essay template to match what short questions actually are:
+- Columns: `title, question, model_answer` (with optional `section_name, section_number`)
+- Remove `scenario_text`, `keywords`, `rating` columns
+- Update the example rows to show simple, direct short-answer questions (not clinical scenarios)
 
-**5. Admin UI for per-content-type model mapping** (`src/components/admin/AISettingsPanel.tsx`)
-- Add a new card/section "Model per Content Type" below the existing model dropdowns.
-- For each content type, show a dropdown with all available models (from the active provider) plus a "Use Global Default" option.
-- Changes save to the `content_type_model_overrides` setting.
+**2. Fix the bulk upload parser** (`src/components/admin/AdminContentActions.tsx`)
 
-### Default Model Assignments
+Update the essay parser to:
+- Detect headers and map columns by name (not position)
+- Support the simplified format: `title, question, model_answer`
+- Also support the old clinical format for backward compatibility: if `scenario_text` and `questions` headers are found, combine them into the `question` field
+- Map `section_name`/`section_number` to `section_id` if present
+- Update the CSV format hint in the upload dialog to show the correct simple format
 
-| Content Type | Default Model | Reason |
-|---|---|---|
-| MCQ | gemini-2.5-flash | Speed -- simple structured output |
-| Flashcard | gemini-2.5-flash | Speed |
-| Essay | gemini-2.5-flash | Speed |
-| Matching | gemini-2.5-flash | Speed |
-| Mind Map | gemini-2.5-flash | Speed |
-| Worked Case | gemini-2.5-flash | Speed |
-| OSCE | gemini-3.1-pro-preview | Complex clinical reasoning |
-| Clinical Case | gemini-3.1-pro-preview | Multi-stage clinical logic |
-| Virtual Patient | gemini-3.1-pro-preview | Complex multi-stage |
-| Guided Explanation | gemini-3.1-pro-preview | Socratic reasoning |
-| Case Scenario | gemini-3.1-pro-preview | Clinical reasoning |
+**3. Update the CSV format hint** in the bulk upload dialog
 
-### Technical Summary
+Change from:
+```
+title,question,model_answer
+```
+To also mention the optional section columns:
+```
+title,question,model_answer,section_name,section_number
+```
+
+### Technical Details
+
+**File: `src/components/admin/HelpTemplatesTab.tsx` (lines 165-180)**
+- Change columns to `['title', 'question', 'model_answer', 'section_name', 'section_number']`
+- Change required to `['title', 'question']`
+- Change optional to `['model_answer', 'section_name', 'section_number']`
+- Replace the clinical scenario example with a simple short-answer example like:
+  - Title: "Describe the stages of wound healing."
+  - Question: "Outline the four main stages of wound healing and their key features."
+  - Model Answer: "1) Hemostasis -- platelet aggregation and clot formation. 2) Inflammation -- neutrophils and macrophages clear debris. 3) Proliferation -- fibroblast activity, granulation tissue, angiogenesis. 4) Remodeling -- collagen maturation and scar formation over weeks to months."
+
+**File: `src/components/admin/AdminContentActions.tsx` (lines 365-406)**
+- Add header detection: read the first row to build a column-name-to-index map
+- If headers include `scenario_text` and `questions`, combine them into `question` for backward compatibility with existing CSVs
+- If headers include `section_name`/`section_number`, resolve to `section_id`
+- Update the CSV format hint (lines 673-676)
+
+### Summary
 
 | File | Change |
 |---|---|
-| `AISettingsPanel.tsx` | Add gemini-3-flash-preview, gemini-2.5-flash-lite to GEMINI_MODELS; add per-content-type model mapping UI section |
-| `ai-provider.ts` | Add `getModelForContentType()` function |
-| `generate-content-from-pdf/index.ts` | Override `aiProvider.model` based on content type |
-| Database migration | Insert `content_type_model_overrides` row in `ai_settings` |
-| `useAISettings.ts` | No changes needed -- existing hooks already handle the new key generically |
-
+| `HelpTemplatesTab.tsx` | Simplify essay template to `title, question, model_answer` with simple examples |
+| `AdminContentActions.tsx` | Header-based column mapping in parser; backward-compatible with old format; updated format hint |
