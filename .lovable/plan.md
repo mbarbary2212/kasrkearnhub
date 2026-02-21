@@ -1,40 +1,43 @@
 
 
-## Fix OSCE Section Support, Image Upload Text, and Add Image Button
+## Fix: OSCE Bulk Upload Flexible Column Detection
 
-### Issue 1: OSCE Analyzer Flags section_name/section_number as "Extra Columns"
+### The Problem
 
-The AI bulk upload analyzer's OSCE schema does not include `section_name` and `section_number` in its list of known columns. The actual parser in `OsceBulkUploadModal.tsx` already reads and resolves these columns correctly, but the AI analysis warns "extra columns not in database schema; these will be ignored" -- which is misleading.
+Your XLSX file uses column headers like `history text`, `statement 1`, `answer 1`, `explanation 1` (spaces, no suffixes), but the parser looks for exact names like `case_history`, `statement_1_text`, `statement_1_answer`. The AI analyzer correctly identifies the mappings but those mappings are never actually applied during parsing -- they are display-only. So every row fails validation.
 
-**Fix in `supabase/functions/analyze-bulk-upload/index.ts` (line 70):**
-- Add `section_name` and `section_number` to the OSCE schema's `optional` array
+### The Fix
 
-Also update the edge function `supabase/functions/bulk-import-osce/index.ts` to handle `section_name`/`section_number` columns if present (for the server-side import path), resolving them to `section_id` using a sections lookup query.
+**File: `src/components/content/OsceBulkUploadModal.tsx` (lines 100-140)**
 
-### Issue 2: Change "optional" to "you can upload later"
+Add a column-name normalization/alias layer before accessing row data. Instead of reading `row['case_history']` directly, first build an alias map from the actual headers to the expected column names, then use that map to read values.
 
-**Fix in `src/components/content/OsceBulkUploadModal.tsx` (line 525):**
-- Change the text from:
-  `image_filename is **optional**. Leave blank for questions without images.`
-- To:
-  `image_filename -- you can upload later. Leave blank and add images one-by-one after import.`
+**Alias map will handle these common variations:**
 
-### Issue 3: "Add Image" Button Not Working
+| Expected Column | Also Accept |
+|---|---|
+| `case_history` | `history text`, `history_text`, `casehistory`, `case history` |
+| `statement_1_text` | `statement 1`, `statement_1`, `statement1` |
+| `statement_1_answer` | `answer 1`, `answer_1`, `answer1` |
+| `explanation_1` | `explanation 1`, `explanation_1` (already works) |
+| (same pattern for 2-5) | |
+| `image_filename` | `image filename`, `imagename`, `image name` |
+| `section_name` | `section name`, `sectionname` |
+| `section_number` | `section number`, `sectionnumber` |
 
-The "Add Image" button in `OsceQuestionCard.tsx` (line 261) requires both `isAdmin` AND `moduleId` to be truthy. Two potential fixes:
+**Implementation approach:**
 
-**a) Ensure the button is always visible for admins:**
-The current condition `isAdmin && moduleId` is correct. The button should appear for admin users when viewing questions without images. If it's not appearing, this is likely because `moduleId` is not being passed. I will add a fallback: extract `moduleId` from the question itself (`question.module_id`) so the button always works for admins.
+1. After `XLSX.utils.sheet_to_json()`, read the actual header names from the first row's keys
+2. Build a `resolveColumn(row, ...aliases)` helper that tries each alias and returns the first non-empty value
+3. Replace all `row['exact_name']` lookups with `resolveColumn(row, 'case_history', 'history text', 'history_text')` etc.
+4. This also applies to the edge function `supabase/functions/bulk-import-osce/index.ts` which has the same rigid column lookups
 
-**b) Also add a "Replace Image" option for questions that already have an image:**
-Currently, when an image exists, there is no admin option to replace it. I will add a small "Replace Image" button for admins in the image view area.
+**Also apply the same fix to the edge function** `supabase/functions/bulk-import-osce/index.ts` (lines 164-184) which uses the same exact-match column names for the server-side import path.
 
 ### Files to Modify
 
 | File | Change |
 |---|---|
-| `supabase/functions/analyze-bulk-upload/index.ts` | Add `section_name`, `section_number` to OSCE optional columns |
-| `supabase/functions/bulk-import-osce/index.ts` | Add section resolution logic using section_name/section_number |
-| `src/components/content/OsceBulkUploadModal.tsx` | Change "optional" text to "you can upload later" |
-| `src/components/content/OsceQuestionCard.tsx` | Use `question.module_id` as fallback for moduleId; add "Replace Image" button for admins |
+| `src/components/content/OsceBulkUploadModal.tsx` | Add `resolveColumn` helper; replace all rigid `row['column_name']` lookups with flexible alias resolution |
+| `supabase/functions/bulk-import-osce/index.ts` | Same flexible column resolution for server-side import |
 
