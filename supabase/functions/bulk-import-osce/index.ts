@@ -205,41 +205,45 @@ Deno.serve(async (req: Request) => {
       console.log(`Found ${zipFileNames.size} images in ZIP`);
     }
 
+    // Flexible column resolver
+    function resolveCol(row: Record<string, any>, ...aliases: string[]): string {
+      const lowerMap: Record<string, any> = {};
+      for (const key of Object.keys(row)) {
+        lowerMap[key.toLowerCase().trim()] = row[key];
+      }
+      for (const alias of aliases) {
+        const val = lowerMap[alias.toLowerCase().trim()];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return String(val).trim();
+        }
+      }
+      return '';
+    }
+
     // Parse rows
     const parsedRows: ParsedRow[] = [];
     const missingImages: string[] = [];
 
     for (let i = 0; i < excelRows.length; i++) {
       const row = excelRows[i];
-      const rowNumber = i + 2; // +2 because row 1 is header and Excel is 1-indexed
+      const rowNumber = i + 2;
 
-      const imageFilename = String(row['image_filename'] || '').trim();
-      const historyText = String(row['case_history'] || '').trim();
-      const sectionName = String(row['section_name'] || '').trim();
-      const sectionNumber = String(row['section_number'] || '').trim();
-      const statements = [
-        String(row['statement_1_text'] || '').trim(),
-        String(row['statement_2_text'] || '').trim(),
-        String(row['statement_3_text'] || '').trim(),
-        String(row['statement_4_text'] || '').trim(),
-        String(row['statement_5_text'] || '').trim(),
-      ];
+      const imageFilename = resolveCol(row, 'image_filename', 'image filename', 'image name', 'imagename', 'image');
+      const historyText = resolveCol(row, 'case_history', 'history text', 'history_text', 'case history', 'casehistory', 'history');
+      const sectionName = resolveCol(row, 'section_name', 'section name', 'sectionname', 'section');
+      const sectionNumber = resolveCol(row, 'section_number', 'section number', 'sectionnumber', 'section_num');
+      
+      const statements = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `statement_${n}_text`, `statement ${n}`, `statement_${n}`, `statement${n}`)
+      );
 
-      const rawAnswers = [
-        String(row['statement_1_answer'] || '').trim().toUpperCase(),
-        String(row['statement_2_answer'] || '').trim().toUpperCase(),
-        String(row['statement_3_answer'] || '').trim().toUpperCase(),
-        String(row['statement_4_answer'] || '').trim().toUpperCase(),
-        String(row['statement_5_answer'] || '').trim().toUpperCase(),
-      ];
+      const rawAnswers = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `statement_${n}_answer`, `answer ${n}`, `answer_${n}`, `answer${n}`).toUpperCase()
+      );
 
-      const explanations = [
-        String(row['statement_1_explanation'] || '').trim(),
-        String(row['statement_2_explanation'] || '').trim(),
-        String(row['statement_3_explanation'] || '').trim(),
-        String(row['statement_4_explanation'] || '').trim(),
-        String(row['statement_5_explanation'] || '').trim(),
-      ];
+      const explanations = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `explanation_${n}`, `explanation ${n}`, `statement_${n}_explanation`, `explanation${n}`)
+      );
 
       // Validate - image_filename is now OPTIONAL
       const errors: string[] = [];
