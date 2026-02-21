@@ -522,7 +522,7 @@ export function OsceBulkUploadModal({
                 <ul className="list-disc pl-5 text-sm space-y-1">
                   <li>Download the template and fill in your questions</li>
                   <li>Each row = 1 OSCE question with 5 True/False statements</li>
-                  <li><code className="bg-muted px-1 rounded">image_filename</code> is <strong>optional</strong>. Leave blank for questions without images.</li>
+                  <li><code className="bg-muted px-1 rounded">image_filename</code> — you can upload later. Leave blank and add images one-by-one after import.</li>
                 </ul>
               </AlertDescription>
             </Alert>
