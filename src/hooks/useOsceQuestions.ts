@@ -58,8 +58,29 @@ export interface OsceQuestionInsert {
   created_by?: string | null;
 }
 
+// Lightweight count-only hook for chapter OSCE questions (badges)
+export function useChapterOsceCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['chapter-osce-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('osce_questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
+        .eq('legacy_archived', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Fetch OSCE questions for a chapter
-export function useChapterOsceQuestions(chapterId?: string, includeDeleted = false) {
+export function useChapterOsceQuestions(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ['chapter-osce-questions', chapterId, includeDeleted],
     queryFn: async () => {
@@ -78,7 +99,9 @@ export function useChapterOsceQuestions(chapterId?: string, includeDeleted = fal
       if (error) throw error;
       return data as OsceQuestion[];
     },
-    enabled: !!chapterId,
+    enabled: !!chapterId && enabled,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -147,6 +170,7 @@ export function useCreateOsceQuestion() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', data.chapter_id] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-osce-count', data.chapter_id] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', data.module_id] });
       toast.success('OSCE question added successfully');
       logActivity({
@@ -181,6 +205,7 @@ export function useUpdateOsceQuestion() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', data.chapter_id] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-osce-count', data.chapter_id] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', data.module_id] });
       toast.success('OSCE question updated successfully');
       logActivity({
@@ -213,6 +238,7 @@ export function useDeleteOsceQuestion() {
     },
     onSuccess: ({ id, chapterId, moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-osce-count', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', moduleId] });
       toast.success('OSCE question deleted');
       logActivity({
@@ -245,6 +271,7 @@ export function useRestoreOsceQuestion() {
     },
     onSuccess: ({ chapterId, moduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-osce-questions', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-osce-count', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-osce-questions', moduleId] });
       toast.success('OSCE question restored');
     },

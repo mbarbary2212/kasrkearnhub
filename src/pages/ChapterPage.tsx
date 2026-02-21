@@ -30,10 +30,12 @@ import {
   useChapterLectures, 
   useChapterResources, 
   useChapterEssays,
+  useChapterEssayCount,
+  useChapterClinicalCaseCount,
 } from '@/hooks/useChapterContent';
-import { useChapterOsceQuestions } from '@/hooks/useOsceQuestions';
+import { useChapterOsceQuestions, useChapterOsceCount } from '@/hooks/useOsceQuestions';
 import { useChapterProgress } from '@/hooks/useChapterProgress';
-import { useChapterMatchingQuestions } from '@/hooks/useMatchingQuestions';
+import { useChapterMatchingQuestions, useChapterMatchingCount } from '@/hooks/useMatchingQuestions';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
@@ -43,8 +45,8 @@ import { VisualResourcesSection } from '@/components/study/VisualResourcesSectio
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { useChapterMcqs } from '@/hooks/useMcqs';
-import { useChapterTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
+import { useChapterMcqs, useChapterMcqCount } from '@/hooks/useMcqs';
+import { useChapterTrueFalseQuestions, useChapterTrueFalseCount } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -135,18 +137,29 @@ export default function ChapterPage() {
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
   const { data: resources, isLoading: resourcesLoading } = useChapterResources(chapterId);
-  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false);
-  const { data: deletedMcqs } = useChapterMcqs(chapterId, true);
-  const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId);
-  const { data: deletedEssays } = useChapterEssays(chapterId, true);
-  const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId);
-  const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true);
+  
+  // Lightweight count hooks (always active) for practice tab badges
+  const { data: mcqCount = 0 } = useChapterMcqCount(chapterId);
+  const { data: osceCount = 0 } = useChapterOsceCount(chapterId);
+  const { data: matchingCount = 0 } = useChapterMatchingCount(chapterId);
+  const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
+  const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
+  const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  
+  // Full practice data hooks - only fetch when Practice or Test section is active
+  const isPracticeActive = activeSection === 'practice' || activeSection === 'test';
+  const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedMcqs } = useChapterMcqs(chapterId, true, { enabled: isPracticeActive && canManageContent });
+  const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedEssays } = useChapterEssays(chapterId, true, { enabled: isPracticeActive && canManageContent });
+  const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
-  const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId);
-  const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true);
-  const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useChapterTrueFalseQuestions(chapterId);
-  const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true);
+  const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
+  const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useChapterTrueFalseQuestions(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
@@ -277,25 +290,23 @@ export default function ChapterPage() {
   }, [resourcesTabs, resourcesTab]);
 
   const allPracticeTabs = useMemo(() => {
-    // Unified clinical cases count = cases from virtual_patient_cases table
-    const clinicalCasesCount = chapterClinicalCases.length;
     return createPracticeTabs({
-      mcqs: mcqs?.length || 0,
-      true_false: trueFalseQuestions?.length || 0,
-      essays: essays?.length || 0,
-      clinical_cases: clinicalCasesCount,
-      osce: osceQuestions?.length || 0,
+      mcqs: mcqCount,
+      true_false: trueFalseCount,
+      essays: essayCount,
+      clinical_cases: clinicalCaseCount,
+      osce: osceCount,
       practical: 0,
-      matching: matchingQuestions?.length || 0,
+      matching: matchingCount,
       images: 0,
     });
   }, [
-    mcqs?.length,
-    trueFalseQuestions?.length,
-    essays?.length,
-    chapterClinicalCases.length,
-    osceQuestions?.length,
-    matchingQuestions?.length,
+    mcqCount,
+    trueFalseCount,
+    essayCount,
+    clinicalCaseCount,
+    osceCount,
+    matchingCount,
   ]);
 
   // Admin sees all tabs; students see filtered based on setting

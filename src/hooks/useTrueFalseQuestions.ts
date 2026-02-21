@@ -72,8 +72,28 @@ export function useModuleTrueFalseQuestions(moduleId?: string, includeDeleted = 
   });
 }
 
+// Lightweight count-only hook for chapter True/False questions (badges)
+export function useChapterTrueFalseCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['true_false', 'chapter-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('true_false_questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Fetch True/False questions by chapter
-export function useChapterTrueFalseQuestions(chapterId?: string, includeDeleted = false) {
+export function useChapterTrueFalseQuestions(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ['true_false', 'chapter', chapterId, { includeDeleted }],
     queryFn: async () => {
@@ -91,7 +111,9 @@ export function useChapterTrueFalseQuestions(chapterId?: string, includeDeleted 
       if (error) throw error;
       return (data || []).map(mapDbRowToTrueFalse);
     },
-    enabled: !!chapterId,
+    enabled: !!chapterId && enabled,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -145,6 +167,7 @@ export function useCreateTrueFalseQuestion() {
       queryClient.invalidateQueries({ queryKey: ['true_false', 'module', result.module_id] });
       if (result.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter', result.chapter_id] });
+        queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter-count', result.chapter_id] });
       }
       if (result.topic_id) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'topic', result.topic_id] });
@@ -239,6 +262,7 @@ export function useDeleteTrueFalseQuestion() {
       queryClient.invalidateQueries({ queryKey: ['true_false', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'topic', result.topicId] });
@@ -281,6 +305,7 @@ export function useRestoreTrueFalseQuestion() {
       queryClient.invalidateQueries({ queryKey: ['true_false', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'topic', result.topicId] });
@@ -338,6 +363,7 @@ export function useBulkCreateTrueFalseQuestions() {
       queryClient.invalidateQueries({ queryKey: ['true_false', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['true_false', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['true_false', 'topic', result.topicId] });
