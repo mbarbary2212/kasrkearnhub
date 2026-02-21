@@ -27,6 +27,8 @@ import { EssayFormSchema, validateBatch } from '@/lib/validators';
 import { logActivity } from '@/lib/activityLog';
 import { SectionSelector } from '@/components/sections';
 import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
+import { resolveSectionId } from '@/lib/csvExport';
+import { useChapterSections } from '@/hooks/useSections';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -63,6 +65,7 @@ interface AdminContentActionsProps {
 
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
   const auth = useAuthContext();
+  const { data: sections = [] } = useChapterSections(chapterId);
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -365,17 +368,66 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const bulkUploadEssays = useMutation({
     mutationFn: async () => {
       const lines = csvText.trim().split('\n').filter(line => line.trim());
-      // Skip header row if it looks like a header
-      const startIndex = lines[0]?.toLowerCase().includes('title') ? 1 : 0;
-      
+      if (lines.length === 0) throw new Error('No data found');
+
+      // Detect headers by checking if the first row contains known column names
+      const firstRowParts = parseCSVLine(lines[0]);
+      const firstRowLower = firstRowParts.map(h => h.toLowerCase().trim());
+      const knownHeaders = ['title', 'question', 'model_answer', 'scenario_text', 'questions', 'section_name', 'section_number', 'keywords', 'rating'];
+      const hasHeaders = firstRowLower.some(h => knownHeaders.includes(h));
+
+      let headerMap: Record<string, number> = {};
+      let startIndex = 0;
+
+      if (hasHeaders) {
+        startIndex = 1;
+        firstRowLower.forEach((h, idx) => { headerMap[h] = idx; });
+      }
+
+      const col = (row: string[], name: string): string => {
+        if (hasHeaders && headerMap[name] !== undefined) return row[headerMap[name]]?.trim() || '';
+        return '';
+      };
+
       const parsedEssays = [];
       for (let i = startIndex; i < lines.length; i++) {
         const parts = parseCSVLine(lines[i]);
-        if (parts[0] && parts[1]) {
+
+        let title: string, question: string, modelAnswer: string;
+        let sectionName = '', sectionNumber = '';
+
+        if (hasHeaders) {
+          title = col(parts, 'title');
+          // Support old clinical format: combine scenario_text + questions
+          const scenarioText = col(parts, 'scenario_text');
+          const questionsCol = col(parts, 'questions');
+          const questionCol = col(parts, 'question');
+
+          if (questionCol) {
+            question = questionCol;
+          } else if (scenarioText || questionsCol) {
+            question = [scenarioText, questionsCol].filter(Boolean).join('\n\n');
+          } else {
+            question = '';
+          }
+
+          modelAnswer = col(parts, 'model_answer');
+          sectionName = col(parts, 'section_name');
+          sectionNumber = col(parts, 'section_number');
+        } else {
+          // Fallback: positional parsing (title, question, model_answer)
+          title = parts[0]?.trim() || '';
+          question = parts[1]?.trim() || '';
+          modelAnswer = parts[2]?.trim() || '';
+        }
+
+        if (title && question) {
+          const sectionId = resolveSectionId(sections, sectionName, sectionNumber);
           parsedEssays.push({
-            title: parts[0],
-            question: parts[1],
-            model_answer: parts[2] || null,
+            title,
+            question,
+            model_answer: modelAnswer || null,
+            ...(sectionId ? { section_id: sectionId } : {}),
           });
         }
       }
@@ -402,6 +454,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
           module_id: moduleId,
           chapter_id: chapterId || null,
           topic_id: topicId || null,
+          ...(essay.section_id ? { section_id: essay.section_id } : {}),
         }))
       );
       if (error) throw error;
@@ -672,7 +725,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                   <div className="bg-muted p-3 rounded-lg">
                     <p className="text-sm font-medium mb-2">CSV Format:</p>
                     <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-                      title,question,model_answer{"\n"}"Question Title","Question text","Model answer text"
+                      title,question,model_answer,section_name,section_number{"\n"}"Question Title","Question text","Model answer text","Section Name","1"
                     </pre>
                   </div>
                   <DragDropZone

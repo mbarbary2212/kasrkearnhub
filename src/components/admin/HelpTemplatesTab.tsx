@@ -163,19 +163,23 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   essay: {
-    columns: ['title', 'scenario_text', 'questions', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number'],
-    required: ['title', 'scenario_text', 'questions', 'model_answer'],
-    optional: ['keywords', 'rating', 'section_name', 'section_number'],
+    columns: ['title', 'question', 'model_answer', 'section_name', 'section_number'],
+    required: ['title', 'question'],
+    optional: ['model_answer', 'section_name', 'section_number'],
     examples: [
       [
-        'Diabetic Ketoacidosis Management',
-        'A 22-year-old female with Type 1 diabetes presents to the emergency department with nausea, vomiting, and abdominal pain. Her blood glucose is 450 mg/dL, pH 7.1, and she has ketonuria.',
-        'Outline the immediate management steps for this patient including fluid resuscitation, insulin therapy, and electrolyte monitoring.',
-        'Immediate management includes: 1) IV normal saline bolus for fluid resuscitation, 2) Continuous IV insulin infusion at 0.1 units/kg/hr, 3) Potassium replacement once K+ < 5.3 mEq/L, 4) Monitor blood glucose hourly, 5) Check electrolytes every 2-4 hours, 6) Switch to dextrose-containing fluids when glucose < 250 mg/dL.',
-        'DKA, insulin, fluid resuscitation, potassium, electrolyte monitoring',
-        '3',
-        'Endocrine Emergencies',
+        'Stages of Wound Healing',
+        'Outline the four main stages of wound healing and their key features.',
+        '1) Hemostasis -- platelet aggregation and clot formation. 2) Inflammation -- neutrophils and macrophages clear debris. 3) Proliferation -- fibroblast activity, granulation tissue, angiogenesis. 4) Remodeling -- collagen maturation and scar formation over weeks to months.',
+        'Pathology Basics',
         '1'
+      ],
+      [
+        'Functions of the Liver',
+        'List five major metabolic functions of the liver.',
+        '1) Glycogen storage and gluconeogenesis. 2) Bile production for fat digestion. 3) Protein synthesis (albumin, clotting factors). 4) Detoxification of drugs and toxins. 5) Urea synthesis from ammonia.',
+        'GI Physiology',
+        '2'
       ],
     ],
   },
