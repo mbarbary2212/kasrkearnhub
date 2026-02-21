@@ -1,73 +1,70 @@
 
 
-## Fix Mind Map PNG Image Zoom and Scrolling
+## Add Chapter Icons for Arterial & Venous Disorders
 
-### Problem
+### Overview
 
-When viewing a PNG mind map image in the fullscreen modal at zoom levels above 100%, the top (and sides) of the image get clipped and cannot be scrolled to. This happens because the current implementation uses CSS `transform: scale()` to zoom, which visually enlarges the element but does **not** change its layout size. The parent container's scrollable area stays the same, so overflow content is unreachable.
+Add the ability for chapters to have optional icon images, then set the arteries and veins images as icons for Chapter 14 (Arterial Disorders) and Chapter 15 (Venous Disorders) in Book 3 of module SUR-523.
 
-### Solution
+### Steps
 
-Replace the CSS `transform: scale()` approach with actual `width`/`height` sizing for the image. Instead of scaling the image, set its width to `zoom * 100%` and let it flow naturally. This makes the container's scrollable area grow with the zoom level, allowing full pan/scroll in all directions.
+**1. Database: Add `icon_url` column to `module_chapters`**
 
-### Technical Details
+Create a migration adding a nullable `icon_url` text column:
 
-**File: `src/components/study/MindMapViewer.tsx`**
-
-**Change 1 -- Image display (non-drawing mode, lines ~764-777)**
-
-Replace the current `transform: scale(zoom)` approach:
-```tsx
-<img
-  src={fullscreenFileUrl}
-  alt={fullscreenResource?.title}
-  style={{ 
-    transform: `scale(${zoom})`, 
-    transformOrigin: 'center center',
-    transition: 'transform 0.2s ease-out',
-    maxWidth: '100%',
-    maxHeight: '75vh',
-    objectFit: 'contain',
-  }}
-/>
+```sql
+ALTER TABLE module_chapters ADD COLUMN icon_url text;
 ```
 
-With a layout-based sizing approach:
+**2. Copy images to project assets**
+
+- Copy `Untitled_design.png` (arteries) to `src/assets/chapters/arteries-icon.png`
+- Copy `Untitled_design_1.png` (veins) to `src/assets/chapters/veins-icon.png`
+
+**3. Upload images to Supabase storage and set URLs**
+
+- Create a `chapter-icons` storage bucket (public)
+- Upload both images
+- Update the two chapter rows with their public URLs:
+  - Chapter `7348593f-...` (Arterial Disorders) -- arteries icon
+  - Chapter `2120e28f-...` (Venous Disorders) -- veins icon
+
+**4. Update TypeScript types**
+
+Add `icon_url: string | null` to the `ModuleChapter` interface in `src/hooks/useChapters.ts`.
+
+**5. Update chapter list UI (`ModuleLearningTab.tsx`)**
+
+Where chapters are rendered in the list, show the icon if `chapter.icon_url` exists:
+
 ```tsx
-<img
-  src={fullscreenFileUrl}
-  alt={fullscreenResource?.title}
-  style={{ 
-    width: `${zoom * 100}%`,
-    maxWidth: 'none',
-    height: 'auto',
-    transition: 'width 0.2s ease-out',
-    display: 'block',
-  }}
-/>
+<button onClick={() => navigate(...)}>
+  {chapter.icon_url ? (
+    <img 
+      src={chapter.icon_url} 
+      alt="" 
+      className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
+    />
+  ) : (
+    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+      {index + 1}
+    </span>
+  )}
+  <span className="flex-1 text-[15px] font-medium truncate">
+    {chapter.title}
+  </span>
+</button>
 ```
 
-**Change 2 -- Container wrapper (lines ~739-741)**
+**6. Update chapter header (`ChapterPage.tsx`)**
 
-Update the wrapper `<div>` so it no longer tries to center the image (which fights with scroll). Use `items-start` instead of `items-center` and ensure the overflow parent can scroll in both directions:
+Show the icon beside the chapter title in the header area if available.
 
-```tsx
-<div 
-  className="relative p-4" 
-  style={{ minHeight: '60vh' }}
->
-```
+### What changes
 
-This removes `flex items-center justify-center` so the image flows naturally at the top-left of the scrollable area, and the user can scroll to see every part at any zoom level.
-
-**Change 3 -- Drawing mode (lines ~743-763)**
-
-Apply the same sizing approach to the drawing canvas wrapper so zoom works consistently in both modes.
-
-### What This Fixes
-
-- At 200% zoom, the entire image is scrollable -- top, bottom, and sides are all reachable
-- At 100% (default), the image fits within the viewport as before
-- Zooming out below 100% also works correctly
-- Drawing mode maintains the same behavior
+- **Database**: One new nullable column on `module_chapters`
+- **Storage**: New `chapter-icons` public bucket with 2 images
+- **Files modified**: `useChapters.ts` (type), `ModuleLearningTab.tsx` (list icons), `ChapterPage.tsx` (header icon)
+- **Files created**: Migration file
+- **No breaking changes** -- the column is nullable, so all other chapters continue displaying normally with the number badge
 
