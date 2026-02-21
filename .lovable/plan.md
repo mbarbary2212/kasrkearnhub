@@ -1,58 +1,73 @@
 
 
-## Fix MCQ Choices Displaying as "[object Object]" in Approve Section
+## Auto-Select AI Model by Content Type
 
-### Problem
+Instead of manually switching models, the system will automatically pick the best model for each content type based on a configurable mapping stored in the database.
 
-The AI generates MCQ choices as an array of objects (`[{key: 'A', text: '...'}, ...]`) but the approve/preview card uses `Object.entries(item.choices)` which expects a dictionary (`{A: 'text', B: 'text'}`). This causes choices to render as `[object Object]`.
+### How It Works
 
-### Solution
-
-Add a `normalizeChoices()` helper function to `AIContentPreviewCard.tsx` that converts both formats into a consistent dictionary. Apply it in three locations:
-
-**File: `src/components/admin/AIContentPreviewCard.tsx`**
-
-1. Add helper function (after imports, before the component):
-
-```text
-function normalizeChoices(choices: any): Record<string, string> {
-  if (!choices) return {};
-  if (Array.isArray(choices)) {
-    const result: Record<string, string> = {};
-    choices.forEach((c: any) => {
-      if (c && typeof c === 'object' && c.key) {
-        result[c.key] = c.text || '';
-      }
-    });
-    return result;
+- A new `ai_settings` row called `content_type_model_overrides` stores a JSON mapping like:
+  ```
+  {
+    "mcq": "gemini-2.5-flash",
+    "flashcard": "gemini-2.5-flash",
+    "osce": "gemini-3.1-pro-preview",
+    "clinical_case": "gemini-3.1-pro-preview",
+    "essay": "gemini-2.5-flash",
+    "matching": "gemini-2.5-flash",
+    "guided_explanation": "gemini-3.1-pro-preview",
+    "virtual_patient": "gemini-3.1-pro-preview",
+    "mind_map": "gemini-2.5-flash",
+    "worked_case": "gemini-2.5-flash",
+    "case_scenario": "gemini-3.1-pro-preview"
   }
-  if (typeof choices === 'object') {
-    const result: Record<string, string> = {};
-    for (const [k, v] of Object.entries(choices)) {
-      result[k] = typeof v === 'object' && v !== null
-        ? (v as any).text || String(v)
-        : String(v);
-    }
-    return result;
-  }
-  return {};
-}
-```
+  ```
+- When generating content, the edge function checks this mapping for the current content type. If a match exists, it overrides the global model. Otherwise, it falls back to the global default.
+- The Admin AI Settings panel gets a new "Model per Content Type" section showing each content type with a dropdown to pick its model (or "Use Default").
 
-2. **Line 87 (collapsed preview)** -- change `Object.keys(item.choices || {}).length` to `Object.keys(normalizeChoices(item.choices)).length`
+### Changes
 
-3. **Lines 196-212 (edit form)** -- replace `Object.entries(editedItem.choices || {})` with `Object.entries(normalizeChoices(editedItem.choices))`, and update the onChange to write back normalized format
+**1. Add more Gemini models to dropdowns** (`src/components/admin/AISettingsPanel.tsx`)
+- Add `gemini-3-flash-preview` and `gemini-2.5-flash-lite` to the `GEMINI_MODELS` array (these are valid direct Google API model IDs).
 
-4. **Lines 497-506 (full view panel)** -- replace `Object.entries(item.choices || {})` with `Object.entries(normalizeChoices(item.choices))`
+**2. New database setting** (migration)
+- Insert a new row into `ai_settings` with key `content_type_model_overrides` and the default JSON mapping above.
 
-5. **Initialize editedItem with normalized choices** -- in `useState` or via an effect, ensure `editedItem.choices` is normalized to dictionary format on mount so edits write back correctly
+**3. Update AI provider abstraction** (`supabase/functions/_shared/ai-provider.ts`)
+- Add a new function `getModelForContentType(settings, contentType)` that reads the overrides and returns the appropriate model, falling back to the global default.
+- Export this function.
 
-### Summary
+**4. Use per-content-type model in generation** (`supabase/functions/generate-content-from-pdf/index.ts`)
+- After resolving the AI provider, call `getModelForContentType(aiSettings, content_type)` to override `aiProvider.model` with the content-type-specific model.
 
-| Location | Current Code | Fix |
+**5. Admin UI for per-content-type model mapping** (`src/components/admin/AISettingsPanel.tsx`)
+- Add a new card/section "Model per Content Type" below the existing model dropdowns.
+- For each content type, show a dropdown with all available models (from the active provider) plus a "Use Global Default" option.
+- Changes save to the `content_type_model_overrides` setting.
+
+### Default Model Assignments
+
+| Content Type | Default Model | Reason |
 |---|---|---|
-| Line 87 | `Object.keys(item.choices \|\| {}).length` | Use `normalizeChoices(item.choices)` |
-| Line 196 | `Object.entries(editedItem.choices \|\| {})` | Use `normalizeChoices(editedItem.choices)` |
-| Line 497 | `Object.entries(item.choices \|\| {})` | Use `normalizeChoices(item.choices)` |
+| MCQ | gemini-2.5-flash | Speed -- simple structured output |
+| Flashcard | gemini-2.5-flash | Speed |
+| Essay | gemini-2.5-flash | Speed |
+| Matching | gemini-2.5-flash | Speed |
+| Mind Map | gemini-2.5-flash | Speed |
+| Worked Case | gemini-2.5-flash | Speed |
+| OSCE | gemini-3.1-pro-preview | Complex clinical reasoning |
+| Clinical Case | gemini-3.1-pro-preview | Multi-stage clinical logic |
+| Virtual Patient | gemini-3.1-pro-preview | Complex multi-stage |
+| Guided Explanation | gemini-3.1-pro-preview | Socratic reasoning |
+| Case Scenario | gemini-3.1-pro-preview | Clinical reasoning |
 
-Only `AIContentPreviewCard.tsx` is modified. No AI model or settings changes.
+### Technical Summary
+
+| File | Change |
+|---|---|
+| `AISettingsPanel.tsx` | Add gemini-3-flash-preview, gemini-2.5-flash-lite to GEMINI_MODELS; add per-content-type model mapping UI section |
+| `ai-provider.ts` | Add `getModelForContentType()` function |
+| `generate-content-from-pdf/index.ts` | Override `aiProvider.model` based on content type |
+| Database migration | Insert `content_type_model_overrides` row in `ai_settings` |
+| `useAISettings.ts` | No changes needed -- existing hooks already handle the new key generically |
+
