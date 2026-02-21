@@ -181,6 +181,7 @@ export default function ContentItemActions({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            title="Send Feedback"
             onPointerDown={stopParentClick}
             onClick={(e) => {
               e.stopPropagation();
