@@ -1701,7 +1701,25 @@ export default function AdminPage() {
                             })
                             .map(u => (
                               <div key={u.id} className="border rounded-lg p-4 space-y-3">
-...
+                                <div>
+                                  <p className="font-medium">{u.full_name || 'No name'}</p>
+                                  <p className="text-sm text-muted-foreground">{u.email}</p>
+                                  {u.moduleAssignments && u.moduleAssignments.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {u.moduleAssignments.map(a => (
+                                        <Badge key={a.id} variant="outline" className="text-xs gap-1">
+                                          {getModuleName(a.module_id)}
+                                          <button
+                                            onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
+                                            className="ml-1 hover:text-destructive"
+                                          >
+                                            ×
+                                          </button>
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                                 <div className="flex gap-2">
                                   <Select
                                     value={selectedUser === u.id ? selectedModule : ''}
