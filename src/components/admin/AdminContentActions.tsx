@@ -243,6 +243,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-essay-count', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
       toast.success('Essay added successfully');
       setOpen(false);
@@ -407,6 +408,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-essay-count', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
       toast.success('Short questions uploaded successfully');
       setBulkOpen(false);

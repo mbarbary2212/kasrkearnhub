@@ -84,8 +84,28 @@ export function useModuleMatchingQuestions(moduleId?: string) {
   });
 }
 
+// Lightweight count-only hook for chapter matching questions (badges)
+export function useChapterMatchingCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['matching-questions', 'chapter-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('matching_questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Fetch matching questions by chapter (optionally include deleted)
-export function useChapterMatchingQuestions(chapterId?: string, includeDeleted = false) {
+export function useChapterMatchingQuestions(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ['matching-questions', 'chapter', chapterId, includeDeleted],
     queryFn: async () => {
@@ -103,7 +123,9 @@ export function useChapterMatchingQuestions(chapterId?: string, includeDeleted =
       if (error) throw error;
       return (data || []).map(mapDbRowToMatchingQuestion);
     },
-    enabled: !!chapterId,
+    enabled: !!chapterId && enabled,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -154,6 +176,7 @@ export function useCreateMatchingQuestion() {
       queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', variables.module_id] });
       if (variables.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', variables.chapter_id] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter-count', variables.chapter_id] });
       }
       if (variables.topic_id) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'topic', variables.topic_id] });
@@ -237,6 +260,7 @@ export function useDeleteMatchingQuestion() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, false] });
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, true] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter-count', result.chapterId] });
       }
     },
     onError: (error: Error) => {
@@ -270,6 +294,7 @@ export function useRestoreMatchingQuestion() {
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, false] });
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId, true] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter-count', result.chapterId] });
       }
     },
     onError: (error: Error) => {
@@ -319,6 +344,7 @@ export function useBulkCreateMatchingQuestions() {
       queryClient.invalidateQueries({ queryKey: ['matching-questions', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['matching-questions', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['matching-questions', 'topic', result.topicId] });

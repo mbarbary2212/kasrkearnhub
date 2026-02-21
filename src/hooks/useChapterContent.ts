@@ -58,8 +58,28 @@ export function useChapterMcqSets(chapterId?: string) {
   });
 }
 
+// Lightweight count-only hook for chapter essays (badges)
+export function useChapterEssayCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['chapter-essay-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('essays')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Fetch essays for a chapter
-export function useChapterEssays(chapterId?: string, includeDeleted = false) {
+export function useChapterEssays(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ['chapter-essays', chapterId, includeDeleted],
     queryFn: async () => {
@@ -77,7 +97,9 @@ export function useChapterEssays(chapterId?: string, includeDeleted = false) {
       if (error) throw error;
       return data;
     },
-    enabled: !!chapterId,
+    enabled: !!chapterId && enabled,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -120,5 +142,25 @@ export function useChapterClinicalCases(chapterId?: string) {
       return data;
     },
     enabled: !!chapterId,
+  });
+}
+
+// Lightweight count-only hook for chapter clinical cases (badges)
+export function useChapterClinicalCaseCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['chapter-clinical-case-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('virtual_patient_cases')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false)
+        .eq('is_published', true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }

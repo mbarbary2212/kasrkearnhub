@@ -79,8 +79,28 @@ export function useModuleMcqs(moduleId?: string, includeDeleted = false) {
   });
 }
 
+// Lightweight count-only hook for chapter MCQs (badges)
+export function useChapterMcqCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['mcqs', 'chapter-count', chapterId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('mcqs')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId!)
+        .eq('is_deleted', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // Fetch MCQs by chapter (with optional includeDeleted flag)
-export function useChapterMcqs(chapterId?: string, includeDeleted = false) {
+export function useChapterMcqs(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted }],
     queryFn: async () => {
@@ -98,7 +118,9 @@ export function useChapterMcqs(chapterId?: string, includeDeleted = false) {
       if (error) throw error;
       return (data || []).map(mapDbRowToMcq);
     },
-    enabled: !!chapterId,
+    enabled: !!chapterId && enabled,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -157,6 +179,7 @@ export function useCreateMcq() {
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.module_id] });
       if (result.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapter_id] });
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter-count', result.chapter_id] });
       }
       if (result.topic_id) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topic_id] });
@@ -258,6 +281,7 @@ export function useDeleteMcq() {
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
@@ -306,6 +330,7 @@ export function useRestoreMcq() {
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
@@ -370,6 +395,7 @@ export function useBulkCreateMcqs() {
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter-count', result.chapterId] });
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
