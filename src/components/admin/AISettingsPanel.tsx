@@ -362,7 +362,7 @@ function GlobalAIPolicySection() {
           <Textarea
             value={platformSettings.global_key_disabled_message}
             onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
-            rows={3}
+            rows={12}
           />
         </div>
       </CardContent>

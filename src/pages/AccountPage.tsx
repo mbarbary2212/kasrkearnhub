@@ -14,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save } from 'lucide-react';
+import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
@@ -481,7 +483,20 @@ function AdminApiKeyCard() {
         <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-700 dark:text-amber-300">
-            {platformSettings?.global_key_disabled_message || 'Please add your own API key to generate AI content.'}
+            <p className="font-medium mb-1">Please add your own API key to generate AI content.</p>
+            {platformSettings?.global_key_disabled_message && (
+              <Collapsible>
+                <CollapsibleTrigger className="text-sm underline cursor-pointer hover:text-amber-900 dark:hover:text-amber-100 flex items-center gap-1">
+                  Read setup guide
+                  <ChevronDown className="h-3 w-3" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="prose prose-sm dark:prose-invert prose-amber max-w-none [&_a]:text-amber-700 dark:[&_a]:text-amber-300">
+                    <ReactMarkdown>{platformSettings.global_key_disabled_message}</ReactMarkdown>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </AlertDescription>
         </Alert>
       )}
