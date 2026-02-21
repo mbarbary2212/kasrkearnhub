@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare, MoreHorizontal, Mail, Ban, UserX, UserCheck, ArrowUpDown, RotateCcw, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
@@ -884,6 +886,9 @@ export default function AdminPage() {
   const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
   const [studentSortOrder, setStudentSortOrder] = useState<'asc' | 'desc'>('asc');
   const [moduleAdminSortOrder, setModuleAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [moduleAdminAssignDialogOpen, setModuleAdminAssignDialogOpen] = useState(false);
+  const [maSelectedUserId, setMaSelectedUserId] = useState('');
+  const [maSelectedModules, setMaSelectedModules] = useState<string[]>([]);
   const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
   const [deactivatedSearch, setDeactivatedSearch] = useState('');
   const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -1130,6 +1135,60 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Error assigning module:', error);
       toast.error('Failed to assign module');
+    }
+  };
+
+  const handleAssignModuleAdmin = async () => {
+    if (!maSelectedUserId || maSelectedModules.length === 0) return;
+    try {
+      // Set user role to department_admin
+      await supabase.from('user_roles').delete().eq('user_id', maSelectedUserId);
+      await supabase.from('user_roles').insert({ user_id: maSelectedUserId, role: 'department_admin' });
+
+      // Get existing assignments to avoid duplicates
+      const existingUser = users.find(u => u.id === maSelectedUserId);
+      const existingModuleIds = existingUser?.moduleAssignments?.map(a => a.module_id) || [];
+      const newModuleIds = maSelectedModules.filter(id => !existingModuleIds.includes(id));
+
+      if (newModuleIds.length > 0) {
+        const { error } = await supabase
+          .from('module_admins')
+          .insert(newModuleIds.map(moduleId => ({
+            user_id: maSelectedUserId,
+            module_id: moduleId,
+            assigned_by: user?.id,
+          })));
+        if (error) throw error;
+      }
+
+      // Update local state
+      setUsers(prev =>
+        prev.map(u => {
+          if (u.id === maSelectedUserId) {
+            const newAssignments = newModuleIds.map(moduleId => ({
+              id: crypto.randomUUID(),
+              user_id: maSelectedUserId,
+              module_id: moduleId,
+              assigned_by: user?.id || null,
+              created_at: new Date().toISOString(),
+            }));
+            return {
+              ...u,
+              role: 'department_admin' as AppRole,
+              moduleAssignments: [...(u.moduleAssignments || []), ...newAssignments],
+            };
+          }
+          return u;
+        })
+      );
+
+      toast.success('Module Admin assigned successfully');
+      setModuleAdminAssignDialogOpen(false);
+      setMaSelectedUserId('');
+      setMaSelectedModules([]);
+    } catch (error) {
+      console.error('Error assigning module admin:', error);
+      toast.error('Failed to assign module admin');
     }
   };
 
@@ -1677,20 +1736,35 @@ export default function AdminPage() {
                   {isSuperAdmin && (
                     <TabsContent value="module-admins" className="mt-4">
                       <div className="space-y-6">
-                        <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setModuleAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                            className="gap-2"
-                          >
-                            <ArrowUpDown className="w-4 h-4" />
-                            {moduleAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
-                          </Button>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                              <BookOpen className="w-5 h-5" />
+                              Module Admin Assignments
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Assign users to manage content within specific modules.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setModuleAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                              className="gap-2"
+                            >
+                              <ArrowUpDown className="w-4 h-4" />
+                              {moduleAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+                            </Button>
+                            <Button onClick={() => setModuleAdminAssignDialogOpen(true)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Assign Module Admin
+                            </Button>
+                          </div>
                         </div>
                         {users.filter(u => u.role === 'department_admin').length === 0 ? (
                           <p className="text-muted-foreground text-center py-8">
-                            No module admins assigned. Change a user's role to "Module Admin" first.
+                            No module admins assigned yet. Click "Assign Module Admin" to get started.
                           </p>
                         ) : (
                           [...users.filter(u => u.role === 'department_admin')]
@@ -1701,26 +1775,34 @@ export default function AdminPage() {
                             })
                             .map(u => (
                               <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                                <div>
-                                  <p className="font-medium">{u.full_name || 'No name'}</p>
-                                  <p className="text-sm text-muted-foreground">{u.email}</p>
-                                  {u.moduleAssignments && u.moduleAssignments.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                      {u.moduleAssignments.map(a => (
-                                        <Badge key={a.id} variant="outline" className="text-xs gap-1">
-                                          {getModuleName(a.module_id)}
-                                          <button
-                                            onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
-                                            className="ml-1 hover:text-destructive"
-                                          >
-                                            ×
-                                          </button>
-                                        </Badge>
-                                      ))}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                      <Users className="w-5 h-5 text-primary" />
                                     </div>
-                                  )}
+                                    <div>
+                                      <p className="font-medium">{u.full_name || 'No name'}</p>
+                                      <p className="text-sm text-muted-foreground">{u.email}</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant="secondary">Module Admin</Badge>
                                 </div>
-                                <div className="flex gap-2">
+                                {u.moduleAssignments && u.moduleAssignments.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 pl-13">
+                                    {u.moduleAssignments.map(a => (
+                                      <Badge key={a.id} variant="outline" className="text-xs gap-1 py-1.5">
+                                        {getModuleName(a.module_id)}
+                                        <button
+                                          onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)}
+                                          className="ml-1 hover:text-destructive"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex gap-2 pl-13">
                                   <Select
                                     value={selectedUser === u.id ? selectedModule : ''}
                                     onValueChange={(value) => {
@@ -1729,7 +1811,7 @@ export default function AdminPage() {
                                     }}
                                   >
                                     <SelectTrigger className="w-72">
-                                      <SelectValue placeholder="Select module to assign" />
+                                      <SelectValue placeholder="Add another module..." />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {years.map(year => {
@@ -1756,6 +1838,7 @@ export default function AdminPage() {
                                     </SelectContent>
                                   </Select>
                                   <Button
+                                    size="sm"
                                     onClick={() => {
                                       if (selectedUser === u.id && selectedModule) {
                                         handleAssignModule(u.id, selectedModule);
@@ -1770,6 +1853,107 @@ export default function AdminPage() {
                             ))
                         )}
                       </div>
+
+                      {/* Assign Module Admin Dialog */}
+                      <Dialog open={moduleAdminAssignDialogOpen} onOpenChange={(open) => {
+                        if (!open) {
+                          setModuleAdminAssignDialogOpen(false);
+                          setMaSelectedUserId('');
+                          setMaSelectedModules([]);
+                        }
+                      }}>
+                        <DialogContent className="max-w-lg">
+                          <DialogHeader>
+                            <DialogTitle>Assign Module Admin</DialogTitle>
+                            <DialogDescription>
+                              Select a user and the modules they should manage. Their role will automatically be set to Module Admin.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">User *</label>
+                              <Select value={maSelectedUserId} onValueChange={setMaSelectedUserId}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a user" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {users
+                                    .filter(u => ['student', 'teacher', 'topic_admin', 'department_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
+                                    .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
+                                    .map(u => (
+                                      <SelectItem key={u.id} value={u.id}>
+                                        {u.full_name || u.email}
+                                        {u.role === 'department_admin' ? ' (Module Admin)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Select Modules *</label>
+                              <ScrollArea className="h-56 border rounded-md p-3">
+                                {years
+                                  .sort((a, b) => a.number - b.number)
+                                  .map(year => {
+                                    const selectedUserObj = users.find(u => u.id === maSelectedUserId);
+                                    const existingModuleIds = selectedUserObj?.moduleAssignments?.map(a => a.module_id) || [];
+                                    const yearModules = modules
+                                      .filter(m => m.year_id === year.id)
+                                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                                    
+                                    if (yearModules.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={year.id} className="mb-3">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{year.name}</p>
+                                        <div className="space-y-2">
+                                          {yearModules.map(m => {
+                                            const alreadyAssigned = existingModuleIds.includes(m.id);
+                                            return (
+                                              <div key={m.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                  id={`ma-${m.id}`}
+                                                  checked={maSelectedModules.includes(m.id) || alreadyAssigned}
+                                                  disabled={alreadyAssigned}
+                                                  onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                      setMaSelectedModules(prev => [...prev, m.id]);
+                                                    } else {
+                                                      setMaSelectedModules(prev => prev.filter(id => id !== m.id));
+                                                    }
+                                                  }}
+                                                />
+                                                <label htmlFor={`ma-${m.id}`} className={`text-sm cursor-pointer ${alreadyAssigned ? 'text-muted-foreground' : ''}`}>
+                                                  {m.name} {alreadyAssigned ? '(already assigned)' : ''}
+                                                </label>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                              </ScrollArea>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => {
+                              setModuleAdminAssignDialogOpen(false);
+                              setMaSelectedUserId('');
+                              setMaSelectedModules([]);
+                            }}>
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleAssignModuleAdmin}
+                              disabled={!maSelectedUserId || maSelectedModules.length === 0}
+                            >
+                              Assign
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </TabsContent>
                   )}
 
