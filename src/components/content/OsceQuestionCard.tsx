@@ -248,16 +248,29 @@ export function OsceQuestionCard({
           <div className="w-full max-w-[500px] mx-auto">
             <div className="relative w-full max-h-[300px] md:max-h-[400px] lg:max-h-[450px] rounded-lg overflow-hidden bg-muted">
               {question.image_url ? (
-                <img
-                  src={question.image_url}
-                  alt="Clinical image"
-                  className="w-full h-full object-contain max-h-[300px] md:max-h-[400px] lg:max-h-[450px]"
-                />
+                <div className="relative">
+                  <img
+                    src={question.image_url}
+                    alt="Clinical image"
+                    className="w-full h-full object-contain max-h-[300px] md:max-h-[400px] lg:max-h-[450px]"
+                  />
+                  {isAdmin && (moduleId || question.module_id) && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowAttachImageModal(true)}
+                      className="absolute top-2 right-2 gap-1 opacity-80 hover:opacity-100"
+                    >
+                      <Upload className="w-3 h-3" />
+                      Replace
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-48 md:h-64 gap-3">
                   <ImageIcon className="w-12 h-12 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">No image</span>
-                  {isAdmin && moduleId && (
+                  {isAdmin && (moduleId || question.module_id) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -419,12 +432,12 @@ export function OsceQuestionCard({
       </CardContent>
 
       {/* Attach Image Modal */}
-      {isAdmin && moduleId && (
+      {isAdmin && (moduleId || question.module_id) && (
         <AttachOsceImageModal
           open={showAttachImageModal}
           onOpenChange={setShowAttachImageModal}
           questionId={question.id}
-          moduleId={moduleId}
+          moduleId={moduleId || question.module_id!}
           chapterId={chapterId}
         />
       )}

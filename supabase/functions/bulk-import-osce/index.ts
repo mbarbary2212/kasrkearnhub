@@ -13,6 +13,9 @@ interface ParsedRow {
   statements: string[];
   answers: boolean[];
   explanations: string[];
+  sectionName?: string;
+  sectionNumber?: string;
+  resolvedSectionId?: string | null;
   error?: string;
   imageFound?: boolean;
   hasImage?: boolean;
@@ -212,7 +215,8 @@ Deno.serve(async (req: Request) => {
 
       const imageFilename = String(row['image_filename'] || '').trim();
       const historyText = String(row['case_history'] || '').trim();
-      
+      const sectionName = String(row['section_name'] || '').trim();
+      const sectionNumber = String(row['section_number'] || '').trim();
       const statements = [
         String(row['statement_1_text'] || '').trim(),
         String(row['statement_2_text'] || '').trim(),
@@ -279,6 +283,8 @@ Deno.serve(async (req: Request) => {
         statements,
         answers,
         explanations,
+        sectionName: sectionName || undefined,
+        sectionNumber: sectionNumber || undefined,
         error: errors.length > 0 ? errors.join('; ') : undefined,
         imageFound,
         hasImage,
@@ -321,6 +327,29 @@ Deno.serve(async (req: Request) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Resolve section_name/section_number to section_id if any rows have them
+    const needsSectionResolution = valid.some(r => r.sectionName || r.sectionNumber);
+    if (needsSectionResolution && chapterId) {
+      const { data: sections } = await supabase
+        .from('sections')
+        .select('id, title, section_number')
+        .eq('chapter_id', chapterId);
+
+      if (sections && sections.length > 0) {
+        for (const row of valid) {
+          if (row.sectionNumber) {
+            const match = sections.find(s => s.section_number === row.sectionNumber);
+            if (match) { row.resolvedSectionId = match.id; continue; }
+          }
+          if (row.sectionName) {
+            const normalizedName = row.sectionName.toLowerCase().trim();
+            const match = sections.find(s => s.title?.toLowerCase().trim() === normalizedName);
+            if (match) { row.resolvedSectionId = match.id; }
+          }
+        }
+      }
     }
 
     let importedCount = 0;
@@ -367,6 +396,7 @@ Deno.serve(async (req: Request) => {
         const { error: insertError } = await supabase.from('osce_questions').insert({
           module_id: moduleId,
           chapter_id: chapterId || null,
+          section_id: row.resolvedSectionId || null,
           image_url: publicUrl,
           history_text: row.historyText,
           statement_1: row.statements[0],
