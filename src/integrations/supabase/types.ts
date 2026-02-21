@@ -116,6 +116,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_api_keys: {
+        Row: {
+          api_key_encrypted: string
+          created_at: string
+          key_hint: string
+          provider: string
+          revoked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted: string
+          created_at?: string
+          key_hint: string
+          provider?: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          created_at?: string
+          key_hint?: string
+          provider?: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_documents: {
         Row: {
           chapter_id: string | null
@@ -467,6 +497,90 @@ export type Database = {
           },
         ]
       }
+      ai_platform_settings: {
+        Row: {
+          allow_admin_fallback_to_global_key: boolean
+          allow_superadmin_global_ai: boolean
+          global_key_disabled_message: string
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allow_admin_fallback_to_global_key?: boolean
+          allow_superadmin_global_ai?: boolean
+          global_key_disabled_message?: string
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allow_admin_fallback_to_global_key?: boolean
+          allow_superadmin_global_ai?: boolean
+          global_key_disabled_message?: string
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_rules: {
+        Row: {
+          chapter_id: string | null
+          content_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          instructions: string
+          is_active: boolean
+          module_id: string | null
+          notes: string | null
+          scope: string
+          version: number
+        }
+        Insert: {
+          chapter_id?: string | null
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instructions: string
+          is_active?: boolean
+          module_id?: string | null
+          notes?: string | null
+          scope: string
+          version?: number
+        }
+        Update: {
+          chapter_id?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instructions?: string
+          is_active?: boolean
+          module_id?: string | null
+          notes?: string | null
+          scope?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_rules_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_rules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           description: string | null
@@ -491,6 +605,42 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      ai_usage_events: {
+        Row: {
+          content_type: string
+          cost_estimate: number | null
+          created_at: string
+          id: string
+          key_source: string
+          provider: string
+          tokens_input: number | null
+          tokens_output: number | null
+          user_id: string
+        }
+        Insert: {
+          content_type: string
+          cost_estimate?: number | null
+          created_at?: string
+          id?: string
+          key_source: string
+          provider: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id: string
+        }
+        Update: {
+          content_type?: string
+          cost_estimate?: number | null
+          created_at?: string
+          id?: string
+          key_source?: string
+          provider?: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id?: string
         }
         Relationships: []
       }

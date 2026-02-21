@@ -106,14 +106,161 @@ export function getAIProvider(settings: AISettings): AIProvider {
 export async function callAI(
   systemPrompt: string,
   userPrompt: string,
-  provider: AIProvider
+  provider: AIProvider,
+  customApiKey?: string
 ): Promise<AICallResult> {
   
   if (provider.name === 'gemini') {
-    return callGeminiDirect(systemPrompt, userPrompt, provider.model);
+    return callGeminiDirect(systemPrompt, userPrompt, provider.model, customApiKey);
   } else {
     return callLovableGateway(systemPrompt, userPrompt, provider.model);
   }
+}
+
+/**
+ * Determine which API key to use based on governance policy.
+ * Returns: { apiKey, keySource } or { error }
+ */
+export async function resolveApiKey(
+  serviceClient: any,
+  userId: string,
+  userRole: string,
+  settings: AISettings,
+): Promise<{ apiKey?: string; keySource?: 'personal' | 'global' | 'lovable'; error?: string; errorCode?: string }> {
+  // Lovable gateway doesn't need per-user key resolution
+  if (settings.ai_provider === 'lovable') {
+    return { apiKey: undefined, keySource: 'lovable' };
+  }
+
+  // Fetch platform settings
+  const { data: platformSettings } = await serviceClient
+    .from('ai_platform_settings')
+    .select('*')
+    .eq('id', 1)
+    .single();
+
+  const isSuperAdmin = userRole === 'super_admin';
+
+  if (isSuperAdmin) {
+    if (platformSettings?.allow_superadmin_global_ai === false) {
+      return { error: 'Global AI is disabled by platform settings.', errorCode: 'GLOBAL_AI_DISABLED' };
+    }
+    return { apiKey: undefined, keySource: 'global' };
+  }
+
+  // Non-superadmin: check for personal key first
+  const { data: keyRow } = await serviceClient
+    .from('admin_api_keys')
+    .select('api_key_encrypted, revoked_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (keyRow && !keyRow.revoked_at && keyRow.api_key_encrypted) {
+    // Decrypt the personal key
+    try {
+      const { decrypt } = await import('../manage-admin-api-key/index.ts');
+      const decryptedKey = await decrypt(keyRow.api_key_encrypted);
+      return { apiKey: decryptedKey, keySource: 'personal' };
+    } catch (err) {
+      console.error('Failed to decrypt admin API key:', err);
+      // Fall through to fallback check
+    }
+  }
+
+  // No personal key - check fallback policy
+  if (platformSettings?.allow_admin_fallback_to_global_key) {
+    return { apiKey: undefined, keySource: 'global' };
+  }
+
+  // No key and no fallback allowed
+  const message = platformSettings?.global_key_disabled_message ||
+    'Please add your own API key in Account → My AI API Key to generate content.';
+  return { error: message, errorCode: 'GLOBAL_KEY_DISABLED' };
+}
+
+/**
+ * Log an AI usage event
+ */
+export async function logAIUsage(
+  serviceClient: any,
+  userId: string,
+  contentType: string,
+  provider: string,
+  keySource: string,
+  tokensInput?: number,
+  tokensOutput?: number,
+) {
+  try {
+    await serviceClient.from('ai_usage_events').insert({
+      user_id: userId,
+      content_type: contentType,
+      provider,
+      key_source: keySource,
+      tokens_input: tokensInput || null,
+      tokens_output: tokensOutput || null,
+    });
+  } catch (err) {
+    console.error('Failed to log AI usage:', err);
+  }
+}
+
+/**
+ * Load active AI rules for a content type with precedence: chapter > module > global
+ */
+export async function loadAIRules(
+  serviceClient: any,
+  contentType: string,
+  moduleId?: string | null,
+  chapterId?: string | null,
+): Promise<string> {
+  const parts: string[] = [];
+
+  // Global rules
+  const { data: globalRules } = await serviceClient
+    .from('ai_rules')
+    .select('instructions')
+    .eq('scope', 'global')
+    .eq('content_type', contentType)
+    .eq('is_active', true)
+    .limit(1);
+
+  if (globalRules?.[0]?.instructions) {
+    parts.push(globalRules[0].instructions);
+  }
+
+  // Module-level override
+  if (moduleId) {
+    const { data: moduleRules } = await serviceClient
+      .from('ai_rules')
+      .select('instructions')
+      .eq('scope', 'module')
+      .eq('module_id', moduleId)
+      .eq('content_type', contentType)
+      .eq('is_active', true)
+      .limit(1);
+
+    if (moduleRules?.[0]?.instructions) {
+      parts.push(`\nMODULE-SPECIFIC RULES:\n${moduleRules[0].instructions}`);
+    }
+  }
+
+  // Chapter-level override
+  if (chapterId) {
+    const { data: chapterRules } = await serviceClient
+      .from('ai_rules')
+      .select('instructions')
+      .eq('scope', 'chapter')
+      .eq('chapter_id', chapterId)
+      .eq('content_type', contentType)
+      .eq('is_active', true)
+      .limit(1);
+
+    if (chapterRules?.[0]?.instructions) {
+      parts.push(`\nCHAPTER-SPECIFIC RULES:\n${chapterRules[0].instructions}`);
+    }
+  }
+
+  return parts.join('\n\n');
 }
 
 /**
@@ -123,14 +270,15 @@ export async function callAI(
 async function callGeminiDirect(
   systemPrompt: string,
   userPrompt: string,
-  model: string
+  model: string,
+  customApiKey?: string
 ): Promise<AICallResult> {
-  const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
+  const googleApiKey = customApiKey || Deno.env.get('GOOGLE_API_KEY');
   
   if (!googleApiKey) {
     return { 
       success: false, 
-      error: 'GOOGLE_API_KEY not configured. Please add it in Supabase Edge Function secrets.', 
+      error: customApiKey ? 'Invalid personal API key.' : 'GOOGLE_API_KEY not configured. Please add it in Supabase Edge Function secrets.', 
       status: 500 
     };
   }
