@@ -117,13 +117,13 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   algorithm: {
-    columns: ['title', 'steps', 'section_name', 'section_number'],
+    columns: ['title', 'steps (step_title::step_description, pipe-separated)', 'section_name', 'section_number'],
     required: ['title', 'steps'],
     optional: ['section_name', 'section_number'],
     examples: [
       [
         'Chest Pain Workup',
-        '1. Obtain ECG within 10 minutes|2. Check troponins|3. Assess HEART score|4. Consider stress testing if low-risk',
+        'Obtain ECG::Order 12-lead ECG within 10 minutes of arrival|Check troponins::Serial troponin I at 0 and 3 hours|Assess HEART score::Calculate using history, ECG, age, risk factors, troponin|Consider stress testing::If low-risk by HEART score',
         'Cardiac Emergencies',
         '1'
       ],
