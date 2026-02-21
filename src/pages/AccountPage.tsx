@@ -12,10 +12,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Camera, Key, Home, User, Loader2 } from 'lucide-react';
+import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save } from 'lucide-react';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
 
 export default function AccountPage() {
   const { user, profile, isLoading: authLoading } = useAuthContext();
@@ -421,6 +423,9 @@ export default function AccountPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Admin API Key (BYOK) */}
+        <AdminApiKeyCard />
       </div>
 
       {/* Image Cropper Modal */}
@@ -439,5 +444,113 @@ export default function AccountPage() {
         />
       )}
     </MainLayout>
+  );
+}
+
+// ============================================
+// Admin API Key (BYOK) Card
+// ============================================
+
+function AdminApiKeyCard() {
+  const { isAdmin, isPlatformAdmin, isSuperAdmin, isDepartmentAdmin } = useAuthContext();
+  const { data: keyStatus, isLoading } = useAdminApiKeyStatus();
+  const { data: platformSettings } = useAIPlatformSettings();
+  const saveKey = useSaveAdminApiKey();
+  const revokeKey = useRevokeAdminApiKey();
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showInput, setShowInput] = useState(false);
+
+  const isAdminRole = isAdmin || isPlatformAdmin || isSuperAdmin || isDepartmentAdmin;
+  if (!isAdminRole) return null;
+
+  const needsKey = !keyStatus?.has_key && !platformSettings?.allow_admin_fallback_to_global_key && !isSuperAdmin;
+
+  const handleSave = async () => {
+    if (!apiKeyInput || apiKeyInput.length < 10) {
+      toast.error('Please enter a valid API key');
+      return;
+    }
+    await saveKey.mutateAsync({ api_key: apiKeyInput });
+    setApiKeyInput('');
+    setShowInput(false);
+  };
+
+  return (
+    <>
+      {needsKey && (
+        <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            {platformSettings?.global_key_disabled_message || 'Please add your own API key to generate AI content.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            My AI API Key
+          </CardTitle>
+          <CardDescription>
+            Add your own Google Gemini API key for AI content generation. Your key is encrypted and stored securely.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : keyStatus?.has_key ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium">API Key Active</p>
+                  <p className="text-xs text-muted-foreground">
+                    Provider: {keyStatus.provider} · Hint: ****{keyStatus.key_hint}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowInput(true)}>
+                  Replace Key
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => revokeKey.mutate()} disabled={revokeKey.isPending}>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Revoke
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setShowInput(true)}>
+              Add My API Key
+            </Button>
+          )}
+
+          {showInput && (
+            <div className="space-y-3 p-4 border rounded-lg">
+              <Label>Google Gemini API Key</Label>
+              <Input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="AIza..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSave} disabled={saveKey.isPending || !apiKeyInput}>
+                  {saveKey.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                  Save Key
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowInput(false); setApiKeyInput(''); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }

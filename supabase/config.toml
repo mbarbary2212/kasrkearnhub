@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.resend-webhook]
 verify_jwt = false
+
+[functions.manage-admin-api-key]
+verify_jwt = false

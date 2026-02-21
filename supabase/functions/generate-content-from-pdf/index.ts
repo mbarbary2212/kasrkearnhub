@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts";
+import { getAISettings, getAIProvider, callAI, resolveApiKey, logAIUsage, loadAIRules } from "../_shared/ai-provider.ts";
 import { detectPromptInjection, validateInputLimits, validateStrictSchema, sanitizeSectionNumber } from "../_shared/security.ts";
 import { checkDatabaseDuplicates, checkIntraBatchDuplicates } from "../_shared/duplicates.ts";
 
@@ -820,6 +820,19 @@ serve(async (req) => {
     return jsonResponse({ error: "Forbidden - admin access required", step: "auth", items: [], warnings: [] }, 403);
   }
 
+  // GOVERNANCE: Resolve which API key to use based on role + policy
+  const keyResolution = await resolveApiKey(serviceClient, user.id, roleData.role, aiSettings);
+  if (keyResolution.error) {
+    console.log(`[key-policy] User ${user.id} blocked: ${keyResolution.errorCode}`);
+    return jsonResponse({ 
+      error: keyResolution.error, 
+      errorCode: keyResolution.errorCode,
+      step: "key_policy", 
+      items: [], 
+      warnings: [] 
+    }, 403);
+  }
+
   let body: GenerateRequest;
   try {
     body = await req.json();
@@ -1070,8 +1083,10 @@ RULES:
       ? `\n\nCRITICAL FOR MCQ: The 'choices' field MUST be an array of exactly 5 objects: [{ "key": "A", "text": "..." }, { "key": "B", "text": "..." }, { "key": "C", "text": "..." }, { "key": "D", "text": "..." }, { "key": "E", "text": "..." }]. DO NOT use an object format.`
       : "";
 
-    // NBME pedagogical guidelines
-    const nbmeGuidelines = getNbmeGuidelines(content_type);
+    // Load AI rules from database (precedence: chapter > module > global)
+    const dbRules = await loadAIRules(serviceClient, content_type, module_id, chapter_id);
+    // Fall back to hardcoded guidelines if no DB rules found
+    const nbmeGuidelines = dbRules || getNbmeGuidelines(content_type);
 
     // Build dedup context from frontend-provided fingerprints
     let dedupContext = '';
@@ -1110,9 +1125,9 @@ ${pdfTextPlaceholder}
 ${dedupContext}
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;
 
-    console.log(`[${jobId}] Generating ${clampedQuantity} ${content_type} items (single chunk, ${aiProvider.name}/${aiProvider.model})`);
+    console.log(`[${jobId}] Generating ${clampedQuantity} ${content_type} items (single chunk, ${aiProvider.name}/${aiProvider.model}, key: ${keyResolution.keySource})`);
 
-    const aiResult = await callAI(baseSystemPrompt, userPrompt, aiProvider);
+    const aiResult = await callAI(baseSystemPrompt, userPrompt, aiProvider, keyResolution.apiKey);
 
     if (!aiResult.success || !aiResult.content) {
       const msg = `AI call failed: ${aiResult.error || 'empty response'}`;
@@ -1120,6 +1135,9 @@ Remember: Output ONLY a valid JSON array matching the schema. No explanations, n
       await failJob(msg, "ai_gateway");
       return jsonResponse({ error: msg, step: "ai_gateway", job_id: jobId, items: [], warnings: [] }, 500);
     }
+
+    // Log usage event
+    await logAIUsage(serviceClient, user.id, content_type, aiProvider.name, keyResolution.keySource || 'global');
 
     const items = parseAIResponse(aiResult.content);
     if (items.length === 0) {
