@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Plus, Upload, ShieldAlert } from 'lucide-react';
+import { Plus, Upload, ShieldAlert, AlertTriangle, Copy, CheckCircle2 } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -29,6 +29,11 @@ import { SectionSelector } from '@/components/sections';
 import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { normalizeText } from '@/lib/duplicateDetection';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {
@@ -63,9 +68,35 @@ interface AdminContentActionsProps {
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
 }
 
+interface ParsedEssayRow {
+  title: string;
+  question: string;
+  modelAnswer: string;
+  sectionId: string | null;
+  sectionName: string;
+  selected: boolean;
+  isDuplicate: boolean;
+  error?: string;
+}
+
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
   const auth = useAuthContext();
   const { data: sections = [] } = useChapterSections(chapterId);
+
+  // Fetch existing essays for duplicate detection
+  const { data: existingEssays = [] } = useQuery({
+    queryKey: ['chapter-essays-for-dedup', chapterId],
+    queryFn: async () => {
+      if (!chapterId) return [];
+      const { data } = await supabase
+        .from('essays')
+        .select('id, title')
+        .eq('chapter_id', chapterId)
+        .eq('is_deleted', false);
+      return data || [];
+    },
+    enabled: !!chapterId,
+  });
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -114,6 +145,96 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [parsedEssayRows, setParsedEssayRows] = useState<ParsedEssayRow[]>([]);
+  const [essayParseErrors, setEssayParseErrors] = useState<string[]>([]);
+
+  const processEssayCSV = useCallback((text: string) => {
+    const lines = text.trim().split('\n').filter(line => line.trim());
+    if (lines.length === 0) {
+      setEssayParseErrors(['No data found in CSV']);
+      setParsedEssayRows([]);
+      return;
+    }
+
+    const firstRowParts = parseCSVLine(lines[0]);
+    const firstRowLower = firstRowParts.map(h => h.toLowerCase().trim());
+    const knownHeaders = ['title', 'question', 'model_answer', 'scenario_text', 'questions', 'section_name', 'section_number', 'keywords', 'rating'];
+    const hasHeaders = firstRowLower.some(h => knownHeaders.includes(h));
+
+    let headerMap: Record<string, number> = {};
+    let startIndex = 0;
+
+    if (hasHeaders) {
+      startIndex = 1;
+      firstRowLower.forEach((h, idx) => { headerMap[h] = idx; });
+    }
+
+    const col = (row: string[], name: string): string => {
+      if (hasHeaders && headerMap[name] !== undefined) return row[headerMap[name]]?.trim() || '';
+      return '';
+    };
+
+    const rows: ParsedEssayRow[] = [];
+    const errors: string[] = [];
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const parts = parseCSVLine(lines[i]);
+      let rowTitle: string, question: string, mAnswer: string;
+      let sName = '';
+      let sNumber = '';
+
+      if (hasHeaders) {
+        rowTitle = col(parts, 'title');
+        const scenarioText = col(parts, 'scenario_text');
+        const questionsCol = col(parts, 'questions');
+        const questionCol = col(parts, 'question');
+
+        if (questionCol) {
+          question = questionCol;
+        } else if (scenarioText || questionsCol) {
+          question = [scenarioText, questionsCol].filter(Boolean).join('\n\n');
+        } else {
+          question = '';
+        }
+
+        mAnswer = col(parts, 'model_answer');
+        sName = col(parts, 'section_name');
+        sNumber = col(parts, 'section_number');
+      } else {
+        rowTitle = parts[0]?.trim() || '';
+        question = parts[1]?.trim() || '';
+        mAnswer = parts[2]?.trim() || '';
+      }
+
+      const rowNum = i + 1;
+      let error: string | undefined;
+
+      if (!rowTitle) error = `Row ${rowNum}: Missing title`;
+      else if (!question) error = `Row ${rowNum}: Missing question`;
+
+      if (error) errors.push(error);
+
+      const resolvedSectionId = resolveSectionId(sections, sName, sNumber);
+
+      const isDuplicate = rowTitle ? existingEssays.some(
+        e => normalizeText(e.title) === normalizeText(rowTitle)
+      ) : false;
+
+      rows.push({
+        title: rowTitle,
+        question,
+        modelAnswer: mAnswer,
+        sectionId: resolvedSectionId,
+        sectionName: sName,
+        selected: !isDuplicate && !error,
+        isDuplicate,
+        error,
+      });
+    }
+
+    setParsedEssayRows(rows);
+    setEssayParseErrors(errors);
+  }, [sections, existingEssays]);
 
   const addLecture = useMutation({
     mutationFn: async () => {
@@ -367,75 +488,21 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
   const bulkUploadEssays = useMutation({
     mutationFn: async () => {
-      const lines = csvText.trim().split('\n').filter(line => line.trim());
-      if (lines.length === 0) throw new Error('No data found');
+      const selectedRows = parsedEssayRows.filter(r => r.selected && !r.error);
+      if (selectedRows.length === 0) throw new Error('No items selected for import');
 
-      // Detect headers by checking if the first row contains known column names
-      const firstRowParts = parseCSVLine(lines[0]);
-      const firstRowLower = firstRowParts.map(h => h.toLowerCase().trim());
-      const knownHeaders = ['title', 'question', 'model_answer', 'scenario_text', 'questions', 'section_name', 'section_number', 'keywords', 'rating'];
-      const hasHeaders = firstRowLower.some(h => knownHeaders.includes(h));
-
-      let headerMap: Record<string, number> = {};
-      let startIndex = 0;
-
-      if (hasHeaders) {
-        startIndex = 1;
-        firstRowLower.forEach((h, idx) => { headerMap[h] = idx; });
-      }
-
-      const col = (row: string[], name: string): string => {
-        if (hasHeaders && headerMap[name] !== undefined) return row[headerMap[name]]?.trim() || '';
-        return '';
-      };
-
-      const parsedEssays = [];
-      for (let i = startIndex; i < lines.length; i++) {
-        const parts = parseCSVLine(lines[i]);
-
-        let title: string, question: string, modelAnswer: string;
-        let sectionName = '', sectionNumber = '';
-
-        if (hasHeaders) {
-          title = col(parts, 'title');
-          // Support old clinical format: combine scenario_text + questions
-          const scenarioText = col(parts, 'scenario_text');
-          const questionsCol = col(parts, 'questions');
-          const questionCol = col(parts, 'question');
-
-          if (questionCol) {
-            question = questionCol;
-          } else if (scenarioText || questionsCol) {
-            question = [scenarioText, questionsCol].filter(Boolean).join('\n\n');
-          } else {
-            question = '';
-          }
-
-          modelAnswer = col(parts, 'model_answer');
-          sectionName = col(parts, 'section_name');
-          sectionNumber = col(parts, 'section_number');
-        } else {
-          // Fallback: positional parsing (title, question, model_answer)
-          title = parts[0]?.trim() || '';
-          question = parts[1]?.trim() || '';
-          modelAnswer = parts[2]?.trim() || '';
-        }
-
-        if (title && question) {
-          const sectionId = resolveSectionId(sections, sectionName, sectionNumber);
-          parsedEssays.push({
-            title,
-            question,
-            model_answer: modelAnswer || null,
-            ...(sectionId ? { section_id: sectionId } : {}),
-          });
-        }
-      }
-
-      if (parsedEssays.length === 0) throw new Error('No valid rows found');
+      const essaysToInsert = selectedRows.map(row => ({
+        title: row.title,
+        question: row.question,
+        model_answer: row.modelAnswer || null,
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
+        ...(row.sectionId ? { section_id: row.sectionId } : {}),
+      }));
 
       // Validate batch before insert
-      const { valid, invalid, stats } = validateBatch(EssayFormSchema, parsedEssays, startIndex);
+      const { valid, invalid, stats } = validateBatch(EssayFormSchema, essaysToInsert, 0);
       
       if (invalid.length > 0) {
         const errorDetails = invalid.slice(0, 5).map(
@@ -458,20 +525,23 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         }))
       );
       if (error) throw error;
+      return { count: valid.length };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['chapter-essay-count', chapterId] });
       queryClient.invalidateQueries({ queryKey: ['module-essays', moduleId] });
-      toast.success('Short questions uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: ['chapter-essays-for-dedup', chapterId] });
+      toast.success(`${data?.count || 0} short question(s) uploaded successfully`);
       setBulkOpen(false);
       resetForm();
-      // Log activity
+      setParsedEssayRows([]);
+      setEssayParseErrors([]);
       logActivity({
         action: 'bulk_upload_essay',
         entity_type: 'essay',
         scope: { module_id: moduleId, chapter_id: chapterId, topic_id: topicId },
-        metadata: { source: 'csv_import' },
+        metadata: { source: 'csv_import', count: data?.count },
       });
     },
     onError: (error) => handlePermissionError(error, 'add'),
@@ -486,6 +556,8 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
     setCsvText('');
     setUploadedFile(null);
     setSectionId(null);
+    setParsedEssayRows([]);
+    setEssayParseErrors([]);
   };
 
   const handleSubmit = () => {
@@ -732,20 +804,142 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                     id="essay-csv-upload"
                     onFileSelect={(file) => {
                       const reader = new FileReader();
-                      reader.onload = () => setCsvText(String(reader.result ?? ''));
+                      reader.onload = () => {
+                        const text = String(reader.result ?? '');
+                        setCsvText(text);
+                        processEssayCSV(text);
+                      };
                       reader.readAsText(file);
                     }}
                     accept=".csv"
                     acceptedTypes={['.csv']}
                     maxSizeMB={10}
                   />
-                  {csvText && (
-                    <div className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">CSV loaded. Ready to upload.</p>
+
+                  {/* Parse errors */}
+                  {essayParseErrors.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <p className="font-medium mb-1">{essayParseErrors.length} error(s) found:</p>
+                        <ul className="list-disc pl-4 text-xs space-y-0.5">
+                          {essayParseErrors.slice(0, 5).map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                          {essayParseErrors.length > 5 && (
+                            <li>...and {essayParseErrors.length - 5} more</li>
+                          )}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Duplicate summary */}
+                  {parsedEssayRows.length > 0 && parsedEssayRows.some(r => r.isDuplicate) && (
+                    <Alert>
+                      <Copy className="h-4 w-4" />
+                      <AlertDescription>
+                        {parsedEssayRows.filter(r => r.isDuplicate).length} duplicate(s) detected (auto-skipped). You can re-select them if needed.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Parsed rows preview */}
+                  {parsedEssayRows.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Review Items</p>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setParsedEssayRows(prev => prev.map(r => ({ ...r, selected: !r.error })))}
+                          >
+                            Select All
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setParsedEssayRows(prev => prev.map(r => ({ ...r, selected: false })))}
+                          >
+                            Deselect All
+                          </Button>
+                        </div>
+                      </div>
+                      <ScrollArea className="h-[280px] border rounded-lg">
+                        <div className="divide-y">
+                          {parsedEssayRows.map((row, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex items-start gap-3 p-3 text-sm ${
+                                row.error ? 'bg-destructive/5' : row.isDuplicate ? 'bg-muted/50' : ''
+                              }`}
+                            >
+                              <Checkbox
+                                checked={row.selected}
+                                disabled={!!row.error}
+                                onCheckedChange={(checked) => {
+                                  setParsedEssayRows(prev => prev.map((r, i) =>
+                                    i === idx ? { ...r, selected: !!checked } : r
+                                  ));
+                                }}
+                                className="mt-0.5"
+                              />
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">#{idx + 1}</span>
+                                  <span className="font-medium truncate">{row.title || '(no title)'}</span>
+                                  {row.isDuplicate && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Duplicate</Badge>
+                                  )}
+                                  {row.error && (
+                                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Error</Badge>
+                                  )}
+                                  {row.sectionName && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{row.sectionName}</Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                  {row.question || '(no question)'}
+                                </p>
+                                {row.modelAnswer && (
+                                  <p className="text-xs text-muted-foreground/70 line-clamp-1">
+                                    Answer: {row.modelAnswer}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+
+                      {/* Summary bar */}
+                      <div className="flex items-center justify-between text-sm bg-muted p-2 rounded-lg">
+                        <span className="text-muted-foreground">
+                          {parsedEssayRows.length} parsed
+                          {parsedEssayRows.some(r => r.isDuplicate) && (
+                            <> · {parsedEssayRows.filter(r => r.isDuplicate).length} duplicates</>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-1 font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                          {parsedEssayRows.filter(r => r.selected).length} will be imported
+                        </span>
+                      </div>
                     </div>
                   )}
-                  <Button onClick={() => bulkUploadEssays.mutate()} disabled={!csvText} className="w-full">
-                    Upload Short Questions
+
+                  <Button
+                    onClick={() => bulkUploadEssays.mutate()}
+                    disabled={parsedEssayRows.filter(r => r.selected).length === 0 || bulkUploadEssays.isPending}
+                    className="w-full"
+                  >
+                    {bulkUploadEssays.isPending
+                      ? 'Uploading...'
+                      : `Upload ${parsedEssayRows.filter(r => r.selected).length} Short Question(s)`
+                    }
                   </Button>
                 </>
               )}
