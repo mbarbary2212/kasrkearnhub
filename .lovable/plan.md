@@ -1,54 +1,40 @@
 
 
-## Two Fixes: Algorithm Template Description + Short Questions Review Step
+## Fix OSCE Section Support, Image Upload Text, and Add Image Button
 
-### 1. Algorithm Template -- Show Step Description Syntax
+### Issue 1: OSCE Analyzer Flags section_name/section_number as "Extra Columns"
 
-**File: `src/components/admin/HelpTemplatesTab.tsx` (lines 119-131)**
+The AI bulk upload analyzer's OSCE schema does not include `section_name` and `section_number` in its list of known columns. The actual parser in `OsceBulkUploadModal.tsx` already reads and resolves these columns correctly, but the AI analysis warns "extra columns not in database schema; these will be ignored" -- which is misleading.
 
-Update the algorithm template example to demonstrate the `step_title::step_description` syntax:
-- Change the `columns` label to indicate `steps (step_title::step_description, pipe-separated)`
-- Update example from plain step names to include descriptions using `::` separator
-- Example: `"Obtain ECG::Order 12-lead ECG within 10 minutes of arrival|Check troponins::Serial troponin I at 0 and 3 hours|..."`
+**Fix in `supabase/functions/analyze-bulk-upload/index.ts` (line 70):**
+- Add `section_name` and `section_number` to the OSCE schema's `optional` array
 
-### 2. Short Questions Bulk Upload -- Add Review and Approval Step
+Also update the edge function `supabase/functions/bulk-import-osce/index.ts` to handle `section_name`/`section_number` columns if present (for the server-side import path), resolving them to `section_id` using a sections lookup query.
 
-**File: `src/components/admin/AdminContentActions.tsx`**
+### Issue 2: Change "optional" to "you can upload later"
 
-Replace the current simple "CSV loaded. Ready to upload." flow (lines 723-750) with a full review step matching the pattern used in `StudyBulkUploadModal`:
+**Fix in `src/components/content/OsceBulkUploadModal.tsx` (line 525):**
+- Change the text from:
+  `image_filename is **optional**. Leave blank for questions without images.`
+- To:
+  `image_filename -- you can upload later. Leave blank and add images one-by-one after import.`
 
-**New state (after line 116):**
-- Add `parsedEssayRows` state: array of `{ title, question, modelAnswer, sectionId?, selected, isDuplicate, error? }`
+### Issue 3: "Add Image" Button Not Working
 
-**New parsing function:**
-- Extract the CSV parsing logic from the `bulkUploadEssays` mutation into a separate `processEssayCSV(text)` function
-- This function populates `parsedEssayRows` with parsed data, validation errors, and duplicate flags
-- Duplicate detection: compare titles against existing essays fetched via `useQuery(['chapter-essays', chapterId])`
+The "Add Image" button in `OsceQuestionCard.tsx` (line 261) requires both `isAdmin` AND `moduleId` to be truthy. Two potential fixes:
 
-**Updated mutation (`bulkUploadEssays`):**
-- Instead of parsing CSV text, read from the already-parsed and user-approved `parsedEssayRows`
-- Only insert rows where `selected === true`
+**a) Ensure the button is always visible for admins:**
+The current condition `isAdmin && moduleId` is correct. The button should appear for admin users when viewing questions without images. If it's not appearing, this is likely because `moduleId` is not being passed. I will add a fallback: extract `moduleId` from the question itself (`question.module_id`) so the button always works for admins.
 
-**Updated UI (lines 723-750):**
-Replace the simple "CSV loaded" message with:
-1. DragDropZone (keep as-is)
-2. Error list if any parse errors exist
-3. Duplicate summary alert (like StudyBulkUploadModal)
-4. Scrollable preview list showing each parsed row with:
-   - Checkbox (selected/skipped)
-   - Row number, title, truncated question preview
-   - Duplicate badge if title matches existing essay
-   - Error badge if validation failed
-5. Summary bar: "X items parsed, Y will be imported"
-6. Upload button shows count of selected items
+**b) Also add a "Replace Image" option for questions that already have an image:**
+Currently, when an image exists, there is no admin option to replace it. I will add a small "Replace Image" button for admins in the image view area.
 
-**Reset:**
-- Clear `parsedEssayRows` when dialog closes or on successful upload
-
-### Summary
+### Files to Modify
 
 | File | Change |
 |---|---|
-| `HelpTemplatesTab.tsx` | Update algorithm example to show `title::description` syntax |
-| `AdminContentActions.tsx` | Add parsed preview, duplicate detection, per-item checkboxes for essay bulk upload |
+| `supabase/functions/analyze-bulk-upload/index.ts` | Add `section_name`, `section_number` to OSCE optional columns |
+| `supabase/functions/bulk-import-osce/index.ts` | Add section resolution logic using section_name/section_number |
+| `src/components/content/OsceBulkUploadModal.tsx` | Change "optional" text to "you can upload later" |
+| `src/components/content/OsceQuestionCard.tsx` | Use `question.module_id` as fallback for moduleId; add "Replace Image" button for admins |
 
