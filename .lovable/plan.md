@@ -1,45 +1,73 @@
 
-## ✅ COMPLETED: Clean Up Dead Table References After Database Consolidation
 
-All references to the dropped `case_scenarios` and `clinical_cases` tables have been removed from the codebase. The canonical table is now `virtual_patient_cases` throughout.
-
-### What was done
-
-- Deleted 6 legacy files (useCaseScenarios.ts, CaseScenarioFormModal, CaseScenarioBulkUploadModal, CaseScenarioDetailModal, CaseScenarioList, CaseList)
-- Updated 12 hooks to query `virtual_patient_cases` instead of dropped tables
-- Removed legacy types (ClinicalCase mock type, clinical_cases from ContentTable unions)
-- Updated AdminPage integrity checks to remove case_scenarios/clinical_cases orphan and quality checks
-- Updated 5 edge functions (cache-readiness, integrity-orphaned-all, integrity-pilot-v2, approve-ai-content, process-batch-job)
-- Kept Worked Cases (`clinical_case_worked` in `study_resources`) as-is for non-interactive reference material
-
-## ✅ COMPLETED: Speed Up Practice & OSCE Tab Loading (Lazy Loading Optimization)
+## Fix Mind Map PNG Image Zoom and Scrolling
 
 ### Problem
-All practice queries (MCQs, OSCEs, matching, true/false, essays, clinical cases) fired eagerly on chapter page load via `select('*')`, even when the user was on the Resources tab.
 
-### What was done
+When viewing a PNG mind map image in the fullscreen modal at zoom levels above 100%, the top (and sides) of the image get clipped and cannot be scrolled to. This happens because the current implementation uses CSS `transform: scale()` to zoom, which visually enlarges the element but does **not** change its layout size. The parent container's scrollable area stays the same, so overflow content is unreachable.
 
-**Layer 1 — Lazy-load practice data**
-- Added `options?: { enabled?: boolean }` parameter to: `useChapterMcqs`, `useChapterOsceQuestions`, `useChapterMatchingQuestions`, `useChapterTrueFalseQuestions`, `useChapterEssays`
-- In `ChapterPage.tsx`, full data hooks now only fetch when `activeSection === 'practice' || 'test'`
-- Deleted-data hooks only fetch when practice active AND user is admin
+### Solution
 
-**Layer 2 — Lightweight count hooks for badges**
-- Added count-only hooks using `{ count: 'exact', head: true }` (zero payload):
-  - `useChapterMcqCount`, `useChapterOsceCount`, `useChapterMatchingCount`, `useChapterTrueFalseCount`, `useChapterEssayCount`, `useChapterClinicalCaseCount`
-- Practice tab badges now use count hooks instead of `data?.length`
-- Count hooks always run (not gated by activeSection)
+Replace the CSS `transform: scale()` approach with actual `width`/`height` sizing for the image. Instead of scaling the image, set its width to `zoom * 100%` and let it flow naturally. This makes the container's scrollable area grow with the zoom level, allowing full pan/scroll in all directions.
 
-**Layer 3 — Stable caching**
-- Added `staleTime: 2min` to full-data hooks, `staleTime: 5min` to count hooks
-- Added `placeholderData: (prev) => prev` to prevent flash of empty state on tab switches
-- Count query keys invalidated alongside full-data keys in all create/delete/restore mutations
+### Technical Details
 
-### Files modified
-- `src/hooks/useMcqs.ts` — count hook + options param + staleTime + count invalidation
-- `src/hooks/useOsceQuestions.ts` — same
-- `src/hooks/useMatchingQuestions.ts` — same
-- `src/hooks/useTrueFalseQuestions.ts` — same
-- `src/hooks/useChapterContent.ts` — essay count hook + clinical case count hook + options param
-- `src/pages/ChapterPage.tsx` — lazy data hooks, count hooks for badges
-- `src/components/admin/AdminContentActions.tsx` — essay count invalidation
+**File: `src/components/study/MindMapViewer.tsx`**
+
+**Change 1 -- Image display (non-drawing mode, lines ~764-777)**
+
+Replace the current `transform: scale(zoom)` approach:
+```tsx
+<img
+  src={fullscreenFileUrl}
+  alt={fullscreenResource?.title}
+  style={{ 
+    transform: `scale(${zoom})`, 
+    transformOrigin: 'center center',
+    transition: 'transform 0.2s ease-out',
+    maxWidth: '100%',
+    maxHeight: '75vh',
+    objectFit: 'contain',
+  }}
+/>
+```
+
+With a layout-based sizing approach:
+```tsx
+<img
+  src={fullscreenFileUrl}
+  alt={fullscreenResource?.title}
+  style={{ 
+    width: `${zoom * 100}%`,
+    maxWidth: 'none',
+    height: 'auto',
+    transition: 'width 0.2s ease-out',
+    display: 'block',
+  }}
+/>
+```
+
+**Change 2 -- Container wrapper (lines ~739-741)**
+
+Update the wrapper `<div>` so it no longer tries to center the image (which fights with scroll). Use `items-start` instead of `items-center` and ensure the overflow parent can scroll in both directions:
+
+```tsx
+<div 
+  className="relative p-4" 
+  style={{ minHeight: '60vh' }}
+>
+```
+
+This removes `flex items-center justify-center` so the image flows naturally at the top-left of the scrollable area, and the user can scroll to see every part at any zoom level.
+
+**Change 3 -- Drawing mode (lines ~743-763)**
+
+Apply the same sizing approach to the drawing canvas wrapper so zoom works consistently in both modes.
+
+### What This Fixes
+
+- At 200% zoom, the entire image is scrollable -- top, bottom, and sides are all reachable
+- At 100% (default), the image fits within the viewport as before
+- Zooming out below 100% also works correctly
+- Drawing mode maintains the same behavior
+
