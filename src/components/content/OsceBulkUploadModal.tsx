@@ -96,6 +96,22 @@ export function OsceBulkUploadModal({
     setSkipImagesStep(false);
   };
 
+  // Flexible column resolver: tries each alias (case-insensitive) and returns first non-empty value
+  const resolveCol = (row: Record<string, any>, ...aliases: string[]): string => {
+    // Build a lowercase key map for the row
+    const lowerMap: Record<string, any> = {};
+    for (const key of Object.keys(row)) {
+      lowerMap[key.toLowerCase().trim()] = row[key];
+    }
+    for (const alias of aliases) {
+      const val = lowerMap[alias.toLowerCase().trim()];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        return String(val).trim();
+      }
+    }
+    return '';
+  };
+
   // Parse Excel file locally
   const parseExcelFile = async (file: File): Promise<ExcelValidationResult> => {
     const buffer = await file.arrayBuffer();
@@ -111,38 +127,29 @@ export function OsceBulkUploadModal({
       const row = rows[i];
       const rowNumber = i + 2; // +2 for header and 1-indexing
 
-      const imageFilename = String(row['image_filename'] || '').trim();
-      const historyText = String(row['case_history'] || '').trim();
+      const imageFilename = resolveCol(row, 'image_filename', 'image filename', 'image name', 'imagename', 'image');
+      const historyText = resolveCol(row, 'case_history', 'history text', 'history_text', 'case history', 'casehistory', 'history');
       
-      const statements = [
-        String(row['statement_1_text'] || '').trim(),
-        String(row['statement_2_text'] || '').trim(),
-        String(row['statement_3_text'] || '').trim(),
-        String(row['statement_4_text'] || '').trim(),
-        String(row['statement_5_text'] || '').trim(),
-      ];
+      const statements = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `statement_${n}_text`, `statement ${n}`, `statement_${n}`, `statement${n}`)
+      );
 
-      const rawAnswers = [
-        String(row['statement_1_answer'] || '').trim().toUpperCase(),
-        String(row['statement_2_answer'] || '').trim().toUpperCase(),
-        String(row['statement_3_answer'] || '').trim().toUpperCase(),
-        String(row['statement_4_answer'] || '').trim().toUpperCase(),
-        String(row['statement_5_answer'] || '').trim().toUpperCase(),
-      ];
+      const rawAnswers = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `statement_${n}_answer`, `answer ${n}`, `answer_${n}`, `answer${n}`).toUpperCase()
+      );
 
-      const explanations = [
-        String(row['explanation_1'] || row['statement_1_explanation'] || '').trim(),
-        String(row['explanation_2'] || row['statement_2_explanation'] || '').trim(),
-        String(row['explanation_3'] || row['statement_3_explanation'] || '').trim(),
-        String(row['explanation_4'] || row['statement_4_explanation'] || '').trim(),
-        String(row['explanation_5'] || row['statement_5_explanation'] || '').trim(),
-      ];
+      const explanations = [1, 2, 3, 4, 5].map(n =>
+        resolveCol(row, `explanation_${n}`, `explanation ${n}`, `statement_${n}_explanation`, `explanation${n}`)
+      );
 
-      // Validate - image_filename is now OPTIONAL
+      // Extract section info
+      const sectionName = resolveCol(row, 'section_name', 'section name', 'sectionname', 'section') || undefined;
+      const sectionNumRaw = resolveCol(row, 'section_number', 'section number', 'sectionnumber', 'section_num');
+      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
+
+      // Validate
       const errors: string[] = [];
-
       if (!historyText) errors.push('Missing case_history');
-      
       statements.forEach((s, idx) => {
         if (!s) errors.push(`Missing statement_${idx + 1}_text`);
       });
@@ -163,11 +170,6 @@ export function OsceBulkUploadModal({
       if (imageFilename) {
         requiredImages.add(imageFilename);
       }
-      
-      // Extract section info
-      const sectionName = String(row['section_name'] || row['sectionname'] || row['section'] || '').trim() || undefined;
-      const sectionNumRaw = String(row['section_number'] || row['sectionnumber'] || row['section_num'] || '').trim();
-      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
 
       parsedRows.push({
         rowNumber,
