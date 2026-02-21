@@ -648,7 +648,7 @@ export default function ChapterPage() {
                 {/* Clinical Tools Content */}
                 {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
                   <ClinicalToolsSection
-                    algorithms={[]}
+                    algorithms={filterBySection(algorithms)}
                     workedCases={filterBySection(workedCases)}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
