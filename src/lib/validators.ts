@@ -95,6 +95,8 @@ export const EssayFormSchema = z.object({
     .max(5000, 'Model answer is too long (max 5000 characters)')
     .nullable()
     .optional(),
+
+  section_id: z.string().nullable().optional(),
 });
 
 // =====================
