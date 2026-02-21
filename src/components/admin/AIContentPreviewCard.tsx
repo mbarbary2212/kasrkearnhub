@@ -19,6 +19,29 @@ import {
 import { CheckCircle2, ChevronDown, ChevronUp, Pencil, Eye, X, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+function normalizeChoices(choices: any): Record<string, string> {
+  if (!choices) return {};
+  if (Array.isArray(choices)) {
+    const result: Record<string, string> = {};
+    choices.forEach((c: any) => {
+      if (c && typeof c === 'object' && c.key) {
+        result[c.key] = c.text || '';
+      }
+    });
+    return result;
+  }
+  if (typeof choices === 'object') {
+    const result: Record<string, string> = {};
+    for (const [k, v] of Object.entries(choices)) {
+      result[k] = typeof v === 'object' && v !== null
+        ? (v as any).text || String(v)
+        : String(v);
+    }
+    return result;
+  }
+  return {};
+}
+
 interface AIContentPreviewCardProps {
   item: any;
   index: number;
@@ -84,7 +107,7 @@ export function AIContentPreviewCard({
           <>
             <p className="font-medium text-sm line-clamp-2">{item.stem}</p>
             <div className="flex gap-2 mt-2">
-              <Badge variant="outline">{Object.keys(item.choices || {}).length} choices</Badge>
+              <Badge variant="outline">{Object.keys(normalizeChoices(item.choices)).length} choices</Badge>
               <Badge variant="secondary">Answer: {item.correct_key}</Badge>
             </div>
           </>
@@ -193,12 +216,12 @@ export function AIContentPreviewCard({
             </div>
             <div className="space-y-2">
               <Label>Choices</Label>
-              {Object.entries(editedItem.choices || {}).map(([key, val]) => (
+              {Object.entries(normalizeChoices(editedItem.choices)).map(([key, val]) => (
                 <div key={key} className="flex items-center gap-2">
                   <Badge variant={key === editedItem.correct_key ? 'default' : 'outline'}>{key}</Badge>
                   <Input
                     value={String(val)}
-                    onChange={(e) => updateField('choices', { ...editedItem.choices, [key]: e.target.value })}
+                    onChange={(e) => updateField('choices', { ...normalizeChoices(editedItem.choices), [key]: e.target.value })}
                     className="flex-1"
                   />
                   <Button
@@ -494,7 +517,7 @@ export function AIContentPreviewCard({
             </div>
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs">Choices</Label>
-              {Object.entries(item.choices || {}).map(([key, val]) => (
+              {Object.entries(normalizeChoices(item.choices)).map(([key, val]) => (
                 <div key={key} className={cn(
                   "flex items-center gap-2 p-2 rounded",
                   key === item.correct_key && "bg-green-50 dark:bg-green-950"
