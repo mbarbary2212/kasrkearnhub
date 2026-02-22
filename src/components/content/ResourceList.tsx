@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon, Music } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -179,52 +180,72 @@ export default function ResourceList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   {(resource.file_url || resource.external_url) && (
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 px-2"
-                      onClick={() => handleResourceClick(resource)}
-                    >
-                      {isPdfResource(resource) ? (
-                        <FileIcon className="w-3.5 h-3.5" />
-                      ) : (
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      )}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 px-2"
+                          onClick={() => handleResourceClick(resource)}
+                        >
+                          {isPdfResource(resource) ? (
+                            <FileIcon className="w-3.5 h-3.5" />
+                          ) : (
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isPdfResource(resource) ? 'View PDF' : 'Open Link'}</TooltipContent>
+                    </Tooltip>
                   )}
                   {canManage && (
                     <>
                       {canEdit && onEdit && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0"
-                          onClick={() => onEdit(resource)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0"
+                              onClick={() => onEdit(resource)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
                       )}
                       {canDelete && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => askDelete(resource.id, resource.title)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={() => askDelete(resource.id, resource.title)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete</TooltipContent>
+                        </Tooltip>
                       )}
                     </>
                   )}
                   {showFeedback && (
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 w-7 p-0"
-                      onClick={() => setFeedbackItem(resource)}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => setFeedbackItem(resource)}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Feedback</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </div>
