@@ -1,106 +1,69 @@
 
 
-## Preserve Section Info + Warning Across All Bulk Uploads
+## Fix Auto-Tag to Work With Title-Based Matching
 
-### What This Fixes
+### The Problem
 
-When admins upload content before creating sections, section info from the file is lost forever because there are no matching sections yet. This change preserves that info and warns admins proactively.
+The auto-tag feature only matches content using `original_section_name` and `original_section_number` columns. Since all your existing content was uploaded **before** these columns were added, every item has `NULL` for both fields. The hook skips all items without original section info, resulting in "No unassigned content with section info found to auto-tag."
 
-### Part 1: Database -- Add Preservation Columns
+### The Solution
 
-Add `original_section_name` (TEXT) and `original_section_number` (TEXT) to every content table that has a `section_id`:
+Update `useAutoTagSections.ts` to also use **title-based keyword matching** as a fallback when `original_section_name` is not available. This means:
 
-- `osce_questions`
-- `study_resources`
-- `mcqs`
-- `mcq_sets`
-- `essays`
-- `lectures`
-- `resources`
-- `practicals`
-- `matching_questions`
-- `true_false_questions`
-- `virtual_patient_cases`
+1. Fetch ALL unassigned items (not just those with original section info)
+2. For each item, first try matching via `original_section_name`/`original_section_number` (precise)
+3. If no original section info exists, fall back to matching the item's **title/text** against section names using keyword scoring
 
-One migration adding all columns at once.
+### How Title Matching Works
 
-### Part 2: Reusable Warning Component
+For sections like "1.1 Wound healing", "1.4 Chronic wounds", "1.5 Suture materials":
+- Strip the numbering prefix: "wound healing", "chronic wounds", "suture materials"
+- For each unassigned item (e.g., title "Wound contraction - cells"):
+  - Check if any stripped section name keywords appear in the title
+  - Score by number of matching words (excluding stop words like "and", "of", "the")
+  - Assign to highest-scoring section (minimum 1 keyword match)
+  - On ties, prefer the section whose stripped name is a substring of the title
 
-Create a new `SectionWarningBanner` component that:
-- Accepts `chapterId` / `topicId`
-- Checks if sections exist using existing hooks (`useChapterSections` / `useTopicSections`)
-- Shows a yellow warning when no sections have been created: "No sections created yet. Section info from your file will be saved so you can auto-tag content later."
-- Shows nothing if sections already exist
+### Title Column Per Table
 
-### Part 3: Add Warning to All Bulk Upload Modals
+Each content table uses a different column for its "title":
 
-Insert the `SectionWarningBanner` into:
-- `OsceBulkUploadModal`
-- `StudyBulkUploadModal`
-- `TrueFalseBulkUploadModal`
-- `MatchingQuestionBulkUploadModal`
-- `McqList` (MCQ bulk import dialog)
-- `AdminContentActions` (Essay bulk upload dialog)
+| Table | Column |
+|---|---|
+| study_resources, lectures, resources, essays, practicals, mcq_sets, virtual_patient_cases | `title` |
+| mcqs | `stem` |
+| true_false_questions | `statement` |
+| osce_questions | `history_text` |
+| matching_questions | `instruction` |
 
-### Part 4: Save Original Section Info During Import
+### Technical Changes
 
-For every bulk upload path, pass `original_section_name` and `original_section_number` alongside the insert data. This applies to:
+**File: `src/hooks/useAutoTagSections.ts`**
 
-**Already have section parsing (just need to save originals):**
-- `OsceBulkUploadModal` + `bulk-import-osce` edge function
-- `StudyBulkUploadModal` + `useBulkCreateStudyResources` hook
-- `MatchingQuestionBulkUploadModal` + `useBulkCreateMatchingQuestions` hook
-- `AdminContentActions` (essay upload)
+1. Add a `TITLE_COLUMN` map so the hook knows which column to fetch for each table
+2. Update the select query to also fetch the title column (e.g., `id, title, original_section_name, original_section_number`)
+3. Remove the filter that skips items without original section info (lines 134-136)
+4. Add a new `matchSectionByTitle` function that:
+   - Strips section name prefixes (e.g., "1.1 Wound healing" becomes "wound healing")
+   - Removes stop words from both section name and item title
+   - Scores sections by keyword overlap with the item title
+   - Returns the best matching section (minimum 1 keyword match)
+5. Update the matching logic: try `original_section_name/number` first, then fall back to title matching
+6. Update the progress/results to show all items attempted (not just those with original section info)
 
-**Need to ADD section parsing + saving:**
-- `TrueFalseBulkUploadModal` + `parseTrueFalseCsv` + `bulk-import-true-false` edge function -- add `section_name` and `section_number` columns to CSV format
-- `McqList` MCQ bulk import + `bulk-import-mcqs` edge function -- add section fields to CSV parsing
+### Expected Results
 
-### Part 5: Update Edge Functions
+With the sections "1.1 Wound healing", "1.2 Types of wounds", etc., and titles like:
+- "Wound contraction - cells" matches "1.1 Wound healing" (keyword "wound")
+- "Chronic wound" matches "1.4 Chronic wounds" (keywords "chronic" + "wound")
+- "Suture materials" matches "1.5 Suture materials" (exact match after stripping)
+- "Primary intention" matches "1.1 Wound healing" (keyword "wound" in context -- or may not match if no overlapping keywords, which is fine)
 
-- `bulk-import-osce/index.ts` -- include `original_section_name`, `original_section_number` in insert
-- `bulk-import-mcqs/index.ts` -- add section parsing, resolve section_id, save originals
-- Create or update T/F edge function to accept and save section info + originals
+Items that don't match any section remain unassigned for manual tagging.
 
-### Technical Details
-
-**New component: `src/components/sections/SectionWarningBanner.tsx`**
-```
-Accepts: chapterId?, topicId?
-Uses: useChapterSections / useTopicSections
-Renders: Alert with AlertTriangle icon when sections.length === 0
-```
-
-**Database migration (single SQL file):**
-```sql
-ALTER TABLE osce_questions ADD COLUMN IF NOT EXISTS original_section_name TEXT;
-ALTER TABLE osce_questions ADD COLUMN IF NOT EXISTS original_section_number TEXT;
--- (repeated for all 11 tables)
-```
-
-**True/False CSV format update:**
-Current: `statement,correct_answer,explanation,difficulty`
-New: `statement,correct_answer,explanation,difficulty,section_name,section_number`
-
-**MCQ CSV format update:**
-Add `section_name,section_number` columns (with flexible header detection like other uploads).
-
-### Files to Create/Modify
+### Files to Modify
 
 | File | Change |
 |---|---|
-| New migration | Add `original_section_name` + `original_section_number` to 11 content tables |
-| `src/components/sections/SectionWarningBanner.tsx` | New reusable warning component |
-| `src/components/sections/index.ts` | Export new component |
-| `src/components/content/OsceBulkUploadModal.tsx` | Add warning banner; save originals during insert |
-| `src/components/study/StudyBulkUploadModal.tsx` | Add warning banner; save originals during insert |
-| `src/components/content/TrueFalseBulkUploadModal.tsx` | Add warning banner; add section CSV parsing; save originals |
-| `src/components/content/MatchingQuestionBulkUploadModal.tsx` | Add warning banner; save originals during insert |
-| `src/components/content/McqList.tsx` | Add warning banner to MCQ bulk dialog; add section parsing |
-| `src/components/admin/AdminContentActions.tsx` | Add warning banner to essay upload; save originals |
-| `src/hooks/useTrueFalseQuestions.ts` | Update `parseTrueFalseCsv` to parse section columns; update form data type |
-| `src/hooks/useStudyResources.ts` | Include `original_section_name/number` in bulk insert |
-| `src/hooks/useMatchingQuestions.ts` | Include originals in bulk insert |
-| `supabase/functions/bulk-import-osce/index.ts` | Save originals in insert |
-| `supabase/functions/bulk-import-mcqs/index.ts` | Add section resolution + save originals |
+| `src/hooks/useAutoTagSections.ts` | Add title column map, title-based matching fallback, fetch title in query, remove original-only filter |
 
