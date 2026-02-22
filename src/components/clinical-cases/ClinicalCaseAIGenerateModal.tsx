@@ -242,10 +242,9 @@ export function ClinicalCaseAIGenerateModal({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
           {!generatedCase ? (
             // Generation Form
-            <ScrollArea className="flex-1">
               <div className="space-y-4 pr-4 pb-4">
                 {/* Context info */}
                 {(moduleName || chapterTitle) && (
@@ -334,10 +333,8 @@ export function ClinicalCaseAIGenerateModal({
                   </div>
                 )}
               </div>
-            </ScrollArea>
           ) : (
             // Preview Generated Case
-            <ScrollArea className="flex-1">
               <div className="space-y-4 pr-4 pb-4">
                 <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
                   <Check className="w-5 h-5 text-green-600" />
@@ -435,7 +432,6 @@ export function ClinicalCaseAIGenerateModal({
                   </div>
                 </div>
               </div>
-            </ScrollArea>
           )}
         </div>
 
