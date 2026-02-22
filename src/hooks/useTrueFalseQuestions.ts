@@ -27,6 +27,8 @@ export interface TrueFalseFormData {
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
+  original_section_name?: string | null;
+  original_section_number?: string | null;
 }
 
 // Helper to convert DB row to TrueFalseQuestion type
@@ -391,6 +393,22 @@ export function parseTrueFalseCsv(csvText: string): TrueFalseFormData[] {
   const headerKeywords = ['statement', 'question', 'correct_answer', 'answer', 'true', 'false', 'explanation', 'difficulty'];
   const isHeader = headerKeywords.some(keyword => firstLineLower.includes(keyword));
   
+  // Build header mapping if header exists
+  let headerMap: Record<string, number> = {};
+  if (isHeader) {
+    const headerParts: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < lines[0].length; i++) {
+      const char = lines[0][i];
+      if (char === '"') { inQuotes = !inQuotes; }
+      else if (char === ',' && !inQuotes) { headerParts.push(current.trim().toLowerCase()); current = ''; }
+      else { current += char; }
+    }
+    headerParts.push(current.trim().toLowerCase());
+    headerParts.forEach((h, idx) => { headerMap[h] = idx; });
+  }
+  
   const startIndex = isHeader ? 1 : 0;
   
   // Helper to parse boolean values
@@ -418,7 +436,18 @@ export function parseTrueFalseCsv(csvText: string): TrueFalseFormData[] {
     }
     parts.push(current.trim());
 
-    const [statement, correctAnswer, explanation, difficulty] = parts;
+    // Use header mapping if available, otherwise positional
+    const getCol = (name: string, fallbackIdx: number): string => {
+      if (isHeader && headerMap[name] !== undefined) return parts[headerMap[name]]?.trim() || '';
+      return parts[fallbackIdx]?.trim() || '';
+    };
+
+    const statement = getCol('statement', 0) || getCol('question', 0);
+    const correctAnswer = getCol('correct_answer', 1) || getCol('answer', 1);
+    const explanation = getCol('explanation', 2);
+    const difficulty = getCol('difficulty', 3);
+    const sectionName = getCol('section_name', 4);
+    const sectionNumber = getCol('section_number', 5);
 
     return {
       statement: statement || '',
@@ -427,6 +456,8 @@ export function parseTrueFalseCsv(csvText: string): TrueFalseFormData[] {
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
         : null),
+      original_section_name: sectionName || null,
+      original_section_number: sectionNumber || null,
     };
   });
 }

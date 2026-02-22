@@ -29,6 +29,7 @@ import * as XLSX from 'xlsx';
 import { logActivity } from '@/lib/activityLog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 
 interface OsceBulkUploadModalProps {
   open: boolean;
@@ -336,6 +337,8 @@ export function OsceBulkUploadModal({
             module_id: moduleId,
             chapter_id: chapterId || null,
             section_id: sectionId,
+            original_section_name: row.sectionName || null,
+            original_section_number: row.sectionNumber != null ? String(row.sectionNumber) : null,
             image_url: publicUrl,
             history_text: row.historyText,
             statement_1: row.statements[0],
@@ -517,6 +520,7 @@ export function OsceBulkUploadModal({
         {/* Step 1: Excel Upload */}
         {step === 'excel' && (
           <div className="space-y-4 pt-2">
+            <SectionWarningBanner chapterId={chapterId} />
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription className="space-y-2">

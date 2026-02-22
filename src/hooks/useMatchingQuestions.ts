@@ -333,6 +333,9 @@ export function useBulkCreateMatchingQuestions() {
         difficulty: q.difficulty,
         display_order: index,
         created_by: user?.id,
+        section_id: (q as any).section_id || null,
+        original_section_name: (q as any).original_section_name || null,
+        original_section_number: (q as any).original_section_number || null,
       }));
 
       const { error } = await supabase.from('matching_questions').insert(records);

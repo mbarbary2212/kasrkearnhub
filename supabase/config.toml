@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.manage-admin-api-key]
 verify_jwt = false
+
+[functions.bulk-import-true-false]
+verify_jwt = false

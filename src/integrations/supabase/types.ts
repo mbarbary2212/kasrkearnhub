@@ -1322,6 +1322,8 @@ export type Database = {
           model_answer: string | null
           model_answer_ar: string | null
           module_id: string | null
+          original_section_name: string | null
+          original_section_number: string | null
           question: string
           question_ar: string | null
           rating: number | null
@@ -1346,6 +1348,8 @@ export type Database = {
           model_answer?: string | null
           model_answer_ar?: string | null
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           question: string
           question_ar?: string | null
           rating?: number | null
@@ -1370,6 +1374,8 @@ export type Database = {
           model_answer?: string | null
           model_answer_ar?: string | null
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           question?: string
           question_ar?: string | null
           rating?: number | null
@@ -2075,6 +2081,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           title: string
           title_ar: string | null
@@ -2097,6 +2105,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           title: string
           title_ar?: string | null
@@ -2119,6 +2129,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           title?: string
           title_ar?: string | null
@@ -2191,6 +2203,8 @@ export type Database = {
           instruction: string
           is_deleted: boolean
           module_id: string
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           show_explanation: boolean
           topic_id: string | null
@@ -2214,6 +2228,8 @@ export type Database = {
           instruction?: string
           is_deleted?: boolean
           module_id: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           show_explanation?: boolean
           topic_id?: string | null
@@ -2237,6 +2253,8 @@ export type Database = {
           instruction?: string
           is_deleted?: boolean
           module_id?: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           show_explanation?: boolean
           topic_id?: string | null
@@ -2521,6 +2539,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           time_limit_minutes: number | null
           title: string
@@ -2538,6 +2558,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           time_limit_minutes?: number | null
           title: string
@@ -2555,6 +2577,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           time_limit_minutes?: number | null
           title?: string
@@ -2616,6 +2640,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           stem: string
           topic_id: string | null
@@ -2636,6 +2662,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           stem: string
           topic_id?: string | null
@@ -2656,6 +2684,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           stem?: string
           topic_id?: string | null
@@ -3051,6 +3081,8 @@ export type Database = {
           is_deleted: boolean
           legacy_archived: boolean
           module_id: string
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           statement_1: string
           statement_2: string
@@ -3085,6 +3117,8 @@ export type Database = {
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           statement_1: string
           statement_2: string
@@ -3119,6 +3153,8 @@ export type Database = {
           is_deleted?: boolean
           legacy_archived?: boolean
           module_id?: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           statement_1?: string
           statement_2?: string
@@ -3180,6 +3216,8 @@ export type Database = {
           is_deleted: boolean
           module_id: string | null
           objectives: string[] | null
+          original_section_name: string | null
+          original_section_number: string | null
           procedure: string | null
           procedure_ar: string | null
           section_id: string | null
@@ -3201,6 +3239,8 @@ export type Database = {
           is_deleted?: boolean
           module_id?: string | null
           objectives?: string[] | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           procedure?: string | null
           procedure_ar?: string | null
           section_id?: string | null
@@ -3222,6 +3262,8 @@ export type Database = {
           is_deleted?: boolean
           module_id?: string | null
           objectives?: string[] | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           procedure?: string | null
           procedure_ar?: string | null
           section_id?: string | null
@@ -3416,6 +3458,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          original_section_name: string | null
+          original_section_number: string | null
           resource_type: string | null
           section_id: string | null
           title: string
@@ -3437,6 +3481,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           resource_type?: string | null
           section_id?: string | null
           title: string
@@ -3458,6 +3504,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           resource_type?: string | null
           section_id?: string | null
           title?: string
@@ -4143,6 +4191,8 @@ export type Database = {
           id: string
           is_deleted: boolean | null
           module_id: string
+          original_section_name: string | null
+          original_section_number: string | null
           resource_type: Database["public"]["Enums"]["study_resource_type"]
           section_id: string | null
           title: string
@@ -4163,6 +4213,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           module_id: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           resource_type: Database["public"]["Enums"]["study_resource_type"]
           section_id?: string | null
           title: string
@@ -4183,6 +4235,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           module_id?: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           resource_type?: Database["public"]["Enums"]["study_resource_type"]
           section_id?: string | null
           title?: string
@@ -4462,6 +4516,8 @@ export type Database = {
           id: string
           is_deleted: boolean | null
           module_id: string
+          original_section_name: string | null
+          original_section_number: string | null
           section_id: string | null
           statement: string
           topic_id: string | null
@@ -4483,6 +4539,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           module_id: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           statement: string
           topic_id?: string | null
@@ -4504,6 +4562,8 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           module_id?: string
+          original_section_name?: string | null
+          original_section_number?: string | null
           section_id?: string | null
           statement?: string
           topic_id?: string | null
@@ -4824,6 +4884,8 @@ export type Database = {
           legacy_case_scenario_id: string | null
           level: string
           module_id: string | null
+          original_section_name: string | null
+          original_section_number: string | null
           patient_age: number | null
           patient_gender: string | null
           patient_image_url: string | null
@@ -4849,6 +4911,8 @@ export type Database = {
           legacy_case_scenario_id?: string | null
           level?: string
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           patient_age?: number | null
           patient_gender?: string | null
           patient_image_url?: string | null
@@ -4874,6 +4938,8 @@ export type Database = {
           legacy_case_scenario_id?: string | null
           level?: string
           module_id?: string | null
+          original_section_name?: string | null
+          original_section_number?: string | null
           patient_age?: number | null
           patient_gender?: string | null
           patient_image_url?: string | null

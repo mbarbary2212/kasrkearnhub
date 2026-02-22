@@ -21,6 +21,8 @@ interface McqFormData {
   correct_key: string;
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
+  original_section_name?: string | null;
+  original_section_number?: string | null;
 }
 
 interface RequestBody {
@@ -216,6 +218,8 @@ Deno.serve(async (req) => {
       difficulty: mcq.difficulty,
       display_order: index,
       created_by: user.id,
+      original_section_name: mcq.original_section_name || null,
+      original_section_number: mcq.original_section_number || null,
     }));
 
     console.log(`Inserting ${records.length} MCQs for module ${moduleId}, chapter ${chapterId}`);

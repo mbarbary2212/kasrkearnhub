@@ -21,6 +21,7 @@ import {
 import { parseSmartMatchingCsv, type ParseCorrection, type MatchingParsedRow } from '@/lib/csvParser';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 
 interface MatchingQuestionBulkUploadModalProps {
   open: boolean;
@@ -99,6 +100,8 @@ export function MatchingQuestionBulkUploadModal({
         return {
           ...row.question,
           section_id: sectionId,
+          original_section_name: row.sectionName || null,
+          original_section_number: row.sectionNumber != null ? String(row.sectionNumber) : null,
         };
       });
       
@@ -150,6 +153,7 @@ export function MatchingQuestionBulkUploadModal({
 
         {step === 'input' && (
           <>
+            <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
                 <h4 className="font-medium mb-2 flex items-center gap-2">
