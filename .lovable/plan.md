@@ -1,116 +1,112 @@
 
 
-## AI-Powered Section Auto-Tagging
+## Bulk Upload Clinical Cases + Fix Auto-Tag Description
 
-### The Problem
+This covers your questions and the immediate fix:
 
-The current auto-tag uses simple keyword matching between content titles and section names. This fails for content like "Primary intention healing" which should belong to "Wound healing" but shares no keywords, or "Femoral triangle boundaries" which belongs to "Lower limb anatomy" but has no word overlap.
+### Question Answers First
 
-### The Solution
+**1. Bulk upload clinical cases?**
+Not currently supported -- but absolutely doable. Your uploaded TXT format is well-structured and can be parsed. This plan covers building that.
 
-Create an edge function that sends unmatched content items + section names to the AI, which returns the best section assignment for each item. The frontend calls this after the keyword-based pass fails to match some items.
+**2. Images/videos in cases?**
+Not currently in the schema. This is a future enhancement that would require adding `image_url` and `video_url` columns to `virtual_patient_stages`. It is straightforward to add later -- each stage could optionally have an attached image or short video. Not included in this plan but easy to add as a follow-up.
 
-### How It Works
+**3. Branching (multi-arm) scenarios?**
+The `branched_case` mode already exists in your type system but is marked "comingSoon". True branching would need a `next_stage_map` column on stages (e.g., if answer is A go to stage 3, if B go to stage 5). This is a larger feature -- the linear stage runner would need a branching engine. Not included here but the foundation exists.
 
+### What This Plan Builds
+
+**Part 1: Fix the auto-tag description** (quick fix)
+
+Change the misleading text from:
+> "Matches unassigned content to sections using saved section names from uploads."
+
+To:
+> "Uses keyword matching and AI to automatically assign unassigned content to the correct sections."
+
+This accurately describes what the feature does now (keyword + AI fallback).
+
+**Part 2: Bulk Upload Modal for Clinical Cases**
+
+A new `ClinicalCaseBulkUploadModal` that:
+- Accepts TXT files in your format (the format from your uploaded file)
+- Parses multiple cases from a single file (separated by `---`)
+- Shows a preview of parsed cases with stage counts before importing
+- Creates cases + stages in the database on confirmation
+- Supports `section_name` field for auto-section-assignment
+
+**TXT Format Specification (matching your file):**
 ```text
-User clicks "Auto-Tag Content to Sections"
-        |
-        v
-Step 1: Keyword matching (existing logic, instant)
-        |
-        v
-Step 2: AI matching (only for items NOT matched in Step 1)
-        |
-        v
-   Edge function batches unmatched items (up to 50 per call)
-   and sends them with section names to the AI
-        |
-        v
-   AI returns: { "item_id": "section_id", ... }
-        |
-        v
-   Database updated with AI assignments
+# CLINICAL CASE 1 -- PRACTICE CASE
+# Title: The Non-Healing Post-Operative Wound
+# Intro: A 66-year-old male presents...
+# Difficulty: medium
+# Mode: Practice Case
+
+STAGE 1:
+TYPE: mcq
+PATIENT_INFO: The patient's wound shows...
+PROMPT: Which of the following...
+CHOICES: (A) His age alone (B) Diabetes... (C) His elevated BMI (D) The bowel resection itself
+CORRECT: B
+EXPLANATION: Diabetes delays...
+TEACHING_POINTS:
+- Point 1
+- Point 2
+
+STAGE 2:
+TYPE: short_answer
+...
+RUBRIC_REQUIRED:
+- concept 1
+- concept 2
+RUBRIC_OPTIONAL:
+- bonus concept
+CORRECT: Model answer text
+
+---
+
+# CLINICAL CASE 2 -- PRACTICE CASE
+...
 ```
 
-### Edge Function: `ai-auto-tag-sections`
+**Part 3: Add "Bulk Upload" button to admin list**
 
-**Input:** A list of unmatched items (id + title/text) and available sections (id + name).
-
-**AI Prompt Strategy:** Use tool calling to get structured output. The AI receives:
-- The list of section names with IDs
-- Batches of content titles with IDs
-- Instructions to assign each item to the most relevant section based on medical/academic topic relevance, or mark it as "unmatched" if no section fits
-
-**Model:** Uses the project's configured AI provider (via `ai-provider.ts` shared module), defaulting to `google/gemini-3-flash-preview` for speed.
-
-**Batching:** Items are sent in batches of 50 to avoid token limits. Each batch is a single AI call.
-
-### Frontend Changes
-
-**`useAutoTagSections.ts`:**
-1. After the keyword matching pass, collect all still-unmatched items across all tables
-2. If unmatched items exist, call the new `ai-auto-tag-sections` edge function
-3. Update the database with AI-returned assignments
-4. Show progress: "AI analyzing 23 remaining items..."
-
-**`SectionsManager.tsx`:**
-- Update the button label during AI phase: "AI analyzing remaining items..."
-- Update the results toast to show keyword-matched vs AI-matched counts
-
-### Safety and Cost Controls
-
-- AI is only called for items that keyword matching could not resolve (minimizes API usage)
-- Maximum 200 items per auto-tag run (to prevent runaway costs)
-- If the AI provider is disabled or fails, the feature gracefully falls back to keyword-only results
-- Each AI call is logged via `logAIUsage`
+Add a new button next to "Generate with AI" and "Add Case" in `ClinicalCaseAdminList`.
 
 ### Technical Details
 
-**Edge function: `supabase/functions/ai-auto-tag-sections/index.ts`**
+**New file: `src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx`**
 
-Accepts:
-```json
-{
-  "items": [
-    { "id": "uuid", "title": "Primary intention healing", "table": "study_resources" },
-    ...
-  ],
-  "sections": [
-    { "id": "uuid", "name": "1.1 Wound healing" },
-    { "id": "uuid", "name": "1.2 Types of wounds" },
-    ...
-  ]
-}
-```
+- Parser function `parseClinicalCasesTxt(text: string)` that:
+  - Splits file on `---` separator
+  - Extracts header fields (Title, Intro, Difficulty, Mode) from `# ` prefixed lines
+  - Parses each `STAGE N:` block extracting TYPE, PATIENT_INFO, PROMPT, CHOICES, CORRECT, EXPLANATION, TEACHING_POINTS, RUBRIC_REQUIRED, RUBRIC_OPTIONAL
+  - Maps difficulty: "medium" to "intermediate", "easy" to "beginner", "hard" to "advanced"
+  - Maps mode: "Practice Case" to "practice_case", "Read Case" to "read_case"
+  - Handles `read_only` stage type (no choices/correct needed)
+  - Returns array of parsed cases with stages
+- Preview UI showing each parsed case as a card with title, mode, difficulty, stage count
+- Import button that creates all cases + stages using existing `useCreateClinicalCase` and `useCreateClinicalCaseStage` hooks
+- Progress indicator during import
+- Error handling for malformed files
 
-Returns:
-```json
-{
-  "assignments": {
-    "item-uuid-1": "section-uuid-3",
-    "item-uuid-2": "section-uuid-1",
-    "item-uuid-3": null
-  }
-}
-```
+**Modified file: `src/components/clinical-cases/ClinicalCaseAdminList.tsx`**
 
-Uses tool calling for structured output with the `callAI` function from the shared AI provider, plus a tool definition that enforces the response schema.
+- Import and render `ClinicalCaseBulkUploadModal`
+- Add "Bulk Upload" button with Upload icon
 
-**System prompt (medical-context aware):**
-"You are a curriculum organizer for a medical education platform. Given a list of section names and content titles, assign each content item to the most relevant section. Consider medical topic relationships, synonyms, and hierarchical concepts. If no section is a reasonable match, return null for that item."
+**Modified file: `src/components/sections/SectionsManager.tsx`**
+
+- Update description text on line 323
 
 ### Files to Create/Modify
 
 | File | Change |
 |---|---|
-| `supabase/functions/ai-auto-tag-sections/index.ts` | New edge function for AI-based section matching |
-| `supabase/config.toml` | Register the new function with `verify_jwt = false` |
-| `src/hooks/useAutoTagSections.ts` | Add AI fallback pass after keyword matching; collect unmatched items; call edge function; apply results |
-| `src/components/sections/SectionsManager.tsx` | Update progress text and toast to distinguish keyword vs AI matches |
-
-### Cost Estimate
-
-- Each batch of 50 items = ~1 AI call using `gemini-3-flash-preview` (fast + cheap)
-- A typical chapter with 100 unmatched items = 2 AI calls
-- Only triggered manually by admin (not automatic)
+| `src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx` | New: TXT parser + preview + import modal |
+| `src/components/clinical-cases/ClinicalCaseAdminList.tsx` | Add bulk upload button and modal |
+| `src/components/clinical-cases/index.ts` | Export new component |
+| `src/components/sections/SectionsManager.tsx` | Fix auto-tag description text |
 
