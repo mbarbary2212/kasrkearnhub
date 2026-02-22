@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2 } from 'lucide-react';
+import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import {
   DndContext,
   closestCenter,
@@ -80,6 +81,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
   const reorderSections = useReorderSections();
+  const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
   
   // DnD sensors
   const sensors = useSensors(
@@ -179,6 +181,25 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
     setEditName(section.name);
   };
   
+  const handleAutoTag = async () => {
+    if (!sections?.length) {
+      toast.error('Create sections first before auto-tagging');
+      return;
+    }
+    try {
+      const results = await autoTag(sections, chapterId, topicId);
+      const totalTagged = results.reduce((sum, r) => sum + r.tagged, 0);
+      const totalEligible = results.reduce((sum, r) => sum + r.total, 0);
+      if (totalTagged === 0) {
+        toast.info('No unassigned content with section info found to auto-tag.');
+      } else {
+        toast.success(`Auto-tagged ${totalTagged} of ${totalEligible} items across ${results.filter(r => r.tagged > 0).length} content type(s).`);
+      }
+    } catch {
+      toast.error('Auto-tag failed');
+    }
+  };
+  
   if (!canManage) return null;
   
   const sectionCount = sections?.length || 0;
@@ -275,6 +296,29 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                   Add Section
                 </Button>
               </div>
+
+              {/* Auto-Tag button */}
+              {sections && sections.length > 0 && (
+                <div className="pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoTag}
+                      disabled={isAutoTagging}
+                    >
+                      <Wand2 className="h-4 w-4 mr-1" />
+                      {isAutoTagging ? 'Auto-tagging...' : 'Auto-Tag Content to Sections'}
+                    </Button>
+                  </div>
+                  {autoTagProgress && (
+                    <p className="text-xs text-muted-foreground mt-1">{autoTagProgress}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Matches unassigned content to sections using saved section names from uploads.
+                  </p>
+                </div>
+              )}
             </CardContent>
           )}
         </CollapsibleContent>
