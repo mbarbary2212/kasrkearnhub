@@ -1,43 +1,106 @@
 
 
-## Fix: OSCE Bulk Upload Flexible Column Detection
+## Preserve Section Info + Warning Across All Bulk Uploads
 
-### The Problem
+### What This Fixes
 
-Your XLSX file uses column headers like `history text`, `statement 1`, `answer 1`, `explanation 1` (spaces, no suffixes), but the parser looks for exact names like `case_history`, `statement_1_text`, `statement_1_answer`. The AI analyzer correctly identifies the mappings but those mappings are never actually applied during parsing -- they are display-only. So every row fails validation.
+When admins upload content before creating sections, section info from the file is lost forever because there are no matching sections yet. This change preserves that info and warns admins proactively.
 
-### The Fix
+### Part 1: Database -- Add Preservation Columns
 
-**File: `src/components/content/OsceBulkUploadModal.tsx` (lines 100-140)**
+Add `original_section_name` (TEXT) and `original_section_number` (TEXT) to every content table that has a `section_id`:
 
-Add a column-name normalization/alias layer before accessing row data. Instead of reading `row['case_history']` directly, first build an alias map from the actual headers to the expected column names, then use that map to read values.
+- `osce_questions`
+- `study_resources`
+- `mcqs`
+- `mcq_sets`
+- `essays`
+- `lectures`
+- `resources`
+- `practicals`
+- `matching_questions`
+- `true_false_questions`
+- `virtual_patient_cases`
 
-**Alias map will handle these common variations:**
+One migration adding all columns at once.
 
-| Expected Column | Also Accept |
-|---|---|
-| `case_history` | `history text`, `history_text`, `casehistory`, `case history` |
-| `statement_1_text` | `statement 1`, `statement_1`, `statement1` |
-| `statement_1_answer` | `answer 1`, `answer_1`, `answer1` |
-| `explanation_1` | `explanation 1`, `explanation_1` (already works) |
-| (same pattern for 2-5) | |
-| `image_filename` | `image filename`, `imagename`, `image name` |
-| `section_name` | `section name`, `sectionname` |
-| `section_number` | `section number`, `sectionnumber` |
+### Part 2: Reusable Warning Component
 
-**Implementation approach:**
+Create a new `SectionWarningBanner` component that:
+- Accepts `chapterId` / `topicId`
+- Checks if sections exist using existing hooks (`useChapterSections` / `useTopicSections`)
+- Shows a yellow warning when no sections have been created: "No sections created yet. Section info from your file will be saved so you can auto-tag content later."
+- Shows nothing if sections already exist
 
-1. After `XLSX.utils.sheet_to_json()`, read the actual header names from the first row's keys
-2. Build a `resolveColumn(row, ...aliases)` helper that tries each alias and returns the first non-empty value
-3. Replace all `row['exact_name']` lookups with `resolveColumn(row, 'case_history', 'history text', 'history_text')` etc.
-4. This also applies to the edge function `supabase/functions/bulk-import-osce/index.ts` which has the same rigid column lookups
+### Part 3: Add Warning to All Bulk Upload Modals
 
-**Also apply the same fix to the edge function** `supabase/functions/bulk-import-osce/index.ts` (lines 164-184) which uses the same exact-match column names for the server-side import path.
+Insert the `SectionWarningBanner` into:
+- `OsceBulkUploadModal`
+- `StudyBulkUploadModal`
+- `TrueFalseBulkUploadModal`
+- `MatchingQuestionBulkUploadModal`
+- `McqList` (MCQ bulk import dialog)
+- `AdminContentActions` (Essay bulk upload dialog)
 
-### Files to Modify
+### Part 4: Save Original Section Info During Import
+
+For every bulk upload path, pass `original_section_name` and `original_section_number` alongside the insert data. This applies to:
+
+**Already have section parsing (just need to save originals):**
+- `OsceBulkUploadModal` + `bulk-import-osce` edge function
+- `StudyBulkUploadModal` + `useBulkCreateStudyResources` hook
+- `MatchingQuestionBulkUploadModal` + `useBulkCreateMatchingQuestions` hook
+- `AdminContentActions` (essay upload)
+
+**Need to ADD section parsing + saving:**
+- `TrueFalseBulkUploadModal` + `parseTrueFalseCsv` + `bulk-import-true-false` edge function -- add `section_name` and `section_number` columns to CSV format
+- `McqList` MCQ bulk import + `bulk-import-mcqs` edge function -- add section fields to CSV parsing
+
+### Part 5: Update Edge Functions
+
+- `bulk-import-osce/index.ts` -- include `original_section_name`, `original_section_number` in insert
+- `bulk-import-mcqs/index.ts` -- add section parsing, resolve section_id, save originals
+- Create or update T/F edge function to accept and save section info + originals
+
+### Technical Details
+
+**New component: `src/components/sections/SectionWarningBanner.tsx`**
+```
+Accepts: chapterId?, topicId?
+Uses: useChapterSections / useTopicSections
+Renders: Alert with AlertTriangle icon when sections.length === 0
+```
+
+**Database migration (single SQL file):**
+```sql
+ALTER TABLE osce_questions ADD COLUMN IF NOT EXISTS original_section_name TEXT;
+ALTER TABLE osce_questions ADD COLUMN IF NOT EXISTS original_section_number TEXT;
+-- (repeated for all 11 tables)
+```
+
+**True/False CSV format update:**
+Current: `statement,correct_answer,explanation,difficulty`
+New: `statement,correct_answer,explanation,difficulty,section_name,section_number`
+
+**MCQ CSV format update:**
+Add `section_name,section_number` columns (with flexible header detection like other uploads).
+
+### Files to Create/Modify
 
 | File | Change |
 |---|---|
-| `src/components/content/OsceBulkUploadModal.tsx` | Add `resolveColumn` helper; replace all rigid `row['column_name']` lookups with flexible alias resolution |
-| `supabase/functions/bulk-import-osce/index.ts` | Same flexible column resolution for server-side import |
+| New migration | Add `original_section_name` + `original_section_number` to 11 content tables |
+| `src/components/sections/SectionWarningBanner.tsx` | New reusable warning component |
+| `src/components/sections/index.ts` | Export new component |
+| `src/components/content/OsceBulkUploadModal.tsx` | Add warning banner; save originals during insert |
+| `src/components/study/StudyBulkUploadModal.tsx` | Add warning banner; save originals during insert |
+| `src/components/content/TrueFalseBulkUploadModal.tsx` | Add warning banner; add section CSV parsing; save originals |
+| `src/components/content/MatchingQuestionBulkUploadModal.tsx` | Add warning banner; save originals during insert |
+| `src/components/content/McqList.tsx` | Add warning banner to MCQ bulk dialog; add section parsing |
+| `src/components/admin/AdminContentActions.tsx` | Add warning banner to essay upload; save originals |
+| `src/hooks/useTrueFalseQuestions.ts` | Update `parseTrueFalseCsv` to parse section columns; update form data type |
+| `src/hooks/useStudyResources.ts` | Include `original_section_name/number` in bulk insert |
+| `src/hooks/useMatchingQuestions.ts` | Include originals in bulk insert |
+| `supabase/functions/bulk-import-osce/index.ts` | Save originals in insert |
+| `supabase/functions/bulk-import-mcqs/index.ts` | Add section resolution + save originals |
 
