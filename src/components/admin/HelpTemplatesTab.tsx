@@ -206,6 +206,23 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ],
     ],
   },
+  guided_explanation: {
+    columns: ['title', 'topic', 'introduction', 'questions (Q::Hint::Answer, pipe-separated)', 'summary', 'key_takeaways (pipe-separated)', 'section_name', 'section_number'],
+    required: ['title', 'topic', 'questions'],
+    optional: ['introduction', 'summary', 'key_takeaways', 'section_name', 'section_number'],
+    examples: [
+      [
+        'Wound Healing Phases',
+        'Wound healing',
+        'Understanding the sequential phases of wound healing is essential for surgical practice.',
+        'What is the first phase of wound healing?::Think about what stops bleeding::Hemostasis – platelet plug and fibrin clot formation|What happens during inflammation?::Consider the immune response::Neutrophils and macrophages clear debris and prevent infection|What characterizes the proliferative phase?::Think about tissue rebuilding::Fibroblast activity, granulation tissue formation, and angiogenesis',
+        'Wound healing proceeds through hemostasis, inflammation, proliferation, and remodeling phases.',
+        'Hemostasis is the immediate response|Inflammation clears debris|Proliferation rebuilds tissue|Remodeling strengthens the scar',
+        'Pathology Basics',
+        '1'
+      ],
+    ],
+  },
   user_invite: {
     columns: ['full_name', 'email', 'role'],
     required: ['full_name', 'email'],
@@ -303,6 +320,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     id: 'true_false',
     title: 'True/False Questions Template',
     description: 'True/False statements with explanations and difficulty levels',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'guided_explanation',
+    title: 'Guided Explanations Template',
+    description: 'Socratic-method guided questions with hints, answers, and key takeaways',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -453,6 +477,7 @@ function generateTemplateDownload(templateId: string) {
     case 'matching':
     case 'essay':
     case 'true_false':
+    case 'guided_explanation':
       // All CSV-based templates use the schema system
       if (schema) {
         downloadCsv(`${templateId}_template.csv`, generateCsvFromSchema(schema));
