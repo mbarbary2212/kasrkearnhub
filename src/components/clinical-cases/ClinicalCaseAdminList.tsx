@@ -33,12 +33,14 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
+  Upload,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseBuilderModal } from './ClinicalCaseBuilderModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
+import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -67,6 +69,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
@@ -226,6 +229,10 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             onComplete={clearSelection}
           />
           
+          <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
+              <Upload className="w-4 h-4 mr-1" />
+              Bulk Upload
+            </Button>
           <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
             Generate with AI
@@ -353,6 +360,15 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           moduleId={moduleId}
         />
       )}
+
+      {/* Bulk Upload Modal */}
+      <ClinicalCaseBulkUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        moduleId={moduleId}
+        chapterId={chapterId}
+        topicId={topicId}
+      />
 
       {/* AI Generate Modal */}
       <ClinicalCaseAIGenerateModal

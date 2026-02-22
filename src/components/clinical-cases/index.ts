@@ -9,3 +9,4 @@ export { ClinicalCaseQuickBuildModal } from './ClinicalCaseQuickBuildModal';
 export { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 export { CaseBuilderDetailsTab } from './CaseBuilderDetailsTab';
 export { CaseBuilderStageEditor } from './CaseBuilderStageEditor';
+export { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
