@@ -25,55 +25,54 @@ export function PdfViewerModal({ open, onOpenChange, pdfUrl, title }: PdfViewerM
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold truncate pr-4">{title}</DialogTitle>
-            <div className="flex items-center gap-2">
-              {/* Zoom controls */}
-              <div className="flex items-center gap-1 border rounded-md p-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0"
-                  onClick={handleZoomOut}
-                  disabled={zoom <= 50}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-xs w-12 text-center">{zoom}%</span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0"
-                  onClick={handleZoomIn}
-                  disabled={zoom >= 200}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0"
-                  onClick={handleResetZoom}
-                >
-                  <RotateCw className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-
-              {/* Download / Open external */}
-              <Button size="sm" variant="outline" asChild>
-                <a href={pdfUrl} download target="_blank" rel="noopener noreferrer">
-                  <Download className="h-4 w-4 mr-1" />
-                  Download
-                </a>
+        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b flex-shrink-0">
+          <DialogTitle className="text-sm sm:text-lg font-semibold truncate">{title}</DialogTitle>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            {/* Zoom controls */}
+            <div className="flex items-center gap-0.5 sm:gap-1 border rounded-md p-0.5 sm:p-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 sm:h-7 sm:w-7 p-0"
+                onClick={handleZoomOut}
+                disabled={zoom <= 50}
+              >
+                <ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
-              <Button size="sm" variant="outline" asChild>
-                <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  Open
-                </a>
+              <span className="text-xs w-10 sm:w-12 text-center">{zoom}%</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 sm:h-7 sm:w-7 p-0"
+                onClick={handleZoomIn}
+                disabled={zoom >= 200}
+              >
+                <ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 sm:h-7 sm:w-7 p-0"
+                onClick={handleResetZoom}
+              >
+                <RotateCw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </Button>
             </div>
+
+            {/* Download / Open external */}
+            <Button size="sm" variant="outline" className="h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3" asChild>
+              <a href={pdfUrl} download target="_blank" rel="noopener noreferrer">
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                <span className="hidden sm:inline">Download</span>
+                <span className="sm:hidden">Save</span>
+              </a>
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3" asChild>
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                Open
+              </a>
+            </Button>
           </div>
         </DialogHeader>
 
