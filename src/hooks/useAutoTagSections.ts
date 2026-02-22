@@ -39,6 +39,12 @@ interface AutoTagResult {
   total: number;
 }
 
+interface UnmatchedItem {
+  id: string;
+  title: string;
+  table: string;
+}
+
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for',
   'is', 'are', 'was', 'were', 'be', 'been', 'with', 'by', 'from', 'as',
@@ -157,12 +163,17 @@ export function useAutoTagSections() {
     if (!sections.length) return [];
     setIsRunning(true);
     const results: AutoTagResult[] = [];
+    const allUnmatched: UnmatchedItem[] = [];
 
     const filterCol = chapterId ? 'chapter_id' : 'topic_id';
     const filterVal = chapterId || topicId;
     if (!filterVal) { setIsRunning(false); return []; }
 
+    // Track keyword-matched items per table for DB updates
+    const keywordUpdates: Record<string, Record<string, string[]>> = {};
+
     try {
+      // ── Step 1: Keyword matching pass ──
       for (const table of CONTENT_TABLES) {
         setProgress(`Scanning ${table.replace(/_/g, ' ')}...`);
 
@@ -211,9 +222,20 @@ export function useAutoTagSections() {
             if (!updates[sectionId]) updates[sectionId] = [];
             updates[sectionId].push(item.id);
             tagged++;
+          } else {
+            // Collect unmatched for AI pass
+            const titleText = item[titleCol];
+            if (titleText && titleText.trim()) {
+              allUnmatched.push({
+                id: item.id,
+                title: titleText.trim().substring(0, 200),
+                table,
+              });
+            }
           }
         }
 
+        // Apply keyword matches to DB
         for (const [sectionId, ids] of Object.entries(updates)) {
           await supabase
             .from(table)
@@ -221,11 +243,78 @@ export function useAutoTagSections() {
             .in('id', ids);
         }
 
+        keywordUpdates[table] = updates;
         results.push({ table, tagged, total: items.length });
+      }
+
+      const keywordTagged = results.reduce((s, r) => s + r.tagged, 0);
+
+      // ── Step 2: AI matching pass (only for unmatched) ──
+      let aiTagged = 0;
+      if (allUnmatched.length > 0) {
+        setProgress(`AI analyzing ${allUnmatched.length} remaining items...`);
+
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          const token = session?.session?.access_token;
+          if (!token) throw new Error('No auth session');
+
+          const response = await supabase.functions.invoke('ai-auto-tag-sections', {
+            body: {
+              items: allUnmatched.slice(0, 200),
+              sections: sections.map(s => ({ id: s.id, name: s.name })),
+            },
+          });
+
+          if (response.error) {
+            console.error('AI auto-tag error:', response.error);
+          } else {
+            const assignments: Record<string, string | null> = response.data?.assignments || {};
+
+            // Group assignments by table for batch updates
+            const tableUpdates: Record<string, Record<string, string[]>> = {};
+            for (const item of allUnmatched) {
+              const sectionId = assignments[item.id];
+              if (sectionId) {
+                if (!tableUpdates[item.table]) tableUpdates[item.table] = {};
+                if (!tableUpdates[item.table][sectionId]) tableUpdates[item.table][sectionId] = [];
+                tableUpdates[item.table][sectionId].push(item.id);
+                aiTagged++;
+              }
+            }
+
+            // Apply AI assignments to DB
+            for (const [table, sectionMap] of Object.entries(tableUpdates)) {
+              for (const [sectionId, ids] of Object.entries(sectionMap)) {
+                await supabase
+                  .from(table as any)
+                  .update({ section_id: sectionId } as never)
+                  .in('id', ids);
+              }
+            }
+
+            // Update results with AI matches
+            for (const [table, sectionMap] of Object.entries(tableUpdates)) {
+              const aiCount = Object.values(sectionMap).reduce((s, ids) => s + ids.length, 0);
+              const existing = results.find(r => r.table === table);
+              if (existing) {
+                existing.tagged += aiCount;
+              }
+            }
+          }
+        } catch (aiErr) {
+          console.error('AI auto-tag failed, falling back to keyword-only:', aiErr);
+          // Graceful fallback - keyword results still apply
+        }
       }
 
       queryClient.invalidateQueries({ predicate: () => true });
       setProgress('');
+
+      // Store AI tagged count for the caller
+      (results as any).__aiTagged = aiTagged;
+      (results as any).__keywordTagged = keywordTagged;
+
       return results;
     } finally {
       setIsRunning(false);

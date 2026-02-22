@@ -190,10 +190,15 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
       const results = await autoTag(sections, chapterId, topicId);
       const totalTagged = results.reduce((sum, r) => sum + r.tagged, 0);
       const totalEligible = results.reduce((sum, r) => sum + r.total, 0);
+      const aiTagged = (results as any).__aiTagged || 0;
+      const keywordTagged = (results as any).__keywordTagged || 0;
       if (totalTagged === 0) {
-        toast.info('No unassigned content with section info found to auto-tag.');
+        toast.info('No unassigned content could be matched to sections.');
       } else {
-        toast.success(`Auto-tagged ${totalTagged} of ${totalEligible} items across ${results.filter(r => r.tagged > 0).length} content type(s).`);
+        const parts = [];
+        if (keywordTagged > 0) parts.push(`${keywordTagged} by keywords`);
+        if (aiTagged > 0) parts.push(`${aiTagged} by AI`);
+        toast.success(`Auto-tagged ${totalTagged} of ${totalEligible} items (${parts.join(', ')}) across ${results.filter(r => r.tagged > 0).length} content type(s).`);
       }
     } catch {
       toast.error('Auto-tag failed');
@@ -308,7 +313,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                       disabled={isAutoTagging}
                     >
                       <Wand2 className="h-4 w-4 mr-1" />
-                      {isAutoTagging ? 'Auto-tagging...' : 'Auto-Tag Content to Sections'}
+                      {isAutoTagging ? (autoTagProgress || 'Auto-tagging...') : 'Auto-Tag Content to Sections'}
                     </Button>
                   </div>
                   {autoTagProgress && (
