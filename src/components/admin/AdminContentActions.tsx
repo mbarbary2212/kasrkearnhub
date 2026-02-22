@@ -634,7 +634,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
             <DialogHeader>
               <DialogTitle>{label.title}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-4 max-h-[calc(90vh-8rem)] overflow-y-auto">
               <div>
                 <Label>{label.titleField}</Label>
                 <Input value={title} onChange={e => setTitle(e.target.value)} />
