@@ -19,6 +19,7 @@ import {
   TableContent,
   AlgorithmContent,
   ExamTipContent,
+  GuidedExplanationContent,
   useBulkCreateStudyResources,
   useChapterStudyResourcesByType,
 } from '@/hooks/useStudyResources';
@@ -41,7 +42,7 @@ interface StudyBulkUploadModalProps {
 
 interface ParsedItem {
   title: string;
-  content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent;
+  content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent | GuidedExplanationContent;
   sectionName?: string;
   sectionNumber?: number;
   error?: string;
@@ -73,7 +74,7 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
   mind_map: 'Not supported for bulk upload',
   infographic: 'Not supported for bulk upload',
   clinical_case_worked: 'Not supported for bulk upload',
-  guided_explanation: 'Not supported for bulk upload',
+  guided_explanation: 'title,topic,introduction,questions,summary,key_takeaways,section_name,section_number\n"Wound Healing","Wound healing phases","Overview of wound healing stages","What is the first phase?::Think inflammation::Hemostasis and inflammation|What follows?::Think tissue formation::Proliferation phase","Summary of wound healing","Hemostasis first|Proliferation follows|Remodeling last","",""',
 };
 
 const SIMILARITY_THRESHOLD = 0.85;
@@ -515,6 +516,42 @@ function parseLineByType(
         sectionNumber,
       };
     }
+    case 'guided_explanation': {
+      // CSV: title, topic, introduction, questions (Q::Hint::Answer|...), summary, key_takeaways (T1|T2|...)
+      const topicIdx = headerMapping?.['topic'] ?? 1;
+      const introIdx = headerMapping?.['introduction'] ?? 2;
+      const questionsIdx = headerMapping?.['questions'] ?? 3;
+      const summaryIdx = headerMapping?.['summary'] ?? 4;
+      const takeawaysIdx = headerMapping?.['key_takeaways'] ?? 5;
+
+      const topic = values[topicIdx]?.trim() || '';
+      const introduction = values[introIdx]?.trim() || '';
+      const questionsRaw = values[questionsIdx]?.trim() || '';
+      const summary = values[summaryIdx]?.trim() || '';
+      const takeawaysRaw = values[takeawaysIdx]?.trim() || '';
+
+      if (!topic || !questionsRaw) {
+        return { title, content: { front: '', back: '' }, error: 'Guided explanation requires topic and at least one question' };
+      }
+
+      const guided_questions = questionsRaw.split('|').map((q) => {
+        const parts = q.split('::').map((p) => p.trim());
+        return {
+          question: parts[0] || '',
+          hint: parts[1] || undefined,
+          reveal_answer: parts[2] || '',
+        };
+      });
+
+      const key_takeaways = takeawaysRaw ? takeawaysRaw.split('|').map((t) => t.trim()) : [];
+
+      return {
+        title,
+        content: { topic, introduction, guided_questions, summary, key_takeaways } as GuidedExplanationContent,
+        sectionName,
+        sectionNumber,
+      };
+    }
     default:
       return { title: '', content: { front: '', back: '' }, error: `Unsupported type: ${type}` };
   }
@@ -532,6 +569,13 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
     'headers': 'headers',
     'steps': 'steps',
     'tips': 'tips',
+    'topic': 'topic',
+    'introduction': 'introduction',
+    'questions': 'questions',
+    'summary': 'summary',
+    'key_takeaways': 'key_takeaways',
+    'keytakeaways': 'key_takeaways',
+    'takeaways': 'key_takeaways',
     'section_name': 'section_name',
     'sectionname': 'section_name',
     'section': 'section_name',
@@ -558,6 +602,7 @@ function isHeaderLine(line: string): boolean {
     lower.includes('front') || 
     lower.includes('headers') || 
     lower.includes('steps') || 
-    lower.includes('tips')
+    lower.includes('tips') ||
+    lower.includes('topic')
   );
 }
