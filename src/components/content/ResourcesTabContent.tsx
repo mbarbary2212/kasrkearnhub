@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import ResourceList from '@/components/content/ResourceList';
 import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
@@ -19,6 +22,8 @@ import {
   StudyResourceType,
   StudyResource,
 } from '@/hooks/useStudyResources';
+import { useUpdateContent } from '@/hooks/useContentCrud';
+import { useChapterSections } from '@/hooks/useSections';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -75,11 +80,17 @@ export function ResourcesTabContent({
 
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
   const deleteStudyResource = useDeleteStudyResource();
+  const { data: sections = [] } = useChapterSections(chapterId);
+  const updateContent = useUpdateContent('resources');
   const [searchQuery, setSearchQuery] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<StudyResourceType>('flashcard');
   const [editingResource, setEditingResource] = useState<StudyResource | null>(null);
+  const [editDocModalOpen, setEditDocModalOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Resource | null>(null);
+  const [editDocTitle, setEditDocTitle] = useState('');
+  const [editDocSection, setEditDocSection] = useState<string>('none');
 
   // Group study resources by type
   const resourcesByType = useMemo(() => {
@@ -150,6 +161,33 @@ export function ResourcesTabContent({
     await deleteStudyResource.mutateAsync({ id, chapterId });
     toast.success('Resource deleted');
   }, [deleteStudyResource, chapterId]);
+
+  const handleEditDocument = useCallback((resource: Resource) => {
+    setEditingDoc(resource);
+    setEditDocTitle(resource.title);
+    setEditDocSection((resource as any).section_id || 'none');
+    setEditDocModalOpen(true);
+  }, []);
+
+  const handleSaveDocument = useCallback(async () => {
+    if (!editingDoc) return;
+    try {
+      await updateContent.mutateAsync({
+        id: editingDoc.id,
+        data: {
+          title: editDocTitle,
+          section_id: editDocSection === 'none' ? null : editDocSection,
+        },
+        moduleId,
+        chapterId,
+      });
+      toast.success('Document updated');
+      setEditDocModalOpen(false);
+      setEditingDoc(null);
+    } catch (err) {
+      toast.error('Failed to update document');
+    }
+  }, [editingDoc, editDocTitle, editDocSection, updateContent, moduleId, chapterId]);
 
   // Refetch all resources
   const refetchResources = useCallback(async () => {
@@ -229,6 +267,7 @@ export function ResourcesTabContent({
             canDelete={canManageContent}
             showFeedback={true}
             compact={true}
+            onEdit={handleEditDocument}
           />
         </TabsContent>
 
@@ -304,6 +343,41 @@ export function ResourcesTabContent({
         moduleId={moduleId}
         resourceType={selectedType}
       />
+
+      {/* Edit Document Modal */}
+      <Dialog open={editDocModalOpen} onOpenChange={setEditDocModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Title</Label>
+              <Input value={editDocTitle} onChange={(e) => setEditDocTitle(e.target.value)} />
+            </div>
+            <div>
+              <Label>Section</Label>
+              <Select value={editDocSection} onValueChange={setEditDocSection}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No section" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No section</SelectItem>
+                  {sections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDocModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveDocument} disabled={updateContent.isPending || !editDocTitle.trim()}>
+              {updateContent.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
