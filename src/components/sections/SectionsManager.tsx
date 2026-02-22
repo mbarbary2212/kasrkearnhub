@@ -320,7 +320,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                     <p className="text-xs text-muted-foreground mt-1">{autoTagProgress}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Matches unassigned content to sections using saved section names from uploads.
+                    Uses keyword matching and AI to automatically assign unassigned content to the correct sections.
                   </p>
                 </div>
               )}
