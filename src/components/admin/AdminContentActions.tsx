@@ -26,6 +26,7 @@ import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { EssayFormSchema, validateBatch } from '@/lib/validators';
 import { logActivity } from '@/lib/activityLog';
 import { SectionSelector } from '@/components/sections';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
@@ -513,6 +514,12 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
       if (valid.length === 0) throw new Error('No valid rows after validation');
 
+      // Map back original section names from parsed rows
+      const sectionNameMap = new Map<string, string>();
+      selectedRows.forEach(r => {
+        if (r.sectionName) sectionNameMap.set(r.title, r.sectionName);
+      });
+
       const { error } = await supabase.from('essays').insert(
         valid.map(essay => ({
           title: essay.title,
@@ -522,6 +529,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
           chapter_id: chapterId || null,
           topic_id: topicId || null,
           ...(essay.section_id ? { section_id: essay.section_id } : {}),
+          original_section_name: sectionNameMap.get(essay.title) || null,
         }))
       );
       if (error) throw error;
@@ -794,6 +802,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
               )}
               {contentType === 'essay' && (
                 <>
+                  <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
                   <div className="bg-muted p-3 rounded-lg">
                     <p className="text-sm font-medium mb-2">CSV Format:</p>
                     <pre className="text-xs overflow-x-auto whitespace-pre-wrap">

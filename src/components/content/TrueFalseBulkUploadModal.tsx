@@ -19,6 +19,7 @@ import {
   type TrueFalseFormData,
 } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseFormSchema } from '@/lib/validators';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 
 interface TrueFalseBulkUploadModalProps {
   open: boolean;
@@ -28,10 +29,10 @@ interface TrueFalseBulkUploadModalProps {
   topicId?: string | null;
 }
 
-const CSV_TEMPLATE = `statement,correct_answer,explanation,difficulty
-"The mitral valve separates the left atrium from the left ventricle.",TRUE,"The mitral (bicuspid) valve is located between the left atrium and left ventricle.",easy
-"Insulin is produced by the alpha cells of the pancreas.",FALSE,"Insulin is produced by the beta cells. Alpha cells produce glucagon.",medium
-"The normal heart rate in adults is between 60-100 beats per minute.",TRUE,"A resting heart rate of 60-100 bpm is considered normal for adults.",easy`;
+const CSV_TEMPLATE = `statement,correct_answer,explanation,difficulty,section_name,section_number
+"The mitral valve separates the left atrium from the left ventricle.",TRUE,"The mitral (bicuspid) valve is located between the left atrium and left ventricle.",easy,"Cardiac Anatomy","1"
+"Insulin is produced by the alpha cells of the pancreas.",FALSE,"Insulin is produced by the beta cells. Alpha cells produce glucagon.",medium,"Endocrine","2"
+"The normal heart rate in adults is between 60-100 beats per minute.",TRUE,"A resting heart rate of 60-100 bpm is considered normal for adults.",easy,"Cardiac Physiology","3"`;
 
 export function TrueFalseBulkUploadModal({
   open,
@@ -165,6 +166,8 @@ export function TrueFalseBulkUploadModal({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Section Warning */}
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* Template Download */}
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2">

@@ -25,6 +25,7 @@ import {
 import { isFlashcardDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { toast } from 'sonner';
 
 interface StudyBulkUploadModalProps {
@@ -235,6 +236,8 @@ export function StudyBulkUploadModal({
           title: item.item.title,
           content: item.item.content,
           section_id: sectionId,
+          original_section_name: item.item.sectionName || null,
+          original_section_number: item.item.sectionNumber != null ? String(item.item.sectionNumber) : null,
         };
       });
 
@@ -260,6 +263,8 @@ export function StudyBulkUploadModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
+          {/* Section Warning */}
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* CSV Format Example */}
           <div className="bg-muted p-3 rounded-lg">
             <p className="text-sm font-medium mb-2">CSV Format:</p>

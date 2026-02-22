@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen } from 'lucide-react';
+import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -888,6 +889,8 @@ export function McqList({
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto space-y-4 pt-2">
+            {/* Section Warning */}
+            <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
             {/* Download template button */}
             <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">

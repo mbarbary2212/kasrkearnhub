@@ -146,6 +146,8 @@ export interface StudyResourceInsert {
   created_by?: string;
   folder?: string | null;
   section_id?: string | null;
+  original_section_name?: string | null;
+  original_section_number?: string | null;
 }
 
 // Fetch study resources for a chapter (optionally include deleted)
@@ -425,6 +427,8 @@ export function useBulkCreateStudyResources() {
         content: r.content,
         display_order: r.display_order,
         section_id: r.section_id || null,
+        original_section_name: r.original_section_name || null,
+        original_section_number: r.original_section_number || null,
         created_by: userData.user?.id,
         folder: r.folder,
       }));

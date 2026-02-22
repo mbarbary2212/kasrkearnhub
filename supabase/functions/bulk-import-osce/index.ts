@@ -401,6 +401,8 @@ Deno.serve(async (req: Request) => {
           module_id: moduleId,
           chapter_id: chapterId || null,
           section_id: row.resolvedSectionId || null,
+          original_section_name: row.sectionName || null,
+          original_section_number: row.sectionNumber || null,
           image_url: publicUrl,
           history_text: row.historyText,
           statement_1: row.statements[0],
