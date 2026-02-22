@@ -245,8 +245,24 @@ export function CaseBuilderDetailsTab({ clinicalCase, moduleId }: CaseBuilderDet
               <div>
                 <Switch 
                   checked={isPublished} 
-                  onCheckedChange={(checked) => { setIsPublished(checked); markDirty(); }}
-                  disabled={!canPublish && !isPublished}
+                  onCheckedChange={async (checked) => { 
+                    if (checked && !canPublish) {
+                      toast.error(`Add at least ${minStages} stages before publishing`);
+                      return;
+                    }
+                    setIsPublished(checked);
+                    try {
+                      await updateCase.mutateAsync({ 
+                        id: clinicalCase.id, 
+                        data: { is_published: checked } 
+                      });
+                      toast.success(checked ? 'Case published!' : 'Case unpublished');
+                    } catch {
+                      setIsPublished(!checked); // revert on failure
+                      toast.error('Failed to update publish status');
+                    }
+                  }}
+                  disabled={(!canPublish && !isPublished) || updateCase.isPending}
                 />
               </div>
             </TooltipTrigger>
