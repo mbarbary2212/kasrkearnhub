@@ -1319,6 +1319,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           keywords: string[] | null
+          max_points: number | null
           model_answer: string | null
           model_answer_ar: string | null
           module_id: string | null
@@ -1326,7 +1327,9 @@ export type Database = {
           original_section_number: string | null
           question: string
           question_ar: string | null
+          question_type: string | null
           rating: number | null
+          rubric_json: Json | null
           section_id: string | null
           title: string
           title_ar: string | null
@@ -1345,6 +1348,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           keywords?: string[] | null
+          max_points?: number | null
           model_answer?: string | null
           model_answer_ar?: string | null
           module_id?: string | null
@@ -1352,7 +1356,9 @@ export type Database = {
           original_section_number?: string | null
           question: string
           question_ar?: string | null
+          question_type?: string | null
           rating?: number | null
+          rubric_json?: Json | null
           section_id?: string | null
           title: string
           title_ar?: string | null
@@ -1371,6 +1377,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           keywords?: string[] | null
+          max_points?: number | null
           model_answer?: string | null
           model_answer_ar?: string | null
           module_id?: string | null
@@ -1378,7 +1385,9 @@ export type Database = {
           original_section_number?: string | null
           question?: string
           question_ar?: string | null
+          question_type?: string | null
           rating?: number | null
+          rubric_json?: Json | null
           section_id?: string | null
           title?: string
           title_ar?: string | null

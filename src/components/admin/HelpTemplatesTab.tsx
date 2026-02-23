@@ -163,23 +163,33 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   essay: {
-    columns: ['title', 'question', 'model_answer', 'section_name', 'section_number'],
+    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
     required: ['title', 'question'],
-    optional: ['model_answer', 'section_name', 'section_number'],
+    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
     examples: [
       [
         'Stages of Wound Healing',
         'Outline the four main stages of wound healing and their key features.',
         '1) Hemostasis -- platelet aggregation and clot formation. 2) Inflammation -- neutrophils and macrophages clear debris. 3) Proliferation -- fibroblast activity, granulation tissue, angiogenesis. 4) Remodeling -- collagen maturation and scar formation over weeks to months.',
+        'hemostasis|inflammation|proliferation|remodeling',
+        '10',
         'Pathology Basics',
-        '1'
+        '1',
+        'Essay',
+        '{"required_concepts":["hemostasis","inflammation","proliferation","remodeling"],"optional_concepts":["angiogenesis"],"pass_threshold":0.6}',
+        '10'
       ],
       [
         'Functions of the Liver',
         'List five major metabolic functions of the liver.',
         '1) Glycogen storage and gluconeogenesis. 2) Bile production for fat digestion. 3) Protein synthesis (albumin, clotting factors). 4) Detoxification of drugs and toxins. 5) Urea synthesis from ammonia.',
+        'glycogen|bile|protein synthesis|detoxification|urea',
+        '15',
         'GI Physiology',
-        '2'
+        '2',
+        '',
+        '',
+        ''
       ],
     ],
   },
