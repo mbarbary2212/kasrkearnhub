@@ -1,0 +1,1 @@
+ALTER TABLE public.essays ADD COLUMN difficulty_level text DEFAULT NULL;

@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.ai-auto-tag-sections]
 verify_jwt = false
+
+[functions.generate-essay-rubric]
+verify_jwt = false
