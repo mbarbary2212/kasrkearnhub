@@ -1,4 +1,5 @@
 import { useState, type SyntheticEvent } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
@@ -33,6 +34,11 @@ interface ContentItemActionsProps {
   videoUrl?: string | null;
   fileUrl?: string | null;
   sectionId?: string | null;
+  rating?: number | null;
+  maxPoints?: number | null;
+  questionType?: string | null;
+  rubricJson?: unknown | null;
+  keywords?: string[] | null;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
@@ -66,6 +72,11 @@ export default function ContentItemActions({
   videoUrl,
   fileUrl,
   sectionId,
+  rating,
+  maxPoints,
+  questionType,
+  rubricJson,
+  keywords,
   contentType,
   moduleId,
   chapterId,
@@ -97,6 +108,9 @@ export default function ContentItemActions({
   const [editVideoUrl, setEditVideoUrl] = useState(videoUrl || '');
   const [editFileUrl, setEditFileUrl] = useState(fileUrl || '');
   const [editSectionId, setEditSectionId] = useState<string | null>(sectionId || null);
+  const [editRating, setEditRating] = useState<number>(rating ?? 10);
+  const [editMaxPoints, setEditMaxPoints] = useState<number>(maxPoints ?? rating ?? 10);
+  const [editKeywords, setEditKeywords] = useState<string>(keywords?.join(', ') ?? '');
 
   // Sync edit state with props when dialog opens
   const handleOpenEdit = () => {
@@ -106,6 +120,9 @@ export default function ContentItemActions({
     setEditVideoUrl(videoUrl || '');
     setEditFileUrl(fileUrl || '');
     setEditSectionId(sectionId || null);
+    setEditRating(rating ?? 10);
+    setEditMaxPoints(maxPoints ?? rating ?? 10);
+    setEditKeywords(keywords?.join(', ') ?? '');
     setEditOpen(true);
   };
 
@@ -136,6 +153,10 @@ export default function ContentItemActions({
       if (contentType === 'essay') {
         data.question = editDescription.trim() || null;
         data.model_answer = editModelAnswer.trim() || null;
+        data.rating = editRating;
+        data.max_points = editMaxPoints;
+        const kw = editKeywords.split(',').map(k => k.trim()).filter(Boolean);
+        data.keywords = kw.length > 0 ? kw : null;
       } else {
         data.description = editDescription.trim() || null;
       }
@@ -236,11 +257,11 @@ export default function ContentItemActions({
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
+        <DialogContent onClick={(e) => e.stopPropagation()} className="max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Edit {contentType}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pt-2 pr-1">
             <div>
               <Label>Title</Label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1" />
@@ -250,16 +271,55 @@ export default function ContentItemActions({
               <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1" />
             </div>
             {contentType === 'essay' && (
-              <div>
-                <Label>Model Answer (optional)</Label>
-                <Textarea 
-                  value={editModelAnswer} 
-                  onChange={(e) => setEditModelAnswer(e.target.value)} 
-                  placeholder="Enter the model answer that students can reveal"
-                  rows={4}
-                  className="mt-1"
-                />
-              </div>
+              <>
+                <div>
+                  <Label>Model Answer (optional)</Label>
+                  <Textarea 
+                    value={editModelAnswer} 
+                    onChange={(e) => setEditModelAnswer(e.target.value)} 
+                    placeholder="Enter the model answer that students can reveal"
+                    rows={4}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Rating (max mark)</Label>
+                    <Select value={String(editRating)} onValueChange={(v) => setEditRating(Number(v))}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 16 }, (_, i) => i + 5).map(n => (
+                          <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Max Points</Label>
+                    <Select value={String(editMaxPoints)} onValueChange={(v) => setEditMaxPoints(Number(v))}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 16 }, (_, i) => i + 5).map(n => (
+                          <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Keywords (comma-separated)</Label>
+                  <Input
+                    value={editKeywords}
+                    onChange={(e) => setEditKeywords(e.target.value)}
+                    placeholder="e.g. hyponatremia, sodium, management"
+                    className="mt-1"
+                  />
+                </div>
+              </>
             )}
             {(contentType === 'lecture' || contentType === 'practical') && (
               <div>
@@ -286,6 +346,8 @@ export default function ContentItemActions({
               value={editSectionId}
               onChange={setEditSectionId}
             />
+          </div>
+          <div className="shrink-0 pt-4 border-t">
             <Button onClick={handleEdit} className="w-full" disabled={updateContent.isPending}>
               {updateContent.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
