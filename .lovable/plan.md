@@ -1,97 +1,150 @@
 
 
-## Enhanced Essay Template with Optional Rubric Marking
+## Add AI-Generated Socratic Tutorials & Summaries to Reference Materials
 
 ### Overview
-Add three new **optional** fields to essay questions -- `question_type`, `rubric_json`, and `max_points` -- and integrate them with the formative assessment rubric marking engine. All new columns are fully optional; existing essays and CSV uploads without these fields continue to work unchanged.
+Add two new AI-generated document types -- **Socratic Tutorials** and **Topic Summaries** -- to the Reference Materials tab. These are long-form, rich-text documents generated from uploaded PDFs via the AI Content Factory. The Documents sub-tab will be split into three sub-tabs: **Summaries**, **Socratic Tutorials**, and **Documents** (existing uploaded files).
 
-### Database Migration
-Add three new nullable columns to the `essays` table:
+### What the User Sees
 
-| Column | Type | Default | Nullable | Notes |
-|---|---|---|---|---|
-| `question_type` | `text` | `NULL` | Yes | "Socratic" or "Essay"; displays as "Essay" in UI when NULL |
-| `rubric_json` | `jsonb` | `NULL` | Yes | Grading rubric; falls back to keywords if absent |
-| `max_points` | `integer` | `NULL` | Yes | 5-20 range; falls back to paper-level points if absent |
+The Reference Materials tab currently shows: Tables | Exam Tips | Images | Documents
 
-### Formative Assessment Integration
-The Blueprint Exam Runner already auto-marks essays using `gradeWithRubric`. This enhancement adds per-essay granularity:
-- If `rubric_json` exists on the essay, use it directly for marking criteria
-- Otherwise fall back to current behavior (keywords as required_concepts)
-- If `max_points` exists, use it for that essay's score; otherwise use the flat `paper.components.essay_points`
+After this change, the Documents sub-tab becomes three sub-tabs:
+- **Summaries** -- AI-generated concise topic overviews
+- **Socratic Tutorials** -- AI-generated narrative tutorials written in Socratic teaching style (like the uploaded DOCX example)
+- **Documents** -- Existing uploaded PDF/file resources (unchanged)
 
-### File Changes
+Each generated document is viewable in-app as rich formatted text and downloadable.
 
-**1. Database migration**
-- `ALTER TABLE essays ADD COLUMN question_type text;`
-- `ALTER TABLE essays ADD COLUMN rubric_json jsonb;`
-- `ALTER TABLE essays ADD COLUMN max_points integer;`
-- All three columns are nullable with no defaults, so existing data is untouched.
+### Database Changes
 
-**2. `src/components/admin/HelpTemplatesTab.tsx`**
-- Update the `essay` entry in `TEMPLATES_SCHEMA`:
-  - Add `question_type`, `rubric_json`, `max_points` to the columns list and the optional array
-  - Update example rows to show sample values (all three fields can be left blank)
+**Add a `document_subtype` column to the `resources` table:**
 
-**3. `src/components/admin/AdminContentActions.tsx`**
-- Extend `ParsedEssayRow` interface with optional `questionType?`, `rubricJson?`, `maxPoints?`, `keywords?`, `rating?`
-- Add new headers to `knownHeaders`: `'question_type'`, `'rubric_json'`, `'max_points'`, `'keywords'`, `'rating'`
-- Update `processEssayCSV` to parse the new columns only when present:
-  - `keywords`: pipe-separated string to array (optional)
-  - `rating`: numeric 5-20, skip validation if empty
-  - `question_type`: string, left as NULL if empty
-  - `rubric_json`: JSON.parse only if non-empty, row error if malformed
-  - `max_points`: integer 5-20, skip if empty
-- Update `bulkUploadEssays` mutation to conditionally include the new fields
+| Column | Type | Default | Nullable |
+|---|---|---|---|
+| `document_subtype` | `text` | `NULL` | Yes |
+| `rich_content` | `text` | `NULL` | Yes |
 
-**4. `src/lib/csvExport.ts`**
-- Add optional columns to `ESSAY_EXPORT_COLUMNS`:
-  - `question_type`: plain string
-  - `max_points`: number
-  - `keywords`: joined with `|`
-  - `rubric_json`: `JSON.stringify` (empty string if null)
-  - `rating`: number
+- `document_subtype`: `'socratic_tutorial'`, `'summary'`, or `NULL` (for existing uploaded documents)
+- `rich_content`: Stores the generated markdown/text content for in-app viewing
 
-**5. `src/components/content/EssaysAdminTable.tsx`**
-- Add optional "Type" column showing `question_type` (or "Essay" if null)
-- Add optional "Points" column showing `max_points` (or dash if null)
+Existing documents are unaffected (both columns remain NULL).
 
-**6. `src/components/exam/BlueprintExamRunner.tsx`**
-- Update essay marking logic:
-  - If `essay.rubric_json` exists, use it as the rubric for `gradeWithRubric`
-  - Otherwise, fall back to current keywords-based rubric
-  - If `essay.max_points` exists, use it; otherwise use `paper.components.essay_points`
+### AI Content Factory Changes
 
-### Updated CSV Template
+**1. New content types in `AIContentFactoryModal.tsx`**
 
-```text
-title,scenario_text,questions,model_answer,keywords,rating,section_name,section_number,question_type,rubric_json,max_points
-```
+Add two new entries to `CONTENT_TYPES`:
+- `socratic_tutorial`: "Socratic Tutorial" -- generates a long-form narrative tutorial document
+- `topic_summary`: "Topic Summary" -- generates a concise study summary
 
-All of `keywords`, `rating`, `question_type`, `rubric_json`, and `max_points` can be left blank. A minimal valid row only needs `title` and `questions`.
+These appear under the "resources" category and require a chapter.
 
-### Rubric JSON Structure (optional)
+**2. Edge Function: `generate-content-from-pdf/index.ts`**
 
+Add two new content type handlers:
+
+**`socratic_tutorial`** schema:
 ```text
 {
-  "required_concepts": ["hemostasis", "inflammation"],
-  "optional_concepts": ["MDT discussion"],
-  "acceptable_phrases": {
-    "hemostasis": ["blood clotting", "platelet plug"]
-  },
-  "critical_omissions": ["hemostasis"],
-  "pass_threshold": 0.6
+  title: "string - tutorial title",
+  content: "string - full tutorial in markdown format (2000-5000 words)",
+  section_number: "string (optional)"
 }
 ```
+
+Pedagogical guidelines for Socratic tutorials:
+- Write as a conversational narrative that guides the student through clinical scenarios
+- Use the Socratic method: pose questions, let the student think, then reveal answers
+- Include exam points (marked with warning emoji), clinical scenarios, risk factor lists
+- Structure with clear numbered parts and subheadings
+- Include "critical thinking questions" and "reasoning questions" throughout
+- Follow the pattern from the uploaded example: scenario, question, explanation, key points
+
+**`topic_summary`** schema:
+```text
+{
+  title: "string - summary title",
+  content: "string - structured summary in markdown (500-1500 words)",
+  section_number: "string (optional)"
+}
+```
+
+Both types produce a single long-form document per generation (quantity fixed to 1).
+
+**3. Approval flow: `approve-ai-content` Edge Function**
+
+Update to handle the new types by inserting into the `resources` table with:
+- `resource_type: 'document'`
+- `document_subtype: 'socratic_tutorial'` or `'summary'`
+- `rich_content`: the generated markdown text
+
+### Frontend UI Changes
+
+**1. `src/components/content/ResourcesTabContent.tsx`**
+
+Split the "Documents" sub-tab into three sub-tabs using nested tabs:
+- **Summaries**: Filters resources where `document_subtype = 'summary'`
+- **Socratic Tutorials**: Filters resources where `document_subtype = 'socratic_tutorial'`
+- **Documents**: Filters resources where `document_subtype IS NULL` (existing behavior)
+
+**2. New component: `src/components/study/SocraticTutorialViewer.tsx`**
+
+A rich-text viewer component that:
+- Renders the markdown content with proper formatting (headers, lists, tables, bold, emoji)
+- Highlights exam points and clinical scenarios with styled callout boxes
+- Provides a "Download as PDF" option (using browser print-to-PDF)
+- Shows the document title and metadata
+
+**3. New component: `src/components/study/TopicSummaryViewer.tsx`**
+
+Similar viewer for summary documents -- simpler layout with clean markdown rendering.
+
+**4. `src/components/admin/AIContentPreviewCard.tsx`**
+
+Update to handle preview of `socratic_tutorial` and `topic_summary` content types, showing a truncated preview of the generated markdown.
+
+**5. `src/components/admin/HelpTemplatesTab.tsx`**
+
+No CSV template needed for these types since they are AI-generated only (not bulk uploaded).
+
+### Generation Flow
+
+```text
+Admin opens Content Factory
+  -> Selects "Socratic Tutorial" or "Topic Summary"
+  -> Selects source PDF, module, chapter
+  -> Quantity fixed to 1 (one document per generation)
+  -> Optional: additional instructions
+  -> AI generates long-form markdown content
+  -> Admin previews the full document
+  -> Approves -> saved to resources table
+  -> Appears under Reference Materials > Socratic Tutorials (or Summaries)
+```
+
+### Files to Create
+
+| File | Purpose |
+|---|---|
+| `src/components/study/SocraticTutorialViewer.tsx` | In-app viewer for Socratic tutorials |
+| `src/components/study/TopicSummaryViewer.tsx` | In-app viewer for summaries |
 
 ### Files to Modify
 
 | File | Change Summary |
 |---|---|
-| Database migration | Add 3 nullable columns to `essays` |
-| `HelpTemplatesTab.tsx` | Update essay template schema with optional fields |
-| `AdminContentActions.tsx` | Extend parser for optional new fields |
-| `csvExport.ts` | Add optional columns to export config |
-| `EssaysAdminTable.tsx` | Add Type and Points columns (show fallback when null) |
-| `BlueprintExamRunner.tsx` | Use per-essay rubric/points when available, fall back otherwise |
+| Database migration | Add `document_subtype` and `rich_content` columns to `resources` |
+| `AIContentFactoryModal.tsx` | Add `socratic_tutorial` and `topic_summary` content types, fix quantity to 1 |
+| `generate-content-from-pdf/index.ts` | Add schemas, guidelines, and validation for new types |
+| `approve-ai-content/index.ts` | Handle saving new types to `resources` table |
+| `ResourcesTabContent.tsx` | Split Documents into 3 sub-tabs, render viewers for each type |
+| `AIContentPreviewCard.tsx` | Add preview rendering for long-form content |
+
+### Technical Details
+
+- Socratic tutorials use `react-markdown` (already installed) for rendering
+- Download uses `window.print()` with a print-optimized layout
+- Generation quantity is capped at 1 for these long-form types (they produce 2000-5000 word documents)
+- The `rich_content` column stores raw markdown, keeping rendering flexible
+- Existing documents (uploaded files) remain unchanged with `document_subtype = NULL`
 
