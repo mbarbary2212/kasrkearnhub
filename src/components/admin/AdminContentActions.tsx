@@ -27,6 +27,7 @@ import { EssayFormSchema, validateBatch } from '@/lib/validators';
 import { logActivity } from '@/lib/activityLog';
 import { SectionSelector } from '@/components/sections';
 import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
@@ -153,6 +154,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [parsedEssayRows, setParsedEssayRows] = useState<ParsedEssayRow[]>([]);
   const [essayParseErrors, setEssayParseErrors] = useState<string[]>([]);
+  const [defaultMarking, setDefaultMarking] = useState<number>(10);
 
   const processEssayCSV = useCallback((text: string) => {
     const lines = text.trim().split('\n').filter(line => line.trim());
@@ -228,15 +230,18 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       // Parse keywords (pipe-separated)
       const keywords = keywordsRaw ? keywordsRaw.split('|').map(k => k.trim()).filter(Boolean) : undefined;
 
-      // Parse rating (5-20)
+      // Parse rating (5-20) — text labels are silently ignored
       let rating: number | undefined;
       if (ratingRaw) {
         const parsed = parseInt(ratingRaw, 10);
-        if (isNaN(parsed) || parsed < 5 || parsed > 20) {
-          error = error || `Row ${rowNum}: Rating must be between 5 and 20`;
-        } else {
-          rating = parsed;
+        if (!isNaN(parsed)) {
+          if (parsed < 5 || parsed > 20) {
+            error = error || `Row ${rowNum}: Rating must be between 5 and 20`;
+          } else {
+            rating = parsed;
+          }
         }
+        // Non-numeric strings (e.g. "Intermediate") are silently skipped
       }
 
       // Parse question_type
@@ -252,14 +257,16 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         }
       }
 
-      // Parse max_points (5-20)
+      // Parse max_points (5-20) — text labels are silently ignored
       let maxPoints: number | undefined;
       if (maxPointsRaw) {
         const parsed = parseInt(maxPointsRaw, 10);
-        if (isNaN(parsed) || parsed < 5 || parsed > 20) {
-          error = error || `Row ${rowNum}: max_points must be between 5 and 20`;
-        } else {
-          maxPoints = parsed;
+        if (!isNaN(parsed)) {
+          if (parsed < 5 || parsed > 20) {
+            error = error || `Row ${rowNum}: max_points must be between 5 and 20`;
+          } else {
+            maxPoints = parsed;
+          }
         }
       }
 
@@ -574,6 +581,10 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
       if (valid.length === 0) throw new Error('No valid rows after validation');
 
+      // Use essaysToInsert (which has all fields) filtered to only valid indices
+      const validIndices = new Set(essaysToInsert.map((_, i) => i).filter(i => !invalid.some(inv => inv.index === i)));
+      const validEssays = essaysToInsert.filter((_, i) => validIndices.has(i));
+
       // Map back original section names from parsed rows
       const sectionNameMap = new Map<string, string>();
       selectedRows.forEach(r => {
@@ -581,19 +592,19 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
       });
 
       const { error } = await supabase.from('essays').insert(
-        valid.map(essay => ({
-          title: essay.title,
-          question: essay.question,
-          model_answer: essay.model_answer || null,
-          module_id: moduleId,
-          chapter_id: chapterId || null,
-          topic_id: topicId || null,
-          ...(essay.section_id ? { section_id: essay.section_id } : {}),
-          original_section_name: sectionNameMap.get(essay.title) || null,
-        }))
+        validEssays.map(essay => {
+          const { rubric_json, ...rest } = essay as any;
+          return {
+            ...rest,
+            original_section_name: sectionNameMap.get(essay.title) || null,
+            rating: essay.rating ?? defaultMarking,
+            max_points: essay.max_points ?? defaultMarking,
+            ...(rubric_json ? { rubric_json: rubric_json as any } : {}),
+          };
+        })
       );
       if (error) throw error;
-      return { count: valid.length };
+      return { count: validEssays.length };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chapter-essays', chapterId] });
@@ -863,10 +874,23 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
               {contentType === 'essay' && (
                 <>
                   <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm font-medium whitespace-nowrap">Default Marking (out of):</Label>
+                    <Select value={String(defaultMarking)} onValueChange={v => setDefaultMarking(Number(v))}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 16 }, (_, i) => i + 5).map(n => (
+                          <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="bg-muted p-3 rounded-lg">
                     <p className="text-sm font-medium mb-2">CSV Format:</p>
                     <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-                      title,question,model_answer,section_name,section_number{"\n"}"Question Title","Question text","Model answer text","Section Name","1"
+                      title,question,model_answer,section_name,section_number{"\n"}"Question Title","Question text","Model answer text","Section Name","1"{"\n\n"}Rating column can be a text label (e.g. "Intermediate") or a number 5-20.{"\n"}If no numeric rating is provided, the default marking above is used.
                     </pre>
                   </div>
                   <DragDropZone
