@@ -24,9 +24,9 @@ export function PdfViewerModal({ open, onOpenChange, pdfUrl, title }: PdfViewerM
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0" closeClassName="right-2 top-2 z-10 bg-background/80 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:bg-accent">
         <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b flex-shrink-0">
-          <DialogTitle className="text-sm sm:text-lg font-semibold truncate">{title}</DialogTitle>
+          <DialogTitle className="text-sm sm:text-lg font-semibold truncate pr-8">{title}</DialogTitle>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {/* Zoom controls */}
             <div className="flex items-center gap-0.5 sm:gap-1 border rounded-md p-0.5 sm:p-1">
@@ -77,22 +77,18 @@ export function PdfViewerModal({ open, onOpenChange, pdfUrl, title }: PdfViewerM
         </DialogHeader>
 
         {/* PDF Viewer */}
-        <div className="flex-1 overflow-auto bg-muted/30">
-          <div
-            className="w-full h-full flex items-start justify-center p-4"
-            style={{ minHeight: '100%' }}
-          >
-            <iframe
-              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-              className="border-0 bg-white shadow-lg"
-              style={{
-                width: `${zoom}%`,
-                height: '100%',
-                minHeight: 'calc(90vh - 80px)',
-              }}
-              title={title}
-            />
-          </div>
+        <div className="flex-1 min-h-0 overflow-hidden bg-muted/30">
+          <iframe
+            src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&zoom=page-width`}
+            className="border-0 w-full h-full"
+            style={{
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: 'top center',
+              width: `${10000 / zoom}%`,
+              height: `${10000 / zoom}%`,
+            }}
+            title={title}
+          />
         </div>
       </DialogContent>
     </Dialog>
