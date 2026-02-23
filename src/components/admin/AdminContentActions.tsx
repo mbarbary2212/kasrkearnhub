@@ -802,7 +802,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
             <Upload className="w-4 h-4 mr-1" />
             Bulk Upload
           </Button>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>
                 {contentType === 'mcq' && 'Bulk Upload MCQs'}
@@ -810,7 +810,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
                 {contentType === 'essay' && 'Bulk Upload Short Questions'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-4 max-h-[calc(90vh-8rem)] overflow-y-auto pr-1">
               {contentType === 'mcq' && (
                 <>
                   <div>
