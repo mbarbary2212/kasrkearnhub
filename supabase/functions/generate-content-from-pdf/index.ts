@@ -24,7 +24,9 @@ type ContentType =
   | "clinical_case"
   | "mind_map"
   | "worked_case"
-  | "guided_explanation";
+  | "guided_explanation"
+  | "socratic_tutorial"
+  | "topic_summary";
 
 interface GenerateRequest {
   document_id?: string;
@@ -161,6 +163,16 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     key_takeaways: "array of 3-5 strings - main points to remember",
     section_number: "string (optional) - section number from the provided list",
   },
+  socratic_tutorial: {
+    title: "string - tutorial title",
+    content: "string - full tutorial in markdown format (2000-5000 words). Write as a conversational narrative using the Socratic method: pose questions, let the student think, then reveal answers. Include exam points (marked with ⚠️ emoji), clinical scenarios, risk factor lists. Structure with clear numbered parts and subheadings. Include critical thinking questions and reasoning questions throughout.",
+    section_number: "string (optional) - section number from the provided list",
+  },
+  topic_summary: {
+    title: "string - summary title",
+    content: "string - structured summary in markdown (500-1500 words). Include key concepts, definitions, clinical relevance, and exam-focused highlights organized with clear headings.",
+    section_number: "string (optional) - section number from the provided list",
+  },
 };
 
 const VP_STAGE_SCHEMA = {
@@ -248,6 +260,32 @@ PEDAGOGICAL GUIDELINES (Socratic Method):
 - Hints should guide without giving away the answer
 - Rubric concepts must be specific and assessable
 - Summary should synthesize all guided discoveries`;
+
+    case 'socratic_tutorial':
+      return `
+PEDAGOGICAL GUIDELINES (Socratic Tutorial - Long-Form Narrative):
+- Write as a conversational narrative that guides the student through clinical scenarios
+- Use the Socratic method: pose questions, let the student think, then reveal answers
+- Include exam points marked with ⚠️ emoji for high-yield facts
+- Include clinical scenarios with patient presentations
+- Include risk factor lists, differential diagnoses, and management algorithms
+- Structure with clear numbered parts and subheadings
+- Include "Critical Thinking Question" and "Reasoning Question" callouts throughout
+- Follow this pattern: scenario → question → explanation → key points
+- Use markdown formatting: headers (##, ###), bold (**), lists, blockquotes (>)
+- Target 2000-5000 words for comprehensive coverage
+- End with a summary of key learning points`;
+
+    case 'topic_summary':
+      return `
+PEDAGOGICAL GUIDELINES (Topic Summary):
+- Create a concise, well-structured summary of the topic (500-1500 words)
+- Use clear headings and subheadings for organization
+- Include definitions, key concepts, and clinical relevance
+- Highlight exam-relevant points with ⚠️ emoji
+- Use bullet points and numbered lists for clarity
+- Include a brief clinical pearls section at the end
+- Use markdown formatting throughout`;
 
     default:
       return '';
@@ -501,6 +539,20 @@ function validateGuidedExplanationItem(item: any, index: number): ValidationResu
   return { isValid: errors.length === 0, errors, warnings };
 }
 
+function validateSocraticTutorialItem(item: any, index: number): ValidationResult {
+  const errors: string[] = [];
+  if (!item.title || item.title.length < 5) errors.push(`Socratic Tutorial #${index + 1}: title must be at least 5 characters`);
+  if (!item.content || item.content.length < 500) errors.push(`Socratic Tutorial #${index + 1}: content must be at least 500 characters`);
+  return { isValid: errors.length === 0, errors, warnings: [] };
+}
+
+function validateTopicSummaryItem(item: any, index: number): ValidationResult {
+  const errors: string[] = [];
+  if (!item.title || item.title.length < 5) errors.push(`Topic Summary #${index + 1}: title must be at least 5 characters`);
+  if (!item.content || item.content.length < 200) errors.push(`Topic Summary #${index + 1}: content must be at least 200 characters`);
+  return { isValid: errors.length === 0, errors, warnings: [] };
+}
+
 // ============================================
 // NORMALIZATION FUNCTIONS
 // ============================================
@@ -623,6 +675,8 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
       case 'mind_map': result = validateMindMapItem(items[i], i); break;
       case 'worked_case': result = validateWorkedCaseItem(items[i], i); break;
       case 'guided_explanation': result = validateGuidedExplanationItem(items[i], i); break;
+      case 'socratic_tutorial': result = validateSocraticTutorialItem(items[i], i); break;
+      case 'topic_summary': result = validateTopicSummaryItem(items[i], i); break;
       default: result = { isValid: true, errors: [], warnings: [] };
     }
     allErrors.push(...result.errors);
@@ -763,6 +817,7 @@ function parseAIResponse(text: string): any[] {
     : parsed?.items || parsed?.questions || parsed?.flashcards || parsed?.cases ||
       parsed?.essays || parsed?.osces || parsed?.matching || parsed?.virtual_patients ||
       parsed?.mind_maps || parsed?.worked_cases || parsed?.guided_explanations ||
+      parsed?.socratic_tutorials || parsed?.topic_summaries ||
       (parsed ? [parsed] : []);
 
   return Array.isArray(normalized) ? normalized : [];
@@ -924,8 +979,10 @@ serve(async (req) => {
   }
 
   // Cap at 10 per call — the frontend orchestrates multiple calls
-  const MAX_PER_CALL = 10;
-  const clampedQuantity = Math.min(MAX_PER_CALL, Math.max(1, quantity || 5));
+  // Long-form types are capped at 1
+  const isLongFormType = content_type === 'socratic_tutorial' || content_type === 'topic_summary';
+  const MAX_PER_CALL = isLongFormType ? 1 : 10;
+  const clampedQuantity = Math.min(MAX_PER_CALL, Math.max(1, isLongFormType ? 1 : (quantity || 5)));
 
   // Validate module exists
   const { data: moduleCheck, error: moduleError } = await serviceClient
@@ -947,7 +1004,7 @@ serve(async (req) => {
     chapterInfo = chapterCheck;
   }
 
-  const requiresChapter = ["flashcard", "osce", "mind_map", "worked_case", "guided_explanation"];
+  const requiresChapter = ["flashcard", "osce", "mind_map", "worked_case", "guided_explanation", "socratic_tutorial", "topic_summary"];
   if (requiresChapter.includes(content_type) && !chapter_id) {
     return jsonResponse({ error: `Chapter is required for ${content_type}`, step: "validation", items: [], warnings: [] }, 400);
   }
@@ -1113,8 +1170,9 @@ ${nbmeGuidelines}
 OUTPUT SCHEMA (you MUST use exactly these fields):
 ${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
 
-You must output a JSON array of ${clampedQuantity} items, each matching the schema above.
-Example format: [{ ...item1 }, { ...item2 }]`;
+${isLongFormType ? `You must output a JSON array with exactly 1 item matching the schema above. The "content" field must be a complete markdown document.
+Example format: [{ "title": "...", "content": "# Full markdown document here..." }]` : `You must output a JSON array of ${clampedQuantity} items, each matching the schema above.
+Example format: [{ ...item1 }, { ...item2 }]`}`;
 
     const contentTypeLabel = content_type.replace(/_/g, " ");
 

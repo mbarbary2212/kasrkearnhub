@@ -3461,6 +3461,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_order: number | null
+          document_subtype: string | null
           duration_seconds: number | null
           external_url: string | null
           file_url: string | null
@@ -3470,6 +3471,7 @@ export type Database = {
           original_section_name: string | null
           original_section_number: string | null
           resource_type: string | null
+          rich_content: string | null
           section_id: string | null
           title: string
           title_ar: string | null
@@ -3484,6 +3486,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
+          document_subtype?: string | null
           duration_seconds?: number | null
           external_url?: string | null
           file_url?: string | null
@@ -3493,6 +3496,7 @@ export type Database = {
           original_section_name?: string | null
           original_section_number?: string | null
           resource_type?: string | null
+          rich_content?: string | null
           section_id?: string | null
           title: string
           title_ar?: string | null
@@ -3507,6 +3511,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
+          document_subtype?: string | null
           duration_seconds?: number | null
           external_url?: string | null
           file_url?: string | null
@@ -3516,6 +3521,7 @@ export type Database = {
           original_section_name?: string | null
           original_section_number?: string | null
           resource_type?: string | null
+          rich_content?: string | null
           section_id?: string | null
           title?: string
           title_ar?: string | null

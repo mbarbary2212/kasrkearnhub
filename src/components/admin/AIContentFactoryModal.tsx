@@ -80,6 +80,8 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
   { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
   { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
+  { value: 'socratic_tutorial', label: 'Socratic Tutorial', icon: GraduationCap, description: 'Long-form narrative tutorial using Socratic teaching method', category: 'resources', requiresChapter: true },
+  { value: 'topic_summary', label: 'Topic Summary', icon: FileText, description: 'Concise study summary with key concepts', category: 'resources', requiresChapter: true },
 ];
 
 const CHUNK_SIZE = 10;
@@ -116,6 +118,8 @@ function getPrimaryText(item: any, contentType: string): string {
     case 'mind_map': return item.title || '';
     case 'worked_case': return item.title || '';
     case 'guided_explanation': return item.topic || '';
+    case 'socratic_tutorial':
+    case 'topic_summary': return item.title || '';
     default: return JSON.stringify(item).substring(0, 200);
   }
 }
@@ -185,7 +189,8 @@ export function AIContentFactoryModal({
   const requiresChapter = selectedContentType?.requiresChapter ?? false;
 
   const isLowCapType = contentType === 'virtual_patient' || contentType === 'clinical_case';
-  const maxQty = isLowCapType ? 5 : 50;
+  const isLongFormType = contentType === 'socratic_tutorial' || contentType === 'topic_summary';
+  const maxQty = isLongFormType ? 1 : (isLowCapType ? 5 : 50);
 
   const hasSections = sections && sections.length > 0;
   const parsedQty = Math.max(1, Math.min(maxQty, parseInt(quantity) || 5));
@@ -543,6 +548,7 @@ export function AIContentFactoryModal({
         queryClient.invalidateQueries({ queryKey: ['osce-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['guided-explanations'] }),
+        queryClient.invalidateQueries({ queryKey: ['resources'] }),
       ]);
       toast.success('Content approved and saved!');
       handleClose();
@@ -847,15 +853,21 @@ export function AIContentFactoryModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Number of Items {perSection ? '(per section)' : ''}</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max={String(maxQty)}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                  />
+                  {isLongFormType ? (
+                    <div className="flex items-center h-10 px-3 border rounded-md bg-muted/50 text-sm text-muted-foreground">
+                      1 (fixed for long-form documents)
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min="1"
+                      max={String(maxQty)}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Maximum {maxQty} items {perSection ? 'per section' : 'per generation'}
+                    {isLongFormType ? 'Long-form documents generate 1 item per request' : `Maximum ${maxQty} items ${perSection ? 'per section' : 'per generation'}`}
                   </p>
                 </div>
                 <div className="space-y-2">

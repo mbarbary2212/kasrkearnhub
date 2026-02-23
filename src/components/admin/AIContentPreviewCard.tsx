@@ -191,6 +191,28 @@ export function AIContentPreviewCard({
             </div>
           </>
         );
+      case 'socratic_tutorial':
+        return (
+          <>
+            <p className="font-medium text-sm">{item.title}</p>
+            <p className="text-xs text-muted-foreground line-clamp-3">{item.content?.substring(0, 200)}...</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline">Socratic Tutorial</Badge>
+              <Badge variant="secondary">{item.content ? `${Math.round(item.content.split(/\s+/).length)} words` : ''}</Badge>
+            </div>
+          </>
+        );
+      case 'topic_summary':
+        return (
+          <>
+            <p className="font-medium text-sm">{item.title}</p>
+            <p className="text-xs text-muted-foreground line-clamp-3">{item.content?.substring(0, 200)}...</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline">Topic Summary</Badge>
+              <Badge variant="secondary">{item.content ? `${Math.round(item.content.split(/\s+/).length)} words` : ''}</Badge>
+            </div>
+          </>
+        );
       default:
         return (
           <pre className="text-xs overflow-hidden max-h-20">
@@ -481,6 +503,29 @@ export function AIContentPreviewCard({
                 value={editedItem.model_answer || ''}
                 onChange={(e) => updateField('model_answer', e.target.value)}
                 rows={6}
+              />
+            </div>
+          </div>
+        );
+
+      case 'socratic_tutorial':
+      case 'topic_summary':
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={editedItem.title || ''}
+                onChange={(e) => updateField('title', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Content (Markdown)</Label>
+              <Textarea
+                value={editedItem.content || ''}
+                onChange={(e) => updateField('content', e.target.value)}
+                rows={20}
+                className="font-mono text-xs"
               />
             </div>
           </div>
