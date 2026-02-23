@@ -45,7 +45,7 @@ import { MindMapForm } from './MindMapForm';
 import { InfographicForm } from './InfographicForm';
 import { WorkedCaseForm } from './WorkedCaseForm';
 import { GuidedExplanationForm } from './GuidedExplanationForm';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 interface StudyResourceFormModalProps {
   open: boolean;
@@ -214,6 +214,7 @@ export function StudyResourceFormModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input

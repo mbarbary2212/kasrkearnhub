@@ -31,7 +31,7 @@ import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalC
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 // Dynamic min stages based on case_mode
 const getMinStagesToPublish = (caseMode: string | undefined) => {
@@ -193,6 +193,7 @@ export function ClinicalCaseFormModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4 pr-4 pb-4">
+            <SectionWarningBanner chapterId={selectedChapterId || chapterId} />
             {/* Step 1 Helper for new cases */}
             {!isEditing && (
               <Alert className="bg-primary/5 border-primary/20">
