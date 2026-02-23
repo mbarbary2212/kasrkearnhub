@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search, Plus, Table2, Lightbulb, Image, FileText } from 'lucide-react';
+import { Search, Plus, Table2, Lightbulb, Image, FileText, BookOpen, GraduationCap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { StudyResourceTypeSection } from '@/components/study/StudyResourceTypeSe
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { TableResourceView } from '@/components/study/TableResourceView';
+import { RichDocumentViewer } from '@/components/study/RichDocumentViewer';
 import {
   useChapterStudyResources,
   useDeleteStudyResource,
@@ -36,6 +37,9 @@ interface Resource {
   resource_type?: string | null;
   file_url?: string | null;
   external_url?: string | null;
+  document_subtype?: string | null;
+  rich_content?: string | null;
+  section_id?: string | null;
 }
 
 interface ResourcesTabContentProps {
@@ -128,15 +132,32 @@ export function ResourcesTabContent({
     return filtered;
   }, [resourcesByType, searchQuery]);
 
-  // Filter documents by search query
+  // Filter documents by search query and subtype
   const filteredDocuments = useMemo(() => {
-    if (!searchQuery.trim()) return resources;
+    const docs = resources.filter(r => !r.document_subtype);
+    if (!searchQuery.trim()) return docs;
     const query = searchQuery.toLowerCase();
-    return resources.filter(
+    return docs.filter(
       (r) =>
         r.title.toLowerCase().includes(query) ||
         r.description?.toLowerCase().includes(query)
     );
+  }, [resources, searchQuery]);
+
+  // Filter summaries
+  const filteredSummaries = useMemo(() => {
+    const summaries = resources.filter(r => r.document_subtype === 'summary');
+    if (!searchQuery.trim()) return summaries;
+    const query = searchQuery.toLowerCase();
+    return summaries.filter(r => r.title.toLowerCase().includes(query) || r.rich_content?.toLowerCase().includes(query));
+  }, [resources, searchQuery]);
+
+  // Filter socratic tutorials
+  const filteredTutorials = useMemo(() => {
+    const tutorials = resources.filter(r => r.document_subtype === 'socratic_tutorial');
+    if (!searchQuery.trim()) return tutorials;
+    const query = searchQuery.toLowerCase();
+    return tutorials.filter(r => r.title.toLowerCase().includes(query) || r.rich_content?.toLowerCase().includes(query));
   }, [resources, searchQuery]);
 
   const handleAddResource = (type: StudyResourceType) => {
@@ -242,33 +263,92 @@ export function ResourcesTabContent({
             </TabsTrigger>
           ))}
 
-          {/* Documents Tab - at the end */}
+          {/* Documents Tab - split into 3 sub-tabs */}
           <TabsTrigger value="documents" className="flex items-center gap-2 px-3 py-2 whitespace-nowrap">
             <FileText className="w-4 h-4" />
             <span className="text-xs sm:text-sm">Documents</span>
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-              {filteredDocuments.length}
+              {filteredDocuments.length + filteredSummaries.length + filteredTutorials.length}
             </Badge>
           </TabsTrigger>
         </TabsList>
 
-        {/* Documents Content */}
+        {/* Documents Content - Nested Sub-tabs */}
         <TabsContent value="documents" className="mt-4">
-          {showAddControls && (
-            <div className="mb-4">
-              <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
-            </div>
-          )}
-          <ResourceList
-            resources={filteredDocuments}
-            moduleId={moduleId}
-            chapterId={chapterId}
-            canEdit={canManageContent}
-            canDelete={canManageContent}
-            showFeedback={true}
-            compact={true}
-            onEdit={handleEditDocument}
-          />
+          <Tabs defaultValue="summaries" className="w-full">
+            <TabsList className="w-full justify-start h-auto p-1 bg-muted/30">
+              <TabsTrigger value="summaries" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm">
+                <FileText className="w-3.5 h-3.5" />
+                Summaries
+                <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{filteredSummaries.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="socratic" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm">
+                <GraduationCap className="w-3.5 h-3.5" />
+                Socratic Tutorials
+                <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{filteredTutorials.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="uploaded" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm">
+                <BookOpen className="w-3.5 h-3.5" />
+                Documents
+                <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{filteredDocuments.length}</Badge>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Summaries sub-tab */}
+            <TabsContent value="summaries" className="mt-3">
+              {filteredSummaries.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">No summaries yet. Generate them from the AI Content Factory.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredSummaries.map(doc => (
+                    <RichDocumentViewer
+                      key={doc.id}
+                      title={doc.title}
+                      content={doc.rich_content || ''}
+                      documentType="summary"
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Socratic Tutorials sub-tab */}
+            <TabsContent value="socratic" className="mt-3">
+              {filteredTutorials.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">No Socratic tutorials yet. Generate them from the AI Content Factory.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredTutorials.map(doc => (
+                    <RichDocumentViewer
+                      key={doc.id}
+                      title={doc.title}
+                      content={doc.rich_content || ''}
+                      documentType="socratic_tutorial"
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Uploaded Documents sub-tab */}
+            <TabsContent value="uploaded" className="mt-3">
+              {showAddControls && (
+                <div className="mb-4">
+                  <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+                </div>
+              )}
+              <ResourceList
+                resources={filteredDocuments}
+                moduleId={moduleId}
+                chapterId={chapterId}
+                canEdit={canManageContent}
+                canDelete={canManageContent}
+                showFeedback={true}
+                compact={true}
+                onEdit={handleEditDocument}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Study Resource Type Contents */}

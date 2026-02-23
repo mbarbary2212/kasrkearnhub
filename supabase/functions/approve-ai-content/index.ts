@@ -24,7 +24,9 @@ type ContentType =
   | "clinical_case"
   | "mind_map"
   | "worked_case"
-  | "guided_explanation";
+  | "guided_explanation"
+  | "socratic_tutorial"
+  | "topic_summary";
 
 function ensureArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
@@ -633,6 +635,36 @@ serve(async (req) => {
       if (error) {
         console.error(`[${jobId}] Guided explanation insert error:`, error.message);
         throw new Error(`Failed to insert guided explanations: ${error.message}`);
+      }
+    } else if (contentType === "socratic_tutorial" || contentType === "topic_summary") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: `Chapter is required for ${contentType}`, step: "validation", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const documentSubtype = contentType === "socratic_tutorial" ? "socratic_tutorial" : "summary";
+
+      const docsToInsert = items.map((item: any, idx: number) => ({
+        module_id: moduleId,
+        chapter_id: chapterId,
+        section_id: getSectionId(item),
+        title: item.title,
+        resource_type: 'document',
+        document_subtype: documentSubtype,
+        rich_content: item.content,
+        display_order: idx,
+        created_by: user.id,
+        is_deleted: false,
+      }));
+
+      const { error } = await serviceClient
+        .from("resources")
+        .insert(docsToInsert);
+      if (error) {
+        console.error(`[${jobId}] ${contentType} insert error:`, error.message);
+        throw new Error(`Failed to insert ${contentType}: ${error.message}`);
       }
     } else {
       return jsonResponse(
