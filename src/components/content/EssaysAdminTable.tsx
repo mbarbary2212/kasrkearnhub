@@ -14,6 +14,7 @@ interface Essay {
   section_id?: string | null;
   question_type?: string | null;
   max_points?: number | null;
+  difficulty_level?: string | null;
 }
 
 interface EssaysAdminTableProps {
@@ -84,6 +85,14 @@ export function EssaysAdminTable({
       className: 'w-20 text-center',
       render: (item) => (
         <span className="text-sm text-muted-foreground">{item.max_points != null ? item.max_points : '—'}</span>
+      ),
+    },
+    {
+      key: 'difficulty_level' as keyof Essay,
+      header: 'Difficulty',
+      className: 'w-28',
+      render: (item) => (
+        <span className="text-sm text-muted-foreground">{item.difficulty_level || '—'}</span>
       ),
     },
     {

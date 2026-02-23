@@ -41,6 +41,9 @@ interface Essay {
   is_deleted?: boolean;
   chapter_id?: string | null;
   section_id?: string | null;
+  difficulty_level?: string | null;
+  question_type?: string | null;
+  rubric_json?: unknown | null;
 }
 
 interface EssayListProps {
@@ -408,6 +411,9 @@ export default function EssayList({
                                 rating={essay.rating}
                                 maxPoints={essay.max_points}
                                 keywords={essay.keywords}
+                                difficultyLevel={essay.difficulty_level}
+                                questionType={essay.question_type}
+                                rubricJson={essay.rubric_json}
                                 contentType="essay"
                                 moduleId={moduleId}
                                 chapterId={chapterId}

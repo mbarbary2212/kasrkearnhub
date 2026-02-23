@@ -1,4 +1,4 @@
-import { useState, type SyntheticEvent } from 'react';
+import { useState, type SyntheticEvent, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { MoreVertical, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateContent, useSoftDeleteContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
+import EssayRubricEditor, { parseRubricJson, buildRubricJson } from '@/components/admin/EssayRubricEditor';
 import { ItemType } from '@/hooks/useItemFeedback';
 import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -39,6 +40,7 @@ interface ContentItemActionsProps {
   questionType?: string | null;
   rubricJson?: unknown | null;
   keywords?: string[] | null;
+  difficultyLevel?: string | null;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   moduleId: string;
   chapterId?: string;
@@ -77,6 +79,7 @@ export default function ContentItemActions({
   questionType,
   rubricJson,
   keywords,
+  difficultyLevel,
   contentType,
   moduleId,
   chapterId,
@@ -111,6 +114,12 @@ export default function ContentItemActions({
   const [editRating, setEditRating] = useState<number>(rating ?? 10);
   const [editMaxPoints, setEditMaxPoints] = useState<number>(maxPoints ?? rating ?? 10);
   const [editKeywords, setEditKeywords] = useState<string>(keywords?.join(', ') ?? '');
+  const [editDifficulty, setEditDifficulty] = useState<string>(difficultyLevel || '');
+  const [rubricData, setRubricData] = useState(() => parseRubricJson(rubricJson));
+
+  const handleRubricChange = useCallback((partial: Partial<typeof rubricData>) => {
+    setRubricData(prev => ({ ...prev, ...partial }));
+  }, []);
 
   // Sync edit state with props when dialog opens
   const handleOpenEdit = () => {
@@ -123,6 +132,8 @@ export default function ContentItemActions({
     setEditRating(rating ?? 10);
     setEditMaxPoints(maxPoints ?? rating ?? 10);
     setEditKeywords(keywords?.join(', ') ?? '');
+    setEditDifficulty(difficultyLevel || '');
+    setRubricData(parseRubricJson(rubricJson));
     setEditOpen(true);
   };
 
@@ -157,6 +168,13 @@ export default function ContentItemActions({
         data.max_points = editMaxPoints;
         const kw = editKeywords.split(',').map(k => k.trim()).filter(Boolean);
         data.keywords = kw.length > 0 ? kw : null;
+        data.difficulty_level = editDifficulty || null;
+        // Build rubric_json from visual editor
+        const rubricObj = buildRubricJson(rubricData);
+        const hasRubric = (rubricObj.required_concepts as string[]).length > 0 ||
+          (rubricObj.optional_concepts as string[]).length > 0 ||
+          (rubricObj.critical_omissions as string[]).length > 0;
+        data.rubric_json = hasRubric ? rubricObj : null;
       } else {
         data.description = editDescription.trim() || null;
       }
@@ -319,6 +337,27 @@ export default function ContentItemActions({
                     className="mt-1"
                   />
                 </div>
+                <div>
+                  <Label>Difficulty</Label>
+                  <Select value={editDifficulty || '_none'} onValueChange={(v) => setEditDifficulty(v === '_none' ? '' : v)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">Not set</SelectItem>
+                      <SelectItem value="Beginner">Beginner</SelectItem>
+                      <SelectItem value="Intermediate">Intermediate</SelectItem>
+                      <SelectItem value="Advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <EssayRubricEditor
+                  rubricData={rubricData}
+                  onRubricChange={handleRubricChange}
+                  question={editDescription}
+                  modelAnswer={editModelAnswer}
+                  keywords={editKeywords}
+                />
               </>
             )}
             {(contentType === 'lecture' || contentType === 'practical') && (
