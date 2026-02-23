@@ -9,7 +9,7 @@ import { Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { useCreateOsceQuestion, useUpdateOsceQuestion, uploadOsceImage, OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 interface OsceFormModalProps {
   open: boolean;
@@ -189,6 +189,7 @@ export function OsceFormModal({
 
         <ScrollArea className="flex-1 overflow-y-auto">
           <div className="space-y-6 pr-4 pb-4">
+            <SectionWarningBanner chapterId={chapterId} />
             {/* Image Upload */}
             <div>
               <Label>Clinical Image (optional)</Label>

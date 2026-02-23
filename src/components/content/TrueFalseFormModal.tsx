@@ -23,7 +23,7 @@ import {
   type TrueFalseQuestion,
 } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseFormSchema } from '@/lib/validators';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 interface TrueFalseFormModalProps {
   open: boolean;
@@ -116,6 +116,7 @@ export function TrueFalseFormModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* Statement */}
           <div className="space-y-2">
             <Label htmlFor="statement">Statement *</Label>

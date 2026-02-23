@@ -26,7 +26,7 @@ import {
   type MatchingQuestion,
   type MatchItem,
 } from '@/hooks/useMatchingQuestions';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 interface MatchingQuestionFormModalProps {
   open: boolean;
@@ -184,6 +184,7 @@ export function MatchingQuestionFormModal({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* Instruction */}
           <div className="space-y-2">
             <Label>Instruction / Question</Label>

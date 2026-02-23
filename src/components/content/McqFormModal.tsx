@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
 import { McqFormSchema } from '@/lib/validators';
-import { SectionSelector } from '@/components/sections';
+import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
 interface McqFormModalProps {
   open: boolean;
@@ -132,6 +132,7 @@ export function McqFormModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* Question Stem */}
           <div className="space-y-2">
             <Label htmlFor="stem">Question *</Label>
