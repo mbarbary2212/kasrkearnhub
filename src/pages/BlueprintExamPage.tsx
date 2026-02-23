@@ -28,7 +28,7 @@ export default function BlueprintExamPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('essays')
-        .select('id, title, question, model_answer, keywords, chapter_id')
+        .select('id, title, question, model_answer, keywords, chapter_id, rubric_json, max_points, question_type')
         .eq('module_id', moduleId!)
         .eq('is_deleted', false);
       if (error) throw error;
@@ -99,7 +99,7 @@ export default function BlueprintExamPage() {
             moduleName={module?.name || ''}
             paper={paper}
             mcqs={mcqs}
-            essays={essays}
+            essays={essays as any}
             chapters={chapters || []}
             essaySettings={essaySettings}
             onBack={handleBack}

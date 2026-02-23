@@ -182,11 +182,26 @@ export const ESSAY_EXPORT_COLUMNS: ExportColumn<{
   title: string;
   question: string;
   model_answer?: string;
+  keywords?: string[] | null;
+  rating?: number | null;
   section_id?: string | null;
+  question_type?: string | null;
+  rubric_json?: Record<string, unknown> | null;
+  max_points?: number | null;
 }>[] = [
   { key: 'title', header: 'title' },
   { key: 'question', header: 'question' },
   { key: 'model_answer', header: 'model_answer' },
+  {
+    key: 'keywords',
+    header: 'keywords',
+    getValue: (item) => (item.keywords || []).join('|'),
+  },
+  {
+    key: 'rating',
+    header: 'rating',
+    getValue: (item) => item.rating != null ? String(item.rating) : '',
+  },
   {
     key: 'section_name',
     header: 'section_name',
@@ -196,5 +211,20 @@ export const ESSAY_EXPORT_COLUMNS: ExportColumn<{
     key: 'section_number',
     header: 'section_number',
     getValue: (item, sections) => resolveSectionInfo(item.section_id, sections || []).number
+  },
+  {
+    key: 'question_type',
+    header: 'question_type',
+    getValue: (item) => item.question_type || '',
+  },
+  {
+    key: 'rubric_json',
+    header: 'rubric_json',
+    getValue: (item) => item.rubric_json ? JSON.stringify(item.rubric_json) : '',
+  },
+  {
+    key: 'max_points',
+    header: 'max_points',
+    getValue: (item) => item.max_points != null ? String(item.max_points) : '',
   },
 ];

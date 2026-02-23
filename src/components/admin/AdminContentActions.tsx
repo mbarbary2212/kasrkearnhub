@@ -78,6 +78,11 @@ interface ParsedEssayRow {
   selected: boolean;
   isDuplicate: boolean;
   error?: string;
+  keywords?: string[];
+  rating?: number;
+  questionType?: string;
+  rubricJson?: Record<string, unknown>;
+  maxPoints?: number;
 }
 
 export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
@@ -159,7 +164,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
 
     const firstRowParts = parseCSVLine(lines[0]);
     const firstRowLower = firstRowParts.map(h => h.toLowerCase().trim());
-    const knownHeaders = ['title', 'question', 'model_answer', 'scenario_text', 'questions', 'section_name', 'section_number', 'keywords', 'rating'];
+    const knownHeaders = ['title', 'question', 'model_answer', 'scenario_text', 'questions', 'section_name', 'section_number', 'keywords', 'rating', 'question_type', 'rubric_json', 'max_points'];
     const hasHeaders = firstRowLower.some(h => knownHeaders.includes(h));
 
     let headerMap: Record<string, number> = {};
@@ -207,11 +212,56 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         mAnswer = parts[2]?.trim() || '';
       }
 
+      // Parse optional new fields
+      const keywordsRaw = col(parts, 'keywords');
+      const ratingRaw = col(parts, 'rating');
+      const questionTypeRaw = col(parts, 'question_type');
+      const rubricJsonRaw = col(parts, 'rubric_json');
+      const maxPointsRaw = col(parts, 'max_points');
+
       const rowNum = i + 1;
       let error: string | undefined;
 
       if (!rowTitle) error = `Row ${rowNum}: Missing title`;
       else if (!question) error = `Row ${rowNum}: Missing question`;
+
+      // Parse keywords (pipe-separated)
+      const keywords = keywordsRaw ? keywordsRaw.split('|').map(k => k.trim()).filter(Boolean) : undefined;
+
+      // Parse rating (5-20)
+      let rating: number | undefined;
+      if (ratingRaw) {
+        const parsed = parseInt(ratingRaw, 10);
+        if (isNaN(parsed) || parsed < 5 || parsed > 20) {
+          error = error || `Row ${rowNum}: Rating must be between 5 and 20`;
+        } else {
+          rating = parsed;
+        }
+      }
+
+      // Parse question_type
+      const questionType = questionTypeRaw || undefined;
+
+      // Parse rubric_json
+      let rubricJson: Record<string, unknown> | undefined;
+      if (rubricJsonRaw) {
+        try {
+          rubricJson = JSON.parse(rubricJsonRaw);
+        } catch {
+          error = error || `Row ${rowNum}: Invalid rubric_json (malformed JSON)`;
+        }
+      }
+
+      // Parse max_points (5-20)
+      let maxPoints: number | undefined;
+      if (maxPointsRaw) {
+        const parsed = parseInt(maxPointsRaw, 10);
+        if (isNaN(parsed) || parsed < 5 || parsed > 20) {
+          error = error || `Row ${rowNum}: max_points must be between 5 and 20`;
+        } else {
+          maxPoints = parsed;
+        }
+      }
 
       if (error) errors.push(error);
 
@@ -230,6 +280,11 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         selected: !isDuplicate && !error,
         isDuplicate,
         error,
+        keywords,
+        rating,
+        questionType,
+        rubricJson,
+        maxPoints,
       });
     }
 
@@ -500,6 +555,11 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         chapter_id: chapterId || null,
         topic_id: topicId || null,
         ...(row.sectionId ? { section_id: row.sectionId } : {}),
+        ...(row.keywords ? { keywords: row.keywords } : {}),
+        ...(row.rating !== undefined ? { rating: row.rating } : {}),
+        ...(row.questionType ? { question_type: row.questionType } : {}),
+        ...(row.rubricJson ? { rubric_json: row.rubricJson } : {}),
+        ...(row.maxPoints !== undefined ? { max_points: row.maxPoints } : {}),
       }));
 
       // Validate batch before insert

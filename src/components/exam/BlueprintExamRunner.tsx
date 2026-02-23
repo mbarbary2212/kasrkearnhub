@@ -36,6 +36,8 @@ interface Essay {
   model_answer: string | null;
   keywords: string[] | null;
   chapter_id: string | null;
+  rubric_json?: Record<string, unknown> | null;
+  max_points?: number | null;
 }
 
 interface BlueprintExamRunnerProps {
@@ -317,13 +319,19 @@ export function BlueprintExamRunner({
       const essay = item.data as Essay;
       const answer = essayAnswers[item.id];
       const answerText = answer?.typed_text || answer?.typed_summary || '';
-      const maxPoints = paper.components.essay_points;
+      const maxPoints = essay.max_points ?? paper.components.essay_points;
 
-      if (essay.keywords && essay.keywords.length > 0 && answerText.trim()) {
-        const rubric: VPRubric = {
-          required_concepts: essay.keywords,
-          optional_concepts: [],
-        };
+      // Prefer per-essay rubric_json, fall back to keywords
+      const hasRubric = essay.rubric_json && typeof essay.rubric_json === 'object';
+      const hasKeywords = essay.keywords && essay.keywords.length > 0;
+
+      if ((hasRubric || hasKeywords) && answerText.trim()) {
+        const rubric: VPRubric = hasRubric
+          ? (essay.rubric_json as unknown as VPRubric)
+          : {
+              required_concepts: essay.keywords!,
+              optional_concepts: [],
+            };
         const result = gradeWithRubric(answerText, rubric);
         const points = Math.round(result.score * maxPoints);
         essayScore += points;

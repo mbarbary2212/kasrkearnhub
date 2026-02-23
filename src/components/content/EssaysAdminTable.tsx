@@ -12,6 +12,8 @@ interface Essay {
   rating?: number | null;
   is_deleted?: boolean;
   section_id?: string | null;
+  question_type?: string | null;
+  max_points?: number | null;
 }
 
 interface EssaysAdminTableProps {
@@ -66,6 +68,22 @@ export function EssaysAdminTable({
         ) : (
           <X className="h-4 w-4 text-muted-foreground mx-auto" />
         )
+      ),
+    },
+    {
+      key: 'question_type' as keyof Essay,
+      header: 'Type',
+      className: 'w-24',
+      render: (item) => (
+        <span className="text-sm text-muted-foreground">{item.question_type || 'Essay'}</span>
+      ),
+    },
+    {
+      key: 'max_points' as keyof Essay,
+      header: 'Points',
+      className: 'w-20 text-center',
+      render: (item) => (
+        <span className="text-sm text-muted-foreground">{item.max_points != null ? item.max_points : '—'}</span>
       ),
     },
     {
