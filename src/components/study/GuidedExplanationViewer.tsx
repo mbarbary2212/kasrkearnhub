@@ -69,7 +69,7 @@ export function GuidedExplanationViewer({
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden flex flex-col max-h-full">
       <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 border-b">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -90,7 +90,7 @@ export function GuidedExplanationViewer({
         <Progress value={progress} className="h-2 mt-4" />
       </CardHeader>
 
-      <CardContent className="p-0">
+      <CardContent className="p-0 flex-1 min-h-0 overflow-y-auto">
         {/* Introduction */}
         {currentIndex === 0 && !isComplete && content.introduction && (
           <div className="p-4 bg-muted/30 border-b">
