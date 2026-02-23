@@ -1,72 +1,92 @@
 
 
-## Fix Essay Bulk Upload: Accept Text Ratings + Add Default Marking Selector
+## Add Visual Rubric Editor with AI Generation + Difficulty Selector for Essays
 
-### Problem
-1. The CSV `rating` column contains text labels like "Intermediate", "Advanced", "Beginner" but the parser only accepts numbers 5-20, causing every row to fail with "Rating must be between 5 and 20".
-2. Even when parsed correctly, the insert logic (line 583-594) drops `rating`, `max_points`, `question_type`, and `rubric_json` -- they are never sent to the database.
-3. There is no way for the admin to set a default marking value (5-20) for the batch.
+### Overview
+Enhance the essay edit dialog in `ContentItemActions.tsx` with three new capabilities:
+1. A visual rubric editor so admins can view/edit the `rubric_json` structure without touching raw JSON
+2. An "AI Generate Rubric" button that calls the AI to auto-generate rubric concepts from the question text and model answer
+3. A difficulty selector (Beginner / Intermediate / Advanced) for each essay question
 
-### Solution
+### Database Change
 
-All changes in **`src/components/admin/AdminContentActions.tsx`**:
+Add a `difficulty_level` column to the `essays` table:
+```sql
+ALTER TABLE public.essays
+ADD COLUMN difficulty_level text DEFAULT NULL;
+```
+No RLS changes needed -- existing policies already cover essays.
 
-#### 1. Fix the rating parser (lines 231-240)
-- If `rating` is a recognized text label ("beginner", "intermediate", "advanced", "easy", "medium", "hard"), silently ignore it for the numeric field (no error).
-- If it is a number, validate 5-20 as before.
-- Non-numeric, unrecognized strings: skip silently (no error).
+### New Edge Function: `generate-essay-rubric`
 
-#### 2. Add a "Default Marking" dropdown (between line 865-866)
-- New state: `const [defaultMarking, setDefaultMarking] = useState<number>(10)`
-- A `Select` dropdown with values 5 through 20, placed between the `SectionWarningBanner` and the CSV format block.
-- Label: "Default Marking (out of):" with the dropdown beside it.
+A small edge function that takes the essay question + model answer and returns a `VPRubric`-shaped JSON object. It will:
+- Use the existing `_shared/ai-provider.ts` to call the AI gateway
+- Validate the JWT
+- Accept `{ question, model_answer, keywords }` in the body
+- Return `{ required_concepts, optional_concepts, pass_threshold, acceptable_phrases, critical_omissions }`
 
-#### 3. Fix the insert to include all parsed fields (lines 583-594)
-Currently the insert maps only `title`, `question`, `model_answer`, `module_id`, `chapter_id`, `topic_id`, `section_id`, and `original_section_name`. Update it to also include:
-- `rating`: use row value if present, otherwise use `defaultMarking`
-- `max_points`: use row value if present, otherwise use `defaultMarking`
-- `question_type`: pass through if present
-- `rubric_json`: pass through if present
-- `keywords`: pass through if present
+### UI Changes in `ContentItemActions.tsx`
 
-#### 4. Update CSV format hint (line 868)
-Mention that `rating` can be a text difficulty label or a number (5-20), and that the admin-selected default marking applies when no numeric value is provided.
+Inside the essay edit dialog (the scrollable area), add these new sections after the Keywords field:
+
+**1. Difficulty Selector**
+A dropdown with options: Beginner, Intermediate, Advanced. Saved to the new `difficulty_level` column.
+
+**2. Rubric Editor (collapsible)**
+An accordion/collapsible section titled "Marking Rubric" with:
+- **Required Concepts**: A textarea where each line is a required concept. These are the concepts the student MUST mention.
+- **Optional Concepts**: A textarea for bonus concepts.
+- **Critical Omissions**: A textarea for concepts that, if missing, cause automatic failure.
+- **Pass Threshold**: A slider (0-100%) showing the percentage of required concepts needed to pass. Default 60%.
+- **Acceptable Phrases**: A simple key-value display showing synonym mappings (read-only for now, editable in future).
+
+**3. "Generate Rubric with AI" Button**
+- Placed at the top of the rubric section
+- When clicked, calls the `generate-essay-rubric` edge function
+- Shows a loading spinner while generating
+- On success, populates the rubric fields (required concepts, optional concepts, etc.)
+- Admin can then review and edit before saving
+
+### Props / Interface Updates
+
+**`ContentItemActionsProps`**: Add `difficultyLevel?: string | null`
+
+**`Essay` interface in `EssayList.tsx`**: Add `difficulty_level?: string | null`, `question_type?: string | null`, `rubric_json?: unknown | null`
+
+**`EssayList.tsx`**: Pass `difficultyLevel`, `questionType`, `rubricJson` to `ContentItemActions`
+
+### Save Logic
+
+When saving, include:
+- `difficulty_level` in the update payload
+- `rubric_json` as a JSON object built from the visual editor fields
+- `question_type` (keep existing)
+
+### Files to Create/Modify
+
+| File | Action |
+|---|---|
+| `supabase/functions/generate-essay-rubric/index.ts` | **Create** -- AI rubric generation endpoint |
+| `supabase/config.toml` | **Edit** -- Add function entry with `verify_jwt = false` |
+| `src/components/admin/ContentItemActions.tsx` | **Edit** -- Add difficulty selector, rubric editor UI, AI generate button |
+| `src/components/content/EssayList.tsx` | **Edit** -- Pass new props (difficulty_level, rubric_json, question_type) |
+| `src/components/content/EssaysAdminTable.tsx` | **Edit** -- Add difficulty column |
+| Migration | **Create** -- Add `difficulty_level` column to essays |
 
 ### Technical Details
 
-**Rating parser change:**
-```
-// If rating is text (e.g. "Intermediate"), skip silently
-// If rating is a number outside 5-20, show error
-// If rating is a number 5-20, use it
-```
-
-**Default marking dropdown:**
-```
-<div className="flex items-center gap-3">
-  <label>Default Marking (out of):</label>
-  <Select value={String(defaultMarking)} onValueChange={v => setDefaultMarking(Number(v))}>
-    {/* Options 5 through 20 */}
-  </Select>
-</div>
-```
-
-**Insert logic fix:**
+**Rubric state management in ContentItemActions:**
 ```typescript
-valid.map(essay => ({
-  title: essay.title,
-  question: essay.question,
-  model_answer: essay.model_answer || null,
-  module_id: moduleId,
-  chapter_id: chapterId || null,
-  topic_id: topicId || null,
-  ...(essay.section_id ? { section_id: essay.section_id } : {}),
-  original_section_name: sectionNameMap.get(essay.title) || null,
-  rating: essay.rating ?? defaultMarking,
-  max_points: essay.max_points ?? defaultMarking,
-  ...(essay.question_type ? { question_type: essay.question_type } : {}),
-  ...(essay.rubric_json ? { rubric_json: essay.rubric_json } : {}),
-  ...(essay.keywords ? { keywords: essay.keywords } : {}),
-}))
+const [editDifficulty, setEditDifficulty] = useState<string>(difficultyLevel || '');
+const [editRequiredConcepts, setEditRequiredConcepts] = useState<string>('');
+const [editOptionalConcepts, setEditOptionalConcepts] = useState<string>('');
+const [editCriticalOmissions, setEditCriticalOmissions] = useState<string>('');
+const [editPassThreshold, setEditPassThreshold] = useState<number>(60);
+const [isGeneratingRubric, setIsGeneratingRubric] = useState(false);
 ```
+
+On `handleOpenEdit`, parse `rubricJson` (if present) into the individual fields. On save, rebuild the `rubric_json` object from the fields.
+
+**AI Rubric Generation prompt (edge function):**
+The system prompt instructs the AI to analyze the question and model answer, then extract structured rubric data using tool calling to ensure valid JSON output.
 
