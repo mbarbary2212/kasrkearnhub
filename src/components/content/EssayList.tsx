@@ -36,6 +36,8 @@ interface Essay {
   question: string;
   model_answer?: string | null;
   rating?: number | null;
+  max_points?: number | null;
+  keywords?: string[] | null;
   is_deleted?: boolean;
   chapter_id?: string | null;
   section_id?: string | null;
@@ -403,6 +405,9 @@ export default function EssayList({
                                 title={essay.title}
                                 description={essay.question}
                                 modelAnswer={essay.model_answer}
+                                rating={essay.rating}
+                                maxPoints={essay.max_points}
+                                keywords={essay.keywords}
                                 contentType="essay"
                                 moduleId={moduleId}
                                 chapterId={chapterId}
