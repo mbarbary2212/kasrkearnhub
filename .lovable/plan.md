@@ -1,25 +1,25 @@
 
 
-## Fix: Study Resources Not Updating After Edit
+## Fix: Algorithm Builder Crash on Open
 
 ### Problem
-When you edit an algorithm (or any study resource), the "Resource updated" toast appears but the content doesn't change until you refresh the page. This happens because the component uses a local copy of the resources for drag-and-drop reordering, but only syncs that copy when resource IDs change -- not when content changes.
+Clicking "Build Algorithm" crashes the app because Radix UI's `<Select.Item>` throws an error when given `value=""`. This happens in two places in `AlgorithmBuilderModal.tsx`:
+- Line 148: The "Next Step" selector's "None (end)" option
+- Line 167: The decision option's "None" option
 
 ### Root Cause
-In `StudyResourceTypeSection.tsx` (line 78), the sync condition only compares resource IDs:
-```text
-if (JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
-    setLocalResources(resources);
-}
-```
-When you edit content, the IDs stay the same, so the local state is never refreshed.
+Radix UI Select reserves empty string `""` to represent "no selection" (placeholder state), so it throws:
+> A Select.Item must have a value prop that is not an empty string.
 
-### Solution
-Change the sync condition to also detect content changes. Replace the ID-only comparison with a comparison that includes meaningful fields (like `title` and `content`), or simply compare the full resource objects. This ensures edits are immediately reflected without needing a page refresh, while still preserving drag-and-drop reordering behavior.
+### Fix
+In `AlgorithmBuilderModal.tsx`, replace `value=""` with a sentinel value like `value="__none__"` for both "None" SelectItems. Then update the `onValueChange` handlers to convert `"__none__"` back to `null`.
 
-### File to Change
-- `src/components/study/StudyResourceTypeSection.tsx` -- update the sync comparison (line 78) to detect content/title changes, not just ID changes.
+### Changes
 
-### No page refresh needed
-This is a proper fix that keeps you inside the current view. No `window.location.reload()` will be added.
+**File: `src/components/algorithms/AlgorithmBuilderModal.tsx`**
 
+1. **Line 148** - "Next Step" selector: Change `<SelectItem value="">` to `<SelectItem value="__none__">` and update the `onValueChange` to map `"__none__"` to `null`.
+
+2. **Line 167** - Decision option "Next" selector: Same fix -- change `<SelectItem value="">` to `<SelectItem value="__none__">` and update `onValueChange`.
+
+This is a two-line fix that resolves the crash entirely.
