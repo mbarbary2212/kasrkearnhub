@@ -631,6 +631,19 @@ export default function ChapterPage() {
                           <Plus className="w-3 h-3 mr-1" />
                           Add Guided Explanation
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            guardAdd(() => {
+                              (window as any).__pendingBulkResourceType = 'guided_explanation';
+                              setFlashcardBulkOpen(true);
+                            })
+                          }
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Bulk Upload
+                        </Button>
                       </div>
                     )}
                     {studyResourcesLoading ? (
