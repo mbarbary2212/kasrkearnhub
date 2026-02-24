@@ -47,7 +47,7 @@ import {
   StudyResource,
 } from '@/hooks/useStudyResources';
 import { useTopicMatchingQuestions } from '@/hooks/useMatchingQuestions';
-import { useTopicSectionsEnabled } from '@/hooks/useSections';
+import { useTopicSectionsEnabled, useTopicSections } from '@/hooks/useSections';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
@@ -133,7 +133,17 @@ export default function TopicDetailPage() {
   const { data: flashcards, isLoading: flashcardsLoading } = useTopicStudyResourcesByType(topicId, 'flashcard');
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useTopicSectionsEnabled(topicId);
+  const { data: topicSections } = useTopicSections(sectionsEnabled ? topicId : undefined);
   const { data: topicProgress, isLoading: progressLoading } = useContentProgress({ topicId });
+
+  // Build a map of section_id → display_order for sorting
+  const sectionOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (topicSections) {
+      topicSections.forEach(s => map.set(s.id, s.display_order));
+    }
+    return map;
+  }, [topicSections]);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
 
   // Modern hooks for MCQ, True/False, OSCE
@@ -196,14 +206,25 @@ export default function TopicDetailPage() {
     }
   }, [module, topic, activeSection, setStudyContext]);
   
-  // Helper function to filter content by section
+  // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {
-    if (!selectedSectionId || !sectionsEnabled) return items;
-    return items.filter(item => {
-      const sectionableItem = item as unknown as { section_id?: string | null };
-      return sectionableItem.section_id === selectedSectionId;
+    if (!sectionsEnabled) return items;
+    if (selectedSectionId) {
+      return items.filter(item => {
+        const sectionableItem = item as unknown as { section_id?: string | null };
+        return sectionableItem.section_id === selectedSectionId;
+      });
+    }
+    // "All Sections" — sort by section display_order, unsectioned items go last
+    if (sectionOrderMap.size === 0) return items;
+    return [...items].sort((a, b) => {
+      const aId = (a as unknown as { section_id?: string | null }).section_id;
+      const bId = (b as unknown as { section_id?: string | null }).section_id;
+      const aOrder = aId ? (sectionOrderMap.get(aId) ?? Infinity) : Infinity;
+      const bOrder = bId ? (sectionOrderMap.get(bId) ?? Infinity) : Infinity;
+      return aOrder - bOrder;
     });
-  }, [selectedSectionId, sectionsEnabled]);
+  }, [selectedSectionId, sectionsEnabled, sectionOrderMap]);
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
