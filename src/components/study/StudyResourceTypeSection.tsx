@@ -74,8 +74,10 @@ export function StudyResourceTypeSection({
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
   const reorderResources = useReorderStudyResources();
 
-  // Sync local state when props change
-  if (JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
+  // Sync local state when props change (IDs, titles, or content)
+  const propsFingerprint = JSON.stringify(resources.map(r => ({ id: r.id, title: r.title, content: r.content })));
+  const localFingerprint = JSON.stringify(localResources.map(r => ({ id: r.id, title: r.title, content: r.content })));
+  if (propsFingerprint !== localFingerprint) {
     setLocalResources(resources);
   }
 
