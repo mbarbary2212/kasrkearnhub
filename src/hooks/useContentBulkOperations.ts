@@ -109,3 +109,42 @@ export function useBulkUpdateSection(tableName: ContentTableName) {
     },
   });
 }
+
+// Bulk move to another chapter
+export function useBulkMoveToChapter(tableName: ContentTableName) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ ids, targetChapterId, sourceChapterId }: { 
+      ids: string[]; 
+      targetChapterId: string;
+      sourceChapterId?: string;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from(tableName)
+        .update({ 
+          chapter_id: targetChapterId,
+          updated_by: userData.user?.id 
+        } as never)
+        .in('id', ids);
+      
+      if (error) throw error;
+      return { ids, targetChapterId, sourceChapterId };
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate queries for both source and target chapters
+      const patterns = QUERY_INVALIDATION_MAP[tableName] || [];
+      patterns.forEach(pattern => {
+        if (variables.sourceChapterId) {
+          queryClient.invalidateQueries({ queryKey: [pattern, variables.sourceChapterId] });
+        }
+        queryClient.invalidateQueries({ queryKey: [pattern, variables.targetChapterId] });
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)
+        });
+      });
+    },
+  });
+}

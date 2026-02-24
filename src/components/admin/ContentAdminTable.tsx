@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Pencil, Trash2, Download, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Download, Check, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -33,7 +33,7 @@ import { useBulkDeleteContent, useBulkUpdateSection, type ContentTableName } fro
 import { exportToCsv, type ExportColumn } from '@/lib/csvExport';
 import type { Section } from '@/hooks/useSections';
 import { BulkSectionAssignment } from '@/components/sections';
-
+import { MoveToChapterModal } from '@/components/admin/MoveToChapterModal';
 export interface ColumnConfig<T> {
   key: keyof T | 'actions' | 'select' | 'section';
   header: string;
@@ -73,7 +73,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 }: ContentAdminTableProps<T>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-
+  const [moveOpen, setMoveOpen] = useState(false);
   const bulkDelete = useBulkDeleteContent(contentTable);
   const bulkUpdateSection = useBulkUpdateSection(contentTable);
 
@@ -267,6 +267,17 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                   onComplete={clearSelection}
                 />
               )}
+              {chapterId && moduleId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMoveOpen(true)}
+                  className="h-7 gap-1"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  Move to Chapter
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -346,6 +357,19 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move to Chapter Modal */}
+      {chapterId && moduleId && (
+        <MoveToChapterModal
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          moduleId={moduleId}
+          currentChapterId={chapterId}
+          contentTable={contentTable}
+          itemIds={Array.from(selectedIds)}
+          onComplete={clearSelection}
+        />
+      )}
     </div>
   );
 }
