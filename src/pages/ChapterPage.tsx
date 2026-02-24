@@ -25,7 +25,7 @@ import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdow
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
-import { useChapterSectionsEnabled } from '@/hooks/useSections';
+import { useChapterSectionsEnabled, useChapterSections } from '@/hooks/useSections';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -163,6 +163,16 @@ export default function ChapterPage() {
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
+  const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
+  
+  // Build a map of section_id → display_order for sorting
+  const sectionOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (chapterSections) {
+      chapterSections.forEach(s => map.set(s.id, s.display_order));
+    }
+    return map;
+  }, [chapterSections]);
   
   // Filter clinical cases by chapter
   const chapterClinicalCases = (clinicalCases || []).filter(c => c.chapter_id === chapterId);
@@ -172,14 +182,25 @@ export default function ChapterPage() {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
   
-  // Helper function to filter content by section - uses type assertion for flexibility
+  // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {
-    if (!selectedSectionId || !sectionsEnabled) return items;
-    return items.filter(item => {
-      const sectionable = item as unknown as { section_id?: string | null };
-      return sectionable.section_id === selectedSectionId;
+    if (!sectionsEnabled) return items;
+    if (selectedSectionId) {
+      return items.filter(item => {
+        const sectionable = item as unknown as { section_id?: string | null };
+        return sectionable.section_id === selectedSectionId;
+      });
+    }
+    // "All Sections" — sort by section display_order, unsectioned items go last
+    if (sectionOrderMap.size === 0) return items;
+    return [...items].sort((a, b) => {
+      const aId = (a as unknown as { section_id?: string | null }).section_id;
+      const bId = (b as unknown as { section_id?: string | null }).section_id;
+      const aOrder = aId ? (sectionOrderMap.get(aId) ?? Infinity) : Infinity;
+      const bOrder = bId ? (sectionOrderMap.get(bId) ?? Infinity) : Infinity;
+      return aOrder - bOrder;
     });
-  }, [selectedSectionId, sectionsEnabled]);
+  }, [selectedSectionId, sectionsEnabled, sectionOrderMap]);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
