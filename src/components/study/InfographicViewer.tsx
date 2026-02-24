@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import {
+  X,
   Edit2,
   Trash2,
   FileText,
@@ -192,7 +193,19 @@ export function InfographicViewer({
               </div>
             </DialogHeader>
           )}
-          {isPdf && <DialogTitle className="sr-only">{fullscreenResource?.title}</DialogTitle>}
+          {isPdf && (
+            <>
+              <DialogTitle className="sr-only">{fullscreenResource?.title}</DialogTitle>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md hover:bg-accent"
+                onClick={() => setFullscreenResource(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          )}
 
           <div
             className={cn("flex-1 overflow-auto rounded-lg", isPdf ? "bg-white" : "bg-muted/30 mt-4")}
