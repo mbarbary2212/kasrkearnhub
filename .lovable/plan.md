@@ -1,40 +1,25 @@
 
 
-## Add Section Warning to All Individual Content Form Modals
+## Fix: Study Resources Not Updating After Edit
 
 ### Problem
-When adding individual content items (flashcards, MCQs, essays, OSCE questions, etc.) to a chapter that has no sections, no warning message appears. The `SectionWarningBanner` currently only shows inside bulk upload modals.
+When you edit an algorithm (or any study resource), the "Resource updated" toast appears but the content doesn't change until you refresh the page. This happens because the component uses a local copy of the resources for drag-and-drop reordering, but only syncs that copy when resource IDs change -- not when content changes.
+
+### Root Cause
+In `StudyResourceTypeSection.tsx` (line 78), the sync condition only compares resource IDs:
+```text
+if (JSON.stringify(resources.map(r => r.id)) !== JSON.stringify(localResources.map(r => r.id))) {
+    setLocalResources(resources);
+}
+```
+When you edit content, the IDs stay the same, so the local state is never refreshed.
 
 ### Solution
-Add the `SectionWarningBanner` component to the top of every individual content form modal, so admins always see the reminder when no sections exist -- whether they are adding one item or doing a bulk upload.
+Change the sync condition to also detect content changes. Replace the ID-only comparison with a comparison that includes meaningful fields (like `title` and `content`), or simply compare the full resource objects. This ensures edits are immediately reflected without needing a page refresh, while still preserving drag-and-drop reordering behavior.
 
-### Files to Edit
+### File to Change
+- `src/components/study/StudyResourceTypeSection.tsx` -- update the sync comparison (line 78) to detect content/title changes, not just ID changes.
 
-| File | Change |
-|---|---|
-| `src/components/study/StudyResourceFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
-| `src/components/content/McqFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
-| `src/components/content/OsceFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
-| `src/components/content/TrueFalseFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
-| `src/components/content/MatchingQuestionFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
-| `src/components/content/EssayDetailModal.tsx` | Add `SectionWarningBanner` at top of form body (if it has a chapter/topic context) |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Add `SectionWarningBanner` at top of form body |
+### No page refresh needed
+This is a proper fix that keeps you inside the current view. No `window.location.reload()` will be added.
 
-### What Each Change Looks Like
-
-For each modal, add this import and component near the top of the dialog content (inside the scrollable area):
-
-```typescript
-import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
-
-// Inside the dialog body, before the first form field:
-<SectionWarningBanner chapterId={chapterId} topicId={topicId} />
-```
-
-The banner automatically hides itself when sections already exist, so it only appears when relevant -- no extra logic needed.
-
-### Technical Notes
-
-- The `SectionWarningBanner` component already handles all the logic internally (fetches sections, checks if any exist, returns `null` if they do).
-- Each form modal already has `chapterId` and/or `topicId` props available, so no new props need to be threaded through.
-- This is a small, safe change -- just importing and placing the banner component in 6-7 files.
