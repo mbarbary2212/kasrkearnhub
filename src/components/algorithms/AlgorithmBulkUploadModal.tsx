@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Download, FileText, AlertCircle, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Download, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { parseAlgorithmCsv } from '@/hooks/useInteractiveAlgorithms';
 import { AlgorithmJson } from '@/types/algorithm';
 
@@ -26,23 +26,12 @@ Chest Pain Assessment,node_5,end,Assessment complete,,`;
 export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }: AlgorithmBulkUploadModalProps) {
   const [parsed, setParsed] = useState<{ title: string; json: AlgorithmJson }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | undefined>();
 
-  const downloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'algorithm_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFile = (file: File) => {
     setError(null);
     setParsed(null);
+    setFileName(file.name);
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -69,6 +58,7 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
   const handleClose = () => {
     setParsed(null);
     setError(null);
+    setFileName(undefined);
     onClose();
   };
 
@@ -85,16 +75,24 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
             Each row represents a node in the decision tree.
           </p>
 
-          <Button variant="outline" size="sm" onClick={downloadTemplate}>
+          <Button variant="outline" size="sm" onClick={() => {
+            const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'algorithm_template.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}>
             <Download className="w-3 h-3 mr-1" /> Download Template
           </Button>
 
-          <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
-            onClick={() => fileRef.current?.click()}>
-            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Click to upload CSV file</p>
-            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
-          </div>
+          <DragDropZone
+            id="algorithm-bulk-upload"
+            onFileSelect={handleFile}
+            accept=".csv"
+            fileName={fileName}
+          />
 
           {error && (
             <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
