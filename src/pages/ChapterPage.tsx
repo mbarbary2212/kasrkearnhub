@@ -20,7 +20,7 @@ import { OsceList } from '@/components/content/OsceList';
 import EssayList from '@/components/content/EssayList';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
-import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
+import { ResourcesDeleteManager, ResourceKind, requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { SectionFilter } from '@/components/sections';
@@ -674,6 +674,11 @@ export default function ChapterPage() {
                         resources={filterBySection(studyResources?.filter(r => r.resource_type === 'guided_explanation') || [])}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
+                        onDelete={(id) => {
+                          const resource = studyResources?.find(r => r.id === id);
+                          requestResourceDelete('guided_explanation', id, resource?.title);
+                        }}
+                        chapterId={chapterId}
                       />
                     )}
                   </div>

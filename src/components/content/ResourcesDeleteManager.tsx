@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export type ResourceKind = "flashcard" | "table" | "algorithm" | "exam_tip" | "key_image" | "mind_map" | "infographic" | "clinical_case_worked";
+export type ResourceKind = "flashcard" | "table" | "algorithm" | "exam_tip" | "key_image" | "mind_map" | "infographic" | "clinical_case_worked" | "guided_explanation";
 
 export type PendingDelete = {
   kind: ResourceKind;
@@ -100,6 +100,7 @@ export function ResourcesDeleteManager({
     mind_map: "mind map",
     infographic: "infographic",
     clinical_case_worked: "worked case",
+    guided_explanation: "guided explanation",
   };
 
   return (

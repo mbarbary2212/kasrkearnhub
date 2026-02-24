@@ -21,7 +21,7 @@ import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { OsceList } from '@/components/content/OsceList';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
-import { ResourcesDeleteManager, ResourceKind } from '@/components/content/ResourcesDeleteManager';
+import { ResourcesDeleteManager, ResourceKind, requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
@@ -626,6 +626,10 @@ export default function TopicDetailPage() {
                         resources={filterBySection(guidedExplanations)}
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
+                        onDelete={(id) => {
+                          const resource = guidedExplanations.find(r => r.id === id);
+                          requestResourceDelete('guided_explanation', id, resource?.title);
+                        }}
                         topicId={topicId}
                       />
                     )}
