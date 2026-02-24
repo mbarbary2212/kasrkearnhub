@@ -7,10 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronDown, ClipboardCheck } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ClipboardCheck, Sparkles, Loader2 } from 'lucide-react';
 import { GuidedExplanationContent, ConceptCheckRubric } from '@/hooks/useStudyResources';
 import { parseConcepts, formatConcepts } from '@/lib/rubricMarking';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface GuidedExplanationFormProps {
   content: GuidedExplanationContent;
@@ -198,6 +200,7 @@ export function GuidedExplanationForm({ content, onChange }: GuidedExplanationFo
                       rubric={q.rubric}
                       onChange={(rubric) => updateQuestionRubric(index, rubric)}
                       revealAnswer={q.reveal_answer}
+                      question={q.question}
                     />
                   </CollapsibleContent>
                 </Collapsible>
@@ -266,9 +269,10 @@ interface RubricEditorProps {
   rubric?: ConceptCheckRubric;
   onChange: (rubric: ConceptCheckRubric | undefined) => void;
   revealAnswer: string;
+  question?: string;
 }
 
-function RubricEditor({ rubric, onChange, revealAnswer }: RubricEditorProps) {
+function RubricEditor({ rubric, onChange, revealAnswer, question }: RubricEditorProps) {
   const [requiredText, setRequiredText] = useState(
     rubric?.required_concepts ? formatConcepts(rubric.required_concepts) : ''
   );
@@ -278,6 +282,7 @@ function RubricEditor({ rubric, onChange, revealAnswer }: RubricEditorProps) {
   const [threshold, setThreshold] = useState(
     rubric?.pass_threshold ? Math.round(rubric.pass_threshold * 100) : 60
   );
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const hasRubric = !!rubric;
 
@@ -330,6 +335,49 @@ function RubricEditor({ rubric, onChange, revealAnswer }: RubricEditorProps) {
     });
   };
 
+  const handleAIGenerate = async () => {
+    const q = question || '';
+    const answer = revealAnswer || '';
+    if (!q.trim() && !answer.trim()) {
+      toast.error('Question or answer text is required to generate a rubric');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-essay-rubric', {
+        body: {
+          question: q || answer,
+          model_answer: answer || null,
+          keywords: null,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const required = Array.isArray(data.required_concepts) ? data.required_concepts.join(', ') : '';
+      const optional = Array.isArray(data.optional_concepts) ? data.optional_concepts.join(', ') : '';
+      const passThreshold = typeof data.pass_threshold === 'number' ? data.pass_threshold : 60;
+
+      setRequiredText(required);
+      setOptionalText(optional);
+      setThreshold(passThreshold);
+
+      onChange({
+        required_concepts: parseConcepts(required),
+        optional_concepts: parseConcepts(optional),
+        pass_threshold: passThreshold / 100,
+      });
+
+      toast.success('Rubric generated! Review and edit before saving.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to generate rubric');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleDisableRubric = () => {
     setRequiredText('');
     setOptionalText('');
@@ -339,14 +387,26 @@ function RubricEditor({ rubric, onChange, revealAnswer }: RubricEditorProps) {
 
   if (!hasRubric) {
     return (
-      <div className="text-center py-4 border border-dashed rounded-lg">
+      <div className="text-center py-4 border border-dashed rounded-lg space-y-2">
         <p className="text-sm text-muted-foreground mb-2">
           Enable rubric to use this question in Concept Check practice
         </p>
-        <Button size="sm" variant="outline" onClick={handleEnableRubric}>
-          <Plus className="w-3 h-3 mr-1" />
-          Add Rubric
-        </Button>
+        <div className="flex items-center justify-center gap-2">
+          <Button size="sm" variant="outline" onClick={handleEnableRubric}>
+            <Plus className="w-3 h-3 mr-1" />
+            Add Rubric
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleAIGenerate}
+            disabled={isGenerating}
+            className="gap-1.5"
+          >
+            {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {isGenerating ? 'Generating...' : 'AI Generate'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -355,9 +415,21 @@ function RubricEditor({ rubric, onChange, revealAnswer }: RubricEditorProps) {
     <div className="space-y-4 p-3 border rounded-lg bg-muted/30">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Grading Rubric</span>
-        <Button size="sm" variant="ghost" className="text-xs h-6" onClick={handleDisableRubric}>
-          Remove
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs h-6 gap-1"
+            onClick={handleAIGenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {isGenerating ? 'Generating...' : 'AI Generate'}
+          </Button>
+          <Button size="sm" variant="ghost" className="text-xs h-6" onClick={handleDisableRubric}>
+            Remove
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">
