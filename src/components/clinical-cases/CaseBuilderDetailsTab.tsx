@@ -19,12 +19,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Loader2, X, AlertCircle } from 'lucide-react';
+import { Loader2, X, AlertCircle, ArrowRightLeft } from 'lucide-react';
 import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
 import { useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 import { SectionSelector } from '@/components/sections';
+import { MoveToChapterModal } from '@/components/admin/MoveToChapterModal';
 
 const getMinStagesToPublish = (caseMode: string | undefined) => {
   return caseMode === 'read_case' ? 1 : 3;
@@ -46,6 +47,7 @@ export function CaseBuilderDetailsTab({ clinicalCase, moduleId }: CaseBuilderDet
   const [isPublished, setIsPublished] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
 
   const { data: chapters } = useModuleChapters(moduleId);
   const updateCase = useUpdateClinicalCase();
@@ -284,6 +286,30 @@ export function CaseBuilderDetailsTab({ clinicalCase, moduleId }: CaseBuilderDet
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Move / Copy */}
+      <div className="flex items-center justify-between py-2 border-t">
+        <div>
+          <Label>Move / Copy</Label>
+          <p className="text-sm text-muted-foreground">
+            Reassign this case to another chapter or module
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setMoveModalOpen(true)}>
+          <ArrowRightLeft className="w-4 h-4 mr-1.5" />
+          Move / Copy
+        </Button>
+      </div>
+
+      <MoveToChapterModal
+        open={moveModalOpen}
+        onOpenChange={setMoveModalOpen}
+        moduleId={moduleId}
+        currentChapterId={clinicalCase.chapter_id || undefined}
+        contentTable="virtual_patient_cases"
+        itemIds={[clinicalCase.id]}
+        itemCount={1}
+      />
 
       {/* Save Button */}
       {isDirty && (
