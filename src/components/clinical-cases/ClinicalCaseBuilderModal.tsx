@@ -164,7 +164,7 @@ export function ClinicalCaseBuilderModal({
   const deleteStage = useDeleteClinicalCaseStage();
   const reorderStages = useReorderClinicalCaseStages();
 
-  const [activeTab, setActiveTab] = useState<string>('stages');
+  const [activeTab, setActiveTab] = useState<string>('details');
   const [quickBuildOpen, setQuickBuildOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [addingNewStage, setAddingNewStage] = useState(false);
