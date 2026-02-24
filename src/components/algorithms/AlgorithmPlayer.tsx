@@ -114,7 +114,7 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
               <Button
                 key={opt.id}
                 variant="outline"
-                className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-primary/10 hover:border-primary/50 hover:text-foreground transition-colors"
                 onClick={() => goToNode(opt.next_node_id)}
               >
                 <ArrowRight className="w-4 h-4 mr-2 shrink-0 text-primary" />
