@@ -209,7 +209,7 @@ export function MoveToChapterModal({
             </Button>
             <ScrollArea className="max-h-[350px] pr-2">
               <div className="space-y-1">
-                {allModules.map(mod => (
+                {[...allModules].sort((a, b) => a.name.localeCompare(b.name)).map(mod => (
                   <button
                     key={mod.id}
                     onClick={() => handleSelectModule(mod.id)}
