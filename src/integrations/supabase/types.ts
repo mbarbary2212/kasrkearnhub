@@ -1981,6 +1981,86 @@ export type Database = {
           },
         ]
       }
+      interactive_algorithms: {
+        Row: {
+          algorithm_json: Json
+          chapter_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_deleted: boolean
+          module_id: string
+          section_id: string | null
+          title: string
+          topic_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          algorithm_json?: Json
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean
+          module_id: string
+          section_id?: string | null
+          title: string
+          topic_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          algorithm_json?: Json
+          chapter_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_deleted?: boolean
+          module_id?: string
+          section_id?: string | null
+          title?: string
+          topic_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactive_algorithms_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactive_algorithms_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactive_algorithms_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactive_algorithms_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_feedback: {
         Row: {
           admin_notes: string | null

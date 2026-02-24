@@ -48,6 +48,7 @@ import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHid
 import { useChapterMcqs, useChapterMcqCount } from '@/hooks/useMcqs';
 import { useChapterTrueFalseQuestions, useChapterTrueFalseCount } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseList } from '@/components/content/TrueFalseList';
+import { useChapterAlgorithms } from '@/hooks/useInteractiveAlgorithms';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -165,6 +166,7 @@ export default function ChapterPage() {
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
+  const { data: interactiveAlgorithms } = useChapterAlgorithms(chapterId);
   
   // Build a map of section_id → display_order for sorting
   const sectionOrderMap = useMemo(() => {
@@ -291,12 +293,12 @@ export default function ChapterPage() {
     return createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0) + algorithms.length,
+      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
       guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
       reference_materials: documentsCount,
-      clinical_tools: workedCases.length,
+      clinical_tools: (interactiveAlgorithms?.length || 0) + workedCases.length,
     });
-  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, algorithms.length, workedCases.length]);
+  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const resourcesTabs = useMemo(() => {
@@ -608,7 +610,6 @@ export default function ChapterPage() {
                   <VisualResourcesSection
                     mindMaps={filterBySection(mindMaps)}
                     infographics={filterBySection(studyResources?.filter(r => r.resource_type === 'infographic') || [])}
-                    algorithms={filterBySection(algorithms)}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
                     onAdd={(type) => {
@@ -691,7 +692,6 @@ export default function ChapterPage() {
                 {/* Clinical Tools Content */}
                 {resourcesTab === 'clinical_tools' && chapterId && moduleId && (
                   <ClinicalToolsSection
-                    algorithms={filterBySection(algorithms)}
                     workedCases={filterBySection(workedCases)}
                     canManage={canManageContent}
                     onEdit={handleEditFlashcard}
@@ -707,6 +707,7 @@ export default function ChapterPage() {
                       setFlashcardBulkOpen(true);
                     })}
                     chapterId={chapterId}
+                    moduleId={moduleId}
                   />
                 )}
               </div>
