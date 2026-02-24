@@ -131,6 +131,7 @@ export default function ChapterPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
+  const [visualBulkType, setVisualBulkType] = useState<'mind_map' | 'infographic'>('mind_map');
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
@@ -618,8 +619,11 @@ export default function ChapterPage() {
                       });
                     }}
                     onBulkUpload={(type) => {
-                      if (type === 'mind_map') {
-                        guardAdd(() => setMindMapBulkOpen(true));
+                      if (type === 'mind_map' || type === 'infographic') {
+                        guardAdd(() => {
+                          setVisualBulkType(type);
+                          setMindMapBulkOpen(true);
+                        });
                       } else {
                         guardAdd(() => {
                           (window as any).__pendingBulkResourceType = type;
@@ -929,6 +933,7 @@ export default function ChapterPage() {
               onOpenChange={setMindMapBulkOpen}
               chapterId={chapterId}
               moduleId={moduleId}
+              resourceType={visualBulkType}
             />
           </>
         )}
