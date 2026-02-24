@@ -64,7 +64,7 @@ export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: Algor
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-sm font-semibold leading-tight">{alg.title}</CardTitle>
                   {canManage && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit?.(alg)}>
                         <Edit className="w-3.5 h-3.5" />
                       </Button>
