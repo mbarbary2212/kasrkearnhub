@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,14 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, BookOpen, ChevronLeft, Library } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronLeft, Copy, Library } from 'lucide-react';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
 import { toast } from 'sonner';
-import { useBulkMoveToChapter, type ContentTableName } from '@/hooks/useContentBulkOperations';
+import { useBulkMoveToChapter, useBulkCopyToChapter, type ContentTableName } from '@/hooks/useContentBulkOperations';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+
+type ActionMode = 'move' | 'copy';
 
 interface MoveToChapterModalProps {
   open: boolean;
@@ -41,10 +44,12 @@ export function MoveToChapterModal({
   const [selectedModuleId, setSelectedModuleId] = useState<string>(moduleId);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [step, setStep] = useState<'module' | 'chapter'>('chapter');
+  const [mode, setMode] = useState<ActionMode>('move');
 
   const { data: allModules = [] } = useModules();
   const { data: chapters = [] } = useModuleChapters(selectedModuleId);
   const bulkMove = useBulkMoveToChapter(contentTable);
+  const bulkCopy = useBulkCopyToChapter(contentTable);
 
   const count = itemCount ?? itemIds.length;
   const isSameModule = selectedModuleId === moduleId;
@@ -53,23 +58,35 @@ export function MoveToChapterModal({
     : chapters;
 
   const selectedModule = allModules.find(m => m.id === selectedModuleId);
+  const isPending = bulkMove.isPending || bulkCopy.isPending;
 
-  const handleMove = async () => {
+  const handleAction = async () => {
     if (!selectedChapterId) return;
 
     try {
-      await bulkMove.mutateAsync({
-        ids: itemIds,
-        targetChapterId: selectedChapterId,
-        targetModuleId: isSameModule ? undefined : selectedModuleId,
-        sourceChapterId: currentChapterId,
-      });
       const targetChapter = chapters.find(c => c.id === selectedChapterId);
-      toast.success(`Moved ${count} item${count > 1 ? 's' : ''} to ${targetChapter?.title || 'chapter'}`);
+      
+      if (mode === 'move') {
+        await bulkMove.mutateAsync({
+          ids: itemIds,
+          targetChapterId: selectedChapterId,
+          targetModuleId: isSameModule ? undefined : selectedModuleId,
+          sourceChapterId: currentChapterId,
+        });
+        toast.success(`Moved ${count} item${count > 1 ? 's' : ''} to ${targetChapter?.title || 'chapter'}`);
+      } else {
+        await bulkCopy.mutateAsync({
+          ids: itemIds,
+          targetChapterId: selectedChapterId,
+          targetModuleId: selectedModuleId,
+        });
+        toast.success(`Copied ${count} item${count > 1 ? 's' : ''} to ${targetChapter?.title || 'chapter'}`);
+      }
+      
       handleClose();
       onComplete?.();
     } catch (error) {
-      toast.error('Failed to move items');
+      toast.error(`Failed to ${mode} items`);
     }
   };
 
@@ -78,6 +95,7 @@ export function MoveToChapterModal({
     setSelectedChapterId(null);
     setSelectedModuleId(moduleId);
     setStep('chapter');
+    setMode('move');
   };
 
   const handleSelectModule = (id: string) => {
@@ -91,15 +109,35 @@ export function MoveToChapterModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ArrowRight className="h-5 w-5" />
-            Move to Chapter
+            {mode === 'move' ? <ArrowRight className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+            {mode === 'move' ? 'Move' : 'Copy'} to Chapter
           </DialogTitle>
           <DialogDescription>
             {step === 'module'
               ? 'Select a module, then pick a chapter.'
-              : `Select the target chapter to move ${count} item${count > 1 ? 's' : ''} to.`}
+              : `Select the target chapter to ${mode} ${count} item${count > 1 ? 's' : ''} to.`}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Move / Copy toggle */}
+        <div className="flex items-center gap-3">
+          <Label className="text-sm text-muted-foreground shrink-0">Action:</Label>
+          <ToggleGroup
+            type="single"
+            value={mode}
+            onValueChange={(v) => v && setMode(v as ActionMode)}
+            className="bg-muted rounded-lg p-0.5"
+          >
+            <ToggleGroupItem value="move" className="h-7 px-3 text-xs gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+              <ArrowRight className="h-3.5 w-3.5" />
+              Move
+            </ToggleGroupItem>
+            <ToggleGroupItem value="copy" className="h-7 px-3 text-xs gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+              <Copy className="h-3.5 w-3.5" />
+              Copy
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
 
         {step === 'chapter' && (
           <>
@@ -204,10 +242,10 @@ export function MoveToChapterModal({
           </Button>
           {step === 'chapter' && (
             <Button
-              onClick={handleMove}
-              disabled={!selectedChapterId || bulkMove.isPending}
+              onClick={handleAction}
+              disabled={!selectedChapterId || isPending}
             >
-              {bulkMove.isPending ? 'Moving...' : 'Move'}
+              {isPending ? (mode === 'move' ? 'Moving...' : 'Copying...') : (mode === 'move' ? 'Move' : 'Copy')}
             </Button>
           )}
         </DialogFooter>
