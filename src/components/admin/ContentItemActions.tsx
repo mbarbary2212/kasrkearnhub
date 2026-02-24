@@ -15,8 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreVertical, Pencil, Trash2, MessageSquare, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateContent, useSoftDeleteContent } from '@/hooks/useContentCrud';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
@@ -26,7 +26,7 @@ import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
 import { SectionSelector } from '@/components/sections';
-
+import { MoveToChapterModal } from '@/components/admin/MoveToChapterModal';
 interface ContentItemActionsProps {
   id: string;
   title: string;
@@ -92,6 +92,7 @@ export default function ContentItemActions({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   // Helper to create permission-aware error messages
   const handlePermissionError = (error: Error | unknown, action: 'edit' | 'delete') => {
@@ -268,6 +269,20 @@ export default function ContentItemActions({
                   Delete
                 </DropdownMenuItem>
               )}
+              {canEdit && chapterId && moduleId && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.stopPropagation();
+                      setMoveOpen(true);
+                    }}
+                  >
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Move to Chapter
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -433,6 +448,19 @@ export default function ContentItemActions({
         itemId={id}
         itemTitle={title}
       />
+
+      {/* Move to Chapter Modal */}
+      {chapterId && moduleId && (
+        <MoveToChapterModal
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          moduleId={moduleId}
+          currentChapterId={chapterId}
+          contentTable={TABLE_MAP[contentType] as any}
+          itemIds={[id]}
+          onComplete={() => setMoveOpen(false)}
+        />
+      )}
     </>
   );
 }
