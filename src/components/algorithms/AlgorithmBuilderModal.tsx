@@ -196,10 +196,10 @@ export function AlgorithmBuilderModal({ open, onClose, onSave, initial, saving }
                     {node.type !== 'decision' && node.type !== 'end' && (
                       <div>
                         <Label className="text-xs">Next Step</Label>
-                        <Select value={node.next_node_id || ''} onValueChange={v => updateNode(node.id, { next_node_id: v || null })}>
+                        <Select value={node.next_node_id || '__none__'} onValueChange={v => updateNode(node.id, { next_node_id: v === '__none__' ? null : v })}>
                           <SelectTrigger className="bg-background"><SelectValue placeholder="(end)" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">— None (end) —</SelectItem>
+                            <SelectItem value="__none__">— None (end) —</SelectItem>
                             {nodes.filter(n => n.id !== node.id).map((n, i) => (
                               <SelectItem key={n.id} value={n.id}>{nodeLabel(n.id)}</SelectItem>
                             ))}
@@ -236,10 +236,10 @@ export function AlgorithmBuilderModal({ open, onClose, onSave, initial, saving }
                             placeholder={`Option ${optIdx + 1}`}
                             className="bg-background flex-1"
                           />
-                          <Select value={opt.next_node_id || ''} onValueChange={v => updateOption(node.id, optIdx, { next_node_id: v || null })}>
+                          <Select value={opt.next_node_id || '__none__'} onValueChange={v => updateOption(node.id, optIdx, { next_node_id: v === '__none__' ? null : v })}>
                             <SelectTrigger className="bg-background w-[180px]"><SelectValue placeholder="→ Next" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— None —</SelectItem>
+                              <SelectItem value="__none__">— None —</SelectItem>
                               {nodes.filter(n => n.id !== node.id).map(n => (
                                 <SelectItem key={n.id} value={n.id}>{nodeLabel(n.id)}</SelectItem>
                               ))}
