@@ -521,7 +521,17 @@ export function useUpdateStudyResource() {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
+      // Invalidate both chapter and topic query caches to ensure UI refreshes
+      if (data.chapter_id) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', data.chapter_id] });
+      }
+      if (data.topic_id) {
+        queryClient.invalidateQueries({ queryKey: ['study-resources', 'topic', data.topic_id] });
+      }
+      // Fallback: invalidate all study-resources queries
+      queryClient.invalidateQueries({ 
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'study-resources'
+      });
       // Log activity for flashcard update
       if (data.resource_type === 'flashcard') {
         logActivity({
