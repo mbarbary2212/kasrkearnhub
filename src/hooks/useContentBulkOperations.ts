@@ -140,12 +140,70 @@ export function useBulkMoveToChapter(tableName: ContentTableName) {
       return { ids, targetChapterId, targetModuleId, sourceChapterId };
     },
     onSuccess: (_, variables) => {
-      // Invalidate queries for both source and target chapters
       const patterns = QUERY_INVALIDATION_MAP[tableName] || [];
       patterns.forEach(pattern => {
         if (variables.sourceChapterId) {
           queryClient.invalidateQueries({ queryKey: [pattern, variables.sourceChapterId] });
         }
+        queryClient.invalidateQueries({ queryKey: [pattern, variables.targetChapterId] });
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)
+        });
+      });
+    },
+  });
+}
+
+// Copy columns to keep when duplicating rows (exclude id, created_at, etc.)
+const COPY_EXCLUDE_COLUMNS = ['id', 'created_at', 'updated_at', 'updated_by', 'created_by'];
+
+// Bulk copy to another chapter (duplicates rows)
+export function useBulkCopyToChapter(tableName: ContentTableName) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ ids, targetChapterId, targetModuleId }: { 
+      ids: string[]; 
+      targetChapterId: string;
+      targetModuleId: string;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+
+      // Fetch existing rows
+      const { data: rows, error: fetchError } = await supabase
+        .from(tableName)
+        .select('*')
+        .in('id', ids);
+      
+      if (fetchError) throw fetchError;
+      if (!rows || rows.length === 0) throw new Error('No items found to copy');
+
+      // Build new rows with updated chapter/module and fresh metadata
+      const newRows = rows.map((row: Record<string, unknown>) => {
+        const copy: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (!COPY_EXCLUDE_COLUMNS.includes(key)) {
+            copy[key] = value;
+          }
+        }
+        copy.chapter_id = targetChapterId;
+        copy.module_id = targetModuleId;
+        copy.created_by = userData.user?.id;
+        // Clear section_id since target chapter has different sections
+        copy.section_id = null;
+        return copy;
+      });
+
+      const { error: insertError } = await supabase
+        .from(tableName)
+        .insert(newRows as never[]);
+      
+      if (insertError) throw insertError;
+      return { count: newRows.length, targetChapterId, targetModuleId };
+    },
+    onSuccess: (_, variables) => {
+      const patterns = QUERY_INVALIDATION_MAP[tableName] || [];
+      patterns.forEach(pattern => {
         queryClient.invalidateQueries({ queryKey: [pattern, variables.targetChapterId] });
         queryClient.invalidateQueries({
           predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, tableName)

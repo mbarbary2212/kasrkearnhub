@@ -275,7 +275,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                   className="h-7 gap-1"
                 >
                   <ArrowRight className="h-3.5 w-3.5" />
-                  Move to Chapter
+                  Move / Copy
                 </Button>
               )}
             </>
