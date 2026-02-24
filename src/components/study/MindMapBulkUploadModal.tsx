@@ -16,6 +16,28 @@ import { useBulkCreateStudyResources, useChapterStudyResources, useTopicStudyRes
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+type BulkVisualResourceType = 'mind_map' | 'infographic';
+
+const TYPE_CONFIG: Record<BulkVisualResourceType, {
+  label: string;
+  accept: string;
+  acceptedTypes: string[];
+  dropLabel: string;
+}> = {
+  mind_map: {
+    label: 'Mind Map PDFs',
+    accept: '.pdf',
+    acceptedTypes: ['application/pdf'],
+    dropLabel: 'Drop PDF files here',
+  },
+  infographic: {
+    label: 'Infographics',
+    accept: '.pdf,.png,.jpg,.jpeg,.webp,.svg',
+    acceptedTypes: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
+    dropLabel: 'Drop image or PDF files here',
+  },
+};
+
 interface MindMapBulkUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,6 +46,8 @@ interface MindMapBulkUploadModalProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
+  /** Resource type to create. Defaults to mind_map. */
+  resourceType?: BulkVisualResourceType;
 }
 
 interface UploadItem {
@@ -52,7 +76,9 @@ export function MindMapBulkUploadModal({
   moduleId,
   chapterId,
   topicId,
+  resourceType = 'mind_map',
 }: MindMapBulkUploadModalProps) {
+  const config = TYPE_CONFIG[resourceType];
   const containerId = chapterId || topicId || 'general';
   const [items, setItems] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -77,14 +103,20 @@ export function MindMapBulkUploadModal({
   }, [existingResources]);
 
   const handleFilesSelected = useCallback((files: File[]) => {
-    const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+    const validFiles = files.filter(f => {
+      const ext = f.name.toLowerCase().split('.').pop();
+      const validExts = resourceType === 'infographic' 
+        ? ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'svg']
+        : ['pdf'];
+      return validExts.includes(ext || '');
+    });
     
-    if (pdfFiles.length === 0) {
-      toast.error('Please select PDF files only');
+    if (validFiles.length === 0) {
+      toast.error(resourceType === 'infographic' ? 'Please select image or PDF files' : 'Please select PDF files only');
       return;
     }
 
-    const newItems: UploadItem[] = pdfFiles.map(file => {
+    const newItems: UploadItem[] = validFiles.map(file => {
       const title = generateTitleFromFilename(file.name);
       return {
         file,
@@ -185,9 +217,9 @@ export function MindMapBulkUploadModal({
             module_id: moduleId,
             chapter_id: chapterId || null,
             topic_id: topicId || null,
-            resource_type: 'mind_map' as const,
+            resource_type: resourceType,
             title: r.title,
-            content: { imageUrl: r.url, description: '' },
+            content: resourceType === 'infographic' ? { fileUrl: r.url, description: '' } : { imageUrl: r.url, description: '' },
             folder: null,
           }))
         );
@@ -196,14 +228,14 @@ export function MindMapBulkUploadModal({
         const errorCount = items.length - successCount;
         
         if (errorCount === 0) {
-          toast.success(`Successfully uploaded ${successCount} mind map${successCount > 1 ? 's' : ''}`);
+          toast.success(`Successfully uploaded ${successCount} ${config.label.toLowerCase()}`);
           onOpenChange(false);
           setItems([]);
         } else {
           toast.warning(`Uploaded ${successCount}, failed ${errorCount}`);
         }
       } catch (error) {
-        toast.error('Failed to save mind map records');
+        toast.error('Failed to save resource records');
       }
     }
 
@@ -228,7 +260,7 @@ export function MindMapBulkUploadModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            Bulk Upload Mind Map PDFs
+            Bulk Upload {config.label}
           </DialogTitle>
         </DialogHeader>
 
@@ -248,11 +280,11 @@ export function MindMapBulkUploadModal({
             >
               <div className="p-8 text-center">
                 <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Drop PDF files here</p>
+                <p className="text-sm font-medium">{config.dropLabel}</p>
                 <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
                 <input
                   type="file"
-                  accept=".pdf"
+                  accept={config.accept}
                   multiple
                   onChange={handleFileInputChange}
                   className="hidden"

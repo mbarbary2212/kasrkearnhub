@@ -118,6 +118,7 @@ export default function TopicDetailPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
+  const [visualBulkType, setVisualBulkType] = useState<'mind_map' | 'infographic'>('mind_map');
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
   // Data fetching
@@ -570,8 +571,11 @@ export default function TopicDetailPage() {
                       });
                     }}
                     onBulkUpload={(type) => {
-                      if (type === 'mind_map') {
-                        guardAdd(() => setMindMapBulkOpen(true));
+                      if (type === 'mind_map' || type === 'infographic') {
+                        guardAdd(() => {
+                          setVisualBulkType(type);
+                          setMindMapBulkOpen(true);
+                        });
                       } else {
                         guardAdd(() => {
                           (window as any).__pendingBulkResourceType = type;
@@ -894,6 +898,7 @@ export default function TopicDetailPage() {
               onOpenChange={setMindMapBulkOpen}
               topicId={topicId}
               moduleId={moduleId}
+              resourceType={visualBulkType}
             />
           </>
         )}
