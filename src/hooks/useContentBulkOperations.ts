@@ -110,28 +110,34 @@ export function useBulkUpdateSection(tableName: ContentTableName) {
   });
 }
 
-// Bulk move to another chapter
+// Bulk move to another chapter (optionally across modules)
 export function useBulkMoveToChapter(tableName: ContentTableName) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ ids, targetChapterId, sourceChapterId }: { 
+    mutationFn: async ({ ids, targetChapterId, targetModuleId, sourceChapterId }: { 
       ids: string[]; 
       targetChapterId: string;
+      targetModuleId?: string;
       sourceChapterId?: string;
     }) => {
       const { data: userData } = await supabase.auth.getUser();
       
+      const updatePayload: Record<string, unknown> = {
+        chapter_id: targetChapterId,
+        updated_by: userData.user?.id,
+      };
+      if (targetModuleId) {
+        updatePayload.module_id = targetModuleId;
+      }
+      
       const { error } = await supabase
         .from(tableName)
-        .update({ 
-          chapter_id: targetChapterId,
-          updated_by: userData.user?.id 
-        } as never)
+        .update(updatePayload as never)
         .in('id', ids);
       
       if (error) throw error;
-      return { ids, targetChapterId, sourceChapterId };
+      return { ids, targetChapterId, targetModuleId, sourceChapterId };
     },
     onSuccess: (_, variables) => {
       // Invalidate queries for both source and target chapters
