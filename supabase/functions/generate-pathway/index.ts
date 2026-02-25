@@ -19,6 +19,13 @@ CRITICAL RULES:
 5. Decision nodes must have 2-4 mutually exclusive options
 6. All branches must eventually reach an "end" node
 7. Use appropriate node types for each step
+8. Start with MINIMAL clinical information — reveal data progressively
+9. Present ONE decision at a time — do NOT show full algorithm
+10. Each decision MUST produce a clinical consequence (consequence_text)
+11. Each decision MUST produce a state_delta_json showing patient parameter changes
+12. Include DETERIORATION branches for incorrect decisions
+13. Allow RECOVERY if the learner corrects course
+14. The pathway must feel like managing a real patient over time
 
 NODE TYPES:
 - "decision": A branching point where the user makes a choice (MUST have "options" array)
@@ -31,32 +38,68 @@ OUTPUT SCHEMA (strict JSON):
 {
   "title": "string - pathway title",
   "description": "string - brief description of the pathway",
+  "initial_state_json": {
+    "time_elapsed_minutes": 0,
+    "hemodynamics": {
+      "heart_rate": number,
+      "systolic_bp": number,
+      "diastolic_bp": number,
+      "spo2": number,
+      "respiratory_rate": number,
+      "temperature": number
+    },
+    "risk_flags": []
+  },
+  "reveal_mode": "node_by_node",
+  "include_consequences": true,
   "nodes": [
     {
       "id": "node_1",
       "type": "information" | "decision" | "action" | "emergency" | "end",
       "content": "string - the step content or question",
+      "consequence_text": "string | null - clinical consequence shown after this step",
+      "state_delta_json": {
+        "time_elapsed_minutes": number,
+        "hemodynamics": { ... partial updates },
+        "risk_flags": ["flag_name"]
+      } | null,
       "next_node_id": "string | null - next node for non-decision types (null for end/decision nodes)",
       "options": [
         {
           "id": "node_1_opt_0",
           "text": "string - option text",
-          "next_node_id": "string | null - target node"
+          "next_node_id": "string | null - target node",
+          "consequence_text": "string - what happens clinically when this option is chosen",
+          "state_delta_json": {
+            "time_elapsed_minutes": number,
+            "hemodynamics": { ... partial updates },
+            "risk_flags": ["flag_name"]
+          }
         }
       ]
     }
   ]
 }
 
+CONSEQUENCE & STATE DELTA RULES:
+- consequence_text: Describe what happens clinically (e.g., "IV fluids improve BP to 110/70, HR stabilizes at 88")
+- state_delta_json: Numeric changes to patient parameters (can be positive or negative)
+- Wrong decisions should show deterioration (e.g., HR increases, BP drops, new risk_flags added)
+- Correct decisions should show improvement
+- Time must always advance (time_elapsed_minutes > 0 for each step)
+- risk_flags accumulate — use them to trigger emergency nodes if too many accumulate
+
 PATHWAY GUIDELINES:
-- Start with patient presentation or initial assessment (information node)
+- Start with patient presentation using minimal information (information node)
 - Use decision nodes at key clinical reasoning points
 - Action nodes for interventions, tests, treatments
 - Emergency nodes for critical/urgent situations
 - End nodes for final outcomes/dispositions
-- 5-10 nodes for manageable complexity
+- 5-12 nodes for manageable complexity
 - Ensure logical clinical flow
-- Options array ONLY for decision nodes, omit for all other types`;
+- Options array ONLY for decision nodes, omit for all other types
+- Include at least one deterioration branch that can be recovered from
+- Include at least one deterioration branch that leads to a bad outcome`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -70,7 +113,8 @@ serve(async (req) => {
       moduleName,
       pathwayType,
       nodeCount,
-      additionalInstructions
+      additionalInstructions,
+      pdfContent,
     } = await req.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -82,7 +126,13 @@ serve(async (req) => {
 
     console.log(`Using AI provider: ${provider.name}, model: ${provider.model}`);
 
-    const userPrompt = `Create a clinical decision pathway with the following specifications:
+    let pdfSection = "";
+    if (pdfContent && typeof pdfContent === "string" && pdfContent.length > 0) {
+      const truncated = pdfContent.slice(0, 12000);
+      pdfSection = `\n\nREFERENCE DOCUMENT CONTENT (use this as the clinical source — pathway must be grounded in this material):\n---\n${truncated}\n---\n`;
+    }
+
+    const userPrompt = `Create an interactive clinical decision pathway with the following specifications:
 
 Topic: ${topic || "General clinical pathway"}
 ${chapterTitle ? `Chapter: ${chapterTitle}` : ""}
@@ -90,15 +140,20 @@ ${moduleName ? `Module: ${moduleName}` : ""}
 Pathway Type: ${pathwayType || "Assessment and Management"}
 Approximate Number of Nodes: ${nodeCount || 7}
 ${additionalInstructions ? `Additional Instructions: ${additionalInstructions}` : ""}
+${pdfSection}
 
 Requirements:
-1. Start with patient presentation or initial assessment
-2. Include meaningful decision points with clinically relevant branching
-3. Progress logically through assessment → investigation → diagnosis → management
-4. Include at least 2 decision nodes with 2-3 options each
-5. All branches must terminate at an "end" node
-6. Use emergency nodes for critical situations if clinically appropriate
-7. Make the pathway educationally valuable for medical students
+1. Start with MINIMAL patient information — do NOT reveal the full clinical picture upfront
+2. Present one decision node at a time (node_by_node reveal)
+3. Each decision option MUST have consequence_text describing the clinical outcome
+4. Each decision option MUST have state_delta_json with patient parameter changes
+5. Include at least one deterioration branch (wrong choice → patient worsens)
+6. Allow recovery if the learner corrects course on a subsequent decision
+7. All branches must terminate at an "end" node with outcome summary
+8. Include initial_state_json with baseline vitals
+9. Use emergency nodes for critical situations if clinically appropriate
+10. Make the pathway educationally valuable for medical students
+${pdfContent ? "11. Ground ALL clinical content in the reference document provided above" : ""}
 
 Output valid JSON only.`;
 
@@ -144,7 +199,6 @@ Output valid JSON only.`;
       throw new Error("AI generated invalid JSON. Please try again.");
     }
 
-    // Validate
     const validationErrors = validatePathwayStructure(generatedPathway);
     if (validationErrors.length > 0) {
       console.error("Validation errors:", validationErrors);
@@ -158,7 +212,6 @@ Output valid JSON only.`;
       );
     }
 
-    // Security checks
     const securityIssues = checkSecurityIssues(content);
     if (securityIssues.length > 0) {
       console.error("Security issues detected:", securityIssues);
@@ -176,6 +229,7 @@ Output valid JSON only.`;
           generatedAt: new Date().toISOString(),
           provider: provider.name,
           model: provider.model,
+          hadPdfSource: !!pdfContent,
         }
       }), 
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -203,7 +257,6 @@ function validatePathwayStructure(data: any): string[] {
   }
 
   const validTypes = ["decision", "action", "information", "emergency", "end"];
-  const nodeIds = new Set(data.nodes.map((n: any) => n.id));
   let hasEnd = false;
   let hasDecision = false;
 

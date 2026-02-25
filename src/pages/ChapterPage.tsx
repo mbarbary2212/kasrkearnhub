@@ -1116,10 +1116,13 @@ export default function ChapterPage() {
               moduleName={module?.name}
               chapterId={chapterId}
               chapterTitle={chapter?.title}
-              onSave={async (title, description, json) => {
+              onSave={async (title, description, json, extras) => {
                 await createAlg.mutateAsync({
                   title, description, algorithm_json: json,
                   module_id: moduleId!, chapter_id: chapterId || null, topic_id: null,
+                  reveal_mode: (extras?.reveal_mode as any) || 'node_by_node',
+                  include_consequences: extras?.include_consequences ?? true,
+                  initial_state_json: (extras?.initial_state_json as any) || null,
                 });
               }}
             />
