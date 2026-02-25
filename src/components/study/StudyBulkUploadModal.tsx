@@ -56,7 +56,7 @@ interface ParseError {
 const TYPE_LABELS: Record<StudyResourceType, string> = {
   flashcard: 'Flashcards',
   table: 'Key Tables',
-  algorithm: 'Algorithms',
+  algorithm: 'Pathways',
   exam_tip: 'Exam Tips',
   key_image: 'Key Images',
   mind_map: 'Mind Maps',
@@ -491,7 +491,7 @@ function parseLineByType(
     }
     case 'algorithm': {
       if (values.length < 2) {
-        return { title, content: { steps: [] }, error: 'Algorithm requires title and steps' };
+        return { title, content: { steps: [] }, error: 'Pathway requires title and steps' };
       }
       const steps = values[1].split('|').map((s) => {
         const [stepTitle, description = ''] = s.split('::').map((x) => x.trim());

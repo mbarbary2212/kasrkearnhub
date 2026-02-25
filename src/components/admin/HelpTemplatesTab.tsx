@@ -300,8 +300,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   },
   {
     id: 'algorithm',
-    title: 'Algorithms Template',
-    description: 'Step-by-step clinical algorithms',
+    title: 'Pathways Template',
+    description: 'Step-by-step clinical pathways',
     format: 'csv',
     icon: 'spreadsheet',
   },

@@ -31,7 +31,7 @@ export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: Algor
     return (
       <div className="text-center py-12">
         <GitBranch className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-        <p className="text-sm text-muted-foreground">No interactive algorithms yet.</p>
+        <p className="text-sm text-muted-foreground">No interactive pathways yet.</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: Algor
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Algorithm</AlertDialogTitle>
+            <AlertDialogTitle>Delete Pathway</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteTarget?.title}"? This action cannot be undone.
             </AlertDialogDescription>

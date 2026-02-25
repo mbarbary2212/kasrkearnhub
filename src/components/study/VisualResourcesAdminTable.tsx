@@ -21,7 +21,7 @@ import type { Section } from '@/hooks/useSections';
 const VISUAL_TYPES: { value: StudyResourceType; label: string; icon: React.ReactNode }[] = [
   { value: 'mind_map', label: 'Mind Map', icon: <Network className="w-3 h-3" /> },
   { value: 'infographic', label: 'Infographic', icon: <Image className="w-3 h-3" /> },
-  { value: 'algorithm', label: 'Algorithm', icon: <GitBranch className="w-3 h-3" /> },
+  { value: 'algorithm', label: 'Pathway', icon: <GitBranch className="w-3 h-3" /> },
 ];
 
 interface VisualResourcesAdminTableProps {

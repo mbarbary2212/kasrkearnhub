@@ -31,7 +31,7 @@ interface StudyResourcesSectionProps {
 const RESOURCE_TYPES: { type: StudyResourceType; label: string; icon: React.ReactNode }[] = [
   { type: 'flashcard', label: 'Flashcards', icon: <BookOpen className="w-4 h-4" /> },
   { type: 'table', label: 'Key Tables', icon: <Table2 className="w-4 h-4" /> },
-  { type: 'algorithm', label: 'Algorithms', icon: <GitBranch className="w-4 h-4" /> },
+  { type: 'algorithm', label: 'Pathways', icon: <GitBranch className="w-4 h-4" /> },
   { type: 'exam_tip', label: 'Exam Tips', icon: <Lightbulb className="w-4 h-4" /> },
   { type: 'key_image', label: 'Key Images', icon: <Image className="w-4 h-4" /> },
 ];

@@ -39,7 +39,7 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
         const text = ev.target?.result as string;
         const results = parseAlgorithmCsv(text);
         if (results.length === 0) {
-          setError('No valid algorithms found in CSV. Check the format.');
+          setError('No valid pathways found in CSV. Check the format.');
           return;
         }
         setParsed(results);
@@ -66,12 +66,12 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Bulk Upload Algorithms</DialogTitle>
+          <DialogTitle>Bulk Upload Pathways</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Upload a CSV file to create multiple interactive algorithms at once.
+            Upload a CSV file to create multiple interactive pathways at once.
             Each row represents a node in the decision tree.
           </p>
 
