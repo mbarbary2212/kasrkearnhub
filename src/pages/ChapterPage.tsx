@@ -83,6 +83,7 @@ import {
   FlaskConical,
   User,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -796,9 +797,31 @@ export default function ChapterPage() {
                 {interactiveTab === 'pathways' && chapterId && moduleId && (
                   <div className="space-y-4">
                     {canManageContent && (
-                      <div className="flex gap-2 mb-4">
+                      <div className="flex gap-2 mb-4 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => { setEditingAlgorithm(null); setAlgorithmBuilderOpen(true); }}>
                           <Plus className="w-3 h-3 mr-1" /> Build Pathway
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const algs = interactiveAlgorithms || [];
+                          if (algs.length === 0) { toast.error('No pathways to download'); return; }
+                          const headers = ['title', 'description', 'node_count', 'decision_count'];
+                          const rows = algs.map(a => {
+                            const nodes = a.algorithm_json?.nodes || [];
+                            const vals = [a.title, a.description || '', String(nodes.length), String(nodes.filter(n => n.type === 'decision').length)];
+                            return vals.map(v => v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v).join(',');
+                          });
+                          const csv = [headers.join(','), ...rows].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                          const link = document.createElement('a');
+                          link.href = URL.createObjectURL(blob);
+                          link.download = 'pathways_export.csv';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(link.href);
+                          toast.success(`Downloaded ${algs.length} pathways`);
+                        }}>
+                          <Download className="w-3 h-3 mr-1" /> Download
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setAlgorithmBulkOpen(true)}>
                           <Upload className="w-3 h-3 mr-1" /> Bulk Upload

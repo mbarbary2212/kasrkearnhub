@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   Plus, 
-   
   Trash2, 
   Settings, 
   User,
@@ -34,6 +33,7 @@ import {
   AlertCircle,
   Sparkles,
   Upload,
+  Download,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
@@ -90,12 +90,42 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
     setSelectedIds(new Set());
   }, []);
 
-  // Filter by chapter or topic if provided
-  const filteredCases = (cases || []).filter(c => {
-    if (chapterId) return c.chapter_id === chapterId;
-    if (topicId) return c.topic_id === topicId;
-    return true;
-  });
+  const LEVEL_ORDER: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+
+  // Filter by chapter or topic if provided, then sort by difficulty
+  const filteredCases = (cases || [])
+    .filter(c => {
+      if (chapterId) return c.chapter_id === chapterId;
+      if (topicId) return c.topic_id === topicId;
+      return true;
+    })
+    .sort((a, b) => (LEVEL_ORDER[a.level] ?? 1) - (LEVEL_ORDER[b.level] ?? 1));
+
+  const handleDownloadCases = () => {
+    if (filteredCases.length === 0) {
+      toast.error('No cases to download');
+      return;
+    }
+    const headers = ['title', 'intro_text', 'level', 'case_mode', 'estimated_minutes', 'is_published', 'stage_count'];
+    const rows = filteredCases.map(c => 
+      headers.map(h => {
+        const val = (c as any)[h];
+        const str = val == null ? '' : String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n') 
+          ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'cases_export.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    toast.success(`Downloaded ${filteredCases.length} cases`);
+  };
   
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(filteredCases.map(c => c.id)));
@@ -229,6 +259,10 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             onComplete={clearSelection}
           />
           
+          <Button size="sm" variant="outline" onClick={handleDownloadCases}>
+            <Download className="w-4 h-4 mr-1" />
+            Download
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
               <Upload className="w-4 h-4 mr-1" />
               Bulk Upload
