@@ -304,7 +304,7 @@ export default function ChapterPage() {
   // Per-section color map for visual hierarchy
   const sectionColors: Record<SectionMode, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
     resources:   { activeBg: 'bg-blue-50',    activeBgDark: 'dark:bg-blue-950/30',    border: 'border-l-blue-600',    text: 'text-blue-700 dark:text-blue-300',    icon: 'text-blue-600 dark:text-blue-400',    mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
-    interactive: { activeBg: 'bg-amber-50',   activeBgDark: 'dark:bg-amber-950/30',   border: 'border-l-amber-500',   text: 'text-amber-700 dark:text-amber-300',   icon: 'text-amber-500 dark:text-amber-400',   mobileBg: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
+    interactive: { activeBg: 'bg-teal-50',   activeBgDark: 'dark:bg-teal-950/30',   border: 'border-l-teal-600',   text: 'text-teal-700 dark:text-teal-300',   icon: 'text-teal-600 dark:text-teal-400',   mobileBg: 'bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300' },
     practice:    { activeBg: 'bg-emerald-50', activeBgDark: 'dark:bg-emerald-950/30', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400', mobileBg: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
     test:        { activeBg: 'bg-violet-50',  activeBgDark: 'dark:bg-violet-950/30',  border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300',  icon: 'text-violet-500 dark:text-violet-400',  mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
   };
