@@ -764,10 +764,10 @@ export default function ChapterPage() {
                         key={tab.id}
                         onClick={() => setInteractiveTab(tab.id as InteractiveTabId)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
                           isActive 
-                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
-                            : "text-muted-foreground hover:bg-muted"
+                            ? "bg-amber-500 text-white font-medium shadow-sm border-amber-500" 
+                            : "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100"
                         )}
                       >
                         <Icon className="w-4 h-4" />
