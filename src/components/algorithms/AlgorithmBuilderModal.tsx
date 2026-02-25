@@ -120,7 +120,7 @@ export function AlgorithmBuilderModal({ open, onClose, onSave, initial, saving }
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{initial ? 'Edit Algorithm' : 'Create Algorithm'}</DialogTitle>
+          <DialogTitle>{initial ? 'Edit Pathway' : 'Create Pathway'}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-4">
@@ -128,7 +128,7 @@ export function AlgorithmBuilderModal({ open, onClose, onSave, initial, saving }
             {/* Title & Description */}
             <div className="space-y-3">
               <div>
-                <Label>Algorithm Title *</Label>
+                <Label>Pathway Title *</Label>
                 <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Chest Pain Assessment" />
               </div>
               <div>
@@ -264,7 +264,7 @@ export function AlgorithmBuilderModal({ open, onClose, onSave, initial, saving }
         <DialogFooter className="pt-4 border-t">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : initial ? 'Update Algorithm' : 'Create Algorithm'}
+            {saving ? 'Saving...' : initial ? 'Update Pathway' : 'Create Pathway'}
           </Button>
         </DialogFooter>
       </DialogContent>

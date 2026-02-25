@@ -62,9 +62,9 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
         <CardContent className="text-center space-y-4">
           <div className="py-8">
             <CheckCircle className="w-16 h-16 text-accent mx-auto mb-4" />
-            <p className="text-lg font-semibold text-foreground">Algorithm Complete</p>
+            <p className="text-lg font-semibold text-foreground">Pathway Complete</p>
             <p className="text-sm text-muted-foreground mt-1">
-              You've reached the end of this clinical pathway.
+              You've reached the end of this pathway.
             </p>
           </div>
           <div className="flex justify-center gap-3">

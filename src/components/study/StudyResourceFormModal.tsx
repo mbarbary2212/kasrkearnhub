@@ -62,7 +62,7 @@ interface StudyResourceFormModalProps {
 const TYPE_LABELS: Record<StudyResourceType, string> = {
   flashcard: 'Flashcard',
   table: 'Key Table',
-  algorithm: 'Algorithm',
+  algorithm: 'Pathway',
   exam_tip: 'Exam Tip',
   key_image: 'Key Image',
   mind_map: 'Mind Map',

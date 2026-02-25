@@ -749,7 +749,7 @@ export default function TopicDetailPage() {
                           (window as any).__pendingResourceType = 'algorithm';
                           setFlashcardFormOpen(true);
                         }}>
-                          <Plus className="w-3 h-3 mr-1" /> Build Algorithm
+                          <Plus className="w-3 h-3 mr-1" /> Build Pathway
                         </Button>
                       </div>
                     )}
@@ -758,7 +758,7 @@ export default function TopicDetailPage() {
                       canManage={canManageContent}
                       onEdit={() => {}}
                       onDelete={async () => {
-                        toast.info('Use the algorithm builder to manage algorithms');
+                        toast.info('Use the pathway builder to manage pathways');
                       }}
                     />
                   </div>

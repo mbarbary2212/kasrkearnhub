@@ -797,7 +797,7 @@ export default function ChapterPage() {
                     {canManageContent && (
                       <div className="flex gap-2 mb-4">
                         <Button size="sm" variant="outline" onClick={() => { setEditingAlgorithm(null); setAlgorithmBuilderOpen(true); }}>
-                          <Plus className="w-3 h-3 mr-1" /> Build Algorithm
+                          <Plus className="w-3 h-3 mr-1" /> Build Pathway
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setAlgorithmBulkOpen(true)}>
                           <Upload className="w-3 h-3 mr-1" /> Bulk Upload
@@ -811,7 +811,7 @@ export default function ChapterPage() {
                       onDelete={async (alg) => {
                         try {
                           await deleteAlg.mutateAsync({ id: alg.id, chapterId, topicId: undefined });
-                          toast.success('Algorithm deleted');
+                          toast.success('Pathway deleted');
                         } catch (err: any) {
                           toast.error(err.message || 'Failed to delete');
                         }
