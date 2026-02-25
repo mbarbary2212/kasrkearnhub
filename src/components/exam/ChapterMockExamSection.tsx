@@ -117,10 +117,10 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
             <button
               onClick={() => setContentType('mcq')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all border",
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors border",
                 contentType === 'mcq'
-                  ? "bg-violet-600 text-white font-medium shadow-sm border-violet-600"
-                  : "border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100"
+                  ? "bg-violet-500 text-white font-medium shadow-sm border-violet-500"
+                  : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
               )}
             >
               <FileQuestion className="w-4 h-4" />
@@ -132,10 +132,10 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
             <button
               onClick={() => setContentType('osce')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all border",
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors border",
                 contentType === 'osce'
-                  ? "bg-violet-600 text-white font-medium shadow-sm border-violet-600"
-                  : "border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100"
+                  ? "bg-violet-500 text-white font-medium shadow-sm border-violet-500"
+                  : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
               )}
             >
               <Stethoscope className="w-4 h-4" />
