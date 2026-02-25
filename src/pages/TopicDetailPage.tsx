@@ -714,8 +714,8 @@ export default function TopicDetailPage() {
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
                           isActive 
-                            ? "bg-amber-500 text-white font-medium shadow-sm border-amber-500" 
-                            : "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100"
+                            ? "bg-teal-600 text-white font-medium shadow-sm border-teal-600" 
+                            : "border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100"
                         )}
                       >
                         <Icon className="w-4 h-4" />
