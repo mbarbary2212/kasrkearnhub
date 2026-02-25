@@ -1,38 +1,32 @@
 
 
-## Plan: Improve Interactive Sub-Tab Visibility
+## Plan: Simplify Cases — Remove Mode Tabs, Sort by Difficulty
 
 ### Problem
-The "Cases" tab uses a green filled pill when active, making it visually dominant, while "Pathways" looks like plain text. Users miss "Pathways" entirely because the contrast between active and inactive states is too extreme.
-
-### Solution
-Make both sub-tabs visually equal as outlined pill buttons by default (both with an amber/interactive-section border), then fill the selected one with a solid amber/interactive accent. This way both options are clearly visible as clickable choices.
+The 4-column mode tabs (All / Read / Practice / Branched) create unnecessary complexity. Cases should just be one flat list, sorted by difficulty level, with the level filter dropdown as the only way to narrow down.
 
 ### Changes
 
-**`src/pages/ChapterPage.tsx` (lines 766-771)** and **`src/pages/TopicDetailPage.tsx` (lines 714-719)**
+#### 1. `src/components/clinical-cases/ClinicalCaseList.tsx`
+- **Remove** the `CASE_MODE_TABS` import and `modeFilter` state entirely
+- **Remove** the `<Tabs>` block from all three render paths (loading, empty, main)
+- Call `useClinicalCases` with `'all'` hardcoded (no mode filtering)
+- **Sort** `filteredCases` by difficulty: beginner → intermediate → advanced
+- Update empty state text: "No Clinical Cases" → "No Cases Available"
+- Keep the search input and level filter dropdown as-is
 
-Update the interactive tab button styling:
+#### 2. `src/types/clinicalCase.ts`
+- Remove `comingSoon: true` from `branched_case` in `CASE_MODE_TABS` (kept for admin use but no longer student-facing)
+- Optionally keep `CASE_MODE_TABS` since admin builder/bulk-upload may reference it
 
-- **Inactive state**: `border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100` — a visible outlined pill so it clearly looks like a clickable tab, not plain text.
-- **Active state**: `bg-amber-500 text-white font-medium shadow-sm border border-amber-500` — solid filled amber pill to indicate selection.
+#### 3. `src/components/clinical-cases/ClinicalCaseCard.tsx`
+- Keep the mode badge on each card (Simple/Complex/Branched) so users can still see the type — but it's just metadata, not a filter
 
-This gives both "Cases" and "Pathways" equal visual weight when browsing, and clearly highlights whichever one is selected.
+### What stays unchanged
+- Database, hooks, admin forms, bulk upload — all untouched
+- The level filter dropdown remains (beginner/intermediate/advanced)
+- Card layout, icons, progress tracking — all the same
 
-### Visual Result
-
-```text
-BEFORE:
-  [Cases 8]  Pathways 2      ← Pathways looks like plain text
-
-AFTER (Cases selected):
-  [Cases 8]  (Pathways 2)    ← both are pill-shaped, selected one is solid amber
-
-AFTER (Pathways selected):
-  (Cases 8)  [Pathways 2]    ← same treatment, just swapped
-```
-
-### Files
-- `src/pages/ChapterPage.tsx` — update interactive tab button classes (~2 lines)
-- `src/pages/TopicDetailPage.tsx` — mirror the same change (~2 lines)
+### Result
+Cases tab shows one unified list sorted by difficulty. Students scan top-to-bottom from easy to hard. The level dropdown lets them filter if needed. No mode tabs cluttering the UI.
 
