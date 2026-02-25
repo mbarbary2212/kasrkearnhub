@@ -21,10 +21,13 @@ import {
 // Resource tab types - includes Guided Explanations (Socratic method)
 export type ResourceTabId = 'lectures' | 'flashcards' | 'mind_maps' | 'guided_explanations' | 'reference_materials' | 'clinical_tools';
 
+// Interactive tab types — Cases + Pathways (positioned between Resources and Practice)
+export type InteractiveTabId = 'cases' | 'pathways';
+
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
-// Consolidated: cases, virtual_patient, worked_case → clinical_cases
-export type PracticeTabId = 'mcqs' | 'true_false' | 'essays' | 'clinical_cases' | 'osce' | 'practical' | 'matching' | 'images';
+// clinical_cases moved to Interactive section
+export type PracticeTabId = 'mcqs' | 'true_false' | 'essays' | 'osce' | 'practical' | 'matching' | 'images';
 
 export interface TabConfig {
   id: string;
@@ -44,13 +47,18 @@ export const RESOURCES_TABS: TabConfig[] = [
   { id: 'clinical_tools', label: 'Clinical Tools', icon: GitBranch },
 ];
 
+// Interactive tabs — Cases and Pathways
+export const INTERACTIVE_TABS: TabConfig[] = [
+  { id: 'cases', label: 'Cases', icon: Stethoscope },
+  { id: 'pathways', label: 'Pathways', icon: GitBranch },
+];
+
 // Standard Practice tabs - same for all modules/departments
-// Consolidated: "Case Scenarios" and "Virtual Patient" → "Clinical Cases"
+// clinical_cases moved to Interactive section
 export const PRACTICE_TABS: TabConfig[] = [
   { id: 'mcqs', label: 'MCQs', icon: HelpCircle },
   { id: 'true_false', label: 'True/False', icon: ToggleLeft },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
-  { id: 'clinical_cases', label: 'Clinical Cases', icon: Stethoscope },
   { id: 'osce', label: 'OSCE', icon: FlaskConical },
   { id: 'practical', label: 'Practical', icon: Stethoscope },
   { id: 'matching', label: 'Matching', icon: Link2 },
@@ -76,11 +84,20 @@ export function createResourceTabs(counts: {
   }));
 }
 
+export function createInteractiveTabs(counts: {
+  cases?: number;
+  pathways?: number;
+}): TabWithCount[] {
+  return INTERACTIVE_TABS.map(tab => ({
+    ...tab,
+    count: counts[tab.id as keyof typeof counts] ?? 0,
+  }));
+}
+
 export function createPracticeTabs(counts: {
   mcqs?: number;
   true_false?: number;
   essays?: number;
-  clinical_cases?: number;
   osce?: number;
   practical?: number;
   matching?: number;
@@ -91,7 +108,6 @@ export function createPracticeTabs(counts: {
     count: counts[tab.id as keyof typeof counts] ?? 0,
   }));
 }
-
 // Filter tabs for student view (hide empty tabs when setting is enabled)
 export function filterTabsForStudent(
   tabs: TabWithCount[],
