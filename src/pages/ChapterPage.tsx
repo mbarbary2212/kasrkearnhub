@@ -545,10 +545,10 @@ export default function ChapterPage() {
                         key={tab.id}
                         onClick={() => handleResourcesTabChange(tab.id as ResourceTabId)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
                           isActive 
-                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
-                            : "text-muted-foreground hover:bg-muted"
+                            ? "bg-blue-600 text-white font-medium shadow-sm border-blue-600" 
+                            : "border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
                         )}
                       >
                         <Icon className="w-4 h-4" />
@@ -766,8 +766,8 @@ export default function ChapterPage() {
                         className={cn(
                           "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
                           isActive 
-                            ? "bg-teal-600 text-white font-medium shadow-sm border-teal-600" 
-                            : "border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100"
+                            ? "bg-amber-500 text-white font-medium shadow-sm border-amber-500" 
+                            : "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100"
                         )}
                       >
                         <Icon className="w-4 h-4" />
@@ -852,10 +852,10 @@ export default function ChapterPage() {
                         key={tab.id}
                         onClick={() => setPracticeTab(tab.id as PracticeTabId)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
                           isActive 
-                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
-                            : "text-muted-foreground hover:bg-muted"
+                            ? "bg-emerald-600 text-white font-medium shadow-sm border-emerald-600" 
+                            : "border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                         )}
                       >
                         <Icon className="w-4 h-4" />
