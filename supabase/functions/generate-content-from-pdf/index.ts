@@ -26,7 +26,8 @@ type ContentType =
   | "worked_case"
   | "guided_explanation"
   | "socratic_tutorial"
-  | "topic_summary";
+  | "topic_summary"
+  | "pathway";
 
 interface GenerateRequest {
   document_id?: string;
@@ -173,6 +174,18 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     content: "string - structured summary in markdown (500-1500 words). Include key concepts, definitions, clinical relevance, and exam-focused highlights organized with clear headings.",
     section_number: "string (optional) - section number from the provided list",
   },
+  pathway: {
+    title: "string - pathway title (e.g. 'Chest Pain Assessment')",
+    description: "string - brief description of the pathway purpose",
+    nodes: `array of 4-8 node objects representing steps in a clinical decision tree. Each node MUST have:
+      - id: string - unique identifier (e.g. 'node_1', 'node_2')
+      - type: string - EXACTLY one of 'decision', 'action', 'information', 'emergency', 'end'
+      - content: string - the step content or question text
+      - next_node_id: string or null - id of the next node (null for end nodes and decision nodes)
+      - options: array (ONLY for decision nodes) - [{ id: string, text: string, next_node_id: string|null }]
+    The pathway must form a valid connected tree starting from node_1. Decision nodes branch via options, other nodes flow linearly via next_node_id. Must have at least one 'end' node.`,
+    section_number: "string (optional) - section number from the provided list",
+  },
 };
 
 const VP_STAGE_SCHEMA = {
@@ -286,6 +299,20 @@ PEDAGOGICAL GUIDELINES (Topic Summary):
 - Use bullet points and numbered lists for clarity
 - Include a brief clinical pearls section at the end
 - Use markdown formatting throughout`;
+
+    case 'pathway':
+      return `
+PEDAGOGICAL GUIDELINES (Clinical Decision Pathway):
+- Create a logical decision tree for clinical reasoning
+- Start with patient presentation or initial assessment
+- Decision nodes should present clear branching questions
+- Action nodes should specify concrete clinical actions
+- Information nodes provide context or findings
+- Emergency nodes highlight urgent/critical actions
+- End nodes summarize outcomes or final dispositions
+- Ensure all branches lead to meaningful endpoints
+- Include 4-8 nodes for manageable complexity
+- Make options mutually exclusive at each decision point`;
 
     default:
       return '';
@@ -516,6 +543,31 @@ function validateMindMapItem(item: any, index: number): ValidationResult {
   return { isValid: errors.length === 0, errors, warnings: [] };
 }
 
+function validatePathwayItem(item: any, index: number): ValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (!item.title || item.title.length < 3) errors.push(`Pathway #${index + 1}: title is required (min 3 chars)`);
+  if (!Array.isArray(item.nodes) || item.nodes.length < 3) errors.push(`Pathway #${index + 1}: nodes must be an array with at least 3 nodes`);
+  else {
+    const nodeIds = new Set(item.nodes.map((n: any) => n.id));
+    const validTypes = ['decision', 'action', 'information', 'emergency', 'end'];
+    for (let n = 0; n < item.nodes.length; n++) {
+      const node = item.nodes[n];
+      if (!node.id) errors.push(`Pathway #${index + 1}, Node #${n + 1}: id is required`);
+      if (!validTypes.includes(node.type)) errors.push(`Pathway #${index + 1}, Node #${n + 1}: type must be one of ${validTypes.join(', ')}`);
+      if (!node.content || node.content.length < 5) errors.push(`Pathway #${index + 1}, Node #${n + 1}: content is required (min 5 chars)`);
+      if (node.type === 'decision') {
+        if (!Array.isArray(node.options) || node.options.length < 2) {
+          errors.push(`Pathway #${index + 1}, Node #${n + 1}: decision nodes need at least 2 options`);
+        }
+      }
+    }
+    const hasEnd = item.nodes.some((n: any) => n.type === 'end');
+    if (!hasEnd) warnings.push(`Pathway #${index + 1}: no 'end' node found - consider adding one`);
+  }
+  return { isValid: errors.length === 0, errors, warnings };
+}
+
 function validateWorkedCaseItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
   if (!item.title || item.title.length < 5) errors.push(`Worked Case #${index + 1}: title is required`);
@@ -677,6 +729,7 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
       case 'guided_explanation': result = validateGuidedExplanationItem(items[i], i); break;
       case 'socratic_tutorial': result = validateSocraticTutorialItem(items[i], i); break;
       case 'topic_summary': result = validateTopicSummaryItem(items[i], i); break;
+      case 'pathway': result = validatePathwayItem(items[i], i); break;
       default: result = { isValid: true, errors: [], warnings: [] };
     }
     allErrors.push(...result.errors);
@@ -817,7 +870,7 @@ function parseAIResponse(text: string): any[] {
     : parsed?.items || parsed?.questions || parsed?.flashcards || parsed?.cases ||
       parsed?.essays || parsed?.osces || parsed?.matching || parsed?.virtual_patients ||
       parsed?.mind_maps || parsed?.worked_cases || parsed?.guided_explanations ||
-      parsed?.socratic_tutorials || parsed?.topic_summaries ||
+      parsed?.socratic_tutorials || parsed?.topic_summaries || parsed?.pathways ||
       (parsed ? [parsed] : []);
 
   return Array.isArray(normalized) ? normalized : [];

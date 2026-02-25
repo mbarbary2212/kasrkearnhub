@@ -31,6 +31,7 @@ import {
   Stethoscope,
   GraduationCap,
   MessageCircleQuestion,
+  GitBranch,
   Info
 } from 'lucide-react';
 import { AIContentPreviewCard } from './AIContentPreviewCard';
@@ -78,6 +79,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
+  { value: 'pathway', label: 'Pathways', icon: GitBranch, description: 'Interactive clinical decision trees', category: 'resources', requiresChapter: true },
   { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
   { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
   { value: 'socratic_tutorial', label: 'Socratic Tutorial', icon: GraduationCap, description: 'Long-form narrative tutorial using Socratic teaching method', category: 'resources', requiresChapter: true },
