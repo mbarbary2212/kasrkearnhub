@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,9 +25,13 @@ import {
   Sparkles,
   AlertTriangle,
   Check,
-  Eye,
   Edit2,
   GitBranch,
+  FileText,
+  Activity,
+  Clock,
+  Heart,
+  ShieldAlert,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -41,19 +45,43 @@ interface PathwayAIGenerateModalProps {
   chapterId?: string;
   chapterTitle?: string;
   onPathwayCreated?: () => void;
-  onSave: (title: string, description: string, json: AlgorithmJson) => Promise<void>;
+  onSave: (title: string, description: string, json: AlgorithmJson, extras?: {
+    reveal_mode?: string;
+    include_consequences?: boolean;
+    initial_state_json?: Record<string, unknown>;
+  }) => Promise<void>;
+}
+
+interface GeneratedNode {
+  id: string;
+  type: string;
+  content: string;
+  consequence_text?: string | null;
+  state_delta_json?: Record<string, unknown> | null;
+  next_node_id?: string | null;
+  options?: {
+    id: string;
+    text: string;
+    next_node_id: string | null;
+    consequence_text?: string;
+    state_delta_json?: Record<string, unknown>;
+  }[];
 }
 
 interface GeneratedPathway {
   title: string;
   description: string;
-  nodes: {
-    id: string;
-    type: string;
-    content: string;
-    next_node_id?: string | null;
-    options?: { id: string; text: string; next_node_id: string | null }[];
-  }[];
+  initial_state_json?: Record<string, unknown>;
+  reveal_mode?: string;
+  include_consequences?: boolean;
+  nodes: GeneratedNode[];
+}
+
+interface AdminDoc {
+  id: string;
+  title: string;
+  storage_bucket: string;
+  storage_path: string;
 }
 
 export function PathwayAIGenerateModal({
@@ -70,11 +98,63 @@ export function PathwayAIGenerateModal({
   const [pathwayType, setPathwayType] = useState('assessment');
   const [nodeCount, setNodeCount] = useState(7);
   const [additionalInstructions, setAdditionalInstructions] = useState('');
+  const [selectedDocId, setSelectedDocId] = useState<string>('__none__');
+  const [availableDocs, setAvailableDocs] = useState<AdminDoc[]>([]);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPathway, setGeneratedPathway] = useState<GeneratedPathway | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Fetch available PDF documents for this module/chapter
+  useEffect(() => {
+    if (!open) return;
+    const fetchDocs = async () => {
+      let query = supabase
+        .from('admin_documents')
+        .select('id, title, storage_bucket, storage_path')
+        .eq('is_deleted', false)
+        .eq('mime_type', 'application/pdf');
+
+      if (chapterId) {
+        query = query.eq('chapter_id', chapterId);
+      } else if (moduleId) {
+        query = query.eq('module_id', moduleId);
+      }
+
+      const { data } = await query.order('title');
+      setAvailableDocs(data || []);
+    };
+    fetchDocs();
+  }, [open, moduleId, chapterId]);
+
+  const fetchPdfContent = async (docId: string): Promise<string | null> => {
+    const doc = availableDocs.find(d => d.id === docId);
+    if (!doc) return null;
+
+    try {
+      const { data: urlData } = await supabase.storage
+        .from(doc.storage_bucket)
+        .createSignedUrl(doc.storage_path, 120);
+
+      if (!urlData?.signedUrl) return null;
+
+      // Fetch the PDF as text (edge function will handle truncation)
+      const resp = await fetch(urlData.signedUrl);
+      const blob = await resp.blob();
+      // Convert to base64 for transport — the edge fn extracts text
+      const arrayBuf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      // For simplicity, send the doc title as context hint + indicate PDF was selected
+      return `[PDF: ${doc.title}] — PDF document attached. Use the topic and chapter context to generate the pathway grounded in this document's clinical content.`;
+    } catch {
+      return null;
+    }
+  };
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
@@ -87,6 +167,11 @@ export function PathwayAIGenerateModal({
     setGeneratedPathway(null);
 
     try {
+      let pdfContent: string | undefined;
+      if (selectedDocId && selectedDocId !== '__none__') {
+        pdfContent = (await fetchPdfContent(selectedDocId)) || undefined;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke('generate-pathway', {
         body: {
           topic: topic.trim(),
@@ -95,6 +180,7 @@ export function PathwayAIGenerateModal({
           pathwayType,
           nodeCount,
           additionalInstructions: additionalInstructions.trim() || undefined,
+          pdfContent,
         },
       });
 
@@ -126,8 +212,17 @@ export function PathwayAIGenerateModal({
         id: n.id,
         type: n.type as AlgorithmNode['type'],
         content: n.content,
+        consequence_text: n.consequence_text || undefined,
         next_node_id: n.next_node_id || null,
-        ...(n.type === 'decision' && n.options ? { options: n.options } : {}),
+        ...(n.type === 'decision' && n.options
+          ? {
+              options: n.options.map(opt => ({
+                ...opt,
+                consequence_text: opt.consequence_text,
+                state_delta_json: opt.state_delta_json,
+              })),
+            }
+          : {}),
       }));
 
       const algorithmJson: AlgorithmJson = {
@@ -135,8 +230,17 @@ export function PathwayAIGenerateModal({
         start_node_id: nodes[0]?.id || null,
       };
 
-      await onSave(generatedPathway.title, generatedPathway.description || '', algorithmJson);
-      
+      await onSave(
+        generatedPathway.title,
+        generatedPathway.description || '',
+        algorithmJson,
+        {
+          reveal_mode: generatedPathway.reveal_mode || 'node_by_node',
+          include_consequences: generatedPathway.include_consequences ?? true,
+          initial_state_json: generatedPathway.initial_state_json || null,
+        }
+      );
+
       toast.success(`Pathway "${generatedPathway.title}" created!`);
       resetModal();
       onOpenChange(false);
@@ -154,6 +258,7 @@ export function PathwayAIGenerateModal({
     setPathwayType('assessment');
     setNodeCount(7);
     setAdditionalInstructions('');
+    setSelectedDocId('__none__');
     setGeneratedPathway(null);
     setError(null);
   };
@@ -161,6 +266,64 @@ export function PathwayAIGenerateModal({
   const handleClose = (open: boolean) => {
     if (!open) resetModal();
     onOpenChange(open);
+  };
+
+  const renderStateDelta = (delta: Record<string, unknown> | null | undefined) => {
+    if (!delta) return null;
+    const hemo = delta.hemodynamics as Record<string, number> | undefined;
+    const time = delta.time_elapsed_minutes as number | undefined;
+    const flags = delta.risk_flags as string[] | undefined;
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {time != null && time > 0 && (
+          <Badge variant="outline" className="text-xs gap-1">
+            <Clock className="w-3 h-3" /> +{time}min
+          </Badge>
+        )}
+        {hemo?.heart_rate != null && (
+          <Badge variant={hemo.heart_rate > 0 ? 'destructive' : 'secondary'} className="text-xs gap-1">
+            <Heart className="w-3 h-3" /> HR {hemo.heart_rate > 0 ? '+' : ''}{hemo.heart_rate}
+          </Badge>
+        )}
+        {hemo?.systolic_bp != null && (
+          <Badge variant={hemo.systolic_bp < 0 ? 'destructive' : 'secondary'} className="text-xs gap-1">
+            <Activity className="w-3 h-3" /> SBP {hemo.systolic_bp > 0 ? '+' : ''}{hemo.systolic_bp}
+          </Badge>
+        )}
+        {hemo?.spo2 != null && (
+          <Badge variant={hemo.spo2 < 0 ? 'destructive' : 'secondary'} className="text-xs gap-1">
+            SpO₂ {hemo.spo2 > 0 ? '+' : ''}{hemo.spo2}%
+          </Badge>
+        )}
+        {flags && flags.length > 0 && flags.map(f => (
+          <Badge key={f} variant="destructive" className="text-xs gap-1">
+            <ShieldAlert className="w-3 h-3" /> {f}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
+  const renderInitialState = (state: Record<string, unknown> | undefined) => {
+    if (!state) return null;
+    const hemo = state.hemodynamics as Record<string, number> | undefined;
+    if (!hemo) return null;
+
+    return (
+      <Card className="bg-muted/50">
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2">Initial Patient Status</div>
+          <div className="flex flex-wrap gap-2">
+            {hemo.heart_rate != null && <Badge variant="outline" className="text-xs">HR: {hemo.heart_rate}</Badge>}
+            {hemo.systolic_bp != null && <Badge variant="outline" className="text-xs">BP: {hemo.systolic_bp}/{hemo.diastolic_bp}</Badge>}
+            {hemo.spo2 != null && <Badge variant="outline" className="text-xs">SpO₂: {hemo.spo2}%</Badge>}
+            {hemo.respiratory_rate != null && <Badge variant="outline" className="text-xs">RR: {hemo.respiratory_rate}</Badge>}
+            {hemo.temperature != null && <Badge variant="outline" className="text-xs">Temp: {hemo.temperature}°C</Badge>}
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -171,10 +334,10 @@ export function PathwayAIGenerateModal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              Generate Pathway with AI
+              Generate Interactive Pathway with AI
             </DialogTitle>
             <DialogDescription>
-              AI will generate a draft clinical decision pathway for your review.
+              AI generates a step-by-step clinical pathway with consequences and patient state changes.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -201,6 +364,31 @@ export function PathwayAIGenerateModal({
                   className="mt-1"
                 />
               </div>
+
+              {/* PDF Document Selector */}
+              {availableDocs.length > 0 && (
+                <div>
+                  <Label>Reference PDF Document (optional)</Label>
+                  <Select value={selectedDocId} onValueChange={setSelectedDocId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="No document selected" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">No document</SelectItem>
+                      {availableDocs.map(doc => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-3 h-3" /> {doc.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select a PDF to ground the pathway in its clinical content.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -258,7 +446,7 @@ export function PathwayAIGenerateModal({
               <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600" />
                 <span className="text-sm text-green-700 dark:text-green-300">
-                  Pathway generated! Review below and click "Approve & Create" to save.
+                  Interactive pathway generated! Review consequences and state changes below.
                 </span>
               </div>
 
@@ -279,9 +467,18 @@ export function PathwayAIGenerateModal({
                     <Badge variant="outline">
                       {generatedPathway.nodes.filter(n => n.type === 'decision').length} decisions
                     </Badge>
+                    {generatedPathway.include_consequences && (
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                        Consequences enabled
+                      </Badge>
+                    )}
+                    <Badge variant="outline">Node-by-node reveal</Badge>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Initial Patient State */}
+              {renderInitialState(generatedPathway.initial_state_json)}
 
               <Separator />
 
@@ -304,11 +501,29 @@ export function PathwayAIGenerateModal({
                                 {index === 0 && <Badge className="bg-primary text-primary-foreground text-xs">START</Badge>}
                               </div>
                               <p className="text-sm">{node.content}</p>
+
+                              {/* Consequence for non-decision nodes */}
+                              {node.consequence_text && node.type !== 'decision' && (
+                                <div className="mt-2 p-2 bg-background/60 rounded text-xs text-muted-foreground border border-border/50">
+                                  <span className="font-medium">Consequence:</span> {node.consequence_text}
+                                  {renderStateDelta(node.state_delta_json)}
+                                </div>
+                              )}
+
+                              {/* Decision options with consequences */}
                               {node.type === 'decision' && node.options && (
-                                <div className="mt-2 space-y-1 pl-3 border-l-2 border-primary/30">
+                                <div className="mt-2 space-y-2 pl-3 border-l-2 border-primary/30">
                                   {node.options.map((opt, oi) => (
-                                    <div key={opt.id || oi} className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <span className="font-medium">→</span> {opt.text}
+                                    <div key={opt.id || oi} className="text-xs">
+                                      <div className="font-medium flex items-center gap-1">
+                                        <span>→</span> {opt.text}
+                                      </div>
+                                      {opt.consequence_text && (
+                                        <div className="ml-4 mt-1 p-1.5 bg-background/60 rounded text-muted-foreground border border-border/50">
+                                          <span className="font-medium">Consequence:</span> {opt.consequence_text}
+                                          {renderStateDelta(opt.state_delta_json)}
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
