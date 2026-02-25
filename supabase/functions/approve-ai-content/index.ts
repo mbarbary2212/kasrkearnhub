@@ -26,7 +26,8 @@ type ContentType =
   | "worked_case"
   | "guided_explanation"
   | "socratic_tutorial"
-  | "topic_summary";
+  | "topic_summary"
+  | "pathway";
 
 function ensureArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
@@ -665,6 +666,46 @@ serve(async (req) => {
       if (error) {
         console.error(`[${jobId}] ${contentType} insert error:`, error.message);
         throw new Error(`Failed to insert ${contentType}: ${error.message}`);
+      }
+    } else if (contentType === "pathway") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for pathways", step: "validation", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const pathwaysToInsert = items.map((item: any, idx: number) => {
+        // Build algorithm_json from the AI-generated nodes
+        const nodes = ensureArray(item.nodes).map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          content: n.content,
+          next_node_id: n.next_node_id || null,
+          ...(n.type === 'decision' && n.options ? { options: n.options } : {}),
+        }));
+        
+        return {
+          module_id: moduleId,
+          chapter_id: chapterId,
+          title: item.title,
+          description: item.description || null,
+          algorithm_json: {
+            nodes,
+            start_node_id: nodes.length > 0 ? nodes[0].id : null,
+          },
+          display_order: idx,
+          created_by: user.id,
+          is_deleted: false,
+        };
+      });
+
+      const { error } = await serviceClient
+        .from("interactive_algorithms")
+        .insert(pathwaysToInsert);
+      if (error) {
+        console.error(`[${jobId}] Pathway insert error:`, error.message);
+        throw new Error(`Failed to insert pathways: ${error.message}`);
       }
     } else {
       return jsonResponse(
