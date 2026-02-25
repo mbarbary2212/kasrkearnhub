@@ -22,7 +22,6 @@ import { OsceList } from '@/components/content/OsceList';
 import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ResourcesDeleteManager, ResourceKind, requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
-import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -57,9 +56,11 @@ import { toast } from 'sonner';
 import { 
   createResourceTabs, 
   createPracticeTabs, 
+  createInteractiveTabs,
   filterTabsForStudent,
   ResourceTabId,
   PracticeTabId,
+  InteractiveTabId,
 } from '@/config/tabConfig';
 import { 
   ArrowLeft, 
@@ -72,11 +73,14 @@ import {
   Plus,
   Upload,
   Image,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AlgorithmList } from '@/components/algorithms';
+import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 
 
-type SectionMode = 'resources' | 'practice' | 'test';
+type SectionMode = 'resources' | 'interactive' | 'practice' | 'test';
 
 export default function TopicDetailPage() {
   const { moduleId, topicId } = useParams();
@@ -102,6 +106,7 @@ export default function TopicDetailPage() {
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
+  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   
@@ -255,6 +260,7 @@ export default function TopicDetailPage() {
 
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
+    { id: 'interactive' as SectionMode, label: 'Interactive', mobileLabel: 'Interactive', icon: Sparkles },
     { id: 'practice' as SectionMode, label: 'Self Assessment', mobileLabel: 'Self Assess', icon: GraduationCap },
     { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
@@ -267,7 +273,7 @@ export default function TopicDetailPage() {
       mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
       guided_explanations: guidedExplanations.length,
       reference_materials: documentsCount,
-      clinical_tools: (interactiveAlgorithms?.length || 0) + workedCases.length,
+      clinical_tools: workedCases.length,
     });
   }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources]);
 
@@ -284,20 +290,29 @@ export default function TopicDetailPage() {
     }
   }, [resourcesTabs, resourcesTab]);
 
+  const allInteractiveTabs = useMemo(() => {
+    return createInteractiveTabs({
+      cases: topicClinicalCases.length,
+      pathways: interactiveAlgorithms?.length || 0,
+    });
+  }, [topicClinicalCases.length, interactiveAlgorithms?.length]);
+
+  const interactiveTabs = useMemo(() => {
+    if (canManageContent) return allInteractiveTabs;
+    return filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, allInteractiveTabs, hideEmptyTabs]);
+
   const allPracticeTabs = useMemo(() => {
-    // Unified clinical cases count = cases from virtual_patient_cases table
-    const clinicalCasesCount = topicClinicalCases.length;
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
       true_false: trueFalseQuestions?.length || 0,
       essays: essays?.length || 0,
-      clinical_cases: clinicalCasesCount,
       osce: osceQuestions?.length || 0,
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
     });
-  }, [mcqs?.length, trueFalseQuestions?.length, essays?.length, topicClinicalCases.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -677,7 +692,81 @@ export default function TopicDetailPage() {
               </div>
             )}
 
-            {/* Self Assessment Section */}
+            {/* Interactive Section (Cases + Pathways) */}
+            {activeSection === 'interactive' && (
+              <div className="space-y-4">
+                {/* Sub-tabs for Interactive */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={interactiveTabs}
+                    activeTab={interactiveTab}
+                    onTabChange={(tab) => setInteractiveTab(tab as InteractiveTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
+                  {interactiveTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = interactiveTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setInteractiveTab(tab.id as InteractiveTabId)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
+                          isActive 
+                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Cases Content */}
+                {interactiveTab === 'cases' && moduleId && topicId && (
+                  <div>
+                    {canManageContent ? (
+                      <ClinicalCaseAdminList moduleId={moduleId} topicId={topicId} />
+                    ) : clinicalCasesLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <ClinicalCaseList moduleId={moduleId} topicId={topicId} />
+                    )}
+                  </div>
+                )}
+
+                {/* Pathways (Algorithms) Content */}
+                {interactiveTab === 'pathways' && topicId && moduleId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2 mb-4">
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setEditingFlashcard(null);
+                          (window as any).__pendingResourceType = 'algorithm';
+                          setFlashcardFormOpen(true);
+                        }}>
+                          <Plus className="w-3 h-3 mr-1" /> Build Algorithm
+                        </Button>
+                      </div>
+                    )}
+                    <AlgorithmList
+                      algorithms={interactiveAlgorithms || []}
+                      canManage={canManageContent}
+                      onEdit={() => {}}
+                      onDelete={async () => {
+                        toast.info('Use the algorithm builder to manage algorithms');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+
             {activeSection === 'practice' && (
               <div className="space-y-4">
                 {/* Section Filter - shown when sections are enabled */}
@@ -788,18 +877,8 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Clinical Cases */}
-                {practiceTab === 'clinical_cases' && moduleId && topicId && (
-                  <div>
-                    {canManageContent ? (
-                      <ClinicalCaseAdminList moduleId={moduleId} topicId={topicId} />
-                    ) : clinicalCasesLoading ? (
-                      <QuestionListSkeleton count={2} type="mcq" />
-                    ) : (
-                      <ClinicalCaseList moduleId={moduleId} topicId={topicId} />
-                    )}
-                  </div>
-                )}
+
+
 
                 {/* OSCE */}
                 {practiceTab === 'osce' && (

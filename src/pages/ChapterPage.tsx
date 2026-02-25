@@ -54,10 +54,19 @@ import { toast } from 'sonner';
 import { 
   createResourceTabs, 
   createPracticeTabs, 
+  createInteractiveTabs,
   filterTabsForStudent,
   ResourceTabId,
   PracticeTabId,
+  InteractiveTabId,
 } from '@/config/tabConfig';
+import { AlgorithmList, AlgorithmBuilderModal, AlgorithmBulkUploadModal } from '@/components/algorithms';
+import {
+  useCreateInteractiveAlgorithm,
+  useUpdateInteractiveAlgorithm,
+  useDeleteInteractiveAlgorithm,
+} from '@/hooks/useInteractiveAlgorithms';
+import { InteractiveAlgorithm, AlgorithmJson } from '@/types/algorithm';
 import { ChapterMockExamSection } from '@/components/exam';
 import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
@@ -73,11 +82,12 @@ import {
   ClipboardCheck,
   FlaskConical,
   User,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
-type SectionMode = 'resources' | 'practice' | 'test';
+type SectionMode = 'resources' | 'interactive' | 'practice' | 'test';
 
 export default function ChapterPage() {
   const { moduleId, chapterId } = useParams();
@@ -112,6 +122,7 @@ export default function ChapterPage() {
   const [activeSection, setActiveSection] = useState<SectionMode>('resources');
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
+  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
@@ -127,6 +138,14 @@ export default function ChapterPage() {
   // State for Case Scenarios modals
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
+
+  // Algorithm builder state
+  const [algorithmBuilderOpen, setAlgorithmBuilderOpen] = useState(false);
+  const [algorithmBulkOpen, setAlgorithmBulkOpen] = useState(false);
+  const [editingAlgorithm, setEditingAlgorithm] = useState<InteractiveAlgorithm | null>(null);
+  const createAlg = useCreateInteractiveAlgorithm();
+  const updateAlg = useUpdateInteractiveAlgorithm();
+  const deleteAlg = useDeleteInteractiveAlgorithm();
 
   // State for Flashcard modals
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
@@ -149,7 +168,7 @@ export default function ChapterPage() {
   const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
   
   // Full practice data hooks - only fetch when Practice or Test section is active
-  const isPracticeActive = activeSection === 'practice' || activeSection === 'test';
+  const isPracticeActive = activeSection === 'practice' || activeSection === 'test' || activeSection === 'interactive';
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedMcqs } = useChapterMcqs(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId, false, { enabled: isPracticeActive });
@@ -274,18 +293,20 @@ export default function ChapterPage() {
     );
   }
 
-  // Section navigation items
+  // Section navigation items — Resources → Interactive → Practice → Test
   const sectionNav = [
     { id: 'resources' as SectionMode, label: 'Resources', mobileLabel: 'Resources', icon: FolderOpen },
+    { id: 'interactive' as SectionMode, label: 'Interactive', mobileLabel: 'Interactive', icon: Sparkles },
     { id: 'practice' as SectionMode, label: 'Practice', mobileLabel: 'Practice', icon: GraduationCap },
     { id: 'test' as SectionMode, label: 'Test Yourself', mobileLabel: 'Test', icon: ClipboardCheck },
   ];
 
   // Per-section color map for visual hierarchy
   const sectionColors: Record<SectionMode, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
-    resources: { activeBg: 'bg-blue-50',    activeBgDark: 'dark:bg-blue-950/30',    border: 'border-l-blue-600',    text: 'text-blue-700 dark:text-blue-300',    icon: 'text-blue-600 dark:text-blue-400',    mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
-    practice:  { activeBg: 'bg-emerald-50', activeBgDark: 'dark:bg-emerald-950/30', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400', mobileBg: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
-    test:      { activeBg: 'bg-violet-50',  activeBgDark: 'dark:bg-violet-950/30',  border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300',  icon: 'text-violet-500 dark:text-violet-400',  mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
+    resources:   { activeBg: 'bg-blue-50',    activeBgDark: 'dark:bg-blue-950/30',    border: 'border-l-blue-600',    text: 'text-blue-700 dark:text-blue-300',    icon: 'text-blue-600 dark:text-blue-400',    mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+    interactive: { activeBg: 'bg-amber-50',   activeBgDark: 'dark:bg-amber-950/30',   border: 'border-l-amber-500',   text: 'text-amber-700 dark:text-amber-300',   icon: 'text-amber-500 dark:text-amber-400',   mobileBg: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
+    practice:    { activeBg: 'bg-emerald-50', activeBgDark: 'dark:bg-emerald-950/30', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400', mobileBg: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
+    test:        { activeBg: 'bg-violet-50',  activeBgDark: 'dark:bg-violet-950/30',  border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300',  icon: 'text-violet-500 dark:text-violet-400',  mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
   };
 
   // Use unified tab configuration - create all tabs first
@@ -296,7 +317,7 @@ export default function ChapterPage() {
       mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
       guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
       reference_materials: documentsCount,
-      clinical_tools: (interactiveAlgorithms?.length || 0) + workedCases.length,
+      clinical_tools: workedCases.length,
     });
   }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length]);
 
@@ -313,12 +334,23 @@ export default function ChapterPage() {
     }
   }, [resourcesTabs, resourcesTab]);
 
+  const allInteractiveTabs = useMemo(() => {
+    return createInteractiveTabs({
+      cases: clinicalCaseCount,
+      pathways: interactiveAlgorithms?.length || 0,
+    });
+  }, [clinicalCaseCount, interactiveAlgorithms?.length]);
+
+  const interactiveTabs = useMemo(() => {
+    if (canManageContent) return allInteractiveTabs;
+    return filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
+  }, [canManageContent, allInteractiveTabs, hideEmptyTabs]);
+
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqCount,
       true_false: trueFalseCount,
       essays: essayCount,
-      clinical_cases: clinicalCaseCount,
       osce: osceCount,
       practical: 0,
       matching: matchingCount,
@@ -328,7 +360,6 @@ export default function ChapterPage() {
     mcqCount,
     trueFalseCount,
     essayCount,
-    clinicalCaseCount,
     osceCount,
     matchingCount,
   ]);
@@ -713,7 +744,85 @@ export default function ChapterPage() {
               </div>
             )}
 
-            {/* Practice Section */}
+            {/* Interactive Section (Cases + Pathways) */}
+            {activeSection === 'interactive' && (
+              <div className="space-y-4">
+                {/* Sub-tabs for Interactive */}
+                <div className="md:hidden">
+                  <MobileSectionDropdown
+                    tabs={interactiveTabs}
+                    activeTab={interactiveTab}
+                    onTabChange={(tab) => setInteractiveTab(tab as InteractiveTabId)}
+                  />
+                </div>
+                <div className="hidden md:flex gap-2 flex-wrap">
+                  {interactiveTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = interactiveTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setInteractiveTab(tab.id as InteractiveTabId)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
+                          isActive 
+                            ? "bg-accent text-accent-foreground font-medium shadow-sm" 
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Cases Content */}
+                {interactiveTab === 'cases' && moduleId && chapterId && (
+                  <div>
+                    {canManageContent ? (
+                      <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
+                    ) : clinicalCasesLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
+                    )}
+                  </div>
+                )}
+
+                {/* Pathways (Algorithms) Content */}
+                {interactiveTab === 'pathways' && chapterId && moduleId && (
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex gap-2 mb-4">
+                        <Button size="sm" variant="outline" onClick={() => { setEditingAlgorithm(null); setAlgorithmBuilderOpen(true); }}>
+                          <Plus className="w-3 h-3 mr-1" /> Build Algorithm
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAlgorithmBulkOpen(true)}>
+                          <Upload className="w-3 h-3 mr-1" /> Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    <AlgorithmList
+                      algorithms={interactiveAlgorithms || []}
+                      canManage={canManageContent}
+                      onEdit={(alg) => { setEditingAlgorithm(alg); setAlgorithmBuilderOpen(true); }}
+                      onDelete={async (alg) => {
+                        try {
+                          await deleteAlg.mutateAsync({ id: alg.id, chapterId, topicId: undefined });
+                          toast.success('Algorithm deleted');
+                        } catch (err: any) {
+                          toast.error(err.message || 'Failed to delete');
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+
             {activeSection === 'practice' && (
               <div className="space-y-4">
                 {/* Section Filter - shown when sections are enabled */}
@@ -824,18 +933,8 @@ export default function ChapterPage() {
                   </div>
                 )}
 
-                {/* Clinical Cases Content */}
-                {practiceTab === 'clinical_cases' && moduleId && chapterId && (
-                  <div>
-                    {canManageContent ? (
-                      <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
-                    ) : clinicalCasesLoading ? (
-                      <QuestionListSkeleton count={2} type="mcq" />
-                    ) : (
-                      <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
-                    )}
-                  </div>
-                )}
+
+
 
                 {/* OSCE Content */}
                 {practiceTab === 'osce' && (
@@ -935,6 +1034,53 @@ export default function ChapterPage() {
               chapterId={chapterId}
               moduleId={moduleId}
               resourceType={visualBulkType}
+            />
+            {/* Algorithm Builder + Bulk Upload Modals */}
+            {algorithmBuilderOpen && (
+              <AlgorithmBuilderModal
+                open={algorithmBuilderOpen}
+                onClose={() => { setAlgorithmBuilderOpen(false); setEditingAlgorithm(null); }}
+                onSave={async (title, description, json) => {
+                  try {
+                    if (editingAlgorithm) {
+                      await updateAlg.mutateAsync({ id: editingAlgorithm.id, title, description, algorithm_json: json as any });
+                      toast.success('Algorithm updated');
+                    } else {
+                      await createAlg.mutateAsync({
+                        title, description, algorithm_json: json,
+                        module_id: moduleId!, chapter_id: chapterId || null, topic_id: null,
+                      });
+                      toast.success('Algorithm created');
+                    }
+                    setAlgorithmBuilderOpen(false);
+                    setEditingAlgorithm(null);
+                  } catch (err: any) {
+                    toast.error(err.message || 'Failed to save algorithm');
+                  }
+                }}
+                initial={editingAlgorithm}
+                saving={createAlg.isPending || updateAlg.isPending}
+              />
+            )}
+            <AlgorithmBulkUploadModal
+              open={algorithmBulkOpen}
+              onClose={() => setAlgorithmBulkOpen(false)}
+              onImport={async (algorithms) => {
+                if (!moduleId) { toast.error('Module ID missing'); return; }
+                try {
+                  for (const alg of algorithms) {
+                    await createAlg.mutateAsync({
+                      title: alg.title, algorithm_json: alg.json,
+                      module_id: moduleId, chapter_id: chapterId || null, topic_id: null,
+                    });
+                  }
+                  toast.success(`${algorithms.length} algorithm(s) imported`);
+                  setAlgorithmBulkOpen(false);
+                } catch (err: any) {
+                  toast.error(err.message || 'Import failed');
+                }
+              }}
+              importing={createAlg.isPending}
             />
           </>
         )}
