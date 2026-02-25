@@ -139,16 +139,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
             )}
           </div>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <button
-              onClick={handleGoHome}
-              className={`text-sm font-medium transition-all duration-200 hover:text-primary hover:scale-110 ${
-                location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
+          {/* Admin Panel button - prominent header placement */}
+          {user && isAdmin && (
+            <Button
+              onClick={() => navigate('/admin')}
+              variant="ghost"
+              className={`gap-1.5 rounded-full transition-all duration-200 hover:scale-105 ${
+                location.pathname === '/admin'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20'
               }`}
+              size={isMobile ? 'icon' : 'sm'}
             >
-              Home
-            </button>
-          </nav>
+              <Shield className="h-4 w-4" />
+              {!isMobile && <span className="font-medium">Admin Panel</span>}
+            </Button>
+          )}
 
           <div className="flex items-center gap-2">
             {/* Admin notifications for admins */}
