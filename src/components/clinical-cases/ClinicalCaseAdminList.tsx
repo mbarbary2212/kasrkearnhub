@@ -362,6 +362,32 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
                     <Button
                       variant="outline"
                       size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const headers = ['title', 'intro_text', 'level', 'case_mode', 'estimated_minutes', 'is_published', 'stage_count'];
+                        const row = headers.map(h => {
+                          const val = (clinicalCase as any)[h];
+                          const str = val == null ? '' : String(val);
+                          return str.includes(',') || str.includes('"') || str.includes('\n')
+                            ? `"${str.replace(/"/g, '""')}"` : str;
+                        }).join(',');
+                        const csv = [headers.join(','), row].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `case_${clinicalCase.title.replace(/\s+/g, '_').substring(0, 30)}.csv`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+                        toast.success('Case downloaded');
+                      }}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => setDeleteConfirm(clinicalCase)}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
