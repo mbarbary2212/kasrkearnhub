@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useChapterMcqs, useTopicMcqs } from '@/hooks/useMcqs';
 import { useChapterOsceQuestions, useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
@@ -113,30 +112,40 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
   return (
     <div className="space-y-6">
       {/* Content Type Tabs */}
-      <Tabs value={contentType} onValueChange={(v) => setContentType(v as ContentType)}>
-        <TabsList className={cn("grid w-full max-w-lg mx-auto", "grid-cols-2")}>
+      <div className="flex gap-2 justify-center flex-wrap mb-6">
           {hasMcqs && (
-            <TabsTrigger value="mcq" className="gap-2">
+            <button
+              onClick={() => setContentType('mcq')}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all border",
+                contentType === 'mcq'
+                  ? "bg-violet-600 text-white font-medium shadow-sm border-violet-600"
+                  : "border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100"
+              )}
+            >
               <FileQuestion className="w-4 h-4" />
               MCQ
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {mcqCount}
-              </Badge>
-            </TabsTrigger>
+              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{mcqCount}</Badge>
+            </button>
           )}
           {hasOsce && (
-            <TabsTrigger value="osce" className="gap-2">
+            <button
+              onClick={() => setContentType('osce')}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all border",
+                contentType === 'osce'
+                  ? "bg-violet-600 text-white font-medium shadow-sm border-violet-600"
+                  : "border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100"
+              )}
+            >
               <Stethoscope className="w-4 h-4" />
               OSCE
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {osceCount}
-              </Badge>
-            </TabsTrigger>
+              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{osceCount}</Badge>
+            </button>
           )}
-        </TabsList>
+        </div>
 
-        {hasMcqs && (
-          <TabsContent value="mcq" className="mt-6">
+        {contentType === 'mcq' && hasMcqs && (
             <MockTimedExam 
               moduleId={moduleId}
               chapterId={chapterId}
@@ -145,11 +154,9 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
               questionCount={questionCount}
               secondsPerQuestion={secondsPerQuestion}
             />
-          </TabsContent>
         )}
 
-        {hasOsce && (
-          <TabsContent value="osce" className="mt-6">
+        {contentType === 'osce' && hasOsce && (
             <OsceTimedExam 
               moduleId={moduleId}
               chapterId={chapterId}
@@ -157,9 +164,7 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
               onComplete={() => {}}
               secondsPerQuestion={90}
             />
-          </TabsContent>
         )}
-      </Tabs>
     </div>
   );
 }
