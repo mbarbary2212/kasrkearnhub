@@ -1,6 +1,7 @@
 // Interactive Algorithm decision-tree types
 
 export type AlgorithmNodeType = 'decision' | 'action' | 'information' | 'emergency' | 'end';
+export type AlgorithmRevealMode = 'node_by_node' | 'full';
 
 export interface AlgorithmOption {
   id: string;
@@ -12,6 +13,8 @@ export interface AlgorithmNode {
   id: string;
   type: AlgorithmNodeType;
   content: string;
+  /** Consequence text shown after choosing this path */
+  consequence_text?: string;
   /** Only for 'decision' type */
   options?: AlgorithmOption[];
   /** For non-decision types, the next node to navigate to */
@@ -34,6 +37,9 @@ export interface InteractiveAlgorithm {
   display_order: number;
   is_deleted: boolean;
   section_id: string | null;
+  reveal_mode: AlgorithmRevealMode;
+  include_consequences: boolean;
+  initial_state_json: Record<string, unknown> | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -49,6 +55,9 @@ export interface InteractiveAlgorithmInsert {
   description?: string | null;
   display_order?: number;
   section_id?: string | null;
+  reveal_mode?: AlgorithmRevealMode;
+  include_consequences?: boolean;
+  initial_state_json?: Record<string, unknown> | null;
 }
 
 // Node type display configuration

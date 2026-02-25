@@ -58,10 +58,10 @@ export function useVirtualPatientCases(moduleId?: string, includeUnpublished = f
         return data?.map(c => ({
           ...c,
           stage_count: countMap[c.id] || 0,
-        })) as VPCase[];
+        })) as unknown as VPCase[];
       }
 
-      return data as VPCase[];
+      return data as unknown as VPCase[];
     },
     enabled: true,
   });
@@ -97,7 +97,7 @@ export function useVirtualPatientCase(caseId?: string) {
         ...caseData,
         stages: (stages || []).map(parseStageData),
         stage_count: stages?.length || 0,
-      } as VPCase;
+      } as unknown as VPCase;
     },
     enabled: !!caseId,
   });
@@ -128,13 +128,17 @@ export function useCreateVirtualPatientCase() {
 
   return useMutation({
     mutationFn: async (data: VPCaseFormData) => {
+      const insertData: Record<string, unknown> = {
+        ...data,
+        created_by: user?.id,
+        tags: data.tags || [],
+      };
+      if (data.initial_state_json !== undefined) {
+        insertData.initial_state_json = data.initial_state_json as unknown as Json;
+      }
       const { data: result, error } = await supabase
         .from('virtual_patient_cases')
-        .insert({
-          ...data,
-          created_by: user?.id,
-          tags: data.tags || [],
-        })
+        .insert(insertData as any)
         .select()
         .single();
 
@@ -154,13 +158,17 @@ export function useUpdateVirtualPatientCase() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<VPCaseFormData> }) => {
+      const updatePayload: Record<string, unknown> = {
+        ...data,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+      if (data.initial_state_json !== undefined) {
+        updatePayload.initial_state_json = data.initial_state_json as unknown as Json;
+      }
       const { data: result, error } = await supabase
         .from('virtual_patient_cases')
-        .update({
-          ...data,
-          updated_by: user?.id,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload as any)
         .eq('id', id)
         .select()
         .single();

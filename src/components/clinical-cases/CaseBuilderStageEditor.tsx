@@ -54,6 +54,7 @@ export function CaseBuilderStageEditor({
   ]);
   const [correctAnswer, setCorrectAnswer] = useState<string | string[]>('A');
   const [explanation, setExplanation] = useState('');
+  const [consequenceText, setConsequenceText] = useState('');
   const [teachingPoints, setTeachingPoints] = useState<string[]>([]);
   const [teachingPointInput, setTeachingPointInput] = useState('');
   const [rubricRequired, setRubricRequired] = useState('');
@@ -73,6 +74,7 @@ export function CaseBuilderStageEditor({
       ]);
       setCorrectAnswer(stage.correct_answer);
       setExplanation(stage.explanation || '');
+      setConsequenceText((stage as any).consequence_text || '');
       setTeachingPoints(stage.teaching_points || []);
       if (stage.rubric) {
         setRubricRequired(stage.rubric.required_concepts.join('\n'));
@@ -159,6 +161,7 @@ export function CaseBuilderStageEditor({
       explanation: explanation.trim() || undefined,
       teaching_points: teachingPoints,
       rubric,
+      consequence_text: consequenceText.trim() || undefined,
     };
 
     try {
@@ -314,6 +317,14 @@ export function CaseBuilderStageEditor({
           </div>
         </div>
       )}
+
+      {/* Consequence Text */}
+      <div>
+        <Label>Consequence Text (optional)</Label>
+        <Textarea value={consequenceText} onChange={(e) => setConsequenceText(e.target.value)}
+          placeholder="What happens clinically as a result of this decision..." rows={2} className="mt-1" />
+        <p className="text-xs text-muted-foreground mt-1">Shown instead of correctness for simulation/virtual patient case types.</p>
+      </div>
 
       {/* Explanation */}
       <div>
