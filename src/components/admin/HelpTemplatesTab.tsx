@@ -490,7 +490,8 @@ function generateTemplateDownload(templateId: string) {
     case 'guided_explanation':
       // All CSV-based templates use the schema system
       if (schema) {
-        downloadCsv(`${templateId}_template.csv`, generateCsvFromSchema(schema));
+        const fileName = templateId === 'algorithm' ? 'pathways_template.csv' : `${templateId}_template.csv`;
+        downloadCsv(fileName, generateCsvFromSchema(schema));
       }
       break;
       

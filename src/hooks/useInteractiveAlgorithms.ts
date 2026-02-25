@@ -105,7 +105,7 @@ export function parseAlgorithmCsv(csvText: string): { title: string; json: Algor
   if (lines.length < 2) return [];
   
   const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-  const titleIdx = header.indexOf('algorithm_title');
+  const titleIdx = Math.max(header.indexOf('pathway_title'), header.indexOf('algorithm_title'));
   const nodeIdx = header.indexOf('node_id');
   const typeIdx = header.indexOf('step_type');
   const contentIdx = header.indexOf('content');
@@ -113,7 +113,7 @@ export function parseAlgorithmCsv(csvText: string): { title: string; json: Algor
   const nextIdx = header.indexOf('next_node');
 
   if ([titleIdx, nodeIdx, typeIdx, contentIdx].some(i => i === -1)) {
-    throw new Error('CSV must have columns: algorithm_title, node_id, step_type, content, option_text, next_node');
+    throw new Error('CSV must have columns: pathway_title, node_id, step_type, content, option_text, next_node');
   }
 
   // Group rows by algorithm title

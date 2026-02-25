@@ -15,7 +15,7 @@ interface AlgorithmBulkUploadModalProps {
   importing?: boolean;
 }
 
-const CSV_TEMPLATE = `algorithm_title,node_id,step_type,content,option_text,next_node
+const CSV_TEMPLATE = `pathway_title,node_id,step_type,content,option_text,next_node
 Chest Pain Assessment,node_1,information,Patient presents with chest pain,, node_2
 Chest Pain Assessment,node_2,decision,Is the pain acute or chronic?,Acute onset,node_3
 Chest Pain Assessment,node_2,decision,Is the pain acute or chronic?,Chronic/recurring,node_4
