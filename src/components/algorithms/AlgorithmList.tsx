@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, Play, GitBranch } from 'lucide-react';
+import { Edit, Trash2, Play, GitBranch, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { InteractiveAlgorithm, NODE_TYPE_CONFIG } from '@/types/algorithm';
 import { AlgorithmPlayer } from './AlgorithmPlayer';
 import {
@@ -65,6 +66,26 @@ export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: Algor
                   <CardTitle className="text-sm font-semibold leading-tight">{alg.title}</CardTitle>
                   {canManage && (
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                        const json = alg.algorithm_json;
+                        const nodeCount = json?.nodes?.length || 0;
+                        const decisionCount = json?.nodes?.filter((n: any) => n.type === 'decision').length || 0;
+                        const headers = ['title', 'description', 'node_count', 'decision_count', 'reveal_mode', 'include_consequences'];
+                        const vals = [alg.title, alg.description || '', String(nodeCount), String(decisionCount), (alg as any).reveal_mode || '', String((alg as any).include_consequences || false)];
+                        const row = vals.map(v => v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v).join(',');
+                        const csv = [headers.join(','), row].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `pathway_${alg.title.replace(/\s+/g, '_').substring(0, 30)}.csv`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+                        toast.success('Pathway downloaded');
+                      }}>
+                        <Download className="w-3.5 h-3.5" />
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit?.(alg)}>
                         <Edit className="w-3.5 h-3.5" />
                       </Button>
