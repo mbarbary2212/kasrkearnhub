@@ -145,5 +145,5 @@ export const CASE_MODE_TABS: CaseModeTab[] = [
   { id: 'all', label: 'All Cases' },
   { id: 'read_case', label: 'Read Cases', description: 'Review clinical scenarios with model answers' },
   { id: 'practice_case', label: 'Practice Cases', description: 'Interactive multi-stage clinical simulations' },
-  { id: 'branched_case', label: 'Branched Cases', description: 'Cases with multiple pathways', comingSoon: true },
+  { id: 'branched_case', label: 'Branched Cases', description: 'Cases with multiple pathways' },
 ];
