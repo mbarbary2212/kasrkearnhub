@@ -3,6 +3,8 @@
 export type CaseMode = 'read_case' | 'practice_case' | 'branched_case';
 export type CaseStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type CaseLevel = 'beginner' | 'intermediate' | 'advanced';
+export type CaseType = 'guided' | 'management' | 'simulation' | 'virtual_patient';
+export type FeedbackTiming = 'immediate' | 'deferred';
 
 export interface CaseChoice {
   key: string;
@@ -13,18 +15,34 @@ export interface CaseChoice {
 export interface CaseRubric {
   required_concepts: string[];
   optional_concepts: string[];
-  pass_threshold?: number; // Default 0.6 (60%)
-  acceptable_phrases?: Record<string, string[]>; // Concept -> synonyms mapping
-  critical_omissions?: string[]; // Must be addressed or answer fails
+  pass_threshold?: number;
+  acceptable_phrases?: Record<string, string[]>;
+  critical_omissions?: string[];
 }
 
 // Result of rubric-based marking
 export interface CaseRubricResult {
   is_correct: boolean;
-  score: number; // 0-1
+  score: number;
   matched_required: string[];
   missing_required: string[];
   matched_optional: string[];
+}
+
+// Patient state engine types
+export interface PatientState {
+  time_elapsed_minutes: number;
+  hemodynamics: {
+    heart_rate?: number;
+    systolic_bp?: number;
+    diastolic_bp?: number;
+    respiratory_rate?: number;
+    spo2?: number;
+    temperature?: number;
+    [key: string]: number | undefined;
+  };
+  risk_flags: string[];
+  [key: string]: unknown;
 }
 
 export interface ClinicalCase {
@@ -36,6 +54,10 @@ export interface ClinicalCase {
   topic_id: string | null;
   section_id: string | null;
   case_mode: CaseMode;
+  case_type: CaseType;
+  feedback_timing: FeedbackTiming;
+  status_panel_enabled: boolean;
+  initial_state_json: PatientState | null;
   level: CaseLevel;
   estimated_minutes: number;
   tags: string[];
@@ -69,10 +91,12 @@ export interface ClinicalCaseStage {
   prompt: string;
   patient_info: string | null;
   choices: CaseChoice[];
-  correct_answer: string | string[]; // Single key for MCQ, array for multi-select, text for short_answer/read_only
+  correct_answer: string | string[];
   explanation: string | null;
   teaching_points: string[];
-  rubric: CaseRubric | null; // For short_answer grading
+  rubric: CaseRubric | null;
+  consequence_text: string | null;
+  state_delta_json: Partial<PatientState> | null;
   created_at: string;
   updated_at: string;
 }
@@ -99,7 +123,7 @@ export interface CaseStageAnswer {
   user_answer: string | string[];
   is_correct: boolean;
   time_taken_seconds?: number;
-  rubric_result?: CaseRubricResult; // For short_answer stages
+  rubric_result?: CaseRubricResult;
 }
 
 // Form types for admin builder
@@ -111,6 +135,10 @@ export interface ClinicalCaseFormData {
   topic_id?: string;
   section_id?: string;
   case_mode: CaseMode;
+  case_type?: CaseType;
+  feedback_timing?: FeedbackTiming;
+  status_panel_enabled?: boolean;
+  initial_state_json?: PatientState | null;
   level: CaseLevel;
   estimated_minutes: number;
   tags: string[];
@@ -130,7 +158,9 @@ export interface ClinicalCaseStageFormData {
   correct_answer: string | string[];
   explanation?: string;
   teaching_points: string[];
-  rubric?: CaseRubric | null; // For short_answer grading
+  rubric?: CaseRubric | null;
+  consequence_text?: string;
+  state_delta_json?: Partial<PatientState> | null;
 }
 
 // Mode tab configuration
@@ -147,3 +177,16 @@ export const CASE_MODE_TABS: CaseModeTab[] = [
   { id: 'practice_case', label: 'Practice Cases', description: 'Interactive multi-stage clinical simulations' },
   { id: 'branched_case', label: 'Branched Cases', description: 'Cases with multiple pathways' },
 ];
+
+export const CASE_TYPE_LABELS: Record<CaseType, string> = {
+  guided: 'Guided',
+  management: 'Management',
+  simulation: 'Simulation',
+  virtual_patient: 'Virtual Patient',
+};
+
+// Helper: determines whether correctness should be shown immediately
+export function shouldShowImmediateFeedback(caseType: CaseType, feedbackTiming: FeedbackTiming): boolean {
+  if (feedbackTiming === 'deferred') return false;
+  return caseType === 'guided' || caseType === 'management';
+}

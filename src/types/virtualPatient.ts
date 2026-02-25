@@ -2,6 +2,8 @@
 
 export type VPStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type VPLevel = 'beginner' | 'intermediate' | 'advanced';
+export type VPCaseType = 'guided' | 'management' | 'simulation' | 'virtual_patient';
+export type VPFeedbackTiming = 'immediate' | 'deferred';
 
 export interface VPChoice {
   key: string;
@@ -26,6 +28,22 @@ export interface VPRubricResult {
   matched_optional: string[];
 }
 
+// Patient state engine types
+export interface VPPatientState {
+  time_elapsed_minutes: number;
+  hemodynamics: {
+    heart_rate?: number;
+    systolic_bp?: number;
+    diastolic_bp?: number;
+    respiratory_rate?: number;
+    spo2?: number;
+    temperature?: number;
+    [key: string]: number | undefined;
+  };
+  risk_flags: string[];
+  [key: string]: unknown;
+}
+
 export interface VPCase {
   id: string;
   title: string;
@@ -34,6 +52,10 @@ export interface VPCase {
   chapter_id: string | null;
   topic_id: string | null;
   level: VPLevel;
+  case_type: VPCaseType;
+  feedback_timing: VPFeedbackTiming;
+  status_panel_enabled: boolean;
+  initial_state_json: VPPatientState | null;
   estimated_minutes: number;
   tags: string[];
   is_published: boolean;
@@ -62,6 +84,8 @@ export interface VPStage {
   explanation: string | null;
   teaching_points: string[];
   rubric: VPRubric | null; // For short_answer grading
+  consequence_text: string | null;
+  state_delta_json: Partial<VPPatientState> | null;
   created_at: string;
   updated_at: string;
 }
@@ -99,6 +123,10 @@ export interface VPCaseFormData {
   chapter_id?: string;
   topic_id?: string;
   level: VPLevel;
+  case_type?: VPCaseType;
+  feedback_timing?: VPFeedbackTiming;
+  status_panel_enabled?: boolean;
+  initial_state_json?: VPPatientState | null;
   estimated_minutes: number;
   tags: string[];
   is_published: boolean;
@@ -114,4 +142,12 @@ export interface VPStageFormData {
   explanation?: string;
   teaching_points: string[];
   rubric?: VPRubric | null; // For short_answer grading
+  consequence_text?: string;
+  state_delta_json?: Partial<VPPatientState> | null;
+}
+
+// Helper: determines whether correctness should be shown immediately
+export function shouldShowImmediateFeedbackVP(caseType: VPCaseType, feedbackTiming: VPFeedbackTiming): boolean {
+  if (feedbackTiming === 'deferred') return false;
+  return caseType === 'guided' || caseType === 'management';
 }

@@ -33,13 +33,13 @@ import {
   useSubmitStageAnswer,
   useCompleteVirtualPatientAttempt,
 } from '@/hooks/useVirtualPatient';
-import { VPStage, StageAnswer, VPRubricResult } from '@/types/virtualPatient';
+import { VPStage, StageAnswer, VPRubricResult, VPPatientState, shouldShowImmediateFeedbackVP } from '@/types/virtualPatient';
 import { gradeWithRubric, gradeExactMatch } from '@/lib/rubricMarking';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCoachContext } from '@/contexts/CoachContext';
 
-type RunnerState = 'intro' | 'running' | 'feedback' | 'summary';
+type RunnerState = 'intro' | 'running' | 'consequence' | 'feedback' | 'summary';
 
 export default function VirtualPatientRunner() {
   const { caseId } = useParams();
@@ -59,6 +59,8 @@ export default function VirtualPatientRunner() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [stageStartTime, setStageStartTime] = useState<number | null>(null);
   const [revealedPatientInfo, setRevealedPatientInfo] = useState<string[]>([]);
+  const [patientState, setPatientState] = useState<VPPatientState | null>(null);
+  const [lastConsequence, setLastConsequence] = useState<string | null>(null);
 
   const stages = vpCase?.stages || [];
   const currentStage = stages[currentStageIndex];
@@ -101,6 +103,11 @@ export default function VirtualPatientRunner() {
       setStageStartTime(Date.now());
       setState('running');
       
+      // Initialize patient state from case if available
+      if (vpCase.initial_state_json) {
+        setPatientState(vpCase.initial_state_json as VPPatientState);
+      }
+      
       // Add first stage's patient info
       if (stages[0]?.patient_info) {
         setRevealedPatientInfo([stages[0].patient_info]);
@@ -136,6 +143,30 @@ export default function VirtualPatientRunner() {
     }
   };
 
+  // Apply state delta to patient state
+  const applyStateDelta = (delta: Partial<VPPatientState> | null) => {
+    if (!delta || !patientState) return;
+    setPatientState(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      if (delta.time_elapsed_minutes !== undefined) {
+        updated.time_elapsed_minutes = (prev.time_elapsed_minutes || 0) + delta.time_elapsed_minutes;
+      }
+      if (delta.hemodynamics) {
+        updated.hemodynamics = { ...prev.hemodynamics, ...delta.hemodynamics };
+      }
+      if (delta.risk_flags) {
+        updated.risk_flags = [...new Set([...(prev.risk_flags || []), ...delta.risk_flags])];
+      }
+      return updated;
+    });
+  };
+
+  // Determine if we show immediate correctness feedback
+  const showImmediate = vpCase
+    ? shouldShowImmediateFeedbackVP(vpCase.case_type || 'guided', vpCase.feedback_timing || 'immediate')
+    : true;
+
   const handleSubmitAnswer = async () => {
     if (!currentStage || !attemptId) return;
 
@@ -165,9 +196,16 @@ export default function VirtualPatientRunner() {
         [currentStage.id]: stageAnswer,
       }));
 
+      // Apply state delta if present
+      applyStateDelta(currentStage.state_delta_json || null);
+
       // For read_only stages, skip feedback and go directly to next stage
       if (currentStage.stage_type === 'read_only') {
         handleNextStageAfterReadOnly(stageAnswer);
+      } else if (currentStage.consequence_text && !showImmediate) {
+        // Show consequence instead of correctness
+        setLastConsequence(currentStage.consequence_text);
+        setState('consequence');
       } else {
         setState('feedback');
       }
@@ -244,6 +282,8 @@ export default function VirtualPatientRunner() {
     setStartTime(null);
     setStageStartTime(null);
     setRevealedPatientInfo([]);
+    setPatientState(null);
+    setLastConsequence(null);
     setState('intro');
   };
 
@@ -366,6 +406,65 @@ export default function VirtualPatientRunner() {
             </Card>
           )}
 
+          {/* Patient Status Panel (for simulation/virtual_patient case types) */}
+          {vpCase.status_panel_enabled && patientState && (
+            <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  Patient Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  {patientState.hemodynamics?.heart_rate != null && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">HR:</span>{' '}
+                      <span className="font-medium">{patientState.hemodynamics.heart_rate} bpm</span>
+                    </div>
+                  )}
+                  {patientState.hemodynamics?.systolic_bp != null && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">BP:</span>{' '}
+                      <span className="font-medium">{patientState.hemodynamics.systolic_bp}/{patientState.hemodynamics.diastolic_bp || '?'}</span>
+                    </div>
+                  )}
+                  {patientState.hemodynamics?.spo2 != null && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">SpO₂:</span>{' '}
+                      <span className="font-medium">{patientState.hemodynamics.spo2}%</span>
+                    </div>
+                  )}
+                  {patientState.hemodynamics?.respiratory_rate != null && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">RR:</span>{' '}
+                      <span className="font-medium">{patientState.hemodynamics.respiratory_rate}/min</span>
+                    </div>
+                  )}
+                  {patientState.hemodynamics?.temperature != null && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">Temp:</span>{' '}
+                      <span className="font-medium">{patientState.hemodynamics.temperature}°C</span>
+                    </div>
+                  )}
+                  {patientState.time_elapsed_minutes > 0 && (
+                    <div className="p-2 bg-background rounded border">
+                      <span className="text-muted-foreground">Time:</span>{' '}
+                      <span className="font-medium">{patientState.time_elapsed_minutes} min</span>
+                    </div>
+                  )}
+                </div>
+                {patientState.risk_flags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {patientState.risk_flags.map((flag, i) => (
+                      <Badge key={i} variant="destructive" className="text-xs">{flag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stage Prompt */}
           <Card>
             <CardHeader>
@@ -469,6 +568,62 @@ export default function VirtualPatientRunner() {
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // CONSEQUENCE STATE (for simulation/virtual_patient — deferred feedback)
+  if (state === 'consequence' && currentStage) {
+    return (
+      <MainLayout>
+        <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Stage {currentStageIndex + 1} of {totalStages}
+              </p>
+              <h1 className="text-lg font-semibold">{vpCase.title}</h1>
+            </div>
+          </div>
+
+          <Progress value={progress} className="h-2" />
+
+          <Card className="border-2 border-amber-400 dark:border-amber-600">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <AlertCircle className="w-5 h-5" />
+                Clinical Consequence
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground whitespace-pre-wrap">{lastConsequence}</p>
+            </CardContent>
+          </Card>
+
+          {/* Teaching Points (shown even in deferred mode) */}
+          {currentStage.teaching_points && currentStage.teaching_points.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Key Teaching Points</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {currentStage.teaching_points.map((point, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          <Button onClick={handleNextStage} className="w-full gap-2">
+            {currentStageIndex + 1 >= totalStages ? 'View Debrief' : 'Next Stage'}
+            <ArrowRight className="w-4 h-4" />
+          </Button>
         </div>
       </MainLayout>
     );
@@ -585,6 +740,23 @@ export default function VirtualPatientRunner() {
               )}
             </CardContent>
           </Card>
+
+          {/* Consequence (for guided modes, shown alongside correctness) */}
+          {currentStage.consequence_text && (
+            <Card className="border-amber-300 dark:border-amber-700">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  Clinical Consequence
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground whitespace-pre-wrap">
+                  {currentStage.consequence_text}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Explanation */}
           {currentStage.explanation && (

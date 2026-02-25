@@ -72,13 +72,13 @@ export function useClinicalCases(
           return acc;
         }, {} as Record<string, number>);
 
-        return data?.map(c => ({
+      return data?.map(c => ({
           ...c,
           stage_count: countMap[c.id] || 0,
-        })) as ClinicalCase[];
+        })) as unknown as ClinicalCase[];
       }
 
-      return data as ClinicalCase[];
+      return data as unknown as ClinicalCase[];
     },
     enabled: true,
   });
@@ -114,7 +114,7 @@ export function useClinicalCase(caseId?: string) {
         ...caseData,
         stages: (stages || []).map(parseStageData),
         stage_count: stages?.length || 0,
-      } as ClinicalCase;
+      } as unknown as ClinicalCase;
     },
     enabled: !!caseId,
   });
@@ -145,14 +145,18 @@ export function useCreateClinicalCase() {
 
   return useMutation({
     mutationFn: async (data: ClinicalCaseFormData) => {
+      const insertData: Record<string, unknown> = {
+        ...data,
+        case_mode: data.case_mode || 'practice_case',
+        created_by: user?.id,
+        tags: data.tags || [],
+      };
+      if (data.initial_state_json !== undefined) {
+        insertData.initial_state_json = data.initial_state_json as unknown as Json;
+      }
       const { data: result, error } = await supabase
         .from('virtual_patient_cases')
-        .insert({
-          ...data,
-          case_mode: data.case_mode || 'practice_case',
-          created_by: user?.id,
-          tags: data.tags || [],
-        })
+        .insert(insertData as any)
         .select()
         .single();
 
@@ -172,13 +176,17 @@ export function useUpdateClinicalCase() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ClinicalCaseFormData> }) => {
+      const updateData: Record<string, unknown> = {
+        ...data,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+      if (data.initial_state_json !== undefined) {
+        updateData.initial_state_json = data.initial_state_json as unknown as Json;
+      }
       const { data: result, error } = await supabase
         .from('virtual_patient_cases')
-        .update({
-          ...data,
-          updated_by: user?.id,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData as any)
         .eq('id', id)
         .select()
         .single();

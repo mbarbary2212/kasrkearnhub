@@ -1990,8 +1990,11 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
+          include_consequences: boolean
+          initial_state_json: Json | null
           is_deleted: boolean
           module_id: string
+          reveal_mode: string
           section_id: string | null
           title: string
           topic_id: string | null
@@ -2006,8 +2009,11 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          include_consequences?: boolean
+          initial_state_json?: Json | null
           is_deleted?: boolean
           module_id: string
+          reveal_mode?: string
           section_id?: string | null
           title: string
           topic_id?: string | null
@@ -2022,8 +2028,11 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          include_consequences?: boolean
+          initial_state_json?: Json | null
           is_deleted?: boolean
           module_id?: string
+          reveal_mode?: string
           section_id?: string | null
           title?: string
           topic_id?: string | null
@@ -4970,12 +4979,15 @@ export type Database = {
       virtual_patient_cases: {
         Row: {
           case_mode: string | null
+          case_type: string
           chapter_id: string | null
           concept_id: string | null
           created_at: string
           created_by: string | null
           estimated_minutes: number
+          feedback_timing: string
           id: string
+          initial_state_json: Json | null
           intro_text: string
           is_deleted: boolean
           is_published: boolean
@@ -4989,6 +5001,7 @@ export type Database = {
           patient_image_url: string | null
           patient_name: string | null
           section_id: string | null
+          status_panel_enabled: boolean
           tags: string[] | null
           title: string
           topic_id: string | null
@@ -4997,12 +5010,15 @@ export type Database = {
         }
         Insert: {
           case_mode?: string | null
+          case_type?: string
           chapter_id?: string | null
           concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
+          feedback_timing?: string
           id?: string
+          initial_state_json?: Json | null
           intro_text: string
           is_deleted?: boolean
           is_published?: boolean
@@ -5016,6 +5032,7 @@ export type Database = {
           patient_image_url?: string | null
           patient_name?: string | null
           section_id?: string | null
+          status_panel_enabled?: boolean
           tags?: string[] | null
           title: string
           topic_id?: string | null
@@ -5024,12 +5041,15 @@ export type Database = {
         }
         Update: {
           case_mode?: string | null
+          case_type?: string
           chapter_id?: string | null
           concept_id?: string | null
           created_at?: string
           created_by?: string | null
           estimated_minutes?: number
+          feedback_timing?: string
           id?: string
+          initial_state_json?: Json | null
           intro_text?: string
           is_deleted?: boolean
           is_published?: boolean
@@ -5043,6 +5063,7 @@ export type Database = {
           patient_image_url?: string | null
           patient_name?: string | null
           section_id?: string | null
+          status_panel_enabled?: boolean
           tags?: string[] | null
           title?: string
           topic_id?: string | null
@@ -5091,6 +5112,7 @@ export type Database = {
         Row: {
           case_id: string
           choices: Json | null
+          consequence_text: string | null
           correct_answer: Json
           created_at: string
           explanation: string | null
@@ -5100,12 +5122,14 @@ export type Database = {
           rubric: Json | null
           stage_order: number
           stage_type: string
+          state_delta_json: Json | null
           teaching_points: string[] | null
           updated_at: string
         }
         Insert: {
           case_id: string
           choices?: Json | null
+          consequence_text?: string | null
           correct_answer: Json
           created_at?: string
           explanation?: string | null
@@ -5115,12 +5139,14 @@ export type Database = {
           rubric?: Json | null
           stage_order: number
           stage_type?: string
+          state_delta_json?: Json | null
           teaching_points?: string[] | null
           updated_at?: string
         }
         Update: {
           case_id?: string
           choices?: Json | null
+          consequence_text?: string | null
           correct_answer?: Json
           created_at?: string
           explanation?: string | null
@@ -5130,6 +5156,7 @@ export type Database = {
           rubric?: Json | null
           stage_order?: number
           stage_type?: string
+          state_delta_json?: Json | null
           teaching_points?: string[] | null
           updated_at?: string
         }
