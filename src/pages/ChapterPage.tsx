@@ -60,7 +60,7 @@ import {
   PracticeTabId,
   InteractiveTabId,
 } from '@/config/tabConfig';
-import { AlgorithmList, AlgorithmBuilderModal, AlgorithmBulkUploadModal } from '@/components/algorithms';
+import { AlgorithmList, AlgorithmBuilderModal, AlgorithmBulkUploadModal, PathwayAIGenerateModal } from '@/components/algorithms';
 import {
   useCreateInteractiveAlgorithm,
   useUpdateInteractiveAlgorithm,
@@ -142,6 +142,7 @@ export default function ChapterPage() {
   // Algorithm builder state
   const [algorithmBuilderOpen, setAlgorithmBuilderOpen] = useState(false);
   const [algorithmBulkOpen, setAlgorithmBulkOpen] = useState(false);
+  const [algorithmAIOpen, setAlgorithmAIOpen] = useState(false);
   const [editingAlgorithm, setEditingAlgorithm] = useState<InteractiveAlgorithm | null>(null);
   const createAlg = useCreateInteractiveAlgorithm();
   const updateAlg = useUpdateInteractiveAlgorithm();
@@ -802,6 +803,9 @@ export default function ChapterPage() {
                         <Button size="sm" variant="outline" onClick={() => setAlgorithmBulkOpen(true)}>
                           <Upload className="w-3 h-3 mr-1" /> Bulk Upload
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAlgorithmAIOpen(true)}>
+                          <Sparkles className="w-3 h-3 mr-1" /> Generate with AI
+                        </Button>
                       </div>
                     )}
                     <AlgorithmList
@@ -1081,6 +1085,20 @@ export default function ChapterPage() {
                 }
               }}
               importing={createAlg.isPending}
+            />
+            <PathwayAIGenerateModal
+              open={algorithmAIOpen}
+              onOpenChange={setAlgorithmAIOpen}
+              moduleId={moduleId!}
+              moduleName={module?.name}
+              chapterId={chapterId}
+              chapterTitle={chapter?.title}
+              onSave={async (title, description, json) => {
+                await createAlg.mutateAsync({
+                  title, description, algorithm_json: json,
+                  module_id: moduleId!, chapter_id: chapterId || null, topic_id: null,
+                });
+              }}
             />
           </>
         )}
