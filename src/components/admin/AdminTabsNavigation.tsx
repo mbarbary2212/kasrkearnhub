@@ -55,6 +55,7 @@ export function AdminTabsNavigation({
         { value: 'help', label: 'Help & Templates', icon: HelpCircle, visible: true },
         { value: 'question-analytics', label: 'Question Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
+        { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
       ],
     },
     {

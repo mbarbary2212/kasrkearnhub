@@ -93,7 +93,7 @@ export function useAICaseAttempts(filters: AICaseFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as AICaseAttemptRow[];
+      return (data || []) as unknown as AICaseAttemptRow[];
     },
     enabled: scope.isSuperAdmin || scope.isPlatformAdmin || scope.isModuleAdmin || scope.isTopicAdmin,
   });
