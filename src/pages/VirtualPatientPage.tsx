@@ -38,6 +38,14 @@ export default function VirtualPatientRunner() {
   const navigate = useNavigate();
   
   const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
+
+  const goBack = () => {
+    if (vpCase?.chapter_id) {
+      navigate(`/chapter/${vpCase.chapter_id}?section=interactive`);
+    } else {
+      navigate(-1);
+    }
+  };
   const { data: pastAttempts, isLoading: attemptsLoading } = useVirtualPatientAttempts(caseId);
   const startAttempt = useStartVirtualPatientAttempt();
 
