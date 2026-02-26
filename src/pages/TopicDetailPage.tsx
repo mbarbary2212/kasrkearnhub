@@ -31,6 +31,7 @@ import { VisualResourcesSection } from '@/components/study/VisualResourcesSectio
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
+import { RichDocumentViewer } from '@/components/study/RichDocumentViewer';
 import { ChapterMockExamSection } from '@/components/exam';
 import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
@@ -195,7 +196,10 @@ export default function TopicDetailPage() {
   const documentStudyResources = useMemo(() => studyResources?.filter(r => 
     r.resource_type === 'table' || r.resource_type === 'exam_tip' || r.resource_type === 'key_image'
   ) || [], [studyResources]);
-  const documentsCount = (resources?.length || 0) + documentStudyResources.length;
+  // Socratic tutorials (from resources table) are now shown under the Socratic Tutorials tab
+  const socraticTutorials = useMemo(() => resources?.filter(r => (r as any).document_subtype === 'socratic_tutorial') || [], [resources]);
+  const nonSocraticResources = useMemo(() => resources?.filter(r => (r as any).document_subtype !== 'socratic_tutorial') || [], [resources]);
+  const documentsCount = nonSocraticResources.length + documentStudyResources.length;
   
   // Reset section filter when leaving topic
   useEffect(() => {
@@ -271,7 +275,7 @@ export default function TopicDetailPage() {
       lectures: lectures?.length || 0,
       flashcards: flashcards?.length || 0,
       mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
-      guided_explanations: guidedExplanations.length,
+      guided_explanations: guidedExplanations.length + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
@@ -605,7 +609,7 @@ export default function TopicDetailPage() {
                   />
                 )}
 
-                {/* Guided Explanations Content */}
+                {/* Socratic Tutorials Content (renamed from Guided Explanations) */}
                 {resourcesTab === 'guided_explanations' && topicId && (
                   <div className="space-y-4">
                     {canManageContent && (
@@ -642,16 +646,32 @@ export default function TopicDetailPage() {
                     {studyResourcesLoading ? (
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <GuidedExplanationList
-                        resources={filterBySection(guidedExplanations)}
-                        canManage={canManageContent}
-                        onEdit={handleEditFlashcard}
-                        onDelete={(id) => {
-                          const resource = guidedExplanations.find(r => r.id === id);
-                          requestResourceDelete('guided_explanation', id, resource?.title);
-                        }}
-                        topicId={topicId}
-                      />
+                      <>
+                        <GuidedExplanationList
+                          resources={filterBySection(guidedExplanations)}
+                          canManage={canManageContent}
+                          onEdit={handleEditFlashcard}
+                          onDelete={(id) => {
+                            const resource = guidedExplanations.find(r => r.id === id);
+                            requestResourceDelete('guided_explanation', id, resource?.title);
+                          }}
+                          topicId={topicId}
+                        />
+                        {/* Socratic Tutorials from resources table */}
+                        {socraticTutorials.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="text-sm font-medium text-muted-foreground">Socratic Tutorials</h3>
+                            {socraticTutorials.map((doc: any) => (
+                              <RichDocumentViewer
+                                key={doc.id}
+                                title={doc.title}
+                                content={doc.rich_content || ''}
+                                documentType="socratic_tutorial"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -659,9 +679,9 @@ export default function TopicDetailPage() {
                 {/* Reference Materials Content */}
                 {resourcesTab === 'reference_materials' && topicId && moduleId && (
                   <ResourcesTabContent
-                    chapterId={topicId} // Using topicId for now - ResourcesTabContent needs to support topicId
+                    chapterId={topicId}
                     moduleId={moduleId}
-                    resources={filterBySection(resources || [])}
+                    resources={filterBySection(nonSocraticResources)}
                     resourcesLoading={resourcesLoading}
                     canManageContent={canManageContent}
                     isSuperAdmin={auth.isSuperAdmin}

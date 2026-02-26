@@ -11,7 +11,7 @@ import {
   LucideIcon,
   GitBranch,
   Network,
-  MessageCircleQuestion,
+  GraduationCap,
   ToggleLeft,
 } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export const RESOURCES_TABS: TabConfig[] = [
   { id: 'lectures', label: 'Videos', icon: Video },
   { id: 'flashcards', label: 'Flashcards', icon: Layers },
   { id: 'mind_maps', label: 'Visual Resources', icon: Network },
-  { id: 'guided_explanations', label: 'Guided Explanations', icon: MessageCircleQuestion },
+  { id: 'guided_explanations', label: 'Socratic Tutorials', icon: GraduationCap },
   { id: 'reference_materials', label: 'Reference Materials', icon: FileText },
   { id: 'clinical_tools', label: 'Clinical Tools', icon: GitBranch },
 ];
