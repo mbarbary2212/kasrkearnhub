@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon, Music } from 'lucide-react';
+import { FileText, ExternalLink, Pencil, Trash2, MessageSquare, FileIcon, Music, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -180,23 +180,41 @@ export default function ResourceList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   {(resource.file_url || resource.external_url) && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 px-2"
-                          onClick={() => handleResourceClick(resource)}
-                        >
-                          {isPdfResource(resource) ? (
-                            <FileIcon className="w-3.5 h-3.5" />
-                          ) : (
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{isPdfResource(resource) ? 'View PDF' : 'Open Link'}</TooltipContent>
-                    </Tooltip>
+                    <>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 px-2"
+                            onClick={() => handleResourceClick(resource)}
+                          >
+                            {isPdfResource(resource) ? (
+                              <FileIcon className="w-3.5 h-3.5" />
+                            ) : (
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{isPdfResource(resource) ? 'View PDF' : 'Open Link'}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={resource.file_url || resource.external_url!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>Download</TooltipContent>
+                      </Tooltip>
+                    </>
                   )}
                   {canManage && (
                     <>
@@ -400,18 +418,31 @@ export default function ResourceList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   {(resource.file_url || resource.external_url) && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleResourceClick(resource)}
-                    >
-                      {isPdfResource(resource) ? (
-                        <FileIcon className="w-4 h-4 mr-1" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                      )}
-                      {isPdfResource(resource) ? 'View' : 'Open'}
-                    </Button>
+                    <>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleResourceClick(resource)}
+                      >
+                        {isPdfResource(resource) ? (
+                          <FileIcon className="w-4 h-4 mr-1" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                        )}
+                        {isPdfResource(resource) ? 'View' : 'Open'}
+                      </Button>
+                      <a
+                        href={resource.file_url || resource.external_url!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button size="sm" variant="ghost">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    </>
                   )}
                   {canManage && (
                     <>
