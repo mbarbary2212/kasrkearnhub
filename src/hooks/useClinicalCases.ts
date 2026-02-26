@@ -353,6 +353,7 @@ export function useReorderClinicalCaseStages() {
         queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ['clinical-case', variables.caseId] });
     },
