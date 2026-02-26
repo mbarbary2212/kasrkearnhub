@@ -115,7 +115,7 @@ export default function VirtualPatientRunner() {
           <p className="text-muted-foreground mb-4">
             This case doesn't exist or has been removed.
           </p>
-          <Button onClick={() => navigate(-1)}>Go Back</Button>
+          <Button onClick={goBack}>Go Back</Button>
         </div>
       </MainLayout>
     );
