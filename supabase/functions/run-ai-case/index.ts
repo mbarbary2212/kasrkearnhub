@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { caseId, attemptId, userMessage, turnNumber } = body;
+    const { caseId, attemptId, userMessage, turnNumber, hintMode } = body;
 
     if (!caseId || !attemptId || !userMessage || turnNumber === undefined) {
       return new Response(
