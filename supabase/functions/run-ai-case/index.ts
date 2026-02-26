@@ -70,7 +70,7 @@ OUTPUT FORMAT — CRITICAL
 Respond ONLY with valid JSON. No markdown, no prose outside JSON. Do NOT wrap in code fences.
 
 For a question turn:
-{"type":"question","patient_info":"string or null","prompt":"string","choices":null or [{"label":"A. ...","value":"A"}],"teaching_point":"string or null"}
+{"type":"question","patient_info":"string or null","prompt":"string","choices":null or [{"label":"A. ...","value":"A"}],"teaching_point":null}
 
 For a redirect:
 {"type":"redirect","prompt":"string — redirect back to case","patient_info":null,"choices":null,"teaching_point":null}
