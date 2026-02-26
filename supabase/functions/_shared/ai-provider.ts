@@ -253,9 +253,12 @@ export function getModelForContentType(
     return overrides[contentType];
   }
   // Fall back to global model
-  return settings.ai_provider === 'gemini'
-    ? settings.gemini_model
-    : settings.lovable_model;
+  const modelMap: Record<AIProviderName, string> = {
+    gemini: settings.gemini_model,
+    lovable: settings.lovable_model,
+    anthropic: settings.anthropic_model,
+  };
+  return modelMap[settings.ai_provider] || settings.lovable_model;
 }
 
 /**
