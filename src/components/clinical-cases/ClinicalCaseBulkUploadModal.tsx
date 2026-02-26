@@ -215,11 +215,14 @@ export function ClinicalCaseBulkUploadModal({
           chapter_id: chapterId,
           topic_id: topicId,
           level: pc.difficulty,
-          estimated_minutes: 15,
-          tags: [],
-          is_published: false,
+          estimated_minutes: pc.estimated_minutes,
+          tags: pc.tags,
+          is_published: pc.is_published,
           learning_objectives: pc.learning_objectives || undefined,
           max_turns: pc.max_turns,
+          patient_name: pc.patient_name,
+          patient_age: pc.patient_age,
+          patient_gender: pc.patient_gender,
         });
         successCount++;
       } catch (err) {
