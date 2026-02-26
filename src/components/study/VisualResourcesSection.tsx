@@ -29,8 +29,8 @@ interface VisualResourcesSectionProps {
 }
 
 const SUBTABS = [
-  { type: 'mind_map' as const, label: 'Mind Maps', icon: Network },
-  { type: 'infographic' as const, label: 'Infographics', icon: Image },
+  { type: 'mind_map' as const, label: 'Mind Maps', icon: Network, activeClass: 'data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950/40 dark:data-[state=active]:text-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20' },
+  { type: 'infographic' as const, label: 'Infographics', icon: Image, activeClass: 'data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 dark:data-[state=active]:bg-violet-950/40 dark:data-[state=active]:text-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-950/20' },
 ];
 
 export function VisualResourcesSection({
@@ -97,10 +97,10 @@ export function VisualResourcesSection({
 
       <Tabs defaultValue="mind_map" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
-          {SUBTABS.map(({ type, label, icon: Icon }) => {
+          {SUBTABS.map(({ type, label, icon: Icon, activeClass }) => {
             const count = type === 'mind_map' ? mindMaps.length : infographics.length;
             return (
-              <TabsTrigger key={type} value={type} className="flex items-center gap-2 px-3 py-2 whitespace-nowrap">
+              <TabsTrigger key={type} value={type} className={`flex items-center gap-2 px-3 py-2 whitespace-nowrap ${activeClass}`}>
                 <Icon className="w-4 h-4" />
                 <span className="text-xs sm:text-sm">{label}</span>
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{count}</Badge>
