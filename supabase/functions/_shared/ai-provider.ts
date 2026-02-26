@@ -3,8 +3,10 @@
 // Supports: Lovable AI Gateway & Direct Google Gemini
 // ============================================
 
+export type AIProviderName = 'lovable' | 'gemini' | 'anthropic';
+
 export interface AIProvider {
-  name: 'lovable' | 'gemini';
+  name: AIProviderName;
   model: string;
 }
 
