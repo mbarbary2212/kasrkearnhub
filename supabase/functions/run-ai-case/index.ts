@@ -369,7 +369,7 @@ Student response: ${userMessage}`;
 
     // Call AI with increased maxTokens to prevent truncation
     const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
-      temperature: 0.7,
+      temperature: 0.5,
       maxTokens: 4096,
     });
 
