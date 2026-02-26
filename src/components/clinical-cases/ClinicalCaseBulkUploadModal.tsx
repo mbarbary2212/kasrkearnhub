@@ -421,7 +421,7 @@ export function ClinicalCaseBulkUploadModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            Bulk Upload Clinical Cases
+            Import Cases from File
           </DialogTitle>
           <DialogDescription>
             Upload a TXT file with clinical cases. Cases are separated by <code>---</code>.

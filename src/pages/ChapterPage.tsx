@@ -905,7 +905,7 @@ export default function ChapterPage() {
                           <Download className="w-3 h-3 mr-1" /> Download
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setAlgorithmBulkOpen(true)}>
-                          <Upload className="w-3 h-3 mr-1" /> Bulk Upload
+                          <Upload className="w-3 h-3 mr-1" /> Import File
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setAlgorithmAIOpen(true)}>
                           <Sparkles className="w-3 h-3 mr-1" /> Generate with AI

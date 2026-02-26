@@ -265,7 +265,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           </Button>
           <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
               <Upload className="w-4 h-4 mr-1" />
-              Bulk Upload
+              Import File
             </Button>
           <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />

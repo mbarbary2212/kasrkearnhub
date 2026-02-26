@@ -66,7 +66,7 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Bulk Upload Pathways</DialogTitle>
+          <DialogTitle>Import Pathways from File</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
