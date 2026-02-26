@@ -439,13 +439,20 @@ export function ClinicalCaseBulkUploadModal({
             />
             <div
               className={cn(
-                "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors",
-                "flex flex-col items-center gap-2"
+                "border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all w-full",
+                "flex flex-col items-center gap-2",
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.02]"
+                  : "border-muted-foreground/25 bg-background hover:border-primary/50 hover:bg-muted/50"
               )}
               onClick={() => inputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <FileText className="w-10 h-10 text-muted-foreground" />
-              <p className="font-medium">Drop your TXT file here</p>
+              <FileText className={cn("w-10 h-10 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
+              <p className="font-medium">{isDragging ? 'Drop file here...' : 'Drop your TXT file here'}</p>
               <p className="text-sm text-muted-foreground">or click to browse</p>
             </div>
           </div>
