@@ -165,6 +165,7 @@ export function useCreateClinicalCase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
     },
   });
 }
@@ -197,6 +198,7 @@ export function useUpdateClinicalCase() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
       queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
     },
   });
 }
@@ -217,6 +219,7 @@ export function useDeleteClinicalCase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
     },
   });
 }
@@ -252,6 +255,7 @@ export function useCreateClinicalCaseStage() {
         queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ['clinical-case', variables.caseId] });
       await queryClient.refetchQueries({ queryKey: ['clinical-cases'] });
@@ -294,6 +298,7 @@ export function useUpdateClinicalCaseStage() {
         queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ['clinical-case', variables.caseId] });
     },
@@ -319,6 +324,7 @@ export function useDeleteClinicalCaseStage() {
         queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ['clinical-case', variables.caseId] });
       await queryClient.refetchQueries({ queryKey: ['clinical-cases'] });
@@ -347,6 +353,7 @@ export function useReorderClinicalCaseStages() {
         queryClient.invalidateQueries({ queryKey: ['clinical-case-stages', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.caseId] }),
         queryClient.invalidateQueries({ queryKey: ['clinical-cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ['clinical-case', variables.caseId] });
     },
