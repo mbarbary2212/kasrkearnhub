@@ -72,7 +72,7 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
     
     switch (row.key) {
       case 'ai_provider':
-        settings.ai_provider = value === 'gemini' ? 'gemini' : 'lovable';
+        settings.ai_provider = (['gemini', 'anthropic', 'lovable'].includes(value) ? value : 'lovable') as AIProviderName;
         break;
       case 'gemini_model':
         settings.gemini_model = (value as string) || DEFAULT_SETTINGS.gemini_model;
