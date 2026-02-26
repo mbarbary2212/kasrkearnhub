@@ -1,5 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getAISettings, getAIProvider, getModelForContentType, getContentTypeOverrides } from "../_shared/ai-provider.ts";
+import {
+  getAISettings,
+  getAIProvider,
+  getModelForContentType,
+  getContentTypeOverrides,
+  callAIWithMessages,
+} from "../_shared/ai-provider.ts";
 
 const MAX_TURNS_DEFAULT = 10;
 const REDIRECT_LIMIT = 2;
@@ -90,10 +96,7 @@ Deno.serve(async (req) => {
     if (!caseId || !attemptId || !userMessage || turnNumber === undefined) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -114,7 +117,6 @@ Deno.serve(async (req) => {
     }
     const userId = claims.user.id;
 
-    // Verify attempt belongs to user
     const { data: attemptCheck } = await supabase
       .from("virtual_patient_attempts")
       .select("user_id")
@@ -155,8 +157,7 @@ Deno.serve(async (req) => {
 
     // Count off-topic redirects
     const offTopicCount = history.filter(
-      (m: any) =>
-        m.role === "assistant" && m.content.includes('"type":"redirect"')
+      (m: any) => m.role === "assistant" && m.content.includes('"type":"redirect"')
     ).length;
 
     // Save user message
@@ -167,17 +168,10 @@ Deno.serve(async (req) => {
       turn_number: turnNumber,
     });
 
-    // Build messages for AI (OpenAI-compatible format for Lovable AI Gateway)
-    const aiMessages: { role: string; content: string }[] = [
-      { role: "system", content: buildSystemPrompt(caseData) },
-    ];
-
-    // Add conversation history
-    for (const m of history) {
-      if (m.role !== "system") {
-        aiMessages.push({ role: m.role, content: m.content });
-      }
-    }
+    // Build conversation messages (excluding system)
+    const conversationMessages = history
+      .filter((m: any) => m.role !== "system")
+      .map((m: any) => ({ role: m.role, content: m.content }));
 
     // Add context note with current user message
     const contextNote = `[EXAMINER CONTEXT — not shown to student]
@@ -187,106 +181,43 @@ ${turnNumber + 1 >= maxTurns ? "⚠️ FINAL TURN — return a debrief response.
 ${offTopicCount >= REDIRECT_LIMIT ? "⚠️ Off-topic limit reached — return debrief with flag_for_review: true." : ""}
 Student response: ${userMessage}`;
 
-    aiMessages.push({ role: "user", content: contextNote });
+    conversationMessages.push({ role: "user", content: contextNote });
 
-    // Get AI settings and resolve provider
+    // Resolve AI provider from settings
     const settings = await getAISettings(supabase);
     const overrides = await getContentTypeOverrides(supabase);
     const model = getModelForContentType(settings, "ai_case", overrides);
     const provider = getAIProvider(settings);
+    // Override model from content-type overrides if set
+    const resolvedProvider = { ...provider, model };
 
-    // Call AI via Lovable AI Gateway (OpenAI-compatible)
-    let aiResponseText: string;
+    const systemPrompt = buildSystemPrompt(caseData);
 
-    if (provider.name === "lovable") {
-      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-      if (!lovableApiKey) throw new Error("LOVABLE_API_KEY not configured");
+    // Call AI using the shared multi-turn abstraction
+    const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
+      temperature: 0.7,
+      maxTokens: 1024,
+    });
 
-      const response = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: aiMessages,
-            temperature: 0.7,
-            max_tokens: 1024,
-          }),
-        }
+    if (!aiResult.success) {
+      const status = aiResult.status || 500;
+      return new Response(
+        JSON.stringify({ error: aiResult.error }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-
-      if (!response.ok) {
-        const status = response.status;
-        const errText = await response.text();
-        console.error(`AI Gateway error (${status}):`, errText);
-
-        if (status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (status === 402) {
-          return new Response(
-            JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        throw new Error(`AI Gateway error: ${status}`);
-      }
-
-      const result = await response.json();
-      aiResponseText = result.choices?.[0]?.message?.content ?? "";
-    } else {
-      // Gemini direct
-      const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
-      if (!googleApiKey) throw new Error("GOOGLE_API_KEY not configured");
-
-      const combinedPrompt = aiMessages
-        .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
-        .join("\n\n");
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-goog-api-key": googleApiKey,
-          },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: combinedPrompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Gemini error (${response.status}):`, errText);
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      aiResponseText =
-        result.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     }
+
+    const aiResponseText = aiResult.content!;
 
     // Parse structured JSON from AI response
     let aiTurn: any;
     try {
-      // Try to extract JSON from possible markdown wrapping
       const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
       aiTurn = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponseText);
     } catch {
       aiTurn = {
         type: "redirect",
-        prompt:
-          "Let's refocus on the case. Please continue with your clinical reasoning.",
+        prompt: "Let's refocus on the case. Please continue with your clinical reasoning.",
         patient_info: null,
         choices: null,
         teaching_point: null,
@@ -334,10 +265,7 @@ Student response: ${userMessage}`;
   } catch (error: any) {
     console.error("Edge function error:", error);
     return new Response(
-      JSON.stringify({
-        error: "Internal server error",
-        detail: error.message,
-      }),
+      JSON.stringify({ error: "Internal server error", detail: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
