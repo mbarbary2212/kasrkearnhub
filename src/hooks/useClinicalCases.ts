@@ -165,6 +165,7 @@ export function useCreateClinicalCase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
     },
   });
 }
