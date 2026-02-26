@@ -144,7 +144,15 @@ function parseClinicalCasesTxt(text: string): ParsedCase[] {
   const blocks = text.split(/\n(?:\s*\n){2,}|\n---\s*\n/);
   return blocks
     .map(block => block.trim())
-    .filter(block => block.length > 0 && !block.startsWith('# AI Cases') && !block.startsWith('#'))
+    .filter(block => {
+      if (block.length === 0) return false;
+      // Skip blocks that are only comments (no data lines)
+      const dataLines = block.split('\n').filter(l => {
+        const t = l.trim();
+        return t && !t.startsWith('# ===') && !t.startsWith('# AI Cases') && !t.startsWith('# HOW') && !t.startsWith('# TEMPLATE') && !(t.startsWith('#') && !t.startsWith('# Title:') && !t.startsWith('# Intro:') && !t.startsWith('# Difficulty:') && !t.startsWith('# Learning') && !t.startsWith('# Max'));
+      });
+      return dataLines.length > 0;
+    })
     .map((block, i) => parseSingleCase(block, i));
 }
 
