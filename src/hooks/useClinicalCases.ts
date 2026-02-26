@@ -198,6 +198,7 @@ export function useUpdateClinicalCase() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
       queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
     },
   });
 }
