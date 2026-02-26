@@ -5052,6 +5052,7 @@ export type Database = {
       }
       virtual_patient_cases: {
         Row: {
+          avatar_id: number | null
           case_mode: string | null
           case_type: string
           chapter_id: string | null
@@ -5086,6 +5087,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
           chapter_id?: string | null
@@ -5120,6 +5122,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
           chapter_id?: string | null
