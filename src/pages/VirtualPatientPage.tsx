@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { AICaseRunner } from '@/components/clinical-cases/AICaseRunner';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -317,7 +318,90 @@ export default function VirtualPatientRunner() {
     );
   }
 
-  // INTRO STATE
+  // Check if this is an AI-driven case
+  const isAIDriven = (vpCase as any)?.is_ai_driven === true;
+
+  // AI-DRIVEN CASE: show AICaseRunner after creating an attempt
+  if (isAIDriven) {
+    if (state === 'intro') {
+      return (
+        <MainLayout>
+          <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <User className="w-7 h-7 text-primary" />
+                  </div>
+                  <div>
+                    <Badge variant="outline" className="mb-1">
+                      {vpCase.level.charAt(0).toUpperCase() + vpCase.level.slice(1)} Level • AI-Driven
+                    </Badge>
+                    <CardTitle className="text-xl">{vpCase.title}</CardTitle>
+                  </div>
+                </div>
+                <CardDescription className="flex items-center gap-4 text-sm">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    ~{vpCase.estimated_minutes} min
+                  </span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Chief Complaint / Presentation</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{vpCase.intro_text}</p>
+                </div>
+
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const result = await startAttempt.mutateAsync({
+                        caseId: vpCase.id,
+                        totalStages: 0, // AI cases don't have fixed stages
+                      });
+                      setAttemptId(result.id);
+                      setState('running');
+                    } catch {
+                      toast.error('Failed to start case. Please try again.');
+                    }
+                  }} 
+                  className="w-full gap-2" 
+                  size="lg"
+                  disabled={startAttempt.isPending}
+                >
+                  <Play className="w-5 h-5" />
+                  {startAttempt.isPending ? 'Starting...' : 'Start AI Case'}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </MainLayout>
+      );
+    }
+
+    // AI case is running
+    if (attemptId) {
+      return (
+        <MainLayout>
+          <AICaseRunner
+            caseId={vpCase.id}
+            attemptId={attemptId}
+            introText={vpCase.intro_text}
+            title={vpCase.title}
+            onComplete={() => navigate(-1)}
+          />
+        </MainLayout>
+      );
+    }
+  }
+
+  // STANDARD INTRO STATE (non-AI cases)
   if (state === 'intro') {
     return (
       <MainLayout>

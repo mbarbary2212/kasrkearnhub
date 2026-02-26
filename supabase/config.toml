@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.generate-pathway]
 verify_jwt = false
+
+[functions.run-ai-case]
+verify_jwt = false

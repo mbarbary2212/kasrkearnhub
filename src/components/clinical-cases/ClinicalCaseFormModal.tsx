@@ -67,6 +67,8 @@ export function ClinicalCaseFormModal({
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [learningObjectives, setLearningObjectives] = useState('');
+  const [maxTurns, setMaxTurns] = useState(10);
 
   const { data: chapters } = useModuleChapters(moduleId);
   const createCase = useCreateClinicalCase();
@@ -88,6 +90,8 @@ export function ClinicalCaseFormModal({
       setTags(clinicalCase.tags || []);
       setIsPublished(clinicalCase.is_published);
       setSectionId(clinicalCase.section_id || null);
+      setLearningObjectives((clinicalCase as any).learning_objectives || '');
+      setMaxTurns((clinicalCase as any).max_turns || 10);
     } else {
       resetForm();
       if (chapterId) {
@@ -106,6 +110,8 @@ export function ClinicalCaseFormModal({
     setTagInput('');
     setIsPublished(false);
     setSectionId(null);
+    setLearningObjectives('');
+    setMaxTurns(10);
   };
 
   const handleAddTag = () => {
@@ -149,17 +155,19 @@ export function ClinicalCaseFormModal({
       return;
     }
 
-    const formData: ClinicalCaseFormData = {
+    const formData: any = {
       title: title.trim(),
       intro_text: introText.trim(),
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
       section_id: sectionId || undefined,
-      case_mode: clinicalCase?.case_mode ?? 'practice_case', // Preserve existing case_mode
+      case_mode: clinicalCase?.case_mode ?? 'practice_case',
       level,
       estimated_minutes: estimatedMinutes,
       tags,
-      is_published: isEditing ? isPublished : false, // New cases always start unpublished
+      is_published: isEditing ? isPublished : false,
+      learning_objectives: learningObjectives.trim() || null,
+      max_turns: maxTurns,
     };
 
     try {
@@ -272,6 +280,51 @@ export function ClinicalCaseFormModal({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* AI-Driven Case Info */}
+            {clinicalCase?.case_type === 'advanced' && (
+              <Alert className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <Info className="w-4 h-4 text-blue-600" />
+                <AlertDescription className="text-sm">
+                  This is an <strong>AI-driven case</strong>. No stages needed — the AI examiner will dynamically generate questions based on your learning objectives.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Learning Objectives */}
+            <div>
+              <Label htmlFor="objectives">Learning Objectives</Label>
+              <Textarea
+                id="objectives"
+                value={learningObjectives}
+                onChange={(e) => setLearningObjectives(e.target.value)}
+                placeholder="e.g., Assess clinical reasoning for acute chest pain, history-taking skills, ECG interpretation, initial management..."
+                rows={3}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                These guide the AI examiner's focus for advanced (AI-driven) cases.
+              </p>
+            </div>
+
+            {/* Max Turns - only for advanced cases */}
+            {clinicalCase?.case_type === 'advanced' && (
+              <div>
+                <Label htmlFor="maxTurns">Max Turns</Label>
+                <Input
+                  id="maxTurns"
+                  type="number"
+                  min={5}
+                  max={20}
+                  value={maxTurns}
+                  onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Maximum number of AI examiner turns (5–20).
+                </p>
+              </div>
+            )}
 
             {/* Estimated Time */}
             <div>

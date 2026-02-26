@@ -444,6 +444,44 @@ export type Database = {
           },
         ]
       }
+      ai_case_messages: {
+        Row: {
+          attempt_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+          structured_data: Json | null
+          turn_number: number
+        }
+        Insert: {
+          attempt_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          structured_data?: Json | null
+          turn_number?: number
+        }
+        Update: {
+          attempt_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          structured_data?: Json | null
+          turn_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_case_messages_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_generation_jobs: {
         Row: {
           admin_id: string | null
@@ -4911,12 +4949,14 @@ export type Database = {
           completed_at: string | null
           correct_count: number
           created_at: string
+          flag_for_review: boolean | null
           id: string
           is_completed: boolean
           score: number
           stage_answers: Json
           started_at: string
           time_taken_seconds: number | null
+          tokens_used: number | null
           total_stages: number
           user_id: string
         }
@@ -4925,12 +4965,14 @@ export type Database = {
           completed_at?: string | null
           correct_count?: number
           created_at?: string
+          flag_for_review?: boolean | null
           id?: string
           is_completed?: boolean
           score?: number
           stage_answers?: Json
           started_at?: string
           time_taken_seconds?: number | null
+          tokens_used?: number | null
           total_stages: number
           user_id: string
         }
@@ -4939,12 +4981,14 @@ export type Database = {
           completed_at?: string | null
           correct_count?: number
           created_at?: string
+          flag_for_review?: boolean | null
           id?: string
           is_completed?: boolean
           score?: number
           stage_answers?: Json
           started_at?: string
           time_taken_seconds?: number | null
+          tokens_used?: number | null
           total_stages?: number
           user_id?: string
         }
@@ -4971,10 +5015,13 @@ export type Database = {
           id: string
           initial_state_json: Json | null
           intro_text: string
+          is_ai_driven: boolean | null
           is_deleted: boolean
           is_published: boolean
+          learning_objectives: string | null
           legacy_case_scenario_id: string | null
           level: string
+          max_turns: number | null
           module_id: string | null
           original_section_name: string | null
           original_section_number: string | null
@@ -5002,10 +5049,13 @@ export type Database = {
           id?: string
           initial_state_json?: Json | null
           intro_text: string
+          is_ai_driven?: boolean | null
           is_deleted?: boolean
           is_published?: boolean
+          learning_objectives?: string | null
           legacy_case_scenario_id?: string | null
           level?: string
+          max_turns?: number | null
           module_id?: string | null
           original_section_name?: string | null
           original_section_number?: string | null
@@ -5033,10 +5083,13 @@ export type Database = {
           id?: string
           initial_state_json?: Json | null
           intro_text?: string
+          is_ai_driven?: boolean | null
           is_deleted?: boolean
           is_published?: boolean
+          learning_objectives?: string | null
           legacy_case_scenario_id?: string | null
           level?: string
+          max_turns?: number | null
           module_id?: string | null
           original_section_name?: string | null
           original_section_number?: string | null
