@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS: AISettings = {
   ai_provider: 'lovable',
   gemini_model: 'gemini-3.1-pro-preview',
   lovable_model: 'google/gemini-3-flash-preview',
+  anthropic_model: 'claude-sonnet-4-20250514',
   ai_content_factory_enabled: true,
   ai_content_factory_disabled_message: 'AI content generation is currently disabled by the administrator.',
 };
