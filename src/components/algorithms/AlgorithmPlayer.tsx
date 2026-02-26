@@ -91,7 +91,7 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
             {config.icon} {config.label}
           </Badge>
         </div>
-        <Progress value={100} className="h-1.5 mt-2" />
+        <Progress value={visitedCount > 1 ? ((visitedCount - 1) / Math.max(visitedCount, 1)) * 100 : 0} className="h-1.5 mt-2" />
         <p className="text-xs text-muted-foreground mt-1">Step {visitedCount}</p>
       </CardHeader>
 
