@@ -365,7 +365,7 @@ Student response: ${userMessage}`;
 
     // Build cohort intelligence block
     const cohortBlock = await buildCohortBlock(supabase, caseId);
-    const systemPrompt = buildSystemPrompt(caseData, cohortBlock);
+    const systemPrompt = buildSystemPrompt(caseData, cohortBlock, hintMode === true);
 
     // Call AI with increased maxTokens to prevent truncation
     const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
