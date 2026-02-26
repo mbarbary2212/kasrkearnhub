@@ -62,6 +62,7 @@ import {
   ResourceTabId,
   PracticeTabId,
   InteractiveTabId,
+  SOCRATES_ICON_PATH,
 } from '@/config/tabConfig';
 import { 
   ArrowLeft, 
@@ -75,6 +76,7 @@ import {
   Upload,
   Image,
   Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
@@ -109,6 +111,7 @@ export default function TopicDetailPage() {
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
+  const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   
   // Section filter state (only for Resources and Practice, NOT for Test)
@@ -503,7 +506,11 @@ export default function TopicDetailPage() {
                             : "border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
                         )}
                       >
-                        <Icon className="w-4 h-4" />
+                        {tab.useImageIcon ? (
+                          <img src={SOCRATES_ICON_PATH} alt="Socrates" className="w-5 h-5 rounded-full object-cover" />
+                        ) : (
+                          <Icon className="w-4 h-4" />
+                        )}
                         <span>{tab.label}</span>
                         <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
                       </button>
@@ -609,58 +616,44 @@ export default function TopicDetailPage() {
                   />
                 )}
 
-                {/* Socratic Tutorials Content (renamed from Guided Explanations) */}
+                {/* Socrates Content - with Documents and Questions sub-tabs */}
                 {resourcesTab === 'guided_explanations' && topicId && (
                   <div className="space-y-4">
-                    {canManageContent && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            guardAdd(() => {
-                              setEditingFlashcard(null);
-                              (window as any).__pendingResourceType = 'guided_explanation';
-                              setFlashcardFormOpen(true);
-                            })
-                          }
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add Guided Explanation
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            guardAdd(() => {
-                              (window as any).__pendingBulkResourceType = 'guided_explanation';
-                              setFlashcardBulkOpen(true);
-                            })
-                          }
-                        >
-                          <Upload className="w-3 h-3 mr-1" />
-                          Bulk Upload
-                        </Button>
-                      </div>
-                    )}
-                    {studyResourcesLoading ? (
-                      <QuestionListSkeleton count={2} type="mcq" />
-                    ) : (
+                    {/* Sub-tabs: Documents / Questions */}
+                    <div className="flex gap-2 border-b border-border pb-2">
+                      <button
+                        onClick={() => setSocratesSubTab('documents')}
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium rounded-t transition-colors",
+                          socratesSubTab === 'documents'
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileText className="w-4 h-4 inline mr-1.5" />
+                        Documents
+                      </button>
+                      <button
+                        onClick={() => setSocratesSubTab('questions')}
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium rounded-t transition-colors",
+                          socratesSubTab === 'questions'
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <HelpCircle className="w-4 h-4 inline mr-1.5" />
+                        Questions
+                      </button>
+                    </div>
+
+                    {/* Documents sub-tab: Socratic Tutorial documents */}
+                    {socratesSubTab === 'documents' && (
                       <>
-                        <GuidedExplanationList
-                          resources={filterBySection(guidedExplanations)}
-                          canManage={canManageContent}
-                          onEdit={handleEditFlashcard}
-                          onDelete={(id) => {
-                            const resource = guidedExplanations.find(r => r.id === id);
-                            requestResourceDelete('guided_explanation', id, resource?.title);
-                          }}
-                          topicId={topicId}
-                        />
-                        {/* Socratic Tutorials from resources table */}
-                        {socraticTutorials.length > 0 && (
+                        {studyResourcesLoading ? (
+                          <QuestionListSkeleton count={2} type="mcq" />
+                        ) : socraticTutorials.length > 0 ? (
                           <div className="space-y-3">
-                            <h3 className="text-sm font-medium text-muted-foreground">Socratic Tutorials</h3>
                             {socraticTutorials.map((doc: any) => (
                               <RichDocumentViewer
                                 key={doc.id}
@@ -670,6 +663,59 @@ export default function TopicDetailPage() {
                               />
                             ))}
                           </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground py-8 text-center">No Socratic documents yet.</p>
+                        )}
+                      </>
+                    )}
+
+                    {/* Questions sub-tab: Guided Explanations (Q&A format) */}
+                    {socratesSubTab === 'questions' && (
+                      <>
+                        {canManageContent && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                guardAdd(() => {
+                                  setEditingFlashcard(null);
+                                  (window as any).__pendingResourceType = 'guided_explanation';
+                                  setFlashcardFormOpen(true);
+                                })
+                              }
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add Question
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                guardAdd(() => {
+                                  (window as any).__pendingBulkResourceType = 'guided_explanation';
+                                  setFlashcardBulkOpen(true);
+                                })
+                              }
+                            >
+                              <Upload className="w-3 h-3 mr-1" />
+                              Bulk Upload
+                            </Button>
+                          </div>
+                        )}
+                        {studyResourcesLoading ? (
+                          <QuestionListSkeleton count={2} type="mcq" />
+                        ) : (
+                          <GuidedExplanationList
+                            resources={filterBySection(guidedExplanations)}
+                            canManage={canManageContent}
+                            onEdit={handleEditFlashcard}
+                            onDelete={(id) => {
+                              const resource = guidedExplanations.find(r => r.id === id);
+                              requestResourceDelete('guided_explanation', id, resource?.title);
+                            }}
+                            topicId={topicId}
+                          />
                         )}
                       </>
                     )}
