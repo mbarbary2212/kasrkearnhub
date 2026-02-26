@@ -32,8 +32,6 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
 
   const currentNode = currentNodeId ? nodeMap.get(currentNodeId) : null;
   const visitedCount = history.length + (currentNodeId ? 1 : 0);
-  const totalNodes = algorithmJson.nodes.length;
-  const progress = totalNodes > 0 ? Math.round((visitedCount / totalNodes) * 100) : 0;
 
   const goToNode = (nodeId: string | null) => {
     if (currentNodeId) setHistory(prev => [...prev, currentNodeId]);
