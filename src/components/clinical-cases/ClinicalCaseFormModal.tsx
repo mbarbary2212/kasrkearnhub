@@ -19,12 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, X, Info, Sparkles } from 'lucide-react';
+import { Loader2, X, Sparkles, Check } from 'lucide-react';
 import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 import { SectionSelector, SectionWarningBanner } from '@/components/sections';
+import { EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 interface ClinicalCaseFormModalProps {
   open: boolean;
@@ -57,6 +60,7 @@ export function ClinicalCaseFormModal({
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [learningObjectives, setLearningObjectives] = useState('');
   const [maxTurns, setMaxTurns] = useState(10);
+  const [avatarId, setAvatarId] = useState(1);
 
   const { data: chapters } = useModuleChapters(moduleId);
   const createCase = useCreateClinicalCase();
@@ -74,6 +78,7 @@ export function ClinicalCaseFormModal({
       setSectionId(clinicalCase.section_id || null);
       setLearningObjectives(clinicalCase.learning_objectives || '');
       setMaxTurns(clinicalCase.max_turns || 10);
+      setAvatarId((clinicalCase as any).avatar_id ?? 1);
     } else {
       resetForm();
       if (chapterId) {
@@ -94,6 +99,7 @@ export function ClinicalCaseFormModal({
     setSectionId(null);
     setLearningObjectives('');
     setMaxTurns(10);
+    setAvatarId(1);
   };
 
   const handleAddTag = () => {
@@ -121,7 +127,7 @@ export function ClinicalCaseFormModal({
       return;
     }
 
-    const formData: ClinicalCaseFormData = {
+    const formData: ClinicalCaseFormData & { avatar_id?: number } = {
       title: title.trim(),
       intro_text: introText.trim(),
       module_id: moduleId,
@@ -133,16 +139,17 @@ export function ClinicalCaseFormModal({
       is_published: isPublished,
       learning_objectives: learningObjectives.trim() || undefined,
       max_turns: maxTurns,
+      avatar_id: avatarId,
     };
 
     try {
       if (isEditing && clinicalCase) {
-        await updateCase.mutateAsync({ id: clinicalCase.id, data: formData });
+        await updateCase.mutateAsync({ id: clinicalCase.id, data: formData as any });
         toast.success('Case updated');
         onOpenChange(false);
         onSuccess?.(clinicalCase.id);
       } else {
-        const result = await createCase.mutateAsync(formData);
+        const result = await createCase.mutateAsync(formData as any);
         toast.success('AI Case created! Students can now practice with this case.');
         onOpenChange(false);
         onSuccess?.(result.id);
@@ -272,6 +279,39 @@ export function ClinicalCaseFormModal({
                   onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
                   className="mt-1"
                 />
+              </div>
+            </div>
+
+            {/* Examiner Avatar */}
+            <div>
+              <Label>Clinical Examiner Avatar</Label>
+              <div className="grid grid-cols-4 gap-3 mt-2">
+                {EXAMINER_AVATARS.map((exam) => (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    onClick={() => setAvatarId(exam.id)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all',
+                      avatarId === exam.id
+                        ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/20'
+                        : 'border-transparent hover:border-muted-foreground/20'
+                    )}
+                  >
+                    <div className="relative">
+                      <Avatar className="w-16 h-16 border border-background shadow-sm">
+                        <AvatarImage src={exam.image} alt={exam.name} />
+                        <AvatarFallback>{exam.name.charAt(4)}</AvatarFallback>
+                      </Avatar>
+                      {avatarId === exam.id && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-center">{exam.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
