@@ -122,8 +122,31 @@ export async function callAI(
   
   if (provider.name === 'gemini') {
     return callGeminiDirect(systemPrompt, userPrompt, provider.model, customApiKey);
+  } else if (provider.name === 'anthropic') {
+    return callAnthropicDirect(systemPrompt, userPrompt, provider.model, customApiKey);
   } else {
     return callLovableGateway(systemPrompt, userPrompt, provider.model);
+  }
+}
+
+/**
+ * Call AI with full conversation history (for multi-turn use cases like AI cases)
+ */
+export async function callAIWithMessages(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  provider: AIProvider,
+  options?: { temperature?: number; maxTokens?: number; customApiKey?: string }
+): Promise<AICallResult> {
+  const temp = options?.temperature ?? 0.7;
+  const maxTokens = options?.maxTokens ?? 1024;
+
+  if (provider.name === 'anthropic') {
+    return callAnthropicWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+  } else if (provider.name === 'gemini') {
+    return callGeminiWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+  } else {
+    return callLovableWithMessages(systemPrompt, messages, provider.model, temp, maxTokens);
   }
 }
 
