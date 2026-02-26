@@ -330,28 +330,6 @@ export function ClinicalCaseBulkUploadModal({
     }
   }, [handleFile]);
 
-  const handleFile = useCallback((files: File[]) => {
-    const file = files[0];
-    if (!file) return;
-    setFileName(file.name);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      try {
-        const cases = parseClinicalCasesTxt(text);
-        setParsedCases(cases);
-        if (cases.length === 0) {
-          toast.error('No cases found in file');
-        }
-      } catch (err) {
-        console.error('Parse error:', err);
-        toast.error('Failed to parse file');
-      }
-    };
-    reader.readAsText(file);
-  }, []);
-
   const handleImport = async () => {
     if (!parsedCases || parsedCases.length === 0) return;
 
