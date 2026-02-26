@@ -4413,24 +4413,6 @@ export type Database = {
         }
         Relationships: []
       }
-      test_items: {
-        Row: {
-          created_at: string
-          id: number
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
       tf_analytics: {
         Row: {
           chapter_id: string | null
