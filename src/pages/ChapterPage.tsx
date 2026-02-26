@@ -718,7 +718,7 @@ export default function ChapterPage() {
                       <>
                         {showAddControls && chapterId && moduleId && (
                           <div className="mb-4">
-                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" hideAudio />
                           </div>
                         )}
                         {studyResourcesLoading ? (

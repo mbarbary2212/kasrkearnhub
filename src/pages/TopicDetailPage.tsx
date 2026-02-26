@@ -652,7 +652,7 @@ export default function TopicDetailPage() {
                       <>
                         {showAddControls && topicId && moduleId && (
                           <div className="mb-4">
-                            <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" />
+                            <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" hideAudio />
                           </div>
                         )}
                         {studyResourcesLoading ? (

@@ -68,6 +68,7 @@ interface AdminContentActionsProps {
   moduleId: string;
   topicId?: string;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
+  hideAudio?: boolean;
 }
 
 interface ParsedEssayRow {
@@ -86,7 +87,7 @@ interface ParsedEssayRow {
   maxPoints?: number;
 }
 
-export function AdminContentActions({ chapterId, moduleId, topicId, contentType }: AdminContentActionsProps) {
+export function AdminContentActions({ chapterId, moduleId, topicId, contentType, hideAudio }: AdminContentActionsProps) {
   const auth = useAuthContext();
   const { data: sections = [] } = useChapterSections(chapterId);
 
@@ -687,7 +688,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType 
         </Tooltip>
       )}
 
-      {showAddControls && contentType === 'resource' && (
+      {showAddControls && contentType === 'resource' && !hideAudio && (
         <AudioUploadDialog
           moduleId={moduleId}
           chapterId={chapterId}
