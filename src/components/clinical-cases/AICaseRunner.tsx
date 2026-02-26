@@ -48,6 +48,7 @@ export function AICaseRunner({
     currentQuestion,
     debrief,
     error,
+    streamingContent,
     startCase,
     submitAnswer,
     reset,
