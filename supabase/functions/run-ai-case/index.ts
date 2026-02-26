@@ -5,6 +5,7 @@ import {
   getModelForContentType,
   getContentTypeOverrides,
   callAIWithMessages,
+  logAIUsage,
 } from "../_shared/ai-provider.ts";
 
 const MAX_TURNS_DEFAULT = 10;
