@@ -124,7 +124,9 @@ export default function ChapterPage() {
   );
 
   // State for section mode and active tabs within sections
-  const [activeSection, setActiveSection] = useState<SectionMode>('resources');
+  const [searchParams] = useSearchParams();
+  const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
+  const [activeSection, setActiveSection] = useState<SectionMode>(initialSection);
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
