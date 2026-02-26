@@ -40,8 +40,8 @@ export default function VirtualPatientRunner() {
   const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
 
   const goBack = () => {
-    if (vpCase?.chapter_id) {
-      navigate(`/chapter/${vpCase.chapter_id}?section=interactive`);
+    if (vpCase?.module_id && vpCase?.chapter_id) {
+      navigate(`/module/${vpCase.module_id}/chapter/${vpCase.chapter_id}?section=interactive`);
     } else {
       navigate(-1);
     }
