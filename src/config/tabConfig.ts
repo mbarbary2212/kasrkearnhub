@@ -15,6 +15,9 @@ import {
   ToggleLeft,
 } from 'lucide-react';
 
+// Socrates icon image path for the Socrates tab
+export const SOCRATES_ICON_PATH = '/socrates-icon.png';
+
 // Unified tab configuration for the entire app
 // Every topic/chapter uses the same structure regardless of department or year
 
@@ -33,6 +36,7 @@ export interface TabConfig {
   id: string;
   label: string;
   icon: LucideIcon;
+  useImageIcon?: boolean;
 }
 
 // Standard Resources tabs - same for all modules/departments
@@ -42,7 +46,7 @@ export const RESOURCES_TABS: TabConfig[] = [
   { id: 'lectures', label: 'Videos', icon: Video },
   { id: 'flashcards', label: 'Flashcards', icon: Layers },
   { id: 'mind_maps', label: 'Visual Resources', icon: Network },
-  { id: 'guided_explanations', label: 'Socratic Tutorials', icon: GraduationCap },
+  { id: 'guided_explanations', label: 'Socrates', icon: GraduationCap, useImageIcon: true },
   { id: 'reference_materials', label: 'Reference Materials', icon: FileText },
   { id: 'clinical_tools', label: 'Clinical Tools', icon: GitBranch },
 ];
