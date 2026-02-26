@@ -444,6 +444,44 @@ export type Database = {
           },
         ]
       }
+      ai_case_insights: {
+        Row: {
+          avg_score: number | null
+          case_id: string
+          common_gaps: Json | null
+          common_strengths: Json | null
+          id: string
+          total_attempts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_score?: number | null
+          case_id: string
+          common_gaps?: Json | null
+          common_strengths?: Json | null
+          id?: string
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_score?: number | null
+          case_id?: string
+          common_gaps?: Json | null
+          common_strengths?: Json | null
+          id?: string
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_case_insights_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "virtual_patient_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_case_messages: {
         Row: {
           attempt_id: string
