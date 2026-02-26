@@ -18,9 +18,10 @@ export interface AICallResult {
 }
 
 export interface AISettings {
-  ai_provider: 'lovable' | 'gemini';
+  ai_provider: AIProviderName;
   gemini_model: string;
   lovable_model: string;
+  anthropic_model: string;
   ai_content_factory_enabled: boolean;
   ai_content_factory_disabled_message: string;
 }
