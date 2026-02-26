@@ -1,74 +1,52 @@
 
 
-## Plan: Reorganize Reference Materials & Rename Guided Explanations
+## Plan: Socrates Documents (No Audio) + Visual Resources Tab Styling
 
-### What You Asked
-1. Merge the standalone "Summaries" sub-tab (under Documents) with uploaded Documents into one tab called something like "Doc/Sum"
-2. Move this merged tab to be the **first** sub-tab in Reference Materials
-3. Move "Socratic Tutorials" out of Documents and into the current "Guided Explanations" top-level tab — renaming that tab from "Guided Explanations" to **"Socratic Tutorials"**
-4. Audio files can also live in the merged doc/sum tab
+### Three Changes
 
-### Current Structure (Reference Materials)
-```text
-Reference Materials
-├── Tables (0)
-├── Exam Tips (0)
-├── Images (0)
-└── Documents (1)          ← nested sub-tabs:
-    ├── Summaries (0)
-    ├── Socratic Tutorials (0)
-    └── Documents (1)      ← uploaded files
+**1. Remove audio upload from Socrates > Documents tab**
+
+The current `AdminContentActions` with `contentType="resource"` automatically includes an `AudioUploadDialog`. Instead of using `AdminContentActions` in the Socrates Documents sub-tab, I'll add a simpler upload button that only handles document/PDF uploads (no audio). This keeps Socrates Documents purely for text-based Socratic tutorial documents.
+
+- **Files**: `src/pages/ChapterPage.tsx`, `src/pages/TopicDetailPage.tsx`
+- Replace `<AdminContentActions contentType="resource" />` in the Socrates Documents sub-tab with a dedicated document-only upload button (reusing the existing `addResource` mutation pattern but without the audio option)
+- Alternatively, add a new prop `hideAudio` to `AdminContentActions` to conditionally hide the `AudioUploadDialog`
+
+**2. Confirm: Socrates docs are separate from Reference Materials docs**
+
+Yes, these are different content pools:
+- **Socrates > Documents**: Resources with `document_subtype === 'socratic_tutorial'` (AI-generated Socratic tutorial documents stored in `resources.rich_content`)
+- **Reference Materials > Documents & Summaries**: Regular uploaded documents (PDFs, links) + AI-generated summaries stored in `resources.rich_content` where `document_subtype === 'summary'`
+
+No code change needed here, just confirming the separation is already correct.
+
+**3. Style Visual Resources sub-tabs (Mind Maps / Infographics) with subtle colors**
+
+Currently the Mind Maps and Infographics tabs in `VisualResourcesSection.tsx` use the default `TabsTrigger` styling which is subtle and easy to miss. I'll add distinct background colors:
+- **Mind Maps**: Subtle blue tint (`bg-blue-50 text-blue-700` when active, `hover:bg-blue-50/50` when inactive)
+- **Infographics**: Subtle purple/violet tint (`bg-violet-50 text-violet-700` when active, `hover:bg-violet-50/50` when inactive)
+
+- **File**: `src/components/study/VisualResourcesSection.tsx`
+- Add color properties to the `SUBTABS` array and apply conditional styling to each `TabsTrigger` based on the active state using Radix's `data-[state=active]` attribute
+
+### Technical Detail
+
+For the `AdminContentActions` audio removal, the cleanest approach is adding an optional `hideAudio?: boolean` prop:
+
+```tsx
+// AdminContentActions.tsx
+{showAddControls && contentType === 'resource' && !hideAudio && (
+  <AudioUploadDialog ... />
+)}
 ```
 
-### Proposed Structure
-```text
-Socratic Tutorials         ← renamed top-level tab (was "Guided Explanations")
-  └── existing guided explanations + socratic tutorials from Documents
-
-Reference Materials
-├── Documents & Summaries  ← NEW first tab (merged: uploaded docs + AI summaries + audio)
-├── Tables
-├── Exam Tips
-└── Images
-```
-
-### Technical Changes
-
-**1. Rename "Guided Explanations" tab → "Socratic Tutorials"** (`src/config/tabConfig.ts`)
-- Change label from `'Guided Explanations'` to `'Socratic Tutorials'`
-- Change icon from `MessageCircleQuestion` to `GraduationCap`
-
-**2. Move Socratic Tutorial content into the Guided Explanations tab** (`src/pages/ChapterPage.tsx` + `src/pages/TopicDetailPage.tsx`)
-- In the `guided_explanations` tab content section, add a sub-section that renders Socratic Tutorials (fetched from `resources` table where `document_subtype = 'socratic_tutorial'`) alongside existing guided explanations
-- Both content types live in one tab, separated by clear headings
-- Update the tab count to include socratic tutorials: `guided_explanations count = guided_explanation study_resources + socratic_tutorial resources`
-
-**3. Merge Summaries + Documents into one "Documents & Summaries" tab** (`src/components/content/ResourcesTabContent.tsx`)
-- Remove the nested 3-sub-tab structure (Summaries / Socratic Tutorials / Documents)
-- Create a single flat list showing both AI-generated summaries (rendered via `RichDocumentViewer`) and uploaded documents (rendered via `ResourceList`)
-- Remove the `filteredTutorials` logic from this component (tutorials move to Socratic Tutorials tab)
-- Make this the **first** tab in the `STUDY_RESOURCE_TYPES` array (before Tables)
-
-**4. Reorder sub-tabs in Reference Materials** (`src/components/content/ResourcesTabContent.tsx`)
-- New order: Documents & Summaries → Tables → Exam Tips → Images
-- Set `defaultValue` to the new merged tab id
-
-**5. Update both page files** (`ChapterPage.tsx` + `TopicDetailPage.tsx`)
-- Pass socratic tutorial resources into the Socratic Tutorials (formerly Guided Explanations) tab
-- Update count calculations to include socratic tutorials in the `guided_explanations` count
-- Remove socratic tutorials from the `reference_materials` document count
+This avoids duplicating upload logic and keeps the Socrates tab document-only.
 
 ### Files to Edit
 | File | Change |
 |------|--------|
-| `src/config/tabConfig.ts` | Rename label + icon for `guided_explanations` |
-| `src/components/content/ResourcesTabContent.tsx` | Remove nested sub-tabs, merge docs+summaries, remove socratic tutorials, reorder |
-| `src/pages/ChapterPage.tsx` | Add socratic tutorials to Socratic Tutorials tab, update counts |
-| `src/pages/TopicDetailPage.tsx` | Same changes as ChapterPage |
-
-### What Stays the Same
-- Tab id remains `'guided_explanations'` internally (avoids breaking routes/state)
-- All existing guided explanation CRUD (add, bulk upload, edit, delete) unchanged
-- Reference Materials sub-tabs for Tables, Exam Tips, Images unchanged
-- Audio upload button stays in the merged documents tab
+| `src/components/admin/AdminContentActions.tsx` | Add `hideAudio` prop, conditionally hide `AudioUploadDialog` |
+| `src/pages/ChapterPage.tsx` | Pass `hideAudio` to Socrates Documents `AdminContentActions` |
+| `src/pages/TopicDetailPage.tsx` | Same as above |
+| `src/components/study/VisualResourcesSection.tsx` | Add subtle color styling to Mind Maps and Infographics sub-tabs |
 
