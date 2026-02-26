@@ -11,11 +11,12 @@ import { toast } from "sonner";
 interface UseAICaseOptions {
   caseId: string;
   attemptId: string;
+  hintMode?: boolean;
   onComplete?: (debrief: AITurnResponse) => void;
   onFlagged?: () => void;
 }
 
-export function useAICase({ caseId, attemptId, onComplete, onFlagged }: UseAICaseOptions) {
+export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }: UseAICaseOptions) {
   const turnRef = useRef(0);
   const [state, setState] = useState<AICaseRunnerState>({
     status: "idle",
@@ -44,11 +45,10 @@ export function useAICase({ caseId, attemptId, onComplete, onFlagged }: UseAICas
     userMessage: string
   ): Promise<RunAICaseResponse | null> => {
     const { data, error } = await supabase.functions.invoke("run-ai-case", {
-      body: { caseId, attemptId, userMessage, turnNumber: turnRef.current },
+      body: { caseId, attemptId, userMessage, turnNumber: turnRef.current, hintMode },
     });
 
     if (error) {
-      // Check for rate limit / payment errors
       const msg = error.message || "";
       if (msg.includes("429") || msg.includes("rate limit")) {
         toast.error("Rate limit exceeded. Please wait a moment and try again.");
@@ -82,7 +82,7 @@ export function useAICase({ caseId, attemptId, onComplete, onFlagged }: UseAICas
           debrief: turn,
           currentQuestion: null,
         }));
-      if (turn.flag_for_review) onFlagged?.();
+        if (turn.flag_for_review) onFlagged?.();
         // Don't auto-call onComplete here — let DebriefCard button trigger it
       } else {
         setState((prev) => ({
@@ -94,7 +94,7 @@ export function useAICase({ caseId, attemptId, onComplete, onFlagged }: UseAICas
         }));
       }
     },
-    [addMessage, onComplete, onFlagged]
+    [addMessage, onFlagged]
   );
 
   const startCase = useCallback(
