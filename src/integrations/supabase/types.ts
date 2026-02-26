@@ -477,6 +477,13 @@ export type Database = {
             foreignKeyName: "ai_case_messages_attempt_id_fkey"
             columns: ["attempt_id"]
             isOneToOne: false
+            referencedRelation: "ai_case_attempt_summary"
+            referencedColumns: ["attempt_id"]
+          },
+          {
+            foreignKeyName: "ai_case_messages_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
             referencedRelation: "virtual_patient_attempts"
             referencedColumns: ["id"]
           },
@@ -4950,6 +4957,7 @@ export type Database = {
           correct_count: number
           created_at: string
           flag_for_review: boolean | null
+          flag_reason: string | null
           id: string
           is_completed: boolean
           score: number
@@ -4966,6 +4974,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           flag_for_review?: boolean | null
+          flag_reason?: string | null
           id?: string
           is_completed?: boolean
           score?: number
@@ -4982,6 +4991,7 @@ export type Database = {
           correct_count?: number
           created_at?: string
           flag_for_review?: boolean | null
+          flag_reason?: string | null
           id?: string
           is_completed?: boolean
           score?: number
@@ -5246,6 +5256,55 @@ export type Database = {
       }
     }
     Views: {
+      ai_case_attempt_summary: {
+        Row: {
+          attempt_id: string | null
+          case_difficulty: string | null
+          case_id: string | null
+          case_title: string | null
+          completed_at: string | null
+          debrief_summary: string | null
+          duration_seconds: number | null
+          estimated_cost_usd: number | null
+          flag_for_review: boolean | null
+          flag_reason: string | null
+          is_completed: boolean | null
+          max_turns: number | null
+          message_count: number | null
+          module_id: string | null
+          score: number | null
+          started_at: string | null
+          student_email: string | null
+          student_name: string | null
+          tokens_used: number | null
+          topic_id: string | null
+          total_stages: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_patient_attempts_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_patient_cases_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_admin_view: {
         Row: {
           admin_notes: string | null
