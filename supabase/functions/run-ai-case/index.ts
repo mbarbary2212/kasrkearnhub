@@ -16,7 +16,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildSystemPrompt(caseData: any): string {
+function buildSystemPrompt(caseData: any, cohortBlock: string): string {
   return `You are a clinical examiner conducting a structured OSCE-style case simulation for medical students.
 
 ══════════════════════════════════════
@@ -43,6 +43,8 @@ YOUR ROLE AND BEHAVIOUR
 - If the student gives a weak answer, probe further before moving on
 - If the student gives a strong answer, acknowledge briefly and advance the case
 - Keep each question focused on ONE clinical decision at a time
+- Ask exactly ONE question per turn. Do not bundle multiple questions into a single response.
+- Do not probe the same topic more than twice. If the student has answered a topic area twice (even poorly), move on to the next learning objective.
 
 ══════════════════════════════════════
 STRICT GUARDRAILS — NEVER VIOLATE THESE
@@ -63,7 +65,7 @@ STRICT GUARDRAILS — NEVER VIOLATE THESE
 ══════════════════════════════════════
 OUTPUT FORMAT — CRITICAL
 ══════════════════════════════════════
-Respond ONLY with valid JSON. No markdown, no prose outside JSON.
+Respond ONLY with valid JSON. No markdown, no prose outside JSON. Do NOT wrap in code fences.
 
 For a question turn:
 {"type":"question","patient_info":"string or null","prompt":"string","choices":null or [{"label":"A. ...","value":"A"}],"teaching_point":"string or null"}
@@ -72,7 +74,169 @@ For a redirect:
 {"type":"redirect","prompt":"string — redirect back to case","patient_info":null,"choices":null,"teaching_point":null}
 
 For final debrief:
-{"type":"debrief","prompt":"string","score":0-100,"summary":"string","strengths":["string"],"gaps":["string"],"flag_for_review":boolean,"patient_info":null,"choices":null,"teaching_point":null}`;
+{"type":"debrief","prompt":"string","score":0-100,"summary":"string","strengths":["string"],"gaps":["string"],"flag_for_review":boolean,"patient_info":null,"choices":null,"teaching_point":null}
+${cohortBlock}`;
+}
+
+/**
+ * Extract topic areas already probed from assistant message history
+ */
+function extractProbedTopics(history: any[]): string[] {
+  const topics = new Set<string>();
+  for (const m of history) {
+    if (m.role === "assistant" && m.structured_data) {
+      const sd = typeof m.structured_data === "string" ? JSON.parse(m.structured_data) : m.structured_data;
+      if (sd?.prompt) {
+        // Use first 60 chars of prompt as topic identifier
+        topics.add(sd.prompt.substring(0, 60));
+      }
+    }
+  }
+  return Array.from(topics);
+}
+
+/**
+ * Safely extract JSON from AI response, stripping code fences
+ */
+function parseAIResponse(raw: string): any {
+  // Strip markdown code fences
+  let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Fall through
+  }
+
+  // Try regex extraction
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      // Fall through
+    }
+  }
+
+  // All parsing failed
+  return null;
+}
+
+/**
+ * After a debrief, upsert ai_case_insights with aggregated data
+ */
+async function upsertCaseInsights(supabase: any, caseId: string) {
+  try {
+    // Fetch all completed attempts with their debrief data
+    const { data: completedAttempts } = await supabase
+      .from("virtual_patient_attempts")
+      .select("score")
+      .eq("case_id", caseId)
+      .eq("is_completed", true);
+
+    if (!completedAttempts || completedAttempts.length === 0) return;
+
+    // Fetch debrief messages for this case
+    const { data: debriefMessages } = await supabase
+      .from("ai_case_messages")
+      .select("structured_data, attempt_id")
+      .eq("role", "assistant")
+      .in(
+        "attempt_id",
+        completedAttempts.length > 0
+          ? (await supabase
+              .from("virtual_patient_attempts")
+              .select("id")
+              .eq("case_id", caseId)
+              .eq("is_completed", true)
+            ).data?.map((a: any) => a.id) || []
+          : []
+      );
+
+    // Aggregate strengths and gaps
+    const strengthCounts: Record<string, number> = {};
+    const gapCounts: Record<string, number> = {};
+
+    for (const msg of debriefMessages || []) {
+      const sd = msg.structured_data;
+      if (!sd || typeof sd !== "object") continue;
+      const data = sd as any;
+      if (data.type !== "debrief") continue;
+
+      for (const s of data.strengths || []) {
+        strengthCounts[s] = (strengthCounts[s] || 0) + 1;
+      }
+      for (const g of data.gaps || []) {
+        gapCounts[g] = (gapCounts[g] || 0) + 1;
+      }
+    }
+
+    // Top 5 by frequency
+    const topStrengths = Object.entries(strengthCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([s, count]) => ({ text: s, count }));
+
+    const topGaps = Object.entries(gapCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([g, count]) => ({ text: g, count }));
+
+    const scores = completedAttempts.map((a: any) => a.score).filter((s: any) => s != null);
+    const avgScore = scores.length > 0
+      ? scores.reduce((sum: number, s: number) => sum + s, 0) / scores.length
+      : 0;
+
+    await supabase.from("ai_case_insights").upsert(
+      {
+        case_id: caseId,
+        total_attempts: completedAttempts.length,
+        avg_score: Math.round(avgScore * 100) / 100,
+        common_strengths: topStrengths,
+        common_gaps: topGaps,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "case_id" }
+    );
+  } catch (err) {
+    console.error("Failed to upsert case insights:", err);
+  }
+}
+
+/**
+ * Build cohort intelligence block for system prompt
+ */
+async function buildCohortBlock(supabase: any, caseId: string): Promise<string> {
+  try {
+    const { data: insights } = await supabase
+      .from("ai_case_insights")
+      .select("*")
+      .eq("case_id", caseId)
+      .single();
+
+    if (!insights || insights.total_attempts < 3) return "";
+
+    const gaps = (insights.common_gaps || [])
+      .map((g: any) => typeof g === "string" ? g : g.text)
+      .filter(Boolean);
+
+    const strengths = (insights.common_strengths || [])
+      .map((s: any) => typeof s === "string" ? s : s.text)
+      .filter(Boolean);
+
+    return `
+
+══════════════════════════════════════
+COHORT INTELLIGENCE (from past students)
+══════════════════════════════════════
+${insights.total_attempts} students have attempted this case. Average score: ${insights.avg_score}%.
+${gaps.length > 0 ? `Common gaps students miss: ${gaps.join(", ")}` : ""}
+${strengths.length > 0 ? `Common strengths: ${strengths.join(", ")}` : ""}
+${gaps.length > 0 ? `Probe these areas with extra focus if the student hasn't addressed them.` : ""}`;
+  } catch {
+    return "";
+  }
 }
 
 Deno.serve(async (req) => {
@@ -146,10 +310,10 @@ Deno.serve(async (req) => {
 
     const maxTurns = caseData.max_turns ?? MAX_TURNS_DEFAULT;
 
-    // Fetch conversation history
+    // Fetch conversation history (include structured_data for topic tracking)
     const { data: messageHistory } = await supabase
       .from("ai_case_messages")
-      .select("role, content, turn_number")
+      .select("role, content, turn_number, structured_data")
       .eq("attempt_id", attemptId)
       .order("turn_number", { ascending: true });
 
@@ -159,6 +323,9 @@ Deno.serve(async (req) => {
     const offTopicCount = history.filter(
       (m: any) => m.role === "assistant" && m.content.includes('"type":"redirect"')
     ).length;
+
+    // Extract topics already probed for no-repeat-topic rule
+    const probedTopics = extractProbedTopics(history);
 
     // Save user message
     await supabase.from("ai_case_messages").insert({
@@ -177,6 +344,7 @@ Deno.serve(async (req) => {
     const contextNote = `[EXAMINER CONTEXT — not shown to student]
 Current turn: ${turnNumber + 1} of ${maxTurns}
 Off-topic strikes: ${offTopicCount} of ${REDIRECT_LIMIT}
+Topics already probed (${probedTopics.length}): ${probedTopics.length > 0 ? probedTopics.join(" | ") : "none yet"}
 ${turnNumber + 1 >= maxTurns ? "⚠️ FINAL TURN — return a debrief response." : ""}
 ${offTopicCount >= REDIRECT_LIMIT ? "⚠️ Off-topic limit reached — return debrief with flag_for_review: true." : ""}
 Student response: ${userMessage}`;
@@ -188,15 +356,16 @@ Student response: ${userMessage}`;
     const overrides = await getContentTypeOverrides(supabase);
     const model = getModelForContentType(settings, "ai_case", overrides);
     const provider = getAIProvider(settings);
-    // Override model from content-type overrides if set
     const resolvedProvider = { ...provider, model };
 
-    const systemPrompt = buildSystemPrompt(caseData);
+    // Build cohort intelligence block
+    const cohortBlock = await buildCohortBlock(supabase, caseId);
+    const systemPrompt = buildSystemPrompt(caseData, cohortBlock);
 
-    // Call AI using the shared multi-turn abstraction
+    // Call AI with increased maxTokens to prevent truncation
     const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
       temperature: 0.7,
-      maxTokens: 1024,
+      maxTokens: 4096,
     });
 
     if (!aiResult.success) {
@@ -209,12 +378,11 @@ Student response: ${userMessage}`;
 
     const aiResponseText = aiResult.content!;
 
-    // Parse structured JSON from AI response
-    let aiTurn: any;
-    try {
-      const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
-      aiTurn = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponseText);
-    } catch {
+    // Parse structured JSON from AI response (with code fence stripping)
+    let aiTurn = parseAIResponse(aiResponseText);
+    
+    if (!aiTurn) {
+      // All parsing failed — return a safe fallback
       aiTurn = {
         type: "redirect",
         prompt: "Let's refocus on the case. Please continue with your clinical reasoning.",
@@ -237,7 +405,7 @@ Student response: ${userMessage}`;
       turn_number: turnNumber,
     });
 
-    // If debrief, complete the attempt
+    // If debrief, complete the attempt and upsert insights
     if (aiTurn.type === "debrief") {
       await supabase
         .from("virtual_patient_attempts")
@@ -248,6 +416,11 @@ Student response: ${userMessage}`;
           flag_for_review: aiTurn.flag_for_review ?? false,
         })
         .eq("id", attemptId);
+
+      // Upsert aggregated insights for cohort intelligence (fire-and-forget)
+      upsertCaseInsights(supabase, caseId).catch((err) =>
+        console.error("Insights upsert error:", err)
+      );
     }
 
     return new Response(
