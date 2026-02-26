@@ -32,8 +32,6 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
 
   const currentNode = currentNodeId ? nodeMap.get(currentNodeId) : null;
   const visitedCount = history.length + (currentNodeId ? 1 : 0);
-  const totalNodes = algorithmJson.nodes.length;
-  const progress = totalNodes > 0 ? Math.round((visitedCount / totalNodes) * 100) : 0;
 
   const goToNode = (nodeId: string | null) => {
     if (currentNodeId) setHistory(prev => [...prev, currentNodeId]);
@@ -93,8 +91,8 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
             {config.icon} {config.label}
           </Badge>
         </div>
-        <Progress value={progress} className="h-1.5 mt-2" />
-        <p className="text-xs text-muted-foreground mt-1">Step {visitedCount} of {totalNodes}</p>
+        <Progress value={100} className="h-1.5 mt-2" />
+        <p className="text-xs text-muted-foreground mt-1">Step {visitedCount}</p>
       </CardHeader>
 
       <CardContent className="space-y-4">
