@@ -278,12 +278,7 @@ export function ClinicalCaseBulkUploadModal({
   const createStage = useCreateClinicalCaseStage();
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile([file]);
-    if (e.target) e.target.value = '';
-  }, []);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleFile = useCallback((files: File[]) => {
     const file = files[0];
@@ -291,8 +286,8 @@ export function ClinicalCaseBulkUploadModal({
     setFileName(file.name);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
       try {
         const cases = parseClinicalCasesTxt(text);
         setParsedCases(cases);
@@ -306,6 +301,34 @@ export function ClinicalCaseBulkUploadModal({
     };
     reader.readAsText(file);
   }, []);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile([file]);
+    if (e.target) e.target.value = '';
+  }, [handleFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFile([files[0]]);
+    }
+  }, [handleFile]);
 
   const handleImport = async () => {
     if (!parsedCases || parsedCases.length === 0) return;
@@ -416,13 +439,20 @@ export function ClinicalCaseBulkUploadModal({
             />
             <div
               className={cn(
-                "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors",
-                "flex flex-col items-center gap-2"
+                "border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all w-full",
+                "flex flex-col items-center gap-2",
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.02]"
+                  : "border-muted-foreground/25 bg-background hover:border-primary/50 hover:bg-muted/50"
               )}
               onClick={() => inputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <FileText className="w-10 h-10 text-muted-foreground" />
-              <p className="font-medium">Drop your TXT file here</p>
+              <FileText className={cn("w-10 h-10 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
+              <p className="font-medium">{isDragging ? 'Drop file here...' : 'Drop your TXT file here'}</p>
               <p className="text-sm text-muted-foreground">or click to browse</p>
             </div>
           </div>
