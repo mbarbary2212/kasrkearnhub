@@ -80,6 +80,9 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
       case 'lovable_model':
         settings.lovable_model = (value as string) || DEFAULT_SETTINGS.lovable_model;
         break;
+      case 'anthropic_model':
+        settings.anthropic_model = (value as string) || DEFAULT_SETTINGS.anthropic_model;
+        break;
       case 'ai_content_factory_enabled':
         settings.ai_content_factory_enabled = value === true || value === 'true';
         break;
