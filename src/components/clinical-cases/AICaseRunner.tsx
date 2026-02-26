@@ -52,7 +52,9 @@ export function AICaseRunner({
   } = useAICase({
     caseId,
     attemptId,
-    onComplete: () => onComplete?.(),
+    onComplete: () => {
+      // Don't auto-navigate — let student review the debrief
+    },
     onFlagged: () => {
       // Could show a warning, for now just log
       console.warn('Case flagged for review');
@@ -225,11 +227,6 @@ function MessageBubble({ message }: { message: AICaseDisplayMessage }) {
           </Card>
         )}
 
-        {message.teaching_point && (
-          <div className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3 py-1">
-            💡 {message.teaching_point}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -266,9 +263,22 @@ function DebriefCard({
           <p className="text-sm text-muted-foreground">{debrief.summary}</p>
         )}
 
-        {/* Prompt/feedback text */}
+        {/* Detailed feedback */}
         {debrief.prompt && (
-          <p className="text-sm">{debrief.prompt}</p>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="text-sm font-medium mb-2">Detailed Feedback</h4>
+            <p className="text-sm whitespace-pre-wrap">{debrief.prompt}</p>
+          </div>
+        )}
+
+        {/* Consolidated teaching points */}
+        {debrief.teaching_point && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+              💡 Key Learning Points
+            </h4>
+            <p className="text-sm whitespace-pre-wrap">{debrief.teaching_point}</p>
+          </div>
         )}
 
         {/* Strengths & Gaps */}
@@ -306,7 +316,7 @@ function DebriefCard({
         </div>
 
         <Button onClick={onFinish} className="w-full">
-          Finish
+          Back to Cases
         </Button>
       </CardContent>
     </Card>
