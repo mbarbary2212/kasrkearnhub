@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2,
   Stethoscope,
-  User,
   GraduationCap,
   CheckCircle2,
   AlertTriangle,
@@ -19,6 +18,8 @@ import {
 import { useAICase } from '@/hooks/useAICase';
 import type { AICaseDisplayMessage, AITurnResponse } from '@/types/aiCase';
 import { cn } from '@/lib/utils';
+import { getExaminerAvatar } from '@/lib/examinerAvatars';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface AICaseRunnerProps {
   caseId: string;
@@ -26,6 +27,7 @@ interface AICaseRunnerProps {
   introText: string;
   title: string;
   hintMode?: boolean;
+  avatarId?: number;
   onComplete?: () => void;
 }
 
@@ -35,10 +37,12 @@ export function AICaseRunner({
   introText,
   title,
   hintMode = false,
+  avatarId = 1,
   onComplete,
 }: AICaseRunnerProps) {
   const [textInput, setTextInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const examiner = getExaminerAvatar(avatarId);
 
   const {
     status,
@@ -73,7 +77,7 @@ export function AICaseRunner({
   // Scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   const handleChoiceSelect = (choice: string) => {
     submitAnswer(choice);
@@ -96,14 +100,20 @@ export function AICaseRunner({
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-8rem)] gap-4">
-      {/* Header */}
+      {/* Header with avatar */}
       <div className="flex-shrink-0 space-y-2">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-sm text-muted-foreground">
-              AI Clinical Examiner • Turn {currentTurn} of {maxTurns}
-            </p>
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 md:w-16 md:h-16 border-2 border-background shadow-md">
+              <AvatarImage src={examiner.image} alt={examiner.name} />
+              <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-lg font-semibold">{title}</h1>
+              <p className="text-sm text-muted-foreground">
+                {examiner.name} • Turn {currentTurn} of {maxTurns}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {hintMode && (
@@ -124,20 +134,21 @@ export function AICaseRunner({
       {/* Chat Feed */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} showTeachingPoints={hintMode} />
+          <MessageBubble key={msg.id} message={msg} showTeachingPoints={hintMode} examiner={examiner} />
         ))}
 
         {/* Streaming bubble or thinking indicator */}
         {status === 'loading' && (
           streamingContent ? (
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
-                <User className="w-4 h-4 text-muted-foreground" />
-              </div>
+            <div className="flex gap-3">
+              <Avatar className="w-8 h-8 flex-shrink-0 mt-1 border border-background shadow-sm">
+                <AvatarImage src={examiner.image} alt={examiner.name} />
+                <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+              </Avatar>
               <div className="max-w-[85%] space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Clinical Examiner</p>
+                <p className="text-xs text-muted-foreground font-medium">{examiner.name}</p>
                 <div className="bg-muted/50 rounded-2xl rounded-tl-md px-4 py-3">
-                  <p className="text-sm whitespace-pre-wrap">
+                  <p className="text-base leading-relaxed whitespace-pre-wrap">
                     {streamingContent}
                     <span className="inline-block w-[2px] h-[1em] bg-foreground ml-0.5 align-text-bottom animate-[blink_1s_infinite]" />
                   </p>
@@ -145,9 +156,9 @@ export function AICaseRunner({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm pl-2">
+            <div className="flex items-center gap-2 text-muted-foreground text-base pl-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Clinical examiner is thinking...
+              {examiner.name} is thinking...
             </div>
           )
         )}
@@ -178,7 +189,7 @@ export function AICaseRunner({
                 <Button
                   key={choice.value}
                   variant="outline"
-                  className="w-full justify-start text-left h-auto py-3 px-4"
+                  className="w-full justify-start text-left h-auto py-3 px-4 text-base"
                   onClick={() => handleChoiceSelect(choice.label)}
                 >
                   {choice.label}
@@ -192,7 +203,7 @@ export function AICaseRunner({
                 onChange={(e) => setTextInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your clinical reasoning..."
-                className="flex-1 min-h-[60px] max-h-[120px]"
+                className="flex-1 min-h-[60px] max-h-[120px] text-base"
                 disabled={status !== 'active'}
               />
               <Button
@@ -210,13 +221,21 @@ export function AICaseRunner({
   );
 }
 
-function MessageBubble({ message, showTeachingPoints }: { message: AICaseDisplayMessage; showTeachingPoints?: boolean }) {
+function MessageBubble({
+  message,
+  showTeachingPoints,
+  examiner,
+}: {
+  message: AICaseDisplayMessage;
+  showTeachingPoints?: boolean;
+  examiner: { name: string; image: string };
+}) {
   if (message.role === 'system') {
     return (
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="flex gap-3 py-3 px-4">
           <Stethoscope className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+          <div className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</div>
         </CardContent>
       </Card>
     );
@@ -226,7 +245,7 @@ function MessageBubble({ message, showTeachingPoints }: { message: AICaseDisplay
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3">
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
     );
@@ -234,20 +253,21 @@ function MessageBubble({ message, showTeachingPoints }: { message: AICaseDisplay
 
   // Examiner message
   return (
-    <div className="flex gap-2">
-      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
-        <User className="w-4 h-4 text-muted-foreground" />
-      </div>
+    <div className="flex gap-3">
+      <Avatar className="w-8 h-8 flex-shrink-0 mt-1 border border-background shadow-sm">
+        <AvatarImage src={examiner.image} alt={examiner.name} />
+        <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+      </Avatar>
       <div className="max-w-[85%] space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">Clinical Examiner</p>
+        <p className="text-xs text-muted-foreground font-medium">{examiner.name}</p>
         <div className="bg-muted/50 rounded-2xl rounded-tl-md px-4 py-3">
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
         </div>
 
         {message.patient_info && (
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-            <CardContent className="flex gap-2 py-2 px-3 text-xs">
-              <Stethoscope className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <CardContent className="flex gap-2 py-2 px-3 text-base leading-relaxed">
+              <Stethoscope className="w-4 h-4 text-blue-600 flex-shrink-0 mt-1" />
               <span>{message.patient_info}</span>
             </CardContent>
           </Card>
@@ -255,7 +275,7 @@ function MessageBubble({ message, showTeachingPoints }: { message: AICaseDisplay
 
         {showTeachingPoints && message.teaching_point && (
           <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardContent className="flex gap-2 py-2 px-3 text-xs">
+            <CardContent className="flex gap-2 py-2 px-3 text-sm italic">
               <Lightbulb className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
               <span>{message.teaching_point}</span>
             </CardContent>
@@ -292,13 +312,13 @@ function DebriefCard({
         </div>
 
         {debrief.summary && (
-          <p className="text-sm text-muted-foreground">{debrief.summary}</p>
+          <p className="text-base leading-relaxed text-muted-foreground">{debrief.summary}</p>
         )}
 
         {debrief.prompt && (
           <div className="bg-muted/50 rounded-lg p-4">
             <h4 className="text-sm font-medium mb-2">Detailed Feedback</h4>
-            <p className="text-sm whitespace-pre-wrap">{debrief.prompt}</p>
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{debrief.prompt}</p>
           </div>
         )}
 
@@ -307,7 +327,7 @@ function DebriefCard({
             <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
               💡 Key Learning Points
             </h4>
-            <p className="text-sm whitespace-pre-wrap">{debrief.teaching_point}</p>
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{debrief.teaching_point}</p>
           </div>
         )}
 
@@ -319,7 +339,7 @@ function DebriefCard({
               </h4>
               <ul className="space-y-1">
                 {debrief.strengths.map((s, i) => (
-                  <li key={i} className="text-xs flex gap-1.5 items-start">
+                  <li key={i} className="text-sm flex gap-1.5 items-start">
                     <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
                     {s}
                   </li>
@@ -334,7 +354,7 @@ function DebriefCard({
               </h4>
               <ul className="space-y-1">
                 {debrief.gaps.map((g, i) => (
-                  <li key={i} className="text-xs flex gap-1.5 items-start">
+                  <li key={i} className="text-sm flex gap-1.5 items-start">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                     {g}
                   </li>

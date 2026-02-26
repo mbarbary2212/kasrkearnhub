@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   ArrowLeft,
-  User,
   Clock,
   Play,
   AlertCircle,
@@ -23,6 +23,7 @@ import {
 import { useVirtualPatientCase, useStartVirtualPatientAttempt, useVirtualPatientAttempts } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { getExaminerAvatar } from '@/lib/examinerAvatars';
 
 const SESSION_KEY = 'ai_case_session';
 
@@ -82,6 +83,9 @@ export default function VirtualPatientRunner() {
     }
   };
 
+  const avatarId = (vpCase as any)?.avatar_id ?? 1;
+  const examiner = getExaminerAvatar(avatarId);
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -119,6 +123,7 @@ export default function VirtualPatientRunner() {
           introText={vpCase.intro_text}
           title={vpCase.title}
           hintMode={hintMode}
+          avatarId={avatarId}
           onComplete={() => {
             clearSession();
             navigate(-1);
@@ -142,9 +147,10 @@ export default function VirtualPatientRunner() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                <User className="w-7 h-7 text-primary" />
-              </div>
+              <Avatar className="w-16 h-16 border-2 border-background shadow-md">
+                <AvatarImage src={examiner.image} alt={examiner.name} />
+                <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+              </Avatar>
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline">
@@ -156,6 +162,7 @@ export default function VirtualPatientRunner() {
                   </Badge>
                 </div>
                 <CardTitle className="text-xl">{vpCase.title}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner.name}</p>
               </div>
             </div>
             <CardDescription className="flex items-center gap-4 text-sm">
