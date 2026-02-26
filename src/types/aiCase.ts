@@ -45,4 +45,5 @@ export interface AICaseRunnerState {
   currentQuestion: AITurnResponse | null;
   debrief: AITurnResponse | null;
   error: string | null;
+  streamingContent: string;
 }

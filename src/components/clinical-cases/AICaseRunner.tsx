@@ -48,6 +48,7 @@ export function AICaseRunner({
     currentQuestion,
     debrief,
     error,
+    streamingContent,
     startCase,
     submitAnswer,
     reset,
@@ -126,11 +127,29 @@ export function AICaseRunner({
           <MessageBubble key={msg.id} message={msg} showTeachingPoints={hintMode} />
         ))}
 
+        {/* Streaming bubble or thinking indicator */}
         {status === 'loading' && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm pl-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Clinical examiner is thinking...
-          </div>
+          streamingContent ? (
+            <div className="flex gap-2">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+                <User className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="max-w-[85%] space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Clinical Examiner</p>
+                <div className="bg-muted/50 rounded-2xl rounded-tl-md px-4 py-3">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {streamingContent}
+                    <span className="inline-block w-[2px] h-[1em] bg-foreground ml-0.5 align-text-bottom animate-[blink_1s_infinite]" />
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm pl-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Clinical examiner is thinking...
+            </div>
+          )
         )}
 
         {status === 'error' && error && (

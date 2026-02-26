@@ -8,6 +8,9 @@ import type {
 } from "@/types/aiCase";
 import { toast } from "sonner";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 interface UseAICaseOptions {
   caseId: string;
   attemptId: string;
@@ -26,6 +29,7 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
     currentQuestion: null,
     debrief: null,
     error: null,
+    streamingContent: "",
   });
 
   const addMessage = useCallback(
@@ -41,23 +45,105 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
     []
   );
 
-  const callEdgeFunction = async (
-    userMessage: string
-  ): Promise<RunAICaseResponse | null> => {
-    const { data, error } = await supabase.functions.invoke("run-ai-case", {
-      body: { caseId, attemptId, userMessage, turnNumber: turnRef.current, hintMode },
+  const callEdgeFunction = async (userMessage: string): Promise<void> => {
+    // Get auth token for the request
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/run-ai-case`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        caseId,
+        attemptId,
+        userMessage,
+        turnNumber: turnRef.current,
+        hintMode,
+      }),
     });
 
-    if (error) {
-      const msg = error.message || "";
-      if (msg.includes("429") || msg.includes("rate limit")) {
+    if (!response.ok) {
+      // Try to read error JSON
+      let errorMsg = `Error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.error || errorMsg;
+      } catch {
+        // ignore parse error
+      }
+      if (response.status === 429) {
         toast.error("Rate limit exceeded. Please wait a moment and try again.");
-      } else if (msg.includes("402") || msg.includes("credits")) {
+      } else if (response.status === 402) {
         toast.error("AI credits exhausted. Please contact your administrator.");
       }
-      throw new Error(msg);
+      throw new Error(errorMsg);
     }
-    return data as RunAICaseResponse;
+
+    // Check content type — handle SSE streaming or JSON fallback
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("text/event-stream") && response.body) {
+      // SSE streaming path
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, newlineIdx).trim();
+          buffer = buffer.slice(newlineIdx + 1);
+
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+
+          try {
+            const data = JSON.parse(jsonStr);
+
+            if (data.chunk) {
+              accumulated += data.chunk;
+              setState((prev) => ({ ...prev, streamingContent: accumulated }));
+            }
+
+            if (data.done && data.turn) {
+              // Stream complete — clear streaming, apply result
+              setState((prev) => ({ ...prev, streamingContent: "" }));
+              applyTurnResult(data as RunAICaseResponse);
+              return;
+            }
+
+            if (data.error) {
+              throw new Error(data.message || "Stream error from edge function");
+            }
+          } catch (e) {
+            // If it's our re-thrown error, propagate it
+            if (e instanceof Error && e.message.includes("Stream error")) throw e;
+            // Otherwise partial JSON, skip
+          }
+        }
+      }
+
+      // If we get here without a done signal, the stream ended unexpectedly
+      if (accumulated && !state.debrief) {
+        throw new Error("Stream ended without completion signal");
+      }
+    } else {
+      // JSON fallback (shouldn't happen with new edge function, but just in case)
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      applyTurnResult(data as RunAICaseResponse);
+    }
   };
 
   const applyTurnResult = useCallback(
@@ -81,9 +167,9 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
           maxTurns,
           debrief: turn,
           currentQuestion: null,
+          streamingContent: "",
         }));
         if (turn.flag_for_review) onFlagged?.();
-        // Don't auto-call onComplete here — let DebriefCard button trigger it
       } else {
         setState((prev) => ({
           ...prev,
@@ -91,6 +177,7 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
           currentTurn: turnNumber,
           maxTurns,
           currentQuestion: turn,
+          streamingContent: "",
         }));
       }
     },
@@ -99,17 +186,16 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
 
   const startCase = useCallback(
     async (introText: string) => {
-      setState((prev) => ({ ...prev, status: "loading", error: null }));
+      setState((prev) => ({ ...prev, status: "loading", error: null, streamingContent: "" }));
       addMessage({ role: "system", content: introText });
       try {
-        const result = await callEdgeFunction("BEGIN_CASE");
-        if (result) applyTurnResult(result);
+        await callEdgeFunction("BEGIN_CASE");
       } catch {
         setState((prev) => ({
           ...prev,
           status: "error",
-          error:
-            "Unable to connect to the clinical examiner. Please try again.",
+          streamingContent: "",
+          error: "Unable to connect to the clinical examiner. Please try again.",
         }));
       }
     },
@@ -120,17 +206,16 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
   const submitAnswer = useCallback(
     async (answer: string) => {
       if (state.status !== "active") return;
-      setState((prev) => ({ ...prev, status: "loading", error: null }));
+      setState((prev) => ({ ...prev, status: "loading", error: null, streamingContent: "" }));
       addMessage({ role: "student", content: answer });
       try {
-        const result = await callEdgeFunction(answer);
-        if (result) applyTurnResult(result);
+        await callEdgeFunction(answer);
       } catch {
         setState((prev) => ({
           ...prev,
           status: "error",
-          error:
-            "Unable to connect to the clinical examiner. Please try again.",
+          streamingContent: "",
+          error: "Unable to connect to the clinical examiner. Please try again.",
         }));
       }
     },
@@ -148,6 +233,7 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
       currentQuestion: null,
       debrief: null,
       error: null,
+      streamingContent: "",
     });
   }, []);
 
