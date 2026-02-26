@@ -718,20 +718,35 @@ export default function ChapterPage() {
                       <>
                         {showAddControls && chapterId && moduleId && (
                           <div className="mb-4">
-                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" hideAudio />
+                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" hideAudio documentSubtype="socratic_tutorial" />
                           </div>
                         )}
-                        {studyResourcesLoading ? (
+                        {resourcesLoading ? (
                           <QuestionListSkeleton count={2} type="mcq" />
                         ) : socraticTutorials.length > 0 ? (
                           <div className="space-y-3">
                             {socraticTutorials.map(doc => (
-                              <RichDocumentViewer
-                                key={doc.id}
-                                title={doc.title}
-                                content={doc.rich_content || ''}
-                                documentType="socratic_tutorial"
-                              />
+                              doc.rich_content ? (
+                                <RichDocumentViewer
+                                  key={doc.id}
+                                  title={doc.title}
+                                  content={doc.rich_content}
+                                  documentType="socratic_tutorial"
+                                />
+                              ) : (
+                                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                                  <FileText className="w-5 h-5 text-primary shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate">{doc.title}</p>
+                                    {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
+                                  </div>
+                                  {(doc.file_url || doc.external_url) && (
+                                    <a href={doc.file_url || doc.external_url || ''} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline shrink-0">
+                                      Open
+                                    </a>
+                                  )}
+                                </div>
+                              )
                             ))}
                           </div>
                         ) : (

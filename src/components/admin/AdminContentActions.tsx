@@ -69,6 +69,7 @@ interface AdminContentActionsProps {
   topicId?: string;
   contentType: 'lecture' | 'resource' | 'mcq' | 'essay' | 'practical';
   hideAudio?: boolean;
+  documentSubtype?: string;
 }
 
 interface ParsedEssayRow {
@@ -87,7 +88,7 @@ interface ParsedEssayRow {
   maxPoints?: number;
 }
 
-export function AdminContentActions({ chapterId, moduleId, topicId, contentType, hideAudio }: AdminContentActionsProps) {
+export function AdminContentActions({ chapterId, moduleId, topicId, contentType, hideAudio, documentSubtype }: AdminContentActionsProps) {
   const auth = useAuthContext();
   const { data: sections = [] } = useChapterSections(chapterId);
 
@@ -368,6 +369,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
         chapter_id: chapterId || null,
         topic_id: topicId || null,
         section_id: sectionId,
+        ...(documentSubtype ? { document_subtype: documentSubtype } : {}),
       });
       if (error) throw error;
     },
