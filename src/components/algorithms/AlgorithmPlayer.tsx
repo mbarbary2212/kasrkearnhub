@@ -3,13 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { RotateCcw, ChevronLeft, AlertTriangle, CheckCircle, Info, Zap, ArrowRight } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { RotateCcw, ChevronLeft, AlertTriangle, CheckCircle, Info, Zap, ArrowRight, Bug } from 'lucide-react';
 import { AlgorithmJson, AlgorithmNode, NODE_TYPE_CONFIG } from '@/types/algorithm';
 
 interface AlgorithmPlayerProps {
   title: string;
   algorithmJson: AlgorithmJson;
   onClose?: () => void;
+  showDebugToggle?: boolean;
 }
 
 const NODE_ICONS: Record<string, React.ReactNode> = {
@@ -20,7 +23,7 @@ const NODE_ICONS: Record<string, React.ReactNode> = {
   end: <CheckCircle className="w-5 h-5" />,
 };
 
-export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlayerProps) {
+export function AlgorithmPlayer({ title, algorithmJson, onClose, showDebugToggle }: AlgorithmPlayerProps) {
   const nodeMap = useMemo(() => {
     const map = new Map<string, AlgorithmNode>();
     algorithmJson.nodes.forEach(n => map.set(n.id, n));
@@ -29,6 +32,7 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
 
   const [history, setHistory] = useState<string[]>([]);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(algorithmJson.start_node_id);
+  const [debugMode, setDebugMode] = useState(false);
 
   const currentNode = currentNodeId ? nodeMap.get(currentNodeId) : null;
   const visitedCount = history.length + (currentNodeId ? 1 : 0);
@@ -50,8 +54,41 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
     setCurrentNodeId(algorithmJson.start_node_id);
   };
 
+  // ── Dangling node error: currentNodeId is set but node not found ──
+  if (currentNodeId && !currentNode) {
+    return (
+      <Card className="border-2 border-destructive/50">
+        <CardHeader className="text-center">
+          <CardTitle className="text-lg">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <div className="py-8">
+            <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <p className="text-lg font-semibold text-foreground">Missing Node</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              This step references node <code className="bg-muted px-1 rounded text-xs">{currentNodeId}</code> which does not exist in the pathway.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              This usually means the CSV has an invalid <code>next_node</code> reference.
+            </p>
+          </div>
+          <div className="flex justify-center gap-3">
+            {history.length > 0 && (
+              <Button variant="outline" onClick={goBack}>
+                <ChevronLeft className="w-4 h-4 mr-1" /> Go Back
+              </Button>
+            )}
+            <Button onClick={restart}>
+              <RotateCcw className="w-4 h-4 mr-1" /> Start Over
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── End state (null currentNodeId) ──
   if (!currentNode) {
-    // End state or no start node
     return (
       <Card className="border-2 border-accent/50">
         <CardHeader className="text-center">
@@ -82,20 +119,43 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
 
   const config = NODE_TYPE_CONFIG[currentNode.type];
 
+  // Compute next target for debug display
+  const debugNextTarget = currentNode.type === 'decision'
+    ? currentNode.options?.map(o => `${o.text} → ${o.next_node_id || 'null'}`).join(' | ')
+    : currentNode.next_node_id || 'null';
+
   return (
     <Card className={`border-2 ${currentNode.type === 'emergency' ? 'border-destructive/60 animate-pulse-once' : 'border-border'}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">{title}</CardTitle>
-          <Badge variant="outline" className={`${config.color} text-xs`}>
-            {config.icon} {config.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {showDebugToggle && (
+              <div className="flex items-center gap-1.5">
+                <Bug className="w-3.5 h-3.5 text-muted-foreground" />
+                <Switch checked={debugMode} onCheckedChange={setDebugMode} className="scale-75" />
+              </div>
+            )}
+            <Badge variant="outline" className={`${config.color} text-xs`}>
+              {config.icon} {config.label}
+            </Badge>
+          </div>
         </div>
         <Progress value={visitedCount > 1 ? ((visitedCount - 1) / Math.max(visitedCount, 1)) * 100 : 0} className="h-1.5 mt-2" />
         <p className="text-xs text-muted-foreground mt-1">Step {visitedCount}</p>
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Debug overlay */}
+        {debugMode && (
+          <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/50 p-3 text-xs font-mono space-y-1">
+            <p><span className="text-muted-foreground">node_id:</span> {currentNode.id}</p>
+            <p><span className="text-muted-foreground">type:</span> {currentNode.type}</p>
+            <p><span className="text-muted-foreground">next:</span> {debugNextTarget}</p>
+            <p><span className="text-muted-foreground">terminal:</span> {currentNode.type === 'end' ? 'yes' : 'no'}</p>
+          </div>
+        )}
+
         {/* Current step content */}
         <div className={`rounded-lg p-4 border ${config.color}`}>
           <div className="flex items-start gap-3">

@@ -48,6 +48,7 @@ export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: Algor
         <AlgorithmPlayer
           title={playingAlg.title}
           algorithmJson={playingAlg.algorithm_json}
+          showDebugToggle={canManage}
         />
       </div>
     );

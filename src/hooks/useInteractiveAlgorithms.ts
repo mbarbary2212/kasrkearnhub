@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { InteractiveAlgorithm, InteractiveAlgorithmInsert, AlgorithmJson } from '@/types/algorithm';
+import { InteractiveAlgorithm, InteractiveAlgorithmInsert, AlgorithmJson, AlgorithmNode } from '@/types/algorithm';
 
 export function useChapterAlgorithms(chapterId?: string) {
   return useQuery({
@@ -99,12 +99,191 @@ export function useDeleteInteractiveAlgorithm() {
   });
 }
 
-// Parse CSV rows into AlgorithmJson grouped by title
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        // Check for escaped quote ""
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++; // skip next quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+export interface GraphValidationResult {
+  valid: boolean;
+  errors: string[];
+  stats: {
+    totalNodes: number;
+    decisionNodes: number;
+    terminalNodes: number;
+    longestPath: number;
+    unreachableNodes: string[];
+  };
+}
+
+export function validateAlgorithmGraph(json: AlgorithmJson): GraphValidationResult {
+  const errors: string[] = [];
+  const nodeIds = new Set(json.nodes.map(n => n.id));
+  const nodeMap = new Map<string, AlgorithmNode>();
+  json.nodes.forEach(n => nodeMap.set(n.id, n));
+
+  let decisionNodes = 0;
+  let terminalNodes = 0;
+
+  // 1. Validate start node exists
+  if (!json.start_node_id || !nodeIds.has(json.start_node_id)) {
+    errors.push(`Start node "${json.start_node_id}" does not exist.`);
+  }
+
+  // 2. Validate each node's outgoing references
+  for (const node of json.nodes) {
+    if (node.type === 'decision') {
+      decisionNodes++;
+      if (!node.options || node.options.length === 0) {
+        errors.push(`Decision node "${node.id}" has no options.`);
+      } else {
+        for (const opt of node.options) {
+          if (opt.next_node_id && !nodeIds.has(opt.next_node_id)) {
+            errors.push(`Node "${node.id}" option "${opt.text}" references missing node "${opt.next_node_id}".`);
+          }
+        }
+      }
+    } else if (node.type === 'end') {
+      terminalNodes++;
+    } else {
+      // action / information / emergency must have a next_node_id
+      if (!node.next_node_id) {
+        errors.push(`Node "${node.id}" (${node.type}) has no next_node — it will cause premature termination. Set type to "end" if intentional.`);
+      } else if (!nodeIds.has(node.next_node_id)) {
+        errors.push(`Node "${node.id}" references missing node "${node.next_node_id}".`);
+      }
+    }
+  }
+
+  // 3. Check for at least one end node
+  if (terminalNodes === 0) {
+    errors.push('No "end" type node found. Pathway must have at least one explicit end node.');
+  }
+
+  // 4. Find unreachable nodes via BFS from start
+  const reachable = new Set<string>();
+  if (json.start_node_id && nodeIds.has(json.start_node_id)) {
+    const queue = [json.start_node_id];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (reachable.has(id)) continue;
+      reachable.add(id);
+      const n = nodeMap.get(id);
+      if (!n) continue;
+      if (n.type === 'decision' && n.options) {
+        for (const opt of n.options) {
+          if (opt.next_node_id && nodeIds.has(opt.next_node_id)) queue.push(opt.next_node_id);
+        }
+      } else if (n.next_node_id && nodeIds.has(n.next_node_id)) {
+        queue.push(n.next_node_id);
+      }
+    }
+  }
+  const unreachableNodes = json.nodes.filter(n => !reachable.has(n.id)).map(n => n.id);
+  if (unreachableNodes.length > 0) {
+    errors.push(`Unreachable nodes (disconnected from start): ${unreachableNodes.join(', ')}`);
+  }
+
+  // 5. Check at least one path from start reaches an end node
+  const reachesEnd = new Set<string>();
+  // reverse BFS from end nodes
+  const endNodeIds = json.nodes.filter(n => n.type === 'end').map(n => n.id);
+  const reverseAdj = new Map<string, string[]>();
+  for (const n of json.nodes) {
+    if (n.type === 'decision' && n.options) {
+      for (const opt of n.options) {
+        if (opt.next_node_id) {
+          if (!reverseAdj.has(opt.next_node_id)) reverseAdj.set(opt.next_node_id, []);
+          reverseAdj.get(opt.next_node_id)!.push(n.id);
+        }
+      }
+    } else if (n.next_node_id) {
+      if (!reverseAdj.has(n.next_node_id)) reverseAdj.set(n.next_node_id, []);
+      reverseAdj.get(n.next_node_id)!.push(n.id);
+    }
+  }
+  const revQueue = [...endNodeIds];
+  while (revQueue.length > 0) {
+    const id = revQueue.shift()!;
+    if (reachesEnd.has(id)) continue;
+    reachesEnd.add(id);
+    for (const parent of (reverseAdj.get(id) || [])) {
+      revQueue.push(parent);
+    }
+  }
+  if (json.start_node_id && !reachesEnd.has(json.start_node_id) && terminalNodes > 0) {
+    errors.push('No valid path exists from the start node to any end node.');
+  }
+
+  // 6. Compute longest path depth via DFS
+  let longestPath = 0;
+  if (json.start_node_id && nodeIds.has(json.start_node_id)) {
+    const visited = new Set<string>();
+    const dfs = (id: string, depth: number) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      longestPath = Math.max(longestPath, depth);
+      const n = nodeMap.get(id);
+      if (!n) return;
+      if (n.type === 'decision' && n.options) {
+        for (const opt of n.options) {
+          if (opt.next_node_id && nodeIds.has(opt.next_node_id)) dfs(opt.next_node_id, depth + 1);
+        }
+      } else if (n.next_node_id && nodeIds.has(n.next_node_id)) {
+        dfs(n.next_node_id, depth + 1);
+      }
+      visited.delete(id); // allow visiting via different paths
+    };
+    dfs(json.start_node_id, 1);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    stats: {
+      totalNodes: json.nodes.length,
+      decisionNodes,
+      terminalNodes,
+      longestPath,
+      unreachableNodes,
+    },
+  };
+}
+
 export function parseAlgorithmCsv(csvText: string): { title: string; json: AlgorithmJson }[] {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];
   
-  const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const header = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_'));
   const titleIdx = Math.max(header.indexOf('pathway_title'), header.indexOf('algorithm_title'));
   const nodeIdx = header.indexOf('node_id');
   const typeIdx = header.indexOf('step_type');
@@ -117,20 +296,20 @@ export function parseAlgorithmCsv(csvText: string): { title: string; json: Algor
   }
 
   // Group rows by algorithm title
-  const grouped = new Map<string, typeof rows>();
+  const grouped = new Map<string, Row[]>();
   type Row = { node_id: string; step_type: string; content: string; option_text: string; next_node: string };
-  const rows: Row[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim());
-    if (cols.length < header.length) continue;
+    const cols = parseCsvLine(lines[i]);
+    if (cols.length < Math.max(titleIdx, nodeIdx, typeIdx, contentIdx) + 1) continue;
     const title = cols[titleIdx];
-    const row = {
+    if (!title) continue;
+    const row: Row = {
       node_id: cols[nodeIdx],
       step_type: cols[typeIdx].toLowerCase(),
-      content: cols[contentIdx],
-      option_text: cols[optionIdx] || '',
-      next_node: cols[nextIdx] || '',
+      content: cols[contentIdx] || '',
+      option_text: optionIdx >= 0 && optionIdx < cols.length ? cols[optionIdx] : '',
+      next_node: nextIdx >= 0 && nextIdx < cols.length ? cols[nextIdx] : '',
     };
     if (!grouped.has(title)) grouped.set(title, []);
     grouped.get(title)!.push(row);
