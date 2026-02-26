@@ -19,24 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-
-import { Loader2, X, Info, AlertCircle } from 'lucide-react';
+import { Loader2, X, Info, Sparkles } from 'lucide-react';
 import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { toast } from 'sonner';
 import { SectionSelector, SectionWarningBanner } from '@/components/sections';
-
-// Dynamic min stages based on case_mode
-const getMinStagesToPublish = (caseMode: string | undefined) => {
-  return caseMode === 'read_case' ? 1 : 3;
-};
 
 interface ClinicalCaseFormModalProps {
   open: boolean;
@@ -74,12 +62,6 @@ export function ClinicalCaseFormModal({
   const createCase = useCreateClinicalCase();
   const updateCase = useUpdateClinicalCase();
 
-  // Check if case can be published (editing mode only)
-  const caseMode = clinicalCase?.case_mode;
-  const currentStageCount = clinicalCase?.stage_count || 0;
-  const minStages = getMinStagesToPublish(caseMode);
-  const canPublish = currentStageCount >= minStages;
-
   useEffect(() => {
     if (clinicalCase) {
       setTitle(clinicalCase.title);
@@ -90,8 +72,8 @@ export function ClinicalCaseFormModal({
       setTags(clinicalCase.tags || []);
       setIsPublished(clinicalCase.is_published);
       setSectionId(clinicalCase.section_id || null);
-      setLearningObjectives((clinicalCase as any).learning_objectives || '');
-      setMaxTurns((clinicalCase as any).max_turns || 10);
+      setLearningObjectives(clinicalCase.learning_objectives || '');
+      setMaxTurns(clinicalCase.max_turns || 10);
     } else {
       resetForm();
       if (chapterId) {
@@ -133,40 +115,23 @@ export function ClinicalCaseFormModal({
     }
   };
 
-  const handlePublishedChange = (checked: boolean) => {
-    if (checked && isEditing && !canPublish) {
-      toast.warning(`This case needs at least ${minStages} stages to be visible to students`);
-      // Still allow the toggle - the submit will validate
-    }
-    setIsPublished(checked);
-  };
-
   const handleSubmit = async () => {
     if (!title.trim() || !introText.trim()) {
       toast.error('Please fill in title and introduction');
       return;
     }
 
-    // Only block NEW attempts to publish an incomplete case
-    // Allow updates if: already published (grandfathered), or not attempting to publish
-    const isAttemptingToPublish = isPublished && !clinicalCase?.is_published;
-    if (isEditing && isAttemptingToPublish && !canPublish) {
-      toast.error(`Add at least ${minStages} stages before publishing`);
-      return;
-    }
-
-    const formData: any = {
+    const formData: ClinicalCaseFormData = {
       title: title.trim(),
       intro_text: introText.trim(),
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
       section_id: sectionId || undefined,
-      case_mode: clinicalCase?.case_mode ?? 'practice_case',
       level,
       estimated_minutes: estimatedMinutes,
       tags,
-      is_published: isEditing ? isPublished : false,
-      learning_objectives: learningObjectives.trim() || null,
+      is_published: isPublished,
+      learning_objectives: learningObjectives.trim() || undefined,
       max_turns: maxTurns,
     };
 
@@ -178,9 +143,8 @@ export function ClinicalCaseFormModal({
         onSuccess?.(clinicalCase.id);
       } else {
         const result = await createCase.mutateAsync(formData);
-        toast.success('Case created! Now add stages to build your case.');
+        toast.success('AI Case created! Students can now practice with this case.');
         onOpenChange(false);
-        // Auto-open builder after creation
         onSuccess?.(result.id);
       }
     } catch (error) {
@@ -196,22 +160,20 @@ export function ClinicalCaseFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{isEditing ? 'Edit' : 'Create'} Virtual Patient Case</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit' : 'Create'} AI Case</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4 pr-4 pb-4">
             <SectionWarningBanner chapterId={selectedChapterId || chapterId} />
-            {/* Step 1 Helper for new cases */}
-            {!isEditing && (
-              <Alert className="bg-primary/5 border-primary/20">
-                <Info className="w-4 h-4 text-primary" />
-                <AlertDescription className="text-sm">
-                  <strong>Step 1 of 2:</strong> This creates the case header only. 
-                  Next, you will add stages (questions) to build the scenario.
-                </AlertDescription>
-              </Alert>
-            )}
+
+            {/* AI Case Info */}
+            <Alert className="bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800">
+              <Sparkles className="w-4 h-4 text-teal-600" />
+              <AlertDescription className="text-sm">
+                This is an <strong>AI-driven case</strong>. The AI examiner will dynamically generate questions based on your introduction and learning objectives. No manual stages needed.
+              </AlertDescription>
+            </Alert>
 
             {/* Title */}
             <div>
@@ -227,15 +189,31 @@ export function ClinicalCaseFormModal({
 
             {/* Introduction */}
             <div>
-              <Label htmlFor="intro">Introduction *</Label>
+              <Label htmlFor="intro">Clinical Scenario *</Label>
               <Textarea
                 id="intro"
                 value={introText}
                 onChange={(e) => setIntroText(e.target.value)}
-                placeholder="Set the scene for this case..."
+                placeholder="Set the scene for this case — patient presentation, chief complaint, relevant history..."
                 rows={4}
                 className="mt-1"
               />
+            </div>
+
+            {/* Learning Objectives */}
+            <div>
+              <Label htmlFor="objectives">Learning Objectives</Label>
+              <Textarea
+                id="objectives"
+                value={learningObjectives}
+                onChange={(e) => setLearningObjectives(e.target.value)}
+                placeholder="e.g., Assess clinical reasoning for acute chest pain, history-taking skills, ECG interpretation, initial management..."
+                rows={3}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                These guide the AI examiner's focus during the case simulation.
+              </p>
             </div>
 
             {/* Chapter Selection */}
@@ -259,56 +237,30 @@ export function ClinicalCaseFormModal({
               </Select>
             </div>
 
-            {/* Section Selector - Only shows if sections are enabled */}
+            {/* Section Selector */}
             <SectionSelector
               chapterId={selectedChapterId || chapterId}
               value={sectionId}
               onChange={setSectionId}
             />
 
-            {/* Level */}
-            <div>
-              <Label>Difficulty Level</Label>
-              <Select value={level} onValueChange={(v) => setLevel(v as CaseLevel)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Beginner</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Level */}
+              <div>
+                <Label>Difficulty Level</Label>
+                <Select value={level} onValueChange={(v) => setLevel(v as CaseLevel)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* AI-Driven Case Info */}
-            {clinicalCase?.case_type === 'advanced' && (
-              <Alert className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <Info className="w-4 h-4 text-blue-600" />
-                <AlertDescription className="text-sm">
-                  This is an <strong>AI-driven case</strong>. No stages needed — the AI examiner will dynamically generate questions based on your learning objectives.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Learning Objectives */}
-            <div>
-              <Label htmlFor="objectives">Learning Objectives</Label>
-              <Textarea
-                id="objectives"
-                value={learningObjectives}
-                onChange={(e) => setLearningObjectives(e.target.value)}
-                placeholder="e.g., Assess clinical reasoning for acute chest pain, history-taking skills, ECG interpretation, initial management..."
-                rows={3}
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                These guide the AI examiner's focus for advanced (AI-driven) cases.
-              </p>
-            </div>
-
-            {/* Max Turns - only for advanced cases */}
-            {clinicalCase?.case_type === 'advanced' && (
+              {/* Max Turns */}
               <div>
                 <Label htmlFor="maxTurns">Max Turns</Label>
                 <Input
@@ -320,11 +272,8 @@ export function ClinicalCaseFormModal({
                   onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
                   className="mt-1"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Maximum number of AI examiner turns (5–20).
-                </p>
               </div>
-            )}
+            </div>
 
             {/* Estimated Time */}
             <div>
@@ -369,46 +318,19 @@ export function ClinicalCaseFormModal({
               )}
             </div>
 
-            {/* Published Toggle - Only show in edit mode */}
-            {isEditing && (
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <Label>Published</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Only published cases are visible to students
-                  </p>
-                </div>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <Switch 
-                          checked={isPublished} 
-                          onCheckedChange={handlePublishedChange}
-                          disabled={!canPublish && !isPublished}
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    {!canPublish && (
-                      <TooltipContent>
-                        <p>Add at least {minStages} stages before publishing</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
+            {/* Published Toggle */}
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <Label>Published</Label>
+                <p className="text-sm text-muted-foreground">
+                  Only published cases are visible to students
+                </p>
               </div>
-            )}
-
-            {/* Warning if trying to publish without enough stages */}
-            {isEditing && !canPublish && !clinicalCase?.is_published && (
-              <Alert variant="destructive" className="bg-destructive/10">
-                <AlertCircle className="w-4 h-4" />
-                <AlertDescription className="text-sm">
-                  This case has {currentStageCount} stage{currentStageCount !== 1 ? 's' : ''}. 
-                  Add at least {minStages} stages before publishing.
-                </AlertDescription>
-              </Alert>
-            )}
+              <Switch 
+                checked={isPublished} 
+                onCheckedChange={setIsPublished}
+              />
+            </div>
           </div>
         </div>
 
@@ -418,7 +340,7 @@ export function ClinicalCaseFormModal({
           </Button>
           <Button onClick={handleSubmit} disabled={!isValid || isLoading}>
             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isEditing ? 'Update Case' : 'Create Case & Add Stages →'}
+            {isEditing ? 'Update Case' : 'Create AI Case'}
           </Button>
         </div>
       </DialogContent>

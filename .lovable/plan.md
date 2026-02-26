@@ -1,82 +1,150 @@
 
 
-## Analysis: Current Case Complexity vs Proposed Simplification
+## Plan: Simplify Case Types to Basic/Advanced with Full Behavioral Enforcement
 
-**Current state** — Cases have 6 overlapping classification axes:
-- `case_type`: basic / advanced
-- `case_mode`: read_case / practice_case / branched_case
-- `feedback_timing`: immediate / deferred
-- `is_ai_driven`: boolean
-- `status_panel_enabled`: boolean
-- `case_type` in VP types: basic / advanced
+### Summary
 
-This creates confusion for admins and students. Your instinct is correct — now that we have:
-1. **AI-driven Cases** for dynamic clinical reasoning
-2. **Pathways** for fixed decision trees
+Replace the four `case_type` values (`guided`, `management`, `simulation`, `virtual_patient`) with two (`basic`, `advanced`). Preserve `feedback_timing` as an override. Ensure `advanced` mode properly shows consequences (with fallback), applies state deltas, and update templates + bulk importer to support new columns.
 
-...the old subtypes are redundant.
+---
 
-## Proposed Simplification
+### 1. Database Migration
 
-**Cases = AI-driven OSCE simulations.** Every case is an AI conversation. Admin provides title, intro, learning objectives, difficulty, max turns. No stage builder needed.
+Migrate existing data and set new default:
 
-**Pathways = Fixed branching content.** Linear/branching scenarios (what "read_case" and "branched_case" were) belong here — they're already decision trees.
+```sql
+UPDATE virtual_patient_cases SET case_type = 'basic' WHERE case_type IN ('guided', 'management');
+UPDATE virtual_patient_cases SET case_type = 'advanced' WHERE case_type IN ('simulation', 'virtual_patient');
+ALTER TABLE virtual_patient_cases ALTER COLUMN case_type SET DEFAULT 'basic';
+```
 
-### What gets removed
-- `case_type` column (basic/advanced) — no longer needed
-- `case_mode` column (read_case/practice_case/branched_case) — no longer needed
-- `feedback_timing` column — AI cases always debrief at the end
-- `status_panel_enabled` / `initial_state_json` — AI handles patient state narratively
-- Stage builder (`ClinicalCaseBuilderModal`, `CaseBuilderStageEditor`, `CaseBuilderDetailsTab`) — no pre-written stages
-- `ClinicalCaseStageFormModal` — no manual stage creation
-- The `CASE_MODE_TABS` filter in the student view
-- The `virtual_patient_case_stages` table becomes unused for new cases (keep for legacy data)
+No enum constraint exists (column is `text`), so no ALTER TYPE needed.
 
-### What stays
-- Case card UI (title, difficulty badge, estimated time, attempts/score)
-- AI generate modal (but simplified — it IS the only creation flow now)
-- `AICaseRunner` component (the chat UI)
-- `run-ai-case` edge function
-- `ai_case_messages` table
-- Attempt tracking, scoring
-- `learning_objectives`, `max_turns`, `is_ai_driven` columns
+---
 
-### What changes
+### 2. TypeScript Types
 
-| Area | Change |
+**`src/types/clinicalCase.ts`**:
+- `CaseType` → `'basic' | 'advanced'`
+- `CASE_TYPE_LABELS` → `{ basic: 'Basic', advanced: 'Advanced' }`
+- `shouldShowImmediateFeedback(caseType, feedbackTiming)`:
+  - If `feedbackTiming` is explicitly set, respect it (immediate → true, deferred → false)
+  - Otherwise: `basic` → immediate, `advanced` → deferred
+
+**`src/types/virtualPatient.ts`**:
+- `VPCaseType` → `'basic' | 'advanced'`
+- `shouldShowImmediateFeedbackVP(caseType, feedbackTiming)`: same logic as above
+- Keep `VPFeedbackTiming` type (still stored in DB, used as override)
+
+---
+
+### 3. Runner Logic (`src/pages/VirtualPatientPage.tsx`)
+
+**Feedback timing** (line ~167):
+- Update default from `'guided'` to `'basic'`
+- `shouldShowImmediateFeedbackVP` now handles override correctly
+
+**Advanced consequence behavior** (line ~205):
+- Current: only shows consequence if `consequence_text` exists AND `!showImmediate`
+- New: for advanced (deferred), ALWAYS go to consequence state. If `consequence_text` is missing, show a neutral fallback: *"The clinical team notes your decision. The case continues..."*
+- Apply `state_delta_json` (already done, no change needed)
+
+**Patient Status Panel** (line ~409):
+- Update comment from "simulation/virtual_patient" to "advanced"
+- No logic change needed (already gated on `status_panel_enabled`)
+
+**Summary/Debrief** (line ~807):
+- Already shows stage-by-stage correctness review — this serves as the end-of-case debrief for advanced mode. No change needed.
+
+---
+
+### 4. Help Templates (`src/components/admin/HelpTemplatesTab.tsx`)
+
+**Clinical Cases TXT template** (line ~407-475):
+- Add new header fields: `# Case Type: basic` or `# Case Type: advanced`
+- Add optional case-level: `# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80},"risk_flags":[]}`
+- Add stage-level optional fields to template comments and examples:
+  - `CONSEQUENCE_TEXT:` — narrative consequence shown after decision
+  - `STATE_DELTA:` — JSON string for patient state changes
+
+Example addition to template:
+```text
+# Case Type: basic (or advanced)
+# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80,"systolic_bp":120,"diastolic_bp":80,"spo2":98},"risk_flags":[]}
+
+STAGE 1:
+TYPE: mcq
+...
+CONSEQUENCE_TEXT: The patient's condition stabilizes after your intervention.
+STATE_DELTA: {"time_elapsed_minutes":15,"hemodynamics":{"heart_rate":72}}
+```
+
+- Update comment block to explain basic vs advanced behavior
+
+---
+
+### 5. Bulk Upload Parser (`src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx`)
+
+**Case-level parsing** (in `parseSingleCase`, line ~164):
+- Parse `# Case Type:` header → map to `basic` | `advanced` (also accept old values for backward compat: guided/management → basic, simulation/virtual_patient → advanced)
+- Parse `# Initial State:` header → JSON parse into `initial_state_json`
+- Pass `case_type` and `initial_state_json` to `createCase.mutateAsync()`
+
+**Stage-level parsing** (in `parseStageBlock`, line ~88):
+- Parse `CONSEQUENCE_TEXT:` line → store as `consequence_text`
+- Parse `STATE_DELTA:` line → JSON parse into `state_delta_json`
+- Pass both to `createStage.mutateAsync()`
+
+**Unknown columns**: already safely ignored (parser only reads known `KEY:` prefixes)
+
+**ParsedStage interface** (line ~29): add `consequence_text` and `state_delta_json` fields
+
+**ParsedCase interface** (line ~41): add `case_type` and `initial_state_json` fields
+
+---
+
+### 6. Quick Build Parser (`src/components/clinical-cases/ClinicalCaseQuickBuildModal.tsx`)
+
+- Add `CONSEQUENCE_TEXT:` and `STATE_DELTA:` to the regex lookahead lists (lines ~70-82)
+- Parse both fields in the stage block
+- Pass them through when creating stages
+
+---
+
+### 7. Stage Editor Help Text (`src/components/clinical-cases/CaseBuilderStageEditor.tsx`)
+
+- Update any references from "simulation/virtual patient case types" to "advanced case types"
+
+---
+
+### 8. AI Content Generation
+
+**`supabase/functions/generate-vp-case/index.ts`**:
+- No references to old case_type values in generation logic — no changes needed
+- The system prompt generates stages (not case metadata), so no update required
+
+**`src/components/admin/AISettingsPanel.tsx`**:
+- The `virtual_patient` value here refers to content type for AI generation, NOT case_type — no change needed
+
+---
+
+### Files to Edit
+
+| File | Change |
 |------|--------|
-| **Admin "New Case" flow** | Single button → opens simplified form (title, intro, learning objectives, difficulty, max turns, tags). No case_mode/case_type selectors. Optional "Generate with AI" fills in title+intro from a topic. |
-| **Case Card (student)** | Remove mode badges (Read/Practice/Branched). Show difficulty + "AI Case" badge. Show "X turns" instead of "X stages". |
-| **VirtualPatientPage** | Always render `AICaseRunner`. Remove the old stage-based runner entirely. |
-| **ClinicalCaseFormModal** | Strip case_mode, case_type, feedback_timing fields. Always set `is_ai_driven = true`. |
-| **ClinicalCaseAdminList** | Remove stage count references. Show max_turns instead. Remove "Build Stages" button. |
-| **Bulk upload (TXT)** | Simplify to just metadata (title, intro, objectives, difficulty). No stage parsing. |
-| **Types** | Simplify `ClinicalCase` type — remove `case_mode`, `case_type`, `feedback_timing`, `status_panel_enabled`, `initial_state_json`. |
-| **Migration** | Set all existing cases to `is_ai_driven = true`. Keep old stage data for reference but mark deprecated. |
+| Migration SQL | UPDATE rows + ALTER default |
+| `src/types/clinicalCase.ts` | CaseType union, CASE_TYPE_LABELS, shouldShowImmediateFeedback |
+| `src/types/virtualPatient.ts` | VPCaseType union, shouldShowImmediateFeedbackVP |
+| `src/pages/VirtualPatientPage.tsx` | Default values, consequence fallback for advanced, comments |
+| `src/components/admin/HelpTemplatesTab.tsx` | Template text with case_type, initial_state, consequence_text, state_delta |
+| `src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx` | Parse case_type, initial_state_json, consequence_text, state_delta_json |
+| `src/components/clinical-cases/ClinicalCaseQuickBuildModal.tsx` | Parse consequence_text and state_delta_json in stage blocks |
+| `src/components/clinical-cases/CaseBuilderStageEditor.tsx` | Update help text references |
 
-### Migration strategy for existing content
-- Existing "read_case" cases with fixed stages → admins can recreate them as Pathways (we can offer a one-click migration tool later)
-- Existing "practice_case" cases → become AI-driven; their intro_text and learning objectives are preserved
-- Old stage data stays in the DB but is no longer rendered
-
-### Files to modify
-| File | Action |
-|------|--------|
-| `src/types/clinicalCase.ts` | Remove CaseMode, CaseType, FeedbackTiming types; simplify ClinicalCase interface |
-| `src/types/virtualPatient.ts` | Remove VPCaseType, VPFeedbackTiming; simplify |
-| `src/components/clinical-cases/ClinicalCaseCard.tsx` | Remove mode badges; show "AI Case" + turns |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Strip mode/type selectors; always AI-driven |
-| `src/components/clinical-cases/ClinicalCaseAdminList.tsx` | Remove stage references; show turns |
-| `src/components/clinical-cases/ClinicalCaseList.tsx` | Remove mode filter tab |
-| `src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx` | Simplify to metadata-only parsing |
-| `src/components/clinical-cases/ClinicalCaseAIGenerateModal.tsx` | Becomes the primary creation flow |
-| `src/pages/VirtualPatientPage.tsx` | Always use AICaseRunner; remove stage runner |
-| `src/hooks/useClinicalCases.ts` | Remove mode filtering; simplify create/update |
-| `src/hooks/useVirtualPatient.ts` | Remove stage-runner logic |
-| Migration SQL | Set `is_ai_driven = true` for all cases; optionally drop unused columns |
-
-### Risk assessment
-- **Low risk**: Student-facing changes are additive (better UI)
-- **Medium risk**: Existing cases with stages lose their playable stages. Admins need to know.
-- **Mitigation**: We can show a one-time admin banner: "Cases are now AI-driven. Previously staged cases can be converted to Pathways."
+### What Stays Unchanged
+- `case_mode` (read_case / practice_case / branched_case)
+- `level` (beginner / intermediate / advanced)
+- `feedback_timing` column in DB (kept as optional override)
+- All existing cases remain functional (data migrated in-place)
+- AI generation edge function (operates on stages, not case_type)
 

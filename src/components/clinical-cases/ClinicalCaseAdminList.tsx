@@ -5,12 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -26,11 +20,9 @@ import {
   Settings, 
   User,
   Clock,
-  Layers,
   Eye,
   EyeOff,
   Loader2,
-  AlertCircle,
   Sparkles,
   Upload,
   Download,
@@ -38,7 +30,6 @@ import {
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
-import { ClinicalCaseBuilderModal } from './ClinicalCaseBuilderModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
@@ -47,9 +38,7 @@ import { cn } from '@/lib/utils';
 
 interface ClinicalCaseAdminListProps {
   moduleId: string;
-  /** Chapter ID - for chapter-based modules. Mutually exclusive with topicId. */
   chapterId?: string;
-  /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
 }
 
@@ -59,22 +48,17 @@ const levelColors = {
   advanced: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const MIN_STAGES_TO_PUBLISH = 1; // Read cases only need 1 stage
-
 export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: ClinicalCaseAdminListProps) {
   const containerId = chapterId || topicId;
   const { data: cases, isLoading } = useClinicalCases(moduleId, true);
   const deleteCase = useDeleteClinicalCase();
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
-  const [builderOpen, setBuilderOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
   
-  // Multi-select state for bulk section assignment
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const toggleSelection = useCallback((id: string, checked: boolean) => {
@@ -92,7 +76,6 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
 
   const LEVEL_ORDER: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
 
-  // Filter by chapter or topic if provided, then sort by difficulty
   const filteredCases = (cases || [])
     .filter(c => {
       if (chapterId) return c.chapter_id === chapterId;
@@ -106,7 +89,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       toast.error('No cases to download');
       return;
     }
-    const headers = ['title', 'intro_text', 'level', 'case_mode', 'estimated_minutes', 'is_published', 'stage_count'];
+    const headers = ['title', 'intro_text', 'level', 'estimated_minutes', 'max_turns', 'is_published'];
     const rows = filteredCases.map(c => 
       headers.map(h => {
         const val = (c as any)[h];
@@ -141,17 +124,6 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
     setCaseFormOpen(true);
   };
 
-  const handleOpenBuilder = (caseId: string) => {
-    setSelectedCaseId(caseId);
-    setBuilderOpen(true);
-  };
-
-  const handleCaseCreated = (caseId: string) => {
-    // Auto-open builder after case creation
-    setSelectedCaseId(caseId);
-    setBuilderOpen(true);
-  };
-
   const handleDeleteCase = async () => {
     if (!deleteConfirm) return;
     try {
@@ -162,53 +134,6 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       console.error('Failed to delete case:', error);
       toast.error('Failed to delete case');
     }
-  };
-
-  // Helper to get status badge
-  const getStatusBadge = (clinicalCase: ClinicalCase) => {
-    const stageCount = clinicalCase.stage_count || 0;
-    const minStages = clinicalCase.case_mode === 'read_case' ? 1 : MIN_STAGES_TO_PUBLISH;
-    if (stageCount === 0) {
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="destructive" className="text-xs gap-1">
-                <AlertCircle className="w-3 h-3" />
-                INCOMPLETE
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>No stages added. Build the case to add stages.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-    
-    if (stageCount < minStages && !clinicalCase.is_published) {
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className="text-xs gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
-                <AlertCircle className="w-3 h-3" />
-                {stageCount} stage{stageCount !== 1 ? 's' : ''}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Add at least {minStages} stages before publishing</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-    
-    if (!clinicalCase.is_published) {
-      return <Badge variant="secondary" className="text-xs">DRAFT</Badge>;
-    }
-    
-    return null;
   };
 
   if (isLoading) {
@@ -234,7 +159,6 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Multi-select controls */}
           <div className="flex items-center gap-2">
             <Checkbox 
               checked={selectedIds.size > 0 && selectedIds.size === filteredCases.length}
@@ -264,9 +188,9 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             Download
           </Button>
           <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
-              <Upload className="w-4 h-4 mr-1" />
-              Import File
-            </Button>
+            <Upload className="w-4 h-4 mr-1" />
+            Import File
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
             Generate with AI
@@ -284,9 +208,9 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="font-medium mb-1">No Virtual Patient Cases</h3>
+          <h3 className="font-medium mb-1">No AI Cases</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first virtual patient case, or let AI generate one for you.
+            Create your first AI-driven case, or let AI generate one for you.
           </p>
           <div className="flex justify-center gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setAiGenerateOpen(true)}>
@@ -301,102 +225,69 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCases.map((clinicalCase) => {
-            const stageCount = clinicalCase.stage_count || 0;
-            const isIncomplete = stageCount === 0;
-            
-            return (
-              <Card 
-                key={clinicalCase.id} 
-                className={cn(
-                  !clinicalCase.is_published && "opacity-90",
-                  isIncomplete && "border-destructive/50 border-dashed"
-                )}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        {clinicalCase.is_published ? (
-                          <Eye className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
-                        )}
-                        <Badge variant="outline" className={cn("text-xs", levelColors[clinicalCase.level])}>
-                          {clinicalCase.level}
-                        </Badge>
-                        {getStatusBadge(clinicalCase)}
-                      </div>
-                      <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
+          {filteredCases.map((clinicalCase) => (
+            <Card key={clinicalCase.id} className={cn(!clinicalCase.is_published && "opacity-90")}>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <Checkbox
+                        checked={selectedIds.has(clinicalCase.id)}
+                        onCheckedChange={(checked) => toggleSelection(clinicalCase.id, !!checked)}
+                        aria-label={`Select ${clinicalCase.title}`}
+                      />
+                      {clinicalCase.is_published ? (
+                        <Eye className="w-4 h-4 text-green-600 shrink-0" />
+                      ) : (
+                        <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
+                      )}
+                      <Badge variant="outline" className={cn("text-xs", levelColors[clinicalCase.level])}>
+                        {clinicalCase.level}
+                      </Badge>
+                      {!clinicalCase.is_published && (
+                        <Badge variant="secondary" className="text-xs">DRAFT</Badge>
+                      )}
                     </div>
+                    <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
                   </div>
-                  <CardDescription className="line-clamp-2">
-                    {clinicalCase.intro_text}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                    <div className={cn(
-                      "flex items-center gap-1",
-                      isIncomplete && "text-destructive"
-                    )}>
-                      <Layers className="w-4 h-4" />
-                      <span>{stageCount} stage{stageCount !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{clinicalCase.estimated_minutes} min</span>
-                    </div>
+                </div>
+                <CardDescription className="line-clamp-2">
+                  {clinicalCase.intro_text}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                  <div className="flex items-center gap-1">
+                    <Sparkles className="w-4 h-4" />
+                    <span>{clinicalCase.max_turns || 10} turns</span>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{clinicalCase.estimated_minutes} min</span>
+                  </div>
+                </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={isIncomplete ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleOpenBuilder(clinicalCase.id)}
-                    >
-                      <Settings className="w-4 h-4 mr-1" />
-                      Edit Case
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const headers = ['title', 'intro_text', 'level', 'case_mode', 'estimated_minutes', 'is_published', 'stage_count'];
-                        const row = headers.map(h => {
-                          const val = (clinicalCase as any)[h];
-                          const str = val == null ? '' : String(val);
-                          return str.includes(',') || str.includes('"') || str.includes('\n')
-                            ? `"${str.replace(/"/g, '""')}"` : str;
-                        }).join(',');
-                        const csv = [headers.join(','), row].join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `case_${clinicalCase.title.replace(/\s+/g, '_').substring(0, 30)}.csv`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(link.href);
-                        toast.success('Case downloaded');
-                      }}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setDeleteConfirm(clinicalCase)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleEditCase(clinicalCase)}
+                  >
+                    <Settings className="w-4 h-4 mr-1" />
+                    Edit Case
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setDeleteConfirm(clinicalCase)}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -408,18 +299,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
         chapterId={chapterId}
         topicId={topicId}
         clinicalCase={editingCase}
-        onSuccess={handleCaseCreated}
       />
-
-      {/* Case Builder Modal */}
-      {selectedCaseId && (
-        <ClinicalCaseBuilderModal
-          open={builderOpen}
-          onOpenChange={setBuilderOpen}
-          caseId={selectedCaseId}
-          moduleId={moduleId}
-        />
-      )}
 
       {/* Bulk Upload Modal */}
       <ClinicalCaseBulkUploadModal
@@ -437,16 +317,15 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
         moduleId={moduleId}
         chapterId={chapterId}
         topicId={topicId}
-        onCaseCreated={handleCaseCreated}
       />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Virtual Patient Case?</AlertDialogTitle>
+            <AlertDialogTitle>Delete AI Case?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete "{deleteConfirm?.title}" and all its stages. This action cannot be undone.
+              This will delete "{deleteConfirm?.title}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
