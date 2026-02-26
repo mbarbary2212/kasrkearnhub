@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,9 @@ import {
   AlertTriangle,
   RotateCcw,
   ArrowRight,
+  Lightbulb,
 } from 'lucide-react';
 import { useAICase } from '@/hooks/useAICase';
-import { useState } from 'react';
 import type { AICaseDisplayMessage, AITurnResponse } from '@/types/aiCase';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ interface AICaseRunnerProps {
   attemptId: string;
   introText: string;
   title: string;
+  hintMode?: boolean;
   onComplete?: () => void;
 }
 
@@ -33,6 +34,7 @@ export function AICaseRunner({
   attemptId,
   introText,
   title,
+  hintMode = false,
   onComplete,
 }: AICaseRunnerProps) {
   const [textInput, setTextInput] = useState('');
@@ -52,11 +54,9 @@ export function AICaseRunner({
   } = useAICase({
     caseId,
     attemptId,
-    onComplete: () => {
-      // Don't auto-navigate — let student review the debrief
-    },
+    hintMode,
+    onComplete: () => {},
     onFlagged: () => {
-      // Could show a warning, for now just log
       console.warn('Case flagged for review');
     },
   });
@@ -104,10 +104,18 @@ export function AICaseRunner({
               AI Clinical Examiner • Turn {currentTurn} of {maxTurns}
             </p>
           </div>
-          <Badge variant="secondary" className="gap-1">
-            <GraduationCap className="w-3 h-3" />
-            AI-Driven
-          </Badge>
+          <div className="flex items-center gap-2">
+            {hintMode && (
+              <Badge variant="outline" className="gap-1 border-amber-300 text-amber-700 dark:text-amber-400">
+                <Lightbulb className="w-3 h-3" />
+                Learning
+              </Badge>
+            )}
+            <Badge variant="secondary" className="gap-1">
+              <GraduationCap className="w-3 h-3" />
+              AI-Driven
+            </Badge>
+          </div>
         </div>
         <Progress value={progressPercent} className="h-2" />
       </div>
@@ -115,7 +123,7 @@ export function AICaseRunner({
       {/* Chat Feed */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble key={msg.id} message={msg} showTeachingPoints={hintMode} />
         ))}
 
         {status === 'loading' && (
@@ -125,7 +133,6 @@ export function AICaseRunner({
           </div>
         )}
 
-        {/* Error State */}
         {status === 'error' && error && (
           <Alert variant="destructive">
             <AlertTriangle className="w-4 h-4" />
@@ -184,7 +191,7 @@ export function AICaseRunner({
   );
 }
 
-function MessageBubble({ message }: { message: AICaseDisplayMessage }) {
+function MessageBubble({ message, showTeachingPoints }: { message: AICaseDisplayMessage; showTeachingPoints?: boolean }) {
   if (message.role === 'system') {
     return (
       <Card className="border-primary/20 bg-primary/5">
@@ -227,6 +234,14 @@ function MessageBubble({ message }: { message: AICaseDisplayMessage }) {
           </Card>
         )}
 
+        {showTeachingPoints && message.teaching_point && (
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="flex gap-2 py-2 px-3 text-xs">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <span>{message.teaching_point}</span>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -252,18 +267,15 @@ function DebriefCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Score */}
         <div className="text-center">
           <div className={cn('text-4xl font-bold', scoreColor)}>{score}%</div>
           <p className="text-sm text-muted-foreground mt-1">Overall Score</p>
         </div>
 
-        {/* Summary */}
         {debrief.summary && (
           <p className="text-sm text-muted-foreground">{debrief.summary}</p>
         )}
 
-        {/* Detailed feedback */}
         {debrief.prompt && (
           <div className="bg-muted/50 rounded-lg p-4">
             <h4 className="text-sm font-medium mb-2">Detailed Feedback</h4>
@@ -271,7 +283,6 @@ function DebriefCard({
           </div>
         )}
 
-        {/* Consolidated teaching points */}
         {debrief.teaching_point && (
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
             <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
@@ -281,7 +292,6 @@ function DebriefCard({
           </div>
         )}
 
-        {/* Strengths & Gaps */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {debrief.strengths && debrief.strengths.length > 0 && (
             <div>
