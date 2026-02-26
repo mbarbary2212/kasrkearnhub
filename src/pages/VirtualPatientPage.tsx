@@ -38,6 +38,14 @@ export default function VirtualPatientRunner() {
   const navigate = useNavigate();
   
   const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
+
+  const goBack = () => {
+    if (vpCase?.chapter_id) {
+      navigate(`/chapter/${vpCase.chapter_id}?section=interactive`);
+    } else {
+      navigate(-1);
+    }
+  };
   const { data: pastAttempts, isLoading: attemptsLoading } = useVirtualPatientAttempts(caseId);
   const startAttempt = useStartVirtualPatientAttempt();
 
@@ -107,7 +115,7 @@ export default function VirtualPatientRunner() {
           <p className="text-muted-foreground mb-4">
             This case doesn't exist or has been removed.
           </p>
-          <Button onClick={() => navigate(-1)}>Go Back</Button>
+          <Button onClick={goBack}>Go Back</Button>
         </div>
       </MainLayout>
     );
@@ -126,7 +134,7 @@ export default function VirtualPatientRunner() {
           avatarId={avatarId}
           onComplete={() => {
             clearSession();
-            navigate(-1);
+            goBack();
           }}
         />
       </MainLayout>
@@ -139,7 +147,7 @@ export default function VirtualPatientRunner() {
   return (
     <MainLayout>
       <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back
         </Button>
