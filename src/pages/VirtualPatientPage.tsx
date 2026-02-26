@@ -873,7 +873,15 @@ export default function VirtualPatientRunner() {
                   <RotateCcw className="w-4 h-4" />
                   Retry Case
                 </Button>
-                <Button onClick={() => navigate(-1)} className="flex-1 gap-2">
+                <Button onClick={() => {
+                  const chapterId = vpCase?.chapter_id;
+                  const moduleId = vpCase?.module_id;
+                  if (chapterId && moduleId) {
+                    navigate(`/module/${moduleId}/chapter/${chapterId}?section=interactive`);
+                  } else {
+                    navigate(-1);
+                  }
+                }} className="flex-1 gap-2">
                   <Home className="w-4 h-4" />
                   Back to Cases
                 </Button>
