@@ -90,6 +90,8 @@ export function ClinicalCaseFormModal({
       setTags(clinicalCase.tags || []);
       setIsPublished(clinicalCase.is_published);
       setSectionId(clinicalCase.section_id || null);
+      setLearningObjectives((clinicalCase as any).learning_objectives || '');
+      setMaxTurns((clinicalCase as any).max_turns || 10);
     } else {
       resetForm();
       if (chapterId) {
