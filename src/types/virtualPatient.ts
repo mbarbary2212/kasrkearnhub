@@ -1,48 +1,6 @@
-// Virtual Patient Types
+// Virtual Patient Types — Simplified: All cases are AI-driven
 
-export type VPStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type VPLevel = 'beginner' | 'intermediate' | 'advanced';
-export type VPCaseType = 'basic' | 'advanced';
-export type VPFeedbackTiming = 'immediate' | 'deferred';
-
-export interface VPChoice {
-  key: string;
-  text: string;
-}
-
-// Rubric structure for short-answer marking
-export interface VPRubric {
-  required_concepts: string[];
-  optional_concepts: string[];
-  pass_threshold?: number; // Default 0.6 (60%)
-  acceptable_phrases?: Record<string, string[]>; // Concept -> synonyms mapping
-  critical_omissions?: string[]; // Must be addressed or answer fails
-}
-
-// Result of rubric-based marking
-export interface VPRubricResult {
-  is_correct: boolean;
-  score: number; // 0-1
-  matched_required: string[];
-  missing_required: string[];
-  matched_optional: string[];
-}
-
-// Patient state engine types
-export interface VPPatientState {
-  time_elapsed_minutes: number;
-  hemodynamics: {
-    heart_rate?: number;
-    systolic_bp?: number;
-    diastolic_bp?: number;
-    respiratory_rate?: number;
-    spo2?: number;
-    temperature?: number;
-    [key: string]: number | undefined;
-  };
-  risk_flags: string[];
-  [key: string]: unknown;
-}
 
 export interface VPCase {
   id: string;
@@ -52,10 +10,9 @@ export interface VPCase {
   chapter_id: string | null;
   topic_id: string | null;
   level: VPLevel;
-  case_type: VPCaseType;
-  feedback_timing: VPFeedbackTiming;
-  status_panel_enabled: boolean;
-  initial_state_json: VPPatientState | null;
+  is_ai_driven: boolean;
+  learning_objectives: string | null;
+  max_turns: number;
   estimated_minutes: number;
   tags: string[];
   is_published: boolean;
@@ -68,26 +25,6 @@ export interface VPCase {
   module?: { name: string } | null;
   chapter?: { title: string; chapter_number: number } | null;
   topic?: { name: string } | null;
-  stages?: VPStage[];
-  stage_count?: number;
-}
-
-export interface VPStage {
-  id: string;
-  case_id: string;
-  stage_order: number;
-  stage_type: VPStageType;
-  prompt: string;
-  patient_info: string | null;
-  choices: VPChoice[];
-  correct_answer: string | string[]; // Single key for MCQ, array for multi-select, text for short_answer
-  explanation: string | null;
-  teaching_points: string[];
-  rubric: VPRubric | null; // For short_answer grading
-  consequence_text: string | null;
-  state_delta_json: Partial<VPPatientState> | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface VPAttempt {
@@ -100,22 +37,14 @@ export interface VPAttempt {
   total_stages: number;
   correct_count: number;
   score: number;
-  stage_answers: Record<string, StageAnswer>;
+  stage_answers: Record<string, unknown>;
   is_completed: boolean;
   created_at: string;
   // Joined data
   case?: VPCase;
 }
 
-export interface StageAnswer {
-  stage_id: string;
-  user_answer: string | string[];
-  is_correct: boolean;
-  time_taken_seconds?: number;
-  rubric_result?: VPRubricResult; // For short_answer stages
-}
-
-// Form types for admin builder
+// Form types for admin
 export interface VPCaseFormData {
   title: string;
   intro_text: string;
@@ -123,33 +52,9 @@ export interface VPCaseFormData {
   chapter_id?: string;
   topic_id?: string;
   level: VPLevel;
-  case_type?: VPCaseType;
-  feedback_timing?: VPFeedbackTiming;
-  status_panel_enabled?: boolean;
-  initial_state_json?: VPPatientState | null;
   estimated_minutes: number;
   tags: string[];
   is_published: boolean;
-}
-
-export interface VPStageFormData {
-  stage_order: number;
-  stage_type: VPStageType;
-  prompt: string;
-  patient_info?: string;
-  choices: VPChoice[];
-  correct_answer: string | string[];
-  explanation?: string;
-  teaching_points: string[];
-  rubric?: VPRubric | null; // For short_answer grading
-  consequence_text?: string;
-  state_delta_json?: Partial<VPPatientState> | null;
-}
-
-// Helper: determines whether correctness should be shown immediately
-// Default: basic=immediate, advanced=deferred. feedback_timing overrides if set.
-export function shouldShowImmediateFeedbackVP(caseType: VPCaseType, feedbackTiming?: VPFeedbackTiming): boolean {
-  if (feedbackTiming === 'immediate') return true;
-  if (feedbackTiming === 'deferred') return false;
-  return caseType === 'basic';
+  learning_objectives?: string;
+  max_turns?: number;
 }
