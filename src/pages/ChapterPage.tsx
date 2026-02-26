@@ -716,6 +716,11 @@ export default function ChapterPage() {
                     {/* Documents sub-tab: Socratic Tutorial documents */}
                     {socratesSubTab === 'documents' && (
                       <>
+                        {showAddControls && chapterId && moduleId && (
+                          <div className="mb-4">
+                            <AdminContentActions chapterId={chapterId} moduleId={moduleId} contentType="resource" />
+                          </div>
+                        )}
                         {studyResourcesLoading ? (
                           <QuestionListSkeleton count={2} type="mcq" />
                         ) : socraticTutorials.length > 0 ? (

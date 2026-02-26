@@ -650,6 +650,11 @@ export default function TopicDetailPage() {
                     {/* Documents sub-tab: Socratic Tutorial documents */}
                     {socratesSubTab === 'documents' && (
                       <>
+                        {showAddControls && topicId && moduleId && (
+                          <div className="mb-4">
+                            <AdminContentActions topicId={topicId} moduleId={moduleId} contentType="resource" />
+                          </div>
+                        )}
                         {studyResourcesLoading ? (
                           <QuestionListSkeleton count={2} type="mcq" />
                         ) : socraticTutorials.length > 0 ? (
