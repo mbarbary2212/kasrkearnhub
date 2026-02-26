@@ -263,9 +263,22 @@ function DebriefCard({
           <p className="text-sm text-muted-foreground">{debrief.summary}</p>
         )}
 
-        {/* Prompt/feedback text */}
+        {/* Detailed feedback */}
         {debrief.prompt && (
-          <p className="text-sm">{debrief.prompt}</p>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="text-sm font-medium mb-2">Detailed Feedback</h4>
+            <p className="text-sm whitespace-pre-wrap">{debrief.prompt}</p>
+          </div>
+        )}
+
+        {/* Consolidated teaching points */}
+        {debrief.teaching_point && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+              💡 Key Learning Points
+            </h4>
+            <p className="text-sm whitespace-pre-wrap">{debrief.teaching_point}</p>
+          </div>
         )}
 
         {/* Strengths & Gaps */}
@@ -303,7 +316,7 @@ function DebriefCard({
         </div>
 
         <Button onClick={onFinish} className="w-full">
-          Finish
+          Back to Cases
         </Button>
       </CardContent>
     </Card>
