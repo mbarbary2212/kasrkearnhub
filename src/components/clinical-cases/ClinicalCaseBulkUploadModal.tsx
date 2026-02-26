@@ -32,6 +32,12 @@ interface ParsedCase {
   difficulty: CaseLevel;
   learning_objectives: string;
   max_turns: number;
+  estimated_minutes: number;
+  tags: string[];
+  is_published: boolean;
+  patient_name?: string;
+  patient_age?: number;
+  patient_gender?: 'male' | 'female' | 'other';
   parseErrors: string[];
 }
 
@@ -40,46 +46,105 @@ const DIFFICULTY_MAP: Record<string, CaseLevel> = {
   beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced',
 };
 
+const GENDER_MAP: Record<string, 'male' | 'female' | 'other'> = {
+  male: 'male', female: 'female', other: 'other', m: 'male', f: 'female',
+};
+
 function parseSingleCase(text: string, index: number): ParsedCase {
   const lines = text.split('\n').map(l => l.trimEnd());
   const errors: string[] = [];
 
-  let title = `Untitled Case ${index + 1}`;
+  let title = '';
   let intro = '';
   let difficulty: CaseLevel = 'intermediate';
   let learningObjectives = '';
   let maxTurns = 10;
+  let estimatedMinutes = 15;
+  let tags: string[] = [];
+  let isPublished = false;
+  let patientName: string | undefined;
+  let patientAge: number | undefined;
+  let patientGender: 'male' | 'female' | 'other' | undefined;
+
+  let inObjectives = false;
 
   for (const line of lines) {
-    if (line.startsWith('# Title:')) title = line.substring(8).trim();
-    else if (line.startsWith('# Intro:')) intro = line.substring(8).trim();
-    else if (line.startsWith('# Difficulty:')) {
-      const d = line.substring(13).trim().toLowerCase();
-      difficulty = DIFFICULTY_MAP[d] || 'intermediate';
-    } else if (line.startsWith('# Learning Objectives:')) {
-      learningObjectives = line.substring(22).trim();
-    } else if (line.startsWith('# Max Turns:')) {
-      maxTurns = parseInt(line.substring(12).trim()) || 10;
+    const trimmed = line.trim();
+
+    // Check if we're collecting multi-line objectives
+    if (inObjectives) {
+      if (trimmed.startsWith('- ')) {
+        learningObjectives += (learningObjectives ? '\n' : '') + trimmed.substring(2).trim();
+        continue;
+      }
+      inObjectives = false;
     }
+
+    // New format: CASE: / INTRO: / LEVEL: etc.
+    if (trimmed.startsWith('CASE:')) { title = trimmed.substring(5).trim(); continue; }
+    if (trimmed.startsWith('INTRO:')) { intro = trimmed.substring(6).trim(); continue; }
+    if (trimmed.startsWith('LEVEL:')) {
+      const d = trimmed.substring(6).trim().toLowerCase();
+      difficulty = DIFFICULTY_MAP[d] || 'intermediate';
+      continue;
+    }
+    if (trimmed.startsWith('MAX_TURNS:')) { maxTurns = parseInt(trimmed.substring(10).trim()) || 10; continue; }
+    if (trimmed.startsWith('ESTIMATED_MINUTES:')) { estimatedMinutes = parseInt(trimmed.substring(18).trim()) || 15; continue; }
+    if (trimmed.startsWith('TAGS:')) { tags = trimmed.substring(5).split(',').map(t => t.trim()).filter(Boolean); continue; }
+    if (trimmed.startsWith('PUBLISHED:')) { isPublished = trimmed.substring(10).trim().toLowerCase() === 'true'; continue; }
+    if (trimmed.startsWith('PATIENT_NAME:')) { patientName = trimmed.substring(13).trim(); continue; }
+    if (trimmed.startsWith('PATIENT_AGE:')) { patientAge = parseInt(trimmed.substring(12).trim()) || undefined; continue; }
+    if (trimmed.startsWith('PATIENT_GENDER:')) { patientGender = GENDER_MAP[trimmed.substring(15).trim().toLowerCase()]; continue; }
+    if (trimmed === 'OBJECTIVES:' || trimmed.startsWith('OBJECTIVES:')) {
+      const inline = trimmed.substring(11).trim();
+      if (inline) learningObjectives = inline;
+      inObjectives = true;
+      continue;
+    }
+
+    // Legacy format: # Title: / # Intro: etc.
+    if (trimmed.startsWith('# Title:')) { title = trimmed.substring(8).trim(); continue; }
+    if (trimmed.startsWith('# Intro:')) { intro = trimmed.substring(8).trim(); continue; }
+    if (trimmed.startsWith('# Difficulty:')) {
+      const d = trimmed.substring(13).trim().toLowerCase();
+      difficulty = DIFFICULTY_MAP[d] || 'intermediate';
+      continue;
+    }
+    if (trimmed.startsWith('# Learning Objectives:')) { learningObjectives = trimmed.substring(22).trim(); continue; }
+    if (trimmed.startsWith('# Max Turns:')) { maxTurns = parseInt(trimmed.substring(12).trim()) || 10; continue; }
   }
 
-  // If no explicit intro header, use non-header content
+  // If no explicit intro, use non-header/non-keyword content
   if (!intro) {
-    const contentLines = lines.filter(l => !l.startsWith('#') && l.trim());
+    const contentLines = lines.filter(l => !l.trim().startsWith('#') && !l.trim().match(/^(CASE|INTRO|LEVEL|MAX_TURNS|ESTIMATED_MINUTES|TAGS|PUBLISHED|PATIENT_NAME|PATIENT_AGE|PATIENT_GENDER|OBJECTIVES):/) && l.trim() && !l.trim().startsWith('- '));
     intro = contentLines.join('\n').trim();
   }
 
-  if (!title || title.startsWith('Untitled')) errors.push('Missing title');
-  if (!intro) errors.push('Missing intro text');
+  if (!title) errors.push('Missing title (use CASE: or # Title:)');
+  if (!intro) errors.push('Missing intro text (use INTRO: or # Intro:)');
 
-  return { title, intro_text: intro, difficulty, learning_objectives: learningObjectives, max_turns: maxTurns, parseErrors: errors };
+  return {
+    title: title || `Untitled Case ${index + 1}`,
+    intro_text: intro,
+    difficulty,
+    learning_objectives: learningObjectives,
+    max_turns: maxTurns,
+    estimated_minutes: estimatedMinutes,
+    tags,
+    is_published: isPublished,
+    patient_name: patientName,
+    patient_age: patientAge,
+    patient_gender: patientGender,
+    parseErrors: errors,
+  };
 }
 
 function parseClinicalCasesTxt(text: string): ParsedCase[] {
-  const blocks = text.split(/\n---\s*\n/);
+  // Split on blank line between cases or --- separator
+  const blocks = text.split(/\n(?:\s*\n){2,}|\n---\s*\n/);
   return blocks
     .map(block => block.trim())
-    .filter(block => block.length > 0)
+    .filter(block => block.length > 0 && !block.startsWith('# AI Cases') && !block.startsWith('#'))
     .map((block, i) => parseSingleCase(block, i));
 }
 
