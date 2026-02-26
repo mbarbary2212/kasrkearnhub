@@ -52,7 +52,9 @@ export function AICaseRunner({
   } = useAICase({
     caseId,
     attemptId,
-    onComplete: () => onComplete?.(),
+    onComplete: () => {
+      // Don't auto-navigate — let student review the debrief
+    },
     onFlagged: () => {
       // Could show a warning, for now just log
       console.warn('Case flagged for review');
