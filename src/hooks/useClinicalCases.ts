@@ -385,7 +385,7 @@ export function useClinicalCaseAttempts(caseId?: string) {
       return (data || []).map(a => ({
         ...a,
         stage_answers: (a.stage_answers as unknown as Record<string, CaseStageAnswer>) || {},
-      })) as ClinicalCaseAttempt[];
+      })) as unknown as ClinicalCaseAttempt[];
     },
     enabled: !!user,
   });

@@ -366,7 +366,7 @@ export function useVirtualPatientAttempts(caseId?: string) {
       return (data || []).map(a => ({
         ...a,
         stage_answers: (a.stage_answers as unknown as Record<string, StageAnswer>) || {},
-      })) as VPAttempt[];
+      })) as unknown as VPAttempt[];
     },
     enabled: !!user,
   });
