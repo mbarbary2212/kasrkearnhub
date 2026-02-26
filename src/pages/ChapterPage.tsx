@@ -13,6 +13,7 @@ import { useChapter } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
+import { SocraticDocumentCard } from '@/components/content/SocraticDocumentCard';
 import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
 import { RichDocumentViewer } from '@/components/study/RichDocumentViewer';
@@ -734,18 +735,12 @@ export default function ChapterPage() {
                                   documentType="socratic_tutorial"
                                 />
                               ) : (
-                                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                                  <FileText className="w-5 h-5 text-primary shrink-0" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium truncate">{doc.title}</p>
-                                    {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
-                                  </div>
-                                  {(doc.file_url || doc.external_url) && (
-                                    <a href={doc.file_url || doc.external_url || ''} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline shrink-0">
-                                      Open
-                                    </a>
-                                  )}
-                                </div>
+                                <SocraticDocumentCard
+                                  key={doc.id}
+                                  doc={doc}
+                                  canManage={canManageContent}
+                                  invalidateKey={['chapter-resources', chapterId!]}
+                                />
                               )
                             ))}
                           </div>
