@@ -67,6 +67,8 @@ export function ClinicalCaseFormModal({
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [learningObjectives, setLearningObjectives] = useState('');
+  const [maxTurns, setMaxTurns] = useState(10);
 
   const { data: chapters } = useModuleChapters(moduleId);
   const createCase = useCreateClinicalCase();
