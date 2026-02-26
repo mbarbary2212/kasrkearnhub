@@ -15,6 +15,7 @@ import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { AdminContentActions } from '@/components/admin/AdminContentActions';
 import { LectureList } from '@/components/content/LectureList';
 import { ResourcesTabContent } from '@/components/content/ResourcesTabContent';
+import { RichDocumentViewer } from '@/components/study/RichDocumentViewer';
 import { McqList } from '@/components/content/McqList';
 import { OsceList } from '@/components/content/OsceList';
 import EssayList from '@/components/content/EssayList';
@@ -243,7 +244,10 @@ export default function ChapterPage() {
   const documentStudyResources = studyResources?.filter(r => 
     r.resource_type === 'table' || r.resource_type === 'exam_tip' || r.resource_type === 'key_image'
   ) || [];
-  const documentsCount = (resources?.length || 0) + documentStudyResources.length;
+  // Socratic tutorials (from resources table) are now shown under the Socratic Tutorials tab
+  const socraticTutorials = resources?.filter(r => r.document_subtype === 'socratic_tutorial') || [];
+  const nonSocraticResources = resources?.filter(r => r.document_subtype !== 'socratic_tutorial') || [];
+  const documentsCount = nonSocraticResources.length + documentStudyResources.length;
 
   const handleEditFlashcard = (resource: StudyResource) => {
     setEditingFlashcard(resource);
@@ -317,7 +321,7 @@ export default function ChapterPage() {
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
       mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
-      guided_explanations: studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0,
+      guided_explanations: (studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0) + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
@@ -631,7 +635,7 @@ export default function ChapterPage() {
                   <ResourcesTabContent
                     chapterId={chapterId}
                     moduleId={moduleId}
-                    resources={filterBySection(resources || [])}
+                    resources={filterBySection(nonSocraticResources)}
                     resourcesLoading={resourcesLoading}
                     canManageContent={canManageContent}
                     isSuperAdmin={auth.isSuperAdmin}
@@ -671,7 +675,7 @@ export default function ChapterPage() {
                   />
                 )}
 
-                {/* Guided Explanations Content */}
+                {/* Socratic Tutorials Content (renamed from Guided Explanations) */}
                 {resourcesTab === 'guided_explanations' && chapterId && (
                   <div className="space-y-4">
                     {canManageContent && (
@@ -708,16 +712,32 @@ export default function ChapterPage() {
                     {studyResourcesLoading ? (
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <GuidedExplanationList
-                        resources={filterBySection(studyResources?.filter(r => r.resource_type === 'guided_explanation') || [])}
-                        canManage={canManageContent}
-                        onEdit={handleEditFlashcard}
-                        onDelete={(id) => {
-                          const resource = studyResources?.find(r => r.id === id);
-                          requestResourceDelete('guided_explanation', id, resource?.title);
-                        }}
-                        chapterId={chapterId}
-                      />
+                      <>
+                        <GuidedExplanationList
+                          resources={filterBySection(studyResources?.filter(r => r.resource_type === 'guided_explanation') || [])}
+                          canManage={canManageContent}
+                          onEdit={handleEditFlashcard}
+                          onDelete={(id) => {
+                            const resource = studyResources?.find(r => r.id === id);
+                            requestResourceDelete('guided_explanation', id, resource?.title);
+                          }}
+                          chapterId={chapterId}
+                        />
+                        {/* Socratic Tutorials from resources table */}
+                        {socraticTutorials.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="text-sm font-medium text-muted-foreground">Socratic Tutorials</h3>
+                            {socraticTutorials.map(doc => (
+                              <RichDocumentViewer
+                                key={doc.id}
+                                title={doc.title}
+                                content={doc.rich_content || ''}
+                                documentType="socratic_tutorial"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
