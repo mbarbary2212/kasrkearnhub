@@ -155,17 +155,19 @@ export function ClinicalCaseFormModal({
       return;
     }
 
-    const formData: ClinicalCaseFormData = {
+    const formData: any = {
       title: title.trim(),
       intro_text: introText.trim(),
       module_id: moduleId,
       chapter_id: selectedChapterId || undefined,
       section_id: sectionId || undefined,
-      case_mode: clinicalCase?.case_mode ?? 'practice_case', // Preserve existing case_mode
+      case_mode: clinicalCase?.case_mode ?? 'practice_case',
       level,
       estimated_minutes: estimatedMinutes,
       tags,
-      is_published: isEditing ? isPublished : false, // New cases always start unpublished
+      is_published: isEditing ? isPublished : false,
+      learning_objectives: learningObjectives.trim() || null,
+      max_turns: maxTurns,
     };
 
     try {
