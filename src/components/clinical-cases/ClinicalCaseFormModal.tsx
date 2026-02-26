@@ -110,6 +110,8 @@ export function ClinicalCaseFormModal({
     setTagInput('');
     setIsPublished(false);
     setSectionId(null);
+    setLearningObjectives('');
+    setMaxTurns(10);
   };
 
   const handleAddTag = () => {
