@@ -134,7 +134,7 @@ export default function VirtualPatientRunner() {
           avatarId={avatarId}
           onComplete={() => {
             clearSession();
-            navigate(-1);
+            goBack();
           }}
         />
       </MainLayout>
