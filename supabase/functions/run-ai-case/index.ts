@@ -410,6 +410,15 @@ Student response: ${userMessage}`;
       turn_number: turnNumber,
     });
 
+    // Log AI usage for token tracking (fire-and-forget)
+    logAIUsage(
+      supabase,
+      userId,
+      "ai_case",
+      resolvedProvider.name,
+      "global",
+    ).catch((err: any) => console.error("Usage log error:", err));
+
     // If debrief, complete the attempt and upsert insights
     if (aiTurn.type === "debrief") {
       await supabase
