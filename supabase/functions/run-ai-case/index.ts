@@ -340,8 +340,9 @@ Deno.serve(async (req) => {
     });
 
     // Build conversation messages (excluding system)
-    const conversationMessages = history
-      .filter((m: any) => m.role !== "system")
+    const filteredHistory = history.filter((m: any) => m.role !== "system");
+    const trimmedHistory = filteredHistory.slice(-10);
+    const conversationMessages = trimmedHistory
       .map((m: any) => ({ role: m.role, content: m.content }));
 
     // Add context note with current user message
