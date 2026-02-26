@@ -314,8 +314,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   },
   {
     id: 'clinical_case',
-    title: 'Clinical Cases Template',
-    description: 'Multi-stage clinical case scenarios with MCQ, short answer, and read-only stages',
+    title: 'AI Cases Template',
+    description: 'AI-driven OSCE case simulations with metadata for bulk import',
     format: 'txt',
     icon: 'file',
   },
