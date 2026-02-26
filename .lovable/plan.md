@@ -1,55 +1,74 @@
 
 
-## Plan: Match Inner Sub-Tab Colors to Their Parent Section Colors
+## Plan: Reorganize Reference Materials & Rename Guided Explanations
 
-### Problem
-Each section in the sidebar has a distinct color identity (Blue, Amber, Emerald, Violet), but the inner sub-tabs don't follow the same colors. Interactive uses teal instead of amber, Resources and Practice both use the generic `bg-accent` (teal), and Test Yourself has completely colorless MCQ/OSCE tabs. This makes it easy to miss tabs like OSCE.
+### What You Asked
+1. Merge the standalone "Summaries" sub-tab (under Documents) with uploaded Documents into one tab called something like "Doc/Sum"
+2. Move this merged tab to be the **first** sub-tab in Reference Materials
+3. Move "Socratic Tutorials" out of Documents and into the current "Guided Explanations" top-level tab — renaming that tab from "Guided Explanations" to **"Socratic Tutorials"**
+4. Audio files can also live in the merged doc/sum tab
 
-### Solution
-Apply the same outlined-pill pattern used for Interactive tabs to all four sections, each using its parent section's color:
-
+### Current Structure (Reference Materials)
 ```text
-Section        Sidebar Color    Inner Tab Active              Inner Tab Inactive
-─────────────  ──────────────   ────────────────────────────  ──────────────────────────────
-Resources      Blue             bg-blue-600 text-white        border-blue-300 bg-blue-50
-Interactive    Amber            bg-amber-500 text-white       border-amber-300 bg-amber-50
-Practice       Emerald          bg-emerald-600 text-white     border-emerald-300 bg-emerald-50
-Test Yourself  Violet           bg-violet-600 text-white      border-violet-300 bg-violet-50
+Reference Materials
+├── Tables (0)
+├── Exam Tips (0)
+├── Images (0)
+└── Documents (1)          ← nested sub-tabs:
+    ├── Summaries (0)
+    ├── Socratic Tutorials (0)
+    └── Documents (1)      ← uploaded files
 ```
 
-### Changes
+### Proposed Structure
+```text
+Socratic Tutorials         ← renamed top-level tab (was "Guided Explanations")
+  └── existing guided explanations + socratic tutorials from Documents
 
-#### 1. `src/pages/ChapterPage.tsx`
+Reference Materials
+├── Documents & Summaries  ← NEW first tab (merged: uploaded docs + AI summaries + audio)
+├── Tables
+├── Exam Tips
+└── Images
+```
 
-**Resources sub-tabs** (lines 547-551): Replace generic `bg-accent` with blue pill styling:
-- Active: `bg-blue-600 text-white font-medium shadow-sm border-blue-600`
-- Inactive: `border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100`
-- Add `border` to the base classes
+### Technical Changes
 
-**Interactive sub-tabs** (lines 768-770): Change teal to amber to match sidebar:
-- Active: `bg-amber-500 text-white font-medium shadow-sm border-amber-500`
-- Inactive: `border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100`
+**1. Rename "Guided Explanations" tab → "Socratic Tutorials"** (`src/config/tabConfig.ts`)
+- Change label from `'Guided Explanations'` to `'Socratic Tutorials'`
+- Change icon from `MessageCircleQuestion` to `GraduationCap`
 
-**Practice sub-tabs** (lines 854-858): Replace generic `bg-accent` with emerald pill styling:
-- Active: `bg-emerald-600 text-white font-medium shadow-sm border-emerald-600`
-- Inactive: `border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100`
-- Add `border` to the base classes
+**2. Move Socratic Tutorial content into the Guided Explanations tab** (`src/pages/ChapterPage.tsx` + `src/pages/TopicDetailPage.tsx`)
+- In the `guided_explanations` tab content section, add a sub-section that renders Socratic Tutorials (fetched from `resources` table where `document_subtype = 'socratic_tutorial'`) alongside existing guided explanations
+- Both content types live in one tab, separated by clear headings
+- Update the tab count to include socratic tutorials: `guided_explanations count = guided_explanation study_resources + socratic_tutorial resources`
 
-#### 2. `src/pages/TopicDetailPage.tsx`
-Mirror the exact same changes for all three sections (Resources, Interactive, Practice).
+**3. Merge Summaries + Documents into one "Documents & Summaries" tab** (`src/components/content/ResourcesTabContent.tsx`)
+- Remove the nested 3-sub-tab structure (Summaries / Socratic Tutorials / Documents)
+- Create a single flat list showing both AI-generated summaries (rendered via `RichDocumentViewer`) and uploaded documents (rendered via `ResourceList`)
+- Remove the `filteredTutorials` logic from this component (tutorials move to Socratic Tutorials tab)
+- Make this the **first** tab in the `STUDY_RESOURCE_TYPES` array (before Tables)
 
-#### 3. `src/components/exam/ChapterMockExamSection.tsx` (lines 116-136)
-Replace the generic `TabsList`/`TabsTrigger` with custom styled pill buttons matching the violet theme:
-- Active: `bg-violet-600 text-white font-medium shadow-sm border-violet-600`
-- Inactive: `border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100`
+**4. Reorder sub-tabs in Reference Materials** (`src/components/content/ResourcesTabContent.tsx`)
+- New order: Documents & Summaries → Tables → Exam Tips → Images
+- Set `defaultValue` to the new merged tab id
 
-This converts the MCQ/OSCE switcher from a plain gray tab bar to violet-themed pills that match the "Test Yourself" sidebar color.
+**5. Update both page files** (`ChapterPage.tsx` + `TopicDetailPage.tsx`)
+- Pass socratic tutorial resources into the Socratic Tutorials (formerly Guided Explanations) tab
+- Update count calculations to include socratic tutorials in the `guided_explanations` count
+- Remove socratic tutorials from the `reference_materials` document count
 
-### Result
-Every section's inner tabs now use the same color as their parent sidebar indicator. Users immediately see all available sub-tabs as visible, clickable pills. The OSCE tab in Test Yourself will no longer be missed because it stands out in violet alongside MCQ.
+### Files to Edit
+| File | Change |
+|------|--------|
+| `src/config/tabConfig.ts` | Rename label + icon for `guided_explanations` |
+| `src/components/content/ResourcesTabContent.tsx` | Remove nested sub-tabs, merge docs+summaries, remove socratic tutorials, reorder |
+| `src/pages/ChapterPage.tsx` | Add socratic tutorials to Socratic Tutorials tab, update counts |
+| `src/pages/TopicDetailPage.tsx` | Same changes as ChapterPage |
 
-### Files
-- `src/pages/ChapterPage.tsx` — 3 sub-tab blocks updated
-- `src/pages/TopicDetailPage.tsx` — 3 sub-tab blocks updated  
-- `src/components/exam/ChapterMockExamSection.tsx` — MCQ/OSCE tabs restyled
+### What Stays the Same
+- Tab id remains `'guided_explanations'` internally (avoids breaking routes/state)
+- All existing guided explanation CRUD (add, bulk upload, edit, delete) unchanged
+- Reference Materials sub-tabs for Tables, Exam Tips, Images unchanged
+- Audio upload button stays in the merged documents tab
 
