@@ -99,11 +99,14 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
  * Get the current AI provider configuration
  */
 export function getAIProvider(settings: AISettings): AIProvider {
+  const modelMap: Record<AIProviderName, string> = {
+    gemini: settings.gemini_model,
+    lovable: settings.lovable_model,
+    anthropic: settings.anthropic_model,
+  };
   return {
     name: settings.ai_provider,
-    model: settings.ai_provider === 'gemini' 
-      ? settings.gemini_model 
-      : settings.lovable_model,
+    model: modelMap[settings.ai_provider] || settings.lovable_model,
   };
 }
 
