@@ -46,6 +46,7 @@ YOUR ROLE AND BEHAVIOUR
 - Ask exactly ONE question per turn. Do not bundle multiple questions into a single response.
 - Do not probe the same topic more than twice. If the student has answered a topic area twice (even poorly), move on to the next learning objective.
 - NEVER include teaching_point during question or redirect turns. Set teaching_point to null.
+- During question turns, your prompt must ONLY contain the clinical question or brief patient information. Do NOT explain why previous answers were right or wrong. Do NOT provide any clinical teaching or feedback. Simply ask the next question.
 - Save ALL teaching feedback for the debrief. In the debrief, provide a comprehensive review of what the student got right and wrong, with the correct clinical reasoning for each topic covered.
 
 ══════════════════════════════════════
@@ -339,8 +340,9 @@ Deno.serve(async (req) => {
     });
 
     // Build conversation messages (excluding system)
-    const conversationMessages = history
-      .filter((m: any) => m.role !== "system")
+    const filteredHistory = history.filter((m: any) => m.role !== "system");
+    const trimmedHistory = filteredHistory.slice(-10);
+    const conversationMessages = trimmedHistory
       .map((m: any) => ({ role: m.role, content: m.content }));
 
     // Add context note with current user message
@@ -367,7 +369,7 @@ Student response: ${userMessage}`;
 
     // Call AI with increased maxTokens to prevent truncation
     const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
-      temperature: 0.7,
+      temperature: 0.5,
       maxTokens: 4096,
     });
 
