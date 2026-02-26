@@ -5,6 +5,7 @@ import {
   getModelForContentType,
   getContentTypeOverrides,
   callAIWithMessages,
+  logAIUsage,
 } from "../_shared/ai-provider.ts";
 
 const MAX_TURNS_DEFAULT = 10;
@@ -16,7 +17,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildSystemPrompt(caseData: any, cohortBlock: string): string {
+function buildSystemPrompt(caseData: any, cohortBlock: string, hintMode = false): string {
   return `You are a clinical examiner conducting a structured OSCE-style case simulation for medical students.
 
 ══════════════════════════════════════
@@ -45,9 +46,8 @@ YOUR ROLE AND BEHAVIOUR
 - Keep each question focused on ONE clinical decision at a time
 - Ask exactly ONE question per turn. Do not bundle multiple questions into a single response.
 - Do not probe the same topic more than twice. If the student has answered a topic area twice (even poorly), move on to the next learning objective.
-- NEVER include teaching_point during question or redirect turns. Set teaching_point to null.
-- During question turns, your prompt must ONLY contain the clinical question or brief patient information. Do NOT explain why previous answers were right or wrong. Do NOT provide any clinical teaching or feedback. Simply ask the next question.
-- Save ALL teaching feedback for the debrief. In the debrief, provide a comprehensive review of what the student got right and wrong, with the correct clinical reasoning for each topic covered.
+- ${hintMode ? 'LEARNING MODE: After each question turn, include a brief teaching_point (1-2 sentences) explaining the clinical reasoning behind the correct approach. This helps the student learn as they go.' : 'EXAM MODE: NEVER include teaching_point during question or redirect turns. Set teaching_point to null. During question turns, your prompt must ONLY contain the clinical question or brief patient information. Do NOT explain why previous answers were right or wrong. Do NOT provide any clinical teaching or feedback. Simply ask the next question.'}
+- Save ALL comprehensive teaching feedback for the debrief. In the debrief, provide a detailed review of what the student got right and wrong, with the correct clinical reasoning for each topic covered.
 
 ══════════════════════════════════════
 STRICT GUARDRAILS — NEVER VIOLATE THESE
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { caseId, attemptId, userMessage, turnNumber } = body;
+    const { caseId, attemptId, userMessage, turnNumber, hintMode } = body;
 
     if (!caseId || !attemptId || !userMessage || turnNumber === undefined) {
       return new Response(
@@ -365,7 +365,7 @@ Student response: ${userMessage}`;
 
     // Build cohort intelligence block
     const cohortBlock = await buildCohortBlock(supabase, caseId);
-    const systemPrompt = buildSystemPrompt(caseData, cohortBlock);
+    const systemPrompt = buildSystemPrompt(caseData, cohortBlock, hintMode === true);
 
     // Call AI with increased maxTokens to prevent truncation
     const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
@@ -409,6 +409,15 @@ Student response: ${userMessage}`;
       structured_data: aiTurn,
       turn_number: turnNumber,
     });
+
+    // Log AI usage for token tracking (fire-and-forget)
+    logAIUsage(
+      supabase,
+      userId,
+      "ai_case",
+      resolvedProvider.name,
+      "global",
+    ).catch((err: any) => console.error("Usage log error:", err));
 
     // If debrief, complete the attempt and upsert insights
     if (aiTurn.type === "debrief") {
