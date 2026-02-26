@@ -2,6 +2,23 @@
 
 export type CaseLevel = 'beginner' | 'intermediate' | 'advanced';
 
+// Re-exported rubric types for backward compat (used by exam/rubricMarking)
+export interface CaseRubric {
+  required_concepts: string[];
+  optional_concepts: string[];
+  pass_threshold?: number;
+  acceptable_phrases?: Record<string, string[]>;
+  critical_omissions?: string[];
+}
+
+export interface CaseRubricResult {
+  is_correct: boolean;
+  score: number;
+  matched_required: string[];
+  missing_required: string[];
+  matched_optional: string[];
+}
+
 export interface ClinicalCase {
   id: string;
   title: string;
