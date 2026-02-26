@@ -280,11 +280,33 @@ export function ClinicalCaseBulkUploadModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const handleFile = useCallback((files: File[]) => {
+    const file = files[0];
+    if (!file) return;
+    setFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      try {
+        const cases = parseClinicalCasesTxt(text);
+        setParsedCases(cases);
+        if (cases.length === 0) {
+          toast.error('No cases found in file');
+        }
+      } catch (err) {
+        console.error('Parse error:', err);
+        toast.error('Failed to parse file');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFile([file]);
     if (e.target) e.target.value = '';
-  }, []);
+  }, [handleFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
