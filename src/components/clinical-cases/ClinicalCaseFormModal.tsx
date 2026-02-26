@@ -281,6 +281,51 @@ export function ClinicalCaseFormModal({
               </Select>
             </div>
 
+            {/* AI-Driven Case Info */}
+            {clinicalCase?.case_type === 'advanced' && (
+              <Alert className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <Info className="w-4 h-4 text-blue-600" />
+                <AlertDescription className="text-sm">
+                  This is an <strong>AI-driven case</strong>. No stages needed — the AI examiner will dynamically generate questions based on your learning objectives.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Learning Objectives */}
+            <div>
+              <Label htmlFor="objectives">Learning Objectives</Label>
+              <Textarea
+                id="objectives"
+                value={learningObjectives}
+                onChange={(e) => setLearningObjectives(e.target.value)}
+                placeholder="e.g., Assess clinical reasoning for acute chest pain, history-taking skills, ECG interpretation, initial management..."
+                rows={3}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                These guide the AI examiner's focus for advanced (AI-driven) cases.
+              </p>
+            </div>
+
+            {/* Max Turns - only for advanced cases */}
+            {clinicalCase?.case_type === 'advanced' && (
+              <div>
+                <Label htmlFor="maxTurns">Max Turns</Label>
+                <Input
+                  id="maxTurns"
+                  type="number"
+                  min={5}
+                  max={20}
+                  value={maxTurns}
+                  onChange={(e) => setMaxTurns(parseInt(e.target.value) || 10)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Maximum number of AI examiner turns (5–20).
+                </p>
+              </div>
+            )}
+
             {/* Estimated Time */}
             <div>
               <Label htmlFor="time">Estimated Time (minutes)</Label>
