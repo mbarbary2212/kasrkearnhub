@@ -2183,6 +2183,13 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
+          {/* AI Cases Analytics Tab */}
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin) && (
+            <TabsContent value="ai-cases">
+              <AICasesAdminTab />
+            </TabsContent>
+          )}
+
           {/* Accounts Tab - Platform/Super Admin Only */}
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="accounts">
