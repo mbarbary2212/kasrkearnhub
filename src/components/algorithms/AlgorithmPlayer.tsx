@@ -91,8 +91,8 @@ export function AlgorithmPlayer({ title, algorithmJson, onClose }: AlgorithmPlay
             {config.icon} {config.label}
           </Badge>
         </div>
-        <Progress value={progress} className="h-1.5 mt-2" />
-        <p className="text-xs text-muted-foreground mt-1">Step {visitedCount} of {totalNodes}</p>
+        <Progress value={100} className="h-1.5 mt-2" />
+        <p className="text-xs text-muted-foreground mt-1">Step {visitedCount}</p>
       </CardHeader>
 
       <CardContent className="space-y-4">
