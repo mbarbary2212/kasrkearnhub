@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -124,7 +124,9 @@ export default function ChapterPage() {
   );
 
   // State for section mode and active tabs within sections
-  const [activeSection, setActiveSection] = useState<SectionMode>('resources');
+  const [searchParams] = useSearchParams();
+  const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
+  const [activeSection, setActiveSection] = useState<SectionMode>(initialSection);
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
