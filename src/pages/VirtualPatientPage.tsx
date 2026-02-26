@@ -147,7 +147,7 @@ export default function VirtualPatientRunner() {
   return (
     <MainLayout>
       <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back
         </Button>
