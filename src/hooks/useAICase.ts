@@ -82,8 +82,8 @@ export function useAICase({ caseId, attemptId, onComplete, onFlagged }: UseAICas
           debrief: turn,
           currentQuestion: null,
         }));
-        if (turn.flag_for_review) onFlagged?.();
-        onComplete?.(turn);
+      if (turn.flag_for_review) onFlagged?.();
+        // Don't auto-call onComplete here — let DebriefCard button trigger it
       } else {
         setState((prev) => ({
           ...prev,
