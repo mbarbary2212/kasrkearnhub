@@ -314,8 +314,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   },
   {
     id: 'clinical_case',
-    title: 'Clinical Cases Template',
-    description: 'Multi-stage clinical case scenarios with MCQ, short answer, and read-only stages',
+    title: 'AI Cases Template',
+    description: 'AI-driven OSCE case simulations with metadata for bulk import',
     format: 'txt',
     icon: 'file',
   },
@@ -405,93 +405,67 @@ function downloadTxt(filename: string, content: string) {
 }
 
 function downloadClinicalCaseTemplate() {
-  const template = `# Clinical Cases – Quick Build Template
+  const template = `# AI Cases – Bulk Import Template
 # ================================================
 #
-# CLINICAL CASES support two modes:
-# • Read Case: Static case with intro and read-only content (min 1 stage)
-# • Practice Case: Interactive multi-stage simulation (min 3 stages)
+# All cases are AI-driven OSCE simulations. The AI conducts a multi-turn
+# clinical conversation with the student based on the metadata you provide.
+# No manual stages needed — the AI generates questions dynamically.
 #
-# CASE TYPES:
-# • basic: Immediate feedback – shows correctness after each stage
-# • advanced: Deferred feedback – shows clinical consequences instead of
-#   correctness; end-of-case debrief summarizes results
-#
-# OPTIONAL CASE-LEVEL HEADERS:
-# • # Case Type: basic (or advanced)
-# • # Initial State: JSON for patient vitals/state tracking
-#
-# OPTIONAL STAGE-LEVEL FIELDS:
-# • CONSEQUENCE_TEXT: Narrative consequence shown after decision (advanced mode)
-# • STATE_DELTA: JSON string for patient state changes after decision
-#
-# WORKFLOW:
-# 1. Create Case: Click "Add Case" in Clinical Cases section
-# 2. Fill metadata: Title, intro text, difficulty level, case mode
-# 3. Build Stages: Click "Build Stages" → "Quick Build (Paste Template)"
-# 4. Paste this template to create all stages at once
+# HOW IT WORKS:
+# 1. You provide case metadata (title, scenario, learning objectives, difficulty)
+# 2. The AI uses this to run a realistic clinical encounter
+# 3. Students interact via chat; the AI scores and debriefs at the end
 #
 # TEMPLATE FORMAT:
-# - Each stage starts with "STAGE N:" where N is the stage number
-# - TYPE: mcq | multi_select | short_answer | read_only
-# - PATIENT_INFO: (optional) New information revealed at this stage
-# - PROMPT: The question or instruction for the student
-# - CHOICES: (A) option (B) option (C) option (D) option (for mcq/multi_select)
-# - CORRECT: A (for mcq) or A,C (for multi_select) or text (for short_answer)
-# - EXPLANATION: (optional) Why this is correct
-# - TEACHING_POINTS: (optional) Key learning points, each on a line starting with -
-# - CONSEQUENCE_TEXT: (optional) Clinical consequence narrative
-# - STATE_DELTA: (optional) JSON for patient state changes
+# - Separate multiple cases with a blank line
+# - Each case starts with "CASE:" followed by the title
+# - INTRO: The clinical scenario / presenting complaint
+# - LEVEL: beginner | intermediate | advanced
+# - MAX_TURNS: Number of conversation turns (default: 10)
+# - ESTIMATED_MINUTES: Expected completion time in minutes
+# - OBJECTIVES: Learning objectives (one per line, starting with -)
+# - TAGS: Comma-separated tags for categorisation
+# - PUBLISHED: true | false (default: false)
 #
-# FOR SHORT ANSWER (Rubric-Based Grading):
-# - RUBRIC_REQUIRED: Concepts the student MUST mention (60% needed to pass)
-# - RUBRIC_OPTIONAL: Bonus concepts (not required but good to mention)
-#
-# FOR READ ONLY STAGES:
-# - Use TYPE: read_only
-# - PROMPT contains the content to display
-# - No CHOICES or CORRECT needed
+# PATIENT DEMOGRAPHICS (optional):
+# - PATIENT_NAME: Name for the simulated patient
+# - PATIENT_AGE: Age in years
+# - PATIENT_GENDER: male | female | other
 #
 # ================================================
 
-# Case Type: basic
-# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80,"systolic_bp":120,"diastolic_bp":80,"spo2":98},"risk_flags":[]}
+CASE: Acute Chest Pain Assessment
+INTRO: A 55-year-old male presents to the emergency department with central crushing chest pain radiating to the left arm, onset 45 minutes ago. He is diaphoretic and anxious. PMH: Hypertension, Type 2 Diabetes, Smoker (30 pack-years).
+LEVEL: intermediate
+MAX_TURNS: 12
+ESTIMATED_MINUTES: 15
+OBJECTIVES:
+- Perform a focused cardiovascular history and examination
+- Identify red flag features of acute coronary syndrome
+- Initiate appropriate first-line investigations and management
+TAGS: cardiology, emergency, ACS
+PUBLISHED: true
+PATIENT_NAME: Ahmed Al-Rashid
+PATIENT_AGE: 55
+PATIENT_GENDER: male
 
-STAGE 1:
-TYPE: mcq
-PATIENT_INFO: A 45-year-old woman presents with a painless lump in her right breast that she noticed 2 weeks ago. She has no family history of breast cancer.
-PROMPT: What is the most appropriate first step in management?
-CHOICES: (A) Reassure and observe (B) Order mammography (C) Perform fine needle aspiration (D) Refer for surgical excision
-CORRECT: B
-EXPLANATION: Mammography is the first-line imaging for breast lumps in women over 40. It helps characterize the lesion and guides further management.
-TEACHING_POINTS:
-- Triple assessment for breast lumps: clinical examination, imaging, and tissue sampling
-- Mammography is preferred for women ≥40; ultrasound is preferred for women <40
-- Never reassure without proper workup for a new breast lump
-CONSEQUENCE_TEXT: The patient is referred for mammography. Results will be available at the next stage.
-STATE_DELTA: {"time_elapsed_minutes":30,"hemodynamics":{"heart_rate":78}}
+CASE: Paediatric Wheeze
+INTRO: A 4-year-old boy is brought by his mother with recurrent episodes of cough and wheeze over the past 3 months, worse at night and during exercise. No fever. Family history of eczema.
+LEVEL: beginner
+MAX_TURNS: 8
+ESTIMATED_MINUTES: 10
+OBJECTIVES:
+- Take a structured paediatric respiratory history
+- Differentiate between asthma and other causes of childhood wheeze
+- Outline initial management of suspected childhood asthma
+TAGS: paediatrics, respiratory
+PUBLISHED: false
+PATIENT_NAME: Omar
+PATIENT_AGE: 4
+PATIENT_GENDER: male`;
 
-STAGE 2:
-TYPE: short_answer
-PATIENT_INFO: Mammography shows a 2cm irregular mass with microcalcifications (BIRADS 4).
-PROMPT: Outline the components of triple assessment for a breast lump.
-RUBRIC_REQUIRED:
-- clinical examination
-- imaging
-- biopsy
-RUBRIC_OPTIONAL:
-- mammography
-- ultrasound
-- core needle biopsy
-CORRECT: Triple assessment includes: clinical examination, imaging, and tissue sampling.
-EXPLANATION: Triple assessment is the gold standard approach for evaluating any breast lump.
-
-STAGE 3:
-TYPE: read_only
-PATIENT_INFO: Biopsy confirms invasive ductal carcinoma, Grade 2, ER positive, PR positive, HER2 negative.
-PROMPT: The patient will now be referred to the multidisciplinary breast team for treatment planning. Key considerations include tumor staging, hormone receptor status, and patient preferences.`;
-
-  downloadTxt('clinical_cases_template.txt', template);
+  downloadTxt('ai_cases_template.txt', template);
 }
 
 
