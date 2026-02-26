@@ -367,88 +367,164 @@ Student response: ${userMessage}`;
     const cohortBlock = await buildCohortBlock(supabase, caseId);
     const systemPrompt = buildSystemPrompt(caseData, cohortBlock, hintMode === true);
 
-    // Call AI with increased maxTokens to prevent truncation
-    const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
-      temperature: 0.5,
-      maxTokens: 4096,
-    });
+    // ── Streaming path (Lovable gateway) or non-streaming fallback ──
+    const canStream = resolvedProvider.name === "lovable";
 
-    if (!aiResult.success) {
-      const status = aiResult.status || 500;
-      return new Response(
-        JSON.stringify({ error: aiResult.error }),
-        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const aiResponseText = aiResult.content!;
-
-    // Parse structured JSON from AI response (with code fence stripping)
-    let aiTurn = parseAIResponse(aiResponseText);
-    
-    if (!aiTurn) {
-      // All parsing failed — return a safe fallback
-      aiTurn = {
-        type: "redirect",
-        prompt: "Let's refocus on the case. Please continue with your clinical reasoning.",
-        patient_info: null,
-        choices: null,
-        teaching_point: null,
-      };
-    }
-
-    if (!["question", "debrief", "redirect"].includes(aiTurn.type)) {
-      aiTurn.type = "question";
-    }
-
-    // Save assistant message
-    await supabase.from("ai_case_messages").insert({
-      attempt_id: attemptId,
-      role: "assistant",
-      content: aiResponseText,
-      structured_data: aiTurn,
-      turn_number: turnNumber,
-    });
-
-    // Log AI usage for token tracking (fire-and-forget)
-    logAIUsage(
-      supabase,
-      userId,
-      "ai_case",
-      resolvedProvider.name,
-      "global",
-    ).catch((err: any) => console.error("Usage log error:", err));
-
-    // If debrief, complete the attempt and upsert insights
-    if (aiTurn.type === "debrief") {
-      await supabase
-        .from("virtual_patient_attempts")
-        .update({
-          score: aiTurn.score ?? null,
-          completed_at: new Date().toISOString(),
-          is_completed: true,
-          flag_for_review: aiTurn.flag_for_review ?? false,
-        })
-        .eq("id", attemptId);
-
-      // Upsert aggregated insights for cohort intelligence (fire-and-forget)
-      upsertCaseInsights(supabase, caseId).catch((err) =>
-        console.error("Insights upsert error:", err)
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        turn: aiTurn,
-        turnNumber: turnNumber + 1,
-        maxTurns,
-        isComplete: aiTurn.type === "debrief",
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (canStream) {
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableApiKey) {
+        return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-    );
+
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: resolvedProvider.model,
+          messages: [{ role: "system", content: systemPrompt }, ...conversationMessages],
+          temperature: 0.5,
+          max_tokens: 4096,
+          stream: true,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const status = aiResponse.status;
+        const errorText = await aiResponse.text();
+        console.error(`Streaming AI error (${status}):`, errorText);
+        return new Response(
+          JSON.stringify({ error: status === 429 ? "Rate limit exceeded." : status === 402 ? "AI credits exhausted." : `AI error: ${status}` }),
+          { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Stream SSE chunks to client, accumulate full text for JSON parsing at the end
+      let fullText = "";
+      const encoder = new TextEncoder();
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const reader = aiResponse.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+
+              let newlineIdx: number;
+              while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+                const line = buffer.slice(0, newlineIdx).trim();
+                buffer = buffer.slice(newlineIdx + 1);
+                if (!line.startsWith("data: ")) continue;
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === "[DONE]") continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    fullText += content;
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: content })}\n\n`));
+                  }
+                } catch { /* partial JSON, skip */ }
+              }
+            }
+
+            // ── Stream complete — parse, persist, send done ──
+            let aiTurn = parseAIResponse(fullText);
+            if (!aiTurn) {
+              aiTurn = { type: "redirect", prompt: "Let's refocus on the case.", patient_info: null, choices: null, teaching_point: null };
+            }
+            if (!["question", "debrief", "redirect"].includes(aiTurn.type)) aiTurn.type = "question";
+
+            await supabase.from("ai_case_messages").insert({
+              attempt_id: attemptId, role: "assistant", content: fullText,
+              structured_data: aiTurn, turn_number: turnNumber,
+            });
+
+            logAIUsage(supabase, userId, "ai_case", resolvedProvider.name, "global")
+              .catch((err: any) => console.error("Usage log error:", err));
+
+            if (aiTurn.type === "debrief") {
+              await supabase.from("virtual_patient_attempts").update({
+                score: aiTurn.score ?? null, completed_at: new Date().toISOString(),
+                is_completed: true, flag_for_review: aiTurn.flag_for_review ?? false,
+              }).eq("id", attemptId);
+              upsertCaseInsights(supabase, caseId).catch((err) => console.error("Insights error:", err));
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              done: true, turn: aiTurn, turnNumber: turnNumber + 1, maxTurns,
+              isComplete: aiTurn.type === "debrief",
+            })}\n\n`));
+
+          } catch (err: any) {
+            console.error("Stream processing error:", err);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: true, message: err.message })}\n\n`));
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+
+    } else {
+      // ── Non-streaming fallback (Gemini / Anthropic) — still returns SSE format ──
+      const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
+        temperature: 0.5, maxTokens: 4096,
+      });
+
+      if (!aiResult.success) {
+        return new Response(JSON.stringify({ error: aiResult.error }), {
+          status: aiResult.status || 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const aiResponseText = aiResult.content!;
+      let aiTurn = parseAIResponse(aiResponseText);
+      if (!aiTurn) {
+        aiTurn = { type: "redirect", prompt: "Let's refocus on the case.", patient_info: null, choices: null, teaching_point: null };
+      }
+      if (!["question", "debrief", "redirect"].includes(aiTurn.type)) aiTurn.type = "question";
+
+      await supabase.from("ai_case_messages").insert({
+        attempt_id: attemptId, role: "assistant", content: aiResponseText,
+        structured_data: aiTurn, turn_number: turnNumber,
+      });
+
+      logAIUsage(supabase, userId, "ai_case", resolvedProvider.name, "global")
+        .catch((err: any) => console.error("Usage log error:", err));
+
+      if (aiTurn.type === "debrief") {
+        await supabase.from("virtual_patient_attempts").update({
+          score: aiTurn.score ?? null, completed_at: new Date().toISOString(),
+          is_completed: true, flag_for_review: aiTurn.flag_for_review ?? false,
+        }).eq("id", attemptId);
+        upsertCaseInsights(supabase, caseId).catch((err) => console.error("Insights error:", err));
+      }
+
+      // Return as SSE for hook compatibility
+      const encoder = new TextEncoder();
+      const body = encoder.encode(
+        `data: ${JSON.stringify({ chunk: aiTurn.prompt })}\n\n` +
+        `data: ${JSON.stringify({ done: true, turn: aiTurn, turnNumber: turnNumber + 1, maxTurns, isComplete: aiTurn.type === "debrief" })}\n\n`
+      );
+      return new Response(body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+    }
   } catch (error: any) {
     console.error("Edge function error:", error);
     return new Response(
