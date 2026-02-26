@@ -227,11 +227,6 @@ function MessageBubble({ message }: { message: AICaseDisplayMessage }) {
           </Card>
         )}
 
-        {message.teaching_point && (
-          <div className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3 py-1">
-            💡 {message.teaching_point}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -63,7 +63,7 @@ export default function VirtualPatientRunner() {
           attemptId={attemptId}
           introText={vpCase.intro_text}
           title={vpCase.title}
-          onComplete={() => navigate(-1)}
+          onComplete={() => {}}
         />
       </MainLayout>
     );

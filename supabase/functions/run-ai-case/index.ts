@@ -78,8 +78,6 @@ For a redirect:
 For final debrief (INCLUDE detailed teaching feedback here):
 {"type":"debrief","prompt":"string — comprehensive feedback covering each topic discussed, what was correct, what was wrong, and the correct clinical reasoning","score":0-100,"summary":"string","strengths":["string"],"gaps":["string"],"flag_for_review":boolean,"patient_info":null,"choices":null,"teaching_point":"string — consolidated teaching points from the entire case"}
 
-For final debrief:
-{"type":"debrief","prompt":"string","score":0-100,"summary":"string","strengths":["string"],"gaps":["string"],"flag_for_review":boolean,"patient_info":null,"choices":null,"teaching_point":null}
 ${cohortBlock}`;
 }
 
