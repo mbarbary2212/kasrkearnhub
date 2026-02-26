@@ -163,8 +163,9 @@ export default function VirtualPatientRunner() {
   };
 
   // Determine if we show immediate correctness feedback
+  // Default to 'basic' (immediate feedback). feedback_timing overrides if set.
   const showImmediate = vpCase
-    ? shouldShowImmediateFeedbackVP(vpCase.case_type || 'guided', vpCase.feedback_timing || 'immediate')
+    ? shouldShowImmediateFeedbackVP(vpCase.case_type || 'basic', vpCase.feedback_timing || undefined)
     : true;
 
   const handleSubmitAnswer = async () => {
@@ -202,9 +203,11 @@ export default function VirtualPatientRunner() {
       // For read_only stages, skip feedback and go directly to next stage
       if (currentStage.stage_type === 'read_only') {
         handleNextStageAfterReadOnly(stageAnswer);
-      } else if (currentStage.consequence_text && !showImmediate) {
-        // Show consequence instead of correctness
-        setLastConsequence(currentStage.consequence_text);
+      } else if (!showImmediate) {
+        // Advanced mode: always show consequence state (deferred feedback)
+        const consequenceMsg = currentStage.consequence_text
+          || 'The clinical team notes your decision. The case continues...';
+        setLastConsequence(consequenceMsg);
         setState('consequence');
       } else {
         setState('feedback');
@@ -406,7 +409,7 @@ export default function VirtualPatientRunner() {
             </Card>
           )}
 
-          {/* Patient Status Panel (for simulation/virtual_patient case types) */}
+          {/* Patient Status Panel (for advanced case types with status_panel_enabled) */}
           {vpCase.status_panel_enabled && patientState && (
             <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
               <CardHeader className="pb-2">
@@ -573,7 +576,7 @@ export default function VirtualPatientRunner() {
     );
   }
 
-  // CONSEQUENCE STATE (for simulation/virtual_patient — deferred feedback)
+  // CONSEQUENCE STATE (for advanced case types — deferred feedback)
   if (state === 'consequence' && currentStage) {
     return (
       <MainLayout>

@@ -3,7 +3,7 @@
 export type CaseMode = 'read_case' | 'practice_case' | 'branched_case';
 export type CaseStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type CaseLevel = 'beginner' | 'intermediate' | 'advanced';
-export type CaseType = 'guided' | 'management' | 'simulation' | 'virtual_patient';
+export type CaseType = 'basic' | 'advanced';
 export type FeedbackTiming = 'immediate' | 'deferred';
 
 export interface CaseChoice {
@@ -179,14 +179,14 @@ export const CASE_MODE_TABS: CaseModeTab[] = [
 ];
 
 export const CASE_TYPE_LABELS: Record<CaseType, string> = {
-  guided: 'Guided',
-  management: 'Management',
-  simulation: 'Simulation',
-  virtual_patient: 'Virtual Patient',
+  basic: 'Basic',
+  advanced: 'Advanced',
 };
 
 // Helper: determines whether correctness should be shown immediately
-export function shouldShowImmediateFeedback(caseType: CaseType, feedbackTiming: FeedbackTiming): boolean {
+// Default: basic=immediate, advanced=deferred. feedback_timing overrides if set.
+export function shouldShowImmediateFeedback(caseType: CaseType, feedbackTiming?: FeedbackTiming): boolean {
+  if (feedbackTiming === 'immediate') return true;
   if (feedbackTiming === 'deferred') return false;
-  return caseType === 'guided' || caseType === 'management';
+  return caseType === 'basic';
 }

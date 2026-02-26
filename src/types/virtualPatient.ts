@@ -2,7 +2,7 @@
 
 export type VPStageType = 'mcq' | 'multi_select' | 'short_answer' | 'read_only';
 export type VPLevel = 'beginner' | 'intermediate' | 'advanced';
-export type VPCaseType = 'guided' | 'management' | 'simulation' | 'virtual_patient';
+export type VPCaseType = 'basic' | 'advanced';
 export type VPFeedbackTiming = 'immediate' | 'deferred';
 
 export interface VPChoice {
@@ -147,7 +147,9 @@ export interface VPStageFormData {
 }
 
 // Helper: determines whether correctness should be shown immediately
-export function shouldShowImmediateFeedbackVP(caseType: VPCaseType, feedbackTiming: VPFeedbackTiming): boolean {
+// Default: basic=immediate, advanced=deferred. feedback_timing overrides if set.
+export function shouldShowImmediateFeedbackVP(caseType: VPCaseType, feedbackTiming?: VPFeedbackTiming): boolean {
+  if (feedbackTiming === 'immediate') return true;
   if (feedbackTiming === 'deferred') return false;
-  return caseType === 'guided' || caseType === 'management';
+  return caseType === 'basic';
 }
