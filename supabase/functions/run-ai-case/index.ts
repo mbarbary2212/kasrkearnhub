@@ -17,7 +17,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildSystemPrompt(caseData: any, cohortBlock: string): string {
+function buildSystemPrompt(caseData: any, cohortBlock: string, hintMode = false): string {
   return `You are a clinical examiner conducting a structured OSCE-style case simulation for medical students.
 
 ══════════════════════════════════════
