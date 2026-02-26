@@ -323,7 +323,7 @@ export function CaseBuilderStageEditor({
         <Label>Consequence Text (optional)</Label>
         <Textarea value={consequenceText} onChange={(e) => setConsequenceText(e.target.value)}
           placeholder="What happens clinically as a result of this decision..." rows={2} className="mt-1" />
-        <p className="text-xs text-muted-foreground mt-1">Shown instead of correctness for simulation/virtual patient case types.</p>
+        <p className="text-xs text-muted-foreground mt-1">Shown instead of correctness for advanced case types.</p>
       </div>
 
       {/* Explanation */}

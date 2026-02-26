@@ -412,6 +412,19 @@ function downloadClinicalCaseTemplate() {
 # • Read Case: Static case with intro and read-only content (min 1 stage)
 # • Practice Case: Interactive multi-stage simulation (min 3 stages)
 #
+# CASE TYPES:
+# • basic: Immediate feedback – shows correctness after each stage
+# • advanced: Deferred feedback – shows clinical consequences instead of
+#   correctness; end-of-case debrief summarizes results
+#
+# OPTIONAL CASE-LEVEL HEADERS:
+# • # Case Type: basic (or advanced)
+# • # Initial State: JSON for patient vitals/state tracking
+#
+# OPTIONAL STAGE-LEVEL FIELDS:
+# • CONSEQUENCE_TEXT: Narrative consequence shown after decision (advanced mode)
+# • STATE_DELTA: JSON string for patient state changes after decision
+#
 # WORKFLOW:
 # 1. Create Case: Click "Add Case" in Clinical Cases section
 # 2. Fill metadata: Title, intro text, difficulty level, case mode
@@ -427,6 +440,8 @@ function downloadClinicalCaseTemplate() {
 # - CORRECT: A (for mcq) or A,C (for multi_select) or text (for short_answer)
 # - EXPLANATION: (optional) Why this is correct
 # - TEACHING_POINTS: (optional) Key learning points, each on a line starting with -
+# - CONSEQUENCE_TEXT: (optional) Clinical consequence narrative
+# - STATE_DELTA: (optional) JSON for patient state changes
 #
 # FOR SHORT ANSWER (Rubric-Based Grading):
 # - RUBRIC_REQUIRED: Concepts the student MUST mention (60% needed to pass)
@@ -439,6 +454,9 @@ function downloadClinicalCaseTemplate() {
 #
 # ================================================
 
+# Case Type: basic
+# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80,"systolic_bp":120,"diastolic_bp":80,"spo2":98},"risk_flags":[]}
+
 STAGE 1:
 TYPE: mcq
 PATIENT_INFO: A 45-year-old woman presents with a painless lump in her right breast that she noticed 2 weeks ago. She has no family history of breast cancer.
@@ -450,6 +468,8 @@ TEACHING_POINTS:
 - Triple assessment for breast lumps: clinical examination, imaging, and tissue sampling
 - Mammography is preferred for women ≥40; ultrasound is preferred for women <40
 - Never reassure without proper workup for a new breast lump
+CONSEQUENCE_TEXT: The patient is referred for mammography. Results will be available at the next stage.
+STATE_DELTA: {"time_elapsed_minutes":30,"hemodynamics":{"heart_rate":78}}
 
 STAGE 2:
 TYPE: short_answer

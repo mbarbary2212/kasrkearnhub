@@ -41,6 +41,8 @@ interface ParsedStage {
   explanation?: string;
   teachingPoints: string[];
   rubric?: CaseRubric;
+  consequenceText?: string;
+  stateDeltaJson?: Record<string, unknown>;
   errors: string[];
 }
 
@@ -68,18 +70,22 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
     
     // Extract fields using regex with improved patterns
     const typeMatch = block.match(/TYPE:\s*(mcq|multi_select|short_answer)/i);
-    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
-    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
-    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
-    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
-    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:)|$)/is);
-    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)(?=\n(?:RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
+    const patientInfoMatch = block.match(/PATIENT_INFO:\s*(.+?)(?=\n(?:PROMPT:|TYPE:|CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:)|$)/is);
+    const promptMatch = block.match(/PROMPT:\s*(.+?)(?=\n(?:CHOICES:|CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:)|$)/is);
+    const choicesMatch = block.match(/CHOICES:\s*(.+?)(?=\n(?:CORRECT:|EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:)|$)/is);
+    const correctMatch = block.match(/CORRECT:\s*(.+?)(?=\n(?:EXPLANATION:|TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:)|$)/is);
+    const explanationMatch = block.match(/EXPLANATION:\s*(.+?)(?=\n(?:TEACHING_POINTS:|RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:)|$)/is);
+    const teachingPointsMatch = block.match(/TEACHING_POINTS:\s*(.+?)(?=\n(?:RUBRIC_REQUIRED:|RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:|STAGE\s+\d+:)|$)/is);
     
     // Rubric fields for short_answer
-    const rubricRequiredMatch = block.match(/RUBRIC_REQUIRED:\s*(.+?)(?=\n(?:RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
-    const rubricOptionalMatch = block.match(/RUBRIC_OPTIONAL:\s*(.+?)(?=\n(?:RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
-    const rubricSynonymsMatch = block.match(/RUBRIC_SYNONYMS:\s*(.+?)(?=\n(?:RUBRIC_CRITICAL:|STAGE\s+\d+:)|$)/is);
-    const rubricCriticalMatch = block.match(/RUBRIC_CRITICAL:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
+    const rubricRequiredMatch = block.match(/RUBRIC_REQUIRED:\s*(.+?)(?=\n(?:RUBRIC_OPTIONAL:|RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:|STAGE\s+\d+:)|$)/is);
+    const rubricOptionalMatch = block.match(/RUBRIC_OPTIONAL:\s*(.+?)(?=\n(?:RUBRIC_SYNONYMS:|RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:|STAGE\s+\d+:)|$)/is);
+    const rubricSynonymsMatch = block.match(/RUBRIC_SYNONYMS:\s*(.+?)(?=\n(?:RUBRIC_CRITICAL:|CONSEQUENCE_TEXT:|STATE_DELTA:|STAGE\s+\d+:)|$)/is);
+    const rubricCriticalMatch = block.match(/RUBRIC_CRITICAL:\s*(.+?)(?=\n(?:CONSEQUENCE_TEXT:|STATE_DELTA:|STAGE\s+\d+:)|$)/is);
+    
+    // Consequence and state delta fields
+    const consequenceTextMatch = block.match(/CONSEQUENCE_TEXT:\s*(.+?)(?=\n(?:STATE_DELTA:|STAGE\s+\d+:)|$)/is);
+    const stateDeltaMatch = block.match(/STATE_DELTA:\s*(.+?)(?=\n(?:STAGE\s+\d+:)|$)/is);
 
     // Determine type (default to mcq)
     let type: CaseStageType = 'mcq';
@@ -201,6 +207,17 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
       teachingPoints.push(...points);
     }
 
+    // Parse consequence text
+    const consequenceText = consequenceTextMatch ? consequenceTextMatch[1].trim() : undefined;
+    
+    // Parse state delta JSON
+    let stateDeltaJson: Record<string, unknown> | undefined;
+    if (stateDeltaMatch) {
+      try {
+        stateDeltaJson = JSON.parse(stateDeltaMatch[1].trim());
+      } catch { /* ignore invalid JSON */ }
+    }
+
     stages.push({
       stageNumber: stageNum,
       type,
@@ -211,6 +228,8 @@ function parseTemplate(text: string, startOrder: number): ParseResult {
       explanation,
       teachingPoints,
       rubric,
+      consequenceText,
+      stateDeltaJson,
       errors,
     });
   });
@@ -273,6 +292,8 @@ export function ClinicalCaseQuickBuildModal({
           explanation: stage.explanation,
           teaching_points: stage.teachingPoints,
           rubric: stage.rubric || null,
+          consequence_text: stage.consequenceText,
+          state_delta_json: stage.stateDeltaJson as any || undefined,
         };
         await createStage.mutateAsync({ caseId, data: formData });
         setCreationProgress(Math.round(((i + 1) / parseResult.stages.length) * 100));

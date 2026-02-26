@@ -36,6 +36,8 @@ interface ParsedStage {
   explanation: string | null;
   teaching_points: string[];
   rubric: CaseRubric | null;
+  consequence_text: string | null;
+  state_delta_json: Record<string, unknown> | null;
 }
 
 interface ParsedCase {
@@ -43,6 +45,8 @@ interface ParsedCase {
   intro_text: string;
   difficulty: CaseLevel;
   case_mode: CaseMode;
+  case_type: string | null;
+  initial_state_json: Record<string, unknown> | null;
   stages: ParsedStage[];
   parseErrors: string[];
 }
@@ -96,6 +100,8 @@ function parseStageBlock(lines: string[], stageOrder: number): ParsedStage {
     explanation: null,
     teaching_points: [],
     rubric: null,
+    consequence_text: null,
+    state_delta_json: null,
   };
 
   const rubricRequired: string[] = [];
@@ -145,6 +151,12 @@ function parseStageBlock(lines: string[], stageOrder: number): ParsedStage {
       rubricOptional.push(...items);
       i = endIdx;
       continue;
+    } else if (line.startsWith('CONSEQUENCE_TEXT:')) {
+      stage.consequence_text = line.substring(16).trim();
+    } else if (line.startsWith('STATE_DELTA:')) {
+      try {
+        stage.state_delta_json = JSON.parse(line.substring(12).trim());
+      } catch { /* ignore invalid JSON */ }
     }
     i++;
   }
@@ -169,6 +181,15 @@ function parseSingleCase(text: string, index: number): ParsedCase {
   let intro = '';
   let difficulty: CaseLevel = 'intermediate';
   let mode: CaseMode = 'practice_case';
+  let caseType: string | null = null;
+  let initialStateJson: Record<string, unknown> | null = null;
+
+  // Map case_type values (accept old values for backward compat)
+  const CASE_TYPE_MAP: Record<string, string> = {
+    basic: 'basic', advanced: 'advanced',
+    guided: 'basic', management: 'basic',
+    simulation: 'advanced', virtual_patient: 'advanced',
+  };
 
   // Parse header lines (# prefixed)
   for (const line of lines) {
@@ -180,6 +201,13 @@ function parseSingleCase(text: string, index: number): ParsedCase {
     } else if (line.startsWith('# Mode:')) {
       const m = line.substring(7).trim().toLowerCase();
       mode = MODE_MAP[m] || 'practice_case';
+    } else if (line.startsWith('# Case Type:')) {
+      const ct = line.substring(12).trim().toLowerCase();
+      caseType = CASE_TYPE_MAP[ct] || null;
+    } else if (line.startsWith('# Initial State:')) {
+      try {
+        initialStateJson = JSON.parse(line.substring(16).trim());
+      } catch { /* ignore invalid JSON */ }
     }
   }
 
@@ -221,7 +249,7 @@ function parseSingleCase(text: string, index: number): ParsedCase {
     }
   });
 
-  return { title, intro_text: intro, difficulty, case_mode: mode, stages, parseErrors: errors };
+  return { title, intro_text: intro, difficulty, case_mode: mode, case_type: caseType, initial_state_json: initialStateJson, stages, parseErrors: errors };
 }
 
 export function parseClinicalCasesTxt(text: string): ParsedCase[] {
@@ -304,6 +332,8 @@ export function ClinicalCaseBulkUploadModal({
           chapter_id: chapterId,
           topic_id: topicId,
           case_mode: pc.case_mode,
+          ...(pc.case_type && { case_type: pc.case_type as any }),
+          ...(pc.initial_state_json && { initial_state_json: pc.initial_state_json as any }),
           level: pc.difficulty,
           estimated_minutes: Math.max(5, pc.stages.length * 3),
           tags: [],
@@ -324,6 +354,8 @@ export function ClinicalCaseBulkUploadModal({
               explanation: stage.explanation || undefined,
               teaching_points: stage.teaching_points,
               rubric: stage.rubric,
+              consequence_text: stage.consequence_text || undefined,
+              state_delta_json: stage.state_delta_json as any || undefined,
             },
           });
         }
