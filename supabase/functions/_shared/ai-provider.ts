@@ -491,3 +491,168 @@ async function callLovableGateway(
     return { success: false, error: msg, status: 500 };
   }
 }
+
+/**
+ * Direct Anthropic API call (single prompt)
+ */
+async function callAnthropicDirect(
+  systemPrompt: string,
+  userPrompt: string,
+  model: string,
+  customApiKey?: string
+): Promise<AICallResult> {
+  return callAnthropicWithMessages(systemPrompt, [{ role: 'user', content: userPrompt }], model, 0.7, 16384, customApiKey);
+}
+
+/**
+ * Anthropic API call with conversation history
+ */
+async function callAnthropicWithMessages(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  model: string,
+  temperature: number,
+  maxTokens: number,
+  customApiKey?: string
+): Promise<AICallResult> {
+  const apiKey = customApiKey || Deno.env.get('ANTHROPIC_API_KEY');
+  if (!apiKey) {
+    return { success: false, error: 'ANTHROPIC_API_KEY not configured. Add it in Supabase Edge Function secrets.', status: 500 };
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: messages.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+        ...(temperature !== undefined ? { temperature } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Anthropic API error (${response.status}):`, errorText);
+      if (response.status === 429) return { success: false, error: 'Anthropic rate limit exceeded. Please try again later.', status: 429 };
+      if (response.status === 402) return { success: false, error: 'Anthropic credits exhausted.', status: 402 };
+      return { success: false, error: `Anthropic API error: ${response.status}`, status: response.status };
+    }
+
+    const result = await response.json();
+    const content = result.content?.[0]?.text;
+    if (!content) return { success: false, error: 'Anthropic returned empty response', status: 500 };
+    return { success: true, content };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown Anthropic error';
+    console.error('Anthropic API call failed:', msg);
+    return { success: false, error: msg, status: 500 };
+  }
+}
+
+/**
+ * Lovable AI Gateway call with conversation history
+ */
+async function callLovableWithMessages(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  model: string,
+  temperature: number,
+  maxTokens: number,
+): Promise<AICallResult> {
+  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!lovableApiKey) return { success: false, error: 'LOVABLE_API_KEY not configured.', status: 500 };
+
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature,
+        max_tokens: maxTokens,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Lovable AI error (${response.status}):`, errorText);
+      if (response.status === 429) return { success: false, error: 'Rate limit exceeded. Please try again later.', status: 429 };
+      if (response.status === 402) return { success: false, error: 'AI credits exhausted. Please add credits.', status: 402 };
+      return { success: false, error: `Lovable AI error: ${response.status}`, status: response.status };
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) return { success: false, error: 'Lovable AI returned empty response', status: 500 };
+    return { success: true, content };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown Lovable AI error';
+    return { success: false, error: msg, status: 500 };
+  }
+}
+
+/**
+ * Gemini API call with conversation history
+ */
+async function callGeminiWithMessages(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  model: string,
+  temperature: number,
+  maxTokens: number,
+  customApiKey?: string
+): Promise<AICallResult> {
+  const googleApiKey = customApiKey || Deno.env.get('GOOGLE_API_KEY');
+  if (!googleApiKey) return { success: false, error: 'GOOGLE_API_KEY not configured.', status: 500 };
+
+  try {
+    // Combine system prompt + conversation into a single prompt for Gemini
+    const combinedPrompt = messages
+      .map(m => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .join('\n\n');
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-goog-api-key': googleApiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${combinedPrompt}` }] }],
+          generationConfig: { temperature, maxOutputTokens: maxTokens },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini error (${response.status}):`, errorText);
+      if (response.status === 429) return { success: false, error: 'Gemini rate limit exceeded.', status: 429 };
+      return { success: false, error: `Gemini API error: ${response.status}`, status: response.status };
+    }
+
+    const result = await response.json();
+    const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) return { success: false, error: 'Gemini returned empty response', status: 500 };
+    return { success: true, content };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown Gemini error';
+    return { success: false, error: msg, status: 500 };
+  }
+}
