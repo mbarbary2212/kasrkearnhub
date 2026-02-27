@@ -7,6 +7,7 @@ import {
   callAIWithMessages,
   logAIUsage,
 } from "../_shared/ai-provider.ts";
+import { detectPromptInjection, detectProfanity } from "../_shared/security.ts";
 
 const MAX_TURNS_DEFAULT = 10;
 const REDIRECT_LIMIT = 2;
