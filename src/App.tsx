@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import SplashScreen from "@/components/SplashScreen";
