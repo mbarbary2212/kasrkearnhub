@@ -21,6 +21,7 @@ interface UseAICaseOptions {
 
 export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }: UseAICaseOptions) {
   const turnRef = useRef(0);
+  const lastSubmitRef = useRef(0);
   const [state, setState] = useState<AICaseRunnerState>({
     status: "idle",
     currentTurn: 0,
