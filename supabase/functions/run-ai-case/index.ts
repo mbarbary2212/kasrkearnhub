@@ -492,6 +492,15 @@ Student response: ${userMessage}`;
             }
             if (!["question", "debrief", "redirect"].includes(aiTurn.type)) aiTurn.type = "question";
 
+            // Output validation: check for prompt injection in AI response
+            if (aiTurn.prompt && detectPromptInjection(aiTurn.prompt)) {
+              console.warn("Prompt injection detected in AI output — replacing with safe redirect");
+              aiTurn = { type: "redirect", prompt: "Let's refocus on the clinical case.", patient_info: null, choices: null, teaching_point: null };
+            }
+            if (aiTurn.teaching_point && detectPromptInjection(aiTurn.teaching_point)) {
+              aiTurn.teaching_point = null;
+            }
+
             await supabase.from("ai_case_messages").insert({
               attempt_id: attemptId, role: "assistant", content: fullText,
               structured_data: aiTurn, turn_number: turnNumber,
