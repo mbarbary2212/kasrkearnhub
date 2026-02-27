@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, X, Sparkles, Check } from 'lucide-react';
+import { Loader2, X, Sparkles, Check, HelpCircle, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ClinicalCase, ClinicalCaseFormData, CaseLevel } from '@/types/clinicalCase';
 import { useCreateClinicalCase, useUpdateClinicalCase } from '@/hooks/useClinicalCases';
 import { useModuleChapters } from '@/hooks/useChapters';
