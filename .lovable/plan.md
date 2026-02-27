@@ -1,150 +1,89 @@
 
 
-## Plan: Simplify Case Types to Basic/Advanced with Full Behavioral Enforcement
+## Revised Plan: Security Hardening + Case Creation Guide
 
-### Summary
-
-Replace the four `case_type` values (`guided`, `management`, `simulation`, `virtual_patient`) with two (`basic`, `advanced`). Preserve `feedback_timing` as an override. Ensure `advanced` mode properly shows consequences (with fallback), applies state deltas, and update templates + bulk importer to support new columns.
+The previous plan was built for an obsolete stage-based system. This plan reflects the current AI-driven OSCE architecture.
 
 ---
 
-### 1. Database Migration
+### What the old plan got wrong
 
-Migrate existing data and set new default:
-
-```sql
-UPDATE virtual_patient_cases SET case_type = 'basic' WHERE case_type IN ('guided', 'management');
-UPDATE virtual_patient_cases SET case_type = 'advanced' WHERE case_type IN ('simulation', 'virtual_patient');
-ALTER TABLE virtual_patient_cases ALTER COLUMN case_type SET DEFAULT 'basic';
-```
-
-No enum constraint exists (column is `text`), so no ALTER TYPE needed.
+The codebase no longer uses pre-authored stages, consequence_text, state_delta_json, or feedback_timing in the runner. All cases run through a single AI examiner (`run-ai-case` edge function). The `case_type` column exists in the DB but is never read by application logic. The old plan's 8 sections were solving problems that do not exist.
 
 ---
 
-### 2. TypeScript Types
-
-**`src/types/clinicalCase.ts`**:
-- `CaseType` → `'basic' | 'advanced'`
-- `CASE_TYPE_LABELS` → `{ basic: 'Basic', advanced: 'Advanced' }`
-- `shouldShowImmediateFeedback(caseType, feedbackTiming)`:
-  - If `feedbackTiming` is explicitly set, respect it (immediate → true, deferred → false)
-  - Otherwise: `basic` → immediate, `advanced` → deferred
-
-**`src/types/virtualPatient.ts`**:
-- `VPCaseType` → `'basic' | 'advanced'`
-- `shouldShowImmediateFeedbackVP(caseType, feedbackTiming)`: same logic as above
-- Keep `VPFeedbackTiming` type (still stored in DB, used as override)
+### New Plan (2 priorities)
 
 ---
 
-### 3. Runner Logic (`src/pages/VirtualPatientPage.tsx`)
+### Priority 1: Server-Side Security Hardening
 
-**Feedback timing** (line ~167):
-- Update default from `'guided'` to `'basic'`
-- `shouldShowImmediateFeedbackVP` now handles override correctly
+**Problem**: Student messages go directly to the AI with zero server-side validation. The `_shared/security.ts` file has `detectPromptInjection()` but it is **not imported or used** in `run-ai-case`.
 
-**Advanced consequence behavior** (line ~205):
-- Current: only shows consequence if `consequence_text` exists AND `!showImmediate`
-- New: for advanced (deferred), ALWAYS go to consequence state. If `consequence_text` is missing, show a neutral fallback: *"The clinical team notes your decision. The case continues..."*
-- Apply `state_delta_json` (already done, no change needed)
+#### 1a. Add `detectProfanity()` to `supabase/functions/_shared/security.ts`
 
-**Patient Status Panel** (line ~409):
-- Update comment from "simulation/virtual_patient" to "advanced"
-- No logic change needed (already gated on `status_panel_enabled`)
+- New function with regex blocklist (English profanity + common Arabic transliterated slurs)
+- Same pattern as existing `detectPromptInjection()`
 
-**Summary/Debrief** (line ~807):
-- Already shows stage-by-stage correctness review — this serves as the end-of-case debrief for advanced mode. No change needed.
+#### 1b. Add input validation in `supabase/functions/run-ai-case/index.ts`
 
----
+Before saving the user message (currently line 337), add:
 
-### 4. Help Templates (`src/components/admin/HelpTemplatesTab.tsx`)
+1. **Length limit**: Reject `userMessage` > 2000 characters with 400 error
+2. **Prompt injection check**: Call `detectPromptInjection(userMessage)` — if true, skip AI call entirely, return a debrief JSON with `score: 0`, `flag_for_review: true`, message: "Session terminated due to policy violation"
+3. **Profanity check**: Call `detectProfanity(userMessage)` — if true, return a redirect response warning the student to use professional language (do not save or forward the message)
 
-**Clinical Cases TXT template** (line ~407-475):
-- Add new header fields: `# Case Type: basic` or `# Case Type: advanced`
-- Add optional case-level: `# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80},"risk_flags":[]}`
-- Add stage-level optional fields to template comments and examples:
-  - `CONSEQUENCE_TEXT:` — narrative consequence shown after decision
-  - `STATE_DELTA:` — JSON string for patient state changes
+#### 1c. Add output validation after AI response parsing
 
-Example addition to template:
-```text
-# Case Type: basic (or advanced)
-# Initial State: {"time_elapsed_minutes":0,"hemodynamics":{"heart_rate":80,"systolic_bp":120,"diastolic_bp":80,"spo2":98},"risk_flags":[]}
+After `parseAIResponse()`, scan the `prompt` and `teaching_point` fields through `detectPromptInjection()`. If injection detected in AI output, replace with a safe fallback redirect.
 
-STAGE 1:
-TYPE: mcq
-...
-CONSEQUENCE_TEXT: The patient's condition stabilizes after your intervention.
-STATE_DELTA: {"time_elapsed_minutes":15,"hemodynamics":{"heart_rate":72}}
-```
+#### 1d. Add language/conduct rule to system prompt
 
-- Update comment block to explain basic vs advanced behavior
+Add guardrail rule #7:
+> "LANGUAGE & CONDUCT: If the student uses profanity, slurs, or abusive language, respond with a redirect reminding them to maintain professional clinical language. Do not engage with inappropriate content."
+
+#### 1e. Add client-side length limit in `src/hooks/useAICase.ts`
+
+Reject messages over 2000 characters with a toast before sending.
 
 ---
 
-### 5. Bulk Upload Parser (`src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx`)
+### Priority 2: Admin Case Creation Guide
 
-**Case-level parsing** (in `parseSingleCase`, line ~164):
-- Parse `# Case Type:` header → map to `basic` | `advanced` (also accept old values for backward compat: guided/management → basic, simulation/virtual_patient → advanced)
-- Parse `# Initial State:` header → JSON parse into `initial_state_json`
-- Pass `case_type` and `initial_state_json` to `createCase.mutateAsync()`
+#### 2a. Add collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`
 
-**Stage-level parsing** (in `parseStageBlock`, line ~88):
-- Parse `CONSEQUENCE_TEXT:` line → store as `consequence_text`
-- Parse `STATE_DELTA:` line → JSON parse into `state_delta_json`
-- Pass both to `createStage.mutateAsync()`
+A `<Collapsible>` section at the top of the form with:
 
-**Unknown columns**: already safely ignored (parser only reads known `KEY:` prefixes)
+**Required fields:**
+- **Title** — Short, descriptive (e.g., "Acute Chest Pain in a 55-year-old Male")
+- **Intro Text** — 2-4 sentences: patient demographics, chief complaint, setting. This is the scenario the AI examiner uses.
+- **Module** — Which module this case belongs to
+- **Difficulty** — Beginner / Intermediate / Advanced
+- **Estimated Minutes** — 5-10 beginner, 10-15 intermediate, 15-20 advanced
+- **Examiner Avatar** — Dr. Sarah, Dr. Laylah, Dr. Omar, Dr. Hani
 
-**ParsedStage interface** (line ~29): add `consequence_text` and `state_delta_json` fields
-
-**ParsedCase interface** (line ~41): add `case_type` and `initial_state_json` fields
-
----
-
-### 6. Quick Build Parser (`src/components/clinical-cases/ClinicalCaseQuickBuildModal.tsx`)
-
-- Add `CONSEQUENCE_TEXT:` and `STATE_DELTA:` to the regex lookahead lists (lines ~70-82)
-- Parse both fields in the stage block
-- Pass them through when creating stages
+**Recommended fields:**
+- **Learning Objectives** — Comma-separated skills the student should demonstrate. The AI uses these to structure questions and grade the debrief.
+- **Tags** — For filtering (e.g., "cardiology", "emergency")
+- **Max Turns** — Default 10. Fewer = focused, more = comprehensive.
+- **Patient Details** — Name, age, gender for immersion.
 
 ---
 
-### 7. Stage Editor Help Text (`src/components/clinical-cases/CaseBuilderStageEditor.tsx`)
-
-- Update any references from "simulation/virtual patient case types" to "advanced case types"
-
----
-
-### 8. AI Content Generation
-
-**`supabase/functions/generate-vp-case/index.ts`**:
-- No references to old case_type values in generation logic — no changes needed
-- The system prompt generates stages (not case metadata), so no update required
-
-**`src/components/admin/AISettingsPanel.tsx`**:
-- The `virtual_patient` value here refers to content type for AI generation, NOT case_type — no change needed
-
----
-
-### Files to Edit
+### Files to Change
 
 | File | Change |
 |------|--------|
-| Migration SQL | UPDATE rows + ALTER default |
-| `src/types/clinicalCase.ts` | CaseType union, CASE_TYPE_LABELS, shouldShowImmediateFeedback |
-| `src/types/virtualPatient.ts` | VPCaseType union, shouldShowImmediateFeedbackVP |
-| `src/pages/VirtualPatientPage.tsx` | Default values, consequence fallback for advanced, comments |
-| `src/components/admin/HelpTemplatesTab.tsx` | Template text with case_type, initial_state, consequence_text, state_delta |
-| `src/components/clinical-cases/ClinicalCaseBulkUploadModal.tsx` | Parse case_type, initial_state_json, consequence_text, state_delta_json |
-| `src/components/clinical-cases/ClinicalCaseQuickBuildModal.tsx` | Parse consequence_text and state_delta_json in stage blocks |
-| `src/components/clinical-cases/CaseBuilderStageEditor.tsx` | Update help text references |
+| `supabase/functions/_shared/security.ts` | Add `detectProfanity()` |
+| `supabase/functions/run-ai-case/index.ts` | Import security utils, add input validation (length + injection + profanity), output validation, new system prompt rule |
+| `src/hooks/useAICase.ts` | 2000-char client-side limit with toast |
+| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+| `.lovable/plan.md` | Replace with this plan |
 
-### What Stays Unchanged
-- `case_mode` (read_case / practice_case / branched_case)
-- `level` (beginner / intermediate / advanced)
-- `feedback_timing` column in DB (kept as optional override)
-- All existing cases remain functional (data migrated in-place)
-- AI generation edge function (operates on stages, not case_type)
+### What stays unchanged
+- AI examiner behavior (Learning Mode / Exam Mode)
+- Cohort Intelligence system
+- Streaming responses
+- Session recovery
+- Examiner avatars
 
