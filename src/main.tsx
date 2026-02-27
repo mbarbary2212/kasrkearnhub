@@ -18,6 +18,9 @@ setupVersionGuard();
 // Triggers one-time reload if core UI failed to initialize
 setupStartupHealthCheck(defaultHealthCheck, 3000);
 
+// Initialize Sentry error monitoring (production only, requires VITE_SENTRY_DSN)
+initSentry();
+
 createRoot(document.getElementById("root")!).render(
   // ChunkLoadErrorBoundary: catches chunk/dynamic import failures
   // GlobalErrorBoundary: catches all other runtime errors

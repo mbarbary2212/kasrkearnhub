@@ -91,6 +91,8 @@ export function useAuth() {
         moduleAssignments,
         isLoading: false,
       }));
+
+      Sentry.setUser({ id: userId, role: roleData?.role ?? undefined });
     } catch (error) {
       console.error('Error fetching user data:', error);
       setState(prev => ({ ...prev, isLoading: false }));

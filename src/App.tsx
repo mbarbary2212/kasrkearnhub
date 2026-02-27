@@ -72,7 +72,7 @@ const App = () => {
   }, []);
 
   return (
-    <>
+    <Sentry.ErrorBoundary fallback={<GlobalErrorBoundary children={null} />}>
       {showSplash && <SplashScreen onDismiss={handleDismissSplash} />}
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -114,7 +114,7 @@ const App = () => {
       </BadgeCelebrationProvider>
     </AuthProvider>
       </QueryClientProvider>
-    </>
+    </Sentry.ErrorBoundary>
   );
 };
 
