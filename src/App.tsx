@@ -32,7 +32,14 @@ import IntegrityReportPage from "./pages/IntegrityReportPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
 import ExamResultsPage from "./pages/ExamResultsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {

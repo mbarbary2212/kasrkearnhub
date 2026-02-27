@@ -21,6 +21,7 @@ interface UseAICaseOptions {
 
 export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }: UseAICaseOptions) {
   const turnRef = useRef(0);
+  const lastSubmitRef = useRef(0);
   const [state, setState] = useState<AICaseRunnerState>({
     status: "idle",
     currentTurn: 0,
@@ -205,6 +206,12 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
 
   const submitAnswer = useCallback(
     async (answer: string) => {
+      const now = Date.now();
+      if (now - lastSubmitRef.current < 2000) {
+        toast.error("Please wait a moment before submitting again.");
+        return;
+      }
+      lastSubmitRef.current = now;
       if (state.status !== "active") return;
       if (answer.length > 2000) {
         toast.error("Your message is too long. Please keep it under 2,000 characters.");
