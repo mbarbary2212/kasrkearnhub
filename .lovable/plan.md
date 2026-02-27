@@ -1,55 +1,30 @@
 
 
-## Revised Plan: Security Hardening + Case Creation Guide
+## Plan: Skip Splash Screen for Logged-In Users
 
-### Status: ✅ Implemented
+### Problem
+The splash screen shows on every page refresh, even for authenticated users. This makes it look like they've been logged out when they haven't.
 
----
+### Fix
 
-### What was implemented
+**In `src/App.tsx`** — update the `showSplash` initializer to also check for an existing Supabase session in localStorage:
 
-#### Priority 1: Server-Side Security Hardening
+```typescript
+const [showSplash, setShowSplash] = useState(() => {
+  if (window.location.pathname.startsWith('/auth')) return false;
+  // Skip splash if user already has a session stored
+  const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+  if (storageKey && localStorage.getItem(storageKey)) return false;
+  return true;
+});
+```
 
-1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
-   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
-   - Same pattern as existing `detectPromptInjection()`
+This is a synchronous check of localStorage (no async needed) — if a Supabase auth token exists, the user was previously logged in and the splash is skipped. First-time visitors and logged-out users still see it.
 
-2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
-   - 2000-character length limit on `userMessage` (400 error)
-   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
-   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
-   - Both checks skip `BEGIN_CASE` messages
-
-3. **Output validation after AI response parsing**
-   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
-   - Injection in output → replaced with safe redirect fallback
-
-4. **System prompt Rule #7: LANGUAGE & CONDUCT**
-   - Instructs AI examiner to redirect if student uses profanity/abuse
-
-5. **Client-side length limit in `src/hooks/useAICase.ts`**
-   - Messages over 2000 characters rejected with toast before sending
-
-#### Priority 2: Admin Case Creation Guide
-
-6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-   - "How to create a good case" section listing required and recommended fields
-   - Guidance on writing effective scenarios and learning objectives
-
----
-
-### Files Changed
-
+### Files
 | File | Change |
 |------|--------|
-| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+| `src/App.tsx` | Update `showSplash` initializer to skip when session exists in localStorage |
 
-### What stays unchanged
-- AI examiner behavior (Learning Mode / Exam Mode)
-- Cohort Intelligence system
-- Streaming responses
-- Session recovery
-- Examiner avatars
+One file, ~3 lines changed.
+
