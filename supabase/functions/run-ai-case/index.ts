@@ -273,6 +273,48 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Input validation: length limit ──
+    if (typeof userMessage === "string" && userMessage.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "Message too long. Please keep your response under 2000 characters." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Input validation: prompt injection ──
+    if (userMessage !== "BEGIN_CASE" && detectPromptInjection(userMessage)) {
+      console.warn(`Prompt injection detected from user in attempt ${attemptId}`);
+      // Return an immediate policy-violation debrief via SSE
+      const violationTurn = {
+        type: "debrief", prompt: "This session has been terminated due to a policy violation. Your input contained content that is not permitted in a clinical examination.",
+        score: 0, summary: "Session terminated — policy violation.", strengths: [], gaps: ["Policy violation detected"],
+        flag_for_review: true, patient_info: null, choices: null, teaching_point: null,
+      };
+      const encoder = new TextEncoder();
+      const body = encoder.encode(
+        `data: ${JSON.stringify({ done: true, turn: violationTurn, turnNumber: turnNumber + 1, maxTurns: 10, isComplete: true })}\n\n`
+      );
+      return new Response(body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+    }
+
+    // ── Input validation: profanity / abuse ──
+    if (userMessage !== "BEGIN_CASE" && detectProfanity(userMessage)) {
+      console.warn(`Profanity detected from user in attempt ${attemptId}`);
+      const redirectTurn = {
+        type: "redirect", prompt: "Please maintain professional clinical language during this examination. Let's continue with the case.",
+        patient_info: null, choices: null, teaching_point: null,
+      };
+      const encoder = new TextEncoder();
+      const body = encoder.encode(
+        `data: ${JSON.stringify({ done: true, turn: redirectTurn, turnNumber: turnNumber, maxTurns: 10, isComplete: false })}\n\n`
+      );
+      return new Response(body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
