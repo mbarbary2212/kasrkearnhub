@@ -103,7 +103,7 @@ export function ThreadView({ thread, onBack }: ThreadViewProps) {
                   </DropdownMenu>
                 </div>
 
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap break-all">{message.content}</p>
 
                 {isFlagged && isAdmin && message.moderation_reason && (
                   <Alert className="mt-2" variant="destructive">

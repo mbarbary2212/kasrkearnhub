@@ -397,7 +397,7 @@ export function AskCoachPanel() {
                         : 'bg-muted'
                     }`}
                   >
-                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm">
+                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-all text-sm">
                       {msg.content}
                     </div>
                   </Card>
