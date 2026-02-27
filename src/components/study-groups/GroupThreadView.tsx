@@ -206,7 +206,7 @@ function MessageItem({
                   <span className="text-xs text-muted-foreground">(edited)</span>
                 )}
               </div>
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm whitespace-pre-wrap break-all">{message.content}</p>
               {!isLocked && depth === 0 && (
                 <Button
                   variant="ghost"
