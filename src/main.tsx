@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { initSentry } from "./lib/sentry";
 import App from "./App.tsx";
 import "./index.css";
 import { ChunkLoadErrorBoundary, setupChunkErrorHandler } from "./components/ChunkLoadErrorBoundary";
@@ -16,6 +17,9 @@ setupVersionGuard();
 // Setup startup health check - verifies app rendered correctly after 3s
 // Triggers one-time reload if core UI failed to initialize
 setupStartupHealthCheck(defaultHealthCheck, 3000);
+
+// Initialize Sentry error monitoring (production only, requires VITE_SENTRY_DSN)
+initSentry();
 
 createRoot(document.getElementById("root")!).render(
   // ChunkLoadErrorBoundary: catches chunk/dynamic import failures

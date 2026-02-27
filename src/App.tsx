@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import SplashScreen from "@/components/SplashScreen";
@@ -71,7 +72,7 @@ const App = () => {
   }, []);
 
   return (
-    <>
+    <Sentry.ErrorBoundary fallback={<div className="flex items-center justify-center min-h-screen p-8 text-center"><div><h1 className="text-xl font-bold mb-2">Something went wrong</h1><p className="text-muted-foreground mb-4">An unexpected error occurred.</p><button className="px-4 py-2 bg-primary text-primary-foreground rounded" onClick={() => window.location.reload()}>Reload</button></div></div>}>
       {showSplash && <SplashScreen onDismiss={handleDismissSplash} />}
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -113,7 +114,7 @@ const App = () => {
       </BadgeCelebrationProvider>
     </AuthProvider>
       </QueryClientProvider>
-    </>
+    </Sentry.ErrorBoundary>
   );
 };
 

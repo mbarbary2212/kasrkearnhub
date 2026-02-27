@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppRole, Profile, DepartmentAdmin, TopicAdmin, ModuleAdmin } from '@/types/database';
 
@@ -90,6 +91,8 @@ export function useAuth() {
         moduleAssignments,
         isLoading: false,
       }));
+
+      Sentry.setUser({ id: userId, role: roleData?.role ?? undefined });
     } catch (error) {
       console.error('Error fetching user data:', error);
       setState(prev => ({ ...prev, isLoading: false }));
