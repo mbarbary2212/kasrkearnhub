@@ -36,8 +36,11 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {
-    // Skip splash for auth pages (email links, direct login)
-    return !window.location.pathname.startsWith('/auth');
+    if (window.location.pathname.startsWith('/auth')) return false;
+    // Skip splash if user already has a session stored
+    const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (storageKey && localStorage.getItem(storageKey)) return false;
+    return true;
   });
 
   const handleDismissSplash = () => {
