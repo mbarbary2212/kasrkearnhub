@@ -206,6 +206,10 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
   const submitAnswer = useCallback(
     async (answer: string) => {
       if (state.status !== "active") return;
+      if (answer.length > 2000) {
+        toast.error("Your message is too long. Please keep it under 2,000 characters.");
+        return;
+      }
       setState((prev) => ({ ...prev, status: "loading", error: null, streamingContent: "" }));
       addMessage({ role: "student", content: answer });
       try {

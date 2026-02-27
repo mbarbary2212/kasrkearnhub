@@ -263,6 +263,47 @@ export function validateStrictSchema(
   };
 }
 
+// ============================================
+// PROFANITY / ABUSE DETECTION
+// ============================================
+
+const PROFANITY_PATTERNS: RegExp[] = [
+  // English profanity (common slurs and vulgar terms)
+  /\b(f+u+c+k+|f+[*@#]+k+|sh[i1!]+t|b[i1!]+tch|a+ss+h+o+le|d[i1!]+ck|c+u+n+t|wh+o+re|slut|bastard|damn+it)\b/i,
+  /\b(stfu|gtfo|lmfao|wtf|omfg)\b/i,
+  /\b(retard|retarded|spastic|mongol)\b/i,
+  /\b(n[i1!]+gg+[ae]r?|f+[a@]+gg*[o0]t)\b/i,
+
+  // Arabic transliterated profanity
+  /\b(kos\s*om+|ya?\s*ibn\s*(el|al)?\s*shar?mouta|shar?mouta|ya?\s*kal[bp]|ya?\s*7mar|ya?\s*7ayawan|ya?\s*khara)\b/i,
+  /\b(3ars|m[ou]t[ae]?nakk?|zani|ya\s*wis[kh])\b/i,
+
+  // Threats / violence
+  /\b(kill\s+(your|my|the|you)|i('ll|'m\s+going\s+to)\s+(hurt|murder|stab|shoot))\b/i,
+  /\b(bomb\s+threat|terroris[mt])\b/i,
+
+  // Sexual harassment
+  /\b(send\s+nudes|sex\s+with\s+(you|me)|suck\s+my)\b/i,
+];
+
+/**
+ * Detect profanity or abusive language in text
+ */
+export function detectProfanity(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+
+  const normalizedText = text.toLowerCase().replace(/\s+/g, ' ');
+
+  for (const pattern of PROFANITY_PATTERNS) {
+    if (pattern.test(text) || pattern.test(normalizedText)) {
+      console.warn(`Profanity detected: ${pattern}`);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Sanitize section numbers from AI output
  * - Ensures they match expected format (e.g., "3.1", "3.10")

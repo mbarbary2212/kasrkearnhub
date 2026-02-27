@@ -183,6 +183,34 @@ export function ClinicalCaseFormModal({
               </AlertDescription>
             </Alert>
 
+            {/* Case Creation Guide */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
+                <HelpCircle className="w-4 h-4" />
+                How to create a good case
+                <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 p-3 rounded-lg bg-muted/50 text-sm space-y-2">
+                  <p className="font-medium">Required fields:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li><strong>Title</strong> — Short and descriptive (e.g., "Acute Chest Pain in a 55-year-old Male")</li>
+                    <li><strong>Clinical Scenario</strong> — 2–4 sentences: patient demographics, chief complaint, setting. This is what the AI examiner uses as the scenario.</li>
+                    <li><strong>Difficulty</strong> — Beginner / Intermediate / Advanced</li>
+                    <li><strong>Estimated Minutes</strong> — 5–10 for beginner, 10–15 intermediate, 15–20 advanced</li>
+                    <li><strong>Examiner Avatar</strong> — Choose from Dr. Sarah, Dr. Laylah, Dr. Omar, or Dr. Hani</li>
+                  </ul>
+                  <p className="font-medium pt-1">Recommended fields:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li><strong>Learning Objectives</strong> — Comma-separated skills the student should demonstrate. The AI uses these to structure questions and grade the debrief.</li>
+                    <li><strong>Tags</strong> — For filtering (e.g., "cardiology", "emergency")</li>
+                    <li><strong>Max Turns</strong> — Default 10. Fewer = focused case, more = comprehensive</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground pt-1">💡 A well-written scenario with clear learning objectives produces significantly better AI examiner behavior.</p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             {/* Title */}
             <div>
               <Label htmlFor="title">Title *</Label>
