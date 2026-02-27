@@ -2,83 +2,50 @@
 
 ## Revised Plan: Security Hardening + Case Creation Guide
 
-The previous plan was built for an obsolete stage-based system. This plan reflects the current AI-driven OSCE architecture.
+### Status: ✅ Implemented
 
 ---
 
-### What the old plan got wrong
+### What was implemented
 
-The codebase no longer uses pre-authored stages, consequence_text, state_delta_json, or feedback_timing in the runner. All cases run through a single AI examiner (`run-ai-case` edge function). The `case_type` column exists in the DB but is never read by application logic. The old plan's 8 sections were solving problems that do not exist.
+#### Priority 1: Server-Side Security Hardening
 
----
+1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
+   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
+   - Same pattern as existing `detectPromptInjection()`
 
-### New Plan (2 priorities)
+2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
+   - 2000-character length limit on `userMessage` (400 error)
+   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
+   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
+   - Both checks skip `BEGIN_CASE` messages
 
----
+3. **Output validation after AI response parsing**
+   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
+   - Injection in output → replaced with safe redirect fallback
 
-### Priority 1: Server-Side Security Hardening
+4. **System prompt Rule #7: LANGUAGE & CONDUCT**
+   - Instructs AI examiner to redirect if student uses profanity/abuse
 
-**Problem**: Student messages go directly to the AI with zero server-side validation. The `_shared/security.ts` file has `detectPromptInjection()` but it is **not imported or used** in `run-ai-case`.
+5. **Client-side length limit in `src/hooks/useAICase.ts`**
+   - Messages over 2000 characters rejected with toast before sending
 
-#### 1a. Add `detectProfanity()` to `supabase/functions/_shared/security.ts`
+#### Priority 2: Admin Case Creation Guide
 
-- New function with regex blocklist (English profanity + common Arabic transliterated slurs)
-- Same pattern as existing `detectPromptInjection()`
-
-#### 1b. Add input validation in `supabase/functions/run-ai-case/index.ts`
-
-Before saving the user message (currently line 337), add:
-
-1. **Length limit**: Reject `userMessage` > 2000 characters with 400 error
-2. **Prompt injection check**: Call `detectPromptInjection(userMessage)` — if true, skip AI call entirely, return a debrief JSON with `score: 0`, `flag_for_review: true`, message: "Session terminated due to policy violation"
-3. **Profanity check**: Call `detectProfanity(userMessage)` — if true, return a redirect response warning the student to use professional language (do not save or forward the message)
-
-#### 1c. Add output validation after AI response parsing
-
-After `parseAIResponse()`, scan the `prompt` and `teaching_point` fields through `detectPromptInjection()`. If injection detected in AI output, replace with a safe fallback redirect.
-
-#### 1d. Add language/conduct rule to system prompt
-
-Add guardrail rule #7:
-> "LANGUAGE & CONDUCT: If the student uses profanity, slurs, or abusive language, respond with a redirect reminding them to maintain professional clinical language. Do not engage with inappropriate content."
-
-#### 1e. Add client-side length limit in `src/hooks/useAICase.ts`
-
-Reject messages over 2000 characters with a toast before sending.
+6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
+   - "How to create a good case" section listing required and recommended fields
+   - Guidance on writing effective scenarios and learning objectives
 
 ---
 
-### Priority 2: Admin Case Creation Guide
-
-#### 2a. Add collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`
-
-A `<Collapsible>` section at the top of the form with:
-
-**Required fields:**
-- **Title** — Short, descriptive (e.g., "Acute Chest Pain in a 55-year-old Male")
-- **Intro Text** — 2-4 sentences: patient demographics, chief complaint, setting. This is the scenario the AI examiner uses.
-- **Module** — Which module this case belongs to
-- **Difficulty** — Beginner / Intermediate / Advanced
-- **Estimated Minutes** — 5-10 beginner, 10-15 intermediate, 15-20 advanced
-- **Examiner Avatar** — Dr. Sarah, Dr. Laylah, Dr. Omar, Dr. Hani
-
-**Recommended fields:**
-- **Learning Objectives** — Comma-separated skills the student should demonstrate. The AI uses these to structure questions and grade the debrief.
-- **Tags** — For filtering (e.g., "cardiology", "emergency")
-- **Max Turns** — Default 10. Fewer = focused, more = comprehensive.
-- **Patient Details** — Name, age, gender for immersion.
-
----
-
-### Files to Change
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/_shared/security.ts` | Add `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Import security utils, add input validation (length + injection + profanity), output validation, new system prompt rule |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit with toast |
+| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
+| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
+| `src/hooks/useAICase.ts` | 2000-char client-side limit |
 | `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
-| `.lovable/plan.md` | Replace with this plan |
 
 ### What stays unchanged
 - AI examiner behavior (Learning Mode / Exam Mode)
@@ -86,4 +53,3 @@ A `<Collapsible>` section at the top of the form with:
 - Streaming responses
 - Session recovery
 - Examiner avatars
-
