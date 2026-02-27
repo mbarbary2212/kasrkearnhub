@@ -206,6 +206,12 @@ export function useAICase({ caseId, attemptId, hintMode, onComplete, onFlagged }
 
   const submitAnswer = useCallback(
     async (answer: string) => {
+      const now = Date.now();
+      if (now - lastSubmitRef.current < 2000) {
+        toast.error("Please wait a moment before submitting again.");
+        return;
+      }
+      lastSubmitRef.current = now;
       if (state.status !== "active") return;
       if (answer.length > 2000) {
         toast.error("Your message is too long. Please keep it under 2,000 characters.");
