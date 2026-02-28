@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Pencil, Trash2, Download, Check, X, ArrowRight } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Pencil, Trash2, Download, Check, X, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
