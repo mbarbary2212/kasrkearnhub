@@ -341,7 +341,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((item) => (
+            {paginatedData.map((item) => (
               <TableRow key={item.id}>
                 {columns.map((column, idx) => (
                   <TableCell key={idx} className={column.className}>
