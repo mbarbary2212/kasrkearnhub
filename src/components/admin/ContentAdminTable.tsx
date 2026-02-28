@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Pencil, Trash2, Download, Check, X, ArrowRight } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Pencil, Trash2, Download, Check, X, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -71,22 +71,43 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   csvExportConfig,
   emptyMessage = 'No items found',
 }: ContentAdminTableProps<T>) {
+  const PAGE_SIZE = 30;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const bulkDelete = useBulkDeleteContent(contentTable);
   const bulkUpdateSection = useBulkUpdateSection(contentTable);
 
-  const allSelected = data.length > 0 && selectedIds.size === data.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < data.length;
+  // Reset page when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  const paginatedData = useMemo(
+    () => data.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [data, currentPage]
+  );
+
+  const allSelected = paginatedData.length > 0 && paginatedData.every(item => selectedIds.has(item.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
 
   const toggleAll = useCallback((checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(data.map(item => item.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        paginatedData.forEach(item => next.add(item.id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set());
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        paginatedData.forEach(item => next.delete(item.id));
+        return next;
+      });
     }
-  }, [data]);
+  }, [paginatedData]);
 
   const toggleOne = useCallback((id: string, checked: boolean) => {
     setSelectedIds(prev => {
@@ -320,7 +341,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((item) => (
+            {paginatedData.map((item) => (
               <TableRow key={item.id}>
                 {columns.map((column, idx) => (
                   <TableCell key={idx} className={column.className}>
@@ -332,6 +353,40 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination Footer */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, data.length)} of {data.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Bulk Delete Confirmation */}
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>

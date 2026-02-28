@@ -1,17 +1,55 @@
 
 
-## Page size: 50 vs 20-30
+## Revised Plan: Security Hardening + Case Creation Guide
 
-At current scale, the difference is negligible. The bottleneck is DOM rendering, and both 30 and 50 rows render in under 16ms on any modern device. The data is already fetched client-side — slicing 30 vs 50 from an array costs nothing.
+### Status: ✅ Implemented
 
-**30 rows per page** is the better choice, but not for performance — for usability:
+---
 
-- Admin tables have 5-6 columns with dropdowns, checkboxes, and action buttons per row
-- 50 rows of interactive elements creates a long scrollable page on laptops (1366x768 screens)
-- 30 rows fits on one screen without scrolling on most admin devices
-- Admins scanning content find what they need faster in shorter pages
+### What was implemented
 
-**Recommendation:** Use 30 as the default `pageSize`. No measurable performance gain over 50, but a noticeably better admin experience.
+#### Priority 1: Server-Side Security Hardening
 
-The plan stays identical — just change the default from 50 to 30 in `ContentAdminTable.tsx`.
+1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
+   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
+   - Same pattern as existing `detectPromptInjection()`
 
+2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
+   - 2000-character length limit on `userMessage` (400 error)
+   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
+   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
+   - Both checks skip `BEGIN_CASE` messages
+
+3. **Output validation after AI response parsing**
+   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
+   - Injection in output → replaced with safe redirect fallback
+
+4. **System prompt Rule #7: LANGUAGE & CONDUCT**
+   - Instructs AI examiner to redirect if student uses profanity/abuse
+
+5. **Client-side length limit in `src/hooks/useAICase.ts`**
+   - Messages over 2000 characters rejected with toast before sending
+
+#### Priority 2: Admin Case Creation Guide
+
+6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
+   - "How to create a good case" section listing required and recommended fields
+   - Guidance on writing effective scenarios and learning objectives
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
+| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
+| `src/hooks/useAICase.ts` | 2000-char client-side limit |
+| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+
+### What stays unchanged
+- AI examiner behavior (Learning Mode / Exam Mode)
+- Cohort Intelligence system
+- Streaming responses
+- Session recovery
+- Examiner avatars
