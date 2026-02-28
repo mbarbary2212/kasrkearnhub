@@ -71,14 +71,27 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   csvExportConfig,
   emptyMessage = 'No items found',
 }: ContentAdminTableProps<T>) {
+  const PAGE_SIZE = 30;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const bulkDelete = useBulkDeleteContent(contentTable);
   const bulkUpdateSection = useBulkUpdateSection(contentTable);
 
-  const allSelected = data.length > 0 && selectedIds.size === data.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < data.length;
+  // Reset page when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  const paginatedData = useMemo(
+    () => data.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [data, currentPage]
+  );
+
+  const allSelected = paginatedData.length > 0 && paginatedData.every(item => selectedIds.has(item.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
 
   const toggleAll = useCallback((checked: boolean) => {
     if (checked) {
