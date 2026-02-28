@@ -95,11 +95,19 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 
   const toggleAll = useCallback((checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(data.map(item => item.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        paginatedData.forEach(item => next.add(item.id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set());
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        paginatedData.forEach(item => next.delete(item.id));
+        return next;
+      });
     }
-  }, [data]);
+  }, [paginatedData]);
 
   const toggleOne = useCallback((id: string, checked: boolean) => {
     setSelectedIds(prev => {
