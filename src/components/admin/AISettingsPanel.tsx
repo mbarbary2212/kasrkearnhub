@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, BookOpen, Shield, History
+  ChevronDown, BookOpen, Shield, History, Check
 } from 'lucide-react';
 import { useAISettings, useUpdateAISetting, getSettingValue } from '@/hooks/useAISettings';
 import { 
