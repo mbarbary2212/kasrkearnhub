@@ -97,6 +97,7 @@ export function AISettingsPanel() {
   const provider = getValue('ai_provider', 'lovable');
   const lovableModel = getValue('lovable_model', 'google/gemini-3-flash-preview');
   const geminiModel = getValue('gemini_model', 'gemini-2.5-flash');
+  const anthropicModel = getValue('anthropic_model', 'claude-sonnet-4-20250514');
   const disabledMessage = getValue('ai_content_factory_disabled_message', 'AI content generation is currently disabled.');
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
