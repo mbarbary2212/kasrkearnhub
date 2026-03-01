@@ -118,7 +118,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
             <iframe
               {...(htmlSrcdoc ? { srcDoc: htmlSrcdoc } : { src: setting.fileUrl })}
               className="w-full h-full border-0 rounded-b-lg"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
               onLoad={() => setIframeLoading(false)}
               title="App Mind Map"
             />
