@@ -24,6 +24,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 const AI_PROVIDERS = [
   { value: 'lovable', label: 'Lovable AI Gateway', description: 'Uses Lovable credits' },
   { value: 'gemini', label: 'Google Gemini API', description: 'Uses your GOOGLE_API_KEY' },
+  { value: 'anthropic', label: 'Anthropic Claude API', description: 'Uses your ANTHROPIC_API_KEY' },
 ];
 
 const LOVABLE_MODELS = [
