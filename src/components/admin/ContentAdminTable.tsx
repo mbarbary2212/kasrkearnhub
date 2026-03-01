@@ -174,7 +174,8 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 
   const handleExportCsv = () => {
     if (!csvExportConfig) return;
-    exportToCsv(data, csvExportConfig.columns, csvExportConfig.filename, sections);
+    const exportData = searchQuery.trim() ? filteredData : data;
+    exportToCsv(exportData, csvExportConfig.columns, csvExportConfig.filename, sections);
     toast.success('CSV exported');
   };
 
