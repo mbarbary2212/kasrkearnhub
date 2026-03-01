@@ -1,55 +1,20 @@
 
 
-## Revised Plan: Security Hardening + Case Creation Guide
+## Plan: Add a temporary Sentry test button
 
-### Status: ✅ Implemented
+Add a hidden developer tool that triggers a test error to verify Sentry is receiving events.
 
----
+### Change
 
-### What was implemented
+**File: `src/components/GlobalErrorBoundary.tsx`** — Add a `SentryTestButton` export: a small fixed button (bottom-left corner) that calls `Sentry.captureException(new Error("Sentry test error"))` and shows a toast confirmation. Only visible on the published production URL.
 
-#### Priority 1: Server-Side Security Hardening
+**File: `src/App.tsx`** — Render `<SentryTestButton />` inside the app tree.
 
-1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
-   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
-   - Same pattern as existing `detectPromptInjection()`
+### How to verify
 
-2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
-   - 2000-character length limit on `userMessage` (400 error)
-   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
-   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
-   - Both checks skip `BEGIN_CASE` messages
+1. Republish the app
+2. Visit the published URL
+3. Click the small "Test Sentry" button in the bottom-left corner
+4. Check your Sentry dashboard — a new "Sentry test error" event should appear within a minute
+5. Once confirmed working, ask me to remove the test button
 
-3. **Output validation after AI response parsing**
-   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
-   - Injection in output → replaced with safe redirect fallback
-
-4. **System prompt Rule #7: LANGUAGE & CONDUCT**
-   - Instructs AI examiner to redirect if student uses profanity/abuse
-
-5. **Client-side length limit in `src/hooks/useAICase.ts`**
-   - Messages over 2000 characters rejected with toast before sending
-
-#### Priority 2: Admin Case Creation Guide
-
-6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-   - "How to create a good case" section listing required and recommended fields
-   - Guidance on writing effective scenarios and learning objectives
-
----
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
-
-### What stays unchanged
-- AI examiner behavior (Learning Mode / Exam Mode)
-- Cohort Intelligence system
-- Streaming responses
-- Session recovery
-- Examiner avatars
