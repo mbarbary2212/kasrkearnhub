@@ -51,10 +51,10 @@ export function AdminTabsNavigation({
       tabs: [
         { value: 'curriculum', label: 'Curriculum', icon: Layers, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'pdf-library', label: 'PDF Library', icon: FileText, visible: isPlatformAdmin || isModuleAdmin },
-        { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
         { value: 'help', label: 'Help & Templates', icon: HelpCircle, visible: true },
         { value: 'question-analytics', label: 'Question Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
+        { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
         { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
       ],
     },

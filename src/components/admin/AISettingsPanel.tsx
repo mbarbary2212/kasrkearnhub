@@ -24,6 +24,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 const AI_PROVIDERS = [
   { value: 'lovable', label: 'Lovable AI Gateway', description: 'Uses Lovable credits' },
   { value: 'gemini', label: 'Google Gemini API', description: 'Uses your GOOGLE_API_KEY' },
+  { value: 'anthropic', label: 'Anthropic Claude API', description: 'Uses your ANTHROPIC_API_KEY' },
 ];
 
 const LOVABLE_MODELS = [
@@ -39,6 +40,11 @@ const GEMINI_MODELS = [
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
+];
+
+const CLAUDE_MODELS = [
+  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Balanced)' },
+  { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast)' },
 ];
 
 const CONTENT_TYPES = [
@@ -91,6 +97,7 @@ export function AISettingsPanel() {
   const provider = getValue('ai_provider', 'lovable');
   const lovableModel = getValue('lovable_model', 'google/gemini-3-flash-preview');
   const geminiModel = getValue('gemini_model', 'gemini-2.5-flash');
+  const anthropicModel = getValue('anthropic_model', 'claude-sonnet-4-20250514');
   const disabledMessage = getValue('ai_content_factory_disabled_message', 'AI content generation is currently disabled.');
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
@@ -223,6 +230,8 @@ export function AISettingsPanel() {
                   <div className={`p-2 rounded-lg ${provider === p.value ? 'bg-primary/10' : 'bg-muted'}`}>
                     {p.value === 'lovable' ? (
                       <Zap className="w-5 h-5 text-primary" />
+                    ) : p.value === 'anthropic' ? (
+                      <Sparkles className="w-5 h-5 text-primary" />
                     ) : (
                       <Cloud className="w-5 h-5 text-primary" />
                     )}
@@ -246,7 +255,7 @@ export function AISettingsPanel() {
           </div>
 
           {/* Model Selection */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="lovable-model">Lovable Gateway Model</Label>
               <div className="flex gap-2">
@@ -289,6 +298,27 @@ export function AISettingsPanel() {
                 <p className="text-xs text-muted-foreground">Switch to Gemini provider to use this model</p>
               )}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="anthropic-model">Claude API Model</Label>
+              <div className="flex gap-2">
+                <Select value={anthropicModel as string} onValueChange={(v) => handleChange('anthropic_model', v)} disabled={(provider as string) !== 'anthropic'}>
+                  <SelectTrigger id="anthropic-model" className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CLAUDE_MODELS.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {'anthropic_model' in pendingChanges && (
+                  <Button size="icon" variant="outline" onClick={() => handleSave('anthropic_model')} disabled={updateSetting.isPending}>
+                    <Save className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              {(provider as string) !== 'anthropic' && (
+                <p className="text-xs text-muted-foreground">Switch to Anthropic provider to use this model</p>
+              )}
+            </div>
           </div>
 
           {/* Info Section */}
@@ -300,6 +330,7 @@ export function AISettingsPanel() {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
               <li><strong>Lovable AI Gateway:</strong> Uses your Lovable workspace credits. No API key needed.</li>
               <li><strong>Google Gemini API:</strong> Requires <code>GOOGLE_API_KEY</code> secret in Edge Functions.</li>
+              <li><strong>Anthropic Claude API:</strong> Requires <code>ANTHROPIC_API_KEY</code> secret in Edge Functions.</li>
               <li>Changes take effect immediately for new generation requests.</li>
             </ul>
           </div>
@@ -389,7 +420,7 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
   
   const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
   
-  const models = provider === 'gemini' ? GEMINI_MODELS : LOVABLE_MODELS;
+  const models = provider === 'gemini' ? GEMINI_MODELS : provider === 'anthropic' ? CLAUDE_MODELS : LOVABLE_MODELS;
 
   const handleModelChange = (contentType: string, model: string) => {
     const newOverrides = { ...overrides, [contentType]: model };
@@ -398,6 +429,8 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
 
   const globalModel = provider === 'gemini'
     ? getSettingValue(settings, 'gemini_model', 'gemini-2.5-flash')
+    : provider === 'anthropic'
+    ? getSettingValue(settings, 'anthropic_model', 'claude-sonnet-4-20250514')
     : getSettingValue(settings, 'lovable_model', 'google/gemini-3-flash-preview');
 
   return (
