@@ -289,6 +289,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
               className="h-7 w-48 pl-8 text-xs"
             />
           </div>
+          {selectedIds.size > 0 && (
             <>
               <span className="text-sm text-muted-foreground">
                 {selectedIds.size} selected
