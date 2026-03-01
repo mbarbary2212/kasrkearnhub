@@ -330,6 +330,7 @@ export function AISettingsPanel() {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
               <li><strong>Lovable AI Gateway:</strong> Uses your Lovable workspace credits. No API key needed.</li>
               <li><strong>Google Gemini API:</strong> Requires <code>GOOGLE_API_KEY</code> secret in Edge Functions.</li>
+              <li><strong>Anthropic Claude API:</strong> Requires <code>ANTHROPIC_API_KEY</code> secret in Edge Functions.</li>
               <li>Changes take effect immediately for new generation requests.</li>
             </ul>
           </div>
