@@ -429,6 +429,8 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
 
   const globalModel = provider === 'gemini'
     ? getSettingValue(settings, 'gemini_model', 'gemini-2.5-flash')
+    : provider === 'anthropic'
+    ? getSettingValue(settings, 'anthropic_model', 'claude-sonnet-4-20250514')
     : getSettingValue(settings, 'lovable_model', 'google/gemini-3-flash-preview');
 
   return (
