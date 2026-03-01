@@ -213,38 +213,57 @@ export function AISettingsPanel() {
             </div>
           )}
 
-          {/* AI Provider Selection */}
+          {/* AI Provider & Model Selection */}
           <div className="space-y-3">
-            <Label className="text-base font-medium">AI Provider</Label>
-            <div className="grid gap-3 md:grid-cols-2">
-              {AI_PROVIDERS.map((p) => (
-                <div
-                  key={p.value}
-                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                    provider === p.value 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted hover:border-primary/50'
-                  }`}
-                  onClick={() => handleChange('ai_provider', p.value)}
-                >
-                  <div className={`p-2 rounded-lg ${provider === p.value ? 'bg-primary/10' : 'bg-muted'}`}>
-                    {p.value === 'lovable' ? (
-                      <Zap className="w-5 h-5 text-primary" />
-                    ) : p.value === 'anthropic' ? (
-                      <Sparkles className="w-5 h-5 text-primary" />
-                    ) : (
-                      <Cloud className="w-5 h-5 text-primary" />
+            <Label className="text-base font-medium">AI Provider & Model</Label>
+            <div className="grid gap-4 md:grid-cols-3">
+              {AI_PROVIDERS.map((p) => {
+                const isActive = provider === p.value;
+                const models = p.value === 'lovable' ? LOVABLE_MODELS : p.value === 'gemini' ? GEMINI_MODELS : CLAUDE_MODELS;
+                const modelKey = p.value === 'lovable' ? 'lovable_model' : p.value === 'gemini' ? 'gemini_model' : 'anthropic_model';
+                const modelValue = p.value === 'lovable' ? lovableModel : p.value === 'gemini' ? geminiModel : anthropicModel;
+                const icon = p.value === 'lovable' ? <Zap className="w-4 h-4" /> : p.value === 'anthropic' ? <Sparkles className="w-4 h-4" /> : <Cloud className="w-4 h-4" />;
+
+                return (
+                  <div
+                    key={p.value}
+                    className={`space-y-2 p-3 border rounded-lg transition-colors ${
+                      isActive
+                        ? 'border-primary bg-primary/5'
+                        : 'border-muted hover:border-primary/30 cursor-pointer'
+                    }`}
+                    onClick={() => !isActive && handleChange('ai_provider', p.value)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {icon}
+                      <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {p.label}
+                      </span>
+                      {isActive && <Check className="w-4 h-4 text-primary ml-auto" />}
+                    </div>
+                    <Select
+                      value={modelValue as string}
+                      onValueChange={(v) => handleChange(modelKey, v)}
+                      disabled={!isActive}
+                    >
+                      <SelectTrigger className={`w-full ${!isActive ? 'opacity-50' : ''}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {models.map(m => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!isActive && (
+                      <p className="text-xs text-muted-foreground">Click to switch</p>
+                    )}
+                    {isActive && modelKey in pendingChanges && (
+                      <Button size="sm" variant="outline" className="w-full" onClick={(e) => { e.stopPropagation(); handleSave(modelKey); }} disabled={updateSetting.isPending}>
+                        <Save className="w-3 h-3 mr-1" /> Save Model
+                      </Button>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{p.label}</div>
-                    <p className="text-sm text-muted-foreground">{p.description}</p>
-                  </div>
-                  {provider === p.value && (
-                    <Badge variant="default" className="ml-auto">Active</Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
             {'ai_provider' in pendingChanges && (
               <Button size="sm" onClick={() => handleSave('ai_provider')} disabled={updateSetting.isPending}>
@@ -252,73 +271,6 @@ export function AISettingsPanel() {
                 Save Provider
               </Button>
             )}
-          </div>
-
-          {/* Model Selection */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="lovable-model">Lovable Gateway Model</Label>
-              <div className="flex gap-2">
-                <Select value={lovableModel} onValueChange={(v) => handleChange('lovable_model', v)} disabled={provider !== 'lovable'}>
-                  <SelectTrigger id="lovable-model" className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LOVABLE_MODELS.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {'lovable_model' in pendingChanges && (
-                  <Button size="icon" variant="outline" onClick={() => handleSave('lovable_model')} disabled={updateSetting.isPending}>
-                    <Save className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              {(provider as string) !== 'lovable' && (
-                <p className="text-xs text-muted-foreground">Switch to Lovable provider to use this model</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gemini-model">Gemini API Model</Label>
-              <div className="flex gap-2">
-                <Select value={geminiModel as string} onValueChange={(v) => handleChange('gemini_model', v)} disabled={(provider as string) !== 'gemini'}>
-                  <SelectTrigger id="gemini-model" className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {GEMINI_MODELS.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {'gemini_model' in pendingChanges && (
-                  <Button size="icon" variant="outline" onClick={() => handleSave('gemini_model')} disabled={updateSetting.isPending}>
-                    <Save className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              {(provider as string) !== 'gemini' && (
-                <p className="text-xs text-muted-foreground">Switch to Gemini provider to use this model</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="anthropic-model">Claude API Model</Label>
-              <div className="flex gap-2">
-                <Select value={anthropicModel as string} onValueChange={(v) => handleChange('anthropic_model', v)} disabled={(provider as string) !== 'anthropic'}>
-                  <SelectTrigger id="anthropic-model" className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CLAUDE_MODELS.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {'anthropic_model' in pendingChanges && (
-                  <Button size="icon" variant="outline" onClick={() => handleSave('anthropic_model')} disabled={updateSetting.isPending}>
-                    <Save className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              {(provider as string) !== 'anthropic' && (
-                <p className="text-xs text-muted-foreground">Switch to Anthropic provider to use this model</p>
-              )}
-            </div>
           </div>
 
           {/* Info Section */}
