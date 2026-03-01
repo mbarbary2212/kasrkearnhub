@@ -42,6 +42,11 @@ const GEMINI_MODELS = [
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
 ];
 
+const CLAUDE_MODELS = [
+  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Balanced)' },
+  { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast)' },
+];
+
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQ Questions' },
   { value: 'essay', label: 'Essay / Short Answer' },
