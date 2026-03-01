@@ -84,12 +84,8 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
     setHtmlSrcdoc(null);
     setIframeLoading(true);
     fetch(setting.fileUrl)
-      .then(res => {
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('text/html')) {
-          return res.text().then(html => setHtmlSrcdoc(html));
-        }
-      })
+      .then(res => res.text())
+      .then(html => setHtmlSrcdoc(html))
       .catch(() => {})
       .finally(() => setIframeLoading(false));
   }, [isHtmlFile, setting?.fileUrl]);
