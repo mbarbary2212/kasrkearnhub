@@ -84,12 +84,8 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
     setHtmlSrcdoc(null);
     setIframeLoading(true);
     fetch(setting.fileUrl)
-      .then(res => {
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('text/html')) {
-          return res.text().then(html => setHtmlSrcdoc(html));
-        }
-      })
+      .then(res => res.text())
+      .then(html => setHtmlSrcdoc(html))
       .catch(() => {})
       .finally(() => setIframeLoading(false));
   }, [isHtmlFile, setting?.fileUrl]);
@@ -122,7 +118,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
             <iframe
               {...(htmlSrcdoc ? { srcDoc: htmlSrcdoc } : { src: setting.fileUrl })}
               className="w-full h-full border-0 rounded-b-lg"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
               onLoad={() => setIframeLoading(false)}
               title="App Mind Map"
             />
