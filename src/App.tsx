@@ -83,9 +83,10 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BadgeCelebration />
-              <AskCoachPanel />
-              <AudioMiniPlayer />
+               <BadgeCelebration />
+               <AskCoachPanel />
+               <AudioMiniPlayer />
+               <SentryTestButton />
             <BrowserRouter>
               <ScrollToTop />
               <Routes>
