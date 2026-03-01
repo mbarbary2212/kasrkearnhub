@@ -77,18 +77,39 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const bulkDelete = useBulkDeleteContent(contentTable);
   const bulkUpdateSection = useBulkUpdateSection(contentTable);
 
-  // Reset page when data changes
+  // Filter data by search query across all string fields and rendered columns
+  const filteredData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return data;
+    return data.filter(item => {
+      // Search all string/number values in the item
+      for (const key of Object.keys(item)) {
+        const val = (item as any)[key];
+        if (typeof val === 'string' && val.toLowerCase().includes(q)) return true;
+        if (typeof val === 'number' && String(val).includes(q)) return true;
+      }
+      // Also check section name
+      if (item.section_id) {
+        const sectionName = sections.find(s => s.id === item.section_id)?.name;
+        if (sectionName && sectionName.toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [data, searchQuery, sections]);
+
+  // Reset page when data or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [data]);
+  }, [data, searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
   const paginatedData = useMemo(
-    () => data.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [data, currentPage]
+    () => filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredData, currentPage]
   );
 
   const allSelected = paginatedData.length > 0 && paginatedData.every(item => selectedIds.has(item.id));
