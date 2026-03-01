@@ -230,6 +230,8 @@ export function AISettingsPanel() {
                   <div className={`p-2 rounded-lg ${provider === p.value ? 'bg-primary/10' : 'bg-muted'}`}>
                     {p.value === 'lovable' ? (
                       <Zap className="w-5 h-5 text-primary" />
+                    ) : p.value === 'anthropic' ? (
+                      <Sparkles className="w-5 h-5 text-primary" />
                     ) : (
                       <Cloud className="w-5 h-5 text-primary" />
                     )}
