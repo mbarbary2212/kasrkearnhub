@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are a medical education content creator for Cairo University's medical school. You create Virtual Patient cases for teaching clinical reasoning.
+const STAGED_SYSTEM_PROMPT = `You are a medical education content creator for Cairo University's medical school. You create Virtual Patient cases for teaching clinical reasoning.
 
 Your task is to generate a structured Virtual Patient case with multiple stages.
 
@@ -57,6 +57,30 @@ Difficulty levels:
 - intermediate: some atypical features, requires differential thinking
 - advanced: complex scenarios, rare conditions, multiple comorbidities`;
 
+const AI_DRIVEN_SYSTEM_PROMPT = `You are a medical education content creator for Cairo University's medical school. You create AI-driven clinical case scenarios for OSCE-style examinations.
+
+Your task is to generate a case OVERVIEW only (no stages/questions). The AI examiner will dynamically run the case at runtime.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no markdown, no explanations, no extra text
+2. Follow the exact schema provided
+3. Create medically accurate, educationally sound content
+4. The intro_text should set up a realistic clinical scenario with patient demographics, chief complaint, and relevant context
+
+OUTPUT SCHEMA (strict JSON):
+{
+  "title": "string - concise case title (e.g. 'Acute Chest Pain in a 55-year-old Male')",
+  "intro_text": "string - patient presentation with demographics, chief complaint, and brief context (2-4 sentences)",
+  "estimated_minutes": number (typically 10-20 for AI cases),
+  "tags": ["array", "of", "relevant", "clinical", "tags"],
+  "learning_objectives": "string - comma-separated or paragraph of key learning objectives for this case"
+}
+
+Difficulty levels:
+- beginner: straightforward presentations, classic findings, common conditions
+- intermediate: some atypical features, requires differential thinking
+- advanced: complex scenarios, rare conditions, multiple comorbidities`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -70,7 +94,8 @@ serve(async (req) => {
       difficulty, 
       scenarioType, 
       stageCount, 
-      learningObjectives 
+      learningObjectives,
+      aiDriven,
     } = await req.json();
 
     // Create Supabase client to read AI settings
@@ -82,10 +107,30 @@ serve(async (req) => {
     const aiSettings = await getAISettings(serviceClient);
     const provider = getAIProvider(aiSettings);
 
-    console.log(`Using AI provider: ${provider.name}, model: ${provider.model}`);
+    console.log(`Using AI provider: ${provider.name}, model: ${provider.model}, aiDriven: ${!!aiDriven}`);
+
+    const systemPrompt = aiDriven ? AI_DRIVEN_SYSTEM_PROMPT : STAGED_SYSTEM_PROMPT;
 
     // Build the generation prompt
-    const userPrompt = `Create a Virtual Patient case with the following specifications:
+    const userPrompt = aiDriven
+      ? `Create an AI-driven clinical case overview with the following specifications:
+
+Topic: ${topic || "General clinical case"}
+${chapterTitle ? `Chapter: ${chapterTitle}` : ""}
+${moduleName ? `Module: ${moduleName}` : ""}
+Difficulty: ${difficulty || "intermediate"}
+Scenario Type: ${scenarioType || "Diagnosis and Management"}
+${learningObjectives ? `Learning Objectives to incorporate: ${learningObjectives}` : ""}
+
+Requirements:
+1. Create a realistic, detailed clinical scenario introduction
+2. The intro_text should paint a vivid clinical picture that an AI examiner can use to run the case dynamically
+3. Include relevant patient demographics and presenting complaint
+4. Tags should cover relevant clinical domains
+5. Learning objectives should be specific and measurable
+
+Output valid JSON only.`
+      : `Create a Virtual Patient case with the following specifications:
 
 Topic: ${topic || "General clinical case"}
 ${chapterTitle ? `Chapter: ${chapterTitle}` : ""}
@@ -105,7 +150,7 @@ Requirements:
 Output valid JSON only.`;
 
     // Use the shared AI provider abstraction
-    const result = await callAI(SYSTEM_PROMPT, userPrompt, provider);
+    const result = await callAI(systemPrompt, userPrompt, provider);
 
     if (!result.success) {
       console.error("AI call failed:", result.error);
@@ -150,18 +195,30 @@ Output valid JSON only.`;
       throw new Error("AI generated invalid JSON. Please try again.");
     }
 
-    // Validate the structure
-    const validationErrors = validateCaseStructure(generatedCase);
-    if (validationErrors.length > 0) {
-      console.error("Validation errors:", validationErrors);
-      return new Response(
-        JSON.stringify({ 
-          error: "Generated case has structural issues", 
-          validationErrors,
-          rawContent: generatedCase
-        }), 
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Validate structure — only validate stages for non-AI-driven cases
+    if (!aiDriven) {
+      const validationErrors = validateCaseStructure(generatedCase);
+      if (validationErrors.length > 0) {
+        console.error("Validation errors:", validationErrors);
+        return new Response(
+          JSON.stringify({ 
+            error: "Generated case has structural issues", 
+            validationErrors,
+            rawContent: generatedCase
+          }), 
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // Minimal validation for AI-driven cases
+      const errors = validateAIDrivenCase(generatedCase);
+      if (errors.length > 0) {
+        console.error("AI-driven validation errors:", errors);
+        return new Response(
+          JSON.stringify({ error: "Generated case has structural issues", validationErrors: errors }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Security checks
@@ -195,6 +252,17 @@ Output valid JSON only.`;
     );
   }
 });
+
+function validateAIDrivenCase(caseData: any): string[] {
+  const errors: string[] = [];
+  if (!caseData.title || typeof caseData.title !== "string") {
+    errors.push("Missing or invalid title");
+  }
+  if (!caseData.intro_text || typeof caseData.intro_text !== "string") {
+    errors.push("Missing or invalid intro_text");
+  }
+  return errors;
+}
 
 function validateCaseStructure(caseData: any): string[] {
   const errors: string[] = [];
