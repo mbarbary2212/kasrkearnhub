@@ -390,7 +390,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <span className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, data.length)} of {data.length}
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)} of {filteredData.length}{searchQuery.trim() && filteredData.length !== data.length ? ` (filtered from ${data.length})` : ''}
           </span>
           <div className="flex items-center gap-1">
             <Button
