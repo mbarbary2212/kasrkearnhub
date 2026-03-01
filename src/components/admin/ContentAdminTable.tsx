@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Pencil, Trash2, Download, Check, X, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Download, Check, X, ArrowRight, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -76,18 +77,39 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const bulkDelete = useBulkDeleteContent(contentTable);
   const bulkUpdateSection = useBulkUpdateSection(contentTable);
 
-  // Reset page when data changes
+  // Filter data by search query across all string fields and rendered columns
+  const filteredData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return data;
+    return data.filter(item => {
+      // Search all string/number values in the item
+      for (const key of Object.keys(item)) {
+        const val = (item as any)[key];
+        if (typeof val === 'string' && val.toLowerCase().includes(q)) return true;
+        if (typeof val === 'number' && String(val).includes(q)) return true;
+      }
+      // Also check section name
+      if (item.section_id) {
+        const sectionName = sections.find(s => s.id === item.section_id)?.name;
+        if (sectionName && sectionName.toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [data, searchQuery, sections]);
+
+  // Reset page when data or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [data]);
+  }, [data, searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
   const paginatedData = useMemo(
-    () => data.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [data, currentPage]
+    () => filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredData, currentPage]
   );
 
   const allSelected = paginatedData.length > 0 && paginatedData.every(item => selectedIds.has(item.id));
@@ -152,7 +174,8 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
 
   const handleExportCsv = () => {
     if (!csvExportConfig) return;
-    exportToCsv(data, csvExportConfig.columns, csvExportConfig.filename, sections);
+    const exportData = searchQuery.trim() ? filteredData : data;
+    exportToCsv(exportData, csvExportConfig.columns, csvExportConfig.filename, sections);
     toast.success('CSV exported');
   };
 
@@ -257,6 +280,15 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-7 w-48 pl-8 text-xs"
+            />
+          </div>
           {selectedIds.size > 0 && (
             <>
               <span className="text-sm text-muted-foreground">
@@ -358,7 +390,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <span className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, data.length)} of {data.length}
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)} of {filteredData.length}{searchQuery.trim() && filteredData.length !== data.length ? ` (filtered from ${data.length})` : ''}
           </span>
           <div className="flex items-center gap-1">
             <Button
