@@ -255,7 +255,7 @@ export function AISettingsPanel() {
           </div>
 
           {/* Model Selection */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="lovable-model">Lovable Gateway Model</Label>
               <div className="flex gap-2">
@@ -296,6 +296,27 @@ export function AISettingsPanel() {
               </div>
               {(provider as string) !== 'gemini' && (
                 <p className="text-xs text-muted-foreground">Switch to Gemini provider to use this model</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="anthropic-model">Claude API Model</Label>
+              <div className="flex gap-2">
+                <Select value={anthropicModel as string} onValueChange={(v) => handleChange('anthropic_model', v)} disabled={(provider as string) !== 'anthropic'}>
+                  <SelectTrigger id="anthropic-model" className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CLAUDE_MODELS.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {'anthropic_model' in pendingChanges && (
+                  <Button size="icon" variant="outline" onClick={() => handleSave('anthropic_model')} disabled={updateSetting.isPending}>
+                    <Save className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              {(provider as string) !== 'anthropic' && (
+                <p className="text-xs text-muted-foreground">Switch to Anthropic provider to use this model</p>
               )}
             </div>
           </div>
