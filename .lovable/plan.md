@@ -1,55 +1,19 @@
 
 
-## Revised Plan: Security Hardening + Case Creation Guide
+## Plan: Simplify AI Provider Selection UI
 
-### Status: ✅ Implemented
+### What changes
+Replace the large provider card grid (with "Active" badges) with a streamlined inline selection built into the existing model dropdown row.
 
----
+### Implementation (single file: `src/components/admin/AISettingsPanel.tsx`)
 
-### What was implemented
+1. **Remove the provider card grid** (lines 217-255) — the entire `AI Provider` label, the `grid` of clickable cards, and the "Save Provider" button.
 
-#### Priority 1: Server-Side Security Hardening
+2. **Restyle the 3 model dropdowns** (lines 258-322) to act as both provider selector and model picker:
+   - Each column header gets a clickable area that sets `ai_provider` to that provider (click the column to switch)
+   - The active provider's column gets: a `✓` checkmark icon next to the label, a highlighted border/background color (`border-primary bg-primary/5`), and the dropdown is enabled
+   - Inactive providers keep a muted style with disabled dropdown and a subtle "Click to switch" hint instead of "Switch to X provider"
+   - Add the "Save Provider" button below the row (only shown when `ai_provider` is in `pendingChanges`)
 
-1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
-   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
-   - Same pattern as existing `detectPromptInjection()`
+3. **Keep the Provider Notes section** unchanged (lines 324-336).
 
-2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
-   - 2000-character length limit on `userMessage` (400 error)
-   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
-   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
-   - Both checks skip `BEGIN_CASE` messages
-
-3. **Output validation after AI response parsing**
-   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
-   - Injection in output → replaced with safe redirect fallback
-
-4. **System prompt Rule #7: LANGUAGE & CONDUCT**
-   - Instructs AI examiner to redirect if student uses profanity/abuse
-
-5. **Client-side length limit in `src/hooks/useAICase.ts`**
-   - Messages over 2000 characters rejected with toast before sending
-
-#### Priority 2: Admin Case Creation Guide
-
-6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-   - "How to create a good case" section listing required and recommended fields
-   - Guidance on writing effective scenarios and learning objectives
-
----
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
-
-### What stays unchanged
-- AI examiner behavior (Learning Mode / Exam Mode)
-- Cohort Intelligence system
-- Streaming responses
-- Session recovery
-- Examiner avatars
