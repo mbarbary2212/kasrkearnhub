@@ -1,7 +1,9 @@
 import { Component, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import * as Sentry from '@sentry/react';
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDiagnostic } from '@/lib/stabilityGuards';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   children: ReactNode;
@@ -96,6 +98,26 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+}
+
+export function SentryTestButton() {
+  if (import.meta.env.DEV) return null;
+
+  const handleTest = () => {
+    const err = new Error('Sentry test error — safe to ignore');
+    Sentry.captureException(err);
+    toast({ title: 'Test error sent to Sentry', description: 'Check your Sentry dashboard in ~1 minute.' });
+  };
+
+  return (
+    <button
+      onClick={handleTest}
+      className="fixed bottom-4 left-4 z-50 flex items-center gap-1.5 rounded-md bg-destructive/90 px-3 py-1.5 text-xs font-medium text-destructive-foreground shadow-lg hover:bg-destructive transition-colors"
+    >
+      <Bug className="w-3.5 h-3.5" />
+      Test Sentry
+    </button>
+  );
 }
 
 export default GlobalErrorBoundary;
