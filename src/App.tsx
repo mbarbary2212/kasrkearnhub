@@ -86,7 +86,7 @@ const App = () => {
                <BadgeCelebration />
                <AskCoachPanel />
                <AudioMiniPlayer />
-               <SentryTestButton />
+               
             <BrowserRouter>
               <ScrollToTop />
               <Routes>
