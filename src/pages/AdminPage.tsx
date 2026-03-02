@@ -103,83 +103,151 @@ function PlatformSettingsTab() {
   };
 
   return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Platform Settings
+          </CardTitle>
+          <CardDescription>
+            Configure global platform behavior.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
+                Hide Empty Practice Tabs
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
+                Admins always see all tabs.
+              </p>
+            </div>
+            <Switch
+              id="hide-empty-tabs"
+              checked={hideEmptyTabs ?? false}
+              onCheckedChange={handleToggle}
+              disabled={isLoading || upsertSetting.isPending}
+            />
+          </div>
+
+          {/* Home Mind Map Settings - Platform/Super Admin */}
+          <HomeMindMapSettings />
+
+          {/* Archive Legacy OSCE - Super Admin Only */}
+          {isSuperAdmin && (
+            <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                  <Label className="text-base font-medium text-destructive">
+                    Archive Legacy OSCE Questions
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This will archive all old-format OSCE/Practical questions that don't fit the new Image + History + 5 T/F format.
+                  This is a one-time migration action.
+                </p>
+                <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="mt-2">
+                      Archive Legacy OSCE Questions
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Archive Legacy OSCE Questions?</DialogTitle>
+                      <DialogDescription>
+                        This will soft-delete ALL existing Practical/OSCE questions in the old format.
+                        They will be hidden from students and admin views. This action is logged in the audit trail.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setArchiveConfirmOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleArchiveLegacy}
+                        disabled={archiveLegacyOsce.isPending}
+                      >
+                        {archiveLegacyOsce.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Archive All Legacy OSCE
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Email Notification Preferences */}
+      <EmailNotificationPreferences />
+    </div>
+  );
+}
+
+function EmailNotificationPreferences() {
+  const { data: prefs, isLoading } = useEmailPreferences();
+  const updatePrefs = useUpdateEmailPreferences();
+
+  const handleToggle = (key: string, checked: boolean) => {
+    updatePrefs.mutate(
+      { [key]: checked },
+      {
+        onSuccess: () => toast.success('Email preference updated'),
+        onError: () => toast.error('Failed to update preference'),
+      }
+    );
+  };
+
+  const toggleItems = [
+    { key: 'notify_access_requests', label: 'Access Requests', description: 'When a new user requests access to the platform' },
+    { key: 'notify_new_feedback', label: 'Feedback Received', description: 'When a student submits feedback on content' },
+    { key: 'notify_new_inquiries', label: 'Student Inquiries', description: 'When a student submits a new inquiry' },
+    { key: 'notify_ticket_assigned', label: 'Ticket Assigned to You', description: 'When a support ticket is assigned to you' },
+    { key: 'notify_new_content', label: 'New Content Uploads', description: 'When other admins create or modify content (can be noisy)' },
+  ];
+
+  return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Platform Settings
+          <Mail className="w-5 h-5" />
+          Email Notifications
         </CardTitle>
         <CardDescription>
-          Configure global platform behavior.
+          Choose which events send you an email alert. Emails are sent only for selected events.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-1">
-            <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
-              Hide Empty Practice Tabs
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
-              Admins always see all tabs.
-            </p>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
-          <Switch
-            id="hide-empty-tabs"
-            checked={hideEmptyTabs ?? false}
-            onCheckedChange={handleToggle}
-            disabled={isLoading || upsertSetting.isPending}
-          />
-        </div>
-
-        {/* Home Mind Map Settings - Platform/Super Admin */}
-        <HomeMindMapSettings />
-
-        {/* Archive Legacy OSCE - Super Admin Only */}
-        {isSuperAdmin && (
-          <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Trash2 className="w-4 h-4 text-destructive" />
-                <Label className="text-base font-medium text-destructive">
-                  Archive Legacy OSCE Questions
+        ) : (
+          toggleItems.map(item => (
+            <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label htmlFor={item.key} className="text-base font-medium">
+                  {item.label}
                 </Label>
+                <p className="text-sm text-muted-foreground">
+                  {item.description}
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                This will archive all old-format OSCE/Practical questions that don't fit the new Image + History + 5 T/F format.
-                This is a one-time migration action.
-              </p>
-              <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="mt-2">
-                    Archive Legacy OSCE Questions
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Archive Legacy OSCE Questions?</DialogTitle>
-                    <DialogDescription>
-                      This will soft-delete ALL existing Practical/OSCE questions in the old format.
-                      They will be hidden from students and admin views. This action is logged in the audit trail.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setArchiveConfirmOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      onClick={handleArchiveLegacy}
-                      disabled={archiveLegacyOsce.isPending}
-                    >
-                      {archiveLegacyOsce.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Archive All Legacy OSCE
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Switch
+                id={item.key}
+                checked={(prefs as Record<string, unknown>)?.[item.key] as boolean ?? false}
+                onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                disabled={updatePrefs.isPending}
+              />
             </div>
-          </div>
+          ))
         )}
       </CardContent>
     </Card>
