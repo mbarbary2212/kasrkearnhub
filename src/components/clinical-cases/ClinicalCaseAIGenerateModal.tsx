@@ -199,7 +199,7 @@ export function ClinicalCaseAIGenerateModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={() => {}}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) attemptClose(); }}>
         <DialogContent
           className="max-w-3xl h-[80vh] flex flex-col overflow-hidden p-0"
           onEscapeKeyDown={(e) => {
