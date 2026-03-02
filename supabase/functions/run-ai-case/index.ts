@@ -345,13 +345,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch case data
-    const { data: caseData, error: caseError } = await supabase
-      .from("virtual_patient_cases")
-      .select("id, title, intro_text, learning_objectives, level, estimated_minutes, max_turns")
-      .eq("id", caseId)
-      .single();
+    // ── Parallelize READ queries after auth ──
+    const [caseResult, historyResult, settings, overrides, cohortBlock] = await Promise.all([
+      supabase
+        .from("virtual_patient_cases")
+        .select("id, title, intro_text, learning_objectives, level, estimated_minutes, max_turns")
+        .eq("id", caseId)
+        .single(),
+      supabase
+        .from("ai_case_messages")
+        .select("role, content, turn_number, structured_data")
+        .eq("attempt_id", attemptId)
+        .order("turn_number", { ascending: true }),
+      getAISettings(supabase),
+      getContentTypeOverrides(supabase),
+      userMessage === "BEGIN_CASE" ? Promise.resolve("") : buildCohortBlock(supabase, caseId),
+    ]);
 
+    const { data: caseData, error: caseError } = caseResult;
     if (caseError || !caseData) {
       return new Response(JSON.stringify({ error: "Case not found" }), {
         status: 404,
@@ -360,15 +371,7 @@ Deno.serve(async (req) => {
     }
 
     const maxTurns = caseData.max_turns ?? MAX_TURNS_DEFAULT;
-
-    // Fetch conversation history (include structured_data for topic tracking)
-    const { data: messageHistory } = await supabase
-      .from("ai_case_messages")
-      .select("role, content, turn_number, structured_data")
-      .eq("attempt_id", attemptId)
-      .order("turn_number", { ascending: true });
-
-    const history = messageHistory ?? [];
+    const history = historyResult.data ?? [];
 
     // Count off-topic redirects
     const offTopicCount = history.filter(
@@ -378,7 +381,7 @@ Deno.serve(async (req) => {
     // Extract topics already probed for no-repeat-topic rule
     const probedTopics = extractProbedTopics(history);
 
-    // Save user message
+    // Save user message (sequential — must complete before AI call)
     await supabase.from("ai_case_messages").insert({
       attempt_id: attemptId,
       role: "user",
@@ -403,15 +406,15 @@ Student response: ${userMessage}`;
 
     conversationMessages.push({ role: "user", content: contextNote });
 
-    // Resolve AI provider from settings
-    const settings = await getAISettings(supabase);
-    const overrides = await getContentTypeOverrides(supabase);
+    // Resolve AI provider
     const model = getModelForContentType(settings, "ai_case", overrides);
     const provider = getAIProvider(settings);
     const resolvedProvider = { ...provider, model };
 
-    // Build cohort intelligence block
-    const cohortBlock = await buildCohortBlock(supabase, caseId);
+    // Dynamic token budget
+    const isFinalTurn = turnNumber + 1 >= maxTurns;
+    const maxTokensBudget = isFinalTurn ? 4096 : 800;
+
     const systemPrompt = buildSystemPrompt(caseData, cohortBlock, hintMode === true);
 
     // ── Streaming path (Lovable gateway) or non-streaming fallback ──
