@@ -38,64 +38,54 @@ export function useAuth() {
     isLoading: true,
   });
 
+  // Deduplicate concurrent fetchUserData calls
+  const fetchInFlightRef = useRef<string | null>(null);
+
   const fetchUserData = useCallback(async (userId: string) => {
+    // Skip if already fetching for this user
+    if (fetchInFlightRef.current === userId) return;
+    fetchInFlightRef.current = userId;
+
     try {
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      // Parallel fetch: profile, role, and module assignments
+      const [profileResult, roleResult, moduleAdminResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+        supabase.from('module_admins').select('*').eq('user_id', userId),
+      ]);
 
-      // Fetch role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const profile = profileResult.data as Profile | null;
+      const role = (roleResult.data?.role as AppRole) || 'student';
+      const moduleAssignments = (moduleAdminResult.data as ModuleAdmin[]) || [];
 
-      // Fetch department assignments for department admins
+      // Conditional fetches based on role (only if needed)
       let departmentAssignments: DepartmentAdmin[] = [];
-      if (roleData?.role === 'department_admin') {
-        const { data: assignments } = await supabase
-          .from('department_admins')
-          .select('*')
-          .eq('user_id', userId);
-        departmentAssignments = (assignments as DepartmentAdmin[]) || [];
-      }
-
-      // Fetch topic assignments for topic admins
       let topicAssignments: TopicAdmin[] = [];
-      if (roleData?.role === 'topic_admin') {
-        const { data: assignments } = await supabase
-          .from('topic_admins')
-          .select('*')
-          .eq('user_id', userId);
-        topicAssignments = (assignments as TopicAdmin[]) || [];
-      }
 
-      // Fetch module assignments for module admins (check for any user who might have module assignments)
-      let moduleAssignments: ModuleAdmin[] = [];
-      const { data: moduleAdminData } = await supabase
-        .from('module_admins')
-        .select('*')
-        .eq('user_id', userId);
-      moduleAssignments = (moduleAdminData as ModuleAdmin[]) || [];
+      if (role === 'department_admin') {
+        const { data } = await supabase.from('department_admins').select('*').eq('user_id', userId);
+        departmentAssignments = (data as DepartmentAdmin[]) || [];
+      } else if (role === 'topic_admin') {
+        const { data } = await supabase.from('topic_admins').select('*').eq('user_id', userId);
+        topicAssignments = (data as TopicAdmin[]) || [];
+      }
 
       setState(prev => ({
         ...prev,
-        profile: profile as Profile | null,
-        role: (roleData?.role as AppRole) || 'student',
+        profile,
+        role,
         departmentAssignments,
         topicAssignments,
         moduleAssignments,
         isLoading: false,
       }));
 
-      Sentry.setUser({ id: userId, role: roleData?.role ?? undefined });
+      Sentry.setUser({ id: userId, role: roleResult.data?.role ?? undefined });
     } catch (error) {
       console.error('Error fetching user data:', error);
       setState(prev => ({ ...prev, isLoading: false }));
+    } finally {
+      fetchInFlightRef.current = null;
     }
   }, []);
 
