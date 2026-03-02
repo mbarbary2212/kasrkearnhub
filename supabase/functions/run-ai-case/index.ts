@@ -439,7 +439,7 @@ Student response: ${userMessage}`;
           model: resolvedProvider.model,
           messages: [{ role: "system", content: systemPrompt }, ...conversationMessages],
           temperature: 0.5,
-          max_tokens: 4096,
+          max_tokens: maxTokensBudget,
           stream: true,
         }),
       });
