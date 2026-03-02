@@ -1,55 +1,51 @@
 
 
-## Revised Plan: Security Hardening + Case Creation Guide
+## Speed Up `run-ai-case` — Implementation Plan
 
-### Status: ✅ Implemented
+Three minimal changes to `supabase/functions/run-ai-case/index.ts`. No other files touched.
 
----
+### Change 1: Parallelize READ queries (lines 348-414)
 
-### What was implemented
+Currently sequential:
+1. Case data fetch (L348-360)
+2. Message history fetch (L365-371)
+3. User message INSERT (L382-387) — **stays sequential**
+4. AI settings (L407)
+5. Content overrides (L408)
+6. Cohort block (L414)
 
-#### Priority 1: Server-Side Security Hardening
+**After auth + attempt check (L335-346), run a `Promise.all` with:**
+- Case data fetch
+- Message history fetch
+- `getAISettings(supabase)`
+- `getContentTypeOverrides(supabase)`
+- Cohort block — **conditional**: skip (return `""`) when `userMessage === "BEGIN_CASE"`
 
-1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
-   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
-   - Same pattern as existing `detectPromptInjection()`
+Then sequentially: insert user message, build prompt, call AI.
 
-2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
-   - 2000-character length limit on `userMessage` (400 error)
-   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
-   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
-   - Both checks skip `BEGIN_CASE` messages
+### Change 2: Conditional cohort skip (line 414)
 
-3. **Output validation after AI response parsing**
-   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
-   - Injection in output → replaced with safe redirect fallback
+Replace `buildCohortBlock(supabase, caseId)` in the `Promise.all` with:
+```
+userMessage === "BEGIN_CASE" ? Promise.resolve("") : buildCohortBlock(supabase, caseId)
+```
 
-4. **System prompt Rule #7: LANGUAGE & CONDUCT**
-   - Instructs AI examiner to redirect if student uses profanity/abuse
+### Change 3: Dynamic `max_tokens` (lines 439 and 541)
 
-5. **Client-side length limit in `src/hooks/useAICase.ts`**
-   - Messages over 2000 characters rejected with toast before sending
+Compute after `maxTurns` is known:
+```
+const isFinalTurn = turnNumber + 1 >= maxTurns;
+const maxTokensBudget = isFinalTurn ? 4096 : 800;
+```
 
-#### Priority 2: Admin Case Creation Guide
-
-6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-   - "How to create a good case" section listing required and recommended fields
-   - Guidance on writing effective scenarios and learning objectives
-
----
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+Apply `maxTokensBudget` at:
+- **Streaming path** (L439): `max_tokens: maxTokensBudget`
+- **Non-streaming path** (L541): `maxTokens: maxTokensBudget`
 
 ### What stays unchanged
-- AI examiner behavior (Learning Mode / Exam Mode)
-- Cohort Intelligence system
-- Streaming responses
-- Session recovery
-- Examiner avatars
+- All prompt templates and content
+- Response shape, status codes, SSE protocol
+- Error handling patterns
+- Function names, types, file structure
+- User message INSERT remains sequential before AI call
+
