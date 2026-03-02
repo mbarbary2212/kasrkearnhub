@@ -44,7 +44,7 @@ interface ParsedItem {
   title: string;
   content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent | GuidedExplanationContent;
   sectionName?: string;
-  sectionNumber?: number;
+  sectionNumber?: string;
   error?: string;
 }
 
