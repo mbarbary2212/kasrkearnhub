@@ -242,7 +242,7 @@ function EmailNotificationPreferences() {
               </div>
               <Switch
                 id={item.key}
-                checked={(prefs as Record<string, unknown>)?.[item.key] as boolean ?? false}
+                checked={prefs ? (prefs as unknown as Record<string, unknown>)[item.key] as boolean : false}
                 onCheckedChange={(checked) => handleToggle(item.key, checked)}
                 disabled={updatePrefs.isPending}
               />
