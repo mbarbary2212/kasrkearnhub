@@ -30,6 +30,7 @@ import { CurriculumTab } from '@/components/admin/CurriculumTab';
 import { PDFLibraryTab } from '@/components/admin/PDFLibraryTab';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
+import { useEmailPreferences, useUpdateEmailPreferences } from '@/hooks/useEmailPreferences';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
