@@ -1,9 +1,7 @@
 import { Component, ReactNode } from 'react';
-import * as Sentry from '@sentry/react';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDiagnostic } from '@/lib/stabilityGuards';
-import { toast } from '@/hooks/use-toast';
 
 interface Props {
   children: ReactNode;
