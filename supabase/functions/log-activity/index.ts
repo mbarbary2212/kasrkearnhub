@@ -165,68 +165,63 @@ Deno.serve(async (req) => {
     }
 
     // Notify super_admin and platform_admin users about the content change
-    try {
-      // Get all super_admin and platform_admin users
-      const { data: superAdmins } = await serviceClient
-        .from('user_roles')
-        .select('user_id')
-        .in('role', ['super_admin', 'platform_admin']);
+    // Skip notifications for bulk_upload actions to prevent flooding (the activity log entry is sufficient)
+    if (!payload.action.startsWith('bulk_upload')) {
+      try {
+        const { data: superAdmins } = await serviceClient
+          .from('user_roles')
+          .select('user_id')
+          .in('role', ['super_admin', 'platform_admin']);
 
-      if (superAdmins && superAdmins.length > 0) {
-        // Get actor name for notification
-        const { data: actorProfile } = await serviceClient
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', user.id)
-          .single();
+        if (superAdmins && superAdmins.length > 0) {
+          const { data: actorProfile } = await serviceClient
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', user.id)
+            .single();
 
-        const actorName = actorProfile?.full_name || actorProfile?.email?.split('@')[0] || 'An admin';
-        const actionLabel = ACTION_LABELS[payload.action] || payload.action;
+          const actorName = actorProfile?.full_name || actorProfile?.email?.split('@')[0] || 'An admin';
+          const actionLabel = ACTION_LABELS[payload.action] || payload.action;
 
-        // Determine notification title based on action type
-        let notificationTitle = 'Content Modified';
-        if (payload.action.includes('created')) {
-          notificationTitle = 'Content Created';
-        } else if (payload.action.includes('updated')) {
-          notificationTitle = 'Content Updated';
-        } else if (payload.action.includes('deleted')) {
-          notificationTitle = 'Content Deleted';
-        } else if (payload.action.includes('bulk_upload')) {
-          notificationTitle = 'Bulk Upload Completed';
-        }
+          let notificationTitle = 'Content Modified';
+          if (payload.action.includes('created')) {
+            notificationTitle = 'Content Created';
+          } else if (payload.action.includes('updated')) {
+            notificationTitle = 'Content Updated';
+          } else if (payload.action.includes('deleted')) {
+            notificationTitle = 'Content Deleted';
+          }
 
-        // Create notifications for each super admin (except the actor)
-        const notifications = superAdmins
-          .filter(admin => admin.user_id !== user.id)
-          .map(admin => ({
-            recipient_id: admin.user_id,
-            type: 'content_activity',
-            title: notificationTitle,
-            message: `${actorName} ${actionLabel}`,
-            entity_type: 'activity_log',
-            entity_id: null,
-            metadata: {
-              action: payload.action,
-              entity_type: payload.entity_type,
-              actor_name: actorName,
-              actor_id: user.id,
-            },
-          }));
+          const notifications = superAdmins
+            .filter(admin => admin.user_id !== user.id)
+            .map(admin => ({
+              recipient_id: admin.user_id,
+              type: 'content_activity',
+              title: notificationTitle,
+              message: `${actorName} ${actionLabel}`,
+              entity_type: 'activity_log',
+              entity_id: null,
+              metadata: {
+                action: payload.action,
+                entity_type: payload.entity_type,
+                actor_name: actorName,
+                actor_id: user.id,
+              },
+            }));
 
-        if (notifications.length > 0) {
-          const { error: notifyError } = await serviceClient
-            .from('admin_notifications')
-            .insert(notifications);
+          if (notifications.length > 0) {
+            const { error: notifyError } = await serviceClient
+              .from('admin_notifications')
+              .insert(notifications);
 
-          if (notifyError) {
-            console.error('Failed to create notifications:', notifyError);
-            // Don't fail the request, just log the error
+            if (notifyError) {
+              console.error('Failed to create notifications:', notifyError);
+            }
           }
         }
+      } catch (notifyErr) {
+        console.error('Error creating notifications:', notifyErr);
       }
-    } catch (notifyErr) {
-      console.error('Error creating notifications:', notifyErr);
-      // Don't fail the request, notifications are secondary
     }
 
     return new Response(

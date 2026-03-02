@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Clock, Megaphone, X, Activity, MessageCircle, HelpCircle, AlertTriangle, UserCheck } from 'lucide-react';
+import { Bell, CheckCheck, Clock, Megaphone, X, Activity, MessageCircle, HelpCircle, AlertTriangle, UserCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,12 +11,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   useAdminNotifications,
   useUnreadNotificationCount,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
-  AdminNotification,
+  useClearOldNotifications,
+  groupNotifications,
+  type AdminNotification,
+  type GroupedNotification,
 } from '@/hooks/useAdminNotifications';
 
 interface AdminNotificationsPopoverProps {
@@ -30,36 +34,68 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
   const { data: unreadCount } = useUnreadNotificationCount();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const clearOld = useClearOldNotifications();
 
-  const handleNotificationClick = (notification: AdminNotification) => {
-    if (!notification.is_read) {
-      markRead.mutate(notification.id);
+  const grouped = notifications ? groupNotifications(notifications) : [];
+
+  const handleGroupClick = (group: GroupedNotification) => {
+    // Mark all unread in group as read
+    group.notifications.forEach(n => {
+      if (!n.is_read) markRead.mutate(n.id);
+    });
+
+    const notification = group.latest;
+    navigateForType(notification);
+  };
+
+  const navigateForType = (notification: AdminNotification) => {
+    switch (notification.type) {
+      case 'new_access_request':
+        navigate('/admin?tab=accounts');
+        setOpen(false);
+        break;
+      case 'content_activity':
+        navigate('/admin?tab=activity-log');
+        setOpen(false);
+        break;
+      case 'new_inquiry':
+      case 'inquiry_reply':
+        navigate('/admin?tab=inbox');
+        setOpen(false);
+        break;
+      case 'new_feedback':
+      case 'feedback_reply':
+        navigate('/admin?tab=inbox');
+        setOpen(false);
+        break;
+      case 'ticket_assigned':
+        navigate('/admin?tab=inbox');
+        setOpen(false);
+        break;
+      case 'announcement_pending_approval':
+      case 'announcement_approved':
+      case 'announcement_rejected':
+        if (notification.entity_type === 'announcement' && notification.entity_id && onNavigateToAnnouncement) {
+          onNavigateToAnnouncement(notification.entity_id);
+        }
+        setOpen(false);
+        break;
+      default:
+        setOpen(false);
     }
-    
-    // Navigate based on notification type
-    if (notification.type === 'content_activity') {
-      navigate('/admin/activity-log');
-      setOpen(false);
-    } else if (notification.type === 'new_inquiry' || notification.type === 'inquiry_reply') {
-      // Navigate to admin inbox with inquiry filter
-      navigate('/admin/inbox?tab=inquiries');
-      setOpen(false);
-    } else if (notification.type === 'new_feedback' || notification.type === 'feedback_reply') {
-      // Navigate to admin inbox with feedback filter
-      navigate('/admin/inbox?tab=feedback');
-      setOpen(false);
-    } else if (notification.type === 'ticket_assigned') {
-      // Navigate to admin inbox
-      navigate('/admin/inbox');
-      setOpen(false);
-    } else if (notification.entity_type === 'announcement' && notification.entity_id && onNavigateToAnnouncement) {
-      onNavigateToAnnouncement(notification.entity_id);
-      setOpen(false);
-    }
+  };
+
+  const handleClearOld = () => {
+    clearOld.mutate(undefined, {
+      onSuccess: () => toast.success('Old read notifications cleared'),
+      onError: () => toast.error('Failed to clear old notifications'),
+    });
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'new_access_request':
+        return <UserCheck className="w-4 h-4 text-emerald-500" />;
       case 'announcement_pending_approval':
         return <Clock className="w-4 h-4 text-warning" />;
       case 'announcement_approved':
@@ -85,6 +121,8 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
   const getNotificationBg = (type: string, isRead: boolean) => {
     if (isRead) return 'bg-muted/30';
     switch (type) {
+      case 'new_access_request':
+        return 'bg-emerald-500/10 border-l-2 border-emerald-500';
       case 'announcement_pending_approval':
         return 'bg-warning/10 border-l-2 border-warning';
       case 'announcement_approved':
@@ -107,12 +145,14 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
     }
   };
 
+  const hasUnread = (unreadCount ?? 0) > 0;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
-          {(unreadCount ?? 0) > 0 && (
+          {hasUnread && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
@@ -125,63 +165,124 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h4 className="font-semibold">Notifications</h4>
-          {(unreadCount ?? 0) > 0 && (
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs"
-              onClick={() => markAllRead.mutate()}
+              className="text-xs h-7 px-2"
+              onClick={handleClearOld}
+              disabled={clearOld.isPending}
+              title="Clear read notifications older than 7 days"
             >
-              Mark all read
+              <Trash2 className="w-3 h-3 mr-1" />
+              Clear old
             </Button>
-          )}
+            {hasUnread && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 px-2"
+                onClick={() => markAllRead.mutate()}
+              >
+                Mark all read
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="h-[400px]">
           {isLoading ? (
             <div className="p-4 text-center text-muted-foreground">
               Loading...
             </div>
-          ) : notifications?.length === 0 ? (
+          ) : grouped.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>No notifications</p>
             </div>
+          ) : !hasUnread ? (
+            <div>
+              <div className="px-4 py-2 text-center">
+                <p className="text-sm text-muted-foreground">✓ All caught up</p>
+              </div>
+              <div className="divide-y">
+                {grouped.map((group, idx) => (
+                  <GroupedNotificationItem
+                    key={`${group.latest.id}-${idx}`}
+                    group={group}
+                    onClick={() => handleGroupClick(group)}
+                    getIcon={getNotificationIcon}
+                    getBg={getNotificationBg}
+                  />
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="divide-y">
-              {notifications?.map((notification) => (
-                <button
-                  key={notification.id}
-                  className={cn(
-                    'w-full text-left p-4 hover:bg-muted/50 transition-colors',
-                    getNotificationBg(notification.type, notification.is_read)
-                  )}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        'text-sm',
-                        !notification.is_read && 'font-medium'
-                      )}>
-                        {notification.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                </button>
+              {grouped.map((group, idx) => (
+                <GroupedNotificationItem
+                  key={`${group.latest.id}-${idx}`}
+                  group={group}
+                  onClick={() => handleGroupClick(group)}
+                  getIcon={getNotificationIcon}
+                  getBg={getNotificationBg}
+                />
               ))}
             </div>
           )}
         </ScrollArea>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function GroupedNotificationItem({
+  group,
+  onClick,
+  getIcon,
+  getBg,
+}: {
+  group: GroupedNotification;
+  onClick: () => void;
+  getIcon: (type: string) => React.ReactNode;
+  getBg: (type: string, isRead: boolean) => string;
+}) {
+  const { latest, count } = group;
+  const allRead = group.notifications.every(n => n.is_read);
+
+  return (
+    <button
+      className={cn(
+        'w-full text-left p-4 hover:bg-muted/50 transition-colors',
+        getBg(latest.type, allRead)
+      )}
+      onClick={onClick}
+    >
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 mt-1">
+          {getIcon(latest.type)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={cn('text-sm', !allRead && 'font-medium')}>
+              {latest.title}
+            </p>
+            {count > 1 && (
+              <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                ×{count}
+              </Badge>
+            )}
+            {!allRead && (
+              <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            {latest.message}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {formatDistanceToNow(new Date(latest.created_at), { addSuffix: true })}
+          </p>
+        </div>
+      </div>
+    </button>
   );
 }
