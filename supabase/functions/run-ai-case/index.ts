@@ -541,7 +541,7 @@ Student response: ${userMessage}`;
     } else {
       // ── Non-streaming fallback (Gemini / Anthropic) — still returns SSE format ──
       const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
-        temperature: 0.5, maxTokens: 4096,
+        temperature: 0.5, maxTokens: maxTokensBudget,
       });
 
       if (!aiResult.success) {
