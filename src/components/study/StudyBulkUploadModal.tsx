@@ -238,7 +238,7 @@ export function StudyBulkUploadModal({
           content: item.item.content,
           section_id: sectionId,
           original_section_name: item.item.sectionName || null,
-          original_section_number: item.item.sectionNumber != null ? String(item.item.sectionNumber) : null,
+          original_section_number: item.item.sectionNumber || null,
         };
       });
 
