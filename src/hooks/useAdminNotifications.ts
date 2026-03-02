@@ -16,6 +16,59 @@ export interface AdminNotification {
   created_at: string;
 }
 
+// Priority types that should appear first when unread
+const PRIORITY_TYPES = ['new_access_request', 'ticket_assigned'];
+
+function sortNotifications(notifications: AdminNotification[]): AdminNotification[] {
+  return [...notifications].sort((a, b) => {
+    // Unread first
+    if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
+    // Among unread, priority types first
+    if (!a.is_read && !b.is_read) {
+      const aPriority = PRIORITY_TYPES.includes(a.type);
+      const bPriority = PRIORITY_TYPES.includes(b.type);
+      if (aPriority !== bPriority) return aPriority ? -1 : 1;
+    }
+    // Then newest first
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+export interface GroupedNotification {
+  notifications: AdminNotification[];
+  count: number;
+  latest: AdminNotification;
+}
+
+export function groupNotifications(notifications: AdminNotification[]): GroupedNotification[] {
+  const sorted = sortNotifications(notifications);
+  const groups: GroupedNotification[] = [];
+
+  for (const n of sorted) {
+    // Try to find an existing group with same type+title within 60s
+    const existingGroup = groups.find(g => {
+      if (g.latest.type !== n.type || g.latest.title !== n.title) return false;
+      const timeDiff = Math.abs(
+        new Date(g.latest.created_at).getTime() - new Date(n.created_at).getTime()
+      );
+      return timeDiff <= 60_000;
+    });
+
+    if (existingGroup) {
+      existingGroup.notifications.push(n);
+      existingGroup.count++;
+      // Keep latest as the most recent
+      if (new Date(n.created_at) > new Date(existingGroup.latest.created_at)) {
+        existingGroup.latest = n;
+      }
+    } else {
+      groups.push({ notifications: [n], count: 1, latest: n });
+    }
+  }
+
+  return groups;
+}
+
 export function useAdminNotifications() {
   const { user } = useAuthContext();
 
@@ -35,7 +88,7 @@ export function useAdminNotifications() {
       return data as AdminNotification[];
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 }
 
@@ -94,6 +147,33 @@ export function useMarkAllNotificationsRead() {
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('recipient_id', user.id)
         .eq('is_read', false);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-notifications', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-notifications-count', user?.id] });
+    },
+  });
+}
+
+export function useClearOldNotifications() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { error } = await supabase
+        .from('admin_notifications')
+        .delete()
+        .eq('recipient_id', user.id)
+        .eq('is_read', true)
+        .lt('created_at', sevenDaysAgo.toISOString());
 
       if (error) throw error;
     },

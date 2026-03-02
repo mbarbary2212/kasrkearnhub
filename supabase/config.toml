@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.run-ai-case]
 verify_jwt = false
+
+[functions.send-admin-email]
+verify_jwt = false

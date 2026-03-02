@@ -225,6 +225,42 @@ export type Database = {
           },
         ]
       }
+      admin_email_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          notify_access_requests: boolean
+          notify_new_content: boolean
+          notify_new_feedback: boolean
+          notify_new_inquiries: boolean
+          notify_ticket_assigned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_access_requests?: boolean
+          notify_new_content?: boolean
+          notify_new_feedback?: boolean
+          notify_new_inquiries?: boolean
+          notify_ticket_assigned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_access_requests?: boolean
+          notify_new_content?: boolean
+          notify_new_feedback?: boolean
+          notify_new_inquiries?: boolean
+          notify_ticket_assigned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_help_files: {
         Row: {
           category: string
