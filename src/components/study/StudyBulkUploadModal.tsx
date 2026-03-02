@@ -44,7 +44,7 @@ interface ParsedItem {
   title: string;
   content: FlashcardContent | TableContent | AlgorithmContent | ExamTipContent | GuidedExplanationContent;
   sectionName?: string;
-  sectionNumber?: number;
+  sectionNumber?: string;
   error?: string;
 }
 
@@ -238,7 +238,7 @@ export function StudyBulkUploadModal({
           content: item.item.content,
           section_id: sectionId,
           original_section_name: item.item.sectionName || null,
-          original_section_number: item.item.sectionNumber != null ? String(item.item.sectionNumber) : null,
+          original_section_number: item.item.sectionNumber || null,
         };
       });
 
@@ -438,16 +438,16 @@ function parseLineByType(
   }
   
   // Extract section info - check header mapping first, then fall back to last columns
-  const getSectionInfo = (): { sectionName?: string; sectionNumber?: number } => {
+  const getSectionInfo = (): { sectionName?: string; sectionNumber?: string } => {
     if (headerMapping) {
       const sectionNameIdx = headerMapping['section_name'];
       const sectionNumIdx = headerMapping['section_number'];
       const sectionName = sectionNameIdx !== undefined ? values[sectionNameIdx]?.trim() : undefined;
       const sectionNumRaw = sectionNumIdx !== undefined ? values[sectionNumIdx]?.trim() : undefined;
-      const sectionNumber = sectionNumRaw ? parseInt(sectionNumRaw, 10) : undefined;
+      const sectionNumber = sectionNumRaw || undefined;
       return { 
         sectionName: sectionName || undefined, 
-        sectionNumber: !isNaN(sectionNumber as number) ? sectionNumber : undefined 
+        sectionNumber,
       };
     }
     return {};
