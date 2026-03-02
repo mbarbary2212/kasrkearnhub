@@ -11,7 +11,7 @@ import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
-import { GlobalErrorBoundary, SentryTestButton } from "@/components/GlobalErrorBoundary";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { AskCoachPanel } from "@/components/coach";
 import { AudioMiniPlayer } from "@/components/audio";
 import { ScrollToTop } from "@/components/ScrollToTop";
