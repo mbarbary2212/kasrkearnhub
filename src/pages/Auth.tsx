@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { AccessRequestForm } from '@/components/auth/AccessRequestForm';
