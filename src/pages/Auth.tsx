@@ -634,6 +634,19 @@ export default function Auth() {
               </Button>
             </div>
 
+            {/* Sentry Test Button – remove after verifying */}
+            {import.meta.env.DEV === false && (
+              <div className="mt-4 pt-4 border-t text-center">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { throw new Error("Sentry frontend test error"); }}
+                >
+                  Test Sentry Error
+                </Button>
+              </div>
+            )}
+
           </CardContent>
         </Card>
       </div>
