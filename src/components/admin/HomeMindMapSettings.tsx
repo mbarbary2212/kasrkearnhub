@@ -32,6 +32,7 @@ function MindMapVersionEditor({ audience, label }: { audience: 'student' | 'admi
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (setting) {
