@@ -1,55 +1,44 @@
 
 
-## Revised Plan: Security Hardening + Case Creation Guide
+## Fix: Make Gemini & Anthropic Reliable (No Lovable Dependency)
 
-### Status: ✅ Implemented
+You're right — once the college takes over, Lovable credits won't be available. The fix needs to work purely with Gemini and Anthropic, which are the providers your admins will use.
 
----
+### Why it fails now
 
-### What was implemented
+- **Gemini**: Google returns `503 (high demand)` — your code tries once and gives up immediately
+- **Anthropic**: Returns `400 (insufficient credits)` — this is a billing issue on your Anthropic account, not a code bug. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
 
-#### Priority 1: Server-Side Security Hardening
+### Plan: Retry + Cross-Provider Fallback (No Lovable)
 
-1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
-   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
-   - Same pattern as existing `detectPromptInjection()`
+#### 1. Add retry with backoff in `_shared/ai-provider.ts`
 
-2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
-   - 2000-character length limit on `userMessage` (400 error)
-   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
-   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
-   - Both checks skip `BEGIN_CASE` messages
+In `callGeminiWithMessages` and `callGeminiDirect`: wrap the fetch in a retry loop — up to 2 retries with 1s/2s delay for 503 and 429 errors. Same for `callAnthropicWithMessages` on 503/529.
 
-3. **Output validation after AI response parsing**
-   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
-   - Injection in output → replaced with safe redirect fallback
+#### 2. Add Gemini ↔ Anthropic cross-fallback in `run-ai-case/index.ts`
 
-4. **System prompt Rule #7: LANGUAGE & CONDUCT**
-   - Instructs AI examiner to redirect if student uses profanity/abuse
+In the non-streaming path (line 547-601), if the primary provider fails with a retryable error (503/429), automatically try the other direct provider before giving up:
 
-5. **Client-side length limit in `src/hooks/useAICase.ts`**
-   - Messages over 2000 characters rejected with toast before sending
+```text
+Primary (e.g. Gemini) → retry twice
+  ↓ still fails
+Fallback to Anthropic (or vice versa)
+  ↓ still fails
+Return error to student
+```
 
-#### Priority 2: Admin Case Creation Guide
+This means if the admin sets Gemini as default but Google is overloaded, it silently tries Anthropic. If Anthropic is default but has billing issues, it tries Gemini. No Lovable dependency.
 
-6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
-   - "How to create a good case" section listing required and recommended fields
-   - Guidance on writing effective scenarios and learning objectives
-
----
+#### 3. Redeploy `run-ai-case`
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
-| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
-| `src/hooks/useAICase.ts` | 2000-char client-side limit |
-| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+| `supabase/functions/_shared/ai-provider.ts` | Add retry loop (2 attempts, exponential backoff) in Gemini and Anthropic `WithMessages` and `Direct` functions for 503/429 |
+| `supabase/functions/run-ai-case/index.ts` | After non-streaming call fails with 503/429, try the alternate direct provider (Gemini→Anthropic or Anthropic→Gemini) before returning error |
 
-### What stays unchanged
-- AI examiner behavior (Learning Mode / Exam Mode)
-- Cohort Intelligence system
-- Streaming responses
-- Session recovery
-- Examiner avatars
+### Important
+
+Your **Anthropic account has no credits** right now. The cross-fallback will help when one provider is down, but both providers need valid API keys and billing to serve as each other's backup. Top up your Anthropic balance so the fallback actually works.
+
