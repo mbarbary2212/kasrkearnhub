@@ -337,8 +337,36 @@ export async function loadAIRules(
 }
 
 /**
+ * Helper: retry-aware fetch for retryable status codes (503, 429)
+ * Returns the Response on success or the last failed Response after exhausting retries.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 2,
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options);
+    if (response.ok || (response.status !== 503 && response.status !== 429)) {
+      return response;
+    }
+    lastResponse = response;
+    // Consume body to avoid resource leak
+    await response.text();
+    if (attempt < maxRetries) {
+      const delayMs = (attempt + 1) * 1000; // 1s, 2s
+      console.warn(`Retryable ${response.status} on attempt ${attempt + 1}, waiting ${delayMs}ms...`);
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  return lastResponse!;
+}
+
+/**
  * Direct Google Gemini API call
  * Uses X-goog-api-key header (NOT URL param) for security
+ * Includes retry logic for 503/429 errors
  */
 async function callGeminiDirect(
   systemPrompt: string,
@@ -357,13 +385,13 @@ async function callGeminiDirect(
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-goog-api-key': googleApiKey,  // Secure header-based auth (NOT URL param)
+          'X-goog-api-key': googleApiKey,
         },
         body: JSON.stringify({
           contents: [{
@@ -381,7 +409,7 @@ async function callGeminiDirect(
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
           ],
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -390,6 +418,9 @@ async function callGeminiDirect(
       
       if (response.status === 429) {
         return { success: false, error: 'Gemini API rate limit exceeded. Please try again later.', status: 429 };
+      }
+      if (response.status === 503) {
+        return { success: false, error: 'Gemini API is experiencing high demand. Please try again later.', status: 503 };
       }
       if (response.status === 403) {
         return { success: false, error: 'Invalid Google API key or API not enabled.', status: 403 };
@@ -403,7 +434,6 @@ async function callGeminiDirect(
 
     const result = await response.json();
     
-    // Check for blocked content
     if (result.candidates?.[0]?.finishReason === 'SAFETY') {
       return { success: false, error: 'Content was blocked by Gemini safety filters.', status: 400 };
     }
