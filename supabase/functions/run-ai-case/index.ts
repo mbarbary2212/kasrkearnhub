@@ -1,4 +1,10 @@
+import * as Sentry from "https://deno.land/x/sentry@8.45.0/index.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+Sentry.init({
+  dsn: Deno.env.get("SENTRY_DSN"),
+  tracesSampleRate: 0.2,
+});
 import {
   getAISettings,
   getAIProvider,
