@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Download, Pencil, Trash2, Check, X } from 'lucide-react';
+import { FileText, Download, Pencil, Trash2, Check, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PdfViewerModal } from '@/components/content/PdfViewerModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,10 @@ export function SocraticDocumentCard({ doc, canManage, invalidateKey }: Socratic
   const [editTitle, setEditTitle] = useState(doc.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+
+  const fileUrl = doc.file_url || doc.external_url;
+  const isPdf = fileUrl?.toLowerCase().endsWith('.pdf') || fileUrl?.toLowerCase().includes('.pdf?');
 
   const handleSaveTitle = async () => {
     if (!editTitle.trim()) return;
@@ -60,7 +65,14 @@ export function SocraticDocumentCard({ doc, canManage, invalidateKey }: Socratic
     setDeleting(false);
   };
 
-  const downloadUrl = doc.file_url || doc.external_url;
+  const handleTitleClick = () => {
+    if (isEditing) return;
+    if (isPdf && fileUrl) {
+      setPdfViewerOpen(true);
+    } else if (fileUrl) {
+      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <>
@@ -84,14 +96,24 @@ export function SocraticDocumentCard({ doc, canManage, invalidateKey }: Socratic
             </div>
           ) : (
             <>
-              <p className="text-sm font-medium truncate">{doc.title}</p>
+              <p
+                className="text-sm font-medium truncate cursor-pointer hover:underline"
+                onClick={handleTitleClick}
+              >
+                {doc.title}
+              </p>
               {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
             </>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {downloadUrl && (
-            <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download>
+          {isPdf && fileUrl && !isEditing && (
+            <Button size="icon" variant="ghost" className="h-7 w-7" title="View PDF" onClick={() => setPdfViewerOpen(true)}>
+              <Eye className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {fileUrl && (
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download>
               <Button size="icon" variant="ghost" className="h-7 w-7" title="Download">
                 <Download className="w-3.5 h-3.5" />
               </Button>
@@ -109,6 +131,15 @@ export function SocraticDocumentCard({ doc, canManage, invalidateKey }: Socratic
           )}
         </div>
       </div>
+
+      {isPdf && fileUrl && (
+        <PdfViewerModal
+          open={pdfViewerOpen}
+          onOpenChange={setPdfViewerOpen}
+          pdfUrl={fileUrl}
+          title={doc.title}
+        />
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
