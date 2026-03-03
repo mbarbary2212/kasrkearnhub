@@ -545,10 +545,22 @@ Student response: ${userMessage}`;
       });
 
     } else {
-      // ── Non-streaming fallback (Gemini / Anthropic) — still returns SSE format ──
-      const aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
+      // ── Non-streaming fallback (Gemini / Anthropic) with cross-provider fallback ──
+      let aiResult = await callAIWithMessages(systemPrompt, conversationMessages, resolvedProvider, {
         temperature: 0.5, maxTokens: maxTokensBudget,
       });
+
+      // Cross-provider fallback: if primary fails with retryable/billing error, try the other provider
+      if (!aiResult.success && [503, 429, 402].includes(aiResult.status || 0)) {
+        const fallbackProviderName = resolvedProvider.name === 'gemini' ? 'anthropic' : 'gemini';
+        const fallbackModel = fallbackProviderName === 'gemini' ? settings.gemini_model : settings.anthropic_model;
+        console.warn(`Primary provider ${resolvedProvider.name} failed (${aiResult.status}), falling back to ${fallbackProviderName}`);
+        
+        const fallbackProvider = { name: fallbackProviderName as any, model: fallbackModel };
+        aiResult = await callAIWithMessages(systemPrompt, conversationMessages, fallbackProvider, {
+          temperature: 0.5, maxTokens: maxTokensBudget,
+        });
+      }
 
       if (!aiResult.success) {
         return new Response(JSON.stringify({ error: aiResult.error }), {
