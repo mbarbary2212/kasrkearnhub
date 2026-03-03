@@ -1,36 +1,55 @@
 
 
-## Three Issues to Fix
+## Revised Plan: Security Hardening + Case Creation Guide
 
-### 1. Add "Start Case" / Preview button for admins on the Cases admin list
-
-**File:** `src/components/clinical-cases/ClinicalCaseAdminList.tsx` (lines 270-287)
-
-Currently the admin card only shows "Edit Case" and a delete button. Add a "Preview Case" button (with a Play icon) that navigates to `/virtual-patient/{caseId}`, allowing admins to test/run the case just like a student would.
-
-The button will be added alongside the existing "Edit Case" button row, either as a second row or inline.
+### Status: ✅ Implemented
 
 ---
 
-### 2. Back arrow on ChapterPage — ensure it lands on the chapters list
+### What was implemented
 
-**File:** `src/pages/ChapterPage.tsx` (line 397)
+#### Priority 1: Server-Side Security Hardening
 
-Currently navigates to `/module/${moduleId}` which defaults to the "Learning" tab (chapters list). However, if the `ModulePage` ever persists tab state or if the user perceives it as going to the "whole module page," we can make the intent explicit by navigating to `/module/${moduleId}?section=learning` — ensuring the chapters list is always shown. This requires a small update to `ModulePage` to read the `section` query param on mount.
+1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
+   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
+   - Same pattern as existing `detectPromptInjection()`
 
-**File:** `src/pages/ModulePage.tsx` — read `section` from URL search params to initialize `activeSection`.
+2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
+   - 2000-character length limit on `userMessage` (400 error)
+   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
+   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
+   - Both checks skip `BEGIN_CASE` messages
+
+3. **Output validation after AI response parsing**
+   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
+   - Injection in output → replaced with safe redirect fallback
+
+4. **System prompt Rule #7: LANGUAGE & CONDUCT**
+   - Instructs AI examiner to redirect if student uses profanity/abuse
+
+5. **Client-side length limit in `src/hooks/useAICase.ts`**
+   - Messages over 2000 characters rejected with toast before sending
+
+#### Priority 2: Admin Case Creation Guide
+
+6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
+   - "How to create a good case" section listing required and recommended fields
+   - Guidance on writing effective scenarios and learning objectives
 
 ---
 
-### 3. Socratic Documents — open PDFs in-app instead of download-only
+### Files Changed
 
-**File:** `src/components/content/SocraticDocumentCard.tsx`
+| File | Change |
+|------|--------|
+| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
+| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
+| `src/hooks/useAICase.ts` | 2000-char client-side limit |
+| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
 
-Currently, clicking the download icon opens the file in a new tab for download. For PDF files, add a clickable document title/row that opens the existing `PdfViewerModal` in-app, matching the behavior of other resources in the app. The download button remains for downloading.
-
-Changes:
-- Import `PdfViewerModal` and add state for the viewer
-- Make the document title clickable — if the file URL ends in `.pdf`, open the `PdfViewerModal`; otherwise open in new tab
-- Add an "eye" icon button for explicit "View" action alongside download
-- Keep the existing download button as-is
-
+### What stays unchanged
+- AI examiner behavior (Learning Mode / Exam Mode)
+- Cohort Intelligence system
+- Streaming responses
+- Session recovery
+- Examiner avatars

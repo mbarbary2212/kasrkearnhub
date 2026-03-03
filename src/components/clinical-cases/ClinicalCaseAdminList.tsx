@@ -26,9 +26,11 @@ import {
   Sparkles,
   Upload,
   Download,
+  Play,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
+import { useNavigate } from 'react-router-dom';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
@@ -52,6 +54,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const containerId = chapterId || topicId;
   const { data: cases, isLoading } = useClinicalCases(moduleId, true);
   const deleteCase = useDeleteClinicalCase();
+  const navigate = useNavigate();
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
@@ -272,10 +275,19 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => navigate(`/virtual-patient/${clinicalCase.id}`)}
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Start Case
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
                     onClick={() => handleEditCase(clinicalCase)}
                   >
                     <Settings className="w-4 h-4 mr-1" />
-                    Edit Case
+                    Edit
                   </Button>
                   <Button
                     variant="outline"

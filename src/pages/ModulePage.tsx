@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,8 +32,13 @@ type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 export default function ModulePage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
-  const [activeSection, setActiveSection] = useState<ModuleSection>('learning');
+  const [activeSection, setActiveSection] = useState<ModuleSection>(() => {
+    const param = searchParams.get('section');
+    if (param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
+    return 'learning';
+  });
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
