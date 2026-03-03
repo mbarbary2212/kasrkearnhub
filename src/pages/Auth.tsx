@@ -636,17 +636,6 @@ export default function Auth() {
               </Button>
             </div>
 
-            {isSuperAdmin && (
-              <div className="mt-4 pt-4 border-t text-center">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => { throw new Error("SENTRY_PRODUCTION_TEST"); }}
-                >
-                  Sentry Test
-                </Button>
-              </div>
-            )}
 
           </CardContent>
         </Card>
