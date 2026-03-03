@@ -297,9 +297,12 @@ Deno.serve(async (req) => {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      Sentry.captureMessage("Edge Sentry test: run-ai-case");
-      await Sentry.flush(2000);
+      try {
+        Sentry.captureException(new Error("SENTRY_EDGE_TEST"));
+        await Sentry.flush(2000);
+      } catch {}
       return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
