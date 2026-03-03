@@ -1,28 +1,48 @@
 
 
-## Fix: Gemini & Anthropic Retry + Cross-Provider Fallback
+## Diagnosis: `Sentry.flush(2000)` is blocking the edge function
 
-### Status: ✅ Implemented & Deployed
+The `run-ai-case` function has two places where `await Sentry.flush(2000)` blocks execution for up to **2 full seconds**:
 
----
+1. **Line 302** — the `sentry_test` handler (only affects test calls, not students)
+2. **Line 655** — the main error catch block (affects **every error response**)
 
-### What was implemented
+Supabase Edge Functions have a strict **2-second CPU time limit**. The `Sentry.flush(2000)` call blocks for up to 2s waiting for Sentry to deliver events over the network. Combined with the actual work the function does, this can push the function past the CPU limit, causing timeouts or sluggishness even on successful requests if Sentry.init() adds overhead to cold starts.
 
-#### 1. Retry with Exponential Backoff (`_shared/ai-provider.ts`)
-- Added `fetchWithRetry()` helper: up to 2 retries with 1s/2s delay for 503 and 429 errors
-- Applied to `callGeminiDirect`, `callGeminiWithMessages`, and `callAnthropicWithMessages`
+Additionally, `Sentry.init()` runs at the top level on **every cold start**, adding latency to the first request.
 
-#### 2. Cross-Provider Fallback (`run-ai-case/index.ts`)
-- If primary provider fails with 503/429/402, automatically tries the alternate provider (Gemini→Anthropic or Anthropic→Gemini)
-- No Lovable gateway dependency — works purely with direct API keys
+### Fix: Make Sentry non-blocking with `EdgeRuntime.waitUntil`
 
-### Files Changed
+Use `EdgeRuntime.waitUntil()` to offload Sentry calls to the background so they don't block the response.
+
+### Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/_shared/ai-provider.ts` | Added `fetchWithRetry()`, applied to Gemini and Anthropic calls |
-| `supabase/functions/run-ai-case/index.ts` | Added cross-provider fallback in non-streaming path |
+| `supabase/functions/run-ai-case/index.ts` | **Line 300-303**: Replace synchronous `Sentry.captureException` + `flush` with `EdgeRuntime.waitUntil(...)` so the test returns instantly |
+| `supabase/functions/run-ai-case/index.ts` | **Line 653-656**: Same fix in the main catch block — wrap `Sentry.captureException` + `flush` in `EdgeRuntime.waitUntil(...)` so error responses return immediately without waiting 2s for Sentry delivery |
 
-### Important
-- **Anthropic account needs credits** for it to work as a fallback. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
-- Both providers need valid API keys (GOOGLE_API_KEY and ANTHROPIC_API_KEY are already configured)
+Both changes follow this pattern:
+
+```typescript
+// BEFORE (blocking — adds up to 2s)
+try {
+  Sentry.captureException(error);
+  await Sentry.flush(2000);
+} catch {}
+
+// AFTER (non-blocking — returns instantly)
+EdgeRuntime.waitUntil(
+  (async () => {
+    try {
+      Sentry.captureException(error);
+      await Sentry.flush(2000);
+    } catch (e) {
+      console.error("Sentry flush failed:", e);
+    }
+  })()
+);
+```
+
+This ensures Sentry events still get delivered, but the response is returned to the student immediately. The background task completes after the response is sent.
+
