@@ -270,6 +270,40 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+
+    // ── Sentry diagnostic test (super_admin only) ──
+    if (body.sentry_test === true) {
+      const token = authHeader.replace("Bearer ", "");
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const serviceClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: roleRow } = await serviceClient
+        .from("user_roles").select("role")
+        .eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
+      if (!roleRow) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      Sentry.captureMessage("Edge Sentry test: run-ai-case");
+      await Sentry.flush(2000);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { caseId, attemptId, userMessage, turnNumber, hintMode } = body;
 
     if (!caseId || !attemptId || !userMessage || turnNumber === undefined) {
