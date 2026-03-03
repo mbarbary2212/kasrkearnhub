@@ -1,38 +1,55 @@
 
 
-## Current State
+## Revised Plan: Security Hardening + Case Creation Guide
 
-The file `supabase/functions/run-ai-case/index.ts` **already has Sentry integrated correctly**:
+### Status: ✅ Implemented
 
-- Line 1: `import * as Sentry from "https://deno.land/x/sentry@8.45.0/index.mjs";`
-- Lines 4-7: `Sentry.init(...)` with DSN from env
-- Lines 604-605: `Sentry.captureException(error)` and `await Sentry.flush(2000)` in the catch block
-- Single `Deno.serve` with proper try/catch structure
+---
 
-The only minor differences from the ChatGPT suggestion are:
-1. **`tracesSampleRate: 0.2`** instead of `1.0` (0.2 is actually better for production — sampling 100% of traces is expensive and unnecessary)
-2. **Sentry calls are not wrapped in a nested try/catch** — if Sentry itself throws, the 500 response won't be returned. This is a minor robustness improvement worth making.
+### What was implemented
 
-### Plan (single file, minimal change)
+#### Priority 1: Server-Side Security Hardening
 
-**`supabase/functions/run-ai-case/index.ts`** — Wrap the Sentry calls in the catch block with a nested try/catch so a Sentry failure doesn't prevent the 500 response from being returned:
+1. **`detectProfanity()` added to `supabase/functions/_shared/security.ts`**
+   - Regex blocklist covering English profanity, Arabic transliterated slurs, threats, and sexual harassment
+   - Same pattern as existing `detectPromptInjection()`
 
-```typescript
-  } catch (error: any) {
-    console.error("Edge function error:", error);
-    try {
-      Sentry.captureException(error);
-      await Sentry.flush(2000);
-    } catch {}
-    return new Response(
-      JSON.stringify({ error: "Internal server error", detail: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  }
-```
+2. **Input validation in `supabase/functions/run-ai-case/index.ts`**
+   - 2000-character length limit on `userMessage` (400 error)
+   - Prompt injection check via `detectPromptInjection()` — returns immediate debrief with `score: 0`, `flag_for_review: true`
+   - Profanity check via `detectProfanity()` — returns redirect warning to use professional language
+   - Both checks skip `BEGIN_CASE` messages
 
-No other changes needed. The file already matches the pasted code with Sentry properly integrated.
+3. **Output validation after AI response parsing**
+   - Both streaming and non-streaming paths scan `prompt` and `teaching_point` through `detectPromptInjection()`
+   - Injection in output → replaced with safe redirect fallback
 
+4. **System prompt Rule #7: LANGUAGE & CONDUCT**
+   - Instructs AI examiner to redirect if student uses profanity/abuse
+
+5. **Client-side length limit in `src/hooks/useAICase.ts`**
+   - Messages over 2000 characters rejected with toast before sending
+
+#### Priority 2: Admin Case Creation Guide
+
+6. **Collapsible guide in `src/components/clinical-cases/ClinicalCaseFormModal.tsx`**
+   - "How to create a good case" section listing required and recommended fields
+   - Guidance on writing effective scenarios and learning objectives
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/_shared/security.ts` | Added `detectProfanity()` |
+| `supabase/functions/run-ai-case/index.ts` | Input validation, output validation, system prompt rule #7 |
+| `src/hooks/useAICase.ts` | 2000-char client-side limit |
+| `src/components/clinical-cases/ClinicalCaseFormModal.tsx` | Collapsible case creation guide |
+
+### What stays unchanged
+- AI examiner behavior (Learning Mode / Exam Mode)
+- Cohort Intelligence system
+- Streaming responses
+- Session recovery
+- Examiner avatars
