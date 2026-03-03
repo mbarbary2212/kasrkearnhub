@@ -1,10 +1,5 @@
 import * as Sentry from "https://deno.land/x/sentry@8.45.0/index.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-Sentry.init({
-  dsn: Deno.env.get("SENTRY_DSN"),
-  tracesSampleRate: 0.2,
-});
 import {
   getAISettings,
   getAIProvider,
@@ -14,6 +9,11 @@ import {
   logAIUsage,
 } from "../_shared/ai-provider.ts";
 import { detectPromptInjection, detectProfanity } from "../_shared/security.ts";
+
+Sentry.init({
+  dsn: Deno.env.get("SENTRY_DSN"),
+  tracesSampleRate: 0.2,
+});
 
 const MAX_TURNS_DEFAULT = 10;
 const REDIRECT_LIMIT = 2;
