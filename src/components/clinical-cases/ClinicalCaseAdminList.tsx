@@ -275,10 +275,19 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => navigate(`/virtual-patient/${clinicalCase.id}`)}
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Start Case
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
                     onClick={() => handleEditCase(clinicalCase)}
                   >
                     <Settings className="w-4 h-4 mr-1" />
-                    Edit Case
+                    Edit
                   </Button>
                   <Button
                     variant="outline"
