@@ -15,6 +15,7 @@ import { AccessRequestForm } from '@/components/auth/AccessRequestForm';
 import logo from '@/assets/kalm-logo-icon.png';
 
 export default function Auth() {
+  const { isSuperAdmin } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
