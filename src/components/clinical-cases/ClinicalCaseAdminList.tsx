@@ -26,6 +26,7 @@ import {
   Sparkles,
   Upload,
   Download,
+  Play,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
