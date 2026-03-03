@@ -656,10 +656,16 @@ Student response: ${userMessage}`;
     }
   } catch (error: any) {
     console.error("Edge function error:", error);
-    try {
-      Sentry.captureException(error);
-      await Sentry.flush(2000);
-    } catch {}
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          Sentry.captureException(error);
+          await Sentry.flush(2000);
+        } catch (e) {
+          console.error("Sentry flush failed:", e);
+        }
+      })()
+    );
     return new Response(
       JSON.stringify({ error: "Internal server error", detail: error.message }),
       {
