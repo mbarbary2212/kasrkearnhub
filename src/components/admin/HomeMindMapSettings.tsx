@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Network, Trash2, Save, Loader2, Eye, EyeOff, FileText } from 'lucide-react';
+import { Network, Trash2, Save, Loader2, Eye, EyeOff, FileText, RefreshCw, X } from 'lucide-react';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
