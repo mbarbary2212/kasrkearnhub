@@ -182,6 +182,9 @@ function PlatformSettingsTab() {
               </div>
             </div>
           )}
+
+          {/* Monitoring / Sentry - Super Admin Only */}
+          {isSuperAdmin && <SentryDiagnosticsSection />}
         </CardContent>
       </Card>
 
