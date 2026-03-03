@@ -1,4 +1,10 @@
+import * as Sentry from "https://deno.land/x/sentry@8.45.0/index.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+Sentry.init({
+  dsn: Deno.env.get("SENTRY_DSN"),
+  tracesSampleRate: 0.2,
+});
 import {
   getAISettings,
   getAIProvider,
@@ -595,6 +601,8 @@ Student response: ${userMessage}`;
     }
   } catch (error: any) {
     console.error("Edge function error:", error);
+    Sentry.captureException(error);
+    await Sentry.flush(2000);
     return new Response(
       JSON.stringify({ error: "Internal server error", detail: error.message }),
       {
