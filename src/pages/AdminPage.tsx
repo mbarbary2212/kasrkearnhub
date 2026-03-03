@@ -45,6 +45,7 @@ import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { AICasesAdminTab } from '@/components/admin/AICasesAdminTab';
+import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 
 interface UserWithRole extends Profile {
   role: AppRole;
