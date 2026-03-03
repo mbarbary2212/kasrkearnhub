@@ -655,7 +655,7 @@ async function callGeminiWithMessages(
       .map(m => `[${m.role.toUpperCase()}]: ${m.content}`)
       .join('\n\n');
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
@@ -667,7 +667,7 @@ async function callGeminiWithMessages(
           contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${combinedPrompt}` }] }],
           generationConfig: { temperature, maxOutputTokens: maxTokens },
         }),
-      }
+      },
     );
 
     if (!response.ok) {
