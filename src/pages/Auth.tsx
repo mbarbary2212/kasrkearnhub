@@ -8,12 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowLeft, Loader2, ChevronDown, CheckCircle, KeyRound, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { AccessRequestForm } from '@/components/auth/AccessRequestForm';
 import logo from '@/assets/kalm-logo-icon.png';
 
 export default function Auth() {
+  const { isSuperAdmin } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -634,16 +636,17 @@ export default function Auth() {
               </Button>
             </div>
 
-            {/* Sentry Test Button – remove after verifying */}
-            <div className="mt-4 pt-4 border-t text-center">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => { throw new Error("SENTRY_PRODUCTION_TEST"); }}
-              >
-                Sentry Test
-              </Button>
-            </div>
+            {isSuperAdmin && (
+              <div className="mt-4 pt-4 border-t text-center">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { throw new Error("SENTRY_PRODUCTION_TEST"); }}
+                >
+                  Sentry Test
+                </Button>
+              </div>
+            )}
 
           </CardContent>
         </Card>
