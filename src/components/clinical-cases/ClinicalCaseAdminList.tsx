@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
+import { useNavigate } from 'react-router-dom';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
