@@ -54,6 +54,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const containerId = chapterId || topicId;
   const { data: cases, isLoading } = useClinicalCases(moduleId, true);
   const deleteCase = useDeleteClinicalCase();
+  const navigate = useNavigate();
 
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
