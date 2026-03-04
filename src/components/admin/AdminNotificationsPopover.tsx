@@ -72,6 +72,12 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         navigate('/admin?tab=inbox');
         setOpen(false);
         break;
+      case 'role_changed':
+      case 'module_assigned':
+      case 'topic_assigned':
+        navigate('/dashboard');
+        setOpen(false);
+        break;
       case 'announcement_pending_approval':
       case 'announcement_approved':
       case 'announcement_rejected':
@@ -113,6 +119,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return <MessageCircle className="w-4 h-4 text-blue-500" />;
       case 'ticket_assigned':
         return <UserCheck className="w-4 h-4 text-green-500" />;
+      case 'role_changed':
+        return <UserCheck className="w-4 h-4 text-blue-500" />;
+      case 'module_assigned':
+      case 'topic_assigned':
+        return <Activity className="w-4 h-4 text-purple-500" />;
       default:
         return <Megaphone className="w-4 h-4" />;
     }
@@ -140,6 +151,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return 'bg-blue-500/10 border-l-2 border-blue-500';
       case 'ticket_assigned':
         return 'bg-green-500/10 border-l-2 border-green-500';
+      case 'role_changed':
+        return 'bg-blue-500/10 border-l-2 border-blue-500';
+      case 'module_assigned':
+      case 'topic_assigned':
+        return 'bg-purple-500/10 border-l-2 border-purple-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }
