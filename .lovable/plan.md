@@ -1,28 +1,45 @@
 
 
-## Fix: Gemini & Anthropic Retry + Cross-Provider Fallback
+## Add Notifications for Role & Assignment Changes
 
-### Status: ✅ Implemented & Deployed
+### What's Missing
+When an admin changes a user's role or assigns them as module/topic admin, the affected user gets no notification — they only discover the change next time they log in.
 
----
+### Proposed Changes
 
-### What was implemented
+**1. Database trigger: `notify_user_role_change`**
+- Fires on INSERT/UPDATE on `user_roles`
+- Inserts an `admin_notification` for the affected user with type `role_changed`
+- Message: "Your role has been updated to [role]"
 
-#### 1. Retry with Exponential Backoff (`_shared/ai-provider.ts`)
-- Added `fetchWithRetry()` helper: up to 2 retries with 1s/2s delay for 503 and 429 errors
-- Applied to `callGeminiDirect`, `callGeminiWithMessages`, and `callAnthropicWithMessages`
+**2. Database trigger: `notify_user_module_assignment`**
+- Fires on INSERT on `module_admins`
+- Looks up the module name, inserts notification with type `module_assigned`
+- Message: "You have been assigned as admin for [module name]"
 
-#### 2. Cross-Provider Fallback (`run-ai-case/index.ts`)
-- If primary provider fails with 503/429/402, automatically tries the alternate provider (Gemini→Anthropic or Anthropic→Gemini)
-- No Lovable gateway dependency — works purely with direct API keys
+**3. Database trigger: `notify_user_topic_assignment`**
+- Fires on INSERT on `topic_admins`
+- Looks up topic/chapter name, inserts notification with type `topic_assigned`
+- Message: "You have been assigned as admin for [topic/chapter name]"
 
-### Files Changed
+**4. Email delivery**
+- Add `role_changed`, `module_assigned`, `topic_assigned` to the allowed types in the `trigger_send_admin_email()` function so the existing email pipeline picks them up automatically
+- Update the `send-admin-email` edge function to format these new notification types with appropriate subject lines and bodies
 
-| File | Change |
+**5. Frontend — notification routing**
+- Update the notification click handler to navigate appropriately for new types (e.g., `role_changed` → no specific route, `module_assigned` → module page)
+
+### Files Affected
+
+| Area | Change |
 |------|--------|
-| `supabase/functions/_shared/ai-provider.ts` | Added `fetchWithRetry()`, applied to Gemini and Anthropic calls |
-| `supabase/functions/run-ai-case/index.ts` | Added cross-provider fallback in non-streaming path |
+| SQL migration | Create 3 trigger functions + attach to tables |
+| SQL migration | Update `trigger_send_admin_email` to include new types |
+| `supabase/functions/send-admin-email/index.ts` | Add email templates for new notification types |
+| `src/components/admin/AdminNotificationsPopover.tsx` | Add click routing for new types |
 
-### Important
-- **Anthropic account needs credits** for it to work as a fallback. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
-- Both providers need valid API keys (GOOGLE_API_KEY and ANTHROPIC_API_KEY are already configured)
+### Notes
+- Notifications go to the **affected user**, not to admins — this uses the same `admin_notifications` table but the recipient is the user whose role/assignment changed
+- The email side piggybacks on the existing `trigger_send_admin_email` → `send-admin-email` pipeline
+- Role downgrades (e.g., teacher → student) also trigger a notification so the user understands why permissions changed
+
