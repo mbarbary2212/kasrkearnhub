@@ -72,6 +72,12 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         navigate('/admin?tab=inbox');
         setOpen(false);
         break;
+      case 'role_changed':
+      case 'module_assigned':
+      case 'topic_assigned':
+        navigate('/dashboard');
+        setOpen(false);
+        break;
       case 'announcement_pending_approval':
       case 'announcement_approved':
       case 'announcement_rejected':
