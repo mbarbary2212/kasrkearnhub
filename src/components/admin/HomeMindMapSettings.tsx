@@ -226,19 +226,19 @@ function ReactMarkdownLazy({ children }: { children: string }) {
 
 export function HomeMindMapSettings() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Network className="w-5 h-5" />
           App Architecture
         </CardTitle>
         <CardDescription>
-          Configure the app architecture view shown on the Home page. Students and admins can see different versions.
+          Configure the architecture view on the Home page.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <MindMapVersionEditor audience="student" label="Student App Architecture" />
-        <MindMapVersionEditor audience="admin" label="Admin App Architecture" />
+      <CardContent className="space-y-3">
+        <MindMapVersionEditor audience="student" label="Student" />
+        <MindMapVersionEditor audience="admin" label="Admin" />
       </CardContent>
     </Card>
   );
