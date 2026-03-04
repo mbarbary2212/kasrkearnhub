@@ -1,35 +1,28 @@
 
 
-## Create `sentry-ping` Edge Function and Rewire Test Edge Button
+## Fix: Gemini & Anthropic Retry + Cross-Provider Fallback
 
-### Current State
-- `sentry-ping` does **not exist yet** — the previous conversation only planned it
-- The "Test Edge" button currently calls `run-ai-case` with `{ sentry_test: true }`
-- All other edge functions in this project use `verify_jwt = false` (JWT validated in code via `getClaims`)
+### Status: ✅ Implemented & Deployed
 
-### Important Note on `verify_jwt`
-Per this project's conventions and the Supabase signing-keys system, **all functions use `verify_jwt = false`** and validate JWTs in code. ChatGPT's suggestion to set `verify_jwt = true` contradicts this project's established pattern and would break consistency. I will follow the existing pattern (`verify_jwt = false` + in-code `getClaims()` + `super_admin` role check).
+---
 
-### Plan
+### What was implemented
 
-**1. Create `supabase/functions/sentry-ping/index.ts`**
-- Import `@sentry/deno` (same pattern as `run-ai-case`)
-- Standard CORS headers
-- Validate JWT via `getClaims()`, check `super_admin` role via service-role client query on `user_roles`
-- Call `Sentry.captureMessage('SENTRY_EDGE_PING')`, flush, return `{ ok: true }`
-- Return 401/403 for unauthorized callers
+#### 1. Retry with Exponential Backoff (`_shared/ai-provider.ts`)
+- Added `fetchWithRetry()` helper: up to 2 retries with 1s/2s delay for 503 and 429 errors
+- Applied to `callGeminiDirect`, `callGeminiWithMessages`, and `callAnthropicWithMessages`
 
-**2. Add to `supabase/config.toml`**
-- `[functions.sentry-ping]` with `verify_jwt = false` (project convention)
+#### 2. Cross-Provider Fallback (`run-ai-case/index.ts`)
+- If primary provider fails with 503/429/402, automatically tries the alternate provider (Gemini→Anthropic or Anthropic→Gemini)
+- No Lovable gateway dependency — works purely with direct API keys
 
-**3. Update `src/components/admin/SentryDiagnosticsSection.tsx`**
-- Change `handleEdgeTest` to invoke `sentry-ping` instead of `run-ai-case`
+### Files Changed
 
-**4. Leave `run-ai-case` untouched** — the old `sentry_test` branch can be cleaned up later.
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `supabase/functions/sentry-ping/index.ts` | Create |
-| `supabase/config.toml` | Add entry |
-| `src/components/admin/SentryDiagnosticsSection.tsx` | Update invoke target |
+| `supabase/functions/_shared/ai-provider.ts` | Added `fetchWithRetry()`, applied to Gemini and Anthropic calls |
+| `supabase/functions/run-ai-case/index.ts` | Added cross-provider fallback in non-streaming path |
 
+### Important
+- **Anthropic account needs credits** for it to work as a fallback. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
+- Both providers need valid API keys (GOOGLE_API_KEY and ANTHROPIC_API_KEY are already configured)

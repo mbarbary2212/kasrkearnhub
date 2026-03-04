@@ -29,8 +29,8 @@ export function SentryDiagnosticsSection() {
   const handleEdgeTest = async () => {
     setEdgeLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('run-ai-case', {
-        body: { sentry_test: true },
+      const { data, error } = await supabase.functions.invoke('sentry-ping', {
+        body: { ping: true },
       });
       if (error) throw error;
       if (data?.ok) {
