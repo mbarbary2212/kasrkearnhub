@@ -1,28 +1,50 @@
 
 
-## Fix: Gemini & Anthropic Retry + Cross-Provider Fallback
+## Reorganizing Platform Settings Tab
 
-### Status: ✅ Implemented & Deployed
+### Current State (what's messy)
 
----
+The **Platform Settings** tab currently contains a mix of unrelated concerns:
+1. **Hide Empty Practice Tabs** — student-facing display toggle
+2. **App Architecture** — file upload for mind map (large card with two sub-editors)
+3. **Archive Legacy OSCE** — destructive content migration action
+4. **Sentry Diagnostics** — monitoring/debugging
+5. **Email Notifications** — admin preferences
 
-### What was implemented
+These are all crammed into one page with no grouping logic.
 
-#### 1. Retry with Exponential Backoff (`_shared/ai-provider.ts`)
-- Added `fetchWithRetry()` helper: up to 2 retries with 1s/2s delay for 503 and 429 errors
-- Applied to `callGeminiDirect`, `callGeminiWithMessages`, and `callAnthropicWithMessages`
+### Proposed Reorganization
 
-#### 2. Cross-Provider Fallback (`run-ai-case/index.ts`)
-- If primary provider fails with 503/429/402, automatically tries the alternate provider (Gemini→Anthropic or Anthropic→Gemini)
-- No Lovable gateway dependency — works purely with direct API keys
+**Move OUT of Platform Settings:**
+- **Archive Legacy OSCE** → Move to **Content → Content Integrity** tab (it's a content cleanup action, fits naturally there)
+- **AI Gateway / Content Factory** — stays where it is (already in Content group), but we add a quick-link or keep it separate
 
-### Files Changed
+**Restructure Platform Settings into two side-by-side columns:**
+
+```text
+┌──────────────────────────────────────────────────────┐
+│  Platform Settings                                    │
+│  Configure global platform behavior.                  │
+├──────────────────────────────────────────────────────┤
+│  [Hide Empty Practice Tabs]              [toggle]     │
+├──────────────────────┬───────────────────────────────┤
+│  App Architecture    │  Monitoring / Sentry           │
+│  (compact card)      │  (compact card)                │
+│  Student version     │  [Test Frontend] [Test Edge]   │
+│  Admin version       │                                │
+└──────────────────────┴───────────────────────────────┘
+│  Email Notifications (separate card below)            │
+└──────────────────────────────────────────────────────┘
+```
+
+### Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/_shared/ai-provider.ts` | Added `fetchWithRetry()`, applied to Gemini and Anthropic calls |
-| `supabase/functions/run-ai-case/index.ts` | Added cross-provider fallback in non-streaming path |
+| `src/pages/AdminPage.tsx` — `PlatformSettingsTab` | Remove Archive Legacy OSCE block. Place App Architecture and Sentry Diagnostics side-by-side in a `grid grid-cols-1 md:grid-cols-2 gap-4` layout. Keep Hide Empty Practice Tabs at top, Email Notifications at bottom. |
+| `src/pages/AdminPage.tsx` — Content Integrity `TabsContent` | Add the Archive Legacy OSCE card at the bottom of the Content Integrity tab (after the integrity dashboard). Only visible to super admins. |
+| `src/components/admin/HomeMindMapSettings.tsx` | Make the outer card more compact — reduce padding, use smaller headers so it fits well in a half-width column. |
+| `src/components/admin/SentryDiagnosticsSection.tsx` | Wrap in a Card with header to match the App Architecture card height, so they sit side-by-side cleanly. |
 
-### Important
-- **Anthropic account needs credits** for it to work as a fallback. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
-- Both providers need valid API keys (GOOGLE_API_KEY and ANTHROPIC_API_KEY are already configured)
+This gives the Platform Settings page a cleaner information hierarchy: global display settings at top, two utility panels side-by-side in the middle, and personal notification preferences at the bottom. The destructive OSCE archive action moves to where content cleanup tools logically belong.
+
