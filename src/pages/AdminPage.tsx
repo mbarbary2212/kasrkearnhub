@@ -2207,6 +2207,7 @@ export default function AdminPage() {
           {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
             <TabsContent value="integrity">
               <IntegrityCheckTab />
+              {isSuperAdmin && <ArchiveLegacyOsceCard />}
             </TabsContent>
           )}
 
