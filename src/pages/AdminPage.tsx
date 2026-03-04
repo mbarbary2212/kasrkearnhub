@@ -105,9 +105,10 @@ function PlatformSettingsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Global Display Toggle */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Settings className="w-5 h-5" />
             Platform Settings
           </CardTitle>
@@ -115,7 +116,7 @@ function PlatformSettingsTab() {
             Configure global platform behavior.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="space-y-1">
               <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
@@ -133,61 +134,14 @@ function PlatformSettingsTab() {
               disabled={isLoading || upsertSetting.isPending}
             />
           </div>
-
-          {/* Home Mind Map Settings - Platform/Super Admin */}
-          <HomeMindMapSettings />
-
-          {/* Archive Legacy OSCE - Super Admin Only */}
-          {isSuperAdmin && (
-            <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                  <Label className="text-base font-medium text-destructive">
-                    Archive Legacy OSCE Questions
-                  </Label>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  This will archive all old-format OSCE/Practical questions that don't fit the new Image + History + 5 T/F format.
-                  This is a one-time migration action.
-                </p>
-                <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="mt-2">
-                      Archive Legacy OSCE Questions
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Archive Legacy OSCE Questions?</DialogTitle>
-                      <DialogDescription>
-                        This will soft-delete ALL existing Practical/OSCE questions in the old format.
-                        They will be hidden from students and admin views. This action is logged in the audit trail.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setArchiveConfirmOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={handleArchiveLegacy}
-                        disabled={archiveLegacyOsce.isPending}
-                      >
-                        {archiveLegacyOsce.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Archive All Legacy OSCE
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          )}
-
-          {/* Monitoring / Sentry - Super Admin Only */}
-          {isSuperAdmin && <SentryDiagnosticsSection />}
         </CardContent>
       </Card>
+
+      {/* App Architecture + Sentry side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <HomeMindMapSettings />
+        {isSuperAdmin && <SentryDiagnosticsSection />}
+      </div>
 
       {/* Email Notification Preferences */}
       <EmailNotificationPreferences />
