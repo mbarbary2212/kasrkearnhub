@@ -151,6 +151,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         return 'bg-blue-500/10 border-l-2 border-blue-500';
       case 'ticket_assigned':
         return 'bg-green-500/10 border-l-2 border-green-500';
+      case 'role_changed':
+        return 'bg-blue-500/10 border-l-2 border-blue-500';
+      case 'module_assigned':
+      case 'topic_assigned':
+        return 'bg-purple-500/10 border-l-2 border-purple-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }

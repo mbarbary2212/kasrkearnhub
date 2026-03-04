@@ -12,24 +12,33 @@ const TYPE_TO_PREF: Record<string, string> = {
   new_inquiry: 'notify_new_inquiries',
   ticket_assigned: 'notify_ticket_assigned',
   content_activity: 'notify_new_content',
+  role_changed: 'notify_access_requests',
+  module_assigned: 'notify_access_requests',
+  topic_assigned: 'notify_access_requests',
 };
 
-// Map notification type → email subject suffix
+// Map notification type to email subject suffix
 const TYPE_TO_SUBJECT: Record<string, string> = {
   new_access_request: 'New access request',
   new_feedback: 'New feedback received',
   new_inquiry: 'New student inquiry',
   ticket_assigned: 'Ticket assigned to you',
   content_activity: 'Content update',
+  role_changed: 'Your role has been updated',
+  module_assigned: 'You have been assigned to a module',
+  topic_assigned: 'You have been assigned to a topic',
 };
 
-// Map notification type → CTA URL path
+// Map notification type to CTA URL path
 const TYPE_TO_PATH: Record<string, string> = {
   new_access_request: '/admin?tab=accounts',
   new_feedback: '/admin?tab=inbox',
   new_inquiry: '/admin?tab=inbox',
   ticket_assigned: '/admin?tab=inbox',
   content_activity: '/admin?tab=activity-log',
+  role_changed: '/dashboard',
+  module_assigned: '/dashboard',
+  topic_assigned: '/dashboard',
 };
 
 Deno.serve(async (req) => {
