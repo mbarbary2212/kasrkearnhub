@@ -200,6 +200,10 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             <Sparkles className="w-4 h-4 mr-1" />
             Generate with AI
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setStructuredCaseOpen(true)} className="border-primary/30 text-primary hover:bg-primary/5">
+            <ClipboardList className="w-4 h-4 mr-1" />
+            Structured Case
+          </Button>
           <Button size="sm" onClick={handleCreateCase}>
             <Plus className="w-4 h-4 mr-1" />
             Add Case
