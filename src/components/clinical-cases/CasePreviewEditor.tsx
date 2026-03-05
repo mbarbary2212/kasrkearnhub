@@ -506,22 +506,28 @@ function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: a
 }
 
 function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange: (v: any) => void }) {
+  const imagingEntries = Object.entries(data.available_imaging || {});
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Orders</Label>
-        <p className="text-sm mt-1">{(data.expected_orders || []).join(', ') || 'None'}</p>
+        <Label className="text-xs text-muted-foreground">Key Investigations</Label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {(data.key_investigations || []).map((t, i) => (
+            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+          ))}
+        </div>
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Available Imaging ({data.available_imaging?.length || 0})</Label>
+        <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
         <div className="mt-1 space-y-2">
-          {(data.available_imaging || []).map((img, i) => (
-            <div key={i} className="flex items-start gap-3 p-2 rounded bg-muted/50 text-sm">
-              <Badge variant="outline" className="shrink-0 text-xs">{img.modality}</Badge>
-              <div>
-                <p className="font-medium">{img.body_part}</p>
-                <p className="text-muted-foreground">{img.finding}</p>
+          {imagingEntries.map(([key, study]) => (
+            <div key={key} className={cn('p-2 rounded text-sm', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{study.label}</span>
+                {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+                <span className="text-xs text-muted-foreground ml-auto">{study.points} pts</span>
               </div>
+              <p className="text-muted-foreground mt-0.5">{study.result}</p>
             </div>
           ))}
         </div>
