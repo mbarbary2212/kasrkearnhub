@@ -66,7 +66,7 @@ export interface ChecklistItem {
 // ── History Checklist Categories (A–E) ─────────────────
 
 export interface HistoryCategory {
-  category_key: string; // e.g. 'personal_history'
+  key: string;
   label: string;
   label_ar?: string;
   items: ChecklistItem[];
@@ -80,115 +80,170 @@ export interface ProfessionalAttitude {
   scoring_note: string;
 }
 
+// ── ATMIST Handover ────────────────────────────────────
+
+export interface AtmistHandover {
+  age_time: string;
+  mechanism: string;
+  injuries: string;
+  signs: string;
+  treatment: string;
+}
+
+// ── Comprehension Question ─────────────────────────────
+
+export interface ComprehensionQuestion {
+  id: string;
+  question: string;
+  correct_answer: string;
+  points: number;
+}
+
 // ── Section-specific data within generated_case_data ───
 
 export interface HistorySectionData {
-  patient_profile: {
-    name: string;
-    age: number;
-    gender: string;
-    occupation?: string;
-    avatar_id?: number;
-  };
-  system_prompt: string;
-  categories: HistoryCategory[];
+  mode: HistoryMode;
   max_score: number;
+  atmist_handover?: AtmistHandover;
+  checklist: HistoryCategory[];
+  comprehension_questions: ComprehensionQuestion[];
 }
 
-export interface ExamFinding {
-  region: string;
+// ── Physical Examination ───────────────────────────────
+
+export interface ExamRegion {
+  label: string;
   finding: string;
-  finding_ar?: string;
-  is_abnormal: boolean;
 }
 
 export interface PhysicalExamSectionData {
-  findings: ExamFinding[];
   max_score: number;
+  note?: string;
+  regions: Record<string, ExamRegion>;
 }
 
-export interface LabItem {
-  test_name: string;
-  test_name_ar?: string;
+// ── Lab Investigations ─────────────────────────────────
+
+export interface LabTest {
+  label: string;
   result: string;
-  unit: string;
-  reference_range: string;
-  is_abnormal: boolean;
+  interpretation: string;
+  is_key: boolean;
+  points: number;
 }
 
 export interface LabsSectionData {
-  available_labs: LabItem[];
-  expected_orders: string[];
   max_score: number;
+  key_tests: string[];
+  available_tests: Record<string, LabTest>;
 }
 
-export interface ImagingItem {
-  modality: string;
-  modality_ar?: string;
-  body_part: string;
-  finding: string;
-  finding_ar?: string;
-  image_url?: string;
+// ── Imaging Investigations ─────────────────────────────
+
+export interface ImagingStudy {
+  label: string;
+  result: string;
+  interpretation: string;
+  is_key: boolean;
+  points: number;
 }
 
 export interface ImagingSectionData {
-  available_imaging: ImagingItem[];
-  expected_orders: string[];
   max_score: number;
+  key_investigations: string[];
+  available_imaging: Record<string, ImagingStudy>;
 }
 
-export interface McqOption {
-  key: string;
-  text: string;
-  text_ar?: string;
-  is_correct: boolean;
-  explanation?: string;
-}
+// ── Diagnosis ──────────────────────────────────────────
 
-export interface McqQuestion {
-  question: string;
-  question_ar?: string;
-  options: McqOption[];
+export interface DiagnosisRubricItem {
+  label: string;
+  expected?: string[] | string;
+  expected_top?: string;
+  reasoning_points?: string[];
+  points: number;
+  model_answer: string;
 }
 
 export interface DiagnosisSectionData {
-  expected_diagnosis: string;
-  differential_diagnoses: string[];
   max_score: number;
+  rubric: {
+    possible_diagnosis: DiagnosisRubricItem;
+    differential_diagnosis: DiagnosisRubricItem;
+    final_diagnosis: DiagnosisRubricItem;
+  };
+}
+
+// ── Management (Medical / Surgical) ────────────────────
+
+export interface ManagementQuestion {
+  id: string;
+  type: 'mcq' | 'free_text';
+  question: string;
+  options?: string[];
+  correct?: string;
+  explanation?: string;
+  points: number;
+  rubric?: {
+    expected_points: string[];
+    model_answer: string;
+    points: number;
+  };
 }
 
 export interface ManagementSectionData {
-  mcqs: McqQuestion[];
-  free_text_prompt?: string;
-  free_text_prompt_ar?: string;
-  expected_answer?: string;
   max_score: number;
+  questions: ManagementQuestion[];
+}
+
+// ── Monitoring & Follow-up ─────────────────────────────
+
+export interface RubricSection {
+  expected_points: string[];
+  model_answer: string;
+  points: number;
 }
 
 export interface MonitoringSectionData {
-  prompt: string;
-  prompt_ar?: string;
-  expected_answer: string;
   max_score: number;
+  question: string;
+  rubric: RubricSection;
 }
 
+// ── Patient & Family Advice ────────────────────────────
+
 export interface AdviceSectionData {
-  prompt: string;
-  prompt_ar?: string;
-  expected_answer: string;
   max_score: number;
+  question: string;
+  rubric: RubricSection;
+}
+
+// ── Conclusion ─────────────────────────────────────────
+
+export interface ConclusionTask {
+  id: string;
+  type: 'ward_round_presentation' | 'key_decision' | 'learning_point';
+  label: string;
+  instruction: string;
+  rubric: {
+    expected_structure?: string[];
+    expected_answer?: string;
+    expected_points?: string[];
+    model_answer: string;
+    points: number;
+  };
 }
 
 export interface ConclusionSectionData {
-  ward_round_prompt: string;
-  ward_round_prompt_ar?: string;
-  key_decisions: string[];
   max_score: number;
+  tasks: ConclusionTask[];
 }
 
 // ── Full generated_case_data JSONB shape ───────────────
 
 export interface StructuredCaseData {
+  case_meta?: any;
+  patient?: any;
   history_taking?: HistorySectionData;
   physical_examination?: PhysicalExamSectionData;
   investigations_labs?: LabsSectionData;
@@ -199,7 +254,8 @@ export interface StructuredCaseData {
   monitoring_followup?: MonitoringSectionData;
   patient_family_advice?: AdviceSectionData;
   conclusion?: ConclusionSectionData;
-  professional_attitude: ProfessionalAttitude;
+  professional_attitude?: ProfessionalAttitude;
+  score_summary?: any;
 }
 
 // ── Reference Documents ────────────────────────────────

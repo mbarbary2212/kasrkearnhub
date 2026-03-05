@@ -19,7 +19,7 @@ export function InvestigationsImagingSection({
   );
   const [showResults, setShowResults] = useState(!!previousAnswer);
 
-  const studyKey = (modality: string, bodyPart: string) => `${modality}__${bodyPart}`;
+  const imagingEntries = Object.entries(data.available_imaging || {});
 
   const toggleStudy = (key: string) => {
     if (readOnly || showResults) return;
@@ -36,13 +36,11 @@ export function InvestigationsImagingSection({
   const handleSubmit = () => {
     onSubmit({
       selected_studies: Array.from(selectedStudies),
-      total_available: data.available_imaging?.length || 0,
+      total_available: imagingEntries.length,
     });
   };
 
-  const selectedImaging = (data.available_imaging || []).filter(img =>
-    selectedStudies.has(studyKey(img.modality, img.body_part))
-  );
+  const selectedEntries = imagingEntries.filter(([key]) => selectedStudies.has(key));
 
   return (
     <div className="space-y-4">
@@ -52,30 +50,22 @@ export function InvestigationsImagingSection({
 
       {!showResults && (
         <div className="space-y-2">
-          {(data.available_imaging || []).map((img, i) => {
-            const key = studyKey(img.modality, img.body_part);
-            return (
-              <label
-                key={i}
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                  selectedStudies.has(key) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
-                )}
-              >
-                <Checkbox
-                  checked={selectedStudies.has(key)}
-                  onCheckedChange={() => toggleStudy(key)}
-                  disabled={readOnly}
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{img.modality}</Badge>
-                    <span className="text-sm font-medium">{img.body_part}</span>
-                  </div>
-                </div>
-              </label>
-            );
-          })}
+          {imagingEntries.map(([key, study]) => (
+            <label
+              key={key}
+              className={cn(
+                'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                selectedStudies.has(key) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+              )}
+            >
+              <Checkbox
+                checked={selectedStudies.has(key)}
+                onCheckedChange={() => toggleStudy(key)}
+                disabled={readOnly}
+              />
+              <span className="text-sm font-medium">{study.label}</span>
+            </label>
+          ))}
         </div>
       )}
 
@@ -86,18 +76,16 @@ export function InvestigationsImagingSection({
         </Button>
       )}
 
-      {showResults && selectedImaging.length > 0 && (
+      {showResults && selectedEntries.length > 0 && (
         <div className="space-y-3">
-          {selectedImaging.map((img, i) => (
-            <div key={i} className="border rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className="text-xs">{img.modality}</Badge>
-                <span className="font-medium text-sm">{img.body_part}</span>
+          {selectedEntries.map(([key, study]) => (
+            <div key={key} className={cn('border rounded-lg p-3', study.is_key && 'border-primary/30')}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium text-sm">{study.label}</span>
+                {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
               </div>
-              <p className="text-sm text-muted-foreground">{img.finding}</p>
-              {img.image_url && (
-                <img src={img.image_url} alt={`${img.modality} ${img.body_part}`} className="mt-2 rounded max-h-48 object-contain" />
-              )}
+              <p className="text-sm">{study.result}</p>
+              <p className="text-xs text-muted-foreground mt-1">{study.interpretation}</p>
             </div>
           ))}
         </div>

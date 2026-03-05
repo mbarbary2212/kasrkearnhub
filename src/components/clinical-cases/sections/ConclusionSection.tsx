@@ -14,40 +14,48 @@ export function ConclusionSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<ConclusionSectionData>) {
-  const [answer, setAnswer] = useState(
-    (previousAnswer?.answer as string) || ''
+  const tasks = data.tasks || [];
+  const [taskAnswers, setTaskAnswers] = useState<Record<string, string>>(
+    (previousAnswer?.task_answers as Record<string, string>) || {}
   );
 
+  const allAnswered = tasks.every(t => taskAnswers[t.id]?.trim());
+
   const handleSubmit = () => {
-    onSubmit({ answer: answer.trim() });
+    onSubmit({ task_answers: taskAnswers });
+  };
+
+  const taskTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ward_round_presentation': return 'Ward Round';
+      case 'key_decision': return 'Key Decision';
+      case 'learning_point': return 'Reflection';
+      default: return type;
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label className="font-medium">{data.ward_round_prompt}</Label>
-        {data.key_decisions?.length > 0 && (
-          <div className="mt-2">
-            <p className="text-xs text-muted-foreground mb-1">Key decisions to address:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {data.key_decisions.map((d, i) => (
-                <Badge key={i} variant="outline" className="text-xs">{d}</Badge>
-              ))}
-            </div>
+    <div className="space-y-5">
+      {tasks.map((task, i) => (
+        <div key={task.id} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">{taskTypeLabel(task.type)}</Badge>
+            <Label className="font-medium text-sm">{task.label}</Label>
+            <span className="text-xs text-muted-foreground ml-auto">({task.rubric.points} pts)</span>
           </div>
-        )}
-      </div>
-
-      <Textarea
-        value={answer}
-        onChange={e => setAnswer(e.target.value)}
-        rows={6}
-        disabled={readOnly}
-        placeholder="Present your summary and key decisions to the consultant..."
-      />
+          <p className="text-sm text-muted-foreground">{task.instruction}</p>
+          <Textarea
+            value={taskAnswers[task.id] || ''}
+            onChange={e => setTaskAnswers(prev => ({ ...prev, [task.id]: e.target.value }))}
+            rows={task.type === 'ward_round_presentation' ? 8 : 5}
+            disabled={readOnly}
+            placeholder={`Write your ${taskTypeLabel(task.type).toLowerCase()} here...`}
+          />
+        </div>
+      ))}
 
       {!readOnly && (
-        <Button onClick={handleSubmit} disabled={isSubmitting || !answer.trim()} className="w-full">
+        <Button onClick={handleSubmit} disabled={isSubmitting || !allAnswered} className="w-full">
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Submit Conclusion
         </Button>

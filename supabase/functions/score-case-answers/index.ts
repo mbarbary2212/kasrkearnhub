@@ -113,6 +113,7 @@ serve(async (req) => {
               {
                 role: 'system',
                 content: `You are a medical education examiner scoring OSCE-style structured case answers.
+You have access to the model answer and rubric for each section.
 Return ONLY valid JSON with this shape:
 {
   "score": <number 0 to ${maxScore}>,
@@ -189,77 +190,93 @@ function buildScoringPrompt(
   studentAnswer: any,
   expectedData: any
 ): string {
-  const base = `Section: ${sectionType}\n\nStudent Answer:\n${JSON.stringify(studentAnswer, null, 2)}\n\n`;
+  const base = `Section: ${sectionType}\nMax Score: ${expectedData.max_score}\n\nStudent Answer:\n${JSON.stringify(studentAnswer, null, 2)}\n\n`;
 
   switch (sectionType) {
     case 'history_taking':
       return (
         base +
-        `Expected checklist categories:\n${JSON.stringify(expectedData.categories, null, 2)}\n\n` +
-        `Score based on: coverage of checklist items, quality of questions, systematic approach.` +
-        ` Max score: ${expectedData.max_score}`
+        `History mode: ${expectedData.mode}\n` +
+        `Checklist:\n${JSON.stringify(expectedData.checklist, null, 2)}\n` +
+        `Comprehension Questions with correct answers:\n${JSON.stringify(expectedData.comprehension_questions, null, 2)}\n\n` +
+        `Score based on: accuracy of comprehension answers compared to correct_answer fields, coverage of checklist items.`
       );
 
     case 'physical_examination':
       return (
         base +
-        `Expected findings:\n${JSON.stringify(expectedData.findings, null, 2)}\n\n` +
-        `Score based on: regions examined, identification of abnormal findings.` +
-        ` Max score: ${expectedData.max_score}`
+        `Available regions:\n${JSON.stringify(expectedData.regions, null, 2)}\n\n` +
+        `Note: ${expectedData.note || 'N/A'}\n` +
+        `Score based on: thoroughness of regions examined. This section max_score is ${expectedData.max_score}.`
       );
 
     case 'investigations_labs':
       return (
         base +
-        `Expected orders: ${JSON.stringify(expectedData.expected_orders)}\n` +
-        `Available labs: ${expectedData.available_labs?.length || 0}\n\n` +
-        `Score based on: appropriateness of tests ordered, avoiding unnecessary tests.` +
-        ` Max score: ${expectedData.max_score}`
+        `Key tests (should be ordered): ${JSON.stringify(expectedData.key_tests)}\n` +
+        `All available tests:\n${JSON.stringify(expectedData.available_tests, null, 2)}\n\n` +
+        `Score based on: did the student order the key tests? Penalise slightly for ordering unnecessary tests.`
       );
 
     case 'investigations_imaging':
       return (
         base +
-        `Expected orders: ${JSON.stringify(expectedData.expected_orders)}\n\n` +
-        `Score based on: correct imaging modality selection.` +
-        ` Max score: ${expectedData.max_score}`
+        `Key investigations: ${JSON.stringify(expectedData.key_investigations)}\n` +
+        `All available imaging:\n${JSON.stringify(expectedData.available_imaging, null, 2)}\n\n` +
+        `Score based on: did the student select the key imaging studies?`
       );
 
     case 'diagnosis':
       return (
         base +
-        `Expected diagnosis: ${expectedData.expected_diagnosis}\n` +
-        `Acceptable differentials: ${JSON.stringify(expectedData.differential_diagnoses)}\n\n` +
-        `Score based on: accuracy of primary diagnosis, quality of differentials.` +
-        ` Max score: ${expectedData.max_score}`
+        `Diagnosis Rubric:\n${JSON.stringify(expectedData.rubric, null, 2)}\n\n` +
+        `Score based on: compare student's possible_diagnosis, differential_diagnosis, and final_diagnosis against the rubric's model_answer and expected values. Award points per rubric item.`
       );
 
     case 'medical_management':
-    case 'surgical_management':
+    case 'surgical_management': {
+      const questions = expectedData.questions || [];
+      const correctAnswers = questions.map((q: any) => ({
+        id: q.id,
+        type: q.type,
+        correct: q.correct,
+        explanation: q.explanation,
+        model_answer: q.rubric?.model_answer,
+        expected_points: q.rubric?.expected_points,
+        points: q.points || q.rubric?.points,
+      }));
       return (
         base +
-        `MCQ correct answers: ${JSON.stringify(expectedData.mcqs?.map((m: any) => m.options.find((o: any) => o.is_correct)?.key))}\n` +
-        `Expected answer: ${expectedData.expected_answer || 'N/A'}\n\n` +
-        `Score based on: MCQ accuracy, free text quality if applicable.` +
-        ` Max score: ${expectedData.max_score}`
+        `Questions with correct answers:\n${JSON.stringify(correctAnswers, null, 2)}\n\n` +
+        `Score MCQs: award full points if student selected the correct letter, 0 otherwise.\n` +
+        `Score free_text: compare against model_answer and expected_points.`
       );
+    }
 
     case 'monitoring_followup':
     case 'patient_family_advice':
       return (
         base +
-        `Expected answer:\n${expectedData.expected_answer}\n\n` +
-        `Score based on: completeness, clinical accuracy, communication quality.` +
-        ` Max score: ${expectedData.max_score}`
+        `Question: ${expectedData.question}\n` +
+        `Rubric:\n` +
+        `  Expected points: ${JSON.stringify(expectedData.rubric?.expected_points)}\n` +
+        `  Model answer: ${expectedData.rubric?.model_answer}\n\n` +
+        `Score based on: how many expected points the student covered. Award partial credit.`
       );
 
-    case 'conclusion':
+    case 'conclusion': {
+      const tasks = expectedData.tasks || [];
       return (
         base +
-        `Expected key decisions: ${JSON.stringify(expectedData.key_decisions)}\n\n` +
-        `Score based on: summarization quality, addressing key decisions.` +
-        ` Max score: ${expectedData.max_score}`
+        `Conclusion Tasks:\n${JSON.stringify(tasks.map((t: any) => ({
+          id: t.id,
+          type: t.type,
+          label: t.label,
+          rubric: t.rubric,
+        })), null, 2)}\n\n` +
+        `Score each task against its rubric. Sum points across tasks.`
       );
+    }
 
     default:
       return base + `Score this section. Max score: ${expectedData.max_score || 10}`;

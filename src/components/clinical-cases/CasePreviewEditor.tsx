@@ -408,30 +408,27 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs text-muted-foreground">System Prompt</Label>
-        <Textarea
-          value={data.system_prompt}
-          onChange={e => onChange({ ...data, system_prompt: e.target.value })}
-          rows={4}
-          className="mt-1 text-sm font-mono"
-        />
+        <Label className="text-xs text-muted-foreground">Mode</Label>
+        <Badge variant="outline" className="ml-2 text-xs">{data.mode}</Badge>
       </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Patient Profile</Label>
-        <div className="grid grid-cols-3 gap-2 mt-1">
-          <Input value={data.patient_profile.name} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, name: e.target.value } })} placeholder="Name" className="text-sm" />
-          <Input type="number" value={data.patient_profile.age} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, age: parseInt(e.target.value) || 0 } })} placeholder="Age" className="text-sm" />
-          <Input value={data.patient_profile.gender} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, gender: e.target.value } })} placeholder="Gender" className="text-sm" />
+      {data.atmist_handover && (
+        <div>
+          <Label className="text-xs text-muted-foreground">ATMIST Handover</Label>
+          <div className="mt-1 space-y-1 text-sm bg-muted/50 rounded p-3">
+            {Object.entries(data.atmist_handover).map(([k, v]) => (
+              <div key={k}><span className="font-semibold capitalize">{k.replace('_', ' ')}:</span> {v}</div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div>
-        <Label className="text-xs text-muted-foreground">Categories ({data.categories?.length || 0})</Label>
+        <Label className="text-xs text-muted-foreground">Checklist ({data.checklist?.length || 0} categories)</Label>
         <div className="mt-1 space-y-2">
-          {(data.categories || []).map((cat, ci) => (
-            <div key={cat.category_key} className="border rounded p-2">
+          {(data.checklist || []).map(cat => (
+            <div key={cat.key} className="border rounded p-2">
               <p className="text-sm font-medium mb-1">{cat.label}</p>
               <div className="space-y-1">
-                {cat.items.map((item, ii) => (
+                {cat.items.map(item => (
                   <div key={item.key} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="w-3 h-3 text-primary shrink-0" />
                     <span>{item.label}</span>
@@ -442,22 +439,34 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
           ))}
         </div>
       </div>
+      {data.comprehension_questions && data.comprehension_questions.length > 0 && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions.length})</Label>
+          <div className="mt-1 space-y-2">
+            {data.comprehension_questions.map((q, i) => (
+              <div key={q.id} className="border rounded p-2 text-sm">
+                <p className="font-medium">Q{i + 1}: {q.question} ({q.points} pts)</p>
+                <p className="text-muted-foreground mt-1">Answer: {q.correct_answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData; onChange: (v: any) => void }) {
+  const regionEntries = Object.entries(data.regions || {});
   return (
     <div className="space-y-2">
-      <Label className="text-xs text-muted-foreground">Findings ({data.findings?.length || 0})</Label>
+      {data.note && <p className="text-xs text-muted-foreground italic">{data.note}</p>}
+      <Label className="text-xs text-muted-foreground">Regions ({regionEntries.length})</Label>
       <div className="space-y-1">
-        {(data.findings || []).map((f, i) => (
-          <div key={i} className={cn('flex items-center gap-3 p-2 rounded text-sm', f.is_abnormal ? 'bg-destructive/10' : 'bg-muted/50')}>
-            <Badge variant={f.is_abnormal ? 'destructive' : 'secondary'} className="text-xs shrink-0">
-              {f.region}
-            </Badge>
-            <span className="flex-1">{f.finding}</span>
-            {f.is_abnormal && <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
+        {regionEntries.map(([key, region]) => (
+          <div key={key} className="p-2 rounded text-sm bg-muted/50">
+            <span className="font-medium">{region.label}</span>
+            <p className="text-muted-foreground mt-0.5">{region.finding}</p>
           </div>
         ))}
       </div>
@@ -466,37 +475,30 @@ function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData;
 }
 
 function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: any) => void }) {
+  const testEntries = Object.entries(data.available_tests || {});
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Orders</Label>
-        <p className="text-sm mt-1">{(data.expected_orders || []).join(', ') || 'None'}</p>
+        <Label className="text-xs text-muted-foreground">Key Tests</Label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {(data.key_tests || []).map((t, i) => (
+            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+          ))}
+        </div>
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Available Labs ({data.available_labs?.length || 0})</Label>
-        <div className="mt-1 overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground border-b">
-                <th className="pb-1 pr-2">Test</th>
-                <th className="pb-1 pr-2">Result</th>
-                <th className="pb-1 pr-2">Unit</th>
-                <th className="pb-1 pr-2">Reference</th>
-                <th className="pb-1">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.available_labs || []).map((lab, i) => (
-                <tr key={i} className={cn('border-b border-muted', lab.is_abnormal && 'text-destructive')}>
-                  <td className="py-1 pr-2 font-medium">{lab.test_name}</td>
-                  <td className="py-1 pr-2">{lab.result}</td>
-                  <td className="py-1 pr-2">{lab.unit}</td>
-                  <td className="py-1 pr-2">{lab.reference_range}</td>
-                  <td className="py-1">{lab.is_abnormal ? '⚠️' : '✓'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
+        <div className="mt-1 space-y-1">
+          {testEntries.map(([key, test]) => (
+            <div key={key} className={cn('p-2 rounded text-sm', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{test.label}</span>
+                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+                <span className="text-xs text-muted-foreground ml-auto">{test.points} pts</span>
+              </div>
+              <p className="text-muted-foreground mt-0.5">{test.result}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -504,22 +506,28 @@ function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: a
 }
 
 function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange: (v: any) => void }) {
+  const imagingEntries = Object.entries(data.available_imaging || {});
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Orders</Label>
-        <p className="text-sm mt-1">{(data.expected_orders || []).join(', ') || 'None'}</p>
+        <Label className="text-xs text-muted-foreground">Key Investigations</Label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {(data.key_investigations || []).map((t, i) => (
+            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+          ))}
+        </div>
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Available Imaging ({data.available_imaging?.length || 0})</Label>
+        <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
         <div className="mt-1 space-y-2">
-          {(data.available_imaging || []).map((img, i) => (
-            <div key={i} className="flex items-start gap-3 p-2 rounded bg-muted/50 text-sm">
-              <Badge variant="outline" className="shrink-0 text-xs">{img.modality}</Badge>
-              <div>
-                <p className="font-medium">{img.body_part}</p>
-                <p className="text-muted-foreground">{img.finding}</p>
+          {imagingEntries.map(([key, study]) => (
+            <div key={key} className={cn('p-2 rounded text-sm', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{study.label}</span>
+                {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+                <span className="text-xs text-muted-foreground ml-auto">{study.points} pts</span>
               </div>
+              <p className="text-muted-foreground mt-0.5">{study.result}</p>
             </div>
           ))}
         </div>
@@ -529,66 +537,65 @@ function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange:
 }
 
 function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onChange: (v: any) => void }) {
+  const rubric = data.rubric;
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Expected Diagnosis</Label>
-        <Input
-          value={data.expected_diagnosis}
-          onChange={e => onChange({ ...data, expected_diagnosis: e.target.value })}
-          className="mt-1 text-sm"
-        />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Differential Diagnoses</Label>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {(data.differential_diagnoses || []).map((d, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{d}</Badge>
-          ))}
+      {rubric && Object.entries(rubric).map(([key, item]) => (
+        <div key={key}>
+          <Label className="text-xs text-muted-foreground">{item.label} ({item.points} pts)</Label>
+          <div className="mt-1 p-2 rounded bg-muted/50 text-sm">
+            <p className="text-muted-foreground">{item.model_answer}</p>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
 
 function ManagementEditor({ data, onChange }: { data: ManagementSectionData; onChange: (v: any) => void }) {
+  const questions = data.questions || [];
   return (
     <div className="space-y-3">
-      {data.free_text_prompt && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Free Text Prompt</Label>
-          <Textarea
-            value={data.free_text_prompt}
-            onChange={e => onChange({ ...data, free_text_prompt: e.target.value })}
-            rows={2}
-            className="mt-1 text-sm"
-          />
-        </div>
-      )}
-      <div>
-        <Label className="text-xs text-muted-foreground">MCQs ({data.mcqs?.length || 0})</Label>
-        <div className="mt-1 space-y-3">
-          {(data.mcqs || []).map((mcq, qi) => (
-            <div key={qi} className="border rounded p-3">
-              <p className="text-sm font-medium mb-2">Q{qi + 1}: {mcq.question}</p>
-              <div className="space-y-1">
-                {mcq.options.map(opt => (
-                  <div
-                    key={opt.key}
-                    className={cn(
-                      'flex items-center gap-2 p-1.5 rounded text-sm',
-                      opt.is_correct ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
-                    )}
-                  >
-                    <span className="font-mono text-xs w-5">{opt.key}.</span>
-                    <span className="flex-1">{opt.text}</span>
-                    {opt.is_correct && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </div>
-                ))}
-              </div>
+      <Label className="text-xs text-muted-foreground">Questions ({questions.length})</Label>
+      <div className="mt-1 space-y-3">
+        {questions.map((q, qi) => (
+          <div key={q.id} className="border rounded p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="text-xs">{q.type}</Badge>
+              <span className="text-xs text-muted-foreground">{q.points || q.rubric?.points} pts</span>
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-medium mb-2">{q.question}</p>
+            {q.type === 'mcq' && q.options && (
+              <div className="space-y-1">
+                {q.options.map((opt, oi) => {
+                  const letter = opt.match(/^([A-Z])\./)?.[1];
+                  const isCorrect = letter === q.correct;
+                  return (
+                    <div
+                      key={oi}
+                      className={cn(
+                        'flex items-center gap-2 p-1.5 rounded text-sm',
+                        isCorrect ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
+                      )}
+                    >
+                      <span className="flex-1">{opt}</span>
+                      {isCorrect && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {q.type === 'free_text' && q.rubric && (
+              <div className="mt-1 p-2 rounded bg-muted/50 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Model Answer:</p>
+                <p>{q.rubric.model_answer}</p>
+              </div>
+            )}
+            {q.explanation && (
+              <p className="text-xs text-muted-foreground mt-2">Explanation: {q.explanation}</p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -598,13 +605,26 @@ function MonitoringEditor({ data, onChange }: { data: MonitoringSectionData; onC
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Prompt</Label>
-        <Textarea value={data.prompt} onChange={e => onChange({ ...data, prompt: e.target.value })} rows={2} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Question</Label>
+        <Textarea value={data.question} onChange={e => onChange({ ...data, question: e.target.value })} rows={2} className="mt-1 text-sm" />
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Answer</Label>
-        <Textarea value={data.expected_answer} onChange={e => onChange({ ...data, expected_answer: e.target.value })} rows={3} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Model Answer</Label>
+        <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
+      {data.rubric?.expected_points && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
+          <div className="mt-1 space-y-1">
+            {data.rubric.expected_points.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Check className="w-3 h-3 text-primary shrink-0" />
+                <span>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -613,32 +633,49 @@ function AdviceEditor({ data, onChange }: { data: AdviceSectionData; onChange: (
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Prompt</Label>
-        <Textarea value={data.prompt} onChange={e => onChange({ ...data, prompt: e.target.value })} rows={2} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Question</Label>
+        <Textarea value={data.question} onChange={e => onChange({ ...data, question: e.target.value })} rows={2} className="mt-1 text-sm" />
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Answer</Label>
-        <Textarea value={data.expected_answer} onChange={e => onChange({ ...data, expected_answer: e.target.value })} rows={3} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Model Answer</Label>
+        <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
+      {data.rubric?.expected_points && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
+          <div className="mt-1 space-y-1">
+            {data.rubric.expected_points.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Check className="w-3 h-3 text-primary shrink-0" />
+                <span>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function ConclusionEditor({ data, onChange }: { data: ConclusionSectionData; onChange: (v: any) => void }) {
+  const tasks = data.tasks || [];
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Ward Round Prompt</Label>
-        <Textarea value={data.ward_round_prompt} onChange={e => onChange({ ...data, ward_round_prompt: e.target.value })} rows={3} className="mt-1 text-sm" />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Decisions</Label>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {(data.key_decisions || []).map((d, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{d}</Badge>
-          ))}
+      <Label className="text-xs text-muted-foreground">Tasks ({tasks.length})</Label>
+      {tasks.map((task, i) => (
+        <div key={task.id} className="border rounded p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className="text-xs">{task.type.replace(/_/g, ' ')}</Badge>
+            <span className="font-medium text-sm">{task.label}</span>
+            <span className="text-xs text-muted-foreground ml-auto">{task.rubric.points} pts</span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-2">{task.instruction}</p>
+          <div className="p-2 rounded bg-muted/50 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Model Answer:</p>
+            <p>{task.rubric.model_answer}</p>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

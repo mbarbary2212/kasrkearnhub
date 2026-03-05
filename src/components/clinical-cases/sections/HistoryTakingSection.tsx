@@ -1,19 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, User, Stethoscope } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Loader2, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
-
-interface ChatMessage {
-  role: 'student' | 'patient';
-  content: string;
-}
 
 export function HistoryTakingSection({
   data,
@@ -22,148 +16,107 @@ export function HistoryTakingSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<HistorySectionData>) {
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    (previousAnswer?.messages as ChatMessage[]) || []
+  const [showHandover, setShowHandover] = useState(true);
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
-  const [input, setInput] = useState('');
-  const [isThinking, setIsThinking] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  const handover = data.atmist_handover;
+  const questions = data.comprehension_questions || [];
 
-  const profile = data.patient_profile;
+  const allAnswered = questions.every(q => answers[q.id]?.trim());
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || isThinking || readOnly) return;
-
-    const newMessages: ChatMessage[] = [...messages, { role: 'student', content: text }];
-    setMessages(newMessages);
-    setInput('');
-    setIsThinking(true);
-
-    // Simulate patient response (in the full runner, this calls the AI)
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'patient',
-          content: 'Thank you for asking. Let me think about that...',
-        },
-      ]);
-      setIsThinking(false);
-    }, 1500);
-  };
-
-  const handleFinish = () => {
+  const handleSubmit = () => {
     onSubmit({
-      messages,
-      checklist_self_report: {},
-      turn_count: messages.filter(m => m.role === 'student').length,
+      comprehension_answers: answers,
+      questions_answered: Object.keys(answers).filter(k => answers[k]?.trim()).length,
+      total_questions: questions.length,
     });
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[600px]">
-      {/* Patient info bar */}
-      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-t-lg border-b">
-        <Avatar className="h-10 w-10">
-          <AvatarFallback className="bg-primary/10 text-primary">
-            <User className="w-5 h-5" />
-          </AvatarFallback>
-        </Avatar>
+    <div className="space-y-5">
+      {/* ATMIST Handover */}
+      {handover && (
         <div>
-          <p className="font-medium text-sm">{profile.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {profile.age}y, {profile.gender}
-            {profile.occupation && ` • ${profile.occupation}`}
-          </p>
-        </div>
-        <Badge variant="outline" className="ml-auto text-xs">
-          {messages.filter(m => m.role === 'student').length} questions asked
-        </Badge>
-      </div>
-
-      {/* Chat area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        {messages.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Stethoscope className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Start by asking the patient about their symptoms.</p>
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <Label className="font-medium">Paramedic Handover (ATMIST)</Label>
+            <Badge variant="outline" className="text-xs ml-auto cursor-pointer" onClick={() => setShowHandover(!showHandover)}>
+              {showHandover ? 'Collapse' : 'Expand'}
+            </Badge>
           </div>
-        )}
-        <div className="space-y-3">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={cn(
-                'flex gap-2 max-w-[85%]',
-                msg.role === 'student' ? 'ml-auto flex-row-reverse' : ''
-              )}
-            >
-              <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className={cn('text-xs', msg.role === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                  {msg.role === 'student' ? 'Dr' : profile.name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div
-                className={cn(
-                  'rounded-lg px-3 py-2 text-sm',
-                  msg.role === 'student'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                )}
-              >
-                {msg.content}
-              </div>
-            </div>
-          ))}
-          {isThinking && (
-            <div className="flex gap-2 max-w-[85%]">
-              <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className="bg-muted text-xs">{profile.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="bg-muted rounded-lg px-3 py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
-            </div>
+          {showHandover && (
+            <Card className="bg-muted/30">
+              <CardContent className="py-3 px-4 space-y-2 text-sm">
+                {[
+                  { key: 'A — Age/Time', value: handover.age_time },
+                  { key: 'M — Mechanism', value: handover.mechanism },
+                  { key: 'I — Injuries', value: handover.injuries },
+                  { key: 'S — Signs', value: handover.signs },
+                  { key: 'T — Treatment', value: handover.treatment },
+                ].map(item => (
+                  <div key={item.key}>
+                    <span className="font-semibold text-primary">{item.key}:</span>{' '}
+                    <span className="text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
         </div>
-      </ScrollArea>
+      )}
 
-      {/* Input + actions */}
-      <div className="border-t p-3 space-y-2">
-        {!readOnly && (
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder="Ask the patient a question..."
-              disabled={isThinking}
-              className="flex-1"
-            />
-            <Button size="icon" onClick={handleSend} disabled={!input.trim() || isThinking}>
-              <Send className="w-4 h-4" />
-            </Button>
+      {/* Checklist (read-only reference) */}
+      {data.checklist && data.checklist.length > 0 && (
+        <div>
+          <Label className="text-xs text-muted-foreground">History Checklist Reference</Label>
+          <div className="mt-1 space-y-2">
+            {data.checklist.map(cat => (
+              <div key={cat.key} className="border rounded p-2">
+                <p className="text-sm font-medium mb-1">{cat.label}</p>
+                <div className="space-y-0.5">
+                  {cat.items.map(item => (
+                    <div key={item.key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-        {!readOnly && messages.length >= 2 && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleFinish}
-            disabled={isSubmitting}
-          >
-            {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Finish History Taking
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Comprehension Questions */}
+      {questions.length > 0 && (
+        <div className="space-y-3">
+          <Label className="font-medium">Comprehension Questions</Label>
+          {questions.map((q, i) => (
+            <div key={q.id} className="space-y-1">
+              <Label className="text-sm">
+                Q{i + 1}: {q.question}
+                <span className="text-xs text-muted-foreground ml-2">({q.points} pts)</span>
+              </Label>
+              <Input
+                value={answers[q.id] || ''}
+                onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                disabled={readOnly}
+                placeholder="Type your answer..."
+                className="text-sm"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!readOnly && (
+        <Button onClick={handleSubmit} disabled={isSubmitting || !allAnswered} className="w-full">
+          {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Submit History Taking
+        </Button>
+      )}
     </div>
   );
 }
