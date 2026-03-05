@@ -60,6 +60,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [structuredCaseOpen, setStructuredCaseOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
   
