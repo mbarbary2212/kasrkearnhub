@@ -34,6 +34,7 @@ import IntegrityReportPage from "./pages/IntegrityReportPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
 import ExamResultsPage from "./pages/ExamResultsPage";
 import CasePreviewEditorPage from "./pages/CasePreviewEditorPage";
+import CaseSummaryPage from "./pages/CaseSummaryPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
