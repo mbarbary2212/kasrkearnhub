@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ManagementSectionData, McqQuestion } from '@/types/structuredCase';
+import { ManagementSectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 
 export function ManagementSection({
@@ -15,40 +14,55 @@ export function ManagementSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<ManagementSectionData>) {
-  const [mcqAnswers, setMcqAnswers] = useState<Record<number, string>>(
-    (previousAnswer?.mcq_answers as Record<number, string>) || {}
+  const [mcqAnswers, setMcqAnswers] = useState<Record<string, string>>(
+    (previousAnswer?.mcq_answers as Record<string, string>) || {}
   );
-  const [freeText, setFreeText] = useState(
-    (previousAnswer?.free_text as string) || ''
+  const [freeTextAnswers, setFreeTextAnswers] = useState<Record<string, string>>(
+    (previousAnswer?.free_text_answers as Record<string, string>) || {}
   );
 
-  const selectOption = (qIndex: number, key: string) => {
+  const questions = data.questions || [];
+  const mcqs = questions.filter(q => q.type === 'mcq');
+  const freeTexts = questions.filter(q => q.type === 'free_text');
+
+  const selectOption = (qId: string, letter: string) => {
     if (readOnly) return;
-    setMcqAnswers(prev => ({ ...prev, [qIndex]: key }));
+    setMcqAnswers(prev => ({ ...prev, [qId]: letter }));
   };
 
-  const allMcqsAnswered = (data.mcqs || []).every((_, i) => mcqAnswers[i]);
+  // Parse option string like "A. Some text" into { key: "A", text: "Some text" }
+  const parseOption = (opt: string) => {
+    const match = opt.match(/^([A-Z])\.\s*(.+)$/);
+    return match ? { key: match[1], text: match[2] } : { key: opt[0], text: opt };
+  };
+
+  const allMcqsAnswered = mcqs.every(q => mcqAnswers[q.id]);
+  const allFreeTextsAnswered = freeTexts.every(q => freeTextAnswers[q.id]?.trim());
 
   const handleSubmit = () => {
     onSubmit({
       mcq_answers: mcqAnswers,
-      free_text: freeText.trim(),
+      free_text_answers: freeTextAnswers,
     });
   };
 
   return (
     <div className="space-y-6">
       {/* MCQs */}
-      {(data.mcqs || []).map((mcq, qi) => (
-        <div key={qi} className="space-y-2">
-          <Label className="font-medium text-sm">Q{qi + 1}: {mcq.question}</Label>
+      {mcqs.map((q, qi) => (
+        <div key={q.id} className="space-y-2">
+          <Label className="font-medium text-sm">
+            Q{qi + 1}: {q.question}
+            <span className="text-xs text-muted-foreground ml-2">({q.points} pts)</span>
+          </Label>
           <div className="space-y-1.5">
-            {mcq.options.map(opt => {
-              const selected = mcqAnswers[qi] === opt.key;
+            {(q.options || []).map(optStr => {
+              const opt = parseOption(optStr);
+              const selected = mcqAnswers[q.id] === opt.key;
               return (
                 <button
                   key={opt.key}
-                  onClick={() => selectOption(qi, opt.key)}
+                  onClick={() => selectOption(q.id, opt.key)}
                   disabled={readOnly}
                   className={cn(
                     'w-full text-left flex items-center gap-2 p-2.5 rounded-lg border transition-all text-sm',
@@ -74,23 +88,29 @@ export function ManagementSection({
         </div>
       ))}
 
-      {/* Free text */}
-      {data.free_text_prompt && (
-        <div>
-          <Label className="font-medium text-sm">{data.free_text_prompt}</Label>
+      {/* Free text questions */}
+      {freeTexts.map((q, fi) => (
+        <div key={q.id} className="space-y-1">
+          <Label className="font-medium text-sm">
+            {q.question}
+            <span className="text-xs text-muted-foreground ml-2">({q.rubric?.points || q.points} pts)</span>
+          </Label>
           <Textarea
-            value={freeText}
-            onChange={e => setFreeText(e.target.value)}
-            rows={4}
-            className="mt-1"
+            value={freeTextAnswers[q.id] || ''}
+            onChange={e => setFreeTextAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+            rows={5}
             disabled={readOnly}
             placeholder="Type your answer..."
           />
         </div>
-      )}
+      ))}
 
       {!readOnly && (
-        <Button onClick={handleSubmit} disabled={isSubmitting || !allMcqsAnswered} className="w-full">
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || !allMcqsAnswered || !allFreeTextsAnswered}
+          className="w-full"
+        >
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Submit
         </Button>

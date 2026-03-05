@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { AdviceSectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
@@ -24,11 +25,24 @@ export function AdviceSection({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="font-medium">{data.prompt}</Label>
+        <Label className="font-medium">{data.question}</Label>
+        {data.rubric?.expected_points && (
+          <div className="mt-2">
+            <p className="text-xs text-muted-foreground mb-1">Consider including:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {data.rubric.expected_points.slice(0, 3).map((p, i) => (
+                <Badge key={i} variant="outline" className="text-xs">{p.length > 40 ? p.slice(0, 40) + '…' : p}</Badge>
+              ))}
+              {data.rubric.expected_points.length > 3 && (
+                <Badge variant="outline" className="text-xs">+{data.rubric.expected_points.length - 3} more</Badge>
+              )}
+            </div>
+          </div>
+        )}
         <Textarea
           value={answer}
           onChange={e => setAnswer(e.target.value)}
-          rows={5}
+          rows={6}
           className="mt-2"
           disabled={readOnly}
           placeholder="What advice would you give the patient and their family?"

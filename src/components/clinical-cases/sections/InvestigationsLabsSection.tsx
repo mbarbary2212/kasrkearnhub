@@ -20,28 +20,28 @@ export function InvestigationsLabsSection({
   );
   const [showResults, setShowResults] = useState(!!previousAnswer);
 
-  const toggleTest = (testName: string) => {
+  const testEntries = Object.entries(data.available_tests || {});
+
+  const toggleTest = (testKey: string) => {
     if (readOnly || showResults) return;
     setSelectedTests(prev => {
       const next = new Set(prev);
-      if (next.has(testName)) next.delete(testName);
-      else next.add(testName);
+      if (next.has(testKey)) next.delete(testKey);
+      else next.add(testKey);
       return next;
     });
   };
 
-  const handleOrder = () => {
-    setShowResults(true);
-  };
+  const handleOrder = () => setShowResults(true);
 
   const handleSubmit = () => {
     onSubmit({
       selected_tests: Array.from(selectedTests),
-      total_available: data.available_labs?.length || 0,
+      total_available: testEntries.length,
     });
   };
 
-  const selectedLabs = (data.available_labs || []).filter(l => selectedTests.has(l.test_name));
+  const selectedEntries = testEntries.filter(([key]) => selectedTests.has(key));
 
   return (
     <div className="space-y-4">
@@ -49,23 +49,22 @@ export function InvestigationsLabsSection({
         Select the lab investigations you would order for this patient.
       </p>
 
-      {/* Test selection */}
       {!showResults && (
         <div className="grid grid-cols-2 gap-2">
-          {(data.available_labs || []).map(lab => (
+          {testEntries.map(([key, test]) => (
             <label
-              key={lab.test_name}
+              key={key}
               className={cn(
                 'flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors text-sm',
-                selectedTests.has(lab.test_name) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+                selectedTests.has(key) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
               )}
             >
               <Checkbox
-                checked={selectedTests.has(lab.test_name)}
-                onCheckedChange={() => toggleTest(lab.test_name)}
+                checked={selectedTests.has(key)}
+                onCheckedChange={() => toggleTest(key)}
                 disabled={readOnly}
               />
-              <span>{lab.test_name}</span>
+              <span>{test.label}</span>
             </label>
           ))}
         </div>
@@ -78,35 +77,18 @@ export function InvestigationsLabsSection({
         </Button>
       )}
 
-      {/* Results table */}
-      {showResults && selectedLabs.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 text-left text-xs text-muted-foreground">
-                <th className="p-2">Test</th>
-                <th className="p-2">Result</th>
-                <th className="p-2">Unit</th>
-                <th className="p-2">Reference</th>
-                <th className="p-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedLabs.map((lab, i) => (
-                <tr key={i} className={cn('border-t', lab.is_abnormal && 'bg-destructive/5')}>
-                  <td className="p-2 font-medium">{lab.test_name}</td>
-                  <td className={cn('p-2', lab.is_abnormal && 'text-destructive font-semibold')}>{lab.result}</td>
-                  <td className="p-2 text-muted-foreground">{lab.unit}</td>
-                  <td className="p-2 text-muted-foreground">{lab.reference_range}</td>
-                  <td className="p-2">
-                    <Badge variant={lab.is_abnormal ? 'destructive' : 'secondary'} className="text-xs">
-                      {lab.is_abnormal ? 'Abnormal' : 'Normal'}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {showResults && selectedEntries.length > 0 && (
+        <div className="space-y-3">
+          {selectedEntries.map(([key, test]) => (
+            <div key={key} className={cn('border rounded-lg p-3', test.is_key && 'border-primary/30')}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium text-sm">{test.label}</span>
+                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+              </div>
+              <p className="text-sm">{test.result}</p>
+              <p className="text-xs text-muted-foreground mt-1">{test.interpretation}</p>
+            </div>
+          ))}
         </div>
       )}
 
