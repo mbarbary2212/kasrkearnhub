@@ -408,30 +408,27 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs text-muted-foreground">System Prompt</Label>
-        <Textarea
-          value={data.system_prompt}
-          onChange={e => onChange({ ...data, system_prompt: e.target.value })}
-          rows={4}
-          className="mt-1 text-sm font-mono"
-        />
+        <Label className="text-xs text-muted-foreground">Mode</Label>
+        <Badge variant="outline" className="ml-2 text-xs">{data.mode}</Badge>
       </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Patient Profile</Label>
-        <div className="grid grid-cols-3 gap-2 mt-1">
-          <Input value={data.patient_profile.name} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, name: e.target.value } })} placeholder="Name" className="text-sm" />
-          <Input type="number" value={data.patient_profile.age} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, age: parseInt(e.target.value) || 0 } })} placeholder="Age" className="text-sm" />
-          <Input value={data.patient_profile.gender} onChange={e => onChange({ ...data, patient_profile: { ...data.patient_profile, gender: e.target.value } })} placeholder="Gender" className="text-sm" />
+      {data.atmist_handover && (
+        <div>
+          <Label className="text-xs text-muted-foreground">ATMIST Handover</Label>
+          <div className="mt-1 space-y-1 text-sm bg-muted/50 rounded p-3">
+            {Object.entries(data.atmist_handover).map(([k, v]) => (
+              <div key={k}><span className="font-semibold capitalize">{k.replace('_', ' ')}:</span> {v}</div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div>
-        <Label className="text-xs text-muted-foreground">Categories ({data.categories?.length || 0})</Label>
+        <Label className="text-xs text-muted-foreground">Checklist ({data.checklist?.length || 0} categories)</Label>
         <div className="mt-1 space-y-2">
-          {(data.categories || []).map((cat, ci) => (
-            <div key={cat.category_key} className="border rounded p-2">
+          {(data.checklist || []).map(cat => (
+            <div key={cat.key} className="border rounded p-2">
               <p className="text-sm font-medium mb-1">{cat.label}</p>
               <div className="space-y-1">
-                {cat.items.map((item, ii) => (
+                {cat.items.map(item => (
                   <div key={item.key} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="w-3 h-3 text-primary shrink-0" />
                     <span>{item.label}</span>
@@ -442,6 +439,19 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
           ))}
         </div>
       </div>
+      {data.comprehension_questions && data.comprehension_questions.length > 0 && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions.length})</Label>
+          <div className="mt-1 space-y-2">
+            {data.comprehension_questions.map((q, i) => (
+              <div key={q.id} className="border rounded p-2 text-sm">
+                <p className="font-medium">Q{i + 1}: {q.question} ({q.points} pts)</p>
+                <p className="text-muted-foreground mt-1">Answer: {q.correct_answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
