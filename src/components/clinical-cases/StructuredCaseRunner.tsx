@@ -1,0 +1,278 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  Sparkles,
+  Clock,
+  Send,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import {
+  SectionType,
+  SECTION_LABELS,
+  StructuredCaseData,
+} from '@/types/structuredCase';
+import {
+  HistoryTakingSection,
+  PhysicalExamSection,
+  InvestigationsLabsSection,
+  InvestigationsImagingSection,
+  DiagnosisSection,
+  ManagementSection,
+  MonitoringSection,
+  AdviceSection,
+  ConclusionSection,
+} from './sections';
+import { supabase } from '@/integrations/supabase/client';
+
+// ── Props ────────────────────────────────────────────
+interface StructuredCaseRunnerProps {
+  caseId: string;
+  attemptId: string;
+  caseData: any; // row from virtual_patient_cases
+  onComplete: (attemptId: string) => void;
+}
+
+const SECTION_COMPONENT_MAP: Record<SectionType, React.ComponentType<any>> = {
+  history_taking: HistoryTakingSection,
+  physical_examination: PhysicalExamSection,
+  investigations_labs: InvestigationsLabsSection,
+  investigations_imaging: InvestigationsImagingSection,
+  diagnosis: DiagnosisSection,
+  medical_management: ManagementSection,
+  surgical_management: ManagementSection,
+  monitoring_followup: MonitoringSection,
+  patient_family_advice: AdviceSection,
+  conclusion: ConclusionSection,
+};
+
+export function StructuredCaseRunner({
+  caseId,
+  attemptId,
+  caseData,
+  onComplete,
+}: StructuredCaseRunnerProps) {
+  const generatedData = caseData.generated_case_data as StructuredCaseData | null;
+  const activeSections = (caseData.active_sections as SectionType[]) || [];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
+  const [isSubmittingSection, setIsSubmittingSection] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [startTime] = useState(Date.now());
+
+  const currentSection = activeSections[currentIndex];
+  const totalSections = activeSections.length;
+  const progress = totalSections > 0 ? ((completedSections.size) / totalSections) * 100 : 0;
+
+  const sectionData = useMemo(() => {
+    if (!generatedData || !currentSection) return null;
+    return (generatedData as any)[currentSection];
+  }, [generatedData, currentSection]);
+
+  const handleSectionSubmit = useCallback(async (answer: Record<string, unknown>) => {
+    if (!currentSection) return;
+    setIsSubmittingSection(true);
+
+    try {
+      // Save answer to case_section_answers
+      const { error } = await supabase
+        .from('case_section_answers')
+        .upsert(
+          {
+            attempt_id: attemptId,
+            section_type: currentSection,
+            student_answer: answer as any,
+            max_score: sectionData?.max_score || 0,
+            is_scored: false,
+          } as any,
+          { onConflict: 'attempt_id,section_type' }
+        );
+
+      if (error) throw error;
+
+      // Track locally
+      setAnswers(prev => ({ ...prev, [currentSection]: answer }));
+      setCompletedSections(prev => new Set([...prev, currentSection]));
+
+      // Auto-advance
+      if (currentIndex < totalSections - 1) {
+        setCurrentIndex(prev => prev + 1);
+      }
+
+      toast.success(`${SECTION_LABELS[currentSection]} submitted`);
+    } catch (err) {
+      console.error('Failed to save section answer:', err);
+      toast.error('Failed to save your answer. Please try again.');
+    } finally {
+      setIsSubmittingSection(false);
+    }
+  }, [currentSection, attemptId, sectionData, currentIndex, totalSections]);
+
+  const handleFinish = async () => {
+    setIsFinishing(true);
+    try {
+      const timeTaken = Math.round((Date.now() - startTime) / 1000);
+
+      // Mark attempt as completed
+      await supabase
+        .from('virtual_patient_attempts')
+        .update({
+          is_completed: true,
+          completed_at: new Date().toISOString(),
+          time_taken_seconds: timeTaken,
+        })
+        .eq('id', attemptId);
+
+      // Trigger scoring
+      try {
+        await supabase.functions.invoke('score-case-answers', {
+          body: { attempt_id: attemptId, case_id: caseId },
+        });
+      } catch (scoreErr) {
+        console.warn('Scoring may still be processing:', scoreErr);
+      }
+
+      onComplete(attemptId);
+    } catch (err) {
+      console.error('Failed to finish case:', err);
+      toast.error('Failed to submit case');
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
+  if (!generatedData) {
+    return (
+      <div className="text-center py-12">
+        <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+        <p className="text-muted-foreground">This case has no generated content yet.</p>
+      </div>
+    );
+  }
+
+  const allCompleted = completedSections.size === totalSections;
+  const SectionComponent = currentSection ? SECTION_COMPONENT_MAP[currentSection] : null;
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-4">
+      {/* Progress header */}
+      <Card>
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-semibold text-sm">{caseData.title}</h2>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{Math.round((Date.now() - startTime) / 60000)} min</span>
+            </div>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between mt-2">
+            <span className="text-xs text-muted-foreground">
+              Section {currentIndex + 1} of {totalSections}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {completedSections.size}/{totalSections} completed
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section stepper pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {activeSections.map((s, i) => {
+          const isCompleted = completedSections.has(s);
+          const isCurrent = i === currentIndex;
+          return (
+            <button
+              key={s}
+              onClick={() => {
+                if (isCompleted || i <= currentIndex) setCurrentIndex(i);
+              }}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all border',
+                isCurrent
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : isCompleted
+                  ? 'bg-primary/10 text-primary border-primary/20'
+                  : 'bg-muted/50 text-muted-foreground border-transparent',
+                !isCompleted && i > currentIndex && 'opacity-50 cursor-not-allowed'
+              )}
+              disabled={!isCompleted && i > currentIndex}
+            >
+              {isCompleted && <CheckCircle2 className="w-3 h-3" />}
+              {SECTION_LABELS[s]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {SECTION_LABELS[currentSection]}
+            {completedSections.has(currentSection) && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Done
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {SectionComponent && sectionData && (
+            <SectionComponent
+              data={sectionData}
+              onSubmit={handleSectionSubmit}
+              isSubmitting={isSubmittingSection}
+              readOnly={completedSections.has(currentSection)}
+              previousAnswer={answers[currentSection] || null}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Navigation + finish */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+          disabled={currentIndex === 0}
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Previous
+        </Button>
+
+        {currentIndex < totalSections - 1 && completedSections.has(currentSection) && (
+          <Button
+            size="sm"
+            onClick={() => setCurrentIndex(prev => prev + 1)}
+          >
+            Next <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        )}
+
+        {allCompleted && (
+          <Button
+            onClick={handleFinish}
+            disabled={isFinishing}
+            className="gap-2"
+          >
+            {isFinishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Submit Case
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

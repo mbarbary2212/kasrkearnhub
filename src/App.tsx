@@ -34,6 +34,7 @@ import IntegrityReportPage from "./pages/IntegrityReportPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
 import ExamResultsPage from "./pages/ExamResultsPage";
 import CasePreviewEditorPage from "./pages/CasePreviewEditorPage";
+import CaseSummaryPage from "./pages/CaseSummaryPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,6 +110,7 @@ const App = () => {
                 <Route path="/feedback" element={<FeedbackPage />} />
                 <Route path="/virtual-patient/:caseId" element={<VirtualPatientPage />} />
                 <Route path="/structured-case/:caseId/edit" element={<CasePreviewEditorPage />} />
+                <Route path="/case-summary/:attemptId" element={<CaseSummaryPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </BrowserRouter>
