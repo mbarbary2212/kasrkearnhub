@@ -537,24 +537,17 @@ function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange:
 }
 
 function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onChange: (v: any) => void }) {
+  const rubric = data.rubric;
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Expected Diagnosis</Label>
-        <Input
-          value={data.expected_diagnosis}
-          onChange={e => onChange({ ...data, expected_diagnosis: e.target.value })}
-          className="mt-1 text-sm"
-        />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Differential Diagnoses</Label>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {(data.differential_diagnoses || []).map((d, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{d}</Badge>
-          ))}
+      {rubric && Object.entries(rubric).map(([key, item]) => (
+        <div key={key}>
+          <Label className="text-xs text-muted-foreground">{item.label} ({item.points} pts)</Label>
+          <div className="mt-1 p-2 rounded bg-muted/50 text-sm">
+            <p className="text-muted-foreground">{item.model_answer}</p>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
