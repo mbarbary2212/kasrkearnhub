@@ -5,3 +5,4 @@ export { ClinicalCaseAdminList } from './ClinicalCaseAdminList';
 export { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 export { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 export { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
+export { StructuredCaseCreator } from './StructuredCaseCreator';

@@ -27,6 +27,7 @@ import {
   Upload,
   Download,
   Play,
+  ClipboardList,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
@@ -34,6 +35,7 @@ import { useNavigate } from 'react-router-dom';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
+import { StructuredCaseCreator } from './StructuredCaseCreator';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [structuredCaseOpen, setStructuredCaseOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
   
@@ -198,6 +201,10 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             <Sparkles className="w-4 h-4 mr-1" />
             Generate with AI
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setStructuredCaseOpen(true)} className="border-primary/30 text-primary hover:bg-primary/5">
+            <ClipboardList className="w-4 h-4 mr-1" />
+            Structured Case
+          </Button>
           <Button size="sm" onClick={handleCreateCase}>
             <Plus className="w-4 h-4 mr-1" />
             Add Case
@@ -329,6 +336,14 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
         moduleId={moduleId}
         chapterId={chapterId}
         topicId={topicId}
+      />
+
+      {/* Structured Case Creator */}
+      <StructuredCaseCreator
+        open={structuredCaseOpen}
+        onOpenChange={setStructuredCaseOpen}
+        moduleId={moduleId}
+        chapterId={chapterId}
       />
 
       {/* Delete Confirmation */}
