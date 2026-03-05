@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.sentry-ping]
 verify_jwt = false
+
+[functions.generate-structured-case]
+verify_jwt = false

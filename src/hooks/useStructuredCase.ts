@@ -12,7 +12,7 @@ export function useCreateStructuredCase() {
     mutationFn: async (data: StructuredCaseFormData) => {
       const insertPayload: Record<string, unknown> = {
         title: data.title,
-        intro_text: data.chief_complaint, // chief complaint is the intro
+        intro_text: data.chief_complaint,
         chief_complaint: data.chief_complaint,
         module_id: data.module_id,
         chapter_id: data.chapter_id || null,
@@ -43,6 +43,28 @@ export function useCreateStructuredCase() {
       return result;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+    },
+  });
+}
+
+/** Generate structured case content via AI edge function */
+export function useGenerateStructuredCase() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (caseId: string) => {
+      const { data, error } = await supabase.functions.invoke('generate-structured-case', {
+        body: { case_id: caseId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, caseId) => {
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-case', caseId] });
       queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
       queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
     },
