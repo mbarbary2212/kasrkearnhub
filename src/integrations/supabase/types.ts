@@ -977,6 +977,111 @@ export type Database = {
         }
         Relationships: []
       }
+      case_reference_documents: {
+        Row: {
+          case_id: string | null
+          chapter_id: string | null
+          created_at: string | null
+          doc_category: string
+          extracted_text: string | null
+          file_type: string
+          file_url: string
+          id: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          doc_category?: string
+          extracted_text?: string | null
+          file_type: string
+          file_url: string
+          id?: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          doc_category?: string
+          extracted_text?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_reference_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_reference_documents_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_section_answers: {
+        Row: {
+          ai_feedback: string | null
+          attempt_id: string
+          created_at: string | null
+          id: string
+          is_scored: boolean | null
+          max_score: number | null
+          score: number | null
+          section_type: string
+          student_answer: Json | null
+        }
+        Insert: {
+          ai_feedback?: string | null
+          attempt_id: string
+          created_at?: string | null
+          id?: string
+          is_scored?: boolean | null
+          max_score?: number | null
+          score?: number | null
+          section_type: string
+          student_answer?: Json | null
+        }
+        Update: {
+          ai_feedback?: string | null
+          attempt_id?: string
+          created_at?: string | null
+          id?: string
+          is_scored?: boolean | null
+          max_score?: number | null
+          score?: number | null
+          section_type?: string
+          student_answer?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_section_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "ai_case_attempt_summary"
+            referencedColumns: ["attempt_id"]
+          },
+          {
+            foreignKeyName: "case_section_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_patient_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_attempts: {
         Row: {
           attempt_number: number
@@ -3143,35 +3248,53 @@ export type Database = {
       module_chapters: {
         Row: {
           book_label: string | null
+          case_count: number | null
           chapter_number: number
           created_at: string | null
+          created_by: string | null
           enable_sections: boolean
           icon_url: string | null
           id: string
           module_id: string
           order_index: number
+          pdf_pages: number | null
+          pdf_text: string | null
+          pdf_uploaded_at: string | null
+          pdf_url: string | null
           title: string
         }
         Insert: {
           book_label?: string | null
+          case_count?: number | null
           chapter_number: number
           created_at?: string | null
+          created_by?: string | null
           enable_sections?: boolean
           icon_url?: string | null
           id?: string
           module_id: string
           order_index: number
+          pdf_pages?: number | null
+          pdf_text?: string | null
+          pdf_uploaded_at?: string | null
+          pdf_url?: string | null
           title: string
         }
         Update: {
           book_label?: string | null
+          case_count?: number | null
           chapter_number?: number
           created_at?: string | null
+          created_by?: string | null
           enable_sections?: boolean
           icon_url?: string | null
           id?: string
           module_id?: string
           order_index?: number
+          pdf_pages?: number | null
+          pdf_text?: string | null
+          pdf_uploaded_at?: string | null
+          pdf_url?: string | null
           title?: string
         }
         Relationships: [
@@ -5088,15 +5211,21 @@ export type Database = {
       }
       virtual_patient_cases: {
         Row: {
+          active_sections: string[] | null
+          additional_instructions: string | null
           avatar_id: number | null
           case_mode: string | null
           case_type: string
           chapter_id: string | null
+          chief_complaint: string | null
           concept_id: string | null
           created_at: string
           created_by: string | null
+          delivery_mode: string | null
           estimated_minutes: number
           feedback_timing: string
+          generated_case_data: Json | null
+          history_mode: string | null
           id: string
           initial_state_json: Json | null
           intro_text: string
@@ -5113,8 +5242,10 @@ export type Database = {
           patient_age: number | null
           patient_gender: string | null
           patient_image_url: string | null
+          patient_language: string | null
           patient_name: string | null
           section_id: string | null
+          section_question_counts: Json | null
           status_panel_enabled: boolean
           tags: string[] | null
           title: string
@@ -5123,15 +5254,21 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          active_sections?: string[] | null
+          additional_instructions?: string | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
           chapter_id?: string | null
+          chief_complaint?: string | null
           concept_id?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_mode?: string | null
           estimated_minutes?: number
           feedback_timing?: string
+          generated_case_data?: Json | null
+          history_mode?: string | null
           id?: string
           initial_state_json?: Json | null
           intro_text: string
@@ -5148,8 +5285,10 @@ export type Database = {
           patient_age?: number | null
           patient_gender?: string | null
           patient_image_url?: string | null
+          patient_language?: string | null
           patient_name?: string | null
           section_id?: string | null
+          section_question_counts?: Json | null
           status_panel_enabled?: boolean
           tags?: string[] | null
           title: string
@@ -5158,15 +5297,21 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          active_sections?: string[] | null
+          additional_instructions?: string | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
           chapter_id?: string | null
+          chief_complaint?: string | null
           concept_id?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_mode?: string | null
           estimated_minutes?: number
           feedback_timing?: string
+          generated_case_data?: Json | null
+          history_mode?: string | null
           id?: string
           initial_state_json?: Json | null
           intro_text?: string
@@ -5183,8 +5328,10 @@ export type Database = {
           patient_age?: number | null
           patient_gender?: string | null
           patient_image_url?: string | null
+          patient_language?: string | null
           patient_name?: string | null
           section_id?: string | null
+          section_question_counts?: Json | null
           status_panel_enabled?: boolean
           tags?: string[] | null
           title?: string
@@ -5194,10 +5341,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "virtual_patient_cases_chapter_id_fkey"
+            foreignKeyName: "fk_cases_chapter_id"
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cases_module_id"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {
@@ -5205,13 +5359,6 @@ export type Database = {
             columns: ["concept_id"]
             isOneToOne: false
             referencedRelation: "concepts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "virtual_patient_cases_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {
@@ -5360,17 +5507,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_cases_module_id"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "virtual_patient_attempts_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "virtual_patient_cases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "virtual_patient_cases_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {
