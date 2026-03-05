@@ -108,6 +108,7 @@ const App = () => {
                 <Route path="/admin/activity-log" element={<ActivityLogPage />} />
                 <Route path="/feedback" element={<FeedbackPage />} />
                 <Route path="/virtual-patient/:caseId" element={<VirtualPatientPage />} />
+                <Route path="/structured-case/:caseId/edit" element={<CasePreviewEditorPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </BrowserRouter>

@@ -43,6 +43,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
 import { EXAMINER_AVATARS } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
+import { useNavigate } from 'react-router-dom';
 
 // ── Constants ──────────────────────────────────────────
 
