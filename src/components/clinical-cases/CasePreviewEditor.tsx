@@ -658,20 +658,24 @@ function AdviceEditor({ data, onChange }: { data: AdviceSectionData; onChange: (
 }
 
 function ConclusionEditor({ data, onChange }: { data: ConclusionSectionData; onChange: (v: any) => void }) {
+  const tasks = data.tasks || [];
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Ward Round Prompt</Label>
-        <Textarea value={data.ward_round_prompt} onChange={e => onChange({ ...data, ward_round_prompt: e.target.value })} rows={3} className="mt-1 text-sm" />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Decisions</Label>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {(data.key_decisions || []).map((d, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{d}</Badge>
-          ))}
+      <Label className="text-xs text-muted-foreground">Tasks ({tasks.length})</Label>
+      {tasks.map((task, i) => (
+        <div key={task.id} className="border rounded p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className="text-xs">{task.type.replace(/_/g, ' ')}</Badge>
+            <span className="font-medium text-sm">{task.label}</span>
+            <span className="text-xs text-muted-foreground ml-auto">{task.rubric.points} pts</span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-2">{task.instruction}</p>
+          <div className="p-2 rounded bg-muted/50 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Model Answer:</p>
+            <p>{task.rubric.model_answer}</p>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
