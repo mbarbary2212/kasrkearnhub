@@ -6,3 +6,4 @@ export { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 export { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 export { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
 export { StructuredCaseCreator } from './StructuredCaseCreator';
+export { CasePreviewEditor } from './CasePreviewEditor';
