@@ -98,6 +98,7 @@ export function StructuredCaseCreator({
   chapterId: defaultChapterId,
   onSuccess,
 }: StructuredCaseCreatorProps) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('basics');
 
   // Tab 1 — Basics
