@@ -1,28 +1,42 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-## Fix: Gemini & Anthropic Retry + Cross-Provider Fallback
+## Status: 🚧 In Progress
 
-### Status: ✅ Implemented & Deployed
+### Completed Steps
 
----
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-### What was implemented
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-#### 1. Retry with Exponential Backoff (`_shared/ai-provider.ts`)
-- Added `fetchWithRetry()` helper: up to 2 retries with 1s/2s delay for 503 and 429 errors
-- Applied to `callGeminiDirect`, `callGeminiWithMessages`, and `callAnthropicWithMessages`
+### Remaining Steps
 
-#### 2. Cross-Provider Fallback (`run-ai-case/index.ts`)
-- If primary provider fails with 503/429/402, automatically tries the alternate provider (Gemini→Anthropic or Anthropic→Gemini)
-- No Lovable gateway dependency — works purely with direct API keys
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ⬜ |
+| 4 | `generate-structured-case` edge function | ⬜ |
+| 5 | CasePreviewEditor screen | ⬜ |
+| 6 | Section components (10 + checklist + missed items) | ⬜ |
+| 7 | StructuredCaseRunner | ⬜ |
+| 8 | `score-case-answers` edge function | ⬜ |
+| 9 | CaseSummary screen | ⬜ |
+| 10 | Router integration in VirtualPatientPage | ⬜ |
 
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/_shared/ai-provider.ts` | Added `fetchWithRetry()`, applied to Gemini and Anthropic calls |
-| `supabase/functions/run-ai-case/index.ts` | Added cross-provider fallback in non-streaming path |
-
-### Important
-- **Anthropic account needs credits** for it to work as a fallback. Top up at [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing)
-- Both providers need valid API keys (GOOGLE_API_KEY and ANTHROPIC_API_KEY are already configured)
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
