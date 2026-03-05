@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
 import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
+import { StructuredCaseCreator } from './StructuredCaseCreator';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
