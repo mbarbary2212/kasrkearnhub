@@ -457,17 +457,16 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
 }
 
 function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData; onChange: (v: any) => void }) {
+  const regionEntries = Object.entries(data.regions || {});
   return (
     <div className="space-y-2">
-      <Label className="text-xs text-muted-foreground">Findings ({data.findings?.length || 0})</Label>
+      {data.note && <p className="text-xs text-muted-foreground italic">{data.note}</p>}
+      <Label className="text-xs text-muted-foreground">Regions ({regionEntries.length})</Label>
       <div className="space-y-1">
-        {(data.findings || []).map((f, i) => (
-          <div key={i} className={cn('flex items-center gap-3 p-2 rounded text-sm', f.is_abnormal ? 'bg-destructive/10' : 'bg-muted/50')}>
-            <Badge variant={f.is_abnormal ? 'destructive' : 'secondary'} className="text-xs shrink-0">
-              {f.region}
-            </Badge>
-            <span className="flex-1">{f.finding}</span>
-            {f.is_abnormal && <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
+        {regionEntries.map(([key, region]) => (
+          <div key={key} className="p-2 rounded text-sm bg-muted/50">
+            <span className="font-medium">{region.label}</span>
+            <p className="text-muted-foreground mt-0.5">{region.finding}</p>
           </div>
         ))}
       </div>
