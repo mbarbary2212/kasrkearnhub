@@ -553,43 +553,49 @@ function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onCha
 }
 
 function ManagementEditor({ data, onChange }: { data: ManagementSectionData; onChange: (v: any) => void }) {
+  const questions = data.questions || [];
   return (
     <div className="space-y-3">
-      {data.free_text_prompt && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Free Text Prompt</Label>
-          <Textarea
-            value={data.free_text_prompt}
-            onChange={e => onChange({ ...data, free_text_prompt: e.target.value })}
-            rows={2}
-            className="mt-1 text-sm"
-          />
-        </div>
-      )}
-      <div>
-        <Label className="text-xs text-muted-foreground">MCQs ({data.mcqs?.length || 0})</Label>
-        <div className="mt-1 space-y-3">
-          {(data.mcqs || []).map((mcq, qi) => (
-            <div key={qi} className="border rounded p-3">
-              <p className="text-sm font-medium mb-2">Q{qi + 1}: {mcq.question}</p>
-              <div className="space-y-1">
-                {mcq.options.map(opt => (
-                  <div
-                    key={opt.key}
-                    className={cn(
-                      'flex items-center gap-2 p-1.5 rounded text-sm',
-                      opt.is_correct ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
-                    )}
-                  >
-                    <span className="font-mono text-xs w-5">{opt.key}.</span>
-                    <span className="flex-1">{opt.text}</span>
-                    {opt.is_correct && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </div>
-                ))}
-              </div>
+      <Label className="text-xs text-muted-foreground">Questions ({questions.length})</Label>
+      <div className="mt-1 space-y-3">
+        {questions.map((q, qi) => (
+          <div key={q.id} className="border rounded p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="text-xs">{q.type}</Badge>
+              <span className="text-xs text-muted-foreground">{q.points || q.rubric?.points} pts</span>
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-medium mb-2">{q.question}</p>
+            {q.type === 'mcq' && q.options && (
+              <div className="space-y-1">
+                {q.options.map((opt, oi) => {
+                  const letter = opt.match(/^([A-Z])\./)?.[1];
+                  const isCorrect = letter === q.correct;
+                  return (
+                    <div
+                      key={oi}
+                      className={cn(
+                        'flex items-center gap-2 p-1.5 rounded text-sm',
+                        isCorrect ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
+                      )}
+                    >
+                      <span className="flex-1">{opt}</span>
+                      {isCorrect && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {q.type === 'free_text' && q.rubric && (
+              <div className="mt-1 p-2 rounded bg-muted/50 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Model Answer:</p>
+                <p>{q.rubric.model_answer}</p>
+              </div>
+            )}
+            {q.explanation && (
+              <p className="text-xs text-muted-foreground mt-2">Explanation: {q.explanation}</p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
