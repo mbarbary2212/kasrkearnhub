@@ -338,6 +338,14 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
         topicId={topicId}
       />
 
+      {/* Structured Case Creator */}
+      <StructuredCaseCreator
+        open={structuredCaseOpen}
+        onOpenChange={setStructuredCaseOpen}
+        moduleId={moduleId}
+        chapterId={chapterId}
+      />
+
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
