@@ -178,9 +178,10 @@ export function StructuredCaseCreator({
 
     try {
       const result = await createCase.mutateAsync(formData);
-      toast.success('Structured case created! You can now generate content or edit it.');
+      toast.success('Structured case created! Redirecting to editor...');
       onOpenChange(false);
       onSuccess?.(result.id);
+      navigate(`/structured-case/${result.id}/edit`);
     } catch (err) {
       console.error('Failed to create structured case:', err);
       toast.error('Failed to create case');
