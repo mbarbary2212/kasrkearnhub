@@ -7,3 +7,5 @@ export { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
 export { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
 export { StructuredCaseCreator } from './StructuredCaseCreator';
 export { CasePreviewEditor } from './CasePreviewEditor';
+export { StructuredCaseRunner } from './StructuredCaseRunner';
+export { CaseSummary } from './CaseSummary';

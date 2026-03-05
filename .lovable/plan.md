@@ -1,7 +1,7 @@
 
 # Structured Interactive Cases — Implementation Plan
 
-## Status: 🚧 In Progress
+## Status: ✅ Complete
 
 ### Completed Steps
 
@@ -18,7 +18,7 @@ All schema changes applied successfully:
 #### Step 2: TypeScript Types ✅
 - Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-### Remaining Steps
+### All Steps
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -26,10 +26,10 @@ All schema changes applied successfully:
 | 4 | `generate-structured-case` edge function | ✅ |
 | 5 | CasePreviewEditor screen | ✅ |
 | 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ⬜ |
-| 8 | `score-case-answers` edge function | ⬜ |
-| 9 | CaseSummary screen | ⬜ |
-| 10 | Router integration in VirtualPatientPage | ⬜ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
