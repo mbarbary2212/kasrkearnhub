@@ -43,6 +43,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
 import { EXAMINER_AVATARS } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
+import { useNavigate } from 'react-router-dom';
 
 // ── Constants ──────────────────────────────────────────
 
@@ -97,6 +98,7 @@ export function StructuredCaseCreator({
   chapterId: defaultChapterId,
   onSuccess,
 }: StructuredCaseCreatorProps) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('basics');
 
   // Tab 1 — Basics
@@ -176,9 +178,10 @@ export function StructuredCaseCreator({
 
     try {
       const result = await createCase.mutateAsync(formData);
-      toast.success('Structured case created! You can now generate content or edit it.');
+      toast.success('Structured case created! Redirecting to editor...');
       onOpenChange(false);
       onSuccess?.(result.id);
+      navigate(`/structured-case/${result.id}/edit`);
     } catch (err) {
       console.error('Failed to create structured case:', err);
       toast.error('Failed to create case');

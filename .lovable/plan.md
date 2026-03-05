@@ -24,7 +24,7 @@ All schema changes applied successfully:
 |------|-------------|--------|
 | 3 | 5-tab StructuredCaseCreator dialog | ✅ |
 | 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ⬜ |
+| 5 | CasePreviewEditor screen | ✅ |
 | 6 | Section components (10 + checklist + missed items) | ⬜ |
 | 7 | StructuredCaseRunner | ⬜ |
 | 8 | `score-case-answers` edge function | ⬜ |
