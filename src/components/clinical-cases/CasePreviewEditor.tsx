@@ -633,13 +633,26 @@ function AdviceEditor({ data, onChange }: { data: AdviceSectionData; onChange: (
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Prompt</Label>
-        <Textarea value={data.prompt} onChange={e => onChange({ ...data, prompt: e.target.value })} rows={2} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Question</Label>
+        <Textarea value={data.question} onChange={e => onChange({ ...data, question: e.target.value })} rows={2} className="mt-1 text-sm" />
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Answer</Label>
-        <Textarea value={data.expected_answer} onChange={e => onChange({ ...data, expected_answer: e.target.value })} rows={3} className="mt-1 text-sm" />
+        <Label className="text-xs text-muted-foreground">Model Answer</Label>
+        <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
+      {data.rubric?.expected_points && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
+          <div className="mt-1 space-y-1">
+            {data.rubric.expected_points.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Check className="w-3 h-3 text-primary shrink-0" />
+                <span>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
