@@ -475,37 +475,30 @@ function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData;
 }
 
 function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: any) => void }) {
+  const testEntries = Object.entries(data.available_tests || {});
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-muted-foreground">Expected Orders</Label>
-        <p className="text-sm mt-1">{(data.expected_orders || []).join(', ') || 'None'}</p>
+        <Label className="text-xs text-muted-foreground">Key Tests</Label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {(data.key_tests || []).map((t, i) => (
+            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+          ))}
+        </div>
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">Available Labs ({data.available_labs?.length || 0})</Label>
-        <div className="mt-1 overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground border-b">
-                <th className="pb-1 pr-2">Test</th>
-                <th className="pb-1 pr-2">Result</th>
-                <th className="pb-1 pr-2">Unit</th>
-                <th className="pb-1 pr-2">Reference</th>
-                <th className="pb-1">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.available_labs || []).map((lab, i) => (
-                <tr key={i} className={cn('border-b border-muted', lab.is_abnormal && 'text-destructive')}>
-                  <td className="py-1 pr-2 font-medium">{lab.test_name}</td>
-                  <td className="py-1 pr-2">{lab.result}</td>
-                  <td className="py-1 pr-2">{lab.unit}</td>
-                  <td className="py-1 pr-2">{lab.reference_range}</td>
-                  <td className="py-1">{lab.is_abnormal ? '⚠️' : '✓'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
+        <div className="mt-1 space-y-1">
+          {testEntries.map(([key, test]) => (
+            <div key={key} className={cn('p-2 rounded text-sm', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{test.label}</span>
+                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+                <span className="text-xs text-muted-foreground ml-auto">{test.points} pts</span>
+              </div>
+              <p className="text-muted-foreground mt-0.5">{test.result}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
