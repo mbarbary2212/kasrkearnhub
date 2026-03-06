@@ -27,8 +27,6 @@ verify_jwt = false
 [functions.coach-chat]
 verify_jwt = false
 
-[functions.generate-vp-case]
-verify_jwt = false
 
 [functions.generate-content-from-pdf]
 verify_jwt = false
