@@ -76,6 +76,26 @@ export function CaseSummary() {
     },
   });
 
+  // Retry scoring if answers are still unscored after 5 seconds
+  const scoringRetryTriggered = useRef(false);
+  const summaryMountTime = useRef(Date.now());
+
+  useEffect(() => {
+    if (scoringRetryTriggered.current) return;
+    if (!sectionAnswers || sectionAnswers.length === 0) return;
+    const allScored = sectionAnswers.every(a => a.is_scored);
+    if (allScored) return;
+
+    const elapsed = Date.now() - summaryMountTime.current;
+    if (elapsed >= 5000) {
+      scoringRetryTriggered.current = true;
+      console.log('Scoring retry: triggering score-case-answers from summary page');
+      supabase.functions.invoke('score-case-answers', {
+        body: { attempt_id: attemptId, case_id: attempt?.case?.id },
+      }).catch(err => console.warn('Scoring retry error:', err));
+    }
+  }, [sectionAnswers, attemptId, attempt]);
+
   const toggleSection = (key: string) => {
     setOpenSections(prev => {
       const next = new Set(prev);
