@@ -116,10 +116,7 @@ export function OsceBulkUploadModal({
   // Parse Excel file locally
   const parseExcelFile = async (file: File): Promise<ExcelValidationResult> => {
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
+    const rows = await readExcelToJson(buffer, { defval: '' });
 
     const parsedRows: ParsedRow[] = [];
     const requiredImages: Set<string> = new Set();
