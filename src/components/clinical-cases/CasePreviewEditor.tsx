@@ -482,19 +482,41 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
 }
 
 function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData; onChange: (v: any) => void }) {
-  const regionEntries = Object.entries(data.regions || {});
+  const findingsEntries = Object.entries(data.findings || data.regions || {});
   return (
     <div className="space-y-2">
       {data.note && <p className="text-xs text-muted-foreground italic">{data.note}</p>}
-      <Label className="text-xs text-muted-foreground">Regions ({regionEntries.length})</Label>
+      <Label className="text-xs text-muted-foreground">Findings ({findingsEntries.length} regions)</Label>
       <div className="space-y-1">
-        {regionEntries.map(([key, region]) => (
+        {findingsEntries.map(([key, finding]: [string, any]) => (
           <div key={key} className="p-2 rounded text-sm bg-muted/50">
-            <span className="font-medium">{region.label}</span>
-            <p className="text-muted-foreground mt-0.5">{region.finding}</p>
+            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}</span>
+            {finding.vitals && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {finding.vitals.map((v: any, i: number) => (
+                  <Badge key={i} variant={v.abnormal ? 'destructive' : 'secondary'} className="text-[10px]">
+                    {v.name}: {v.value} {v.unit}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="text-muted-foreground mt-0.5">{finding.text || finding.finding}</p>
+            {finding.ref && (
+              <p className="text-xs text-amber-700 mt-1 italic">{finding.ref}</p>
+            )}
           </div>
         ))}
       </div>
+      {data.related_topics && data.related_topics.length > 0 && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Related Topics ({data.related_topics.length})</Label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {data.related_topics.map(t => (
+              <Badge key={t.key} variant="outline" className="text-[10px]">{t.label}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

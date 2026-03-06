@@ -1,12 +1,42 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PhysicalExamSectionData } from '@/types/structuredCase';
+import type {
+  PhysicalExamSectionData,
+  RegionKey,
+  ExamFindingValue,
+  VitalsFinding,
+  ExtraFinding,
+  TopicItem,
+} from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { BodyMap } from './BodyMap';
+
+const REGION_LABELS: Record<RegionKey, { icon: string; label: string }> = {
+  general: { icon: '🧍', label: 'General Appearance' },
+  head_neck: { icon: '👁', label: 'Head & Neck' },
+  vital_signs: { icon: '❤️', label: 'Vital Signs' },
+  chest: { icon: '🫁', label: 'Chest & Cardiovascular' },
+  upper_limbs: { icon: '🤲', label: 'Upper Limbs' },
+  abdomen: { icon: '🔬', label: 'Abdomen' },
+  lower_limbs: { icon: '🦵', label: 'Lower Limbs' },
+  extra: { icon: '📍', label: 'Misc' },
+};
+
+const REGION_ORDER: RegionKey[] = [
+  'general', 'head_neck', 'vital_signs', 'chest', 'upper_limbs', 'abdomen', 'lower_limbs', 'extra',
+];
+
+function isVitalsFinding(f: ExamFindingValue): f is VitalsFinding {
+  return 'vitals' in f && Array.isArray((f as VitalsFinding).vitals);
+}
+
+function isExtraFinding(f: ExamFindingValue): f is ExtraFinding {
+  return 'label' in f;
+}
 
 export function PhysicalExamSection({
   data,
@@ -15,109 +45,277 @@ export function PhysicalExamSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<PhysicalExamSectionData>) {
-  const [revealedRegions, setRevealedRegions] = useState<Set<string>>(
-    new Set((previousAnswer?.revealed_regions as string[]) || [])
+  const findings = data.findings || {};
+  const topics = data.related_topics || [];
+
+  const [revealedRegions, setRevealedRegions] = useState<Set<RegionKey>>(
+    new Set((previousAnswer?.revealed_regions as RegionKey[]) || [])
   );
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [openRegion, setOpenRegion] = useState<RegionKey | null>(null);
   const [findingsSummary, setFindingsSummary] = useState(
     (previousAnswer?.findings_summary as string) || ''
   );
+  const [topicModal, setTopicModal] = useState<TopicItem | null>(null);
 
-  const regionEntries = Object.entries(data.regions || {});
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const handleRegionClick = (regionKey: string) => {
+  const activeRegions = useMemo(
+    () => REGION_ORDER.filter(k => !!findings[k]),
+    [findings]
+  );
+
+  const revealedCount = useMemo(
+    () => activeRegions.filter(k => revealedRegions.has(k)).length,
+    [activeRegions, revealedRegions]
+  );
+
+  const handleTap = useCallback((regionKey: RegionKey) => {
     if (readOnly) return;
-    // Reveal (cannot un-reveal)
+    if (!findings[regionKey]) return;
+
+    // Reveal
     setRevealedRegions(prev => {
       const next = new Set(prev);
       next.add(regionKey);
       return next;
     });
-    setSelectedRegion(regionKey);
-  };
+
+    if (openRegion === regionKey) {
+      // Second tap — collapse to done
+      setOpenRegion(null);
+    } else {
+      setOpenRegion(regionKey);
+      // Scroll card into view
+      setTimeout(() => {
+        cardRefs.current[regionKey]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  }, [readOnly, findings, openRegion]);
 
   const handleSubmit = () => {
     onSubmit({
       revealed_regions: Array.from(revealedRegions),
       findings_summary: findingsSummary.trim(),
       regions_examined: revealedRegions.size,
-      total_regions: regionEntries.length,
+      total_regions: activeRegions.length,
     });
   };
 
-  const selectedRegionData = selectedRegion ? data.regions[selectedRegion] : null;
-
   return (
-    <div className="space-y-4">
-      {data.note && (
-        <p className="text-sm text-muted-foreground italic">{data.note}</p>
-      )}
-      <p className="text-sm text-muted-foreground">
-        Click body regions to examine. Findings appear in the panel on the right.
-      </p>
+    <div className="space-y-0">
+      {/* ── Header ── */}
+      <div
+        className="flex items-center justify-between px-6 py-4 rounded-t-lg"
+        style={{ background: 'linear-gradient(135deg, #0d3f4f 0%, #1a7a8a 100%)' }}
+      >
+        <div>
+          <h2 className="text-white text-lg font-semibold">Physical Examination</h2>
+          <p className="text-white/60 text-xs mt-0.5">
+            Click any region to reveal findings · Reveal only — not scored
+          </p>
+        </div>
+        <div
+          className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap"
+          style={{
+            background: 'rgba(255,255,255,0.13)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            color: 'rgba(255,255,255,0.9)',
+          }}
+        >
+          {revealedCount} of {activeRegions.length} examined
+        </div>
+      </div>
 
-      {/* Two-column: Body map + Side panel */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left: Body Map */}
-        <BodyMap
-          regions={data.regions || {}}
-          revealedRegions={revealedRegions}
-          selectedRegion={selectedRegion}
-          onRegionClick={handleRegionClick}
-        />
+      {/* ── Two-panel layout ── */}
+      <div className="flex min-h-[640px] border border-t-0 rounded-b-lg overflow-hidden">
+        {/* Left: Figure panel */}
+        <div
+          className="w-[340px] shrink-0 flex flex-col items-center border-r"
+          style={{
+            background: 'linear-gradient(180deg, #0a2030 0%, #0d3a55 100%)',
+            borderColor: '#0d3f4f',
+          }}
+        >
+          <BodyMap
+            findings={findings}
+            revealedRegions={revealedRegions}
+            selectedRegion={openRegion}
+            onRegionClick={handleTap}
+          />
+        </div>
 
         {/* Right: Findings panel */}
-        <div className="space-y-3">
-          <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-            Examination Findings
-          </Label>
-
-          {selectedRegionData && revealedRegions.has(selectedRegion!) ? (
-            <div className="border rounded-lg p-3 border-primary/20 bg-primary/5">
-              <div className="flex items-center gap-2 mb-2">
-                <Eye className="w-3.5 h-3.5 text-primary" />
-                <span className="font-medium text-sm">{selectedRegionData.label}</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{selectedRegionData.finding}</p>
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+          <div className="flex items-center justify-between px-6 pt-4 pb-1.5">
+            <h3 className="text-sm font-bold text-foreground">Examination Findings</h3>
+            <div className="text-[11px] font-semibold text-muted-foreground bg-muted px-3 py-1 rounded-full">
+              {revealedCount} of {activeRegions.length} examined
             </div>
-          ) : (
-            <div className="border rounded-lg p-4 border-dashed text-center">
-              <p className="text-xs text-muted-foreground">
-                Click a region on the body map to reveal findings
-              </p>
+          </div>
+
+          {/* Hint */}
+          {revealedCount === 0 && (
+            <div className="mx-6 my-1 px-3.5 py-2.5 bg-muted/50 border border-dashed border-border rounded-lg text-xs text-muted-foreground text-center">
+              👆 Click any region on the figure or a card below to reveal findings
             </div>
           )}
 
-          {/* List of all revealed findings */}
-          {revealedRegions.size > 0 && (
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-              {Array.from(revealedRegions).map(key => {
-                const region = data.regions[key];
-                if (!region) return null;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedRegion(key)}
+          {/* Cards area */}
+          <div className="flex-1 overflow-y-auto px-6 py-2 flex flex-col gap-1.5">
+            {activeRegions.map(regionKey => {
+              const finding = findings[regionKey]!;
+              const isOpen = openRegion === regionKey;
+              const isDone = revealedRegions.has(regionKey);
+              const meta = REGION_LABELS[regionKey];
+              const displayLabel = regionKey === 'extra' && isExtraFinding(finding)
+                ? finding.label
+                : meta.label;
+
+              return (
+                <div
+                  key={regionKey}
+                  ref={el => { cardRefs.current[regionKey] = el; }}
+                  className={cn(
+                    'border rounded-xl overflow-hidden cursor-pointer transition-all duration-150',
+                    isOpen
+                      ? 'border-[#1a7a8a] shadow-md'
+                      : isDone
+                        ? 'border-[#10b981]'
+                        : 'border-border hover:border-[#1a7a8a] hover:shadow-sm'
+                  )}
+                  onClick={() => handleTap(regionKey)}
+                >
+                  {/* Card head */}
+                  <div
                     className={cn(
-                      'w-full text-left text-xs p-2 rounded border transition-colors',
-                      selectedRegion === key
-                        ? 'border-primary/30 bg-primary/5'
-                        : 'border-border hover:bg-muted/50'
+                      'flex items-center gap-2.5 px-3.5 py-2.5',
+                      isOpen
+                        ? 'bg-[#e4f2f5]'
+                        : isDone
+                          ? 'bg-[#f0fdf4]'
+                          : 'bg-muted/50'
                     )}
                   >
-                    <span className="font-medium">{region.label}</span>
-                    <p className="text-muted-foreground truncate">{region.finding}</p>
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
+                      style={{
+                        background: isOpen ? '#1a7a8a' : isDone ? '#10b981' : undefined,
+                        color: (isOpen || isDone) ? 'white' : undefined,
+                      }}
+                    >
+                      {(isOpen || isDone) ? '✓' : meta.icon}
+                    </div>
+                    <span
+                      className={cn(
+                        'flex-1 text-xs font-bold',
+                        isOpen ? 'text-[#0f5c6a]' : isDone ? 'text-[#059669]' : 'text-foreground'
+                      )}
+                    >
+                      {displayLabel}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[10.5px] font-semibold px-2.5 py-0.5 rounded-lg whitespace-nowrap',
+                        isOpen
+                          ? 'bg-[#cceaee] text-[#0f5c6a]'
+                          : isDone
+                            ? 'bg-[#d1fae5] text-[#059669]'
+                            : 'bg-muted text-muted-foreground'
+                      )}
+                    >
+                      {isOpen ? 'Examining…' : isDone ? 'Examined ✓' : 'Tap to examine'}
+                    </span>
+                  </div>
+
+                  {/* Card body */}
+                  {isOpen && (
+                    <div
+                      className="px-4 py-3 text-sm leading-relaxed border-t border-border"
+                      style={{ color: '#3d5166' }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Vitals grid */}
+                      {regionKey === 'vital_signs' && isVitalsFinding(finding) && (
+                        <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+                          {finding.vitals.map((v, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                'rounded-lg px-2.5 py-1.5',
+                                v.abnormal ? 'bg-red-50' : 'bg-muted/60'
+                              )}
+                            >
+                              <span className="block text-[9.5px] font-bold text-muted-foreground uppercase tracking-wide">
+                                {v.name}
+                              </span>
+                              <span
+                                className={cn(
+                                  'block text-sm font-bold',
+                                  v.abnormal ? 'text-red-600' : 'text-[#0f5c6a]'
+                                )}
+                              >
+                                {v.value}
+                              </span>
+                              <span className="block text-[9px] text-muted-foreground">{v.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Finding text */}
+                      {finding.text && <p>{finding.text}</p>}
+
+                      {/* Chapter ref callout */}
+                      {finding.ref && (
+                        <div
+                          className="mt-2.5 px-3 py-2 rounded-r-lg text-xs italic leading-relaxed"
+                          style={{
+                            background: '#fffbeb',
+                            borderLeft: '3px solid #f59e0b',
+                            color: '#92400e',
+                          }}
+                        >
+                          {finding.ref}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Topic strip */}
+          {topics.length > 0 && (
+            <div className="border-t px-6 py-3" style={{ background: '#f7fafd' }}>
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                Related Topics from Chapter
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {topics.map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTopicModal(t)}
+                    className={cn(
+                      'text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5',
+                      topicModal?.key === t.key
+                        ? 'border-[#1a7a8a] text-white bg-[#1a7a8a]'
+                        : 'border-border text-foreground bg-background hover:border-[#1a7a8a] hover:text-[#1a7a8a] hover:bg-[#eef8fa]'
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-55" />
+                    {t.label}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Findings summary textarea */}
-      {revealedRegions.size > 0 && (
-        <div>
+      {/* ── Findings summary textarea (our scoring addition) ── */}
+      {revealedCount > 0 && (
+        <div className="mt-4">
           <Label className="font-medium text-sm">Summarize your key examination findings</Label>
           <Textarea
             value={findingsSummary}
@@ -133,12 +331,56 @@ export function PhysicalExamSection({
       {!readOnly && (
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting || revealedRegions.size === 0 || !findingsSummary.trim()}
-          className="w-full"
+          disabled={isSubmitting || revealedCount === 0 || !findingsSummary.trim()}
+          className="w-full mt-3"
         >
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Submit Examination ({revealedRegions.size}/{regionEntries.length} regions)
+          Submit Examination ({revealedCount}/{activeRegions.length} regions)
         </Button>
+      )}
+
+      {/* ── Topic Modal ── */}
+      {topicModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+          style={{ background: 'rgba(13,40,55,0.5)' }}
+          onClick={() => setTopicModal(null)}
+        >
+          <div
+            className="bg-background rounded-2xl max-w-[480px] w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="px-5 py-4 flex items-center justify-between"
+              style={{ background: 'linear-gradient(135deg, #0d3f4f, #1a7a8a)' }}
+            >
+              <div>
+                <div className="text-white text-base font-semibold">{topicModal.title}</div>
+                <div className="text-white/60 text-[11px] mt-0.5">{topicModal.chapter}</div>
+              </div>
+              <button
+                onClick={() => setTopicModal(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 text-sm leading-relaxed" style={{ color: '#3d5166' }}>
+              {topicModal.body}
+            </div>
+            <div
+              className="mx-5 mb-5 px-3.5 py-2.5 rounded-r-lg text-xs italic leading-relaxed"
+              style={{
+                background: '#fffbeb',
+                borderLeft: '3px solid #f59e0b',
+                color: '#92400e',
+              }}
+            >
+              {topicModal.quote}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

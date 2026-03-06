@@ -337,8 +337,17 @@ ${activeSections.includes("history_taking") ? `  "history_taking": {
     "max_score": 30
   },` : ""}
 ${activeSections.includes("physical_examination") ? `  "physical_examination": {
-    "findings": [
-      { "region": "string", "finding": "string", "finding_ar": "string", "is_abnormal": boolean }
+    "findings": {
+      "general":     { "text": "string — general appearance findings", "ref": "string|null — optional chapter quote" },
+      "head_neck":   { "text": "string — head and neck findings", "ref": "string|null" },
+      "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "string", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
+      "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
+      "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
+      "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
+      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" }
+    },
+    "related_topics": [
+      { "key": "string", "label": "short label", "title": "topic title", "chapter": "Chapter X — Section Y", "body": "educational explanation", "quote": "quoted text from chapter" }
     ],
     "max_score": 15
   },` : ""}

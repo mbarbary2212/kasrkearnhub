@@ -23,7 +23,7 @@ export function buildScoringPrompt(
     case 'physical_examination':
       return (
         base +
-        `Available regions with expected findings:\n${JSON.stringify(expectedData.regions, null, 2)}\n\n` +
+        `Available findings by region:\n${JSON.stringify(expectedData.findings || expectedData.regions, null, 2)}\n\n` +
         `Note: ${expectedData.note || 'N/A'}\n` +
         `The student examined some regions and wrote a findings_summary.\n` +
         `Score based on: how well the student's findings_summary identifies the key/abnormal findings from the revealed regions. ` +
