@@ -199,10 +199,7 @@ export function OsceBulkUploadModal({
       
       // Parse Excel to get headers and sample rows for AI analysis
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as string[][];
+      const allRows = await readExcelToArray(buffer);
       
       if (allRows.length > 0) {
         setParsedHeaders(allRows[0] as string[]);
