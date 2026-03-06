@@ -246,7 +246,7 @@ function GeneralPill({ state, onClick }: { state: 'default' | 'active' | 'done';
       </text>
       <line x1={155} y1={-21} x2={155} y2={-8} stroke="#1a7a8a" strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
       <polygon points="151,-9 155,-1 159,-9" fill="#1a7a8a" opacity={0.5} />
-      {state !== 'default' && <circle cx={278} cy={-38} r={5} fill="#10b981" />}
+      {false && state !== 'default' && <circle cx={278} cy={-38} r={5} fill="#10b981" />}
     </g>
   );
 }
