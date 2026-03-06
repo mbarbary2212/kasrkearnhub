@@ -15,16 +15,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  Plus, 
   Trash2, 
-  Settings, 
   User,
   Clock,
   Eye,
   EyeOff,
   Loader2,
   Sparkles,
-  Upload,
   Download,
   Play,
   ClipboardList,
@@ -32,9 +29,6 @@ import {
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
 import { useNavigate } from 'react-router-dom';
-import { ClinicalCaseFormModal } from './ClinicalCaseFormModal';
-import { ClinicalCaseAIGenerateModal } from './ClinicalCaseAIGenerateModal';
-import { ClinicalCaseBulkUploadModal } from './ClinicalCaseBulkUploadModal';
 import { StructuredCaseCreator } from './StructuredCaseCreator';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
 import { toast } from 'sonner';
@@ -58,11 +52,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const deleteCase = useDeleteClinicalCase();
   const navigate = useNavigate();
 
-  const [caseFormOpen, setCaseFormOpen] = useState(false);
-  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
-  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [structuredCaseOpen, setStructuredCaseOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState<ClinicalCase | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -95,7 +85,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       toast.error('No cases to download');
       return;
     }
-    const headers = ['title', 'intro_text', 'level', 'estimated_minutes', 'max_turns', 'is_published'];
+    const headers = ['title', 'intro_text', 'level', 'estimated_minutes', 'is_published'];
     const rows = filteredCases.map(c => 
       headers.map(h => {
         const val = (c as any)[h];
@@ -119,16 +109,6 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(filteredCases.map(c => c.id)));
   }, [filteredCases]);
-
-  const handleCreateCase = () => {
-    setEditingCase(null);
-    setCaseFormOpen(true);
-  };
-
-  const handleEditCase = (clinicalCase: ClinicalCase) => {
-    setEditingCase(clinicalCase);
-    setCaseFormOpen(true);
-  };
 
   const handleDeleteCase = async () => {
     if (!deleteConfirm) return;
@@ -159,7 +139,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
 
   return (
     <div className="space-y-4">
-      {/* Header with Add Buttons */}
+      {/* Header with Actions */}
       <div className="flex justify-between items-center flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
@@ -193,21 +173,9 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             <Download className="w-4 h-4 mr-1" />
             Download
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
-            <Upload className="w-4 h-4 mr-1" />
-            Import File
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setAiGenerateOpen(true)}>
+          <Button size="sm" onClick={() => setStructuredCaseOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
-            Generate with AI
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setStructuredCaseOpen(true)} className="border-primary/30 text-primary hover:bg-primary/5">
-            <ClipboardList className="w-4 h-4 mr-1" />
-            Structured Case
-          </Button>
-          <Button size="sm" onClick={handleCreateCase}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Case
+            Create Case
           </Button>
         </div>
       </div>
@@ -218,125 +186,96 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="font-medium mb-1">No AI Cases</h3>
+          <h3 className="font-medium mb-1">No Interactive Cases</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first AI-driven case, or let AI generate one for you.
+            Create your first structured interactive case.
           </p>
-          <div className="flex justify-center gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setAiGenerateOpen(true)}>
-              <Sparkles className="w-4 h-4 mr-1" />
-              Generate with AI
-            </Button>
-            <Button onClick={handleCreateCase}>
-              <Plus className="w-4 h-4 mr-1" />
-              Create Manually
-            </Button>
-          </div>
+          <Button onClick={() => setStructuredCaseOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-1" />
+            Create Case
+          </Button>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredCases.map((clinicalCase) => (
-            <Card key={clinicalCase.id} className={cn(!clinicalCase.is_published && "opacity-90")}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <Checkbox
-                        checked={selectedIds.has(clinicalCase.id)}
-                        onCheckedChange={(checked) => toggleSelection(clinicalCase.id, !!checked)}
-                        aria-label={`Select ${clinicalCase.title}`}
-                      />
-                      {clinicalCase.is_published ? (
-                        <Eye className="w-4 h-4 text-green-600 shrink-0" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
-                      )}
-                      <Badge variant="outline" className={cn("text-xs", levelColors[clinicalCase.level])}>
-                        {clinicalCase.level}
-                      </Badge>
-                      {!clinicalCase.is_published && (
-                        <Badge variant="secondary" className="text-xs">DRAFT</Badge>
-                      )}
-                    </div>
-                    <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
-                  </div>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  {clinicalCase.intro_text}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1">
-                    <Sparkles className="w-4 h-4" />
-                    <span>{clinicalCase.max_turns || 10} turns</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span>{clinicalCase.estimated_minutes} min</span>
-                  </div>
-                </div>
+          {filteredCases.map((clinicalCase) => {
+            const activeSections = (clinicalCase as any).active_sections;
+            const sectionCount = Array.isArray(activeSections) ? activeSections.length : 0;
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => navigate(`/virtual-patient/${clinicalCase.id}`)}
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    Start Case
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEditCase(clinicalCase)}
-                  >
-                    <Settings className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setDeleteConfirm(clinicalCase)}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            return (
+              <Card key={clinicalCase.id} className={cn(!clinicalCase.is_published && "opacity-90")}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Checkbox
+                          checked={selectedIds.has(clinicalCase.id)}
+                          onCheckedChange={(checked) => toggleSelection(clinicalCase.id, !!checked)}
+                          aria-label={`Select ${clinicalCase.title}`}
+                        />
+                        {clinicalCase.is_published ? (
+                          <Eye className="w-4 h-4 text-green-600 shrink-0" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
+                        )}
+                        <Badge variant="outline" className={cn("text-xs", levelColors[clinicalCase.level])}>
+                          {clinicalCase.level}
+                        </Badge>
+                        {!clinicalCase.is_published && (
+                          <Badge variant="secondary" className="text-xs">DRAFT</Badge>
+                        )}
+                      </div>
+                      <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
+                    </div>
+                  </div>
+                  <CardDescription className="line-clamp-2">
+                    {clinicalCase.intro_text}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    <div className="flex items-center gap-1">
+                      <ClipboardList className="w-4 h-4" />
+                      <span>{sectionCount > 0 ? `${sectionCount} sections` : 'No sections'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{clinicalCase.estimated_minutes} min</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate(`/virtual-patient/${clinicalCase.id}`)}
+                    >
+                      <Play className="w-4 h-4 mr-1" />
+                      Start Case
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate(`/structured-case/${clinicalCase.id}/edit`)}
+                    >
+                      <ClipboardList className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeleteConfirm(clinicalCase)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      {/* Case Form Modal */}
-      <ClinicalCaseFormModal
-        open={caseFormOpen}
-        onOpenChange={setCaseFormOpen}
-        moduleId={moduleId}
-        chapterId={chapterId}
-        topicId={topicId}
-        clinicalCase={editingCase}
-      />
-
-      {/* Bulk Upload Modal */}
-      <ClinicalCaseBulkUploadModal
-        open={bulkUploadOpen}
-        onOpenChange={setBulkUploadOpen}
-        moduleId={moduleId}
-        chapterId={chapterId}
-        topicId={topicId}
-      />
-
-      {/* AI Generate Modal */}
-      <ClinicalCaseAIGenerateModal
-        open={aiGenerateOpen}
-        onOpenChange={setAiGenerateOpen}
-        moduleId={moduleId}
-        chapterId={chapterId}
-        topicId={topicId}
-      />
 
       {/* Structured Case Creator */}
       <StructuredCaseCreator
@@ -350,7 +289,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete AI Case?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Case?</AlertDialogTitle>
             <AlertDialogDescription>
               This will delete "{deleteConfirm?.title}". This action cannot be undone.
             </AlertDialogDescription>
