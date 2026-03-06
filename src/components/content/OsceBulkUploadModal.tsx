@@ -25,7 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, readExcelToArray, writeArrayToExcel } from '@/lib/excel';
 import { logActivity } from '@/lib/activityLog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
