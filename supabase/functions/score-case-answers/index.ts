@@ -133,6 +133,7 @@ Return ONLY valid JSON with this shape:
             score,
             max_score: maxScore,
             ai_feedback: JSON.stringify({
+              justification: parsed.justification || '',
               feedback: parsed.feedback,
               strengths: parsed.strengths || [],
               gaps: parsed.gaps || [],
