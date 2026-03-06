@@ -184,6 +184,71 @@ export function CaseSummary() {
         </CardContent>
       </Card>
 
+      {/* Overall Performance Summary */}
+      {allScored && (sectionAnswers || []).length > 0 && (() => {
+        const allFeedback = (sectionAnswers || []).map(a => ({
+          section: SECTION_LABELS[a.section_type as SectionType] || a.section_type,
+          ...parseFeedback(a.ai_feedback),
+        }));
+        const topStrengths = [...new Set(allFeedback.flatMap(f => f.strengths))].slice(0, 4);
+        const topGaps = [...new Set(allFeedback.flatMap(f => f.gaps))].slice(0, 4);
+        const justifications = allFeedback.filter(f => f.justification);
+
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" /> Overall Performance Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Per-section justifications */}
+              {justifications.length > 0 && (
+                <div className="space-y-1.5">
+                  {justifications.map((j, i) => (
+                    <p key={i} className="text-sm">
+                      <span className="font-medium">{j.section}:</span>{' '}
+                      <span className="text-muted-foreground">{j.justification}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {(topStrengths.length > 0 || topGaps.length > 0) && <Separator />}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {topStrengths.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400 mb-2">Key Strengths</p>
+                    <ul className="space-y-1.5">
+                      {topStrengths.map((s, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {topGaps.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-destructive mb-2">Areas to Improve</p>
+                    <ul className="space-y-1.5">
+                      {topGaps.map((g, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-sm">
+                          <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                          {g}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Summary categories */}
       {allScored && (
         <Card>
