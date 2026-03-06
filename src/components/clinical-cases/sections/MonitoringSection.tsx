@@ -45,7 +45,7 @@ export function MonitoringSection({
           rows={6}
           className="mt-2"
           disabled={readOnly}
-          placeholder="Describe your monitoring and follow-up plan..."
+          placeholder="Describe your monitoring and follow-up plan... (type 'pass' to skip)"
         />
       </div>
 

@@ -81,7 +81,7 @@ export function HistoryTakingSection({
                 value={answers[q.id] || ''}
                 onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                 disabled={readOnly}
-                placeholder="Type your answer..."
+                placeholder="Type your answer... (type 'pass' to skip)"
                 className="text-sm"
               />
             </div>

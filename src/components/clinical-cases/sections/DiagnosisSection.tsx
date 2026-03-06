@@ -80,7 +80,7 @@ export function DiagnosisSection({
         <Textarea
           value={finalDx}
           onChange={e => setFinalDx(e.target.value)}
-          placeholder="State your final diagnosis..."
+          placeholder="State your final diagnosis... (type 'pass' to skip)"
           className="mt-1"
           rows={3}
           disabled={readOnly}
