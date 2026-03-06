@@ -80,13 +80,10 @@ export function BulkUserUploadModal({ open, onOpenChange }: BulkUserUploadModalP
 
   const parseFile = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
+        const buffer = e.target?.result as ArrayBuffer;
+        const jsonData = await readExcelToJson(buffer) as any[];
 
         const users: ParsedUser[] = jsonData.map((row, index) => {
           const email = (row.email || row.Email || '').toString().trim().toLowerCase();
