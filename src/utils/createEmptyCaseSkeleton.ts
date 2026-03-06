@@ -44,9 +44,9 @@ export function createEmptyCaseSkeleton(sections: SectionType[]): StructuredCase
       case 'physical_examination':
         data.physical_examination = {
           max_score: 20,
-          regions: {
-            general: { label: 'General Appearance', finding: '' },
-            vital_signs: { label: 'Vital Signs', finding: '' },
+          findings: {
+            general: { text: '' },
+            vital_signs: { vitals: [], text: '' },
           },
         };
         break;
