@@ -238,8 +238,8 @@ export function PhysicalExamSection({
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
                       style={{
-                        background: isOpen ? '#1a7a8a' : isDone ? '#10b981' : undefined,
-                        color: (isOpen || isDone) ? 'white' : undefined,
+                        background: isOpen ? '#1a7a8a' : isDone ? '#10b981' : '#1a5568',
+                        color: 'white',
                       }}
                     >
                       {(isOpen || isDone) ? '✓' : meta.icon}
