@@ -25,7 +25,7 @@ import {
   XCircle,
   AlertCircle 
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, writeJsonToExcel } from '@/lib/excel';
 import { useInviteBulkUsers, InviteResult, UserToInvite } from '@/hooks/useUserProvisioning';
 
 interface BulkUserUploadModalProps {
