@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AICaseRunner } from '@/components/clinical-cases/AICaseRunner';
 import { StructuredCaseRunner } from '@/components/clinical-cases/StructuredCaseRunner';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   ArrowLeft,
@@ -16,7 +13,6 @@ import {
   Play,
   AlertCircle,
   Sparkles,
-  Lightbulb,
   History,
   CheckCircle2,
   XCircle,
@@ -32,7 +28,6 @@ const SESSION_KEY = 'ai_case_session';
 interface SavedSession {
   caseId: string;
   attemptId: string;
-  hintMode: boolean;
 }
 
 export default function VirtualPatientRunner() {
@@ -53,10 +48,8 @@ export default function VirtualPatientRunner() {
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
-  const [hintMode, setHintMode] = useState(false);
 
-  // Detect if this is a structured case
-  const isStructuredCase = !!(vpCase as any)?.generated_case_data && !!(vpCase as any)?.active_sections?.length;
+  const hasStructuredData = !!(vpCase as any)?.generated_case_data && !!(vpCase as any)?.active_sections?.length;
 
   // Session recovery from sessionStorage
   useEffect(() => {
@@ -66,7 +59,6 @@ export default function VirtualPatientRunner() {
         const session: SavedSession = JSON.parse(saved);
         if (session.caseId === caseId && session.attemptId) {
           setAttemptId(session.attemptId);
-          setHintMode(session.hintMode ?? false);
           setStarted(true);
         }
       }
@@ -76,12 +68,11 @@ export default function VirtualPatientRunner() {
   }, [caseId]);
 
   // Save session when starting
-  const saveSession = (aId: string, hint: boolean) => {
+  const saveSession = (aId: string) => {
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({
         caseId,
         attemptId: aId,
-        hintMode: hint,
       }));
     } catch {
       // Ignore storage errors
@@ -126,8 +117,24 @@ export default function VirtualPatientRunner() {
     );
   }
 
+  // Case lacks structured data — show error instead of fallback
+  if (!hasStructuredData) {
+    return (
+      <MainLayout>
+        <div className="text-center py-12">
+          <AlertCircle className="w-12 h-12 mx-auto text-amber-500 mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Case Not Ready</h2>
+          <p className="text-muted-foreground mb-4">
+            This case hasn't been generated yet. Please ask an administrator to generate the case content.
+          </p>
+          <Button onClick={goBack}>Go Back</Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // ── Structured case runner ──
-  if (started && attemptId && isStructuredCase) {
+  if (started && attemptId) {
     return (
       <MainLayout>
         <StructuredCaseRunner
@@ -143,27 +150,9 @@ export default function VirtualPatientRunner() {
     );
   }
 
-  // ── Legacy AI case runner ──
-  if (started && attemptId && !isStructuredCase) {
-    return (
-      <MainLayout>
-        <AICaseRunner
-          caseId={vpCase.id}
-          attemptId={attemptId}
-          introText={vpCase.intro_text}
-          title={vpCase.title}
-          hintMode={hintMode}
-          avatarId={avatarId}
-          onComplete={() => {
-            clearSession();
-            goBack();
-          }}
-        />
-      </MainLayout>
-    );
-  }
-
   const completedAttempts = (pastAttempts || []).filter(a => a.is_completed);
+  const activeSections = (vpCase as any).active_sections;
+  const sectionCount = Array.isArray(activeSections) ? activeSections.length : 0;
 
   // Intro screen
   return (
@@ -186,17 +175,10 @@ export default function VirtualPatientRunner() {
                   <Badge variant="outline">
                     {vpCase.level.charAt(0).toUpperCase() + vpCase.level.slice(1)} Level
                   </Badge>
-                  {isStructuredCase ? (
-                    <Badge className="gap-1 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" variant="secondary">
-                      <ClipboardList className="w-3 h-3" />
-                      Structured Case
-                    </Badge>
-                  ) : (
-                    <Badge className="gap-1 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" variant="secondary">
-                      <Sparkles className="w-3 h-3" />
-                      AI Case
-                    </Badge>
-                  )}
+                  <Badge className="gap-1 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" variant="secondary">
+                    <ClipboardList className="w-3 h-3" />
+                    Interactive Case
+                  </Badge>
                 </div>
                 <CardTitle className="text-xl">{vpCase.title}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner.name}</p>
@@ -204,8 +186,8 @@ export default function VirtualPatientRunner() {
             </div>
             <CardDescription className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1">
-                <Sparkles className="w-4 h-4" />
-                {isStructuredCase ? `${(vpCase as any).active_sections?.length || 0} sections` : `${vpCase.max_turns || 10} turns`}
+                <ClipboardList className="w-4 h-4" />
+                {sectionCount} sections
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
@@ -221,28 +203,6 @@ export default function VirtualPatientRunner() {
               </p>
             </div>
 
-            {/* Mode Toggle — only for legacy AI cases */}
-            {!isStructuredCase && (
-              <div className="flex items-center justify-between bg-muted/30 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
-                  <div>
-                    <Label htmlFor="hint-mode" className="text-sm font-medium">Learning Mode</Label>
-                    <p className="text-xs text-muted-foreground">
-                      {hintMode 
-                        ? 'Teaching hints shown after each answer' 
-                        : 'Exam mode — feedback only at the end'}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="hint-mode"
-                  checked={hintMode}
-                  onCheckedChange={setHintMode}
-                />
-              </div>
-            )}
-
             <Button 
               onClick={async () => {
                 try {
@@ -251,7 +211,7 @@ export default function VirtualPatientRunner() {
                   });
                   setAttemptId(result.id);
                   setStarted(true);
-                  saveSession(result.id, hintMode);
+                  saveSession(result.id);
                 } catch {
                   toast.error('Failed to start case. Please try again.');
                 }
@@ -261,7 +221,7 @@ export default function VirtualPatientRunner() {
               disabled={startAttempt.isPending}
             >
               <Play className="w-5 h-5" />
-              {startAttempt.isPending ? 'Starting...' : isStructuredCase ? 'Start Structured Case' : 'Start AI Case'}
+              {startAttempt.isPending ? 'Starting...' : 'Start Interactive Case'}
             </Button>
           </CardContent>
         </Card>
@@ -284,7 +244,7 @@ export default function VirtualPatientRunner() {
                     <div
                       key={attempt.id}
                       className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => isStructuredCase ? navigate(`/case-summary/${attempt.id}`) : undefined}
+                      onClick={() => navigate(`/case-summary/${attempt.id}`)}
                     >
                       <div className="flex items-center gap-3">
                         {passed ? (

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ClinicalCase, ClinicalCaseAttempt, ClinicalCaseFormData } from '@/types/clinicalCase';
+import { ClinicalCase, ClinicalCaseAttempt } from '@/types/clinicalCase';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 // Fetch all clinical cases for a module
@@ -60,65 +60,6 @@ export function useClinicalCase(caseId?: string) {
       return caseData as unknown as ClinicalCase;
     },
     enabled: !!caseId,
-  });
-}
-
-// Create a new case (always AI-driven)
-export function useCreateClinicalCase() {
-  const queryClient = useQueryClient();
-  const { user } = useAuthContext();
-
-  return useMutation({
-    mutationFn: async (data: ClinicalCaseFormData) => {
-      const insertData: Record<string, unknown> = {
-        ...data,
-        is_ai_driven: true,
-        created_by: user?.id,
-        tags: data.tags || [],
-      };
-      const { data: result, error } = await supabase
-        .from('virtual_patient_cases')
-        .insert(insertData as any)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
-    },
-  });
-}
-
-// Update a case
-export function useUpdateClinicalCase() {
-  const queryClient = useQueryClient();
-  const { user } = useAuthContext();
-
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ClinicalCaseFormData> }) => {
-      const updateData: Record<string, unknown> = {
-        ...data,
-        updated_by: user?.id,
-        updated_at: new Date().toISOString(),
-      };
-      const { data: result, error } = await supabase
-        .from('virtual_patient_cases')
-        .update(updateData as any)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
-      queryClient.invalidateQueries({ queryKey: ['clinical-case', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-clinical-case-count'] });
-    },
   });
 }
 
@@ -183,7 +124,7 @@ export function useStartClinicalCaseAttempt() {
         .insert({
           user_id: user!.id,
           case_id: caseId,
-          total_stages: 0, // AI cases don't have fixed stages
+          total_stages: 0,
           stage_answers: {},
         })
         .select()
