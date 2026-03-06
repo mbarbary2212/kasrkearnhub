@@ -51,16 +51,40 @@ export function PhysicalExamSection({
     // Legacy format: data.regions = Record<string, { finding: string; label: string; ... }>
     const legacyRegions = (data as any).regions as Record<string, any> | undefined;
     if (!legacyRegions) return {};
-    const converted: Record<string, any> = {};
+
+    // Map legacy arbitrary keys → fixed RegionKey
+    function mapLegacyKey(key: string): RegionKey {
+      const k = key.toLowerCase();
+      if (k === 'general' || k === 'general_appearance') return 'general';
+      if (k === 'vital_signs' || k === 'vitals') return 'vital_signs';
+      if (k.includes('abdomen') || k.includes('abdominal')) return 'abdomen';
+      if (k.includes('head') || k.includes('neck') || k.includes('cranial')) return 'head_neck';
+      if (k.includes('chest') || k.includes('cardio') || k.includes('respiratory') || k.includes('lung')) return 'chest';
+      if (k.includes('upper') || k.includes('arm') || k.includes('hand')) return 'upper_limbs';
+      if (k.includes('lower') || k.includes('leg') || k.includes('foot') || k.includes('feet')) return 'lower_limbs';
+      // Everything else → extra
+      return 'extra';
+    }
+
+    const converted: Partial<Record<RegionKey, any>> = {};
     for (const [key, val] of Object.entries(legacyRegions)) {
-      // Map old region keys to new RegionKey where possible
-      const regionKey = key as RegionKey;
-      converted[regionKey] = {
-        text: val.finding || val.text || '',
-        ref: val.ref || null,
-        ...(val.label ? { label: val.label } : {}),
-        ...(val.vitals ? { vitals: val.vitals } : {}),
-      };
+      const regionKey = mapLegacyKey(key);
+      const text = val.finding || val.text || '';
+      const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+      if (converted[regionKey]) {
+        // Merge into existing region (e.g. abdomen_inspection + abdomen_palpation)
+        const existing = converted[regionKey];
+        existing.text = [existing.text, `**${label}:** ${text}`].filter(Boolean).join('\n\n');
+        if (val.ref && !existing.ref) existing.ref = val.ref;
+      } else {
+        converted[regionKey] = {
+          text: text,
+          ref: val.ref || null,
+          ...(regionKey === 'extra' ? { label } : {}),
+          ...(val.vitals ? { vitals: val.vitals } : {}),
+        };
+      }
     }
     return converted;
   }, [data]);
