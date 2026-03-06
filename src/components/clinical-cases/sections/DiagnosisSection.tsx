@@ -65,7 +65,7 @@ export function DiagnosisSection({
         <Textarea
           value={differentialDx}
           onChange={e => setDifferentialDx(e.target.value)}
-          placeholder="Rank your differential diagnoses with reasoning..."
+          placeholder="Rank your differential diagnoses with reasoning... (type 'pass' to skip)"
           className="mt-1"
           rows={4}
           disabled={readOnly}
