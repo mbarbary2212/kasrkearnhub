@@ -57,7 +57,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* Body image — enlarged to fill the dark panel */}
         <image
           href={bodyFigure}
-          x="-10" y="-20" width="330" height="490"
+          x="-40" y="-45" width="390" height="540"
           preserveAspectRatio="xMidYMid meet"
         />
 
