@@ -199,7 +199,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
 function getLabelColor(state: 'default' | 'active' | 'done') {
   if (state === 'active') return '#00d2e6';
   if (state === 'done') return '#10b981';
-  return '#e0f4f8';
+  return '#ffffff';
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
