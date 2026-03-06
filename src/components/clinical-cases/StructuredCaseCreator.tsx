@@ -24,10 +24,16 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Loader2, X, Check, Sparkles, FileText,
   ClipboardList, MessageSquare, User, Eye,
   Stethoscope, FlaskConical, ScanLine, Brain,
   Pill, Scissors, Activity, Heart, BookOpen,
+  HelpCircle, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
