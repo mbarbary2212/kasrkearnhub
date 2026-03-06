@@ -379,7 +379,7 @@ function MiscPill({
         {label}
       </text>
       <rect x={236} y={272} width={98} height={44} rx={18} fill="transparent" />
-      {(isActive || isDone) && <circle cx={330} cy={294} r={5} fill="#10b981" />}
+      {false && (isActive || isDone) && <circle cx={330} cy={294} r={5} fill="#10b981" />}
     </g>
   );
 }
