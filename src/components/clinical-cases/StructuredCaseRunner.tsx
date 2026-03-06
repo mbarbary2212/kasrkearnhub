@@ -172,14 +172,39 @@ export function StructuredCaseRunner({
   const allCompleted = completedSections.size === totalSections;
   const SectionComponent = currentSection ? SECTION_COMPONENT_MAP[currentSection] : null;
 
+  const navigate = useNavigate();
+
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Progress header */}
       <Card>
         <CardContent className="py-3 px-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-semibold text-sm">{caseData.title}</h2>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                    <DoorOpen className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Exit this case?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Your completed sections are saved, but any in-progress work on the current section will be lost.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Continue Case</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => navigate(-1)}>
+                      Exit Case
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <h2 className="font-semibold text-sm truncate">{caseData.title}</h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
               <Clock className="w-3.5 h-3.5" />
               <span>{Math.round((Date.now() - startTime) / 60000)} min</span>
             </div>

@@ -227,6 +227,32 @@ export function StructuredCaseCreator({
           </DialogTitle>
         </DialogHeader>
 
+        {/* Admin instructions — collapsible */}
+        <Collapsible className="flex-shrink-0">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-between text-xs text-muted-foreground hover:text-foreground gap-2 h-8">
+              <span className="flex items-center gap-1.5">
+                <HelpCircle className="w-3.5 h-3.5" />
+                How to create a good case
+              </span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1.5 mb-2">
+              <p className="font-medium text-foreground text-sm">Quick Guide</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Fill in the <strong>Basics</strong> tab — title, chief complaint, module & chapter.</li>
+                <li>Choose which <strong>Sections</strong> the student will encounter (e.g. skip surgical if not relevant).</li>
+                <li>Set the <strong>History Mode</strong> — this controls how the patient presents on arrival.</li>
+                <li>Configure the <strong>Patient</strong> demographics and avatar.</li>
+                <li>Review everything, then click <strong>Create Case</strong>. You'll be taken to the editor where you can generate AI content or build manually.</li>
+              </ol>
+              <p className="italic pt-1">More detailed instructions will be added here over time.</p>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
         <Tabs value={tab} onValueChange={setTab} className="flex-1 min-h-0 flex flex-col">
           <TabsList className="grid grid-cols-5 flex-shrink-0">
             <TabsTrigger value="basics" className="text-xs sm:text-sm">

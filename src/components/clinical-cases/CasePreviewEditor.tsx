@@ -193,13 +193,13 @@ export function CasePreviewEditor() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {!generatedData && (
+          {!generatedData && !editedData && (
             <Button onClick={handleGenerate} disabled={generateCase.isPending}>
               {generateCase.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              Generate Content
+              Generate with AI
             </Button>
           )}
-          {generatedData && (
+          {(generatedData || editedData) && (
             <>
               <Button
                 variant="outline"
@@ -235,20 +235,43 @@ export function CasePreviewEditor() {
 
       <Separator />
 
-      {/* No content yet */}
-      {!generatedData && !generateCase.isPending && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg mb-2">No Content Generated Yet</h3>
-            <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-              Click "Generate Content" to have AI create the full structured case based on your configuration.
-            </p>
-            <Button onClick={handleGenerate} disabled={generateCase.isPending}>
-              <Sparkles className="w-4 h-4 mr-2" /> Generate Content
-            </Button>
-          </CardContent>
-        </Card>
+      {/* No content yet — two options */}
+      {!generatedData && !editedData && !generateCase.isPending && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="border-dashed hover:border-primary/40 transition-colors cursor-pointer" onClick={handleGenerate}>
+            <CardContent className="py-10 text-center">
+              <Sparkles className="w-10 h-10 mx-auto text-primary mb-3" />
+              <h3 className="font-semibold text-base mb-1">Generate with AI</h3>
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                AI creates the full case content from your configuration and chapter PDF.
+              </p>
+            </CardContent>
+          </Card>
+          <Card
+            className="border-dashed hover:border-primary/40 transition-colors cursor-pointer"
+            onClick={async () => {
+              const skeleton = createEmptyCaseSkeleton(activeSections);
+              setEditedData(skeleton);
+              setHasChanges(true);
+              if (caseId) {
+                try {
+                  await updateData.mutateAsync({ caseId, data: skeleton });
+                  toast.success('Empty case template created — start filling in the sections');
+                } catch {
+                  toast.error('Failed to save template');
+                }
+              }
+            }}
+          >
+            <CardContent className="py-10 text-center">
+              <PenLine className="w-10 h-10 mx-auto text-primary mb-3" />
+              <h3 className="font-semibold text-base mb-1">Build Manually</h3>
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                Start from an empty template and fill in each section by hand.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {generateCase.isPending && (
