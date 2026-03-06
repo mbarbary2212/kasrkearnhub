@@ -68,17 +68,14 @@ export function BulkUserUploadModal({ open, onOpenChange }: BulkUserUploadModalP
     await writeJsonToExcel(template, 'user_invite_template.xlsx', 'Users');
   };
 
-  const downloadResults = () => {
+  const downloadResults = async () => {
     const data = results.map(r => ({
       email: r.email,
       status: r.status,
       message: r.message,
       invited_at: r.invited_at || '',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Results');
-    XLSX.writeFile(wb, `invite_results_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await writeJsonToExcel(data, `invite_results_${new Date().toISOString().split('T')[0]}.xlsx`, 'Results');
   };
 
   const parseFile = useCallback((file: File) => {
