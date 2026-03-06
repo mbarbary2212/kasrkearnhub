@@ -1,42 +1,29 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete
+## Plan: Fix Scoring Not Triggering + Retry Mechanism
 
-### Completed Steps
+### Root Cause
+The `supabase.functions.invoke('score-case-answers')` on line 150 of `StructuredCaseRunner.tsx` fires as "fire-and-forget" but the immediate navigation via `onComplete(attemptId)` causes the browser to **abort the pending HTTP request** before it reaches the server. This is why all recent attempts have `is_scored: false` but the function works perfectly when called directly.
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+### Fix (2 changes)
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+**1. CaseSummary.tsx — Add scoring retry**
+When the summary page detects that answers are still unscored after 5 seconds of polling, it should trigger the scoring function itself. This guarantees scoring happens regardless of whether the initial fire-and-forget succeeded.
 
-### All Steps
+- Add a `useEffect` that tracks how long answers have been unscored
+- After 5 seconds, if any answers are still `is_scored: false`, invoke `score-case-answers`
+- Use a ref to ensure we only trigger once
+- This also serves as the fallback for any future edge cases
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
+**2. StructuredCaseRunner.tsx — Await the scoring call**
+Change from fire-and-forget to awaiting the function invoke. This keeps the "Finishing..." spinner visible for a moment longer but ensures the request isn't cancelled. If the call fails or takes too long, we still navigate — the CaseSummary retry will catch it.
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+- Replace the `.catch()` pattern with an awaited call inside a try-catch
+- Add a 15-second timeout using `AbortController` so the student isn't stuck
+- Navigate regardless of success/failure (CaseSummary retry handles failures)
+
+### Also fix: Score the other unscored attempt
+The earlier attempt `60013304` also has all sections unscored. After deploying the fix, the user can re-open that summary page and it will auto-trigger scoring.
+
+No database changes needed. No new edge functions.
+
