@@ -45,7 +45,25 @@ export function PhysicalExamSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<PhysicalExamSectionData>) {
-  const findings = data.findings || {};
+  // Backward compatibility: convert old `regions` format to new `findings` format
+  const findings = useMemo(() => {
+    if (data.findings && Object.keys(data.findings).length > 0) return data.findings;
+    // Legacy format: data.regions = Record<string, { finding: string; label: string; ... }>
+    const legacyRegions = (data as any).regions as Record<string, any> | undefined;
+    if (!legacyRegions) return {};
+    const converted: Record<string, any> = {};
+    for (const [key, val] of Object.entries(legacyRegions)) {
+      // Map old region keys to new RegionKey where possible
+      const regionKey = key as RegionKey;
+      converted[regionKey] = {
+        text: val.finding || val.text || '',
+        ref: val.ref || null,
+        ...(val.label ? { label: val.label } : {}),
+        ...(val.vitals ? { vitals: val.vitals } : {}),
+      };
+    }
+    return converted;
+  }, [data]);
   const topics = data.related_topics || [];
 
   const [revealedRegions, setRevealedRegions] = useState<Set<RegionKey>>(
@@ -103,17 +121,14 @@ export function PhysicalExamSection({
 
   return (
     <div className="space-y-0">
-      {/* ── Header ── */}
+      {/* ── Header (no title — parent card already shows it) ── */}
       <div
-        className="flex items-center justify-between px-6 py-4 rounded-t-lg"
+        className="flex items-center justify-between px-6 py-3 rounded-t-lg"
         style={{ background: 'linear-gradient(135deg, #0d3f4f 0%, #1a7a8a 100%)' }}
       >
-        <div>
-          <h2 className="text-white text-lg font-semibold">Physical Examination</h2>
-          <p className="text-white/60 text-xs mt-0.5">
-            Click any region to reveal findings · Reveal only — not scored
-          </p>
-        </div>
+        <p className="text-white/70 text-xs">
+          Click any region to reveal findings · Write a summary to score
+        </p>
         <div
           className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap"
           style={{

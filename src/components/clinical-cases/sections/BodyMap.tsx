@@ -40,9 +40,9 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
   const hasExtra = !!findings.extra;
 
   return (
-    <div className="flex flex-col items-center" style={{ padding: '16px 4px 14px' }}>
+    <div className="flex flex-col items-center w-full h-full justify-center" style={{ padding: '12px 4px 10px' }}>
       <div
-        className="text-[10px] font-bold uppercase tracking-widest mb-2.5"
+        className="text-[10px] font-bold uppercase tracking-widest mb-2"
         style={{ color: '#5bb8cc' }}
       >
         Select Region
@@ -50,15 +50,14 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
 
       <svg
         viewBox="-80 -65 470 580"
-        width="320"
-        height="565"
+        className="w-full max-w-[340px]"
+        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto' }}
         xmlns="http://www.w3.org/2000/svg"
-        style={{ overflow: 'visible', display: 'block' }}
       >
-        {/* Body image */}
+        {/* Body image — enlarged to fill the dark panel */}
         <image
           href={bodyFigure}
-          x="0" y="0" width="310" height="449"
+          x="-10" y="-20" width="330" height="490"
           preserveAspectRatio="xMidYMid meet"
         />
 
