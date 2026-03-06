@@ -220,7 +220,7 @@ export function PhysicalExamSection({
                       ? 'border-[#1a7a8a] shadow-md'
                       : isDone
                         ? 'border-[#10b981]'
-                        : 'border-border hover:border-[#1a7a8a] hover:shadow-sm'
+                        : 'border-l-[3px] border-l-[#1a5568] border-border hover:border-[#1a7a8a] hover:shadow-sm'
                   )}
                   onClick={() => handleTap(regionKey)}
                 >
