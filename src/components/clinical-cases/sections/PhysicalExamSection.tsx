@@ -302,7 +302,7 @@ export function PhysicalExamSection({
                       )}
 
                       {/* Finding text */}
-                      {finding.text && <p>{finding.text}</p>}
+                      {finding.text && <p className="whitespace-pre-line text-left">{finding.text}</p>}
 
                       {/* Chapter ref callout */}
                       {finding.ref && (
