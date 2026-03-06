@@ -20,7 +20,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeArrayToExcel } from '@/lib/excel';
 
 interface AdminHelpFile {
   id: string;
