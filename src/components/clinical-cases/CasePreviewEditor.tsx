@@ -60,6 +60,7 @@ import {
   usePublishStructuredCase,
 } from '@/hooks/useStructuredCaseData';
 import { useGenerateStructuredCase } from '@/hooks/useStructuredCase';
+import { createEmptyCaseSkeleton } from '@/utils/createEmptyCaseSkeleton';
 
 const SECTION_ICONS: Record<string, React.ReactNode> = {
   history_taking: <MessageSquare className="w-4 h-4" />,
