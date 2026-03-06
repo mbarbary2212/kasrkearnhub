@@ -199,7 +199,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
 function getLabelColor(state: 'default' | 'active' | 'done') {
   if (state === 'active') return '#00d2e6';
   if (state === 'done') return '#10b981';
-  return '#e0f4f8';
+  return '#ffffff';
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
@@ -212,8 +212,7 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 }
 
 function RevealDot({ cx, cy, state }: { cx: number; cy: number; state: string }) {
-  if (state === 'default') return null;
-  return <circle cx={cx} cy={cy} r={5} fill="#10b981" />;
+  return null;
 }
 
 /* ── General Appearance Pill ── */
@@ -247,7 +246,7 @@ function GeneralPill({ state, onClick }: { state: 'default' | 'active' | 'done';
       </text>
       <line x1={155} y1={-21} x2={155} y2={-8} stroke="#1a7a8a" strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
       <polygon points="151,-9 155,-1 159,-9" fill="#1a7a8a" opacity={0.5} />
-      {state !== 'default' && <circle cx={278} cy={-38} r={5} fill="#10b981" />}
+      {false && state !== 'default' && <circle cx={278} cy={-38} r={5} fill="#10b981" />}
     </g>
   );
 }
@@ -380,7 +379,7 @@ function MiscPill({
         {label}
       </text>
       <rect x={236} y={272} width={98} height={44} rx={18} fill="transparent" />
-      {(isActive || isDone) && <circle cx={330} cy={294} r={5} fill="#10b981" />}
+      {false && (isActive || isDone) && <circle cx={330} cy={294} r={5} fill="#10b981" />}
     </g>
   );
 }
