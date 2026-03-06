@@ -30,6 +30,7 @@ All schema changes applied successfully:
 | 8 | `score-case-answers` edge function | ✅ |
 | 9 | CaseSummary screen | ✅ |
 | 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
@@ -40,3 +41,12 @@ All schema changes applied successfully:
 - `generated_case_data` stores full case structure as JSONB
 - Edge functions use `service_role` key to bypass RLS for AI scoring
 - Professional attitude scored holistically from transcript at submission
+
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
