@@ -40,21 +40,27 @@ serve(async (req) => {
       }
     }
 
-    // 1. Fetch case data
-    const { data: caseRow, error: caseErr } = await supabase
-      .from('virtual_patient_cases')
-      .select('generated_case_data, active_sections')
-      .eq('id', case_id)
-      .single();
+    // 1. Fetch case data + student answers in parallel
+    const [caseResult, answersResult] = await Promise.all([
+      supabase
+        .from('virtual_patient_cases')
+        .select('generated_case_data, active_sections')
+        .eq('id', case_id)
+        .single(),
+      supabase
+        .from('case_section_answers')
+        .select('*')
+        .eq('attempt_id', attempt_id),
+    ]);
 
-    if (caseErr || !caseRow) {
+    if (caseResult.error || !caseResult.data) {
       return new Response(
         JSON.stringify({ error: 'Case not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const generatedData = caseRow.generated_case_data as Record<string, any> | null;
+    const generatedData = caseResult.data.generated_case_data as Record<string, any> | null;
     if (!generatedData) {
       return new Response(
         JSON.stringify({ error: 'Case has no generated data' }),
@@ -62,20 +68,24 @@ serve(async (req) => {
       );
     }
 
-    // 2. Fetch student answers
-    const { data: sectionAnswers, error: answersErr } = await supabase
-      .from('case_section_answers')
-      .select('*')
-      .eq('attempt_id', attempt_id);
-
-    if (answersErr) {
+    if (answersResult.error) {
       return new Response(
         JSON.stringify({ error: 'Failed to fetch answers' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 3. Get AI API key
+    const sectionAnswers = answersResult.data || [];
+    const unscoredAnswers = sectionAnswers.filter(a => !a.is_scored);
+
+    if (unscoredAnswers.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'All sections already scored' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Get AI API key
     const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) {
       return new Response(
@@ -84,21 +94,16 @@ serve(async (req) => {
       );
     }
 
-    // 4. Score each section
-    let totalScore = 0;
-    let totalMaxScore = 0;
+    // 3. Score ALL sections in parallel
+    const scoringResults = await Promise.allSettled(
+      unscoredAnswers.map(async (answer) => {
+        const sectionType = answer.section_type;
+        const sectionExpected = generatedData[sectionType];
+        if (!sectionExpected) return { id: answer.id, score: 0, maxScore: 0, skipped: true };
 
-    for (const answer of (sectionAnswers || [])) {
-      const sectionType = answer.section_type;
-      const sectionExpected = generatedData[sectionType];
-      if (!sectionExpected || answer.is_scored) continue;
+        const maxScore = sectionExpected.max_score || answer.max_score || 10;
+        const scoringPrompt = buildScoringPrompt(sectionType, answer.student_answer, sectionExpected);
 
-      const maxScore = sectionExpected.max_score || answer.max_score || 10;
-      totalMaxScore += maxScore;
-
-      const scoringPrompt = buildScoringPrompt(sectionType, answer.student_answer, sectionExpected);
-
-      try {
         const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -108,6 +113,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             temperature: 0.3,
+            max_tokens: 500,
             response_format: { type: 'json_object' },
             messages: [
               {
@@ -129,13 +135,12 @@ Return ONLY valid JSON with this shape:
 
         const aiData = await aiResponse.json();
         const content = aiData.choices?.[0]?.message?.content;
-        if (!content) continue;
+        if (!content) throw new Error('No AI response content');
 
         const parsed = JSON.parse(content);
         const score = Math.min(Math.max(0, Number(parsed.score) || 0), maxScore);
-        totalScore += score;
 
-        // Update section answer with score
+        // Update DB immediately for this section
         await supabase
           .from('case_section_answers')
           .update({
@@ -149,8 +154,26 @@ Return ONLY valid JSON with this shape:
             is_scored: true,
           })
           .eq('id', answer.id);
-      } catch (scoreErr) {
-        console.error(`Failed to score section ${sectionType}:`, scoreErr);
+
+        return { id: answer.id, score, maxScore, skipped: false };
+      })
+    );
+
+    // 4. Calculate totals from ALL section answers (scored + newly scored)
+    let totalScore = 0;
+    let totalMaxScore = 0;
+
+    // Already-scored sections
+    for (const a of sectionAnswers.filter(a => a.is_scored)) {
+      totalScore += a.score || 0;
+      totalMaxScore += a.max_score || 0;
+    }
+
+    // Newly scored sections
+    for (const result of scoringResults) {
+      if (result.status === 'fulfilled' && !result.value.skipped) {
+        totalScore += result.value.score;
+        totalMaxScore += result.value.maxScore;
       }
     }
 
@@ -166,13 +189,16 @@ Return ONLY valid JSON with this shape:
       })
       .eq('id', attempt_id);
 
+    const failedCount = scoringResults.filter(r => r.status === 'rejected').length;
+
     return new Response(
       JSON.stringify({
         success: true,
         total_score: totalScore,
         total_max_score: totalMaxScore,
         overall_percent: overallPercent,
-        sections_scored: (sectionAnswers || []).length,
+        sections_scored: scoringResults.filter(r => r.status === 'fulfilled' && !r.value.skipped).length,
+        sections_failed: failedCount,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

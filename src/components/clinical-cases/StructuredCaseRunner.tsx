@@ -134,14 +134,10 @@ export function StructuredCaseRunner({
         })
         .eq('id', attemptId);
 
-      // Trigger scoring
-      try {
-        await supabase.functions.invoke('score-case-answers', {
-          body: { attempt_id: attemptId, case_id: caseId },
-        });
-      } catch (scoreErr) {
-        console.warn('Scoring may still be processing:', scoreErr);
-      }
+      // Fire-and-forget scoring — CaseSummary page polls for results
+      supabase.functions.invoke('score-case-answers', {
+        body: { attempt_id: attemptId, case_id: caseId },
+      }).catch(err => console.warn('Scoring request error (will retry on summary page):', err));
 
       onComplete(attemptId);
     } catch (err) {
