@@ -146,10 +146,17 @@ export function StructuredCaseRunner({
         })
         .eq('id', attemptId);
 
-      // Fire-and-forget scoring — CaseSummary page polls for results
-      supabase.functions.invoke('score-case-answers', {
-        body: { attempt_id: attemptId, case_id: caseId },
-      }).catch(err => console.warn('Scoring request error (will retry on summary page):', err));
+      // Await scoring with a 15s timeout so the request isn't aborted by navigation
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        await supabase.functions.invoke('score-case-answers', {
+          body: { attempt_id: attemptId, case_id: caseId },
+        });
+        clearTimeout(timeout);
+      } catch (err) {
+        console.warn('Scoring request error (CaseSummary retry will handle):', err);
+      }
 
       onComplete(attemptId);
     } catch (err) {
