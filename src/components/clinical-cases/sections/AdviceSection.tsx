@@ -27,14 +27,14 @@ export function AdviceSection({
       <div>
         <Label className="font-medium">{data.question}</Label>
         {data.rubric?.expected_points && (
-          <div className="mt-2">
+          <div className="mt-2 select-none" onCopy={e => e.preventDefault()}>
             <p className="text-xs text-muted-foreground mb-1">Consider including:</p>
             <div className="flex flex-wrap gap-1.5">
               {data.rubric.expected_points.slice(0, 3).map((p, i) => (
-                <Badge key={i} variant="outline" className="text-xs">{p.length > 40 ? p.slice(0, 40) + '…' : p}</Badge>
+                <Badge key={i} variant="outline" className="text-xs pointer-events-none">{p.length > 40 ? p.slice(0, 40) + '…' : p}</Badge>
               ))}
               {data.rubric.expected_points.length > 3 && (
-                <Badge variant="outline" className="text-xs">+{data.rubric.expected_points.length - 3} more</Badge>
+                <Badge variant="outline" className="text-xs pointer-events-none">+{data.rubric.expected_points.length - 3} more</Badge>
               )}
             </div>
           </div>
