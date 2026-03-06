@@ -49,46 +49,75 @@ export function InvestigationsLabsSection({
         Select the lab investigations you would order for this patient.
       </p>
 
-      {!showResults && (
-        <div className="grid grid-cols-2 gap-2">
-          {testEntries.map(([key, test]) => (
-            <label
-              key={key}
-              className={cn(
-                'flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors text-sm',
-                selectedTests.has(key) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
-              )}
-            >
-              <Checkbox
-                checked={selectedTests.has(key)}
-                onCheckedChange={() => toggleTest(key)}
-                disabled={readOnly}
-              />
-              <span>{test.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
+      {!showResults ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            {testEntries.map(([key, test]) => (
+              <label
+                key={key}
+                className={cn(
+                  'flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors text-sm',
+                  selectedTests.has(key) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+                )}
+              >
+                <Checkbox
+                  checked={selectedTests.has(key)}
+                  onCheckedChange={() => toggleTest(key)}
+                  disabled={readOnly}
+                />
+                <span>{test.label}</span>
+              </label>
+            ))}
+          </div>
 
-      {!showResults && !readOnly && (
-        <Button onClick={handleOrder} disabled={selectedTests.size === 0} variant="outline" className="w-full">
-          <FlaskConical className="w-4 h-4 mr-2" />
-          Order {selectedTests.size} Test{selectedTests.size !== 1 ? 's' : ''}
-        </Button>
-      )}
-
-      {showResults && selectedEntries.length > 0 && (
-        <div className="space-y-3">
-          {selectedEntries.map(([key, test]) => (
-            <div key={key} className={cn('border rounded-lg p-3', test.is_key && 'border-primary/30')}>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium text-sm">{test.label}</span>
-                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
-              </div>
-              <p className="text-sm">{test.result}</p>
-              <p className="text-xs text-muted-foreground mt-1">{test.interpretation}</p>
+          {!readOnly && (
+            <Button onClick={handleOrder} disabled={selectedTests.size === 0} variant="outline" className="w-full">
+              <FlaskConical className="w-4 h-4 mr-2" />
+              Order {selectedTests.size} Test{selectedTests.size !== 1 ? 's' : ''}
+            </Button>
+          )}
+        </>
+      ) : (
+        /* Side panel layout: selection summary left, results right */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left: ordered tests list */}
+          <div>
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+              Tests Ordered ({selectedEntries.length})
+            </Label>
+            <div className="space-y-1">
+              {testEntries.map(([key, test]) => (
+                <div
+                  key={key}
+                  className={cn(
+                    'text-xs px-2 py-1.5 rounded',
+                    selectedTests.has(key)
+                      ? 'bg-primary/5 text-foreground font-medium'
+                      : 'text-muted-foreground/50 line-through'
+                  )}
+                >
+                  {test.label}
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Right: results */}
+          <div className="space-y-3">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
+              Results
+            </Label>
+            {selectedEntries.map(([key, test]) => (
+              <div key={key} className={cn('border rounded-lg p-3', test.is_key && 'border-primary/30')}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-sm">{test.label}</span>
+                  {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
+                </div>
+                <p className="text-sm">{test.result}</p>
+                <p className="text-xs text-muted-foreground mt-1">{test.interpretation}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

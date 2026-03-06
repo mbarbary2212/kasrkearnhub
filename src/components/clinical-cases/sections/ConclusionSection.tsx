@@ -49,7 +49,7 @@ export function ConclusionSection({
             onChange={e => setTaskAnswers(prev => ({ ...prev, [task.id]: e.target.value }))}
             rows={task.type === 'ward_round_presentation' ? 8 : 5}
             disabled={readOnly}
-            placeholder={`Write your ${taskTypeLabel(task.type).toLowerCase()} here...`}
+            placeholder={`Write your ${taskTypeLabel(task.type).toLowerCase()} here... (type 'pass' to skip)`}
           />
         </div>
       ))}

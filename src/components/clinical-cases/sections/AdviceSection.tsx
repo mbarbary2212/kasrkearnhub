@@ -45,7 +45,7 @@ export function AdviceSection({
           rows={6}
           className="mt-2"
           disabled={readOnly}
-          placeholder="What advice would you give the patient and their family?"
+          placeholder="What advice would you give the patient and their family? (type 'pass' to skip)"
         />
       </div>
 

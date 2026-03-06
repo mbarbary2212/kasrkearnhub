@@ -100,7 +100,7 @@ export function ManagementSection({
             onChange={e => setFreeTextAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
             rows={5}
             disabled={readOnly}
-            placeholder="Type your answer..."
+            placeholder="Type your answer... (type 'pass' to skip)"
           />
         </div>
       ))}

@@ -67,28 +67,6 @@ export function HistoryTakingSection({
         </div>
       )}
 
-      {/* Checklist (read-only reference) */}
-      {data.checklist && data.checklist.length > 0 && (
-        <div>
-          <Label className="text-xs text-muted-foreground">History Checklist Reference</Label>
-          <div className="mt-1 space-y-2">
-            {data.checklist.map(cat => (
-              <div key={cat.key} className="border rounded p-2">
-                <p className="text-sm font-medium mb-1">{cat.label}</p>
-                <div className="space-y-0.5">
-                  {cat.items.map(item => (
-                    <div key={item.key} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Comprehension Questions */}
       {questions.length > 0 && (
         <div className="space-y-3">
@@ -103,7 +81,7 @@ export function HistoryTakingSection({
                 value={answers[q.id] || ''}
                 onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                 disabled={readOnly}
-                placeholder="Type your answer..."
+                placeholder="Type your answer... (type 'pass' to skip)"
                 className="text-sm"
               />
             </div>
