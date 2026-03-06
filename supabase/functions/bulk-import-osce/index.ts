@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as XLSX from "npm:xlsx@0.18.5";
+import ExcelJS from "npm:exceljs@4.4.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,14 +21,38 @@ interface ParsedRow {
   hasImage?: boolean;
 }
 
-// Parse Excel file using xlsx library
+// Parse Excel file using exceljs
 async function parseExcel(file: File): Promise<Record<string, any>[]> {
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-  return data as Record<string, any>[];
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet || worksheet.rowCount === 0) return [];
+
+  const headers: string[] = [];
+  const headerRow = worksheet.getRow(1);
+  headerRow.eachCell({ includeEmpty: true }, (cell: any, colNumber: number) => {
+    headers[colNumber - 1] = String(cell.value ?? '');
+  });
+
+  const rows: Record<string, any>[] = [];
+  for (let i = 2; i <= worksheet.rowCount; i++) {
+    const row = worksheet.getRow(i);
+    const obj: Record<string, any> = {};
+    let hasValue = false;
+    headers.forEach((header, idx) => {
+      const cell = row.getCell(idx + 1);
+      const val = cell.value;
+      if (val !== null && val !== undefined && val !== '') {
+        hasValue = true;
+        obj[header] = val;
+      } else {
+        obj[header] = '';
+      }
+    });
+    if (hasValue) rows.push(obj);
+  }
+  return rows;
 }
 
 // Simple ZIP parser (handles basic ZIP format with stored/deflated files)

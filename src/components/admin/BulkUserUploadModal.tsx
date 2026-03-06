@@ -25,7 +25,7 @@ import {
   XCircle,
   AlertCircle 
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, writeJsonToExcel } from '@/lib/excel';
 import { useInviteBulkUsers, InviteResult, UserToInvite } from '@/hooks/useUserProvisioning';
 
 interface BulkUserUploadModalProps {
@@ -60,39 +60,30 @@ export function BulkUserUploadModal({ open, onOpenChange }: BulkUserUploadModalP
     onOpenChange(open);
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const template = [
       { full_name: 'Ahmed Hassan', email: 'ahmed@example.com', role: 'student' },
       { full_name: 'Dr. Sarah Ahmed', email: 'sarah@example.com', role: 'teacher' },
     ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Users');
-    XLSX.writeFile(wb, 'user_invite_template.xlsx');
+    await writeJsonToExcel(template, 'user_invite_template.xlsx', 'Users');
   };
 
-  const downloadResults = () => {
+  const downloadResults = async () => {
     const data = results.map(r => ({
       email: r.email,
       status: r.status,
       message: r.message,
       invited_at: r.invited_at || '',
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Results');
-    XLSX.writeFile(wb, `invite_results_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await writeJsonToExcel(data, `invite_results_${new Date().toISOString().split('T')[0]}.xlsx`, 'Results');
   };
 
   const parseFile = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
+        const buffer = e.target?.result as ArrayBuffer;
+        const jsonData = await readExcelToJson(buffer) as any[];
 
         const users: ParsedUser[] = jsonData.map((row, index) => {
           const email = (row.email || row.Email || '').toString().trim().toLowerCase();

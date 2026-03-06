@@ -20,7 +20,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { writeArrayToExcel } from '@/lib/excel';
 
 interface AdminHelpFile {
   id: string;
@@ -378,18 +378,8 @@ function downloadCsv(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadXlsx(filename: string, sheetData: (string | undefined)[][], sheetName: string = 'Sheet1') {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
-  
-  // Set column widths
-  const colWidths = sheetData[0].map((_, i) => ({
-    wch: Math.max(...sheetData.map(row => String(row[i] || '').length), 15)
-  }));
-  ws['!cols'] = colWidths;
-  
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, filename);
+async function downloadXlsx(filename: string, sheetData: (string | undefined)[][], sheetName: string = 'Sheet1') {
+  await writeArrayToExcel(sheetData, filename, sheetName);
 }
 
 function downloadTxt(filename: string, content: string) {

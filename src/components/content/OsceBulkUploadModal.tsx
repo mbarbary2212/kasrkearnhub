@@ -25,7 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, readExcelToArray, writeArrayToExcel } from '@/lib/excel';
 import { logActivity } from '@/lib/activityLog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
@@ -116,10 +116,7 @@ export function OsceBulkUploadModal({
   // Parse Excel file locally
   const parseExcelFile = async (file: File): Promise<ExcelValidationResult> => {
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
+    const rows = await readExcelToJson(buffer, { defval: '' });
 
     const parsedRows: ParsedRow[] = [];
     const requiredImages: Set<string> = new Set();
@@ -202,10 +199,7 @@ export function OsceBulkUploadModal({
       
       // Parse Excel to get headers and sample rows for AI analysis
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const allRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as string[][];
+      const allRows = await readExcelToArray(buffer);
       
       if (allRows.length > 0) {
         setParsedHeaders(allRows[0] as string[]);
@@ -395,9 +389,7 @@ export function OsceBulkUploadModal({
     }
   };
 
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
-    
+  const downloadTemplate = async () => {
     const headers = [
       'image_filename',
       'case_history',
@@ -420,7 +412,6 @@ export function OsceBulkUploadModal({
       'section_number',
     ];
     
-    // Example with image
     const exampleRowWithImage = [
       'case_001.jpg',
       'A 45-year-old male presents with chest pain radiating to the left arm...',
@@ -439,13 +430,12 @@ export function OsceBulkUploadModal({
       'Troponin is a sensitive marker for myocardial damage',
       'Beta-blockers are actually indicated unless contraindicated',
       'Aspirin reduces mortality in acute coronary syndrome',
-      'Cardiology Basics', // section_name
-      '1', // section_number
+      'Cardiology Basics',
+      '1',
     ];
 
-    // Example without image (image_filename is optional)
     const exampleRowWithoutImage = [
-      '', // Empty = no image required
+      '',
       'A 28-year-old woman presents with fatigue and pallor...',
       'Iron deficiency is the most common cause of anemia',
       'TRUE',
@@ -462,37 +452,12 @@ export function OsceBulkUploadModal({
       'Reticulocytes indicate bone marrow response',
       'LDH can be elevated in hemolysis',
       'Ferritin reflects total body iron stores',
-      '', // section_name (optional)
-      '', // section_number (optional)
+      '',
+      '',
     ];
 
-    const data = [headers, exampleRowWithImage, exampleRowWithoutImage];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-
-    ws['!cols'] = [
-      { wch: 20 }, // image_filename
-      { wch: 60 }, // case_history
-      { wch: 40 }, // statement_1_text
-      { wch: 12 }, // statement_1_answer
-      { wch: 40 }, // statement_2_text
-      { wch: 12 }, // statement_2_answer
-      { wch: 40 }, // statement_3_text
-      { wch: 12 }, // statement_3_answer
-      { wch: 40 }, // statement_4_text
-      { wch: 12 }, // statement_4_answer
-      { wch: 40 }, // statement_5_text
-      { wch: 12 }, // statement_5_answer
-      { wch: 40 }, // explanation_1
-      { wch: 40 }, // explanation_2
-      { wch: 40 }, // explanation_3
-      { wch: 40 }, // explanation_4
-      { wch: 40 }, // explanation_5
-      { wch: 20 }, // section_name
-      { wch: 15 }, // section_number
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'OSCE Questions');
-    XLSX.writeFile(wb, 'osce_template.xlsx');
+    const colWidths = [20, 60, 40, 12, 40, 12, 40, 12, 40, 12, 40, 12, 40, 40, 40, 40, 40, 20, 15];
+    await writeArrayToExcel([headers, exampleRowWithImage, exampleRowWithoutImage], 'osce_template.xlsx', 'OSCE Questions', colWidths);
   };
 
   return (
