@@ -1,42 +1,42 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-## Plan: Enhanced Body Map with Colored Zones and Repositioned Labels
+## Status: ✅ Complete
 
-### What changes
+### Completed Steps
 
-Rewrite `BodyMap.tsx` to replace the plain gray silhouette + dots with **colored anatomical zones** that highlight on click. Reposition hotspots per user request:
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-**Layout changes:**
-- **Vital Signs** → left upper limb area (left side label)
-- **General Appearance** → top of body where Vital Signs was (above head, left label)
-- **Head & Neck** → head position where General Appearance was (left label)
-- **Chest/CV/Pulmonary** → chest zone (right labels)
-- **Abdomen** → single consolidated zone covering all sub-findings (inspection, palpation, auscultation, special tests) — multiple abdomen-related keys map to the SAME body zone
-- **Lower Limbs** → stays as-is
-- **Unmatched items** (wounds, detailed assessments, etc.) → badge pills below body
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-**Visual changes:**
-- Each body zone (head, chest, abdomen, arms, legs) gets a **distinct semi-transparent fill color** (e.g., head = blue, chest = teal, abdomen = green, limbs = purple)
-- Unrevealed zones: muted/desaturated color with dashed connector
-- Revealed zones: vivid color fill with solid connector
-- Selected zone: brighter fill + ring highlight
-- Zones are clickable SVG paths (not just dots) — the entire colored region is the click target
+### All Steps
 
-**Abdomen consolidation:**
-- Multiple abdomen-related keys (inspection, palpation, auscultation, special tests) all map to the same SVG zone position
-- When one is clicked, it reveals that specific finding; the zone dot shows a count badge if multiple sub-findings exist
-- Allow multiple keys to share one hotspot position (remove the `usedPositions` uniqueness constraint for abdomen)
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
 
-**Dynamic visibility:**
-- Hotspots/labels only appear if the case scenario has a matching region key — if the case has no "lower_limb" data, no lower limb label shows. This is already the behavior (only positioned entries from `regions` are rendered).
-
-### File modified
-`src/components/clinical-cases/sections/BodyMap.tsx` — full rewrite
-
-### Key details
-- SVG viewBox stays ~300x420
-- Body parts rendered as colored SVG paths with opacity transitions
-- Zone colors: Head (#60A5FA blue), Chest (#2DD4BF teal), Abdomen (#4ADE80 green), Upper limbs (#A78BFA purple), Lower limbs (#FB923C orange), Pelvis (#F472B6 pink)
-- Connector lines from zone center to label text on left/right side
-- Multiple region keys can map to same zone (abdomen consolidation) — shown as stacked items in side panel
-
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
