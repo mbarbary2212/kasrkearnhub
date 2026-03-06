@@ -50,7 +50,7 @@ export function DiagnosisSection({
         <Textarea
           value={possibleDx}
           onChange={e => setPossibleDx(e.target.value)}
-          placeholder="List your possible diagnoses..."
+          placeholder="List your possible diagnoses... (type 'pass' to skip)"
           className="mt-1"
           rows={3}
           disabled={readOnly}
