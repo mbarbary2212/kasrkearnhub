@@ -106,6 +106,7 @@ You have access to the model answer and rubric for each section.
 Return ONLY valid JSON with this shape:
 {
   "score": <number 0 to ${maxScore}>,
+  "justification": "<1-2 sentences explaining WHY this score was given, referencing specific items covered or missed>",
   "feedback": "<2-4 sentences of constructive feedback>",
   "strengths": ["<strength 1>", "<strength 2>"],
   "gaps": ["<gap 1>", "<gap 2>"]
