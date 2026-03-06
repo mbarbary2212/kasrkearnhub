@@ -60,15 +60,12 @@ export function BulkUserUploadModal({ open, onOpenChange }: BulkUserUploadModalP
     onOpenChange(open);
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const template = [
       { full_name: 'Ahmed Hassan', email: 'ahmed@example.com', role: 'student' },
       { full_name: 'Dr. Sarah Ahmed', email: 'sarah@example.com', role: 'teacher' },
     ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Users');
-    XLSX.writeFile(wb, 'user_invite_template.xlsx');
+    await writeJsonToExcel(template, 'user_invite_template.xlsx', 'Users');
   };
 
   const downloadResults = () => {
