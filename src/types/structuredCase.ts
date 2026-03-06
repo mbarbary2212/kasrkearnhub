@@ -111,15 +111,63 @@ export interface HistorySectionData {
 
 // ── Physical Examination ───────────────────────────────
 
+/** Legacy region format (backward compat) */
 export interface ExamRegion {
   label: string;
   finding: string;
 }
 
+/** Fixed set of anatomical region keys for v8 */
+export type RegionKey =
+  | 'general'
+  | 'head_neck'
+  | 'vital_signs'
+  | 'chest'
+  | 'upper_limbs'
+  | 'abdomen'
+  | 'lower_limbs'
+  | 'extra';
+
+export interface VitalSign {
+  name: string;
+  value: string;
+  unit: string;
+  abnormal: boolean;
+}
+
+export interface RegionFinding {
+  text: string;
+  ref?: string | null;
+}
+
+export interface VitalsFinding {
+  vitals: VitalSign[];
+  text?: string;
+  ref?: string | null;
+}
+
+export interface ExtraFinding extends RegionFinding {
+  label: string;
+}
+
+export interface TopicItem {
+  key: string;
+  label: string;
+  title: string;
+  chapter: string;
+  body: string;
+  quote: string;
+}
+
+export type ExamFindingValue = RegionFinding | VitalsFinding | ExtraFinding;
+
 export interface PhysicalExamSectionData {
   max_score: number;
   note?: string;
-  regions: Record<string, ExamRegion>;
+  findings: Partial<Record<RegionKey, ExamFindingValue>>;
+  related_topics?: TopicItem[];
+  /** @deprecated backward compat with old cases */
+  regions?: Record<string, ExamRegion>;
 }
 
 // ── Lab Investigations ─────────────────────────────────
