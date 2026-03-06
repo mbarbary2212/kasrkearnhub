@@ -45,7 +45,25 @@ export function PhysicalExamSection({
   readOnly,
   previousAnswer,
 }: SectionComponentProps<PhysicalExamSectionData>) {
-  const findings = data.findings || {};
+  // Backward compatibility: convert old `regions` format to new `findings` format
+  const findings = useMemo(() => {
+    if (data.findings && Object.keys(data.findings).length > 0) return data.findings;
+    // Legacy format: data.regions = Record<string, { finding: string; label: string; ... }>
+    const legacyRegions = (data as any).regions as Record<string, any> | undefined;
+    if (!legacyRegions) return {};
+    const converted: Record<string, any> = {};
+    for (const [key, val] of Object.entries(legacyRegions)) {
+      // Map old region keys to new RegionKey where possible
+      const regionKey = key as RegionKey;
+      converted[regionKey] = {
+        text: val.finding || val.text || '',
+        ref: val.ref || null,
+        ...(val.label ? { label: val.label } : {}),
+        ...(val.vitals ? { vitals: val.vitals } : {}),
+      };
+    }
+    return converted;
+  }, [data]);
   const topics = data.related_topics || [];
 
   const [revealedRegions, setRevealedRegions] = useState<Set<RegionKey>>(
