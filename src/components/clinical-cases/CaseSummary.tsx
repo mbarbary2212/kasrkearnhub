@@ -98,6 +98,16 @@ export function CaseSummary() {
     }
   }, [sectionAnswers, attemptId, attempt]);
 
+  // Auto-expand all sections once answers are loaded and scored
+  useEffect(() => {
+    if (sectionsInitialized || !sectionAnswers || sectionAnswers.length === 0) return;
+    const allScored = sectionAnswers.every(a => a.is_scored);
+    if (allScored) {
+      setOpenSections(new Set(sectionAnswers.map(a => a.section_type)));
+      setSectionsInitialized(true);
+    }
+  }, [sectionAnswers, sectionsInitialized]);
+
   const toggleSection = (key: string) => {
     setOpenSections(prev => {
       const next = new Set(prev);
