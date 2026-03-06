@@ -1,42 +1,45 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete
+## Plan: Add Overall Performance Summary with Explanations
 
-### Completed Steps
+### What the user wants
+The scoring already saves per-section feedback (strengths, gaps, explanation) and displays it in collapsible sections. But there's no **overall summary** that explains *why* the student got the score they did, and what was good/bad across the whole case.
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+### Changes
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+**1. Update scoring prompt to include richer explanations (`score-case-answers/index.ts`)**
 
-### All Steps
+Update the system prompt to instruct the AI to also return a `justification` field — a 1-2 sentence explanation of *why* the score was given (not just feedback). Update the JSON shape to:
+```json
+{
+  "score": 8,
+  "justification": "Student covered 4 of 5 key history items but missed medication history.",
+  "feedback": "...",
+  "strengths": [...],
+  "gaps": [...]
+}
+```
+Save `justification` inside the existing `ai_feedback` JSON field alongside feedback/strengths/gaps.
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
+**2. Add an Overall Summary card to CaseSummary (`CaseSummary.tsx`)**
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+After the score hero and before the category bars, add a new card that:
+- Aggregates all section feedback into a **"Key Strengths"** list (top 3-4 unique strengths across all sections) and **"Areas to Improve"** list (top 3-4 gaps)
+- Shows a brief per-section justification line (e.g., "History Taking: Covered 4/5 items but missed medication history")
+- This is purely client-side aggregation from the already-stored `ai_feedback` data — no new AI call needed
+
+**3. Auto-expand all sections by default**
+
+Currently sections are collapsed. Change the default so all sections start **expanded** — the student wants to see their feedback immediately without clicking each one.
+
+### Technical Details
+
+- No database changes — `justification` is stored inside the existing `ai_feedback` JSON string
+- The `parseFeedback` helper updated to also extract `justification`
+- Overall summary card built from iterating `sectionAnswers` and collecting strengths/gaps
+- Existing attempts will still work (justification will just be empty for old scores)
+
+### Files modified
+- `supabase/functions/score-case-answers/index.ts` — add `justification` to AI system prompt and save it
+- `src/components/clinical-cases/CaseSummary.tsx` — add overall summary card, update parseFeedback, auto-expand sections
+
