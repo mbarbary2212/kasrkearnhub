@@ -1,42 +1,62 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete
+## Plan: Add Manual Entry, Back Button, and Admin Instructions
 
-### Completed Steps
+### 3 Changes
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+**1. CasePreviewEditor — Add manual entry option alongside AI generation**
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+When no `generated_case_data` exists, instead of just showing "Generate Content", show two options:
+- **Generate with AI** (existing button) — calls `generate-structured-case`
+- **Start from Scratch** — creates an empty `generated_case_data` skeleton based on `active_sections`, so the admin can fill in each section manually using the existing inline editors
 
-### All Steps
+The skeleton generator will create empty but valid structures for each active section (empty arrays for findings, empty MCQs, etc.) so the section editors render and the admin can type values directly.
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
+This means no new components — the existing section editors in `CasePreviewEditor` already support editing. We just need to seed them with an empty template.
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+**File: `src/components/clinical-cases/CasePreviewEditor.tsx`**
+- Replace the "No Content Generated Yet" card with two side-by-side cards: "Generate with AI" and "Build Manually"
+- Add a `createEmptySkeleton(activeSections)` helper that returns a valid `StructuredCaseData` with empty/default values for each section
+- When "Build Manually" is clicked, set `editedData` to the skeleton and auto-save it to the database
+
+**2. StructuredCaseRunner — Add Exit/Back button**
+
+**File: `src/components/clinical-cases/StructuredCaseRunner.tsx`**
+- Add an `AlertDialog` for exit confirmation
+- Add a "Back to Cases" button (ArrowLeft + DoorOpen icon) in the progress header card, next to the case title
+- On confirm: navigate back using `navigate(-1)` (browser back behavior, which takes the student to the Interactive tab they came from)
+
+**3. StructuredCaseCreator — Add collapsible admin instructions**
+
+**File: `src/components/clinical-cases/StructuredCaseCreator.tsx`**
+- Add a `Collapsible` section between `DialogHeader` and `Tabs`
+- Contains placeholder instruction text that the admin can reference
+- Default collapsed, toggleable with "How to create a case" trigger
+- Content will be placeholder text (the user said "we will fill that in time")
+
+### Technical Details
+
+**Empty skeleton structure** (for manual entry):
+```typescript
+function createEmptySkeleton(sections: SectionType[]): StructuredCaseData {
+  const data: any = {
+    professional_attitude: {
+      max_score: 10,
+      items: [
+        { key: "introduction", label: "Introduced themselves", label_ar: "...", expected_behaviour: "..." },
+        // ... standard 5 items
+      ],
+      scoring_note: "Scored holistically from transcript"
+    }
+  };
+  
+  if (sections.includes('history_taking')) {
+    data.history_taking = { patient_profile: { name: "", age: 0, gender: "male" }, system_prompt: "", categories: [], max_score: 30 };
+  }
+  // ... similar for each section type
+  return data;
+}
+```
+
+No database changes needed. No new edge functions. All three changes are frontend-only.
+
