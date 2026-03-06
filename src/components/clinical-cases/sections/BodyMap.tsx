@@ -212,8 +212,7 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 }
 
 function RevealDot({ cx, cy, state }: { cx: number; cy: number; state: string }) {
-  if (state === 'default') return null;
-  return <circle cx={cx} cy={cy} r={5} fill="#10b981" />;
+  return null;
 }
 
 /* ── General Appearance Pill ── */
