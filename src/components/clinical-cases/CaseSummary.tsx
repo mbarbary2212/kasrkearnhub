@@ -371,18 +371,20 @@ export function CaseSummary() {
 
 function parseFeedback(raw: string | null): {
   feedback: string;
+  justification: string;
   strengths: string[];
   gaps: string[];
 } {
-  if (!raw) return { feedback: '', strengths: [], gaps: [] };
+  if (!raw) return { feedback: '', justification: '', strengths: [], gaps: [] };
   try {
     const parsed = JSON.parse(raw);
     return {
       feedback: parsed.feedback || '',
+      justification: parsed.justification || '',
       strengths: parsed.strengths || [],
       gaps: parsed.gaps || [],
     };
   } catch {
-    return { feedback: raw, strengths: [], gaps: [] };
+    return { feedback: raw, justification: '', strengths: [], gaps: [] };
   }
 }
