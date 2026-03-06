@@ -35,7 +35,9 @@ import { useQuery } from '@tanstack/react-query';
 export function CaseSummary() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
+  // Auto-expand all sections by default
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [sectionsInitialized, setSectionsInitialized] = useState(false);
 
   // Fetch attempt
   const { data: attempt, isLoading: attemptLoading } = useQuery({
