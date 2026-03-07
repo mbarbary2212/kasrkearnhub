@@ -464,9 +464,60 @@ export function HistoryTakingSection({
           >
             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            {isListening ? 'جاري الاستماع... اضغط لإيقاف' : 'اضغط للتحدث'}
-          </p>
+          {/* Listening indicator + interim transcript */}
+          {isListening && (
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                </span>
+                جاري الاستماع... اضغط لإيقاف
+              </div>
+              {interimTranscript && (
+                <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
+                  {interimTranscript}
+                </p>
+              )}
+            </div>
+          )}
+          {!isListening && (
+            <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
+          )}
+
+          {/* Fallback text input */}
+          {showVoiceFallbackInput && (
+            <div className="flex gap-2 w-full max-w-xs" dir="rtl">
+              <Input
+                value={voiceFallbackInput}
+                onChange={e => setVoiceFallbackInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (voiceFallbackInput.trim()) {
+                      sendChatMessage(voiceFallbackInput);
+                      setVoiceFallbackInput('');
+                    }
+                  }
+                }}
+                placeholder="اكتب سؤالك هنا..."
+                disabled={isSending}
+                className="text-sm"
+              />
+              <Button
+                size="icon"
+                onClick={() => {
+                  if (voiceFallbackInput.trim()) {
+                    sendChatMessage(voiceFallbackInput);
+                    setVoiceFallbackInput('');
+                  }
+                }}
+                disabled={!voiceFallbackInput.trim() || isSending}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
 
           <Button
             onClick={handleFinishInteraction}
