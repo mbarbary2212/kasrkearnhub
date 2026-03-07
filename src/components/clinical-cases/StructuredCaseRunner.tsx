@@ -76,6 +76,9 @@ export function StructuredCaseRunner({
 }: StructuredCaseRunnerProps) {
   const generatedData = caseData.generated_case_data as StructuredCaseData | null;
   const activeSections = (caseData.active_sections as SectionType[]) || [];
+  const historyInteractionMode = (caseData.history_interaction_mode as string) || 'text';
+  const avatarId = (caseData.avatar_id as number) || 1;
+  const { data: examinerAvatar } = useExaminerAvatarById(avatarId);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
