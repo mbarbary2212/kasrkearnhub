@@ -120,13 +120,14 @@ export function HistoryTakingSection({
   // ── Voice recognition ──────────────────────────────────
   const toggleVoice = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser.');
+      toast.error('Speech recognition is not supported in this browser.');
       return;
     }
 
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      setInterimTranscript('');
       return;
     }
 
@@ -134,21 +135,56 @@ export function HistoryTakingSection({
     const recognition = new SpeechRecognition();
     recognition.lang = 'ar-EG';
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+
+    recognition.onaudiostart = () => {
+      // Mic is capturing — no action needed
+    };
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setLastSpoken(transcript);
-      sendChatMessage(transcript);
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      setInterimTranscript(interim);
+      if (final) {
+        setLastSpoken(final);
+        setVoiceErrorCount(0);
+        sendChatMessage(final);
+      }
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      const errorMessages: Record<string, string> = {
+        'not-allowed': 'Microphone access denied. Please allow microphone permissions.',
+        'no-speech': 'No speech detected. Please try again.',
+        'language-not-supported': 'Arabic speech recognition is not supported on this device.',
+        'network': 'Network error. Please check your connection.',
+        'aborted': 'Speech recognition was aborted.',
+      };
+      toast.error(errorMessages[event.error] || `Speech error: ${event.error}`);
       setIsListening(false);
+      setInterimTranscript('');
+      setVoiceErrorCount(prev => {
+        const next = prev + 1;
+        if (next >= 2) {
+          setShowVoiceFallbackInput(true);
+          toast.info('Voice input unavailable. You can type your message instead.');
+        }
+        return next;
+      });
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      setInterimTranscript('');
     };
 
     recognitionRef.current = recognition;
