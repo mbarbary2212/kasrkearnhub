@@ -163,15 +163,16 @@ export async function callAIWithMessages(
   provider: AIProvider,
   options?: { temperature?: number; maxTokens?: number; customApiKey?: string }
 ): Promise<AICallResult> {
+  const enriched = enrichSystemPrompt(systemPrompt);
   const temp = options?.temperature ?? 0.7;
   const maxTokens = options?.maxTokens ?? 1024;
 
   if (provider.name === 'anthropic') {
-    return callAnthropicWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+    return callAnthropicWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else if (provider.name === 'gemini') {
-    return callGeminiWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+    return callGeminiWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else {
-    return callLovableWithMessages(systemPrompt, messages, provider.model, temp, maxTokens);
+    return callLovableWithMessages(enriched, messages, provider.model, temp, maxTokens);
   }
 }
 
