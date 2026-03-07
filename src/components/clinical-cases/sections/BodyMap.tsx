@@ -153,10 +153,10 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── LOWER LIMB — left inside ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.lower_limbs && onRegionClick('lower_limbs')}>
           <rect x={88} y={325} width={134} height={160} rx={6} fill="transparent" />
-          <rect x={15} y={340} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <rect x={15} y={340} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
-            x={62} y={359} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={62} y={340 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Lower limb
           </text>
