@@ -196,6 +196,7 @@ export function PhysicalExamSection({
             revealedRegions={revealedRegions}
             selectedRegion={openRegion}
             onRegionClick={handleTap}
+            compact={isMobile}
           />
         </div>
 
