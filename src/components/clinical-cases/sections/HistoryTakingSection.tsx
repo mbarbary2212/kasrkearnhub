@@ -209,13 +209,13 @@ export function HistoryTakingSection({
   };
 
   // ── Watermark ──────────────────────────────────────────
-  const watermark = studentName ? (
+  const watermark = (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden z-10 opacity-[0.04]">
       <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap select-none">
-        {studentName}
+        KALMHUB
       </span>
     </div>
-  ) : null;
+  );
 
   // ══════════════════════════════════════════════════════
   // PHASE 1: Interaction
