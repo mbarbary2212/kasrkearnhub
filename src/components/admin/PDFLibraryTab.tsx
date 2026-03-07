@@ -502,10 +502,6 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setBatchGeneratorOpen(true)}>
-                <Layers className="w-4 h-4 mr-2" />
-                Batch Generate
-              </Button>
               <Button onClick={() => setUploadOpen(true)}>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload PDF

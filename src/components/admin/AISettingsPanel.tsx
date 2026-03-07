@@ -61,7 +61,11 @@ const CONTENT_TYPES = [
   { value: 'case_scenario', label: 'Case Scenarios' },
 ];
 
-export function AISettingsPanel() {
+interface AISettingsPanelProps {
+  showRules?: boolean | 'only';
+}
+
+export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   const { data: settings, isLoading, refetch } = useAISettings();
   const updateSetting = useUpdateAISetting();
   const { isSuperAdmin } = useAuthContext();
@@ -116,6 +120,11 @@ export function AISettingsPanel() {
         </CardContent>
       </Card>
     );
+  }
+
+  // If showRules is 'only', render just the rules section
+  if (showRules === 'only') {
+    return <ContentRulesSection />;
   }
 
   return (
@@ -292,8 +301,8 @@ export function AISettingsPanel() {
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
-      {/* Content Type Rules Section */}
-      <ContentRulesSection />
+      {/* Content Type Rules Section — only if showRules is true */}
+      {showRules && <ContentRulesSection />}
     </div>
   );
 }
