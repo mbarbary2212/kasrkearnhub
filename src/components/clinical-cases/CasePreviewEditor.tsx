@@ -472,6 +472,10 @@ export function CasePreviewEditor() {
               isOpen={openSections.has('professional_attitude')}
               onToggle={() => toggleSection('professional_attitude')}
               maxScore={editedData.professional_attitude.max_score}
+              onMaxScoreChange={(val) => updateSection('professional_attitude', {
+                ...editedData.professional_attitude,
+                max_score: val,
+              })}
             >
               <div className="space-y-3">
                 <div>
@@ -492,10 +496,42 @@ export function CasePreviewEditor() {
                     {editedData.professional_attitude.items.map((item, i) => (
                       <div key={item.key} className="flex items-center gap-2 p-2 rounded bg-muted/50 text-sm">
                         <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="flex-1">{item.label}</span>
+                        <Input
+                          value={item.label}
+                          onChange={e => {
+                            const items = [...editedData.professional_attitude!.items];
+                            items[i] = { ...items[i], label: e.target.value };
+                            updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                          }}
+                          className="flex-1 h-7 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const items = editedData.professional_attitude!.items.filter((_, idx) => idx !== i);
+                            updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 text-xs"
+                    onClick={() => {
+                      const items = [...editedData.professional_attitude!.items, {
+                        key: `pa_${Date.now()}`,
+                        label: 'New item',
+                      }];
+                      updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                    }}
+                  >
+                    + Add item
+                  </Button>
                 </div>
               </div>
             </SectionPanel>
@@ -522,6 +558,7 @@ export function CasePreviewEditor() {
                   isOpen={isEnabled && openSections.has(sectionKey)}
                   onToggle={() => isEnabled && toggleSection(sectionKey)}
                   maxScore={(sectionData as any).max_score}
+                  onMaxScoreChange={(val) => updateSection(sectionKey, { ...sectionData, max_score: val })}
                   enableSwitch={
                     <Switch
                       checked={isEnabled}
@@ -553,11 +590,12 @@ interface SectionPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   maxScore?: number;
+  onMaxScoreChange?: (val: number) => void;
   enableSwitch?: React.ReactNode;
   children: React.ReactNode;
 }
 
-function SectionPanel({ label, icon, isOpen, onToggle, maxScore, enableSwitch, children }: SectionPanelProps) {
+function SectionPanel({ label, icon, isOpen, onToggle, maxScore, onMaxScoreChange, enableSwitch, children }: SectionPanelProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <Card className="overflow-hidden">
@@ -570,9 +608,20 @@ function SectionPanel({ label, icon, isOpen, onToggle, maxScore, enableSwitch, c
                 <CardTitle className="text-sm font-medium">{label}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                {maxScore != null && (
+                {maxScore != null && onMaxScoreChange ? (
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-muted-foreground">Max:</span>
+                    <Input
+                      type="number"
+                      value={maxScore}
+                      onChange={e => onMaxScoreChange(parseInt(e.target.value) || 0)}
+                      className="w-16 h-7 text-xs text-center"
+                      min={0}
+                    />
+                  </div>
+                ) : maxScore != null ? (
                   <Badge variant="outline" className="text-xs">Max: {maxScore}</Badge>
-                )}
+                ) : null}
                 {enableSwitch}
               </div>
             </div>
@@ -624,6 +673,25 @@ function SectionEditor({ sectionKey, data, onChange }: SectionEditorProps) {
 // ── Individual Section Editors ───────────────────────
 
 function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange: (v: any) => void }) {
+  const updateAtmist = (field: string, value: string) => {
+    onChange({ ...data, atmist_handover: { ...data.atmist_handover, [field]: value } });
+  };
+  const updateChecklistItem = (catIdx: number, itemIdx: number, label: string) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items[itemIdx] = { ...checklist[catIdx].items[itemIdx], label };
+    onChange({ ...data, checklist });
+  };
+  const removeChecklistItem = (catIdx: number, itemIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items.splice(itemIdx, 1);
+    onChange({ ...data, checklist });
+  };
+  const addChecklistItem = (catIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items.push({ key: `item_${Date.now()}`, label: 'New item' });
+    onChange({ ...data, checklist });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -633,9 +701,12 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
       {data.atmist_handover && (
         <div>
           <Label className="text-xs text-muted-foreground">ATMIST Handover</Label>
-          <div className="mt-1 space-y-1 text-sm bg-muted/50 rounded p-3">
+          <div className="mt-1 space-y-2 bg-muted/50 rounded p-3">
             {Object.entries(data.atmist_handover).map(([k, v]) => (
-              <div key={k}><span className="font-semibold capitalize">{k.replace('_', ' ')}:</span> {v}</div>
+              <div key={k} className="flex items-center gap-2">
+                <Label className="text-xs font-semibold capitalize w-24 shrink-0">{k.replace('_', ' ')}</Label>
+                <Input value={v} onChange={e => updateAtmist(k, e.target.value)} className="h-7 text-sm flex-1" />
+              </div>
             ))}
           </div>
         </div>
@@ -643,149 +714,317 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
       <div>
         <Label className="text-xs text-muted-foreground">Checklist ({data.checklist?.length || 0} categories)</Label>
         <div className="mt-1 space-y-2">
-          {(data.checklist || []).map(cat => (
+          {(data.checklist || []).map((cat, catIdx) => (
             <div key={cat.key} className="border rounded p-2">
-              <p className="text-sm font-medium mb-1">{cat.label}</p>
+              <Input
+                value={cat.label}
+                onChange={e => {
+                  const checklist = structuredClone(data.checklist || []);
+                  checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
+                  onChange({ ...data, checklist });
+                }}
+                className="h-7 text-sm font-medium mb-2"
+              />
               <div className="space-y-1">
-                {cat.items.map(item => (
-                  <div key={item.key} className="flex items-center gap-2 text-sm text-muted-foreground">
+                {cat.items.map((item, itemIdx) => (
+                  <div key={item.key} className="flex items-center gap-2 text-sm">
                     <Check className="w-3 h-3 text-primary shrink-0" />
-                    <span>{item.label}</span>
+                    <Input
+                      value={item.label}
+                      onChange={e => updateChecklistItem(catIdx, itemIdx, e.target.value)}
+                      className="h-7 text-sm flex-1"
+                    />
+                    <button type="button" onClick={() => removeChecklistItem(catIdx, itemIdx)} className="text-muted-foreground hover:text-destructive">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
+              <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => addChecklistItem(catIdx)}>
+                + Add item
+              </Button>
             </div>
           ))}
         </div>
       </div>
-      {data.comprehension_questions && data.comprehension_questions.length > 0 && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions.length})</Label>
-          <div className="mt-1 space-y-2">
-            {data.comprehension_questions.map((q, i) => (
-              <div key={q.id} className="border rounded p-2 text-sm">
-                <p className="font-medium">Q{i + 1}: {q.question} ({q.points} pts)</p>
-                <p className="text-muted-foreground mt-1">Answer: {q.correct_answer}</p>
+      <div>
+        <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions?.length || 0})</Label>
+        <div className="mt-1 space-y-2">
+          {(data.comprehension_questions || []).map((q, i) => (
+            <div key={q.id} className="border rounded p-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">Q{i + 1}</span>
+                <Input
+                  value={q.question}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], question: e.target.value };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="h-7 text-sm flex-1"
+                />
+                <Input
+                  type="number"
+                  value={q.points}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], points: parseInt(e.target.value) || 0 };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="w-16 h-7 text-xs"
+                  min={0}
+                />
+                <span className="text-xs text-muted-foreground">pts</span>
+                <button type="button" onClick={() => {
+                  const qs = (data.comprehension_questions || []).filter((_, idx) => idx !== i);
+                  onChange({ ...data, comprehension_questions: qs });
+                }} className="text-muted-foreground hover:text-destructive">
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0 w-8">Ans</span>
+                <Input
+                  value={q.correct_answer}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], correct_answer: e.target.value };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="h-7 text-sm flex-1"
+                />
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const qs = [...(data.comprehension_questions || []), { id: `cq_${Date.now()}`, question: '', correct_answer: '', points: 1 }];
+          onChange({ ...data, comprehension_questions: qs });
+        }}>
+          + Add question
+        </Button>
+      </div>
     </div>
   );
 }
 
 function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData; onChange: (v: any) => void }) {
   const findingsEntries = Object.entries(data.findings || data.regions || {});
+  const updateFinding = (key: string, field: string, value: any) => {
+    const findings = { ...(data.findings || data.regions || {}) };
+    findings[key] = { ...findings[key], [field]: value };
+    onChange({ ...data, findings });
+  };
+  const updateVital = (regionKey: string, vitalIdx: number, field: string, value: any) => {
+    const findings = structuredClone(data.findings || {}) as any;
+    const region = findings[regionKey];
+    if (region?.vitals) {
+      region.vitals[vitalIdx] = { ...region.vitals[vitalIdx], [field]: value };
+      onChange({ ...data, findings });
+    }
+  };
+
   return (
     <div className="space-y-2">
-      {data.note && <p className="text-xs text-muted-foreground italic">{data.note}</p>}
+      {data.note && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Note</Label>
+          <Input value={data.note} onChange={e => onChange({ ...data, note: e.target.value })} className="h-7 text-sm mt-1" />
+        </div>
+      )}
       <Label className="text-xs text-muted-foreground">Findings ({findingsEntries.length} regions)</Label>
-      <div className="space-y-1">
+      <div className="space-y-2">
         {findingsEntries.map(([key, finding]: [string, any]) => (
-          <div key={key} className="p-2 rounded text-sm bg-muted/50">
-            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}</span>
+          <div key={key} className="p-2 rounded text-sm bg-muted/50 space-y-2">
+            <span className="font-medium capitalize text-xs">{key.replace(/_/g, ' ')}</span>
             {finding.vitals && (
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="space-y-1">
                 {finding.vitals.map((v: any, i: number) => (
-                  <Badge key={i} variant={v.abnormal ? 'destructive' : 'secondary'} className="text-[10px]">
-                    {v.name}: {v.value} {v.unit}
-                  </Badge>
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Input value={v.name} onChange={e => updateVital(key, i, 'name', e.target.value)} className="h-6 text-xs w-24" />
+                    <Input value={v.value} onChange={e => updateVital(key, i, 'value', e.target.value)} className="h-6 text-xs w-16" />
+                    <Input value={v.unit} onChange={e => updateVital(key, i, 'unit', e.target.value)} className="h-6 text-xs w-16" />
+                    <Switch checked={v.abnormal} onCheckedChange={val => updateVital(key, i, 'abnormal', val)} />
+                    <span className="text-[10px] text-muted-foreground">Abnormal</span>
+                  </div>
                 ))}
               </div>
             )}
-            <p className="text-muted-foreground mt-0.5">{finding.text || finding.finding}</p>
-            {finding.ref && (
-              <p className="text-xs text-amber-700 mt-1 italic">{finding.ref}</p>
+            <Textarea
+              value={finding.text || finding.finding || ''}
+              onChange={e => updateFinding(key, finding.text !== undefined ? 'text' : 'finding', e.target.value)}
+              rows={2}
+              className="text-sm"
+            />
+            {finding.ref !== undefined && (
+              <Input value={finding.ref || ''} onChange={e => updateFinding(key, 'ref', e.target.value)} placeholder="Reference" className="h-7 text-xs" />
             )}
           </div>
         ))}
       </div>
-      {data.related_topics && data.related_topics.length > 0 && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Related Topics ({data.related_topics.length})</Label>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {data.related_topics.map(t => (
-              <Badge key={t.key} variant="outline" className="text-[10px]">{t.label}</Badge>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Related Topics ({data.related_topics?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.related_topics || []).map((t, i) => (
+            <div key={t.key} className="flex items-center gap-2">
+              <Input
+                value={t.label}
+                onChange={e => {
+                  const topics = structuredClone(data.related_topics || []);
+                  topics[i] = { ...topics[i], label: e.target.value };
+                  onChange({ ...data, related_topics: topics });
+                }}
+                className="h-7 text-xs flex-1"
+              />
+              <button type="button" onClick={() => {
+                const topics = (data.related_topics || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, related_topics: topics });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const topics = [...(data.related_topics || []), { key: `topic_${Date.now()}`, label: 'New topic', title: '', chapter: '', body: '', quote: '' }];
+          onChange({ ...data, related_topics: topics });
+        }}>
+          + Add topic
+        </Button>
+      </div>
     </div>
   );
 }
 
 function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: any) => void }) {
   const testEntries = Object.entries(data.available_tests || {});
+  const updateTest = (testKey: string, field: string, value: any) => {
+    const tests = { ...data.available_tests };
+    tests[testKey] = { ...tests[testKey], [field]: value };
+    onChange({ ...data, available_tests: tests });
+  };
+  const removeTest = (testKey: string) => {
+    const tests = { ...data.available_tests };
+    delete tests[testKey];
+    const keyTests = (data.key_tests || []).filter(t => t !== testKey);
+    onChange({ ...data, available_tests: tests, key_tests: keyTests });
+  };
+  const addTest = () => {
+    const key = `test_${Date.now()}`;
+    const tests = { ...data.available_tests, [key]: { label: 'New Test', result: '', interpretation: '', is_key: false, points: 1 } };
+    onChange({ ...data, available_tests: tests });
+  };
+  const toggleKeyTest = (testKey: string, isKey: boolean) => {
+    updateTest(testKey, 'is_key', isKey);
+    let keyTests = [...(data.key_tests || [])];
+    if (isKey && !keyTests.includes(testKey)) keyTests.push(testKey);
+    else if (!isKey) keyTests = keyTests.filter(t => t !== testKey);
+    onChange({ ...data, available_tests: { ...data.available_tests, [testKey]: { ...data.available_tests[testKey], is_key: isKey } }, key_tests: keyTests });
+  };
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Tests</Label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {(data.key_tests || []).map((t, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
-        <div className="mt-1 space-y-1">
-          {testEntries.map(([key, test]) => (
-            <div key={key} className={cn('p-2 rounded text-sm', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{test.label}</span>
-                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
-                <span className="text-xs text-muted-foreground ml-auto">{test.points} pts</span>
+      <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
+      <div className="mt-1 space-y-2">
+        {testEntries.map(([key, test]) => (
+          <div key={key} className={cn('p-2 rounded text-sm space-y-1.5', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+            <div className="flex items-center gap-2">
+              <Input value={test.label} onChange={e => updateTest(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+              <div className="flex items-center gap-1">
+                <Switch checked={test.is_key} onCheckedChange={val => toggleKeyTest(key, val)} />
+                <span className="text-[10px] text-muted-foreground">Key</span>
               </div>
-              <p className="text-muted-foreground mt-0.5">{test.result}</p>
+              <Input type="number" value={test.points} onChange={e => updateTest(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeTest(key)} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          ))}
-        </div>
+            <Input value={test.result} onChange={e => updateTest(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
+            <Input value={test.interpretation} onChange={e => updateTest(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+          </div>
+        ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addTest}>
+        + Add test
+      </Button>
     </div>
   );
 }
 
 function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange: (v: any) => void }) {
   const imagingEntries = Object.entries(data.available_imaging || {});
+  const updateStudy = (studyKey: string, field: string, value: any) => {
+    const imaging = { ...data.available_imaging };
+    imaging[studyKey] = { ...imaging[studyKey], [field]: value };
+    onChange({ ...data, available_imaging: imaging });
+  };
+  const removeStudy = (studyKey: string) => {
+    const imaging = { ...data.available_imaging };
+    delete imaging[studyKey];
+    const keyInvs = (data.key_investigations || []).filter(t => t !== studyKey);
+    onChange({ ...data, available_imaging: imaging, key_investigations: keyInvs });
+  };
+  const addStudy = () => {
+    const key = `img_${Date.now()}`;
+    const imaging = { ...data.available_imaging, [key]: { label: 'New Imaging', result: '', interpretation: '', is_key: false, points: 1 } };
+    onChange({ ...data, available_imaging: imaging });
+  };
+  const toggleKeyStudy = (studyKey: string, isKey: boolean) => {
+    updateStudy(studyKey, 'is_key', isKey);
+    let keyInvs = [...(data.key_investigations || [])];
+    if (isKey && !keyInvs.includes(studyKey)) keyInvs.push(studyKey);
+    else if (!isKey) keyInvs = keyInvs.filter(t => t !== studyKey);
+    onChange({ ...data, available_imaging: { ...data.available_imaging, [studyKey]: { ...data.available_imaging[studyKey], is_key: isKey } }, key_investigations: keyInvs });
+  };
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Investigations</Label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {(data.key_investigations || []).map((t, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
-        <div className="mt-1 space-y-2">
-          {imagingEntries.map(([key, study]) => (
-            <div key={key} className={cn('p-2 rounded text-sm', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{study.label}</span>
-                {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
-                <span className="text-xs text-muted-foreground ml-auto">{study.points} pts</span>
+      <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
+      <div className="mt-1 space-y-2">
+        {imagingEntries.map(([key, study]) => (
+          <div key={key} className={cn('p-2 rounded text-sm space-y-1.5', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+            <div className="flex items-center gap-2">
+              <Input value={study.label} onChange={e => updateStudy(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+              <div className="flex items-center gap-1">
+                <Switch checked={study.is_key} onCheckedChange={val => toggleKeyStudy(key, val)} />
+                <span className="text-[10px] text-muted-foreground">Key</span>
               </div>
-              <p className="text-muted-foreground mt-0.5">{study.result}</p>
+              <Input type="number" value={study.points} onChange={e => updateStudy(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeStudy(key)} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          ))}
-        </div>
+            <Input value={study.result} onChange={e => updateStudy(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
+            <Input value={study.interpretation} onChange={e => updateStudy(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+          </div>
+        ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addStudy}>
+        + Add imaging
+      </Button>
     </div>
   );
 }
 
 function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onChange: (v: any) => void }) {
   const rubric = data.rubric;
+  const updateRubricItem = (key: string, field: string, value: any) => {
+    onChange({ ...data, rubric: { ...rubric, [key]: { ...rubric[key as keyof typeof rubric], [field]: value } } });
+  };
   return (
     <div className="space-y-3">
       {rubric && Object.entries(rubric).map(([key, item]) => (
-        <div key={key}>
-          <Label className="text-xs text-muted-foreground">{item.label} ({item.points} pts)</Label>
-          <div className="mt-1 p-2 rounded bg-muted/50 text-sm">
-            <p className="text-muted-foreground">{item.model_answer}</p>
+        <div key={key} className="border rounded p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Input value={item.label} onChange={e => updateRubricItem(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+            <Input type="number" value={item.points} onChange={e => updateRubricItem(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+            <span className="text-xs text-muted-foreground">pts</span>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Model Answer</Label>
+            <Textarea value={item.model_answer} onChange={e => updateRubricItem(key, 'model_answer', e.target.value)} rows={2} className="mt-1 text-sm" />
           </div>
         </div>
       ))}
@@ -795,49 +1034,84 @@ function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onCha
 
 function ManagementEditor({ data, onChange }: { data: ManagementSectionData; onChange: (v: any) => void }) {
   const questions = data.questions || [];
+  const updateQuestion = (qi: number, field: string, value: any) => {
+    const qs = structuredClone(questions);
+    qs[qi] = { ...qs[qi], [field]: value };
+    onChange({ ...data, questions: qs });
+  };
+  const updateOption = (qi: number, oi: number, value: string) => {
+    const qs = structuredClone(questions);
+    qs[qi].options![oi] = value;
+    onChange({ ...data, questions: qs });
+  };
+  const removeQuestion = (qi: number) => {
+    onChange({ ...data, questions: questions.filter((_, i) => i !== qi) });
+  };
+  const addQuestion = () => {
+    const q = { id: `mq_${Date.now()}`, type: 'mcq' as const, question: '', options: ['A. ', 'B. ', 'C. ', 'D. '], correct: 'A', explanation: '', points: 1 };
+    onChange({ ...data, questions: [...questions, q] });
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground">Questions ({questions.length})</Label>
       <div className="mt-1 space-y-3">
         {questions.map((q, qi) => (
-          <div key={q.id} className="border rounded p-3">
-            <div className="flex items-center gap-2 mb-2">
+          <div key={q.id} className="border rounded p-3 space-y-2">
+            <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">{q.type}</Badge>
-              <span className="text-xs text-muted-foreground">{q.points || q.rubric?.points} pts</span>
+              <Input type="number" value={q.points || q.rubric?.points || 0} onChange={e => updateQuestion(qi, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeQuestion(qi)} className="ml-auto text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <p className="text-sm font-medium mb-2">{q.question}</p>
+            <Textarea value={q.question} onChange={e => updateQuestion(qi, 'question', e.target.value)} rows={2} className="text-sm" placeholder="Question text" />
             {q.type === 'mcq' && q.options && (
               <div className="space-y-1">
                 {q.options.map((opt, oi) => {
                   const letter = opt.match(/^([A-Z])\./)?.[1];
                   const isCorrect = letter === q.correct;
                   return (
-                    <div
-                      key={oi}
-                      className={cn(
-                        'flex items-center gap-2 p-1.5 rounded text-sm',
-                        isCorrect ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
-                      )}
-                    >
-                      <span className="flex-1">{opt}</span>
-                      {isCorrect && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    <div key={oi} className={cn('flex items-center gap-2 p-1.5 rounded text-sm', isCorrect ? 'bg-accent/50' : 'bg-muted/30')}>
+                      <Input value={opt} onChange={e => updateOption(qi, oi, e.target.value)} className="h-7 text-sm flex-1" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const l = opt.match(/^([A-Z])\./)?.[1];
+                          if (l) updateQuestion(qi, 'correct', l);
+                        }}
+                        className={cn('text-xs px-2 py-0.5 rounded', isCorrect ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted-foreground/10')}
+                      >
+                        {isCorrect ? '✓ Correct' : 'Set correct'}
+                      </button>
                     </div>
                   );
                 })}
               </div>
             )}
             {q.type === 'free_text' && q.rubric && (
-              <div className="mt-1 p-2 rounded bg-muted/50 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground mb-1">Model Answer:</p>
-                <p>{q.rubric.model_answer}</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Model Answer</Label>
+                <Textarea
+                  value={q.rubric.model_answer}
+                  onChange={e => {
+                    const qs = structuredClone(questions);
+                    qs[qi].rubric = { ...qs[qi].rubric!, model_answer: e.target.value };
+                    onChange({ ...data, questions: qs });
+                  }}
+                  rows={2}
+                  className="text-sm"
+                />
               </div>
             )}
-            {q.explanation && (
-              <p className="text-xs text-muted-foreground mt-2">Explanation: {q.explanation}</p>
-            )}
+            <Input value={q.explanation || ''} onChange={e => updateQuestion(qi, 'explanation', e.target.value)} placeholder="Explanation (optional)" className="h-7 text-xs" />
           </div>
         ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addQuestion}>
+        + Add question
+      </Button>
     </div>
   );
 }
@@ -853,19 +1127,37 @@ function MonitoringEditor({ data, onChange }: { data: MonitoringSectionData; onC
         <Label className="text-xs text-muted-foreground">Model Answer</Label>
         <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
-      {data.rubric?.expected_points && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
-          <div className="mt-1 space-y-1">
-            {data.rubric.expected_points.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Check className="w-3 h-3 text-primary shrink-0" />
-                <span>{p}</span>
-              </div>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric?.expected_points?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.rubric?.expected_points || []).map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary shrink-0" />
+              <Input
+                value={p}
+                onChange={e => {
+                  const pts = [...(data.rubric?.expected_points || [])];
+                  pts[i] = e.target.value;
+                  onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+                }}
+                className="h-7 text-sm flex-1"
+              />
+              <button type="button" onClick={() => {
+                const pts = (data.rubric?.expected_points || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const pts = [...(data.rubric?.expected_points || []), ''];
+          onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+        }}>
+          + Add point
+        </Button>
+      </div>
     </div>
   );
 }
@@ -881,42 +1173,85 @@ function AdviceEditor({ data, onChange }: { data: AdviceSectionData; onChange: (
         <Label className="text-xs text-muted-foreground">Model Answer</Label>
         <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
-      {data.rubric?.expected_points && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
-          <div className="mt-1 space-y-1">
-            {data.rubric.expected_points.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Check className="w-3 h-3 text-primary shrink-0" />
-                <span>{p}</span>
-              </div>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric?.expected_points?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.rubric?.expected_points || []).map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary shrink-0" />
+              <Input
+                value={p}
+                onChange={e => {
+                  const pts = [...(data.rubric?.expected_points || [])];
+                  pts[i] = e.target.value;
+                  onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+                }}
+                className="h-7 text-sm flex-1"
+              />
+              <button type="button" onClick={() => {
+                const pts = (data.rubric?.expected_points || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const pts = [...(data.rubric?.expected_points || []), ''];
+          onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+        }}>
+          + Add point
+        </Button>
+      </div>
     </div>
   );
 }
 
 function ConclusionEditor({ data, onChange }: { data: ConclusionSectionData; onChange: (v: any) => void }) {
   const tasks = data.tasks || [];
+  const updateTask = (i: number, field: string, value: any) => {
+    const ts = structuredClone(tasks);
+    ts[i] = { ...ts[i], [field]: value };
+    onChange({ ...data, tasks: ts });
+  };
+  const updateTaskRubric = (i: number, field: string, value: any) => {
+    const ts = structuredClone(tasks);
+    ts[i].rubric = { ...ts[i].rubric, [field]: value };
+    onChange({ ...data, tasks: ts });
+  };
+  const removeTask = (i: number) => {
+    onChange({ ...data, tasks: tasks.filter((_, idx) => idx !== i) });
+  };
+  const addTask = () => {
+    const t = { id: `task_${Date.now()}`, type: 'learning_point' as const, label: 'New task', instruction: '', rubric: { model_answer: '', points: 1 } };
+    onChange({ ...data, tasks: [...tasks, t] });
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground">Tasks ({tasks.length})</Label>
       {tasks.map((task, i) => (
-        <div key={task.id} className="border rounded p-3">
-          <div className="flex items-center gap-2 mb-1">
+        <div key={task.id} className="border rounded p-3 space-y-2">
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">{task.type.replace(/_/g, ' ')}</Badge>
-            <span className="font-medium text-sm">{task.label}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{task.rubric.points} pts</span>
+            <Input value={task.label} onChange={e => updateTask(i, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+            <Input type="number" value={task.rubric.points} onChange={e => updateTaskRubric(i, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+            <span className="text-xs text-muted-foreground">pts</span>
+            <button type="button" onClick={() => removeTask(i)} className="text-muted-foreground hover:text-destructive">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <p className="text-sm text-muted-foreground mb-2">{task.instruction}</p>
-          <div className="p-2 rounded bg-muted/50 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Model Answer:</p>
-            <p>{task.rubric.model_answer}</p>
+          <Textarea value={task.instruction} onChange={e => updateTask(i, 'instruction', e.target.value)} rows={2} className="text-sm" placeholder="Instruction" />
+          <div>
+            <Label className="text-xs text-muted-foreground">Model Answer</Label>
+            <Textarea value={task.rubric.model_answer} onChange={e => updateTaskRubric(i, 'model_answer', e.target.value)} rows={2} className="mt-1 text-sm" />
           </div>
         </div>
       ))}
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addTask}>
+        + Add task
+      </Button>
     </div>
   );
 }
