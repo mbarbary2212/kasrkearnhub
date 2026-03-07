@@ -130,12 +130,24 @@ export function ExaminerAvatarsCard() {
     onError: (e: Error) => toast.error(`Update failed: ${e.message}`),
   });
 
+  const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+  const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      uploadMutation.mutate(file);
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Only PNG, JPEG, and WebP images are allowed.');
       e.target.value = '';
+      return;
     }
+    if (file.size > MAX_SIZE) {
+      toast.error('Image must be under 2MB.');
+      e.target.value = '';
+      return;
+    }
+    uploadMutation.mutate(file);
+    e.target.value = '';
   };
 
   const startRename = (avatar: AvatarRow) => {
