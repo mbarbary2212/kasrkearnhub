@@ -39,18 +39,18 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
   const hasExtra = !!findings.extra;
 
   return (
-    <div className="flex flex-col items-center w-full h-full justify-center" style={{ padding: '12px 4px 10px' }}>
+    <div className="flex flex-col items-center w-full h-full justify-center" style={{ padding: '4px 0 4px' }}>
       <div
-        className="text-[10px] font-bold uppercase tracking-widest mb-2"
+        className="text-[10px] font-bold uppercase tracking-widest mb-1"
         style={{ color: '#5bb8cc' }}
       >
         Select Region
       </div>
 
       <svg
-        viewBox="-80 -65 470 580"
-        className="w-full max-w-[340px]"
-        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto' }}
+        viewBox="-50 -50 410 560"
+        className="w-full"
+        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '600px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}

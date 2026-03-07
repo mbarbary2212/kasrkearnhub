@@ -170,9 +170,9 @@ export function PhysicalExamSection({
       <div className="flex min-h-[640px] border border-t-0 rounded-b-lg overflow-hidden">
         {/* Left: Figure panel */}
         <div
-          className="w-[340px] shrink-0 flex flex-col items-center"
+          className="w-[360px] shrink-0 flex flex-col items-center overflow-hidden"
           style={{
-            background: 'linear-gradient(180deg, #0d2a42 0%, #154a6e 35%, #1a6ea0 50%, #154a6e 75%, #0a1e30 100%)',
+            background: 'radial-gradient(ellipse at 50% 45%, #1b5a7a 0%, #0f3a54 40%, #0a2438 70%, #071a2b 100%)',
           }}
         >
           <BodyMap
