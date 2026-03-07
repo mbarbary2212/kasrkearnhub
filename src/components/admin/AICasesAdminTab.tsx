@@ -54,6 +54,11 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
   const filters: AICaseFilters = selectedCaseId ? { caseId: selectedCaseId } : {};
   const { data: attempts, isLoading: attemptsLoading } = useAICaseAttempts(filters);
 
+  // Aggregate stats per case from all attempts (unfiltered)
+  const allFilters: AICaseFilters = {};
+  const { data: allAttempts } = useAICaseAttempts(allFilters);
+  const aggregates = useAICaseAggregates(allAttempts);
+
   // Filter cases by module, chapter, and flagged status
   const filteredCases = useMemo(() => {
     if (!cases) return [];
@@ -65,7 +70,6 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
       result = result.filter((c: any) => c.chapter_id === selectedChapterId);
     }
     if (showFlaggedOnly) {
-      // Only show cases that have flagged attempts
       const flaggedCaseIds = new Set(
         (allAttempts || []).filter(a => a.flag_for_review).map(a => a.case_id)
       );
@@ -73,11 +77,6 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
     }
     return result;
   }, [cases, selectedModuleId, selectedChapterId, showFlaggedOnly, allAttempts]);
-
-  // Aggregate stats per case from all attempts (unfiltered)
-  const allFilters: AICaseFilters = {};
-  const { data: allAttempts } = useAICaseAttempts(allFilters);
-  const aggregates = useAICaseAggregates(allAttempts);
 
   // Case detail view
   const selectedCase = selectedCaseId ? filteredCases.find((c: any) => c.id === selectedCaseId) : null;
