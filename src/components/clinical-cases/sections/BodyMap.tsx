@@ -177,7 +177,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             strokeDasharray="5,3"
           />
           <text
-            x={252} y={311} textAnchor="middle"
+            x={237} y={311} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             {extraLabel}
