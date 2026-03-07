@@ -99,6 +99,7 @@ export function CasePreviewEditor() {
   const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
   const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
