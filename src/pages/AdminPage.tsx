@@ -194,6 +194,9 @@ function PlatformSettingsTab() {
         {isSuperAdmin && <SentryDiagnosticsSection />}
       </div>
 
+      {/* Examiner Avatars Management */}
+      <ExaminerAvatarsCard />
+
       {/* Email Notification Preferences */}
       <EmailNotificationPreferences />
     </div>
