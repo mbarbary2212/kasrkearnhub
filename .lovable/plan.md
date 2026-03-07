@@ -1,52 +1,34 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete
+## Problem
 
-### Completed Steps
+The save fails because of a **database check constraint** on the `virtual_patient_cases` table:
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+```sql
+CHECK ((avatar_id >= 1) AND (avatar_id <= 4))
+```
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+The "Mohamed paramedic" avatar has `id = 5`, which violates this constraint. Any save attempt (even just changing history interaction mode) sends `avatar_id: 5` in the payload, triggering the error.
 
-### All Steps
+The error message `"Failed to save"` is the toast shown when this DB constraint rejects the PATCH request.
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
+## Fix
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+**Single migration** to drop the old constraint and replace it with one that accommodates all current and future avatars:
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+```sql
+ALTER TABLE public.virtual_patient_cases
+  DROP CONSTRAINT virtual_patient_cases_avatar_id_check;
+
+ALTER TABLE public.virtual_patient_cases
+  ADD CONSTRAINT virtual_patient_cases_avatar_id_check
+  CHECK (avatar_id >= 1);
+```
+
+This removes the upper bound (`<= 4`) so new avatars added to `examiner_avatars` will work without needing further constraint updates. The `avatar_id` column already references the `examiner_avatars` table implicitly through application logic, so the `>= 1` check is sufficient to prevent invalid values.
+
+### Files
+| File | Change |
+|------|--------|
+| New migration SQL | Drop and recreate `virtual_patient_cases_avatar_id_check` without upper bound |
+
