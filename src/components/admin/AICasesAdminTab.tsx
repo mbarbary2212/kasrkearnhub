@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { BarChart3, Users, AlertTriangle, DollarSign, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft, Stethoscope } from 'lucide-react';
+import { BarChart3, Users, AlertTriangle, DollarSign, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft, Stethoscope, Filter } from 'lucide-react';
 import { useAICaseAttempts, useAICaseSummaryStats, useAICasesInScope, useAICaseAggregates, type AICaseFilters, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
 import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
