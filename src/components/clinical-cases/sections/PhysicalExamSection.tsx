@@ -95,6 +95,7 @@ export function PhysicalExamSection({
   const [revealedRegions, setRevealedRegions] = useState<Set<RegionKey>>(
     new Set((previousAnswer?.revealed_regions as RegionKey[]) || [])
   );
+  const isMobile = useIsMobile();
   const [openRegion, setOpenRegion] = useState<RegionKey | null>(null);
   const [findingsSummary, setFindingsSummary] = useState(
     (previousAnswer?.findings_summary as string) || ''
