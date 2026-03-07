@@ -227,6 +227,9 @@ export default function VirtualPatientRunner() {
           </CardContent>
         </Card>
 
+        {/* Leaderboard */}
+        <CaseLeaderboard caseId={vpCase.id} />
+
         {/* Past Attempts */}
         {!attemptsLoading && completedAttempts.length > 0 && (
           <Card>
