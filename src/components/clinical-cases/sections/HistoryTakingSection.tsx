@@ -595,9 +595,10 @@ export function HistoryTakingSection({
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
         if (mode === 'voice' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(reply);
           utterance.lang = 'ar-EG';
-          utterance.rate = 0.9;
+          utterance.rate = 1.1;
           window.speechSynthesis.speak(utterance);
         }
       })
