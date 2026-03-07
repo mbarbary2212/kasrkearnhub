@@ -43,7 +43,7 @@ import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
-import { AICasesAdminTab } from '@/components/admin/AICasesAdminTab'; // keep for type reference
+
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
