@@ -286,7 +286,17 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
               ))}
             </SelectContent>
           </Select>
-        )}
+         )}
+
+        <Button
+          variant={showFlaggedOnly ? "destructive" : "outline"}
+          size="sm"
+          onClick={() => { setShowFlaggedOnly(!showFlaggedOnly); setPage(0); }}
+          className="gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Flagged Only
+        </Button>
 
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
