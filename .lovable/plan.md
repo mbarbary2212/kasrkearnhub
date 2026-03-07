@@ -1,52 +1,41 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete
+## Plan: Avatar Upload Fix + Case Leaderboard
 
-### Completed Steps
+### Current State
+- **No size limit** on the `avatars` bucket — any file size is accepted
+- **Storage RLS** only allows uploads to `{auth.uid()}/` folders, but examiner avatars upload to `examiner-avatars/` — this is why your upload failed
+- **No leaderboard** exists yet
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+### What We'll Build
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+#### 1. Fix Avatar Upload Storage Policies
+New migration to:
+- Add INSERT/UPDATE/DELETE policies on `storage.objects` for `examiner-avatars/` folder, restricted to `super_admin` and `platform_admin` roles
+- Set bucket `file_size_limit` to 2MB and `allowed_mime_types` to `image/png, image/jpeg, image/webp`
+- Add client-side validation in `ExaminerAvatarsCard` (2MB max, image types only, clear error messages)
 
-### All Steps
+#### 2. Create Leaderboard RPC
+New `get_case_leaderboard(p_case_id uuid)` security definer function:
+- Aggregates best score per student from `virtual_patient_attempts`
+- Joins `profiles` for display name (first name + last initial for privacy)
+- Excludes admin/teacher roles via `user_roles` check
+- Returns top 10 ranked by best score, then earliest completion
+- Bypasses RLS safely via `SECURITY DEFINER`
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
+#### 3. Frontend: Leaderboard Hook + UI
+- **New hook**: `src/hooks/useCaseLeaderboard.ts` — calls the RPC
+- **New component**: `src/components/clinical-cases/CaseLeaderboard.tsx` — card with trophy/medal icons for top 3, ranked list with score badges
+- **Integration**: Add to `VirtualPatientPage.tsx` intro screen, below the Start button
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+### Files
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+| File | Change |
+|------|--------|
+| New migration | Storage policies for `examiner-avatars/`, bucket limits |
+| New migration | `get_case_leaderboard` RPC function |
+| `ExaminerAvatarsCard.tsx` | Client-side file size/type validation |
+| New: `src/hooks/useCaseLeaderboard.ts` | Hook wrapping the RPC |
+| New: `src/components/clinical-cases/CaseLeaderboard.tsx` | Leaderboard card component |
+| `src/pages/VirtualPatientPage.tsx` | Add leaderboard to intro screen |
+
