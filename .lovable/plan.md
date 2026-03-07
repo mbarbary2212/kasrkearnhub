@@ -1,36 +1,53 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-## Plan: Create Comprehensive Interactive Cases Documentation
+## Status: ✅ Complete (Step 12 added)
 
-### What will be created
+### Completed Steps
 
-A single file `docs/KALMHUB_Interactive_Cases_Documentation.md` containing three major sections:
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-**Section 1 — How the System Works**
-- Case structure: 10 sections from History Taking through Conclusion, plus Professional Attitude
-- AI scoring logic per section (comprehension answers, checklist evaluation, lab/imaging penalty system, rubric-based free-text scoring)
-- Anti-cheating measures (select-none, blocked copy/paste, KALMHUB watermark)
-- Voice mode: Egyptian Arabic speech recognition with interim transcript, error toasts, fallback text input
-- Linear progression: no skipping ahead, section locking after submission, exit confirmation dialog
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-**Section 2 — Admin Guide**
-- Two creation pathways: AI Generation (from chapter PDF + reference docs) vs Build Manually (empty skeleton)
-- Step-by-step walkthrough of the 5-tab StructuredCaseCreator (Basics, Sections, History Mode, Patient, Review)
-- Case Preview Editor capabilities: inline editing of all fields, section toggle with auto score recalculation, avatar picker, publish flow
-- How to define expected answers: MCQ correct options, free-text model answers and expected points, diagnosis rubric, key labs/imaging
-- Reference document upload (checklist PDFs for history items, lecture/guideline docs for context)
-- Lab unit convention (Conventional US units enforced globally)
+### All Steps
 
-**Section 3 — External AI Generation Prompt**
-- A complete, ready-to-paste prompt for Claude/ChatGPT that produces the exact JSON schema the app expects
-- Includes all placeholders in `[BRACKETS]` for admins to fill in
-- Covers every section's data structure with field-level examples
-- Instructions on how to import the output into the Case Preview Editor
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
-**Appendix**: Default max scores table (total 120 points across all sections)
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-### Implementation
-- Single file creation: `docs/KALMHUB_Interactive_Cases_Documentation.md`
-- Clean markdown formatting, no technical jargon, suitable for non-technical medical educators
-- Approximately 500 lines of well-structured documentation
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
