@@ -131,7 +131,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── ABDOMEN pill (centered on body) ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.abdomen && onRegionClick('abdomen')}>
           <rect
-            x={112} y={195} width={86} height={28} rx={14}
+            x={122} y={195} width={86} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
