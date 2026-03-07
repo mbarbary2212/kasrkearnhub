@@ -187,6 +187,7 @@ export function StructuredCaseCreator({
       patient_gender: patientGender,
       avatar_id: avatarId,
       delivery_mode: deliveryMode,
+      history_interaction_mode: historyInteractionMode,
     };
 
     try {
