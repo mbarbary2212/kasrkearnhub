@@ -46,6 +46,7 @@ import {
   ConclusionSection,
 } from './sections';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect as useEffectAuth, useState as useStateAuth } from 'react';
 
 // ── Props ────────────────────────────────────────────
 interface StructuredCaseRunnerProps {
