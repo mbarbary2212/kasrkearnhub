@@ -1010,13 +1010,21 @@ function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange:
 
 function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onChange: (v: any) => void }) {
   const rubric = data.rubric;
+  const updateRubricItem = (key: string, field: string, value: any) => {
+    onChange({ ...data, rubric: { ...rubric, [key]: { ...rubric[key as keyof typeof rubric], [field]: value } } });
+  };
   return (
     <div className="space-y-3">
       {rubric && Object.entries(rubric).map(([key, item]) => (
-        <div key={key}>
-          <Label className="text-xs text-muted-foreground">{item.label} ({item.points} pts)</Label>
-          <div className="mt-1 p-2 rounded bg-muted/50 text-sm">
-            <p className="text-muted-foreground">{item.model_answer}</p>
+        <div key={key} className="border rounded p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Input value={item.label} onChange={e => updateRubricItem(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+            <Input type="number" value={item.points} onChange={e => updateRubricItem(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+            <span className="text-xs text-muted-foreground">pts</span>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Model Answer</Label>
+            <Textarea value={item.model_answer} onChange={e => updateRubricItem(key, 'model_answer', e.target.value)} rows={2} className="mt-1 text-sm" />
           </div>
         </div>
       ))}
