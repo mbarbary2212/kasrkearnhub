@@ -5747,6 +5747,15 @@ export type Database = {
         Returns: boolean
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
+      get_case_leaderboard: {
+        Args: { p_case_id: string }
+        Returns: {
+          best_score: number
+          display_name: string
+          rank: number
+          user_id: string
+        }[]
+      }
       get_chapter_percentile: {
         Args: {
           p_chapter_id: string

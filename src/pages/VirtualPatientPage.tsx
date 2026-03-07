@@ -22,6 +22,7 @@ import { useVirtualPatientCase, useStartVirtualPatientAttempt, useVirtualPatient
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useExaminerAvatarById } from '@/lib/examinerAvatars';
+import { CaseLeaderboard } from '@/components/clinical-cases/CaseLeaderboard';
 
 const SESSION_KEY = 'ai_case_session';
 
@@ -225,6 +226,9 @@ export default function VirtualPatientRunner() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Leaderboard */}
+        <CaseLeaderboard caseId={vpCase.id} />
 
         {/* Past Attempts */}
         {!attemptsLoading && completedAttempts.length > 0 && (
