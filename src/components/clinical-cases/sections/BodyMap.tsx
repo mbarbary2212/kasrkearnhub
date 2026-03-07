@@ -38,19 +38,26 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
   const extraLabel = extraFinding && 'label' in extraFinding ? extraFinding.label : 'Misc';
   const hasExtra = !!findings.extra;
 
+  const fs = compact ? '10px' : '13px';
+  const fw = 700;
+  const pillH = compact ? 22 : 28;
+  const pillR = compact ? 11 : 14;
+
   return (
-    <div className="flex flex-col items-center w-full h-full justify-center" style={{ padding: '4px 0 4px' }}>
-      <div
-        className="text-[10px] font-bold uppercase tracking-widest mb-1"
-        style={{ color: '#5bb8cc' }}
-      >
-        Select Region
-      </div>
+    <div className="flex flex-col items-center w-full h-full justify-center" style={{ padding: compact ? '2px 0' : '4px 0 4px' }}>
+      {!compact && (
+        <div
+          className="text-[10px] font-bold uppercase tracking-widest mb-1"
+          style={{ color: '#5bb8cc' }}
+        >
+          Select Region
+        </div>
+      )}
 
       <svg
         viewBox="0 -55 310 580"
         className="w-full"
-        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '420px' }}
+        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: compact ? '240px' : '420px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}
