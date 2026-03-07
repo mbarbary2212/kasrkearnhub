@@ -1794,6 +1794,36 @@ export type Database = {
           },
         ]
       }
+      examiner_avatars: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: number
+          image_url: string
+          is_active: boolean
+          name: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: number
+          image_url: string
+          is_active?: boolean
+          name: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: number
+          image_url?: string
+          is_active?: boolean
+          name?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           admin_notes: string | null
@@ -5225,6 +5255,7 @@ export type Database = {
           estimated_minutes: number
           feedback_timing: string
           generated_case_data: Json | null
+          history_interaction_mode: string
           history_mode: string | null
           id: string
           initial_state_json: Json | null
@@ -5268,6 +5299,7 @@ export type Database = {
           estimated_minutes?: number
           feedback_timing?: string
           generated_case_data?: Json | null
+          history_interaction_mode?: string
           history_mode?: string | null
           id?: string
           initial_state_json?: Json | null
@@ -5311,6 +5343,7 @@ export type Database = {
           estimated_minutes?: number
           feedback_timing?: string
           generated_case_data?: Json | null
+          history_interaction_mode?: string
           history_mode?: string | null
           id?: string
           initial_state_json?: Json | null
