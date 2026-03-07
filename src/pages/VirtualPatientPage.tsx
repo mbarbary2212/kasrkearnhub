@@ -167,8 +167,8 @@ export default function VirtualPatientRunner() {
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
               <Avatar className="w-16 h-16 border-2 border-background shadow-md">
-                <AvatarImage src={examiner.image} alt={examiner.name} />
-                <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+                <AvatarImage src={examiner?.image_url} alt={examiner?.name} />
+                <AvatarFallback>{examiner?.name?.charAt(4) || 'E'}</AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2 mb-1">
