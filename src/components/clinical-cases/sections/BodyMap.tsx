@@ -100,7 +100,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           >
             Chest
           </text>
-          <rect x={88} y={88} width={134} height={80} rx={6} fill="transparent" />
+          <rect x={98} y={88} width={134} height={80} rx={6} fill="transparent" />
         </g>
 
         {/* ── UPPER LIMB — left inside ── */}
