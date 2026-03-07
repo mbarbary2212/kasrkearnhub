@@ -231,8 +231,29 @@ export function CasePreviewEditor() {
     );
   }
 
-  const activeSections = (caseData.active_sections as SectionType[]) || [];
+  const activeSections = enabledSections.length > 0 ? enabledSections : ((caseData.active_sections as SectionType[]) || []);
   const isPublished = caseData.is_published;
+
+  // Compute total score from enabled sections
+  const computeTotalScore = () => {
+    if (!editedData) return 0;
+    let total = editedData.professional_attitude?.max_score || 0;
+    for (const key of enabledSections) {
+      const section = editedData[key] as any;
+      if (section?.max_score) total += section.max_score;
+    }
+    return total;
+  };
+
+  const toggleSectionEnabled = (key: SectionType) => {
+    setEnabledSections(prev => {
+      const next = prev.includes(key)
+        ? prev.filter(s => s !== key)
+        : [...prev, key];
+      setHasChanges(true);
+      return next;
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
