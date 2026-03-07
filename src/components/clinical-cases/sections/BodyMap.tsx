@@ -98,12 +98,12 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── CHEST pill on body ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.chest && onRegionClick('chest')}>
           <rect
-            x={128} y={100} width={74} height={28} rx={14}
+            x={128} y={100} width={74} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
-            x={165} y={119} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={165} y={100 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Chest
           </text>
