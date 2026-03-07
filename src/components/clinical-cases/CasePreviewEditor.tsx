@@ -954,31 +954,56 @@ function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: a
 
 function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange: (v: any) => void }) {
   const imagingEntries = Object.entries(data.available_imaging || {});
+  const updateStudy = (studyKey: string, field: string, value: any) => {
+    const imaging = { ...data.available_imaging };
+    imaging[studyKey] = { ...imaging[studyKey], [field]: value };
+    onChange({ ...data, available_imaging: imaging });
+  };
+  const removeStudy = (studyKey: string) => {
+    const imaging = { ...data.available_imaging };
+    delete imaging[studyKey];
+    const keyInvs = (data.key_investigations || []).filter(t => t !== studyKey);
+    onChange({ ...data, available_imaging: imaging, key_investigations: keyInvs });
+  };
+  const addStudy = () => {
+    const key = `img_${Date.now()}`;
+    const imaging = { ...data.available_imaging, [key]: { label: 'New Imaging', result: '', interpretation: '', is_key: false, points: 1 } };
+    onChange({ ...data, available_imaging: imaging });
+  };
+  const toggleKeyStudy = (studyKey: string, isKey: boolean) => {
+    updateStudy(studyKey, 'is_key', isKey);
+    let keyInvs = [...(data.key_investigations || [])];
+    if (isKey && !keyInvs.includes(studyKey)) keyInvs.push(studyKey);
+    else if (!isKey) keyInvs = keyInvs.filter(t => t !== studyKey);
+    onChange({ ...data, available_imaging: { ...data.available_imaging, [studyKey]: { ...data.available_imaging[studyKey], is_key: isKey } }, key_investigations: keyInvs });
+  };
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Investigations</Label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {(data.key_investigations || []).map((t, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
-        <div className="mt-1 space-y-2">
-          {imagingEntries.map(([key, study]) => (
-            <div key={key} className={cn('p-2 rounded text-sm', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{study.label}</span>
-                {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
-                <span className="text-xs text-muted-foreground ml-auto">{study.points} pts</span>
+      <Label className="text-xs text-muted-foreground">Available Imaging ({imagingEntries.length})</Label>
+      <div className="mt-1 space-y-2">
+        {imagingEntries.map(([key, study]) => (
+          <div key={key} className={cn('p-2 rounded text-sm space-y-1.5', study.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+            <div className="flex items-center gap-2">
+              <Input value={study.label} onChange={e => updateStudy(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+              <div className="flex items-center gap-1">
+                <Switch checked={study.is_key} onCheckedChange={val => toggleKeyStudy(key, val)} />
+                <span className="text-[10px] text-muted-foreground">Key</span>
               </div>
-              <p className="text-muted-foreground mt-0.5">{study.result}</p>
+              <Input type="number" value={study.points} onChange={e => updateStudy(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeStudy(key)} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          ))}
-        </div>
+            <Input value={study.result} onChange={e => updateStudy(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
+            <Input value={study.interpretation} onChange={e => updateStudy(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+          </div>
+        ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addStudy}>
+        + Add imaging
+      </Button>
     </div>
   );
 }
