@@ -1034,49 +1034,84 @@ function DiagnosisEditor({ data, onChange }: { data: DiagnosisSectionData; onCha
 
 function ManagementEditor({ data, onChange }: { data: ManagementSectionData; onChange: (v: any) => void }) {
   const questions = data.questions || [];
+  const updateQuestion = (qi: number, field: string, value: any) => {
+    const qs = structuredClone(questions);
+    qs[qi] = { ...qs[qi], [field]: value };
+    onChange({ ...data, questions: qs });
+  };
+  const updateOption = (qi: number, oi: number, value: string) => {
+    const qs = structuredClone(questions);
+    qs[qi].options![oi] = value;
+    onChange({ ...data, questions: qs });
+  };
+  const removeQuestion = (qi: number) => {
+    onChange({ ...data, questions: questions.filter((_, i) => i !== qi) });
+  };
+  const addQuestion = () => {
+    const q = { id: `mq_${Date.now()}`, type: 'mcq' as const, question: '', options: ['A. ', 'B. ', 'C. ', 'D. '], correct: 'A', explanation: '', points: 1 };
+    onChange({ ...data, questions: [...questions, q] });
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground">Questions ({questions.length})</Label>
       <div className="mt-1 space-y-3">
         {questions.map((q, qi) => (
-          <div key={q.id} className="border rounded p-3">
-            <div className="flex items-center gap-2 mb-2">
+          <div key={q.id} className="border rounded p-3 space-y-2">
+            <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">{q.type}</Badge>
-              <span className="text-xs text-muted-foreground">{q.points || q.rubric?.points} pts</span>
+              <Input type="number" value={q.points || q.rubric?.points || 0} onChange={e => updateQuestion(qi, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeQuestion(qi)} className="ml-auto text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <p className="text-sm font-medium mb-2">{q.question}</p>
+            <Textarea value={q.question} onChange={e => updateQuestion(qi, 'question', e.target.value)} rows={2} className="text-sm" placeholder="Question text" />
             {q.type === 'mcq' && q.options && (
               <div className="space-y-1">
                 {q.options.map((opt, oi) => {
                   const letter = opt.match(/^([A-Z])\./)?.[1];
                   const isCorrect = letter === q.correct;
                   return (
-                    <div
-                      key={oi}
-                      className={cn(
-                        'flex items-center gap-2 p-1.5 rounded text-sm',
-                        isCorrect ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-muted/30'
-                      )}
-                    >
-                      <span className="flex-1">{opt}</span>
-                      {isCorrect && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    <div key={oi} className={cn('flex items-center gap-2 p-1.5 rounded text-sm', isCorrect ? 'bg-accent/50' : 'bg-muted/30')}>
+                      <Input value={opt} onChange={e => updateOption(qi, oi, e.target.value)} className="h-7 text-sm flex-1" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const l = opt.match(/^([A-Z])\./)?.[1];
+                          if (l) updateQuestion(qi, 'correct', l);
+                        }}
+                        className={cn('text-xs px-2 py-0.5 rounded', isCorrect ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted-foreground/10')}
+                      >
+                        {isCorrect ? '✓ Correct' : 'Set correct'}
+                      </button>
                     </div>
                   );
                 })}
               </div>
             )}
             {q.type === 'free_text' && q.rubric && (
-              <div className="mt-1 p-2 rounded bg-muted/50 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground mb-1">Model Answer:</p>
-                <p>{q.rubric.model_answer}</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Model Answer</Label>
+                <Textarea
+                  value={q.rubric.model_answer}
+                  onChange={e => {
+                    const qs = structuredClone(questions);
+                    qs[qi].rubric = { ...qs[qi].rubric!, model_answer: e.target.value };
+                    onChange({ ...data, questions: qs });
+                  }}
+                  rows={2}
+                  className="text-sm"
+                />
               </div>
             )}
-            {q.explanation && (
-              <p className="text-xs text-muted-foreground mt-2">Explanation: {q.explanation}</p>
-            )}
+            <Input value={q.explanation || ''} onChange={e => updateQuestion(qi, 'explanation', e.target.value)} placeholder="Explanation (optional)" className="h-7 text-xs" />
           </div>
         ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addQuestion}>
+        + Add question
+      </Button>
     </div>
   );
 }
