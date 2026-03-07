@@ -135,7 +135,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
-            x={155} y={214} textAnchor="middle"
+            x={165} y={214} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Abdomen
