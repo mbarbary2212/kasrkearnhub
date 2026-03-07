@@ -810,40 +810,88 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
 
 function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData; onChange: (v: any) => void }) {
   const findingsEntries = Object.entries(data.findings || data.regions || {});
+  const updateFinding = (key: string, field: string, value: any) => {
+    const findings = { ...(data.findings || data.regions || {}) };
+    findings[key] = { ...findings[key], [field]: value };
+    onChange({ ...data, findings });
+  };
+  const updateVital = (regionKey: string, vitalIdx: number, field: string, value: any) => {
+    const findings = structuredClone(data.findings || {}) as any;
+    const region = findings[regionKey];
+    if (region?.vitals) {
+      region.vitals[vitalIdx] = { ...region.vitals[vitalIdx], [field]: value };
+      onChange({ ...data, findings });
+    }
+  };
+
   return (
     <div className="space-y-2">
-      {data.note && <p className="text-xs text-muted-foreground italic">{data.note}</p>}
+      {data.note && (
+        <div>
+          <Label className="text-xs text-muted-foreground">Note</Label>
+          <Input value={data.note} onChange={e => onChange({ ...data, note: e.target.value })} className="h-7 text-sm mt-1" />
+        </div>
+      )}
       <Label className="text-xs text-muted-foreground">Findings ({findingsEntries.length} regions)</Label>
-      <div className="space-y-1">
+      <div className="space-y-2">
         {findingsEntries.map(([key, finding]: [string, any]) => (
-          <div key={key} className="p-2 rounded text-sm bg-muted/50">
-            <span className="font-medium capitalize">{key.replace(/_/g, ' ')}</span>
+          <div key={key} className="p-2 rounded text-sm bg-muted/50 space-y-2">
+            <span className="font-medium capitalize text-xs">{key.replace(/_/g, ' ')}</span>
             {finding.vitals && (
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="space-y-1">
                 {finding.vitals.map((v: any, i: number) => (
-                  <Badge key={i} variant={v.abnormal ? 'destructive' : 'secondary'} className="text-[10px]">
-                    {v.name}: {v.value} {v.unit}
-                  </Badge>
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Input value={v.name} onChange={e => updateVital(key, i, 'name', e.target.value)} className="h-6 text-xs w-24" />
+                    <Input value={v.value} onChange={e => updateVital(key, i, 'value', e.target.value)} className="h-6 text-xs w-16" />
+                    <Input value={v.unit} onChange={e => updateVital(key, i, 'unit', e.target.value)} className="h-6 text-xs w-16" />
+                    <Switch checked={v.abnormal} onCheckedChange={val => updateVital(key, i, 'abnormal', val)} />
+                    <span className="text-[10px] text-muted-foreground">Abnormal</span>
+                  </div>
                 ))}
               </div>
             )}
-            <p className="text-muted-foreground mt-0.5">{finding.text || finding.finding}</p>
-            {finding.ref && (
-              <p className="text-xs text-amber-700 mt-1 italic">{finding.ref}</p>
+            <Textarea
+              value={finding.text || finding.finding || ''}
+              onChange={e => updateFinding(key, finding.text !== undefined ? 'text' : 'finding', e.target.value)}
+              rows={2}
+              className="text-sm"
+            />
+            {finding.ref !== undefined && (
+              <Input value={finding.ref || ''} onChange={e => updateFinding(key, 'ref', e.target.value)} placeholder="Reference" className="h-7 text-xs" />
             )}
           </div>
         ))}
       </div>
-      {data.related_topics && data.related_topics.length > 0 && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Related Topics ({data.related_topics.length})</Label>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {data.related_topics.map(t => (
-              <Badge key={t.key} variant="outline" className="text-[10px]">{t.label}</Badge>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Related Topics ({data.related_topics?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.related_topics || []).map((t, i) => (
+            <div key={t.key} className="flex items-center gap-2">
+              <Input
+                value={t.label}
+                onChange={e => {
+                  const topics = structuredClone(data.related_topics || []);
+                  topics[i] = { ...topics[i], label: e.target.value };
+                  onChange({ ...data, related_topics: topics });
+                }}
+                className="h-7 text-xs flex-1"
+              />
+              <button type="button" onClick={() => {
+                const topics = (data.related_topics || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, related_topics: topics });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const topics = [...(data.related_topics || []), { key: `topic_${Date.now()}`, label: 'New topic', title: '', chapter: '', body: '', quote: '' }];
+          onChange({ ...data, related_topics: topics });
+        }}>
+          + Add topic
+        </Button>
+      </div>
     </div>
   );
 }
