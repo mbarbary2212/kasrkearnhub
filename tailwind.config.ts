@@ -105,6 +105,11 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "pulse-ring": {
+          "0%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0.6)" },
+          "70%": { boxShadow: "0 0 0 8px hsl(var(--primary) / 0)" },
+          "100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
