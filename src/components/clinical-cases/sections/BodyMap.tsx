@@ -130,7 +130,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
             <rect x={200} y={150} width={75} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={252} y={169} textAnchor="middle"
+              x={237} y={169} textAnchor="middle"
               style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Vitals
