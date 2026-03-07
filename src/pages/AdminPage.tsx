@@ -26,9 +26,8 @@ import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { UserAnalyticsTab } from '@/components/admin/UserAnalyticsTab';
-import { CurriculumTab } from '@/components/admin/CurriculumTab';
-import { PDFLibraryTab } from '@/components/admin/PDFLibraryTab';
-import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
+import { CurriculumSourcesTab } from '@/components/admin/CurriculumSourcesTab';
+import { ContentAnalyticsTab } from '@/components/admin/ContentAnalyticsTab';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useEmailPreferences, useUpdateEmailPreferences } from '@/hooks/useEmailPreferences';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
@@ -44,7 +43,7 @@ import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
-import { AICasesAdminTab } from '@/components/admin/AICasesAdminTab';
+
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
@@ -988,7 +987,7 @@ export default function AdminPage() {
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
     if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
-    if (['curriculum', 'pdf-library', 'ai-settings', 'help', 'question-analytics', 'integrity'].includes(tab)) return 'content';
+    if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';
   };
@@ -1007,12 +1006,10 @@ export default function AdminPage() {
         { value: 'settings', visible: isPlatformAdmin },
       ],
       content: [
-        { value: 'curriculum', visible: isSuperAdmin || isPlatformAdmin },
-        { value: 'pdf-library', visible: isPlatformAdmin || isModuleAdmin },
-        { value: 'ai-settings', visible: isSuperAdmin },
+        { value: 'sources', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'help', visible: true },
-        { value: 'question-analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
-        { value: 'integrity', visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
+        { value: 'analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+        { value: 'ai-settings', visible: isSuperAdmin },
       ],
       messaging: [
         { value: 'announcements', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
@@ -2200,10 +2197,31 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* Curriculum Tab */}
-          {(isSuperAdmin || isPlatformAdmin) && (
-            <TabsContent value="curriculum">
-              <CurriculumTab modules={modules} years={years} setModules={setModules} />
+          {/* Curriculum & Sources Tab */}
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+            <TabsContent value="sources">
+              <CurriculumSourcesTab
+                modules={modules}
+                years={years}
+                setModules={setModules}
+                moduleAdminModuleIds={moduleAdminModuleIds}
+              />
+            </TabsContent>
+          )}
+
+          {/* Analytics Tab (Question Analytics + Integrity + AI Cases) */}
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin) && (
+            <TabsContent value="analytics">
+              <ContentAnalyticsTab
+                modules={modules.map(m => ({ id: m.id, name: m.name, year_id: m.year_id }))}
+                moduleAdminModuleIds={moduleAdminModuleIds}
+                integrityContent={
+                  <>
+                    <IntegrityCheckTab />
+                    {isSuperAdmin && <ArchiveLegacyOsceCard />}
+                  </>
+                }
+              />
             </TabsContent>
           )}
 
@@ -2213,16 +2231,6 @@ export default function AdminPage() {
               <AnnouncementsTab 
                 modules={modules.map(m => ({ id: m.id, name: m.name }))} 
                 years={years.map(y => ({ id: y.id, name: y.name }))}
-                moduleAdminModuleIds={moduleAdminModuleIds}
-              />
-            </TabsContent>
-          )}
-
-          {/* Question Analytics Tab */}
-          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="question-analytics">
-              <QuestionAnalyticsTabs 
-                modules={modules} 
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
             </TabsContent>
@@ -2245,32 +2253,10 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* PDF Library Tab */}
-          {(isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="pdf-library">
-              <PDFLibraryTab moduleAdminModuleIds={moduleAdminModuleIds} />
-            </TabsContent>
-          )}
-
           {/* Help & Templates Tab */}
           <TabsContent value="help">
             <HelpTemplatesTab />
           </TabsContent>
-
-          {/* Integrity Check Tab - All Admins */}
-          {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
-            <TabsContent value="integrity">
-              <IntegrityCheckTab />
-              {isSuperAdmin && <ArchiveLegacyOsceCard />}
-            </TabsContent>
-          )}
-
-          {/* AI Cases Analytics Tab */}
-          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin) && (
-            <TabsContent value="ai-cases">
-              <AICasesAdminTab />
-            </TabsContent>
-          )}
 
           {/* Accounts Tab - Platform/Super Admin Only */}
           {(isSuperAdmin || isPlatformAdmin) && (

@@ -2,16 +2,11 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { BarChart3, Users, AlertTriangle, DollarSign, Search, CalendarIcon, RotateCcw, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
-import { useAICaseAttempts, useAICaseSummaryStats, useAICasesInScope, type AICaseFilters, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
+import { BarChart3, Users, AlertTriangle, DollarSign, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft, Stethoscope } from 'lucide-react';
+import { useAICaseAttempts, useAICaseSummaryStats, useAICasesInScope, useAICaseAggregates, type AICaseFilters, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
 import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -37,15 +32,45 @@ export function AICasesAdminTab() {
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin } = useAuthContext();
   const canFlag = isSuperAdmin || isPlatformAdmin || isModuleAdmin;
 
-  const [filters, setFilters] = useState<AICaseFilters>({});
+  const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('started_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<AICaseAttemptRow | null>(null);
 
-  const { data: attempts, isLoading } = useAICaseAttempts(filters);
-  const stats = useAICaseSummaryStats(attempts);
   const { data: cases } = useAICasesInScope();
+  const filters: AICaseFilters = selectedCaseId ? { caseId: selectedCaseId } : {};
+  const { data: attempts, isLoading: attemptsLoading } = useAICaseAttempts(filters);
+
+  // Filter cases by module
+  const filteredCases = useMemo(() => {
+    if (!cases) return [];
+    if (selectedModuleId === 'all') return cases;
+    return cases.filter((c: any) => c.module_id === selectedModuleId);
+  }, [cases, selectedModuleId]);
+
+  // Get unique modules from cases for the dropdown
+  const moduleOptions = useMemo(() => {
+    if (!cases) return [];
+    const map = new Map<string, string>();
+    cases.forEach((c: any) => {
+      if (c.module_id && !map.has(c.module_id)) {
+        // Use module_id as fallback label
+        map.set(c.module_id, c.module_id);
+      }
+    });
+    return Array.from(map.entries()).map(([id]) => ({ id }));
+  }, [cases]);
+
+  // Aggregate stats per case from all attempts (unfiltered)
+  const allFilters: AICaseFilters = {};
+  const { data: allAttempts } = useAICaseAttempts(allFilters);
+  const aggregates = useAICaseAggregates(allAttempts);
+
+  // Case detail view
+  const selectedCase = selectedCaseId ? filteredCases.find((c: any) => c.id === selectedCaseId) : null;
+  const caseStats = useAICaseSummaryStats(attempts);
 
   const sortedAttempts = useMemo(() => {
     if (!attempts) return [];
@@ -66,252 +91,250 @@ export function AICasesAdminTab() {
     else { setSortKey(key); setSortAsc(false); }
   };
 
-  const resetFilters = () => { setFilters({}); setPage(0); };
+  // ===== CASE DETAIL VIEW =====
+  if (selectedCaseId && selectedCase) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedCaseId(null); setPage(0); }}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Cases
+          </Button>
+        </div>
 
-  const updateFilter = <K extends keyof AICaseFilters>(key: K, value: AICaseFilters[K]) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setPage(0);
-  };
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">{(selectedCase as any).title}</h2>
+            <Badge variant="outline" className="capitalize">{(selectedCase as any).level}</Badge>
+          </div>
+        </div>
 
-  const scoreColor = stats.avgScore >= 70 ? 'text-green-600' : stats.avgScore >= 50 ? 'text-amber-600' : 'text-red-600';
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="w-4 h-4" /> Total Attempts
+              </CardTitle>
+            </CardHeader>
+            <CardContent><p className="text-2xl font-bold">{caseStats.totalAttempts}</p></CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" /> Average Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className={cn("text-2xl font-bold", caseStats.avgScore >= 70 ? 'text-green-600' : caseStats.avgScore >= 50 ? 'text-amber-600' : 'text-red-600')}>
+                {caseStats.avgScore}%
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Flagged
+              </CardTitle>
+            </CardHeader>
+            <CardContent><p className="text-2xl font-bold">{caseStats.flaggedCount}</p></CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <DollarSign className="w-4 h-4" /> Total Cost
+              </CardTitle>
+            </CardHeader>
+            <CardContent><p className="text-2xl font-bold">${caseStats.totalCost.toFixed(2)}</p></CardContent>
+          </Card>
+        </div>
 
-  return (
-    <div className="space-y-6">
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Student attempts table */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="w-4 h-4" /> Total Attempts
-            </CardTitle>
-          </CardHeader>
-          <CardContent><p className="text-2xl font-bold">{stats.totalAttempts}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" /> Average Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent><p className={cn("text-2xl font-bold", scoreColor)}>{stats.avgScore}%</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> Flagged Sessions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold flex items-center gap-2">
-              {stats.flaggedCount}
-              {stats.flaggedCount > 0 && <Badge variant="destructive" className="text-xs">{stats.flaggedCount}</Badge>}
-            </p>
+          <CardContent className="pt-6">
+            {attemptsLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Loading attempts...</p>
+            ) : sortedAttempts.length === 0 ? (
+              <div className="text-center py-12 space-y-3">
+                <CheckCircle2 className="w-10 h-10 mx-auto text-muted-foreground/40" />
+                <p className="text-muted-foreground">No attempts for this case yet</p>
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('score')}>
+                        <span className="flex items-center gap-1">Score <ArrowUpDown className="w-3 h-3" /></span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('duration_seconds')}>
+                        <span className="flex items-center gap-1">Time <ArrowUpDown className="w-3 h-3" /></span>
+                      </TableHead>
+                      <TableHead>Turns</TableHead>
+                      <TableHead>Cost</TableHead>
+                      <TableHead>Flagged</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('started_at')}>
+                        <span className="flex items-center gap-1">Started <ArrowUpDown className="w-3 h-3" /></span>
+                      </TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedAttempts.map((a) => {
+                      const turnsUsed = Math.ceil((a.message_count || 0) / 2);
+                      return (
+                        <TableRow
+                          key={a.attempt_id}
+                          className={cn("cursor-pointer", a.flag_for_review && "border-l-4 border-l-destructive bg-destructive/5")}
+                          onClick={() => setSelectedAttempt(a)}
+                        >
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-sm">{a.student_name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{a.student_email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell><ScoreBadge score={Number(a.score)} completed={a.is_completed} /></TableCell>
+                          <TableCell className="text-sm">{formatDuration(a.duration_seconds)}</TableCell>
+                          <TableCell className="text-sm">{turnsUsed} / {a.max_turns}</TableCell>
+                          <TableCell className="text-sm">${Number(a.estimated_cost_usd).toFixed(4)}</TableCell>
+                          <TableCell>
+                            {a.flag_for_review && <AlertTriangle className="w-4 h-4 text-destructive" />}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground" title={format(new Date(a.started_at), 'PPpp')}>
+                              {formatDistanceToNow(new Date(a.started_at), { addSuffix: true })}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedAttempt(a); }}>
+                              <Eye className="w-3.5 h-3.5 mr-1" />View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-xs text-muted-foreground">
+                      Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sortedAttempts.length)} of {sortedAttempts.length}
+                    </p>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> Total Cost
-            </CardTitle>
-          </CardHeader>
-          <CardContent><p className="text-2xl font-bold">${stats.totalCost.toFixed(2)}</p></CardContent>
-        </Card>
+
+        <AICaseTranscriptModal
+          attempt={selectedAttempt}
+          open={!!selectedAttempt}
+          onOpenChange={(open) => { if (!open) setSelectedAttempt(null); }}
+          canFlag={canFlag}
+        />
+      </div>
+    );
+  }
+
+  // ===== CASE LIST VIEW =====
+  return (
+    <div className="space-y-6">
+      {/* Module filter */}
+      <div className="flex items-center gap-3">
+        <Select value={selectedModuleId} onValueChange={(v) => { setSelectedModuleId(v); setPage(0); }}>
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="All modules" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Modules</SelectItem>
+            {moduleOptions.map(m => (
+              <SelectItem key={m.id} value={m.id}>{m.id.substring(0, 8)}...</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="space-y-1">
-              <Label className="text-xs">Case</Label>
-              <Select value={filters.caseId || 'all'} onValueChange={(v) => updateFilter('caseId', v === 'all' ? undefined : v)}>
-                <SelectTrigger className="w-[200px]"><SelectValue placeholder="All cases" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Cases</SelectItem>
-                  {(cases || []).map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Difficulty</Label>
-              <Select value={filters.difficulty || 'all'} onValueChange={(v) => updateFilter('difficulty', v === 'all' ? undefined : v)}>
-                <SelectTrigger className="w-[140px]"><SelectValue placeholder="All" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="beginner">Beginner</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Min Score</Label>
-              <Input type="number" className="w-[80px]" placeholder="0" value={filters.minScore ?? ''} onChange={(e) => updateFilter('minScore', e.target.value ? Number(e.target.value) : undefined)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Max Score</Label>
-              <Input type="number" className="w-[80px]" placeholder="100" value={filters.maxScore ?? ''} onChange={(e) => updateFilter('maxScore', e.target.value ? Number(e.target.value) : undefined)} />
-            </div>
-            <div className="flex items-center gap-2 pt-5">
-              <Switch checked={filters.flaggedOnly || false} onCheckedChange={(v) => updateFilter('flaggedOnly', v || undefined)} id="flagged-only" />
-              <Label htmlFor="flagged-only" className="text-xs">Flagged only</Label>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">From</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !filters.dateFrom && "text-muted-foreground")} size="sm">
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-                    {filters.dateFrom ? format(filters.dateFrom, 'PP') : 'Pick date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={filters.dateFrom} onSelect={(d) => updateFilter('dateFrom', d || undefined)} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">To</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !filters.dateTo && "text-muted-foreground")} size="sm">
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-                    {filters.dateTo ? format(filters.dateTo, 'PP') : 'Pick date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={filters.dateTo} onSelect={(d) => updateFilter('dateTo', d || undefined)} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input className="pl-8 w-[180px]" placeholder="Name or email..." value={filters.search || ''} onChange={(e) => updateFilter('search', e.target.value || undefined)} />
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="pt-5">
-              <RotateCcw className="w-3.5 h-3.5 mr-1" />Reset
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Case cards */}
+      {filteredCases.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <Stethoscope className="w-10 h-10 mx-auto text-muted-foreground/40" />
+          <p className="text-muted-foreground">No AI cases found in the selected scope</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {filteredCases.map((c: any) => {
+            const agg = aggregates.get(c.id);
+            const totalAttempts = agg?.totalAttempts ?? 0;
+            const avgScore = agg?.avgScore ?? 0;
+            const completionRate = agg?.completionRate ?? 0;
+            const flaggedCount = agg?.flaggedCount ?? 0;
 
-      {/* Table */}
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading attempts...</p>
-          ) : sortedAttempts.length === 0 ? (
-            <div className="text-center py-12 space-y-3">
-              {Object.values(filters).some(Boolean) ? (
-                <>
-                  <p className="text-muted-foreground">No results match your filters</p>
-                  <Button variant="outline" size="sm" onClick={resetFilters}><RotateCcw className="w-3.5 h-3.5 mr-1" />Reset Filters</Button>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-10 h-10 mx-auto text-muted-foreground/40" />
-                  <p className="text-muted-foreground">No students have attempted AI cases yet</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Case</TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('score')}>
-                      <span className="flex items-center gap-1">Score <ArrowUpDown className="w-3 h-3" /></span>
-                    </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('duration_seconds')}>
-                      <span className="flex items-center gap-1">Time <ArrowUpDown className="w-3 h-3" /></span>
-                    </TableHead>
-                    <TableHead>Turns</TableHead>
-                    <TableHead>Cost</TableHead>
-                    <TableHead>Flagged</TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('started_at')}>
-                      <span className="flex items-center gap-1">Started <ArrowUpDown className="w-3 h-3" /></span>
-                    </TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagedAttempts.map((a) => {
-                    const turnsUsed = Math.ceil((a.message_count || 0) / 2);
-                    return (
-                      <TableRow
-                        key={a.attempt_id}
-                        className={cn("cursor-pointer", a.flag_for_review && "border-l-4 border-l-destructive bg-destructive/5")}
-                        onClick={() => setSelectedAttempt(a)}
-                      >
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-sm">{a.student_name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">{a.student_email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm">{a.case_title}</span>
-                            <Badge variant="outline" className="text-[10px] capitalize">{a.case_difficulty}</Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell><ScoreBadge score={Number(a.score)} completed={a.is_completed} /></TableCell>
-                        <TableCell className="text-sm">{formatDuration(a.duration_seconds)}</TableCell>
-                        <TableCell className="text-sm">{turnsUsed} / {a.max_turns}</TableCell>
-                        <TableCell className="text-sm">${Number(a.estimated_cost_usd).toFixed(4)}</TableCell>
-                        <TableCell>
-                          {a.flag_for_review && <AlertTriangle className="w-4 h-4 text-destructive" />}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground" title={format(new Date(a.started_at), 'PPpp')}>
-                            {formatDistanceToNow(new Date(a.started_at), { addSuffix: true })}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedAttempt(a); }}>
-                            <Eye className="w-3.5 h-3.5 mr-1" />View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            return (
+              <Card
+                key={c.id}
+                className="cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => { setSelectedCaseId(c.id); setPage(0); }}
+              >
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
+                        <Stethoscope className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-sm truncate">{c.title}</h3>
+                          <Badge variant="outline" className="capitalize text-[10px] shrink-0">{c.level}</Badge>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4">
-                  <p className="text-xs text-muted-foreground">
-                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sortedAttempts.length)} of {sortedAttempts.length}
-                  </p>
-                  <div className="flex gap-1">
-                    <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground shrink-0">
+                      <div className="flex items-center gap-1.5" title="Total attempts">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{totalAttempts}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Average score">
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span className={cn(
+                          avgScore >= 70 ? 'text-green-600' : avgScore >= 50 ? 'text-amber-600' : totalAttempts > 0 ? 'text-red-600' : ''
+                        )}>
+                          {totalAttempts > 0 ? `${avgScore}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Completion rate">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{totalAttempts > 0 ? `${completionRate}%` : '—'}</span>
+                      </div>
+                      {flaggedCount > 0 && (
+                        <div className="flex items-center gap-1.5 text-destructive" title="Flagged">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>{flaggedCount}</span>
+                        </div>
+                      )}
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <AICaseTranscriptModal
-        attempt={selectedAttempt}
-        open={!!selectedAttempt}
-        onOpenChange={(open) => { if (!open) setSelectedAttempt(null); }}
-        canFlag={canFlag}
-      />
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
