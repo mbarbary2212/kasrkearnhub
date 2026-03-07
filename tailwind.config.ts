@@ -105,6 +105,11 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "pulse-ring": {
+          "0%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0.6)" },
+          "70%": { boxShadow: "0 0 0 8px hsl(var(--primary) / 0)" },
+          "100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -114,6 +119,7 @@ export default {
         "badge-bounce": "badge-bounce 0.6s ease-out forwards",
         "confetti-burst": "confetti-burst 0.8s ease-out forwards",
         "shine": "shine 1.5s ease-in-out infinite",
+        "pulse-ring": "pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

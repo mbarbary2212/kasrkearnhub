@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,6 +76,9 @@ export function StructuredCaseRunner({
 }: StructuredCaseRunnerProps) {
   const generatedData = caseData.generated_case_data as StructuredCaseData | null;
   const activeSections = (caseData.active_sections as SectionType[]) || [];
+  const historyInteractionMode = (caseData.history_interaction_mode as string) || 'text';
+  const avatarId = (caseData.avatar_id as number) || 1;
+  const { data: examinerAvatar } = useExaminerAvatarById(avatarId);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, unknown>>>({});
@@ -282,6 +286,9 @@ export function StructuredCaseRunner({
               isSubmitting={isSubmittingSection}
               readOnly={completedSections.has(currentSection)}
               previousAnswer={answers[currentSection] || null}
+              avatarUrl={examinerAvatar?.image_url}
+              avatarName={examinerAvatar?.name}
+              historyInteractionMode={historyInteractionMode}
             />
           )}
         </CardContent>

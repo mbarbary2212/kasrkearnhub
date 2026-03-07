@@ -47,7 +47,7 @@ import {
 } from '@/types/structuredCase';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
-import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
 import { useNavigate } from 'react-router-dom';
 
@@ -140,10 +140,8 @@ export function StructuredCaseCreator({
   const { data: dynamicAvatars } = useExaminerAvatars();
   const createCase = useCreateStructuredCase();
 
-  // Use dynamic avatars if available, fall back to static
-  const avatarList = dynamicAvatars?.length
-    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
-    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
+  // Use database avatars only
+  const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
 
   // Helpers
   const toggleSection = (s: SectionType) => {

@@ -21,7 +21,7 @@ import {
 import { useVirtualPatientCase, useStartVirtualPatientAttempt, useVirtualPatientAttempts } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { getExaminerAvatar } from '@/lib/examinerAvatars';
+import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 
 const SESSION_KEY = 'ai_case_session';
 
@@ -88,7 +88,7 @@ export default function VirtualPatientRunner() {
   };
 
   const avatarId = (vpCase as any)?.avatar_id ?? 1;
-  const examiner = getExaminerAvatar(avatarId);
+  const { data: examiner } = useExaminerAvatarById(avatarId);
 
   if (isLoading) {
     return (
@@ -167,8 +167,8 @@ export default function VirtualPatientRunner() {
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
               <Avatar className="w-16 h-16 border-2 border-background shadow-md">
-                <AvatarImage src={examiner.image} alt={examiner.name} />
-                <AvatarFallback>{examiner.name.charAt(4)}</AvatarFallback>
+                <AvatarImage src={examiner?.image_url} alt={examiner?.name} />
+                <AvatarFallback>{examiner?.name?.charAt(4) || 'E'}</AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -181,7 +181,7 @@ export default function VirtualPatientRunner() {
                   </Badge>
                 </div>
                 <CardTitle className="text-xl">{vpCase.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner?.name || 'Examiner'}</p>
               </div>
             </div>
             <CardDescription className="flex items-center gap-4 text-sm">

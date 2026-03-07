@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -103,10 +103,8 @@ export function CasePreviewEditor() {
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
-  // Build avatar list from dynamic or static
-  const avatarList = dynamicAvatars?.length
-    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
-    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
+  // Build avatar list from database
+  const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
 
   useEffect(() => {
     if (generatedData && !editedData) {
