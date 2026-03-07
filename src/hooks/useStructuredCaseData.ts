@@ -24,15 +24,34 @@ export function useStructuredCaseDetail(caseId?: string) {
   });
 }
 
-/** Update generated_case_data for a structured case */
+/** Update generated_case_data and related fields for a structured case */
 export function useUpdateStructuredCaseData() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ caseId, data }: { caseId: string; data: StructuredCaseData }) => {
+    mutationFn: async ({
+      caseId,
+      data,
+      avatar_id,
+      history_interaction_mode,
+      active_sections,
+    }: {
+      caseId: string;
+      data: StructuredCaseData;
+      avatar_id?: number;
+      history_interaction_mode?: string;
+      active_sections?: SectionType[];
+    }) => {
+      const updatePayload: Record<string, unknown> = {
+        generated_case_data: data as any,
+      };
+      if (avatar_id !== undefined) updatePayload.avatar_id = avatar_id;
+      if (history_interaction_mode !== undefined) updatePayload.history_interaction_mode = history_interaction_mode;
+      if (active_sections !== undefined) updatePayload.active_sections = active_sections;
+
       const { error } = await supabase
         .from('virtual_patient_cases')
-        .update({ generated_case_data: data as any })
+        .update(updatePayload as any)
         .eq('id', caseId);
 
       if (error) throw error;

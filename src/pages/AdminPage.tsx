@@ -46,6 +46,7 @@ import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { AICasesAdminTab } from '@/components/admin/AICasesAdminTab';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
+import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -192,6 +193,9 @@ function PlatformSettingsTab() {
         <HomeMindMapSettings />
         {isSuperAdmin && <SentryDiagnosticsSection />}
       </div>
+
+      {/* Examiner Avatars Management */}
+      <ExaminerAvatarsCard />
 
       {/* Email Notification Preferences */}
       <EmailNotificationPreferences />

@@ -47,7 +47,7 @@ import {
 } from '@/types/structuredCase';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
-import { EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
 import { useNavigate } from 'react-router-dom';
 
@@ -132,11 +132,18 @@ export function StructuredCaseCreator({
   const [patientGender, setPatientGender] = useState('male');
   const [avatarId, setAvatarId] = useState(1);
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('practice');
+  const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
 
   // Data hooks
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(selectedModuleId || undefined);
+  const { data: dynamicAvatars } = useExaminerAvatars();
   const createCase = useCreateStructuredCase();
+
+  // Use dynamic avatars if available, fall back to static
+  const avatarList = dynamicAvatars?.length
+    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
+    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
 
   // Helpers
   const toggleSection = (s: SectionType) => {
@@ -180,6 +187,7 @@ export function StructuredCaseCreator({
       patient_gender: patientGender,
       avatar_id: avatarId,
       delivery_mode: deliveryMode,
+      history_interaction_mode: historyInteractionMode,
     };
 
     try {
@@ -533,7 +541,7 @@ export function StructuredCaseCreator({
               <div>
                 <Label>Examiner Avatar</Label>
                 <div className="grid grid-cols-4 gap-3 mt-2">
-                  {EXAMINER_AVATARS.map(exam => (
+                  {avatarList.map(exam => (
                     <button
                       key={exam.id}
                       type="button"
@@ -580,6 +588,25 @@ export function StructuredCaseCreator({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* History Interaction Mode */}
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <Label className="text-sm font-medium">History Interaction</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {historyInteractionMode === 'text'
+                      ? 'Student types questions to the patient'
+                      : 'Student speaks to the patient via microphone'}
+                  </p>
+                </div>
+                <Select value={historyInteractionMode} onValueChange={v => setHistoryInteractionMode(v as 'text' | 'voice')}>
+                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="voice">Voice</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </TabsContent>
 
             {/* ── TAB 5: REVIEW ── */}
@@ -602,6 +629,7 @@ export function StructuredCaseCreator({
                 <ReviewRow label="Patient Language" value={patientLanguage === 'en' ? 'English' : 'Egyptian Arabic'} />
                 <ReviewRow label="Patient" value={`${patientName || 'Patient'}, ${patientAge}y, ${patientGender}`} />
                 <ReviewRow label="Delivery Mode" value={deliveryMode === 'practice' ? 'Practice' : 'Exam'} />
+                <ReviewRow label="Interaction Mode" value={historyInteractionMode === 'voice' ? 'Voice History' : 'Text History'} />
                 <div className="flex items-start justify-between py-1.5 border-b border-border/50">
                   <span className="text-muted-foreground">Sections ({activeSections.length})</span>
                   <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">

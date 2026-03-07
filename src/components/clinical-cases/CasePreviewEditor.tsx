@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Collapsible,
   CollapsibleContent,
@@ -79,22 +85,45 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 export function CasePreviewEditor() {
   const { caseId } = useParams<{ caseId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { data: caseData, isLoading } = useStructuredCaseDetail(caseId);
   const updateData = useUpdateStructuredCaseData();
   const publishCase = usePublishStructuredCase();
   const generateCase = useGenerateStructuredCase();
+  const { data: dynamicAvatars } = useExaminerAvatars();
 
   const [editedData, setEditedData] = useState<StructuredCaseData | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<number>(1);
+  const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
+  const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
+
+  // Build avatar list from dynamic or static
+  const avatarList = dynamicAvatars?.length
+    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
+    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
 
   useEffect(() => {
     if (generatedData && !editedData) {
       setEditedData(structuredClone(generatedData));
     }
   }, [generatedData]);
+
+  // Initialize avatar and interaction mode from case data
+  useEffect(() => {
+    if (caseData) {
+      if (caseData.avatar_id) setSelectedAvatarId(caseData.avatar_id);
+      setHistoryInteractionMode((caseData.history_interaction_mode as 'text' | 'voice') || 'text');
+      if (caseData.active_sections) {
+        setEnabledSections(caseData.active_sections as SectionType[]);
+      }
+    }
+  }, [caseData]);
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => {
@@ -114,11 +143,45 @@ export function CasePreviewEditor() {
   const handleSave = async () => {
     if (!caseId || !editedData) return;
     try {
-      await updateData.mutateAsync({ caseId, data: editedData });
+      await updateData.mutateAsync({
+        caseId,
+        data: editedData,
+        avatar_id: selectedAvatarId,
+        history_interaction_mode: historyInteractionMode,
+        active_sections: enabledSections,
+      });
       setHasChanges(false);
       toast.success('Case data saved');
     } catch {
       toast.error('Failed to save');
+    }
+  };
+
+  const handleRequestAvatar = async () => {
+    if (!requestMessage.trim()) return;
+    try {
+      // Insert notification for all platform_admin / super_admin
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['platform_admin', 'super_admin']);
+
+      if (admins?.length) {
+        const notifications = admins.map(a => ({
+          recipient_id: a.user_id,
+          type: 'avatar_request',
+          title: 'Avatar Request',
+          message: requestMessage.trim(),
+          entity_type: 'examiner_avatar',
+          metadata: { requested_by: user?.id, case_id: caseId },
+        }));
+        await supabase.from('admin_notifications').insert(notifications);
+      }
+      toast.success('Request sent to platform admins');
+      setRequestAvatarOpen(false);
+      setRequestMessage('');
+    } catch {
+      toast.error('Failed to send request');
     }
   };
 
@@ -168,8 +231,29 @@ export function CasePreviewEditor() {
     );
   }
 
-  const activeSections = (caseData.active_sections as SectionType[]) || [];
+  const activeSections = enabledSections.length > 0 ? enabledSections : ((caseData.active_sections as SectionType[]) || []);
   const isPublished = caseData.is_published;
+
+  // Compute total score from enabled sections
+  const computeTotalScore = () => {
+    if (!editedData) return 0;
+    let total = editedData.professional_attitude?.max_score || 0;
+    for (const key of enabledSections) {
+      const section = editedData[key] as any;
+      if (section?.max_score) total += section.max_score;
+    }
+    return total;
+  };
+
+  const toggleSectionEnabled = (key: SectionType) => {
+    setEnabledSections(prev => {
+      const next = prev.includes(key)
+        ? prev.filter(s => s !== key)
+        : [...prev, key];
+      setHasChanges(true);
+      return next;
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -236,6 +320,87 @@ export function CasePreviewEditor() {
 
       <Separator />
 
+      {/* Avatar Picker + History Interaction Mode */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Card className="flex-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Examiner Avatar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-4 gap-2">
+              {avatarList.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => { setSelectedAvatarId(a.id); setHasChanges(true); }}
+                  className={cn(
+                    'flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all',
+                    selectedAvatarId === a.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-transparent hover:border-muted-foreground/20'
+                  )}
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={a.image} alt={a.name} />
+                    <AvatarFallback>{a.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-center truncate w-full">{a.name}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setRequestAvatarOpen(true)}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              Can't find the right avatar? Contact platform admin
+            </button>
+          </CardContent>
+        </Card>
+
+        <Card className="sm:w-56">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">History Interaction</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={historyInteractionMode}
+              onValueChange={(v) => { setHistoryInteractionMode(v as 'text' | 'voice'); setHasChanges(true); }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text History</SelectItem>
+                <SelectItem value="voice">Voice History</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              {historyInteractionMode === 'text'
+                ? 'Student types questions to the patient'
+                : 'Student speaks via microphone'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Request Avatar Dialog */}
+      <Dialog open={requestAvatarOpen} onOpenChange={setRequestAvatarOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request New Avatar</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Describe the avatar you need..."
+            value={requestMessage}
+            onChange={(e) => setRequestMessage(e.target.value)}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestAvatarOpen(false)}>Cancel</Button>
+            <Button onClick={handleRequestAvatar} disabled={!requestMessage.trim()}>Send Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* No content yet — two options */}
       {!generatedData && !editedData && !generateCase.isPending && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -288,7 +453,17 @@ export function CasePreviewEditor() {
       {/* Section editors */}
       {editedData && !generateCase.isPending && (
         <div className="space-y-3">
-          {/* Professional Attitude */}
+          {/* Total Score Bar */}
+          <Card className="bg-muted/30">
+            <CardContent className="py-3 px-4 flex items-center justify-between">
+              <span className="text-sm font-medium">Total Case Score</span>
+              <Badge variant="default" className="text-base px-3 py-1">
+                {computeTotalScore()} pts
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {/* Professional Attitude (always enabled) */}
           {editedData.professional_attitude && (
             <SectionPanel
               sectionKey="professional_attitude"
@@ -326,27 +501,42 @@ export function CasePreviewEditor() {
             </SectionPanel>
           )}
 
-          {/* Active sections */}
+          {/* All possible sections with enable/disable toggle */}
           {activeSections.map(sectionKey => {
             const sectionData = editedData[sectionKey];
             if (!sectionData) return null;
+            const isEnabled = enabledSections.includes(sectionKey);
 
             return (
-              <SectionPanel
+              <div
                 key={sectionKey}
-                sectionKey={sectionKey}
-                label={SECTION_LABELS[sectionKey]}
-                icon={SECTION_ICONS[sectionKey]}
-                isOpen={openSections.has(sectionKey)}
-                onToggle={() => toggleSection(sectionKey)}
-                maxScore={(sectionData as any).max_score}
+                className={cn(
+                  'transition-opacity',
+                  !isEnabled && 'opacity-40'
+                )}
               >
-                <SectionEditor
+                <SectionPanel
                   sectionKey={sectionKey}
-                  data={sectionData}
-                  onChange={val => updateSection(sectionKey, val)}
-                />
-              </SectionPanel>
+                  label={SECTION_LABELS[sectionKey]}
+                  icon={SECTION_ICONS[sectionKey]}
+                  isOpen={isEnabled && openSections.has(sectionKey)}
+                  onToggle={() => isEnabled && toggleSection(sectionKey)}
+                  maxScore={(sectionData as any).max_score}
+                  enableSwitch={
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => toggleSectionEnabled(sectionKey)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  }
+                >
+                  <SectionEditor
+                    sectionKey={sectionKey}
+                    data={sectionData}
+                    onChange={val => updateSection(sectionKey, val)}
+                  />
+                </SectionPanel>
+              </div>
             );
           })}
         </div>
@@ -363,10 +553,11 @@ interface SectionPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   maxScore?: number;
+  enableSwitch?: React.ReactNode;
   children: React.ReactNode;
 }
 
-function SectionPanel({ label, icon, isOpen, onToggle, maxScore, children }: SectionPanelProps) {
+function SectionPanel({ label, icon, isOpen, onToggle, maxScore, enableSwitch, children }: SectionPanelProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <Card className="overflow-hidden">
@@ -378,9 +569,12 @@ function SectionPanel({ label, icon, isOpen, onToggle, maxScore, children }: Sec
                 <span className="text-muted-foreground">{icon}</span>
                 <CardTitle className="text-sm font-medium">{label}</CardTitle>
               </div>
-              {maxScore != null && (
-                <Badge variant="outline" className="text-xs">Max: {maxScore}</Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {maxScore != null && (
+                  <Badge variant="outline" className="text-xs">Max: {maxScore}</Badge>
+                )}
+                {enableSwitch}
+              </div>
             </div>
           </CardHeader>
         </CollapsibleTrigger>

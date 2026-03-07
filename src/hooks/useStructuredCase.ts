@@ -31,6 +31,7 @@ export function useCreateStructuredCase() {
         max_turns: 10,
         created_by: user?.id,
         avatar_id: data.avatar_id,
+        history_interaction_mode: data.history_interaction_mode || 'text',
       };
 
       const { data: result, error } = await supabase

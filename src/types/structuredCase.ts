@@ -365,6 +365,7 @@ export interface StructuredCaseFormData {
   patient_gender: string;
   avatar_id: number;
   delivery_mode: DeliveryMode;
+  history_interaction_mode?: 'text' | 'voice';
 
   // Tab 5 — Review (no additional fields)
 }
