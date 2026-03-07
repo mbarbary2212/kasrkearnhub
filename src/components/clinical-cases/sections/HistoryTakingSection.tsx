@@ -55,6 +55,10 @@ export function HistoryTakingSection({
   const [isListening, setIsListening] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [voiceErrorCount, setVoiceErrorCount] = useState(0);
+  const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
+  const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
