@@ -156,7 +156,13 @@ export function PhysicalExamSection({
       >
         <p className="text-white/80 text-xs">
           Click any region to reveal findings ·{' '}
-          <span className="text-white font-semibold underline underline-offset-2">Write a summary to score</span>
+          <button
+            type="button"
+            className="text-white font-semibold underline underline-offset-2 hover:text-white/90"
+            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          >
+            Write a summary to score
+          </button>
         </p>
         <div
           className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap"
