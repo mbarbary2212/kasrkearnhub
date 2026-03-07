@@ -132,11 +132,18 @@ export function StructuredCaseCreator({
   const [patientGender, setPatientGender] = useState('male');
   const [avatarId, setAvatarId] = useState(1);
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('practice');
+  const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
 
   // Data hooks
   const { data: modules } = useModules();
   const { data: chapters } = useModuleChapters(selectedModuleId || undefined);
+  const { data: dynamicAvatars } = useExaminerAvatars();
   const createCase = useCreateStructuredCase();
+
+  // Use dynamic avatars if available, fall back to static
+  const avatarList = dynamicAvatars?.length
+    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
+    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
 
   // Helpers
   const toggleSection = (s: SectionType) => {
