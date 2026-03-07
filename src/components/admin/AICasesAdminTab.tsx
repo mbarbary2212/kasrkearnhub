@@ -10,6 +10,7 @@ import { useAICaseAttempts, useAICaseSummaryStats, useAICasesInScope, useAICaseA
 import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useModuleChapters } from '@/hooks/useChapters';
 
 const PAGE_SIZE = 10;
 
@@ -28,11 +29,16 @@ function formatDuration(seconds: number | null): string {
 
 type SortKey = 'score' | 'duration_seconds' | 'started_at';
 
-export function AICasesAdminTab() {
+interface AICasesAdminTabProps {
+  modules?: { id: string; name: string; year_id?: string }[];
+}
+
+export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin } = useAuthContext();
   const canFlag = isSuperAdmin || isPlatformAdmin || isModuleAdmin;
 
   const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
+  const [selectedChapterId, setSelectedChapterId] = useState<string>('all');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('started_at');
@@ -40,28 +46,25 @@ export function AICasesAdminTab() {
   const [selectedAttempt, setSelectedAttempt] = useState<AICaseAttemptRow | null>(null);
 
   const { data: cases } = useAICasesInScope();
+  
+  // Fetch chapters for the selected module
+  const { data: chapters } = useModuleChapters(selectedModuleId !== 'all' ? selectedModuleId : undefined);
+
   const filters: AICaseFilters = selectedCaseId ? { caseId: selectedCaseId } : {};
   const { data: attempts, isLoading: attemptsLoading } = useAICaseAttempts(filters);
 
-  // Filter cases by module
+  // Filter cases by module and chapter
   const filteredCases = useMemo(() => {
     if (!cases) return [];
-    if (selectedModuleId === 'all') return cases;
-    return cases.filter((c: any) => c.module_id === selectedModuleId);
-  }, [cases, selectedModuleId]);
-
-  // Get unique modules from cases for the dropdown
-  const moduleOptions = useMemo(() => {
-    if (!cases) return [];
-    const map = new Map<string, string>();
-    cases.forEach((c: any) => {
-      if (c.module_id && !map.has(c.module_id)) {
-        // Use module_id as fallback label
-        map.set(c.module_id, c.module_id);
-      }
-    });
-    return Array.from(map.entries()).map(([id]) => ({ id }));
-  }, [cases]);
+    let result = cases;
+    if (selectedModuleId !== 'all') {
+      result = result.filter((c: any) => c.module_id === selectedModuleId);
+    }
+    if (selectedChapterId !== 'all') {
+      result = result.filter((c: any) => c.chapter_id === selectedChapterId);
+    }
+    return result;
+  }, [cases, selectedModuleId, selectedChapterId]);
 
   // Aggregate stats per case from all attempts (unfiltered)
   const allFilters: AICaseFilters = {};
@@ -250,19 +253,34 @@ export function AICasesAdminTab() {
   // ===== CASE LIST VIEW =====
   return (
     <div className="space-y-6">
-      {/* Module filter */}
-      <div className="flex items-center gap-3">
-        <Select value={selectedModuleId} onValueChange={(v) => { setSelectedModuleId(v); setPage(0); }}>
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={selectedModuleId} onValueChange={(v) => { setSelectedModuleId(v); setSelectedChapterId('all'); setPage(0); }}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="All modules" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Modules</SelectItem>
-            {moduleOptions.map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.id.substring(0, 8)}...</SelectItem>
+            {(modules || []).map(m => (
+              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        {selectedModuleId !== 'all' && (
+          <Select value={selectedChapterId} onValueChange={(v) => { setSelectedChapterId(v); setPage(0); }}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="All chapters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Chapters</SelectItem>
+              {(chapters || []).map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
         </p>

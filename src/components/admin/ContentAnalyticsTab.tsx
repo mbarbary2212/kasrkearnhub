@@ -51,7 +51,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
         </TabsContent>
 
         <TabsContent value="ai-cases" className="mt-4">
-          <AICasesAdminTab />
+          <AICasesAdminTab modules={modules} />
         </TabsContent>
       </Tabs>
     </div>

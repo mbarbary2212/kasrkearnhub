@@ -2243,13 +2243,10 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* AI Settings Tab - Super Admin Only */}
+          {/* Content Factory Tab - Super Admin Only */}
           {isSuperAdmin && (
             <TabsContent value="ai-settings">
-              <div className="space-y-6">
-                <AISettingsPanel />
-                <AIBatchJobsList />
-              </div>
+              <ContentFactoryTab />
             </TabsContent>
           )}
 
