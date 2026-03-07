@@ -88,7 +88,7 @@ export default function VirtualPatientRunner() {
   };
 
   const avatarId = (vpCase as any)?.avatar_id ?? 1;
-  const examiner = getExaminerAvatar(avatarId);
+  const { data: examiner } = useExaminerAvatarById(avatarId);
 
   if (isLoading) {
     return (
