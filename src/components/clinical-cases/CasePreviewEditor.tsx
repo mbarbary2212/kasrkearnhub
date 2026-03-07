@@ -222,7 +222,7 @@ export function CasePreviewEditor() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
         <p className="text-muted-foreground">Case not found.</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/admin?tab=ai-cases')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
         </Button>
       </div>
@@ -258,7 +258,7 @@ export function CasePreviewEditor() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2 -ml-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin?tab=ai-cases')} className="mb-2 -ml-2">
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">{caseData.title}</h1>
