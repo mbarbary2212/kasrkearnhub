@@ -181,8 +181,7 @@ export function useAICasesInScope() {
     queryFn: async () => {
       let query = supabase
         .from('virtual_patient_cases')
-        .select('id, title, level, module_id, topic_id, chapter_id')
-        .eq('is_ai_driven', true)
+        .select('id, title, level, module_id, topic_id, chapter_id, is_ai_driven')
         .eq('is_deleted', false)
         .order('title');
 
