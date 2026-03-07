@@ -61,7 +61,11 @@ const CONTENT_TYPES = [
   { value: 'case_scenario', label: 'Case Scenarios' },
 ];
 
-export function AISettingsPanel() {
+interface AISettingsPanelProps {
+  showRules?: boolean | 'only';
+}
+
+export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   const { data: settings, isLoading, refetch } = useAISettings();
   const updateSetting = useUpdateAISetting();
   const { isSuperAdmin } = useAuthContext();

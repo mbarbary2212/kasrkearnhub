@@ -33,6 +33,7 @@ import { useEmailPreferences, useUpdateEmailPreferences } from '@/hooks/useEmail
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
 import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { AIBatchJobsList } from '@/components/admin/AIBatchJobsList';
+import { ContentFactoryTab } from '@/components/admin/ContentFactoryTab';
 import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
