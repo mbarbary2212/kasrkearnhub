@@ -2225,6 +2225,39 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
+          {/* Announcements Tab */}
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+            <TabsContent value="announcements">
+              <AnnouncementsTab 
+                modules={modules.map(m => ({ id: m.id, name: m.name }))} 
+                years={years.map(y => ({ id: y.id, name: y.name }))}
+                moduleAdminModuleIds={moduleAdminModuleIds}
+              />
+            </TabsContent>
+          )}
+
+          {/* Settings Tab */}
+          {isPlatformAdmin && (
+            <TabsContent value="settings">
+              <PlatformSettingsTab />
+            </TabsContent>
+          )}
+
+          {/* AI Settings Tab - Super Admin Only */}
+          {isSuperAdmin && (
+            <TabsContent value="ai-settings">
+              <div className="space-y-6">
+                <AISettingsPanel />
+                <AIBatchJobsList />
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Help & Templates Tab */}
+          <TabsContent value="help">
+            <HelpTemplatesTab />
+          </TabsContent>
+
           {/* Accounts Tab - Platform/Super Admin Only */}
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="accounts">
