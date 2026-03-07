@@ -553,11 +553,12 @@ interface SectionPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   maxScore?: number;
+  onMaxScoreChange?: (val: number) => void;
   enableSwitch?: React.ReactNode;
   children: React.ReactNode;
 }
 
-function SectionPanel({ label, icon, isOpen, onToggle, maxScore, enableSwitch, children }: SectionPanelProps) {
+function SectionPanel({ label, icon, isOpen, onToggle, maxScore, onMaxScoreChange, enableSwitch, children }: SectionPanelProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <Card className="overflow-hidden">
@@ -570,9 +571,20 @@ function SectionPanel({ label, icon, isOpen, onToggle, maxScore, enableSwitch, c
                 <CardTitle className="text-sm font-medium">{label}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                {maxScore != null && (
+                {maxScore != null && onMaxScoreChange ? (
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-muted-foreground">Max:</span>
+                    <Input
+                      type="number"
+                      value={maxScore}
+                      onChange={e => onMaxScoreChange(parseInt(e.target.value) || 0)}
+                      className="w-16 h-7 text-xs text-center"
+                      min={0}
+                    />
+                  </div>
+                ) : maxScore != null ? (
                   <Badge variant="outline" className="text-xs">Max: {maxScore}</Badge>
-                )}
+                ) : null}
                 {enableSwitch}
               </div>
             </div>
