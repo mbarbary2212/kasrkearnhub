@@ -558,6 +558,7 @@ export function CasePreviewEditor() {
                   isOpen={isEnabled && openSections.has(sectionKey)}
                   onToggle={() => isEnabled && toggleSection(sectionKey)}
                   maxScore={(sectionData as any).max_score}
+                  onMaxScoreChange={(val) => updateSection(sectionKey, { ...sectionData, max_score: val })}
                   enableSwitch={
                     <Switch
                       checked={isEnabled}
