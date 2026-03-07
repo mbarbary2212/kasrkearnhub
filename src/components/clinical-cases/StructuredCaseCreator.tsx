@@ -610,6 +610,7 @@ export function StructuredCaseCreator({
                 <ReviewRow label="Patient Language" value={patientLanguage === 'en' ? 'English' : 'Egyptian Arabic'} />
                 <ReviewRow label="Patient" value={`${patientName || 'Patient'}, ${patientAge}y, ${patientGender}`} />
                 <ReviewRow label="Delivery Mode" value={deliveryMode === 'practice' ? 'Practice' : 'Exam'} />
+                <ReviewRow label="Interaction Mode" value={historyInteractionMode === 'voice' ? 'Voice History' : 'Text History'} />
                 <div className="flex items-start justify-between py-1.5 border-b border-border/50">
                   <span className="text-muted-foreground">Sections ({activeSections.length})</span>
                   <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
