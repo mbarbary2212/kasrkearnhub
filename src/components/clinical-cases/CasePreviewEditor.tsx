@@ -148,6 +148,7 @@ export function CasePreviewEditor() {
         data: editedData,
         avatar_id: selectedAvatarId,
         history_interaction_mode: historyInteractionMode,
+        active_sections: enabledSections,
       });
       setHasChanges(false);
       toast.success('Case data saved');
