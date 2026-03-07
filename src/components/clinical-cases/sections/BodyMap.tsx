@@ -114,10 +114,10 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         <g style={{ cursor: 'pointer' }} onClick={() => findings.upper_limbs && onRegionClick('upper_limbs')}>
           <rect x={8} y={138} width={72} height={205} rx={6} fill="transparent" />
           <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-          <rect x={15} y={150} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <rect x={15} y={150} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
-            x={62} y={169} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={62} y={150 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Upper limb
           </text>
