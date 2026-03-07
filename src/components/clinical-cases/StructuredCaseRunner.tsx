@@ -86,6 +86,14 @@ export function StructuredCaseRunner({
   const [isSubmittingSection, setIsSubmittingSection] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [startTime] = useState(Date.now());
+  const [studentName, setStudentName] = useState('');
+
+  // Fetch student name for watermark
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setStudentName(data?.user?.user_metadata?.full_name || data?.user?.email || '');
+    });
+  }, []);
 
   const currentSection = activeSections[currentIndex];
   const totalSections = activeSections.length;
@@ -267,6 +275,7 @@ export function StructuredCaseRunner({
         onCopy={e => e.preventDefault()}
         onPaste={e => e.preventDefault()}
         onCut={e => e.preventDefault()}
+        onContextMenu={e => e.preventDefault()}
       >
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -289,6 +298,8 @@ export function StructuredCaseRunner({
               avatarUrl={examinerAvatar?.image_url}
               avatarName={examinerAvatar?.name}
               historyInteractionMode={historyInteractionMode}
+              caseId={caseId}
+              studentName={studentName}
             />
           )}
         </CardContent>
