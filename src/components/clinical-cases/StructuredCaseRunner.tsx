@@ -258,7 +258,12 @@ export function StructuredCaseRunner({
       </div>
 
       {/* Active section */}
-      <Card>
+      <Card
+        className="select-none"
+        onCopy={e => e.preventDefault()}
+        onPaste={e => e.preventDefault()}
+        onCut={e => e.preventDefault()}
+      >
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             {SECTION_LABELS[currentSection]}
