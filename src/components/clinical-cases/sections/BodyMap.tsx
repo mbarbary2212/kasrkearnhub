@@ -140,7 +140,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           >
             Abdomen
           </text>
-          <rect x={88} y={183} width={134} height={80} rx={6} fill="transparent" />
+          <rect x={98} y={183} width={134} height={80} rx={6} fill="transparent" />
         </g>
 
         {/* ── LOWER LIMB — left inside ── */}
