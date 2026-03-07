@@ -185,7 +185,7 @@ export function PhysicalExamSection({
         <div
           className={cn(
             'shrink-0 flex flex-col items-center overflow-hidden',
-            isMobile ? 'w-full max-h-[280px]' : 'w-[320px]'
+            isMobile ? 'w-full' : 'w-[320px]'
           )}
           style={{
             background: 'radial-gradient(ellipse at 50% 45%, #1b5a7a 0%, #0f3a54 40%, #0a2438 70%, #071a2b 100%)',
