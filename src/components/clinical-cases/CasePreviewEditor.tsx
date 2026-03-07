@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
