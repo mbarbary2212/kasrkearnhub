@@ -70,16 +70,16 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── GENERAL APPEARANCE pill ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.general && onRegionClick('general')}>
           <rect
-            x={55} y={-48} width={200} height={28} rx={14}
+            x={55} y={-48} width={200} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
-            x={155} y={-29} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={155} y={-48 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             General Appearance
           </text>
-          <line x1={155} y1={-20} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
+          <line x1={155} y1={-48 + pillH} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
           <polygon points="151,-4 155,4 159,-4" fill={LABEL_BORDER} opacity={0.5} />
         </g>
 
