@@ -50,7 +50,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
       <svg
         viewBox="0 -55 310 560"
         className="w-full"
-        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '620px' }}
+        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '480px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}
