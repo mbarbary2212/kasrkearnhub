@@ -898,31 +898,56 @@ function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData;
 
 function LabsEditor({ data, onChange }: { data: LabsSectionData; onChange: (v: any) => void }) {
   const testEntries = Object.entries(data.available_tests || {});
+  const updateTest = (testKey: string, field: string, value: any) => {
+    const tests = { ...data.available_tests };
+    tests[testKey] = { ...tests[testKey], [field]: value };
+    onChange({ ...data, available_tests: tests });
+  };
+  const removeTest = (testKey: string) => {
+    const tests = { ...data.available_tests };
+    delete tests[testKey];
+    const keyTests = (data.key_tests || []).filter(t => t !== testKey);
+    onChange({ ...data, available_tests: tests, key_tests: keyTests });
+  };
+  const addTest = () => {
+    const key = `test_${Date.now()}`;
+    const tests = { ...data.available_tests, [key]: { label: 'New Test', result: '', interpretation: '', is_key: false, points: 1 } };
+    onChange({ ...data, available_tests: tests });
+  };
+  const toggleKeyTest = (testKey: string, isKey: boolean) => {
+    updateTest(testKey, 'is_key', isKey);
+    let keyTests = [...(data.key_tests || [])];
+    if (isKey && !keyTests.includes(testKey)) keyTests.push(testKey);
+    else if (!isKey) keyTests = keyTests.filter(t => t !== testKey);
+    onChange({ ...data, available_tests: { ...data.available_tests, [testKey]: { ...data.available_tests[testKey], is_key: isKey } }, key_tests: keyTests });
+  };
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label className="text-xs text-muted-foreground">Key Tests</Label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {(data.key_tests || []).map((t, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
-        <div className="mt-1 space-y-1">
-          {testEntries.map(([key, test]) => (
-            <div key={key} className={cn('p-2 rounded text-sm', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{test.label}</span>
-                {test.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
-                <span className="text-xs text-muted-foreground ml-auto">{test.points} pts</span>
+      <Label className="text-xs text-muted-foreground">Available Tests ({testEntries.length})</Label>
+      <div className="mt-1 space-y-2">
+        {testEntries.map(([key, test]) => (
+          <div key={key} className={cn('p-2 rounded text-sm space-y-1.5', test.is_key ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50')}>
+            <div className="flex items-center gap-2">
+              <Input value={test.label} onChange={e => updateTest(key, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+              <div className="flex items-center gap-1">
+                <Switch checked={test.is_key} onCheckedChange={val => toggleKeyTest(key, val)} />
+                <span className="text-[10px] text-muted-foreground">Key</span>
               </div>
-              <p className="text-muted-foreground mt-0.5">{test.result}</p>
+              <Input type="number" value={test.points} onChange={e => updateTest(key, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+              <span className="text-xs text-muted-foreground">pts</span>
+              <button type="button" onClick={() => removeTest(key)} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          ))}
-        </div>
+            <Input value={test.result} onChange={e => updateTest(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
+            <Input value={test.interpretation} onChange={e => updateTest(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+          </div>
+        ))}
       </div>
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addTest}>
+        + Add test
+      </Button>
     </div>
   );
 }
