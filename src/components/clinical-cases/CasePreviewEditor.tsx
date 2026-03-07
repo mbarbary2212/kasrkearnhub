@@ -472,6 +472,10 @@ export function CasePreviewEditor() {
               isOpen={openSections.has('professional_attitude')}
               onToggle={() => toggleSection('professional_attitude')}
               maxScore={editedData.professional_attitude.max_score}
+              onMaxScoreChange={(val) => updateSection('professional_attitude', {
+                ...editedData.professional_attitude,
+                max_score: val,
+              })}
             >
               <div className="space-y-3">
                 <div>
@@ -492,10 +496,42 @@ export function CasePreviewEditor() {
                     {editedData.professional_attitude.items.map((item, i) => (
                       <div key={item.key} className="flex items-center gap-2 p-2 rounded bg-muted/50 text-sm">
                         <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="flex-1">{item.label}</span>
+                        <Input
+                          value={item.label}
+                          onChange={e => {
+                            const items = [...editedData.professional_attitude!.items];
+                            items[i] = { ...items[i], label: e.target.value };
+                            updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                          }}
+                          className="flex-1 h-7 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const items = editedData.professional_attitude!.items.filter((_, idx) => idx !== i);
+                            updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 text-xs"
+                    onClick={() => {
+                      const items = [...editedData.professional_attitude!.items, {
+                        key: `pa_${Date.now()}`,
+                        label: 'New item',
+                      }];
+                      updateSection('professional_attitude', { ...editedData.professional_attitude, items });
+                    }}
+                  >
+                    + Add item
+                  </Button>
                 </div>
               </div>
             </SectionPanel>
