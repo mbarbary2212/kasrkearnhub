@@ -673,6 +673,25 @@ function SectionEditor({ sectionKey, data, onChange }: SectionEditorProps) {
 // ── Individual Section Editors ───────────────────────
 
 function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange: (v: any) => void }) {
+  const updateAtmist = (field: string, value: string) => {
+    onChange({ ...data, atmist_handover: { ...data.atmist_handover, [field]: value } });
+  };
+  const updateChecklistItem = (catIdx: number, itemIdx: number, label: string) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items[itemIdx] = { ...checklist[catIdx].items[itemIdx], label };
+    onChange({ ...data, checklist });
+  };
+  const removeChecklistItem = (catIdx: number, itemIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items.splice(itemIdx, 1);
+    onChange({ ...data, checklist });
+  };
+  const addChecklistItem = (catIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist[catIdx].items.push({ key: `item_${Date.now()}`, label: 'New item' });
+    onChange({ ...data, checklist });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -682,9 +701,12 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
       {data.atmist_handover && (
         <div>
           <Label className="text-xs text-muted-foreground">ATMIST Handover</Label>
-          <div className="mt-1 space-y-1 text-sm bg-muted/50 rounded p-3">
+          <div className="mt-1 space-y-2 bg-muted/50 rounded p-3">
             {Object.entries(data.atmist_handover).map(([k, v]) => (
-              <div key={k}><span className="font-semibold capitalize">{k.replace('_', ' ')}:</span> {v}</div>
+              <div key={k} className="flex items-center gap-2">
+                <Label className="text-xs font-semibold capitalize w-24 shrink-0">{k.replace('_', ' ')}</Label>
+                <Input value={v} onChange={e => updateAtmist(k, e.target.value)} className="h-7 text-sm flex-1" />
+              </div>
             ))}
           </div>
         </div>
@@ -692,34 +714,96 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
       <div>
         <Label className="text-xs text-muted-foreground">Checklist ({data.checklist?.length || 0} categories)</Label>
         <div className="mt-1 space-y-2">
-          {(data.checklist || []).map(cat => (
+          {(data.checklist || []).map((cat, catIdx) => (
             <div key={cat.key} className="border rounded p-2">
-              <p className="text-sm font-medium mb-1">{cat.label}</p>
+              <Input
+                value={cat.label}
+                onChange={e => {
+                  const checklist = structuredClone(data.checklist || []);
+                  checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
+                  onChange({ ...data, checklist });
+                }}
+                className="h-7 text-sm font-medium mb-2"
+              />
               <div className="space-y-1">
-                {cat.items.map(item => (
-                  <div key={item.key} className="flex items-center gap-2 text-sm text-muted-foreground">
+                {cat.items.map((item, itemIdx) => (
+                  <div key={item.key} className="flex items-center gap-2 text-sm">
                     <Check className="w-3 h-3 text-primary shrink-0" />
-                    <span>{item.label}</span>
+                    <Input
+                      value={item.label}
+                      onChange={e => updateChecklistItem(catIdx, itemIdx, e.target.value)}
+                      className="h-7 text-sm flex-1"
+                    />
+                    <button type="button" onClick={() => removeChecklistItem(catIdx, itemIdx)} className="text-muted-foreground hover:text-destructive">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
+              <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => addChecklistItem(catIdx)}>
+                + Add item
+              </Button>
             </div>
           ))}
         </div>
       </div>
-      {data.comprehension_questions && data.comprehension_questions.length > 0 && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions.length})</Label>
-          <div className="mt-1 space-y-2">
-            {data.comprehension_questions.map((q, i) => (
-              <div key={q.id} className="border rounded p-2 text-sm">
-                <p className="font-medium">Q{i + 1}: {q.question} ({q.points} pts)</p>
-                <p className="text-muted-foreground mt-1">Answer: {q.correct_answer}</p>
+      <div>
+        <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions?.length || 0})</Label>
+        <div className="mt-1 space-y-2">
+          {(data.comprehension_questions || []).map((q, i) => (
+            <div key={q.id} className="border rounded p-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">Q{i + 1}</span>
+                <Input
+                  value={q.question}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], question: e.target.value };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="h-7 text-sm flex-1"
+                />
+                <Input
+                  type="number"
+                  value={q.points}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], points: parseInt(e.target.value) || 0 };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="w-16 h-7 text-xs"
+                  min={0}
+                />
+                <span className="text-xs text-muted-foreground">pts</span>
+                <button type="button" onClick={() => {
+                  const qs = (data.comprehension_questions || []).filter((_, idx) => idx !== i);
+                  onChange({ ...data, comprehension_questions: qs });
+                }} className="text-muted-foreground hover:text-destructive">
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0 w-8">Ans</span>
+                <Input
+                  value={q.correct_answer}
+                  onChange={e => {
+                    const qs = structuredClone(data.comprehension_questions || []);
+                    qs[i] = { ...qs[i], correct_answer: e.target.value };
+                    onChange({ ...data, comprehension_questions: qs });
+                  }}
+                  className="h-7 text-sm flex-1"
+                />
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const qs = [...(data.comprehension_questions || []), { id: `cq_${Date.now()}`, question: '', correct_answer: '', points: 1 }];
+          onChange({ ...data, comprehension_questions: qs });
+        }}>
+          + Add question
+        </Button>
+      </div>
     </div>
   );
 }
