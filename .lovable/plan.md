@@ -1,34 +1,53 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-## Plan: Fix Voice Mode — Speech Speed & Recognition Issues
+## Status: ✅ Complete (Step 12 added)
 
-**File:** `src/components/clinical-cases/sections/HistoryTakingSection.tsx`
+### Completed Steps
 
-### Changes
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-**1. Add `toast` import** (line 1 area)
-- Import `toast` from `sonner`
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-**2. Add new state variables** (after line 56):
-- `interimTranscript: string` — live partial transcript
-- `voiceErrorCount: number` — consecutive error tracker
-- `showVoiceFallbackInput: boolean` — fallback text input toggle
-- `voiceFallbackInput: string` — fallback input value
+### All Steps
 
-**3. Fix speech rate + cancel queued speech** (lines 97-101 and in `sendChatMessageInitial`):
-- Change `utterance.rate = 0.9` → `utterance.rate = 1.1`
-- Add `window.speechSynthesis.cancel()` before each `.speak()` call
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
-**4. Rewrite `toggleVoice` callback** (lines 115-151):
-- Set `recognition.interimResults = true`
-- `onresult`: update `interimTranscript` with interim results; only call `sendChatMessage` on final results; reset `voiceErrorCount` on success
-- `onaudiostart`: no-op (confirms mic working)
-- `onerror`: show toast with specific error (`not-allowed`, `no-speech`, `language-not-supported`); increment `voiceErrorCount`; if ≥ 2, set `showVoiceFallbackInput = true`
-- `onend`: clear `interimTranscript`
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-**5. Voice mode UI additions** (lines 414-427 area):
-- Below mic button: show animated pulsing dot + `interimTranscript` in real-time when `isListening`
-- When `showVoiceFallbackInput` is true: render text input + send button so student can type Arabic and get TTS responses via same `sendChatMessage`
-
-No other logic, layout, or functionality changes.
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt

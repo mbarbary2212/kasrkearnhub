@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   avatarUrl?: string;
@@ -54,6 +55,10 @@ export function HistoryTakingSection({
   const [isListening, setIsListening] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [voiceErrorCount, setVoiceErrorCount] = useState(0);
+  const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
+  const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -95,9 +100,10 @@ export function HistoryTakingSection({
 
       // Voice mode: speak the response
       if (selectedMode === 'voice' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(reply);
         utterance.lang = 'ar-EG';
-        utterance.rate = 0.9;
+        utterance.rate = 1.1;
         window.speechSynthesis.speak(utterance);
       }
     } catch (err) {
@@ -114,13 +120,14 @@ export function HistoryTakingSection({
   // ── Voice recognition ──────────────────────────────────
   const toggleVoice = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser.');
+      toast.error('Speech recognition is not supported in this browser.');
       return;
     }
 
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      setInterimTranscript('');
       return;
     }
 
@@ -128,21 +135,56 @@ export function HistoryTakingSection({
     const recognition = new SpeechRecognition();
     recognition.lang = 'ar-EG';
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+
+    recognition.onaudiostart = () => {
+      // Mic is capturing — no action needed
+    };
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setLastSpoken(transcript);
-      sendChatMessage(transcript);
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      setInterimTranscript(interim);
+      if (final) {
+        setLastSpoken(final);
+        setVoiceErrorCount(0);
+        sendChatMessage(final);
+      }
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      const errorMessages: Record<string, string> = {
+        'not-allowed': 'Microphone access denied. Please allow microphone permissions.',
+        'no-speech': 'No speech detected. Please try again.',
+        'language-not-supported': 'Arabic speech recognition is not supported on this device.',
+        'network': 'Network error. Please check your connection.',
+        'aborted': 'Speech recognition was aborted.',
+      };
+      toast.error(errorMessages[event.error] || `Speech error: ${event.error}`);
       setIsListening(false);
+      setInterimTranscript('');
+      setVoiceErrorCount(prev => {
+        const next = prev + 1;
+        if (next >= 2) {
+          setShowVoiceFallbackInput(true);
+          toast.info('Voice input unavailable. You can type your message instead.');
+        }
+        return next;
+      });
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      setInterimTranscript('');
     };
 
     recognitionRef.current = recognition;
@@ -422,9 +464,60 @@ export function HistoryTakingSection({
           >
             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            {isListening ? 'جاري الاستماع... اضغط لإيقاف' : 'اضغط للتحدث'}
-          </p>
+          {/* Listening indicator + interim transcript */}
+          {isListening && (
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                </span>
+                جاري الاستماع... اضغط لإيقاف
+              </div>
+              {interimTranscript && (
+                <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
+                  {interimTranscript}
+                </p>
+              )}
+            </div>
+          )}
+          {!isListening && (
+            <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
+          )}
+
+          {/* Fallback text input */}
+          {showVoiceFallbackInput && (
+            <div className="flex gap-2 w-full max-w-xs" dir="rtl">
+              <Input
+                value={voiceFallbackInput}
+                onChange={e => setVoiceFallbackInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (voiceFallbackInput.trim()) {
+                      sendChatMessage(voiceFallbackInput);
+                      setVoiceFallbackInput('');
+                    }
+                  }
+                }}
+                placeholder="اكتب سؤالك هنا..."
+                disabled={isSending}
+                className="text-sm"
+              />
+              <Button
+                size="icon"
+                onClick={() => {
+                  if (voiceFallbackInput.trim()) {
+                    sendChatMessage(voiceFallbackInput);
+                    setVoiceFallbackInput('');
+                  }
+                }}
+                disabled={!voiceFallbackInput.trim() || isSending}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
 
           <Button
             onClick={handleFinishInteraction}
@@ -502,9 +595,10 @@ export function HistoryTakingSection({
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
         if (mode === 'voice' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(reply);
           utterance.lang = 'ar-EG';
-          utterance.rate = 0.9;
+          utterance.rate = 1.1;
           window.speechSynthesis.speak(utterance);
         }
       })
