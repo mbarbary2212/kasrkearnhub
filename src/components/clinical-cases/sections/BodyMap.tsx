@@ -25,7 +25,7 @@ const REGION_ORDER: RegionDef[] = [
   { key: 'extra', type: 'misc' },
 ];
 
-// Uniform styling constants — no state-based color changes
+// Uniform styling constants
 const LABEL_BG = 'rgba(10, 32, 48, 0.85)';
 const LABEL_BORDER = 'rgba(91, 184, 204, 0.5)';
 const LABEL_TEXT = '#ffffff';
@@ -48,9 +48,9 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
       </div>
 
       <svg
-        viewBox="-50 -50 410 560"
+        viewBox="0 -55 310 560"
         className="w-full"
-        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '600px' }}
+        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '620px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}
@@ -64,28 +64,28 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {findings.general && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('general')}>
             <rect
-              x={30} y={-55} width={250} height={34} rx={17}
+              x={30} y={-50} width={250} height={34} rx={17}
               fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             />
             <text
-              x={155} y={-32} textAnchor="middle"
+              x={155} y={-27} textAnchor="middle"
               style={{ fontFamily: 'inherit', fontSize: '14px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               General Appearance
             </text>
-            <line x1={155} y1={-21} x2={155} y2={-8} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
-            <polygon points="151,-9 155,-1 159,-9" fill={LABEL_BORDER} opacity={0.5} />
+            <line x1={155} y1={-16} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
+            <polygon points="151,-4 155,4 159,-4" fill={LABEL_BORDER} opacity={0.5} />
           </g>
         )}
 
-        {/* ── HEAD / NECK — left label ── */}
+        {/* ── HEAD / NECK — left inside ── */}
         {findings.head_neck && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('head_neck')}>
             <rect x={110} y={5} width={90} height={140} rx={6} fill="transparent" />
-            <rect x={-78} y={50} width={130} height={36} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+            <rect x={10} y={50} width={110} height={32} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={-13} y={74} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '15px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+              x={65} y={72} textAnchor="middle"
+              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Head / Neck
             </text>
@@ -109,22 +109,22 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           </g>
         )}
 
-        {/* ── UPPER LIMB — left label ── */}
+        {/* ── UPPER LIMB — left inside ── */}
         {findings.upper_limbs && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('upper_limbs')}>
             <rect x={8} y={138} width={72} height={205} rx={6} fill="transparent" />
             <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={-78} y={136} width={130} height={36} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+            <rect x={10} y={148} width={110} height={32} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={-13} y={160} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '15px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+              x={65} y={170} textAnchor="middle"
+              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Upper limb
             </text>
           </g>
         )}
 
-        {/* ── VITALS — right label ── */}
+        {/* ── VITALS — right inside ── */}
         {findings.vital_signs && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('vital_signs')}>
             <rect
@@ -133,10 +133,10 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
               strokeWidth={1.2} pointerEvents="none"
             />
             <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={308} y={136} width={80} height={36} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+            <rect x={195} y={148} width={110} height={32} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={348} y={160} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '15px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+              x={250} y={170} textAnchor="middle"
+              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Vitals
             </text>
@@ -160,34 +160,34 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           </g>
         )}
 
-        {/* ── LOWER LIMB — left label ── */}
+        {/* ── LOWER LIMB — left inside ── */}
         {findings.lower_limbs && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('lower_limbs')}>
             <rect x={88} y={325} width={134} height={124} rx={6} fill="transparent" />
-            <rect x={-78} y={280} width={130} height={36} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+            <rect x={10} y={290} width={110} height={32} rx={6} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={-13} y={304} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '15px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+              x={65} y={312} textAnchor="middle"
+              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Lower limb
             </text>
           </g>
         )}
 
-        {/* ── MISC dashed pill ── */}
+        {/* ── MISC dashed pill — right inside ── */}
         <g style={{ cursor: hasExtra ? 'pointer' : 'default', opacity: hasExtra ? 1 : 0.5 }} onClick={() => hasExtra && onRegionClick('extra')}>
           <rect
-            x={240} y={276} width={90} height={36} rx={18}
+            x={195} y={290} width={110} height={32} rx={16}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             strokeDasharray="5,3"
           />
           <text
-            x={285} y={299} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '15px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={250} y={312} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             {extraLabel}
           </text>
-          <rect x={236} y={272} width={98} height={44} rx={18} fill="transparent" />
+          <rect x={191} y={286} width={118} height={40} rx={16} fill="transparent" />
         </g>
       </svg>
     </div>
