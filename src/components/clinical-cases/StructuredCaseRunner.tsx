@@ -275,6 +275,7 @@ export function StructuredCaseRunner({
         onCopy={e => e.preventDefault()}
         onPaste={e => e.preventDefault()}
         onCut={e => e.preventDefault()}
+        onContextMenu={e => e.preventDefault()}
       >
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -297,6 +298,8 @@ export function StructuredCaseRunner({
               avatarUrl={examinerAvatar?.image_url}
               avatarName={examinerAvatar?.name}
               historyInteractionMode={historyInteractionMode}
+              caseId={caseId}
+              studentName={studentName}
             />
           )}
         </CardContent>

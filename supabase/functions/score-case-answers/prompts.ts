@@ -11,14 +11,30 @@ export function buildScoringPrompt(
   const passRule = `\nIMPORTANT: If the student's answer is literally "pass" (case-insensitive) for any free-text field, award 0 points for that item with justification "Student chose to skip."\n`;
 
   switch (sectionType) {
-    case 'history_taking':
-      return (
-        base +
+    case 'history_taking': {
+      let prompt = base +
         `History mode: ${expectedData.mode}\n` +
         `Comprehension Questions with correct answers:\n${JSON.stringify(expectedData.comprehension_questions, null, 2)}\n\n` +
         `Score based on: accuracy of comprehension answers compared to correct_answer fields.` +
-        passRule
-      );
+        passRule;
+
+      // If conversation transcript is present, also evaluate history-taking quality
+      if (studentAnswer?.conversation_transcript && Array.isArray(studentAnswer.conversation_transcript) && studentAnswer.conversation_transcript.length > 0) {
+        const checklistSummary = expectedData.checklist
+          ? JSON.stringify(expectedData.checklist, null, 2)
+          : 'No checklist available';
+        prompt += `\n\nADDITIONAL: The student conducted an interactive conversation with the patient before answering these questions.\n` +
+          `Conversation transcript:\n${JSON.stringify(studentAnswer.conversation_transcript, null, 2)}\n\n` +
+          `History checklist items (what the student should have asked about):\n${checklistSummary}\n\n` +
+          `In your feedback, also comment on:\n` +
+          `1. Which checklist categories/items the student successfully elicited through their questions\n` +
+          `2. Which important items were missed\n` +
+          `3. Quality of questioning technique (open vs closed questions, systematic approach)\n` +
+          `The main score should still be based on comprehension answers, but include conversation quality in feedback and strengths/gaps.`;
+      }
+
+      return prompt;
+    }
 
     case 'physical_examination':
       return (
