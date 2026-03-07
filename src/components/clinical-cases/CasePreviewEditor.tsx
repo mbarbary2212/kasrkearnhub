@@ -1255,14 +1255,3 @@ function ConclusionEditor({ data, onChange }: { data: ConclusionSectionData; onC
     </div>
   );
 }
-          </div>
-          <p className="text-sm text-muted-foreground mb-2">{task.instruction}</p>
-          <div className="p-2 rounded bg-muted/50 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Model Answer:</p>
-            <p>{task.rubric.model_answer}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
