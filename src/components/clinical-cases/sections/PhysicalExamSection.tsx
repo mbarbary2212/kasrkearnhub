@@ -101,6 +101,7 @@ export function PhysicalExamSection({
     (previousAnswer?.findings_summary as string) || ''
   );
   const [topicModal, setTopicModal] = useState<TopicItem | null>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
