@@ -86,6 +86,14 @@ export function StructuredCaseRunner({
   const [isSubmittingSection, setIsSubmittingSection] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [startTime] = useState(Date.now());
+  const [studentName, setStudentName] = useState('');
+
+  // Fetch student name for watermark
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setStudentName(data?.user?.user_metadata?.full_name || data?.user?.email || '');
+    });
+  }, []);
 
   const currentSection = activeSections[currentIndex];
   const totalSections = activeSections.length;
