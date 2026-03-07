@@ -165,17 +165,17 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── MISC dashed pill — right inside ── */}
         <g style={{ cursor: hasExtra ? 'pointer' : 'default', opacity: hasExtra ? 1 : 0.5 }} onClick={() => hasExtra && onRegionClick('extra')}>
           <rect
-            x={220} y={340} width={75} height={28} rx={14}
+            x={220} y={340} width={75} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             strokeDasharray="5,3"
           />
           <text
-            x={257} y={359} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={257} y={340 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             {extraLabel}
           </text>
-          <rect x={216} y={336} width={83} height={36} rx={14} fill="transparent" />
+          <rect x={216} y={336} width={83} height={pillH + 8} rx={pillR} fill="transparent" />
         </g>
       </svg>
     </div>
