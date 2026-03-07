@@ -119,6 +119,9 @@ export function CasePreviewEditor() {
     if (caseData) {
       if (caseData.avatar_id) setSelectedAvatarId(caseData.avatar_id);
       setHistoryInteractionMode((caseData.history_interaction_mode as 'text' | 'voice') || 'text');
+      if (caseData.active_sections) {
+        setEnabledSections(caseData.active_sections as SectionType[]);
+      }
     }
   }, [caseData]);
 
