@@ -370,7 +370,7 @@ export function PhysicalExamSection({
 
       {/* ── Findings summary textarea (our scoring addition) ── */}
       {revealedCount > 0 && (
-        <div className="mt-4">
+        <div className="mt-4" ref={summaryRef}>
           <Label className="font-medium text-sm">Summarize your key examination findings</Label>
           <Textarea
             value={findingsSummary}
