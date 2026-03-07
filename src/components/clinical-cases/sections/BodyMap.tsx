@@ -48,9 +48,9 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
       </div>
 
       <svg
-        viewBox="0 -55 310 560"
+        viewBox="0 -55 310 580"
         className="w-full"
-        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '480px' }}
+        style={{ overflow: 'visible', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '500px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}
@@ -61,128 +61,114 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         />
 
         {/* ── GENERAL APPEARANCE pill ── */}
-        {findings.general && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('general')}>
-            <rect
-              x={55} y={-48} width={200} height={28} rx={14}
-              fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
-            />
-            <text
-              x={155} y={-29} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              General Appearance
-            </text>
-            <line x1={155} y1={-20} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
-            <polygon points="151,-4 155,4 159,-4" fill={LABEL_BORDER} opacity={0.5} />
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.general && onRegionClick('general')}>
+          <rect
+            x={55} y={-48} width={200} height={28} rx={14}
+            fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
+          />
+          <text
+            x={155} y={-29} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            General Appearance
+          </text>
+          <line x1={155} y1={-20} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
+          <polygon points="151,-4 155,4 159,-4" fill={LABEL_BORDER} opacity={0.5} />
+        </g>
 
         {/* ── HEAD / NECK — left inside ── */}
-        {findings.head_neck && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('head_neck')}>
-            <rect x={110} y={5} width={90} height={140} rx={6} fill="transparent" />
-            <rect x={15} y={52} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
-            <text
-              x={62} y={71} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Head / Neck
-            </text>
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.head_neck && onRegionClick('head_neck')}>
+          <rect x={110} y={5} width={90} height={140} rx={6} fill="transparent" />
+          <rect x={15} y={52} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <text
+            x={62} y={71} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Head / Neck
+          </text>
+        </g>
 
         {/* ── CHEST pill on body ── */}
-        {findings.chest && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('chest')}>
-            <rect
-              x={118} y={100} width={74} height={28} rx={14}
-              fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
-            />
-            <text
-              x={155} y={119} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Chest
-            </text>
-            <rect x={88} y={88} width={134} height={80} rx={6} fill="transparent" />
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.chest && onRegionClick('chest')}>
+          <rect
+            x={118} y={100} width={74} height={28} rx={14}
+            fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
+          />
+          <text
+            x={155} y={119} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Chest
+          </text>
+          <rect x={88} y={88} width={134} height={80} rx={6} fill="transparent" />
+        </g>
 
         {/* ── UPPER LIMB — left inside ── */}
-        {findings.upper_limbs && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('upper_limbs')}>
-            <rect x={8} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={15} y={150} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
-            <text
-              x={62} y={169} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Upper limb
-            </text>
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.upper_limbs && onRegionClick('upper_limbs')}>
+          <rect x={8} y={138} width={72} height={205} rx={6} fill="transparent" />
+          <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
+          <rect x={15} y={150} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <text
+            x={62} y={169} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Upper limb
+          </text>
+        </g>
 
         {/* ── VITALS — right inside ── */}
-        {findings.vital_signs && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('vital_signs')}>
-            <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={200} y={150} width={75} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
-            <text
-              x={237} y={169} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Vitals
-            </text>
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.vital_signs && onRegionClick('vital_signs')}>
+          <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
+          <rect x={220} y={150} width={75} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <text
+            x={257} y={169} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Vitals
+          </text>
+        </g>
 
-        {/* ── ABDOMEN pill ── */}
-        {findings.abdomen && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('abdomen')}>
-            <rect
-              x={112} y={190} width={86} height={28} rx={14}
-              fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
-            />
-            <text
-              x={155} y={209} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Abdomen
-            </text>
-            <rect x={88} y={178} width={134} height={80} rx={6} fill="transparent" />
-          </g>
-        )}
+        {/* ── ABDOMEN pill (centered on body) ── */}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.abdomen && onRegionClick('abdomen')}>
+          <rect
+            x={112} y={195} width={86} height={28} rx={14}
+            fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
+          />
+          <text
+            x={155} y={214} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Abdomen
+          </text>
+          <rect x={88} y={183} width={134} height={80} rx={6} fill="transparent" />
+        </g>
 
         {/* ── LOWER LIMB — left inside ── */}
-        {findings.lower_limbs && (
-          <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('lower_limbs')}>
-            <rect x={88} y={325} width={134} height={124} rx={6} fill="transparent" />
-            <rect x={15} y={292} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
-            <text
-              x={62} y={311} textAnchor="middle"
-              style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
-            >
-              Lower limb
-            </text>
-          </g>
-        )}
+        <g style={{ cursor: 'pointer' }} onClick={() => findings.lower_limbs && onRegionClick('lower_limbs')}>
+          <rect x={88} y={325} width={134} height={160} rx={6} fill="transparent" />
+          <rect x={15} y={340} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <text
+            x={62} y={359} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+          >
+            Lower limb
+          </text>
+        </g>
 
         {/* ── MISC dashed pill — right inside ── */}
         <g style={{ cursor: hasExtra ? 'pointer' : 'default', opacity: hasExtra ? 1 : 0.5 }} onClick={() => hasExtra && onRegionClick('extra')}>
           <rect
-            x={200} y={292} width={75} height={28} rx={14}
+            x={220} y={340} width={75} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             strokeDasharray="5,3"
           />
           <text
-            x={237} y={311} textAnchor="middle"
+            x={257} y={359} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             {extraLabel}
           </text>
-          <rect x={196} y={288} width={83} height={36} rx={14} fill="transparent" />
+          <rect x={216} y={336} width={83} height={36} rx={14} fill="transparent" />
         </g>
       </svg>
     </div>
