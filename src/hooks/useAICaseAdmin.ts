@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -45,6 +46,13 @@ export interface AICaseSummaryStats {
   totalCost: number;
 }
 
+export interface AICaseAggregate {
+  totalAttempts: number;
+  avgScore: number;
+  completionRate: number;
+  flaggedCount: number;
+}
+
 function useRoleScope() {
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin, isTopicAdmin, moduleAdminModuleIds, topicAssignments } = useAuthContext();
   return { isSuperAdmin, isPlatformAdmin, isModuleAdmin, isTopicAdmin, moduleAdminModuleIds, topicAssignments };
@@ -56,8 +64,6 @@ export function useAICaseAttempts(filters: AICaseFilters) {
   return useQuery({
     queryKey: ['ai-case-attempts', filters, scope.moduleAdminModuleIds],
     queryFn: async () => {
-      // Query the view directly via RPC or from the table
-      // Since the view may not be in the generated types, use .from() with type assertion
       let query = supabase
         .from('ai_case_attempt_summary' as any)
         .select('*')
@@ -116,6 +122,38 @@ export function useAICaseSummaryStats(attempts: AICaseAttemptRow[] | undefined):
     flaggedCount,
     totalCost: Math.round(totalCost * 100) / 100,
   };
+}
+
+export function useAICaseAggregates(attempts: AICaseAttemptRow[] | undefined): Map<string, AICaseAggregate> {
+  return useMemo(() => {
+    const map = new Map<string, AICaseAggregate>();
+    if (!attempts) return map;
+
+    const grouped = new Map<string, AICaseAttemptRow[]>();
+    for (const a of attempts) {
+      const arr = grouped.get(a.case_id) || [];
+      arr.push(a);
+      grouped.set(a.case_id, arr);
+    }
+
+    for (const [caseId, rows] of grouped) {
+      const completed = rows.filter(r => r.is_completed);
+      const avgScore = completed.length > 0
+        ? Math.round(completed.reduce((s, r) => s + Number(r.score), 0) / completed.length * 10) / 10
+        : 0;
+      const completionRate = Math.round((completed.length / rows.length) * 100);
+      const flaggedCount = rows.filter(r => r.flag_for_review).length;
+
+      map.set(caseId, {
+        totalAttempts: rows.length,
+        avgScore,
+        completionRate,
+        flaggedCount,
+      });
+    }
+
+    return map;
+  }, [attempts]);
 }
 
 export function useAICaseTranscript(attemptId: string | null) {
