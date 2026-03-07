@@ -156,6 +156,23 @@ export function useAICaseAggregates(attempts: AICaseAttemptRow[] | undefined): M
   }, [attempts]);
 }
 
+export function useAICaseSectionAnswers(attemptId: string | null) {
+  return useQuery({
+    queryKey: ['ai-case-section-answers', attemptId],
+    queryFn: async () => {
+      if (!attemptId) return [];
+      const { data, error } = await supabase
+        .from('case_section_answers')
+        .select('id, section_type, student_answer, score, max_score, ai_feedback, is_scored')
+        .eq('attempt_id', attemptId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!attemptId,
+  });
+}
+
 export function useAICaseTranscript(attemptId: string | null) {
   return useQuery({
     queryKey: ['ai-case-transcript', attemptId],
