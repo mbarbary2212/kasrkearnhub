@@ -91,16 +91,16 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── CHEST pill on body ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.chest && onRegionClick('chest')}>
           <rect
-            x={118} y={100} width={74} height={28} rx={14}
+            x={128} y={100} width={74} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
-            x={155} y={119} textAnchor="middle"
+            x={165} y={119} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Chest
           </text>
-          <rect x={88} y={88} width={134} height={80} rx={6} fill="transparent" />
+          <rect x={98} y={88} width={134} height={80} rx={6} fill="transparent" />
         </g>
 
         {/* ── UPPER LIMB — left inside ── */}
@@ -131,16 +131,16 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── ABDOMEN pill (centered on body) ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.abdomen && onRegionClick('abdomen')}>
           <rect
-            x={112} y={195} width={86} height={28} rx={14}
+            x={122} y={195} width={86} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
           />
           <text
-            x={155} y={214} textAnchor="middle"
+            x={165} y={214} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Abdomen
           </text>
-          <rect x={88} y={183} width={134} height={80} rx={6} fill="transparent" />
+          <rect x={98} y={183} width={134} height={80} rx={6} fill="transparent" />
         </g>
 
         {/* ── LOWER LIMB — left inside ── */}
