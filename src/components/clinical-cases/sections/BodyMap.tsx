@@ -86,10 +86,10 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── HEAD / NECK — left inside ── */}
         <g style={{ cursor: 'pointer' }} onClick={() => findings.head_neck && onRegionClick('head_neck')}>
           <rect x={110} y={5} width={90} height={140} rx={6} fill="transparent" />
-          <rect x={15} y={52} width={95} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+          <rect x={15} y={52} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
-            x={62} y={71} textAnchor="middle"
-            style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
+            x={62} y={52 + pillH * 0.68} textAnchor="middle"
+            style={{ fontFamily: 'inherit', fontSize: fs, fontWeight: fw, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             Head / Neck
           </text>
