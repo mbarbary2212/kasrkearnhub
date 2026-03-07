@@ -31,7 +31,7 @@ const LABEL_BORDER = 'rgba(91, 184, 204, 0.5)';
 const LABEL_TEXT = '#ffffff';
 const LABEL_SW = 1.5;
 
-export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionClick }: BodyMapProps) {
+export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionClick, compact = false }: BodyMapProps & { compact?: boolean }) {
   const activeRegions = useMemo(() => REGION_ORDER.filter(r => !!findings[r.key]), [findings]);
 
   const extraFinding = findings.extra;
