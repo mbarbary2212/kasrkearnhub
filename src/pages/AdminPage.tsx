@@ -2197,75 +2197,31 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* Curriculum Tab */}
-          {(isSuperAdmin || isPlatformAdmin) && (
-            <TabsContent value="curriculum">
-              <CurriculumTab modules={modules} years={years} setModules={setModules} />
-            </TabsContent>
-          )}
-
-          {/* Announcements Tab */}
+          {/* Curriculum & Sources Tab */}
           {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="announcements">
-              <AnnouncementsTab 
-                modules={modules.map(m => ({ id: m.id, name: m.name }))} 
-                years={years.map(y => ({ id: y.id, name: y.name }))}
+            <TabsContent value="sources">
+              <CurriculumSourcesTab
+                modules={modules}
+                years={years}
+                setModules={setModules}
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
             </TabsContent>
           )}
 
-          {/* Question Analytics Tab */}
-          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="question-analytics">
-              <QuestionAnalyticsTabs 
-                modules={modules} 
-                moduleAdminModuleIds={moduleAdminModuleIds}
-              />
-            </TabsContent>
-          )}
-
-          {/* Settings Tab */}
-          {isPlatformAdmin && (
-            <TabsContent value="settings">
-              <PlatformSettingsTab />
-            </TabsContent>
-          )}
-
-          {/* AI Settings Tab - Super Admin Only */}
-          {isSuperAdmin && (
-            <TabsContent value="ai-settings">
-              <div className="space-y-6">
-                <AISettingsPanel />
-                <AIBatchJobsList />
-              </div>
-            </TabsContent>
-          )}
-
-          {/* PDF Library Tab */}
-          {(isPlatformAdmin || isModuleAdmin) && (
-            <TabsContent value="pdf-library">
-              <PDFLibraryTab moduleAdminModuleIds={moduleAdminModuleIds} />
-            </TabsContent>
-          )}
-
-          {/* Help & Templates Tab */}
-          <TabsContent value="help">
-            <HelpTemplatesTab />
-          </TabsContent>
-
-          {/* Integrity Check Tab - All Admins */}
-          {(isSuperAdmin || isPlatformAdmin || isTopicAdmin) && (
-            <TabsContent value="integrity">
-              <IntegrityCheckTab />
-              {isSuperAdmin && <ArchiveLegacyOsceCard />}
-            </TabsContent>
-          )}
-
-          {/* AI Cases Analytics Tab */}
+          {/* Analytics Tab (Question Analytics + Integrity + AI Cases) */}
           {(isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin) && (
-            <TabsContent value="ai-cases">
-              <AICasesAdminTab />
+            <TabsContent value="analytics">
+              <ContentAnalyticsTab
+                modules={modules.map(m => ({ id: m.id, name: m.name, year_id: m.year_id }))}
+                moduleAdminModuleIds={moduleAdminModuleIds}
+                integrityContent={
+                  <>
+                    <IntegrityCheckTab />
+                    {isSuperAdmin && <ArchiveLegacyOsceCard />}
+                  </>
+                }
+              />
             </TabsContent>
           )}
 
