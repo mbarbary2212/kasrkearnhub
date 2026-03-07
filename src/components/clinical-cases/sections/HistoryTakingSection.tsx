@@ -100,9 +100,10 @@ export function HistoryTakingSection({
 
       // Voice mode: speak the response
       if (selectedMode === 'voice' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(reply);
         utterance.lang = 'ar-EG';
-        utterance.rate = 0.9;
+        utterance.rate = 1.1;
         window.speechSynthesis.speak(utterance);
       }
     } catch (err) {
