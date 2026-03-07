@@ -21,7 +21,7 @@ import {
 import { useVirtualPatientCase, useStartVirtualPatientAttempt, useVirtualPatientAttempts } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { getExaminerAvatar } from '@/lib/examinerAvatars';
+import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 
 const SESSION_KEY = 'ai_case_session';
 
