@@ -1127,19 +1127,37 @@ function MonitoringEditor({ data, onChange }: { data: MonitoringSectionData; onC
         <Label className="text-xs text-muted-foreground">Model Answer</Label>
         <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
-      {data.rubric?.expected_points && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
-          <div className="mt-1 space-y-1">
-            {data.rubric.expected_points.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Check className="w-3 h-3 text-primary shrink-0" />
-                <span>{p}</span>
-              </div>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric?.expected_points?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.rubric?.expected_points || []).map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary shrink-0" />
+              <Input
+                value={p}
+                onChange={e => {
+                  const pts = [...(data.rubric?.expected_points || [])];
+                  pts[i] = e.target.value;
+                  onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+                }}
+                className="h-7 text-sm flex-1"
+              />
+              <button type="button" onClick={() => {
+                const pts = (data.rubric?.expected_points || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const pts = [...(data.rubric?.expected_points || []), ''];
+          onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+        }}>
+          + Add point
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1155,34 +1173,88 @@ function AdviceEditor({ data, onChange }: { data: AdviceSectionData; onChange: (
         <Label className="text-xs text-muted-foreground">Model Answer</Label>
         <Textarea value={data.rubric?.model_answer || ''} onChange={e => onChange({ ...data, rubric: { ...data.rubric, model_answer: e.target.value } })} rows={3} className="mt-1 text-sm" />
       </div>
-      {data.rubric?.expected_points && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric.expected_points.length})</Label>
-          <div className="mt-1 space-y-1">
-            {data.rubric.expected_points.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Check className="w-3 h-3 text-primary shrink-0" />
-                <span>{p}</span>
-              </div>
-            ))}
-          </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Expected Points ({data.rubric?.expected_points?.length || 0})</Label>
+        <div className="mt-1 space-y-1">
+          {(data.rubric?.expected_points || []).map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary shrink-0" />
+              <Input
+                value={p}
+                onChange={e => {
+                  const pts = [...(data.rubric?.expected_points || [])];
+                  pts[i] = e.target.value;
+                  onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+                }}
+                className="h-7 text-sm flex-1"
+              />
+              <button type="button" onClick={() => {
+                const pts = (data.rubric?.expected_points || []).filter((_, idx) => idx !== i);
+                onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+              }} className="text-muted-foreground hover:text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => {
+          const pts = [...(data.rubric?.expected_points || []), ''];
+          onChange({ ...data, rubric: { ...data.rubric, expected_points: pts } });
+        }}>
+          + Add point
+        </Button>
+      </div>
     </div>
   );
 }
 
 function ConclusionEditor({ data, onChange }: { data: ConclusionSectionData; onChange: (v: any) => void }) {
   const tasks = data.tasks || [];
+  const updateTask = (i: number, field: string, value: any) => {
+    const ts = structuredClone(tasks);
+    ts[i] = { ...ts[i], [field]: value };
+    onChange({ ...data, tasks: ts });
+  };
+  const updateTaskRubric = (i: number, field: string, value: any) => {
+    const ts = structuredClone(tasks);
+    ts[i].rubric = { ...ts[i].rubric, [field]: value };
+    onChange({ ...data, tasks: ts });
+  };
+  const removeTask = (i: number) => {
+    onChange({ ...data, tasks: tasks.filter((_, idx) => idx !== i) });
+  };
+  const addTask = () => {
+    const t = { id: `task_${Date.now()}`, type: 'learning_point' as const, label: 'New task', instruction: '', rubric: { model_answer: '', points: 1 } };
+    onChange({ ...data, tasks: [...tasks, t] });
+  };
+
   return (
     <div className="space-y-3">
       <Label className="text-xs text-muted-foreground">Tasks ({tasks.length})</Label>
       {tasks.map((task, i) => (
-        <div key={task.id} className="border rounded p-3">
-          <div className="flex items-center gap-2 mb-1">
+        <div key={task.id} className="border rounded p-3 space-y-2">
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">{task.type.replace(/_/g, ' ')}</Badge>
-            <span className="font-medium text-sm">{task.label}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{task.rubric.points} pts</span>
+            <Input value={task.label} onChange={e => updateTask(i, 'label', e.target.value)} className="h-7 text-sm flex-1 font-medium" />
+            <Input type="number" value={task.rubric.points} onChange={e => updateTaskRubric(i, 'points', parseInt(e.target.value) || 0)} className="w-14 h-7 text-xs" min={0} />
+            <span className="text-xs text-muted-foreground">pts</span>
+            <button type="button" onClick={() => removeTask(i)} className="text-muted-foreground hover:text-destructive">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <Textarea value={task.instruction} onChange={e => updateTask(i, 'instruction', e.target.value)} rows={2} className="text-sm" placeholder="Instruction" />
+          <div>
+            <Label className="text-xs text-muted-foreground">Model Answer</Label>
+            <Textarea value={task.rubric.model_answer} onChange={e => updateTaskRubric(i, 'model_answer', e.target.value)} rows={2} className="mt-1 text-sm" />
+          </div>
+        </div>
+      ))}
+      <Button variant="ghost" size="sm" className="text-xs" onClick={addTask}>
+        + Add task
+      </Button>
+    </div>
+  );
+}
           </div>
           <p className="text-sm text-muted-foreground mb-2">{task.instruction}</p>
           <div className="p-2 rounded bg-muted/50 text-sm text-muted-foreground">
