@@ -222,7 +222,7 @@ export function CasePreviewEditor() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
         <p className="text-muted-foreground">Case not found.</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/admin?tab=ai-cases')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
         </Button>
       </div>
