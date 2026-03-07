@@ -294,6 +294,87 @@ export function CasePreviewEditor() {
 
       <Separator />
 
+      {/* Avatar Picker + History Interaction Mode */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Card className="flex-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Examiner Avatar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-4 gap-2">
+              {avatarList.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => { setSelectedAvatarId(a.id); setHasChanges(true); }}
+                  className={cn(
+                    'flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all',
+                    selectedAvatarId === a.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-transparent hover:border-muted-foreground/20'
+                  )}
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={a.image} alt={a.name} />
+                    <AvatarFallback>{a.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-center truncate w-full">{a.name}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setRequestAvatarOpen(true)}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              Can't find the right avatar? Contact platform admin
+            </button>
+          </CardContent>
+        </Card>
+
+        <Card className="sm:w-56">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">History Interaction</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={historyInteractionMode}
+              onValueChange={(v) => { setHistoryInteractionMode(v as 'text' | 'voice'); setHasChanges(true); }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text History</SelectItem>
+                <SelectItem value="voice">Voice History</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              {historyInteractionMode === 'text'
+                ? 'Student types questions to the patient'
+                : 'Student speaks via microphone'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Request Avatar Dialog */}
+      <Dialog open={requestAvatarOpen} onOpenChange={setRequestAvatarOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request New Avatar</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Describe the avatar you need..."
+            value={requestMessage}
+            onChange={(e) => setRequestMessage(e.target.value)}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestAvatarOpen(false)}>Cancel</Button>
+            <Button onClick={handleRequestAvatar} disabled={!requestMessage.trim()}>Send Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* No content yet — two options */}
       {!generatedData && !editedData && !generateCase.isPending && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
