@@ -540,7 +540,7 @@ export function StructuredCaseCreator({
               <div>
                 <Label>Examiner Avatar</Label>
                 <div className="grid grid-cols-4 gap-3 mt-2">
-                  {EXAMINER_AVATARS.map(exam => (
+                  {avatarList.map(exam => (
                     <button
                       key={exam.id}
                       type="button"
