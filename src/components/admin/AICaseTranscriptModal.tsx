@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, Clock, MessageSquare, DollarSign, CheckCircle2, Flag, Printer } from 'lucide-react';
-import { useAICaseTranscript, useFlagAttempt, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AlertTriangle, Clock, MessageSquare, DollarSign, CheckCircle2, Flag, Printer, ChevronDown, ChevronRight, XCircle, Layers } from 'lucide-react';
+import { useAICaseTranscript, useAICaseSectionAnswers, useFlagAttempt, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
+import { SectionType, SECTION_LABELS } from '@/types/structuredCase';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface AICaseTranscriptModalProps {
   attempt: AICaseAttemptRow | null;
@@ -30,8 +33,91 @@ function ScoreBadge({ score, completed }: { score: number; completed: boolean })
   return <Badge className={color}>{Math.round(score)}%</Badge>;
 }
 
+function parseFeedback(raw: string | null): {
+  feedback: string;
+  justification: string;
+  strengths: string[];
+  gaps: string[];
+} {
+  if (!raw) return { feedback: '', justification: '', strengths: [], gaps: [] };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      feedback: parsed.feedback || '',
+      justification: parsed.justification || '',
+      strengths: parsed.strengths || [],
+      gaps: parsed.gaps || [],
+    };
+  } catch {
+    return { feedback: raw, justification: '', strengths: [], gaps: [] };
+  }
+}
+
+function SectionAnswerCard({ answer }: { answer: any }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const label = SECTION_LABELS[answer.section_type as SectionType] || answer.section_type;
+  const scored = answer.is_scored;
+  const score = Number(answer.score || 0);
+  const maxScore = Number(answer.max_score || 0);
+  const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  const { feedback, justification, strengths, gaps } = parseFeedback(answer.ai_feedback);
+
+  const scoreColor = pct >= 70 ? 'text-green-700' : pct >= 50 ? 'text-amber-700' : 'text-red-700';
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+          <div className="flex items-center gap-2">
+            {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            <span className="text-sm font-medium">{label}</span>
+          </div>
+          {scored ? (
+            <Badge variant="outline" className={cn('text-xs', scoreColor)}>
+              {score}/{maxScore}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-xs">Pending</Badge>
+          )}
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="ml-6 mt-1 mb-3 space-y-2 text-sm">
+          {justification && (
+            <p className="text-muted-foreground italic">{justification}</p>
+          )}
+          {strengths.length > 0 && (
+            <div className="space-y-1">
+              {strengths.map((s, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-green-700 dark:text-green-400">
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{s}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {gaps.length > 0 && (
+            <div className="space-y-1">
+              {gaps.map((g, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-red-600 dark:text-red-400">
+                  <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{g}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {!justification && strengths.length === 0 && gaps.length === 0 && feedback && (
+            <p className="text-muted-foreground">{feedback}</p>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: AICaseTranscriptModalProps) {
-  const { data: messages, isLoading } = useAICaseTranscript(attempt?.attempt_id ?? null);
+  const { data: messages, isLoading: messagesLoading } = useAICaseTranscript(attempt?.attempt_id ?? null);
+  const { data: sectionAnswers, isLoading: sectionsLoading } = useAICaseSectionAnswers(attempt?.attempt_id ?? null);
   const flagMutation = useFlagAttempt();
   const [flagReason, setFlagReason] = useState('');
   const [showFlagForm, setShowFlagForm] = useState(false);
@@ -48,6 +134,10 @@ export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: 
     } catch { toast.error('Failed to flag attempt'); }
   };
 
+  const isLoading = messagesLoading || sectionsLoading;
+  const hasMessages = messages && messages.length > 0;
+  const hasSections = sectionAnswers && sectionAnswers.length > 0;
+  const isStructured = !hasMessages && hasSections;
   const turnsUsed = Math.ceil((attempt.message_count || 0) / 2);
 
   return (
@@ -71,8 +161,17 @@ export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: 
             <span>{formatDuration(attempt.duration_seconds)}</span>
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>{turnsUsed} / {attempt.max_turns}</span>
+            {isStructured ? (
+              <>
+                <Layers className="w-3.5 h-3.5" />
+                <span>{sectionAnswers?.length || 0} sections</span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>{turnsUsed} / {attempt.max_turns}</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <DollarSign className="w-3.5 h-3.5" />
@@ -87,7 +186,7 @@ export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: 
         {/* Scrollable content */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-6 space-y-4">
-            {/* Debrief summary */}
+            {/* Debrief summary (AI chat cases) */}
             {attempt.debrief_summary && (
               <div className="rounded-lg border bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800 p-4">
                 <h4 className="text-sm font-semibold text-teal-800 dark:text-teal-300 mb-2">AI Debrief Summary</h4>
@@ -95,16 +194,23 @@ export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: 
               </div>
             )}
 
-            {/* Transcript */}
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading transcript...</p>
-            ) : messages && messages.length > 0 ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : isStructured ? (
+              /* Structured case: section answers */
+              <div className="space-y-2">
+                {sectionAnswers!.map((answer) => (
+                  <SectionAnswerCard key={answer.id} answer={answer} />
+                ))}
+              </div>
+            ) : hasMessages ? (
+              /* AI chat case: transcript */
               <div className="space-y-3">
-                {messages.map((msg, i) => {
+                {messages!.map((msg, i) => {
                   const isStudent = msg.role === 'user';
                   const isSystem = msg.role === 'system';
                   const structured = msg.structured_data as Record<string, unknown> | null;
-                  const showTurnDivider = i > 0 && msg.turn_number !== (messages[i - 1]?.turn_number);
+                  const showTurnDivider = i > 0 && msg.turn_number !== (messages![i - 1]?.turn_number);
 
                   return (
                     <div key={msg.id}>
@@ -144,7 +250,7 @@ export function AICaseTranscriptModal({ attempt, open, onOpenChange, canFlag }: 
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No messages found for this attempt.</p>
+              <p className="text-sm text-muted-foreground">No data found for this attempt.</p>
             )}
           </div>
         </ScrollArea>
