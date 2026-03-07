@@ -153,8 +153,9 @@ export function PhysicalExamSection({
         className="flex items-center justify-between px-6 py-3 rounded-t-lg"
         style={{ background: 'linear-gradient(135deg, #0d3f4f 0%, #1a7a8a 100%)' }}
       >
-        <p className="text-white/70 text-xs">
-          Click any region to reveal findings · Write a summary to score
+        <p className="text-white/80 text-xs">
+          Click any region to reveal findings ·{' '}
+          <span className="text-white font-semibold underline underline-offset-2">Write a summary to score</span>
         </p>
         <div
           className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap"
