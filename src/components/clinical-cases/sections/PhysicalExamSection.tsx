@@ -70,7 +70,8 @@ export function PhysicalExamSection({
     for (const [key, val] of Object.entries(legacyRegions)) {
       const regionKey = mapLegacyKey(key);
       const text = val.finding || val.text || '';
-      const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      let label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      if (regionKey === 'extra' && label.toLowerCase().includes('wound')) label = 'Wound';
 
       if (converted[regionKey]) {
         // Merge into existing region (e.g. abdomen_inspection + abdomen_palpation)
@@ -171,7 +172,7 @@ export function PhysicalExamSection({
         <div
           className="w-[340px] shrink-0 flex flex-col items-center"
           style={{
-            background: '#0b1a2a',
+            background: 'linear-gradient(180deg, #0d2a42 0%, #154a6e 35%, #1a6ea0 50%, #154a6e 75%, #0a1e30 100%)',
           }}
         >
           <BodyMap
