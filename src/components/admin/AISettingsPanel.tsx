@@ -122,6 +122,11 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
     );
   }
 
+  // If showRules is 'only', render just the rules section
+  if (showRules === 'only') {
+    return <ContentRulesSection />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Superadmin Global AI Policy */}
@@ -296,8 +301,8 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
-      {/* Content Type Rules Section */}
-      <ContentRulesSection />
+      {/* Content Type Rules Section — only if showRules is true */}
+      {showRules && <ContentRulesSection />}
     </div>
   );
 }
