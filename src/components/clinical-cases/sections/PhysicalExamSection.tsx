@@ -101,6 +101,7 @@ export function PhysicalExamSection({
     (previousAnswer?.findings_summary as string) || ''
   );
   const [topicModal, setTopicModal] = useState<TopicItem | null>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -155,7 +156,13 @@ export function PhysicalExamSection({
       >
         <p className="text-white/80 text-xs">
           Click any region to reveal findings ·{' '}
-          <span className="text-white font-semibold underline underline-offset-2">Write a summary to score</span>
+          <button
+            type="button"
+            className="text-white font-semibold underline underline-offset-2 hover:text-white/90"
+            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          >
+            Write a summary to score
+          </button>
         </p>
         <div
           className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap"
@@ -178,7 +185,7 @@ export function PhysicalExamSection({
         <div
           className={cn(
             'shrink-0 flex flex-col items-center overflow-hidden',
-            isMobile ? 'w-full max-h-[280px]' : 'w-[320px]'
+            isMobile ? 'w-full' : 'w-[320px]'
           )}
           style={{
             background: 'radial-gradient(ellipse at 50% 45%, #1b5a7a 0%, #0f3a54 40%, #0a2438 70%, #071a2b 100%)',
@@ -363,7 +370,7 @@ export function PhysicalExamSection({
 
       {/* ── Findings summary textarea (our scoring addition) ── */}
       {revealedCount > 0 && (
-        <div className="mt-4">
+        <div className="mt-4" ref={summaryRef}>
           <Label className="font-medium text-sm">Summarize your key examination findings</Label>
           <Textarea
             value={findingsSummary}
