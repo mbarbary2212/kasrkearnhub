@@ -1,59 +1,52 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-# Step 1: Database Migration
+## Status: ✅ Complete
 
-Mohamed, here's the migration for Step 1 — two changes only, no code files touched.
+### Completed Steps
 
-## Changes
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-### 1. Create `examiner_avatars` table
-- `id SERIAL PRIMARY KEY`, `name TEXT NOT NULL`, `image_url TEXT NOT NULL`, `uploaded_by UUID` (FK to auth.users), `is_active BOOLEAN DEFAULT true`, `display_order INT DEFAULT 0`, `created_at TIMESTAMPTZ DEFAULT now()`
-- RLS enabled:
-  - **SELECT** for authenticated: `is_active = true` (all users see active avatars)
-  - **ALL** for platform_admin+: uses `is_platform_admin_or_higher(auth.uid())`
-- Seed 4 rows matching current hardcoded avatars (pointing to `osce-images` bucket paths — the actual image files will need uploading separately, or we reference the Vite-bundled asset paths for now)
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-### 2. Add `history_interaction_mode` column to `virtual_patient_cases`
-- `TEXT DEFAULT 'text'` with a CHECK constraint: `history_interaction_mode IN ('voice', 'text')`
-- All existing rows automatically get `'text'`
+### All Steps
 
-### SQL Migration
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
 
-```sql
--- 1. examiner_avatars table
-CREATE TABLE public.examiner_avatars (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  image_url TEXT NOT NULL,
-  uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  display_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-ALTER TABLE public.examiner_avatars ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can view active avatars"
-  ON public.examiner_avatars FOR SELECT TO authenticated
-  USING (is_active = true);
-
-CREATE POLICY "Platform admins can manage avatars"
-  ON public.examiner_avatars FOR ALL TO authenticated
-  USING (public.is_platform_admin_or_higher(auth.uid()))
-  WITH CHECK (public.is_platform_admin_or_higher(auth.uid()));
-
--- Seed with existing 4 avatars
-INSERT INTO public.examiner_avatars (id, name, image_url, display_order) VALUES
-  (1, 'Dr. Sarah', '/examiner-avatars/examiner-1.png', 1),
-  (2, 'Dr. Laylah', '/examiner-avatars/examiner-2.png', 2),
-  (3, 'Dr. Omar', '/examiner-avatars/examiner-3.png', 3),
-  (4, 'Dr. Hani', '/examiner-avatars/examiner-4.png', 4);
-
--- 2. Add history_interaction_mode to virtual_patient_cases
-ALTER TABLE public.virtual_patient_cases
-  ADD COLUMN history_interaction_mode TEXT NOT NULL DEFAULT 'text'
-  CONSTRAINT chk_history_interaction_mode CHECK (history_interaction_mode IN ('voice', 'text'));
-```
-
-**Note on seed image_url**: The seed URLs are placeholders. Once the avatar management UI is built (Step 3), platform admins will upload real images to the `avatars` storage bucket and the URLs will point there. For now the app continues using the Vite-bundled assets via `getExaminerAvatar()` — no code changes in this step.
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
