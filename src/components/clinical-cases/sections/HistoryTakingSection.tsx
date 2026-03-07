@@ -4,10 +4,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Loader2, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Loader2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
+
+interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
+  avatarUrl?: string;
+  avatarName?: string;
+  historyInteractionMode?: string;
+}
 
 export function HistoryTakingSection({
   data,
@@ -15,11 +22,15 @@ export function HistoryTakingSection({
   isSubmitting,
   readOnly,
   previousAnswer,
-}: SectionComponentProps<HistorySectionData>) {
+  avatarUrl,
+  avatarName,
+  historyInteractionMode,
+}: HistoryTakingProps) {
   const [showHandover, setShowHandover] = useState(true);
   const [answers, setAnswers] = useState<Record<string, string>>(
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
 
   const handover = data.atmist_handover;
   const questions = data.comprehension_questions || [];
@@ -36,6 +47,27 @@ export function HistoryTakingSection({
 
   return (
     <div className="space-y-5">
+      {/* Examiner Avatar */}
+      {avatarUrl && (
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'rounded-full',
+            isVoiceActive && historyInteractionMode === 'voice' && 'animate-pulse-ring'
+          )}>
+            <Avatar className="w-12 h-12 border-2 border-primary/20">
+              <AvatarImage src={avatarUrl} alt={avatarName || 'Examiner'} />
+              <AvatarFallback>{avatarName?.charAt(4) || 'E'}</AvatarFallback>
+            </Avatar>
+          </div>
+          <div>
+            <p className="text-sm font-medium">{avatarName || 'Examiner'}</p>
+            <p className="text-xs text-muted-foreground">
+              {historyInteractionMode === 'voice' ? 'Voice Mode' : 'Text Mode'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ATMIST Handover */}
       {handover && (
         <div>

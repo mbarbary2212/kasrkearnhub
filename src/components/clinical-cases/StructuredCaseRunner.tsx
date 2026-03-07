@@ -286,6 +286,9 @@ export function StructuredCaseRunner({
               isSubmitting={isSubmittingSection}
               readOnly={completedSections.has(currentSection)}
               previousAnswer={answers[currentSection] || null}
+              avatarUrl={examinerAvatar?.image_url}
+              avatarName={examinerAvatar?.name}
+              historyInteractionMode={historyInteractionMode}
             />
           )}
         </CardContent>
