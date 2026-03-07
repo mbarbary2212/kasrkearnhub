@@ -140,10 +140,8 @@ export function StructuredCaseCreator({
   const { data: dynamicAvatars } = useExaminerAvatars();
   const createCase = useCreateStructuredCase();
 
-  // Use dynamic avatars if available, fall back to static
-  const avatarList = dynamicAvatars?.length
-    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
-    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
+  // Use database avatars only
+  const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
 
   // Helpers
   const toggleSection = (s: SectionType) => {

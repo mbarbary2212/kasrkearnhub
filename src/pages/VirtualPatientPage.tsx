@@ -181,7 +181,7 @@ export default function VirtualPatientRunner() {
                   </Badge>
                 </div>
                 <CardTitle className="text-xl">{vpCase.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner?.name || 'Examiner'}</p>
               </div>
             </div>
             <CardDescription className="flex items-center gap-4 text-sm">

@@ -103,10 +103,8 @@ export function CasePreviewEditor() {
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
-  // Build avatar list from dynamic or static
-  const avatarList = dynamicAvatars?.length
-    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
-    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
+  // Build avatar list from database
+  const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
 
   useEffect(() => {
     if (generatedData && !editedData) {
