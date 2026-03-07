@@ -39,6 +39,7 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
 
   const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('all');
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('started_at');
