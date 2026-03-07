@@ -31,6 +31,7 @@ All schema changes applied successfully:
 | 9 | CaseSummary screen | ✅ |
 | 10 | Router integration in VirtualPatientPage | ✅ |
 | 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
