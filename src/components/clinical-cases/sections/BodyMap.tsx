@@ -182,7 +182,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           >
             {extraLabel}
           </text>
-          <rect x={211} y={288} width={83} height={36} rx={14} fill="transparent" />
+          <rect x={196} y={288} width={83} height={36} rx={14} fill="transparent" />
         </g>
       </svg>
     </div>
