@@ -172,7 +172,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── MISC dashed pill — right inside ── */}
         <g style={{ cursor: hasExtra ? 'pointer' : 'default', opacity: hasExtra ? 1 : 0.5 }} onClick={() => hasExtra && onRegionClick('extra')}>
           <rect
-            x={215} y={292} width={75} height={28} rx={14}
+            x={200} y={292} width={75} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             strokeDasharray="5,3"
           />
