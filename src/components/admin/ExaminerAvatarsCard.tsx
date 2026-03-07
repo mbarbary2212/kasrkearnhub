@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -21,32 +21,64 @@ interface AvatarRow {
   created_at: string;
 }
 
+/** Admin hook: fetch ALL avatars (active + inactive) */
+function useExaminerAvatarsAdmin() {
+  return useQuery({
+    queryKey: ['examiner-avatars-admin'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('examiner_avatars')
+        .select('*')
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return data as AvatarRow[];
+    },
+  });
+}
+
+/** Fetch usage counts for each avatar */
+function useAvatarUsageCounts() {
+  return useQuery({
+    queryKey: ['examiner-avatar-usage'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('virtual_patient_cases')
+        .select('avatar_id')
+        .not('avatar_id', 'is', null);
+      if (error) throw error;
+
+      const counts: Record<number, number> = {};
+      (data || []).forEach((row: any) => {
+        const id = row.avatar_id as number;
+        counts[id] = (counts[id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+}
+
 export function ExaminerAvatarsCard() {
   const queryClient = useQueryClient();
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
-  const [usageCounts, setUsageCounts] = useState<Record<number, number>>({});
 
-  // Fetch ALL avatars (active + inactive) for admin view
   const { data: allAvatars, isLoading } = useExaminerAvatarsAdmin();
-
-  // Fetch usage counts
-  const { } = useAvatarUsageCounts(setUsageCounts);
+  const { data: usageCounts = {} } = useAvatarUsageCounts();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const ext = file.name.split('.').pop();
       const path = `examiner-avatars/${Date.now()}.${ext}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: false });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      
+
       const { error: insertError } = await supabase
         .from('examiner_avatars')
         .insert({
@@ -171,20 +203,17 @@ export function ExaminerAvatarsCard() {
                   !avatar.is_active ? 'opacity-40' : ''
                 }`}
               >
-                {/* Thumbnail */}
                 <div className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
                   <img
                     src={avatar.image_url}
                     alt={avatar.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '';
-                      (e.target as HTMLImageElement).alt = 'Image not found';
+                      (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 </div>
 
-                {/* Name (inline editable) */}
                 {editingId === avatar.id ? (
                   <div className="flex items-center gap-1">
                     <Input
@@ -218,7 +247,6 @@ export function ExaminerAvatarsCard() {
                   </div>
                 )}
 
-                {/* Usage count + active toggle */}
                 <div className="flex items-center justify-between">
                   <Badge variant="secondary" className="text-xs">
                     {usageCounts[avatar.id] ?? 0} cases
@@ -244,47 +272,4 @@ export function ExaminerAvatarsCard() {
       </CardContent>
     </Card>
   );
-}
-
-/** Admin hook: fetch ALL avatars (active + inactive) */
-function useExaminerAvatarsAdmin() {
-  return __useQuery();
-}
-
-import { useQuery } from '@tanstack/react-query';
-
-function __useQuery() {
-  return useQuery({
-    queryKey: ['examiner-avatars-admin'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('examiner_avatars')
-        .select('*')
-        .order('display_order', { ascending: true });
-      if (error) throw error;
-      return data as AvatarRow[];
-    },
-  });
-}
-
-/** Fetch usage counts for each avatar */
-function useAvatarUsageCounts(setUsageCounts: (counts: Record<number, number>) => void) {
-  return useQuery({
-    queryKey: ['examiner-avatar-usage'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('virtual_patient_cases')
-        .select('avatar_id')
-        .not('avatar_id', 'is', null);
-      if (error) throw error;
-      
-      const counts: Record<number, number> = {};
-      (data || []).forEach((row: any) => {
-        const id = row.avatar_id as number;
-        counts[id] = (counts[id] || 0) + 1;
-      });
-      setUsageCounts(counts);
-      return counts;
-    },
-  });
 }
