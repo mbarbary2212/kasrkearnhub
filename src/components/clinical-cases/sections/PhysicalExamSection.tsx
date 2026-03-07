@@ -172,7 +172,7 @@ export function PhysicalExamSection({
         <div
           className="w-[340px] shrink-0 flex flex-col items-center"
           style={{
-            background: '#0b1a2a',
+            background: 'linear-gradient(180deg, #0d2a42 0%, #154a6e 35%, #1a6ea0 50%, #154a6e 75%, #0a1e30 100%)',
           }}
         >
           <BodyMap
