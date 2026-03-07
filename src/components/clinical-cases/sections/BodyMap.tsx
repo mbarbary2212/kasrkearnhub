@@ -50,7 +50,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
       <svg
         viewBox="0 -55 310 560"
         className="w-full"
-        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '620px' }}
+        style={{ overflow: 'hidden', display: 'block', height: 'auto', flex: '1 1 auto', maxHeight: '480px' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Body image */}
@@ -128,9 +128,9 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {findings.vital_signs && (
           <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('vital_signs')}>
             <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
-            <rect x={215} y={150} width={75} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
+            <rect x={200} y={150} width={75} height={28} rx={14} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
             <text
-              x={252} y={169} textAnchor="middle"
+              x={237} y={169} textAnchor="middle"
               style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
             >
               Vitals
@@ -172,17 +172,17 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         {/* ── MISC dashed pill — right inside ── */}
         <g style={{ cursor: hasExtra ? 'pointer' : 'default', opacity: hasExtra ? 1 : 0.5 }} onClick={() => hasExtra && onRegionClick('extra')}>
           <rect
-            x={215} y={292} width={75} height={28} rx={14}
+            x={200} y={292} width={75} height={28} rx={14}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
             strokeDasharray="5,3"
           />
           <text
-            x={252} y={311} textAnchor="middle"
+            x={237} y={311} textAnchor="middle"
             style={{ fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, fill: LABEL_TEXT, pointerEvents: 'none' }}
           >
             {extraLabel}
           </text>
-          <rect x={211} y={288} width={83} height={36} rx={14} fill="transparent" />
+          <rect x={196} y={288} width={83} height={36} rx={14} fill="transparent" />
         </g>
       </svg>
     </div>

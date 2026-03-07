@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -94,6 +95,7 @@ export function PhysicalExamSection({
   const [revealedRegions, setRevealedRegions] = useState<Set<RegionKey>>(
     new Set((previousAnswer?.revealed_regions as RegionKey[]) || [])
   );
+  const isMobile = useIsMobile();
   const [openRegion, setOpenRegion] = useState<RegionKey | null>(null);
   const [findingsSummary, setFindingsSummary] = useState(
     (previousAnswer?.findings_summary as string) || ''
@@ -166,11 +168,17 @@ export function PhysicalExamSection({
         </div>
       </div>
 
-      {/* ── Two-panel layout ── */}
-      <div className="flex min-h-[640px] border border-t-0 rounded-b-lg overflow-hidden">
-        {/* Left: Figure panel */}
+      {/* ── Two-panel layout (vertical on mobile) ── */}
+      <div className={cn(
+        'border border-t-0 rounded-b-lg overflow-hidden',
+        isMobile ? 'flex flex-col' : 'flex min-h-[420px]'
+      )}>
+        {/* Left/Top: Figure panel */}
         <div
-          className="w-[360px] shrink-0 flex flex-col items-center overflow-hidden"
+          className={cn(
+            'shrink-0 flex flex-col items-center overflow-hidden',
+            isMobile ? 'w-full max-h-[280px]' : 'w-[320px]'
+          )}
           style={{
             background: 'radial-gradient(ellipse at 50% 45%, #1b5a7a 0%, #0f3a54 40%, #0a2438 70%, #071a2b 100%)',
           }}
