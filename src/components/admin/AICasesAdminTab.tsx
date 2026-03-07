@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { BarChart3, Users, AlertTriangle, DollarSign, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft, Stethoscope } from 'lucide-react';
+import { BarChart3, Users, AlertTriangle, DollarSign, Eye, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft, Stethoscope, Filter } from 'lucide-react';
 import { useAICaseAttempts, useAICaseSummaryStats, useAICasesInScope, useAICaseAggregates, type AICaseFilters, type AICaseAttemptRow } from '@/hooks/useAICaseAdmin';
 import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -39,6 +39,7 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
 
   const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('all');
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('started_at');
@@ -53,7 +54,12 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
   const filters: AICaseFilters = selectedCaseId ? { caseId: selectedCaseId } : {};
   const { data: attempts, isLoading: attemptsLoading } = useAICaseAttempts(filters);
 
-  // Filter cases by module and chapter
+  // Aggregate stats per case from all attempts (unfiltered)
+  const allFilters: AICaseFilters = {};
+  const { data: allAttempts } = useAICaseAttempts(allFilters);
+  const aggregates = useAICaseAggregates(allAttempts);
+
+  // Filter cases by module, chapter, and flagged status
   const filteredCases = useMemo(() => {
     if (!cases) return [];
     let result = cases;
@@ -63,13 +69,14 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
     if (selectedChapterId !== 'all') {
       result = result.filter((c: any) => c.chapter_id === selectedChapterId);
     }
+    if (showFlaggedOnly) {
+      const flaggedCaseIds = new Set(
+        (allAttempts || []).filter(a => a.flag_for_review).map(a => a.case_id)
+      );
+      result = result.filter((c: any) => flaggedCaseIds.has(c.id));
+    }
     return result;
-  }, [cases, selectedModuleId, selectedChapterId]);
-
-  // Aggregate stats per case from all attempts (unfiltered)
-  const allFilters: AICaseFilters = {};
-  const { data: allAttempts } = useAICaseAttempts(allFilters);
-  const aggregates = useAICaseAggregates(allAttempts);
+  }, [cases, selectedModuleId, selectedChapterId, showFlaggedOnly, allAttempts]);
 
   // Case detail view
   const selectedCase = selectedCaseId ? filteredCases.find((c: any) => c.id === selectedCaseId) : null;
@@ -279,7 +286,17 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
               ))}
             </SelectContent>
           </Select>
-        )}
+         )}
+
+        <Button
+          variant={showFlaggedOnly ? "destructive" : "outline"}
+          size="sm"
+          onClick={() => { setShowFlaggedOnly(!showFlaggedOnly); setPage(0); }}
+          className="gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Flagged Only
+        </Button>
 
         <p className="text-sm text-muted-foreground">
           {filteredCases.length} case{filteredCases.length !== 1 ? 's' : ''}
