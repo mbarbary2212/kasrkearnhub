@@ -588,6 +588,25 @@ export function StructuredCaseCreator({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* History Interaction Mode */}
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <Label className="text-sm font-medium">History Interaction</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {historyInteractionMode === 'text'
+                      ? 'Student types questions to the patient'
+                      : 'Student speaks to the patient via microphone'}
+                  </p>
+                </div>
+                <Select value={historyInteractionMode} onValueChange={v => setHistoryInteractionMode(v as 'text' | 'voice')}>
+                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="voice">Voice</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </TabsContent>
 
             {/* ── TAB 5: REVIEW ── */}
