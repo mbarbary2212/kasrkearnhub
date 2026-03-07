@@ -47,7 +47,7 @@ import {
 } from '@/types/structuredCase';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
-import { useExaminerAvatars, EXAMINER_AVATARS } from '@/lib/examinerAvatars';
+import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
 import { useNavigate } from 'react-router-dom';
 
