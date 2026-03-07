@@ -111,6 +111,30 @@ export function getAIProvider(settings: AISettings): AIProvider {
 }
 
 /**
+ * Global lab units instruction appended to all AI system prompts.
+ * Ensures all AI-generated content uses Conventional (US) units.
+ */
+const LAB_UNITS_RULE = `
+
+LABORATORY VALUES — MANDATORY UNIT SYSTEM (applies to ALL generated content):
+Always use Conventional Units (US system). NEVER use SI units (mmol/L, µmol/L, or any metric molar units).
+Required units by lab type:
+- Glucose, Creatinine, BUN, Bilirubin (Total/Direct/Indirect), Calcium, Magnesium, Phosphorus, Cholesterol, Triglycerides, LDL, HDL → mg/dL
+- Albumin, Total Protein, Hemoglobin → g/dL
+- Hematocrit → %
+- Sodium (Na), Potassium (K), Chloride (Cl), Bicarbonate (HCO3) → mEq/L
+- PSA → ng/mL
+- TSH → mIU/L, T3 → ng/dL, T4 → µg/dL
+This rule applies to all lab values, reference ranges, reports, MCQ options, case data, and any generated content involving laboratory values.`;
+
+/**
+ * Enrich system prompt with global rules (lab units, etc.)
+ */
+function enrichSystemPrompt(systemPrompt: string): string {
+  return systemPrompt + LAB_UNITS_RULE;
+}
+
+/**
  * Call the AI provider with system and user prompts
  */
 export async function callAI(
@@ -119,13 +143,14 @@ export async function callAI(
   provider: AIProvider,
   customApiKey?: string
 ): Promise<AICallResult> {
+  const enriched = enrichSystemPrompt(systemPrompt);
   
   if (provider.name === 'gemini') {
-    return callGeminiDirect(systemPrompt, userPrompt, provider.model, customApiKey);
+    return callGeminiDirect(enriched, userPrompt, provider.model, customApiKey);
   } else if (provider.name === 'anthropic') {
-    return callAnthropicDirect(systemPrompt, userPrompt, provider.model, customApiKey);
+    return callAnthropicDirect(enriched, userPrompt, provider.model, customApiKey);
   } else {
-    return callLovableGateway(systemPrompt, userPrompt, provider.model);
+    return callLovableGateway(enriched, userPrompt, provider.model);
   }
 }
 
@@ -138,15 +163,16 @@ export async function callAIWithMessages(
   provider: AIProvider,
   options?: { temperature?: number; maxTokens?: number; customApiKey?: string }
 ): Promise<AICallResult> {
+  const enriched = enrichSystemPrompt(systemPrompt);
   const temp = options?.temperature ?? 0.7;
   const maxTokens = options?.maxTokens ?? 1024;
 
   if (provider.name === 'anthropic') {
-    return callAnthropicWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+    return callAnthropicWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else if (provider.name === 'gemini') {
-    return callGeminiWithMessages(systemPrompt, messages, provider.model, temp, maxTokens, options?.customApiKey);
+    return callGeminiWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else {
-    return callLovableWithMessages(systemPrompt, messages, provider.model, temp, maxTokens);
+    return callLovableWithMessages(enriched, messages, provider.model, temp, maxTokens);
   }
 }
 
