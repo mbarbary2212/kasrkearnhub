@@ -1006,12 +1006,10 @@ export default function AdminPage() {
         { value: 'settings', visible: isPlatformAdmin },
       ],
       content: [
-        { value: 'curriculum', visible: isSuperAdmin || isPlatformAdmin },
-        { value: 'pdf-library', visible: isPlatformAdmin || isModuleAdmin },
-        { value: 'ai-settings', visible: isSuperAdmin },
+        { value: 'sources', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'help', visible: true },
-        { value: 'question-analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
-        { value: 'integrity', visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
+        { value: 'analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+        { value: 'ai-settings', visible: isSuperAdmin },
       ],
       messaging: [
         { value: 'announcements', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
