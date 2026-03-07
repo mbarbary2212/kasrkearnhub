@@ -453,7 +453,17 @@ export function CasePreviewEditor() {
       {/* Section editors */}
       {editedData && !generateCase.isPending && (
         <div className="space-y-3">
-          {/* Professional Attitude */}
+          {/* Total Score Bar */}
+          <Card className="bg-muted/30">
+            <CardContent className="py-3 px-4 flex items-center justify-between">
+              <span className="text-sm font-medium">Total Case Score</span>
+              <Badge variant="default" className="text-base px-3 py-1">
+                {computeTotalScore()} pts
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {/* Professional Attitude (always enabled) */}
           {editedData.professional_attitude && (
             <SectionPanel
               sectionKey="professional_attitude"
@@ -491,27 +501,42 @@ export function CasePreviewEditor() {
             </SectionPanel>
           )}
 
-          {/* Active sections */}
+          {/* All possible sections with enable/disable toggle */}
           {activeSections.map(sectionKey => {
             const sectionData = editedData[sectionKey];
             if (!sectionData) return null;
+            const isEnabled = enabledSections.includes(sectionKey);
 
             return (
-              <SectionPanel
+              <div
                 key={sectionKey}
-                sectionKey={sectionKey}
-                label={SECTION_LABELS[sectionKey]}
-                icon={SECTION_ICONS[sectionKey]}
-                isOpen={openSections.has(sectionKey)}
-                onToggle={() => toggleSection(sectionKey)}
-                maxScore={(sectionData as any).max_score}
+                className={cn(
+                  'transition-opacity',
+                  !isEnabled && 'opacity-40'
+                )}
               >
-                <SectionEditor
+                <SectionPanel
                   sectionKey={sectionKey}
-                  data={sectionData}
-                  onChange={val => updateSection(sectionKey, val)}
-                />
-              </SectionPanel>
+                  label={SECTION_LABELS[sectionKey]}
+                  icon={SECTION_ICONS[sectionKey]}
+                  isOpen={isEnabled && openSections.has(sectionKey)}
+                  onToggle={() => isEnabled && toggleSection(sectionKey)}
+                  maxScore={(sectionData as any).max_score}
+                  enableSwitch={
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => toggleSectionEnabled(sectionKey)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  }
+                >
+                  <SectionEditor
+                    sectionKey={sectionKey}
+                    data={sectionData}
+                    onChange={val => updateSection(sectionKey, val)}
+                  />
+                </SectionPanel>
+              </div>
             );
           })}
         </div>
