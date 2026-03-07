@@ -85,22 +85,41 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 export function CasePreviewEditor() {
   const { caseId } = useParams<{ caseId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { data: caseData, isLoading } = useStructuredCaseDetail(caseId);
   const updateData = useUpdateStructuredCaseData();
   const publishCase = usePublishStructuredCase();
   const generateCase = useGenerateStructuredCase();
+  const { data: dynamicAvatars } = useExaminerAvatars();
 
   const [editedData, setEditedData] = useState<StructuredCaseData | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<number>(1);
+  const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
+  const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
+
+  // Build avatar list from dynamic or static
+  const avatarList = dynamicAvatars?.length
+    ? dynamicAvatars.map(a => ({ id: a.id, name: a.name, image: a.image_url }))
+    : EXAMINER_AVATARS.map(a => ({ id: a.id, name: a.name, image: a.image }));
 
   useEffect(() => {
     if (generatedData && !editedData) {
       setEditedData(structuredClone(generatedData));
     }
   }, [generatedData]);
+
+  // Initialize avatar and interaction mode from case data
+  useEffect(() => {
+    if (caseData) {
+      if (caseData.avatar_id) setSelectedAvatarId(caseData.avatar_id);
+      setHistoryInteractionMode((caseData.history_interaction_mode as 'text' | 'voice') || 'text');
+    }
+  }, [caseData]);
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => {
@@ -120,11 +139,44 @@ export function CasePreviewEditor() {
   const handleSave = async () => {
     if (!caseId || !editedData) return;
     try {
-      await updateData.mutateAsync({ caseId, data: editedData });
+      await updateData.mutateAsync({
+        caseId,
+        data: editedData,
+        avatar_id: selectedAvatarId,
+        history_interaction_mode: historyInteractionMode,
+      });
       setHasChanges(false);
       toast.success('Case data saved');
     } catch {
       toast.error('Failed to save');
+    }
+  };
+
+  const handleRequestAvatar = async () => {
+    if (!requestMessage.trim()) return;
+    try {
+      // Insert notification for all platform_admin / super_admin
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['platform_admin', 'super_admin']);
+
+      if (admins?.length) {
+        const notifications = admins.map(a => ({
+          recipient_id: a.user_id,
+          type: 'avatar_request',
+          title: 'Avatar Request',
+          message: requestMessage.trim(),
+          entity_type: 'examiner_avatar',
+          metadata: { requested_by: user?.id, case_id: caseId },
+        }));
+        await supabase.from('admin_notifications').insert(notifications);
+      }
+      toast.success('Request sent to platform admins');
+      setRequestAvatarOpen(false);
+      setRequestMessage('');
+    } catch {
+      toast.error('Failed to send request');
     }
   };
 
