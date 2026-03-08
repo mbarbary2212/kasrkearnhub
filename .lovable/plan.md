@@ -1,53 +1,58 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 12 added)
+## Plan: TTS Provider Switcher — Browser + ElevenLabs (Streaming)
 
-### Completed Steps
+### Step 1 — Database Migration
+Insert 4 rows into `ai_settings`:
+- `tts_provider` → `"browser"` (default)
+- `tts_voice_gender` → `"male"`
+- `tts_elevenlabs_male_voice` → `"DWMVT5WflKt0P8OPpIrY"` (Hanafi)
+- `tts_elevenlabs_female_voice` → `"RCubfxZlU5rlyEKAEsSN"` (Fatma)
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+### Step 2 — Edge Function: `supabase/functions/elevenlabs-tts/index.ts`
+- Accepts POST `{ text, voiceId }`
+- Calls ElevenLabs **streaming** endpoint: `POST https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`
+- Uses `xi-api-key: Deno.env.get('ELEVENLABS_API_KEY')` header (NOT `Authorization: Bearer`)
+- Model: `eleven_multilingual_v2`, stability 0.5, similarity_boost 0.75
+- Streams response body directly back with `Content-Type: audio/mpeg`
+- Standard CORS headers
+- `ELEVENLABS_API_KEY` already exists in secrets
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+### Step 3 — Config: `supabase/config.toml`
+Add `[functions.elevenlabs-tts]` with `verify_jwt = false` (line ~97).
 
-### All Steps
+### Step 4 — New file: `src/utils/tts.ts`
+- Exports `ELEVENLABS_VOICES` registry (7 male, 3 female with IDs/names/labels)
+- Exports `speakArabic(text, provider, voiceId?)`:
+  - `'browser'` → Web Speech API (`ar-EG`, rate 1.1)
+  - `'elevenlabs'` → `fetch()` to edge function URL (using `VITE_SUPABASE_URL`), auth via `Authorization: Bearer ${VITE_SUPABASE_PUBLISHABLE_KEY}` + `apikey` header, `.blob()` → `new Audio()` → `.play()`
+  - Falls back to browser on any error
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
+### Step 5 — Update `HistoryTakingSection.tsx`
+- Load `tts_provider`, `tts_voice_gender`, `tts_elevenlabs_male_voice`, `tts_elevenlabs_female_voice` via `useAISetting()` or bulk `useAISettings()` + `getSettingValue()`
+- Derive `activeVoiceId` from gender + per-gender voice
+- Replace both TTS blocks (lines ~102-108 and ~597-603) with `speakArabic(reply, ttsProvider, activeVoiceId)`
+- No changes to speech recognition / microphone
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+### Step 6 — Admin UI: `AISettingsPanel.tsx`
+Add a "Voice Provider" card after line ~297 (after the Provider Notes section, before ContentTypeModelSection). Uses same `handleChange`/`handleSave` pattern:
+- **Browser** card — "Free, works on all devices."
+- **ElevenLabs** card — "Authentic Egyptian Arabic voices."
+  - When selected: gender toggle (Male/Female) + voice radio list from `ELEVENLABS_VOICES[gender]`
+  - Saves voice ID to `tts_elevenlabs_male_voice` or `tts_elevenlabs_female_voice`
+- Gender toggle and voice picker hidden when Browser is selected
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+### Auth header clarification
+- **Client → Edge Function**: `Authorization: Bearer <supabase_anon_key>` + `apikey: <supabase_anon_key>`
+- **Edge Function → ElevenLabs**: `xi-api-key: <ELEVENLABS_API_KEY>` (NOT Bearer)
+
+### Files Summary
+| File | Action |
+|------|--------|
+| `ai_settings` table | Insert 4 rows |
+| `supabase/functions/elevenlabs-tts/index.ts` | Create |
+| `supabase/config.toml` | Add 1 entry |
+| `src/utils/tts.ts` | Create |
+| `src/components/clinical-cases/sections/HistoryTakingSection.tsx` | Replace 2 TTS blocks |
+| `src/components/admin/AISettingsPanel.tsx` | Add Voice Provider section |
+
