@@ -101,12 +101,12 @@ export function HistoryTakingSection({
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
       // Voice mode: speak the response
-      if (selectedMode === 'voice' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(reply);
-        utterance.lang = 'ar-EG';
-        utterance.rate = 1.1;
-        window.speechSynthesis.speak(utterance);
+      if (selectedMode === 'voice') {
+        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+        const voiceId = gender === 'female'
+          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+        speakArabic(reply, ttsProvider, voiceId);
       }
     } catch (err) {
       console.error('Chat error:', err);
