@@ -399,6 +399,95 @@ export function CasePreviewEditor() {
         </DialogContent>
       </Dialog>
 
+      {/* Patient Info Editor */}
+      {editedData && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Patient Info</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Name</Label>
+                <Input
+                  value={editedData.patient?.name || ''}
+                  onChange={(e) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, name: e.target.value },
+                    });
+                    setHasChanges(true);
+                  }}
+                  placeholder="Patient name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Age</Label>
+                <Input
+                  type="number"
+                  value={editedData.patient?.age || ''}
+                  onChange={(e) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, age: parseInt(e.target.value) || '' },
+                    });
+                    setHasChanges(true);
+                  }}
+                  placeholder="Age"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Gender</Label>
+                <Select
+                  value={editedData.patient?.gender || ''}
+                  onValueChange={(v) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, gender: v },
+                    });
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Occupation</Label>
+                <Input
+                  value={editedData.patient?.occupation || ''}
+                  onChange={(e) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, occupation: e.target.value },
+                    });
+                    setHasChanges(true);
+                  }}
+                  placeholder="Occupation"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Background</Label>
+                <Input
+                  value={editedData.patient?.background || ''}
+                  onChange={(e) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, background: e.target.value },
+                    });
+                    setHasChanges(true);
+                  }}
+                  placeholder="Brief background"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* No content yet — two options */}
       {!generatedData && !editedData && !generateCase.isPending && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
