@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -12,8 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, BookOpen, Shield, History, Check
+  ChevronDown, BookOpen, Shield, History, Check, Volume2
 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ELEVENLABS_VOICES } from '@/utils/tts';
 import { useAISettings, useUpdateAISetting, getSettingValue } from '@/hooks/useAISettings';
 import { 
   useActiveAIRules, useAIRules, useCreateAIRule, useActivateAIRule,
@@ -298,12 +301,150 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
         </CardContent>
       </Card>
 
+      {/* Voice Provider Section */}
+      <VoiceProviderSection
+        getValue={getValue}
+        handleChange={handleChange}
+        handleSave={handleSave}
+        pendingChanges={pendingChanges}
+        updateIsPending={updateSetting.isPending}
+      />
+
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
       {/* Content Type Rules Section — only if showRules is true */}
       {showRules && <ContentRulesSection />}
     </div>
+  );
+}
+
+// ============================================
+// Voice Provider Section
+// ============================================
+
+function VoiceProviderSection({
+  getValue,
+  handleChange,
+  handleSave,
+  pendingChanges,
+  updateIsPending,
+}: {
+  getValue: <T>(key: string, defaultValue: T) => T;
+  handleChange: (key: string, value: unknown) => void;
+  handleSave: (key: string) => Promise<void>;
+  pendingChanges: Record<string, unknown>;
+  updateIsPending: boolean;
+}) {
+  const ttsProvider = getValue('tts_provider', 'browser') as string;
+  const ttsGender = getValue('tts_voice_gender', 'male') as 'male' | 'female';
+  const maleVoice = getValue('tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+  const femaleVoice = getValue('tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string;
+  const activeVoiceKey = ttsGender === 'female' ? 'tts_elevenlabs_female_voice' : 'tts_elevenlabs_male_voice';
+  const activeVoiceId = ttsGender === 'female' ? femaleVoice : maleVoice;
+
+  const providers = [
+    { value: 'browser', label: '🌐 Browser (Built-in)', description: 'Free, works on all devices. Quality varies by browser and OS.' },
+    { value: 'elevenlabs', label: '🟢 ElevenLabs', description: 'Authentic Egyptian Arabic voices. Powered by professional voice actors.' },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Volume2 className="w-5 h-5" />
+          Voice Provider (TTS)
+        </CardTitle>
+        <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {providers.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => handleChange('tts_provider', p.value)}
+              className={cn(
+                'flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all',
+                ttsProvider === p.value
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground/50'
+              )}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="font-medium text-sm">{p.label}</span>
+                {ttsProvider === p.value && <Check className="w-4 h-4 text-primary ml-auto" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{p.description}</p>
+            </button>
+          ))}
+        </div>
+
+        {'tts_provider' in pendingChanges && (
+          <Button size="sm" onClick={() => handleSave('tts_provider')} disabled={updateIsPending}>
+            <Save className="w-4 h-4 mr-1" /> Save Provider
+          </Button>
+        )}
+
+        {ttsProvider === 'elevenlabs' && (
+          <div className="space-y-4 pt-2 border-t">
+            {/* Gender Toggle */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Voice Gender</Label>
+              <div className="flex gap-2">
+                {(['male', 'female'] as const).map((g) => (
+                  <Button
+                    key={g}
+                    variant={ttsGender === g ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleChange('tts_voice_gender', g)}
+                  >
+                    {g === 'male' ? '👨 Male' : '👩 Female'}
+                  </Button>
+                ))}
+              </div>
+              {'tts_voice_gender' in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave('tts_voice_gender')} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Gender
+                </Button>
+              )}
+            </div>
+
+            {/* Voice Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Voice</Label>
+              <RadioGroup
+                value={activeVoiceId}
+                onValueChange={(val) => handleChange(activeVoiceKey, val)}
+                className="space-y-2"
+              >
+                {ELEVENLABS_VOICES[ttsGender].map((voice) => (
+                  <label
+                    key={voice.id}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                      activeVoiceId === voice.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <RadioGroupItem value={voice.id} />
+                    <div>
+                      <span className="font-medium text-sm">{voice.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{voice.label}</span>
+                    </div>
+                  </label>
+                ))}
+              </RadioGroup>
+              {activeVoiceKey in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave(activeVoiceKey)} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Voice
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

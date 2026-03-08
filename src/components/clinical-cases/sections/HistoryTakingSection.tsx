@@ -12,6 +12,8 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { speakArabic } from '@/utils/tts';
+import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   avatarUrl?: string;
@@ -38,6 +40,10 @@ export function HistoryTakingSection({
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
+
+  // TTS settings
+  const { data: ttsSettings } = useAISettings();
+  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
 
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
   const [selectedMode, setSelectedMode] = useState<'chat' | 'voice' | null>(
@@ -99,12 +105,12 @@ export function HistoryTakingSection({
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
       // Voice mode: speak the response
-      if (selectedMode === 'voice' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(reply);
-        utterance.lang = 'ar-EG';
-        utterance.rate = 1.1;
-        window.speechSynthesis.speak(utterance);
+      if (selectedMode === 'voice') {
+        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+        const voiceId = gender === 'female'
+          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+        speakArabic(reply, ttsProvider, voiceId);
       }
     } catch (err) {
       console.error('Chat error:', err);
@@ -594,12 +600,12 @@ export function HistoryTakingSection({
         const reply = fnData?.reply || (mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor');
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice' && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(reply);
-          utterance.lang = 'ar-EG';
-          utterance.rate = 1.1;
-          window.speechSynthesis.speak(utterance);
+        if (mode === 'voice') {
+          const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+          const voiceId = gender === 'female'
+            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+          speakArabic(reply, ttsProvider, voiceId);
         }
       })
       .catch(err => {
