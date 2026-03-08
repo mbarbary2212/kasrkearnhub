@@ -300,6 +300,7 @@ export function StructuredCaseRunner({
               historyInteractionMode={historyInteractionMode}
               caseId={caseId}
               studentName={studentName}
+              patientTone={generatedData?.patient?.tone}
             />
           )}
         </CardContent>
