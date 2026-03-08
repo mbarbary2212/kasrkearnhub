@@ -714,15 +714,20 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
         <div className="mt-1 space-y-2">
           {(data.checklist || []).map((cat, catIdx) => (
             <div key={cat.key} className="border rounded p-2">
-              <Input
-                value={cat.label}
-                onChange={e => {
-                  const checklist = structuredClone(data.checklist || []);
-                  checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
-                  onChange({ ...data, checklist });
-                }}
-                className="h-7 text-sm font-medium mb-2"
-              />
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  value={cat.label}
+                  onChange={e => {
+                    const checklist = structuredClone(data.checklist || []);
+                    checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
+                    onChange({ ...data, checklist });
+                  }}
+                  className="h-7 text-sm font-medium flex-1"
+                />
+                <button type="button" onClick={() => removeCategory(catIdx)} className="text-muted-foreground hover:text-destructive shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
               <div className="space-y-1">
                 {cat.items.map((item, itemIdx) => (
                   <div key={item.key} className="flex items-center gap-2 text-sm">
