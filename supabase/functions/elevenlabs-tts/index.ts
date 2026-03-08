@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId } = await req.json();
+    const { text, voiceId, tone } = await req.json();
 
     if (!text || !voiceId) {
       return new Response(
@@ -19,6 +19,18 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Map patient tone to ElevenLabs voice_settings
+    const toneSettings: Record<string, any> = {
+      calm:        { stability: 0.55, similarity_boost: 0.75, style: 0.2 },
+      worried:     { stability: 0.35, similarity_boost: 0.7,  style: 0.4 },
+      anxious:     { stability: 0.25, similarity_boost: 0.65, style: 0.5 },
+      angry:       { stability: 0.3,  similarity_boost: 0.8,  style: 0.7 },
+      impolite:    { stability: 0.35, similarity_boost: 0.8,  style: 0.6 },
+      in_pain:     { stability: 0.2,  similarity_boost: 0.7,  style: 0.6 },
+      cooperative: { stability: 0.6,  similarity_boost: 0.75, style: 0.3 },
+    };
+    const voiceSettings = toneSettings[tone] || toneSettings.calm;
 
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     if (!ELEVENLABS_API_KEY) {
