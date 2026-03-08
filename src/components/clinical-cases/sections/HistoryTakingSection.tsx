@@ -596,12 +596,12 @@ export function HistoryTakingSection({
         const reply = fnData?.reply || (mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor');
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice' && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(reply);
-          utterance.lang = 'ar-EG';
-          utterance.rate = 1.1;
-          window.speechSynthesis.speak(utterance);
+        if (mode === 'voice') {
+          const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+          const voiceId = gender === 'female'
+            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+          speakArabic(reply, ttsProvider, voiceId);
         }
       })
       .catch(err => {
