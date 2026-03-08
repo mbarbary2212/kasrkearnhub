@@ -1,39 +1,53 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-## Plan: History Taking Editor Enhancements
+## Status: ✅ Complete (Step 12 added)
 
-### What the user wants
-1. **Add/delete checklist categories** (currently can only add/delete items within categories, not categories themselves)
-2. **Add/delete comprehension questions** (already works — confirm)
-3. **Add an Arabic reference paragraph** — a single free-text Arabic paragraph stored on the history section, used as a reference during voice/chat conversations (not per-topic, just one block)
+### Completed Steps
 
-### Changes
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-#### 1. Type update — `src/types/structuredCase.ts`
-Add `arabic_reference?: string` to `HistorySectionData` interface (line 109). This stores a single Arabic paragraph the AI can use as conversation reference.
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-#### 2. History Editor enhancements — `CasePreviewEditor.tsx` (lines 673–806)
+### All Steps
 
-**a) Add/delete checklist categories:**
-- Add a "＋ Add category" button after the categories list (after line 745)
-- Add an ✕ delete button on each category header row (line 716-724 area)
-- New helper: `addCategory()` pushes `{ key: 'cat_${Date.now()}', label: 'New Category', items: [] }`
-- New helper: `removeCategory(catIdx)` splices the category
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
-**b) Arabic reference textarea:**
-- Add a new section after the Mode badge (after line 698) with label "Arabic Reference (للمحادثة)"
-- Single `<Textarea>` bound to `data.arabic_reference`
-- Placeholder: "أدخل النص العربي المرجعي للمحادثة هنا..."
-- Set `dir="rtl"` for proper Arabic text direction
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-#### 3. Wire Arabic reference into conversation — `HistoryTakingSection.tsx`
-- When building the system prompt for voice/chat mode, append the `arabic_reference` text if present, so the AI patient uses it as context for Arabic responses
-
-### Files
-
-| File | Change |
-|------|--------|
-| `src/types/structuredCase.ts` | Add `arabic_reference?: string` to `HistorySectionData` |
-| `src/components/clinical-cases/CasePreviewEditor.tsx` | Add category CRUD + Arabic textarea to `HistoryEditor` |
-| `src/components/clinical-cases/sections/HistoryTakingSection.tsx` | Pass `arabic_reference` into AI conversation prompt |
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt

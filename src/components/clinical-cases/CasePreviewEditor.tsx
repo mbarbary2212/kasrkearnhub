@@ -689,12 +689,32 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
     checklist[catIdx].items.push({ key: `item_${Date.now()}`, label: 'New item' });
     onChange({ ...data, checklist });
   };
+  const addCategory = () => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist.push({ key: `cat_${Date.now()}`, label: 'New Category', items: [] });
+    onChange({ ...data, checklist });
+  };
+  const removeCategory = (catIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist.splice(catIdx, 1);
+    onChange({ ...data, checklist });
+  };
 
   return (
     <div className="space-y-4">
       <div>
         <Label className="text-xs text-muted-foreground">Mode</Label>
         <Badge variant="outline" className="ml-2 text-xs">{data.mode}</Badge>
+      </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Arabic Reference (للمحادثة)</Label>
+        <Textarea
+          dir="rtl"
+          value={data.arabic_reference || ''}
+          onChange={e => onChange({ ...data, arabic_reference: e.target.value })}
+          placeholder="أدخل النص العربي المرجعي للمحادثة هنا..."
+          className="mt-1 min-h-[100px] text-sm"
+        />
       </div>
       {data.atmist_handover && (
         <div>
@@ -714,15 +734,20 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
         <div className="mt-1 space-y-2">
           {(data.checklist || []).map((cat, catIdx) => (
             <div key={cat.key} className="border rounded p-2">
-              <Input
-                value={cat.label}
-                onChange={e => {
-                  const checklist = structuredClone(data.checklist || []);
-                  checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
-                  onChange({ ...data, checklist });
-                }}
-                className="h-7 text-sm font-medium mb-2"
-              />
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  value={cat.label}
+                  onChange={e => {
+                    const checklist = structuredClone(data.checklist || []);
+                    checklist[catIdx] = { ...checklist[catIdx], label: e.target.value };
+                    onChange({ ...data, checklist });
+                  }}
+                  className="h-7 text-sm font-medium flex-1"
+                />
+                <button type="button" onClick={() => removeCategory(catIdx)} className="text-muted-foreground hover:text-destructive shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
               <div className="space-y-1">
                 {cat.items.map((item, itemIdx) => (
                   <div key={item.key} className="flex items-center gap-2 text-sm">
@@ -744,6 +769,9 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
             </div>
           ))}
         </div>
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={addCategory}>
+          + Add category
+        </Button>
       </div>
       <div>
         <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions?.length || 0})</Label>
