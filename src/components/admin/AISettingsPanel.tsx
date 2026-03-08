@@ -298,6 +298,15 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
         </CardContent>
       </Card>
 
+      {/* Voice Provider Section */}
+      <VoiceProviderSection
+        getValue={getValue}
+        handleChange={handleChange}
+        handleSave={handleSave}
+        pendingChanges={pendingChanges}
+        updateIsPending={updateSetting.isPending}
+      />
+
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
