@@ -72,6 +72,7 @@ serve(async (req) => {
     const handover = historyData.atmist_handover || {};
     const checklist = historyData.checklist || [];
     const arabicReference = historyData.arabic_reference || '';
+    const patientTone = patientData.tone || 'calm';
 
     // Build the hidden patient knowledge from ATMIST + checklist
     const patientKnowledge = buildPatientKnowledge(handover, checklist, patientData);
@@ -80,8 +81,8 @@ serve(async (req) => {
 
     // Build system prompt based on mode
     let systemPrompt = isVoice
-      ? buildArabicSystemPrompt(patientData, patientKnowledge)
-      : buildEnglishSystemPrompt(patientData, patientKnowledge);
+      ? buildArabicSystemPrompt(patientData, patientKnowledge, patientTone)
+      : buildEnglishSystemPrompt(patientData, patientKnowledge, patientTone);
 
     // Append Arabic reference if available
     if (arabicReference) {
@@ -140,16 +141,40 @@ function buildPatientKnowledge(
   return parts.join('\n');
 }
 
-function buildEnglishSystemPrompt(patient: Record<string, any>, knowledge: string): string {
+const TONE_DESCRIPTIONS_EN: Record<string, string> = {
+  calm: 'You are calm, composed, and speak in a relaxed manner.',
+  worried: 'You are noticeably worried and concerned about your condition. Your responses should reflect nervousness and need for reassurance.',
+  anxious: 'You are very anxious and restless. You speak quickly, may repeat concerns, and seek constant reassurance.',
+  angry: 'You are frustrated and angry about your situation. You may be short-tempered, raise objections, and express dissatisfaction.',
+  impolite: 'You are rude and dismissive. You give short, blunt answers, may interrupt, and show little respect for the doctor.',
+  in_pain: 'You are in significant pain. You may groan, struggle to answer, give incomplete sentences, and frequently mention your discomfort.',
+  cooperative: 'You are friendly, cooperative, and eager to help the doctor understand your condition.',
+};
+
+const TONE_DESCRIPTIONS_AR: Record<string, string> = {
+  calm: 'أنت هادي ومرتاح وبتتكلم بشكل طبيعي.',
+  worried: 'أنت قلقان ومتوتر على حالتك. ردودك لازم تعكس القلق والحاجة للطمأنة.',
+  anxious: 'أنت متوتر جداً ومش مرتاح. بتتكلم بسرعة وممكن تكرر مخاوفك وعايز طمأنة طول الوقت.',
+  angry: 'أنت زعلان وعصبي من الموقف. ممكن تكون حاد في الكلام وتعترض وتعبر عن عدم رضاك.',
+  impolite: 'أنت وقح ومش مهتم. بترد بشكل قصير وجاف وممكن تقاطع وما تحترمش الدكتور.',
+  in_pain: 'أنت في ألم شديد. ممكن تتأوه وتلاقي صعوبة في الرد وتقول جمل ناقصة وتفضل تقول إنك تعبان.',
+  cooperative: 'أنت ودود ومتعاون وعايز تساعد الدكتور يفهم حالتك.',
+};
+
+function buildEnglishSystemPrompt(patient: Record<string, any>, knowledge: string, tone: string): string {
   const name = patient.name || 'the patient';
+  const toneInstruction = TONE_DESCRIPTIONS_EN[tone] || TONE_DESCRIPTIONS_EN.calm;
   return `You are role-playing as ${name}, a patient in a clinical simulation.
+
+PERSONALITY & TONE:
+${toneInstruction}
 
 RULES:
 1. Stay in character at all times. You are the patient, not a doctor.
 2. Your name is exactly "${name}". If asked your name, always say "${name}". Do not use any other name.
 3. Only reveal information from your medical history when the student asks relevant questions.
 4. Do NOT volunteer information unprompted. Wait for the student to ask.
-5. Answer naturally and conversationally, as a real patient would.
+5. Answer naturally and conversationally, as a real patient would. Maintain your tone throughout.
 6. If the student asks something not covered in your history, say you don't know or it hasn't happened.
 7. Keep answers concise — 1-3 sentences typically.
 8. Never break character. Never mention you are an AI.
@@ -161,16 +186,20 @@ ${knowledge}
 Start by greeting the student briefly when they initiate conversation, e.g. "Hello doctor" or "Hi, thanks for seeing me."`;
 }
 
-function buildArabicSystemPrompt(patient: Record<string, any>, knowledge: string): string {
+function buildArabicSystemPrompt(patient: Record<string, any>, knowledge: string, tone: string): string {
   const name = patient.name || 'المريض';
+  const toneInstruction = TONE_DESCRIPTIONS_AR[tone] || TONE_DESCRIPTIONS_AR.calm;
   return `أنت تلعب دور ${name}، مريض في محاكاة سريرية.
+
+الشخصية والنبرة:
+${toneInstruction}
 
 القواعد:
 1. ابق في الشخصية طول الوقت. أنت المريض، مش دكتور.
 2. اسمك بالظبط "${name}". لو حد سألك عن اسمك قول "${name}". ما تستخدمش أي اسم تاني.
 3. ما تقولش أي معلومة إلا لما الطالب يسألك سؤال متعلق.
 4. ما تتطوعش بمعلومات من نفسك. استنى الطالب يسأل.
-5. جاوب بشكل طبيعي زي أي مريض حقيقي. استخدم العامية المصرية.
+5. جاوب بشكل طبيعي زي أي مريض حقيقي. حافظ على نبرتك طول المحادثة.
 6. لو الطالب سأل عن حاجة مش موجودة في تاريخك الطبي، قول إنك مش عارف أو ما حصلش.
 7. خلي الإجابات قصيرة — جملة أو اتنين عادةً.
 8. ما تخرجش من الشخصية أبداً. ما تقولش إنك ذكاء اصطناعي.

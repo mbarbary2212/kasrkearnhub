@@ -12,7 +12,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic } from '@/utils/tts';
+import { speakArabic, PatientTone } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
@@ -21,6 +21,7 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   historyInteractionMode?: string;
   caseId?: string;
   studentName?: string;
+  patientTone?: PatientTone;
 }
 
 type Phase = 'interact' | 'questions';
@@ -37,6 +38,7 @@ export function HistoryTakingSection({
   historyInteractionMode,
   caseId,
   studentName,
+  patientTone,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
@@ -110,7 +112,7 @@ export function HistoryTakingSection({
         const voiceId = gender === 'female'
           ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
           : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
-        speakArabic(reply, ttsProvider, voiceId);
+        speakArabic(reply, ttsProvider, voiceId, patientTone);
       }
     } catch (err) {
       console.error('Chat error:', err);
@@ -605,7 +607,7 @@ export function HistoryTakingSection({
           const voiceId = gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
             : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
-          speakArabic(reply, ttsProvider, voiceId);
+          speakArabic(reply, ttsProvider, voiceId, patientTone);
         }
       })
       .catch(err => {

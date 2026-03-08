@@ -28,10 +28,34 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
  * Speak Arabic text using either browser TTS or ElevenLabs streaming.
  * Falls back to browser TTS on any ElevenLabs error.
  */
+export type PatientTone = 'calm' | 'worried' | 'anxious' | 'angry' | 'impolite' | 'in_pain' | 'cooperative';
+
+/** Map patient tone to ElevenLabs voice_settings */
+function getToneVoiceSettings(tone?: PatientTone) {
+  switch (tone) {
+    case 'worried':
+      return { stability: 0.35, similarity_boost: 0.7, style: 0.4, speed: 1.05 };
+    case 'anxious':
+      return { stability: 0.25, similarity_boost: 0.65, style: 0.5, speed: 1.15 };
+    case 'angry':
+      return { stability: 0.3, similarity_boost: 0.8, style: 0.7, speed: 1.1 };
+    case 'impolite':
+      return { stability: 0.35, similarity_boost: 0.8, style: 0.6, speed: 1.05 };
+    case 'in_pain':
+      return { stability: 0.2, similarity_boost: 0.7, style: 0.6, speed: 0.9 };
+    case 'cooperative':
+      return { stability: 0.6, similarity_boost: 0.75, style: 0.3, speed: 1.0 };
+    case 'calm':
+    default:
+      return { stability: 0.55, similarity_boost: 0.75, style: 0.2, speed: 1.0 };
+  }
+}
+
 export async function speakArabic(
   text: string,
   provider: 'browser' | 'elevenlabs',
-  voiceId?: string
+  voiceId?: string,
+  tone?: PatientTone
 ): Promise<void> {
   // Cancel any ongoing browser speech
   window.speechSynthesis?.cancel();
@@ -47,7 +71,7 @@ export async function speakArabic(
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ text, voiceId }),
+          body: JSON.stringify({ text, voiceId, tone }),
         }
       );
 
