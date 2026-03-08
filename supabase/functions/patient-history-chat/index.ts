@@ -71,6 +71,7 @@ serve(async (req) => {
     const patientData = generatedData.patient || {};
     const handover = historyData.atmist_handover || {};
     const checklist = historyData.checklist || [];
+    const arabicReference = historyData.arabic_reference || '';
 
     // Build the hidden patient knowledge from ATMIST + checklist
     const patientKnowledge = buildPatientKnowledge(handover, checklist, patientData);
@@ -78,9 +79,14 @@ serve(async (req) => {
     const isVoice = mode === 'voice';
 
     // Build system prompt based on mode
-    const systemPrompt = isVoice
+    let systemPrompt = isVoice
       ? buildArabicSystemPrompt(patientData, patientKnowledge)
       : buildEnglishSystemPrompt(patientData, patientKnowledge);
+
+    // Append Arabic reference if available
+    if (arabicReference) {
+      systemPrompt += `\n\nمرجع إضافي للمحادثة (استخدمه كمرجع للرد بالعربي):\n${arabicReference}`;
+    }
 
     const provider = getAIProvider(aiSettings);
 

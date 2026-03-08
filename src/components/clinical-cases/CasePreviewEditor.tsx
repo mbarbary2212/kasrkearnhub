@@ -749,6 +749,9 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
             </div>
           ))}
         </div>
+        <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={addCategory}>
+          + Add category
+        </Button>
       </div>
       <div>
         <Label className="text-xs text-muted-foreground">Comprehension Questions ({data.comprehension_questions?.length || 0})</Label>

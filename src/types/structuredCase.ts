@@ -107,6 +107,7 @@ export interface HistorySectionData {
   atmist_handover?: AtmistHandover;
   checklist: HistoryCategory[];
   comprehension_questions: ComprehensionQuestion[];
+  arabic_reference?: string;
 }
 
 // ── Physical Examination ───────────────────────────────
