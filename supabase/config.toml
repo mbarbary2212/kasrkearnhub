@@ -94,3 +94,6 @@ verify_jwt = false
 
 [functions.score-case-answers]
 verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
