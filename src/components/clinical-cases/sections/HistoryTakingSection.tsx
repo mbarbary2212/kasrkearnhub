@@ -21,6 +21,7 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   historyInteractionMode?: string;
   caseId?: string;
   studentName?: string;
+  patientTone?: PatientTone;
 }
 
 type Phase = 'interact' | 'questions';
