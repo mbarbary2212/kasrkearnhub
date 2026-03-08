@@ -41,6 +41,10 @@ export function HistoryTakingSection({
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
 
+  // TTS settings
+  const { data: ttsSettings } = useAISettings();
+  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
+
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
   const [selectedMode, setSelectedMode] = useState<'chat' | 'voice' | null>(
     isTextMode ? null : null
