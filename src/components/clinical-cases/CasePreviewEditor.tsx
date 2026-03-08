@@ -486,7 +486,7 @@ export function CasePreviewEditor() {
             </div>
           </CardContent>
         </Card>
-      )
+      )}
 
       {/* No content yet — two options */}
       {!generatedData && !editedData && !generateCase.isPending && (
