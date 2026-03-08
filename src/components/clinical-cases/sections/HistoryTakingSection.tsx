@@ -12,7 +12,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic } from '@/utils/tts';
+import { speakArabic, PatientTone } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
