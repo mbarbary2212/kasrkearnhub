@@ -689,12 +689,32 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
     checklist[catIdx].items.push({ key: `item_${Date.now()}`, label: 'New item' });
     onChange({ ...data, checklist });
   };
+  const addCategory = () => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist.push({ key: `cat_${Date.now()}`, label: 'New Category', items: [] });
+    onChange({ ...data, checklist });
+  };
+  const removeCategory = (catIdx: number) => {
+    const checklist = structuredClone(data.checklist || []);
+    checklist.splice(catIdx, 1);
+    onChange({ ...data, checklist });
+  };
 
   return (
     <div className="space-y-4">
       <div>
         <Label className="text-xs text-muted-foreground">Mode</Label>
         <Badge variant="outline" className="ml-2 text-xs">{data.mode}</Badge>
+      </div>
+      <div>
+        <Label className="text-xs text-muted-foreground">Arabic Reference (للمحادثة)</Label>
+        <Textarea
+          dir="rtl"
+          value={data.arabic_reference || ''}
+          onChange={e => onChange({ ...data, arabic_reference: e.target.value })}
+          placeholder="أدخل النص العربي المرجعي للمحادثة هنا..."
+          className="mt-1 min-h-[100px] text-sm"
+        />
       </div>
       {data.atmist_handover && (
         <div>
