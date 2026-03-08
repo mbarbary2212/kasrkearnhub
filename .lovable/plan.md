@@ -1,53 +1,31 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 12 added)
+## Problem: AI Patient Says Wrong Name
 
-### Completed Steps
+The patient name in the database is **"Amr Khalil"** — there's no "Omar" stored anywhere. The AI model is likely conflating "Amr" with "Omar" since they're phonetically similar in Arabic (عمر vs عمرو).
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+**Two fixes:**
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+### Fix 1 — Make patient name editable in CasePreviewEditor
 
-### All Steps
+The `generated_case_data.patient` object (name, age, gender, occupation, background) is currently **not editable** in the editor. Add a "Patient Info" card at the top of the History Taking editor section so Mohamed can correct the name directly.
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
+**File:** `src/components/clinical-cases/CasePreviewEditor.tsx`
+- Add editable fields for `patient.name`, `patient.age`, `patient.gender`, `patient.occupation`, `patient.background` at the top of the case editor (above sections)
+- When saved, update `generated_case_data.patient` in the database
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+### Fix 2 — Strengthen the system prompt
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+The current prompt says `You are role-playing as ${name}` but the AI may still deviate. Add an explicit rule:
+
+**File:** `supabase/functions/patient-history-chat/index.ts`
+- Add to both English and Arabic system prompts: "Your name is exactly ${name}. If asked your name, always say ${name}. Do not use any other name."
+- Arabic version: "اسمك بالظبط ${name}. لو حد سألك عن اسمك قول ${name}. ما تستخدمش أي اسم تاني."
+
+### Files
+
+| File | Change |
+|------|--------|
+| `supabase/functions/patient-history-chat/index.ts` | Add explicit name rule to both prompts |
+| `src/components/clinical-cases/CasePreviewEditor.tsx` | Add Patient Info editor (name, age, gender, occupation, background) |
+
