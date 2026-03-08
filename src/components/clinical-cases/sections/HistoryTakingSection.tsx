@@ -38,6 +38,7 @@ export function HistoryTakingSection({
   historyInteractionMode,
   caseId,
   studentName,
+  patientTone,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
