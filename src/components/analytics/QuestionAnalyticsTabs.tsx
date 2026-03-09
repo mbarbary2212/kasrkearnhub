@@ -24,10 +24,14 @@ export function QuestionAnalyticsTabs({ modules, moduleAdminModuleIds }: Questio
       </div>
 
       <Tabs defaultValue="mcq" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="mcq" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             MCQ
+          </TabsTrigger>
+          <TabsTrigger value="sba" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            SBA
           </TabsTrigger>
           <TabsTrigger value="osce" className="flex items-center gap-2">
             <Image className="h-4 w-4" />
@@ -43,6 +47,14 @@ export function QuestionAnalyticsTabs({ modules, moduleAdminModuleIds }: Questio
           <McqAnalyticsDashboard 
             modules={modules} 
             moduleAdminModuleIds={moduleAdminModuleIds}
+          />
+        </TabsContent>
+
+        <TabsContent value="sba" className="mt-6">
+          <McqAnalyticsDashboard 
+            modules={modules} 
+            moduleAdminModuleIds={moduleAdminModuleIds}
+            questionFormat="sba"
           />
         </TabsContent>
 
