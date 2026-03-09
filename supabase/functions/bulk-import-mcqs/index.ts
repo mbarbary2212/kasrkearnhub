@@ -213,14 +213,15 @@ Deno.serve(async (req) => {
       chapter_id: chapterId || null,
       topic_id: topicId || null,
       stem: mcq.stem,
-      choices: filterValidChoices(mcq.choices), // Filter out empty E choice
-      correct_key: mcq.normalizedCorrectKey, // Use normalized value
+      choices: filterValidChoices(mcq.choices),
+      correct_key: mcq.normalizedCorrectKey,
       explanation: mcq.explanation,
       difficulty: mcq.difficulty,
       display_order: index,
       created_by: user.id,
       original_section_name: mcq.original_section_name || null,
       original_section_number: mcq.original_section_number || null,
+      question_format: questionFormat,
     }));
 
     console.log(`Inserting ${records.length} MCQs for module ${moduleId}, chapter ${chapterId}`);
