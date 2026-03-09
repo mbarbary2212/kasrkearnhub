@@ -166,3 +166,9 @@
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
+
+@keyframes marquee-vertical {
+  0%, 15% { transform: translateY(0); }
+  45%, 55% { transform: translateY(calc(-100% + 2.5rem)); }
+  85%, 100% { transform: translateY(0); }
+}
