@@ -227,8 +227,8 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
                       <CardTitle className="text-base line-clamp-1">{clinicalCase.title}</CardTitle>
                     </div>
                   </div>
-                  <div className="relative h-10 overflow-hidden group/desc">
-                    <p className="text-sm text-muted-foreground absolute animate-[marquee-vertical_8s_linear_infinite] group-hover/desc:[animation-play-state:paused]">
+                  <div className="h-10 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+                    <p className="text-sm text-muted-foreground">
                       {clinicalCase.intro_text}
                     </p>
                   </div>
