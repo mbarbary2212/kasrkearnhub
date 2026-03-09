@@ -823,6 +823,15 @@ function HistoryEditor({ data, onChange }: { data: HistorySectionData; onChange:
         <Badge variant="outline" className="ml-2 text-xs">{data.mode}</Badge>
       </div>
       <div>
+        <Label className="text-xs text-muted-foreground">English Reference (for chat)</Label>
+        <Textarea
+          value={data.english_reference || ''}
+          onChange={e => onChange({ ...data, english_reference: e.target.value })}
+          placeholder="Enter the English reference summary for the conversation..."
+          className="mt-1 min-h-[100px] text-sm"
+        />
+      </div>
+      <div>
         <Label className="text-xs text-muted-foreground">Arabic Reference (للمحادثة)</Label>
         <Textarea
           dir="rtl"
