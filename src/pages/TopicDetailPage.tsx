@@ -321,6 +321,7 @@ export default function TopicDetailPage() {
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
+      sba: sbaQuestions?.length || 0,
       true_false: trueFalseQuestions?.length || 0,
       essays: essays?.length || 0,
       osce: osceQuestions?.length || 0,
@@ -328,7 +329,7 @@ export default function TopicDetailPage() {
       matching: matchingQuestions?.length || 0,
       images: 0,
     });
-  }, [mcqs?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
