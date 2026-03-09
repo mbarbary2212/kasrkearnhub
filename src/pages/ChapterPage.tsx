@@ -1003,6 +1003,27 @@ export default function ChapterPage() {
                   </div>
                 )}
 
+                {/* SBA Content */}
+                {practiceTab === 'sba' && (
+                  <div>
+                    {sbaLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <McqList
+                        mcqs={filterBySection(sbaQuestions || [])}
+                        deletedMcqs={deletedOnlySbas}
+                        moduleId={moduleId || ''}
+                        chapterId={chapterId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedSbas}
+                        onShowDeletedChange={setShowDeletedSbas}
+                        questionFormat="sba"
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* True/False Content */}
                 {practiceTab === 'true_false' && (
                   <div>
