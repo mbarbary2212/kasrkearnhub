@@ -86,15 +86,16 @@ export function useModuleMcqs(moduleId?: string, includeDeleted = false, format:
 }
 
 // Lightweight count-only hook for chapter MCQs (badges)
-export function useChapterMcqCount(chapterId?: string) {
+export function useChapterMcqCount(chapterId?: string, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'chapter-count', chapterId],
+    queryKey: ['mcqs', 'chapter-count', chapterId, format],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('mcqs')
         .select('id', { count: 'exact', head: true })
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .eq('question_format', format);
       if (error) throw error;
       return count ?? 0;
     },
@@ -102,6 +103,11 @@ export function useChapterMcqCount(chapterId?: string) {
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
+}
+
+// SBA-specific chapter hooks
+export function useChapterSbaCount(chapterId?: string) {
+  return useChapterMcqCount(chapterId, 'sba');
 }
 
 // Fetch MCQs by chapter (with optional includeDeleted flag)
