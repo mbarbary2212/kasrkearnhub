@@ -127,7 +127,13 @@ function buildPatientKnowledge(
 
   parts.push(`Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'}yo, ${patient.gender || '?'}`);
 
-  if (handover.age_time) parts.push(`Age/Time: ${handover.age_time}`);
+  // Override stale ATMIST age_time with canonical patient data
+  if (patient.age) {
+    const ageTime = `${patient.age} year old ${patient.gender || 'patient'}`;
+    parts.push(`Age/Time: ${ageTime}`);
+  } else if (handover.age_time) {
+    parts.push(`Age/Time: ${handover.age_time}`);
+  }
   if (handover.mechanism) parts.push(`Mechanism: ${handover.mechanism}`);
   if (handover.injuries) parts.push(`Injuries: ${handover.injuries}`);
   if (handover.signs) parts.push(`Signs: ${handover.signs}`);
