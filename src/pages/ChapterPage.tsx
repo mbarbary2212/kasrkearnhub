@@ -47,7 +47,7 @@ import { VisualResourcesSection } from '@/components/study/VisualResourcesSectio
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { useChapterMcqs, useChapterMcqCount } from '@/hooks/useMcqs';
+import { useChapterMcqs, useChapterMcqCount, useChapterSbas, useChapterSbaCount } from '@/hooks/useMcqs';
 import { useChapterTrueFalseQuestions, useChapterTrueFalseCount } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { useChapterAlgorithms } from '@/hooks/useInteractiveAlgorithms';
