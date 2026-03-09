@@ -874,6 +874,7 @@ export function McqList({
           chapterId={chapterId}
           mcq={editingMcq}
           isAdmin={isAdmin}
+          questionFormat={questionFormat}
         />
       )}
 
