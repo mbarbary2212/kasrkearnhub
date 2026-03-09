@@ -153,7 +153,7 @@ export function HistoryTakingSection({
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-EG';
+    recognition.lang = LANGUAGE_LABELS[selectedLanguage || 'ar']?.speechLocale || 'ar-EG';
     recognition.continuous = false;
     recognition.interimResults = true;
 
