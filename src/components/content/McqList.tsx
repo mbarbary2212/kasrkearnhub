@@ -634,7 +634,7 @@ export function McqList({
   if (displayMcqs.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>No MCQs available yet.</p>
+        <p>No {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} available yet.</p>
       </div>
     );
   }
