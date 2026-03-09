@@ -62,14 +62,15 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
 }
 
 // Fetch MCQs by module (with optional includeDeleted flag)
-export function useModuleMcqs(moduleId?: string, includeDeleted = false) {
+export function useModuleMcqs(moduleId?: string, includeDeleted = false, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'module', moduleId, { includeDeleted }],
+    queryKey: ['mcqs', 'module', moduleId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('module_id', moduleId!);
+        .eq('module_id', moduleId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
