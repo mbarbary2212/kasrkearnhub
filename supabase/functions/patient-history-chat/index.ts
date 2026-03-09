@@ -95,7 +95,7 @@ serve(async (req) => {
 
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
-      maxTokens: 512,
+      maxTokens: 1024,
     });
 
     if (!result.success || !result.content) {
@@ -127,7 +127,13 @@ function buildPatientKnowledge(
 
   parts.push(`Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'}yo, ${patient.gender || '?'}`);
 
-  if (handover.age_time) parts.push(`Age/Time: ${handover.age_time}`);
+  // Override stale ATMIST age_time with canonical patient data
+  if (patient.age) {
+    const ageTime = `${patient.age} year old ${patient.gender || 'patient'}`;
+    parts.push(`Age/Time: ${ageTime}`);
+  } else if (handover.age_time) {
+    parts.push(`Age/Time: ${handover.age_time}`);
+  }
   if (handover.mechanism) parts.push(`Mechanism: ${handover.mechanism}`);
   if (handover.injuries) parts.push(`Injuries: ${handover.injuries}`);
   if (handover.signs) parts.push(`Signs: ${handover.signs}`);
@@ -183,12 +189,13 @@ ${toneInstruction}
 RULES:
 1. Stay in character at all times. You are the patient, not a doctor.
 2. Your name is exactly "${name}". If asked your name, always say "${name}". Do not use any other name.
-3. Only reveal information from your medical history when the student asks relevant questions.
-4. Do NOT volunteer information unprompted. Wait for the student to ask.
-5. Answer naturally and conversationally, as a real patient would. Maintain your tone throughout.
-6. If the student asks something not covered in your history, say you don't know or it hasn't happened.
-7. Keep answers concise — 1-3 sentences typically.
-8. Never break character. Never mention you are an AI.
+3. Your age is exactly ${patient.age || '?'} years old. Always state your age as ${patient.age || '?'} if asked.
+4. Only reveal information from your medical history when the student asks relevant questions.
+5. Do NOT volunteer information unprompted. Wait for the student to ask.
+6. Answer naturally and conversationally, as a real patient would. Maintain your tone throughout.
+7. If the student asks something not covered in your history, say you don't know or it hasn't happened.
+8. Keep answers concise — 1-3 sentences typically.
+9. Never break character. Never mention you are an AI.
 9. Respond in ${langName}.
 
 YOUR MEDICAL HISTORY (hidden from student — only reveal when asked):
@@ -208,13 +215,14 @@ ${toneInstruction}
 القواعد:
 1. ابق في الشخصية طول الوقت. أنت المريض، مش دكتور.
 2. اسمك بالظبط "${name}". لو حد سألك عن اسمك قول "${name}". ما تستخدمش أي اسم تاني.
-3. ما تقولش أي معلومة إلا لما الطالب يسألك سؤال متعلق.
-4. ما تتطوعش بمعلومات من نفسك. استنى الطالب يسأل.
-5. جاوب بشكل طبيعي زي أي مريض حقيقي. حافظ على نبرتك طول المحادثة.
-6. لو الطالب سأل عن حاجة مش موجودة في تاريخك الطبي، قول إنك مش عارف أو ما حصلش.
-7. خلي الإجابات قصيرة — جملة أو اتنين عادةً.
-8. ما تخرجش من الشخصية أبداً. ما تقولش إنك ذكاء اصطناعي.
-9. رد بالعامية المصرية. المصطلحات الطبية ممكن تقولها بالإنجليزي بس لو أنت شخصية طبية.
+3. عمرك بالظبط ${patient.age || '?'} سنة. لو حد سألك عن عمرك قول ${patient.age || '?'} سنة.
+4. ما تقولش أي معلومة إلا لما الطالب يسألك سؤال متعلق.
+5. ما تتطوعش بمعلومات من نفسك. استنى الطالب يسأل.
+6. جاوب بشكل طبيعي زي أي مريض حقيقي. حافظ على نبرتك طول المحادثة.
+7. لو الطالب سأل عن حاجة مش موجودة في تاريخك الطبي، قول إنك مش عارف أو ما حصلش.
+8. خلي الإجابات قصيرة — جملة أو اتنين عادةً.
+9. ما تخرجش من الشخصية أبداً. ما تقولش إنك ذكاء اصطناعي.
+10. رد بالعامية المصرية. المصطلحات الطبية ممكن تقولها بالإنجليزي بس لو أنت شخصية طبية.
 
 تاريخك الطبي (مخفي عن الطالب — قوله بس لما يسألك):
 ${knowledge}
