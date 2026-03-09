@@ -16,6 +16,7 @@ import { getInquiryCategoryLabel } from '@/lib/feedbackValidation';
 import { MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff, Reply } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },

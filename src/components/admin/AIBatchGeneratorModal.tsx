@@ -22,6 +22,7 @@ import { useChapterSections } from '@/hooks/useSections';
 import { useCreateBatchJob, useStartBatchJob } from '@/hooks/useAIBatchJobs';
 import { useIsAIContentFactoryEnabled } from '@/hooks/useAISettings';
 import { useAdminDocuments } from '@/hooks/useAdminDocuments';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQs', description: 'Multiple choice questions' },

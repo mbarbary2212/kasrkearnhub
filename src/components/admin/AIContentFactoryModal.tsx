@@ -42,6 +42,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useChapterSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 interface AdminDocument {
   id: string;

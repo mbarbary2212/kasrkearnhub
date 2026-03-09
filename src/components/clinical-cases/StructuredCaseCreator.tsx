@@ -50,6 +50,7 @@ import { useModules } from '@/hooks/useModules';
 import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
 import { useNavigate } from 'react-router-dom';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 // ── Constants ──────────────────────────────────────────
 

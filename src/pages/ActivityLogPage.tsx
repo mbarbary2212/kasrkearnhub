@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { Download, RefreshCw, Activity, Users, BookOpen } from 'lucide-react';
 import { AppRole } from '@/types/database';
 import { useModules } from '@/hooks/useModules';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 interface ActivityLog {
   id: string;
