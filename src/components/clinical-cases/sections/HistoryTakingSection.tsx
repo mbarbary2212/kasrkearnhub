@@ -48,9 +48,20 @@ export function HistoryTakingSection({
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
 
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<'chat' | 'voice' | null>(
     isTextMode ? null : null
   );
+
+  const availableLanguages = data.available_languages?.length ? data.available_languages : ['en', 'ar'];
+
+  const LANGUAGE_LABELS: Record<string, { label: string; native: string; greeting: string; speechLocale: string }> = {
+    en: { label: 'English', native: 'English', greeting: 'Hello', speechLocale: 'en-US' },
+    ar: { label: 'Arabic', native: 'عربي', greeting: 'السلام عليكم', speechLocale: 'ar-EG' },
+    fr: { label: 'French', native: 'Français', greeting: 'Bonjour', speechLocale: 'fr-FR' },
+    de: { label: 'German', native: 'Deutsch', greeting: 'Hallo', speechLocale: 'de-DE' },
+    es: { label: 'Spanish', native: 'Español', greeting: 'Hola', speechLocale: 'es-ES' },
+  };
   const [showHandover, setShowHandover] = useState(true);
 
   // Chat state
