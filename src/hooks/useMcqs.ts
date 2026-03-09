@@ -255,7 +255,7 @@ export function useUpdateMcq() {
       return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ updated successfully' });
+      toast({ title: 'Question updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
