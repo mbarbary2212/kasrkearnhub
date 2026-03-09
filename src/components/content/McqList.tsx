@@ -779,7 +779,9 @@ export function McqList({
                   ? 'No duplicates found.' 
                   : !isAdmin
                     ? 'No questions match your current filters. Try adjusting your filters.'
-                    : 'No MCQs yet. Click "Add Question" to create one.'}
+                    : questionFormat === 'sba'
+                      ? 'No SBA questions yet. Click "Add Question" to create one.'
+                      : 'No MCQs yet. Click "Add Question" to create one.'}
           </p>
         </div>
       ) : viewMode === 'table' && isAdmin && !showDeleted ? (
