@@ -109,6 +109,7 @@ export function HistoryTakingSection({
           case_id: caseId,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           mode: selectedMode || 'chat',
+          language: selectedLanguage || 'en',
         },
       });
 
