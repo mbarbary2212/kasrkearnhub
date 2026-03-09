@@ -214,7 +214,7 @@ export function McqCard({
                   size="sm"
                   onClick={onRestore}
                   className="h-8 gap-2 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                  title="Restore MCQ"
+                  title={questionFormat === 'sba' ? 'Restore SBA' : 'Restore MCQ'}
                 >
                   <RotateCcw className="h-4 w-4" />
                   Restore
@@ -227,7 +227,7 @@ export function McqCard({
                       size="sm"
                       onClick={onEdit}
                       className="h-8 w-8 p-0"
-                      title="Edit MCQ"
+                      title={questionFormat === 'sba' ? 'Edit SBA' : 'Edit MCQ'}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -238,7 +238,7 @@ export function McqCard({
                       size="sm"
                       onClick={onDelete}
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Delete MCQ"
+                      title={questionFormat === 'sba' ? 'Delete SBA' : 'Delete MCQ'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

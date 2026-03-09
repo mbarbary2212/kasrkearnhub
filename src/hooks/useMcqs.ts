@@ -200,7 +200,8 @@ export function useCreateMcq() {
       return { ...data, id: result.id };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ added successfully' });
+      const label = result.question_format === 'sba' ? 'SBA question' : 'MCQ';
+      toast({ title: `${label} added successfully` });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.module_id] });
       if (result.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapter_id] });
@@ -219,7 +220,7 @@ export function useCreateMcq() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error adding MCQ', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error adding question', description: error.message, variant: 'destructive' });
     },
   });
 }
@@ -254,7 +255,7 @@ export function useUpdateMcq() {
       return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ updated successfully' });
+      toast({ title: 'Question updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
@@ -272,7 +273,7 @@ export function useUpdateMcq() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error updating MCQ', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error updating question', description: error.message, variant: 'destructive' });
     },
   });
 }
@@ -301,7 +302,7 @@ export function useDeleteMcq() {
       return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ deleted successfully' });
+      toast({ title: 'Question deleted successfully' });
       // Force refetch to confirm deletion
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
@@ -322,7 +323,7 @@ export function useDeleteMcq() {
     onError: (error: Error) => {
       console.error('MCQ delete error:', error);
       toast({ 
-        title: 'Error deleting MCQ', 
+        title: 'Error deleting question', 
         description: error.message || 'Delete failed. You may not have permission.', 
         variant: 'destructive' 
       });
@@ -351,7 +352,7 @@ export function useRestoreMcq() {
       return { moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ restored successfully' });
+      toast({ title: 'Question restored successfully' });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
@@ -364,7 +365,7 @@ export function useRestoreMcq() {
     onError: (error: Error) => {
       console.error('MCQ restore error:', error);
       toast({ 
-        title: 'Error restoring MCQ', 
+        title: 'Error restoring question', 
         description: error.message || 'Restore failed. You may not have permission.', 
         variant: 'destructive' 
       });
@@ -416,7 +417,7 @@ export function useBulkCreateMcqs() {
       return { moduleId, chapterId, topicId, count: mcqs.length };
     },
     onSuccess: (result) => {
-      toast({ title: `${result.count} MCQs imported successfully` });
+      toast({ title: `${result.count} questions imported successfully` });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
@@ -434,7 +435,7 @@ export function useBulkCreateMcqs() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error importing MCQs', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error importing questions', description: error.message, variant: 'destructive' });
     },
   });
 }

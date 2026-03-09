@@ -634,7 +634,7 @@ export function McqList({
   if (displayMcqs.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>No MCQs available yet.</p>
+        <p>No {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} available yet.</p>
       </div>
     );
   }
@@ -699,7 +699,7 @@ export function McqList({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
-                  <p>You can only manage MCQs in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
+                  <p>You can only manage {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -889,9 +889,9 @@ export function McqList({
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Bulk Import MCQs</DialogTitle>
+            <DialogTitle>Bulk Import {questionFormat === 'sba' ? 'SBA Questions' : 'MCQs'}</DialogTitle>
             <DialogDescription>
-              Upload a CSV file or paste CSV content to import multiple MCQs
+              Upload a CSV file or paste CSV content to import multiple {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'}
             </DialogDescription>
           </DialogHeader>
           
@@ -937,7 +937,7 @@ export function McqList({
                           setParseCorrections(corrections);
                           
                           if (parsed.length === 0) {
-                            setFileError('No valid MCQs found in the file. Check the format.');
+                            setFileError(`No valid ${questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} found in the file. Check the format.`);
                             return;
                           }
                           
@@ -1042,7 +1042,7 @@ The AI will parse and extract the questions automatically.`}
                         return;
                       }
                       if (!data.mcqs || data.mcqs.length === 0) {
-                        setFileError('No MCQs could be extracted from the text');
+                        setFileError(`No ${questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} could be extracted from the text`);
                         return;
                       }
                       const withDuplicates = processWithDuplicateDetection(data.mcqs);
@@ -1201,7 +1201,7 @@ The AI will parse and extract the questions automatically.`}
       >
         <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete MCQ?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {questionFormat === 'sba' ? 'SBA Question' : 'MCQ'}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will 
               <span className="font-medium text-foreground"> soft-delete </span>
@@ -1237,7 +1237,7 @@ The AI will parse and extract the questions automatically.`}
       >
         <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore MCQ?</AlertDialogTitle>
+            <AlertDialogTitle>Restore {questionFormat === 'sba' ? 'SBA Question' : 'MCQ'}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will restore the question and make it visible to students again.
               <br />
