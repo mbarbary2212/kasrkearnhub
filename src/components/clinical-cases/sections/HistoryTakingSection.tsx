@@ -411,7 +411,7 @@ export function HistoryTakingSection({
             )}
             <div>
               <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
-              <p className="text-xs text-muted-foreground">Chat Mode — English</p>
+              <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
             </div>
           </div>
 
