@@ -140,17 +140,17 @@ export function InvestigationsImagingSection({
       {showResults && (
         <div className="border-t pt-4 mt-2">
           <Label className="font-medium text-sm">
-            Summarize your interpretation of the imaging findings
+            Justify why you ordered these imaging studies and summarize the findings
           </Label>
           <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-            What do these results tell you about the patient's condition?
+            Explain your clinical reasoning for ordering these investigations and interpret the results.
           </p>
           <Textarea
             value={findingsSummary}
             onChange={e => setFindingsSummary(e.target.value)}
             rows={3}
             disabled={readOnly}
-            placeholder="Describe what the imaging findings reveal..."
+            placeholder="Justify your imaging orders and describe what the findings reveal..."
           />
         </div>
       )}
