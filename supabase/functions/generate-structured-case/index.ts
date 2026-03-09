@@ -340,7 +340,7 @@ ${activeSections.includes("physical_examination") ? `  "physical_examination": {
     "findings": {
       "general":     { "text": "string — general appearance findings", "ref": "string|null — optional chapter quote" },
       "head_neck":   { "text": "string — head and neck findings", "ref": "string|null" },
-      "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "string", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
+      "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "°C for Temp, mmHg for BP, bpm for HR, breaths/min for RR, % for SpO2, seconds for CRT — NEVER use Fahrenheit for temperature", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
       "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
       "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
       "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
