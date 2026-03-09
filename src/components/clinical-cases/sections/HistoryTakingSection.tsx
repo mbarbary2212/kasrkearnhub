@@ -640,8 +640,9 @@ export function HistoryTakingSection({
 
   // ── Helper: send initial greeting ──────────────────────
   function sendChatMessageInitial(mode: 'chat' | 'voice') {
-    // Trigger the AI to send the first greeting
-    const initMsg: ChatMessage = { role: 'user', content: mode === 'voice' ? 'السلام عليكم' : 'Hello' };
+    const lang = selectedLanguage || 'en';
+    const langInfo = LANGUAGE_LABELS[lang] || LANGUAGE_LABELS.en;
+    const initMsg: ChatMessage = { role: 'user', content: langInfo.greeting };
     setChatMessages([initMsg]);
     setIsSending(true);
 
@@ -651,14 +652,16 @@ export function HistoryTakingSection({
           case_id: caseId,
           messages: [{ role: initMsg.role, content: initMsg.content }],
           mode,
+          language: lang,
         },
       })
       .then(({ data: fnData, error }) => {
         if (error) throw error;
-        const reply = fnData?.reply || (mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor');
+        const fallbackGreeting = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor';
+        const reply = fnData?.reply || fallbackGreeting;
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice') {
+        if (mode === 'voice' && lang === 'ar') {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
           const voiceId = gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
@@ -668,10 +671,8 @@ export function HistoryTakingSection({
       })
       .catch(err => {
         console.error('Initial chat error:', err);
-        setChatMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor, how can I help?' },
-        ]);
+        const fallback = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor, how can I help?';
+        setChatMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
       })
       .finally(() => setIsSending(false));
   }
