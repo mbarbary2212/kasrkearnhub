@@ -306,8 +306,8 @@ export function HistoryTakingSection({
       );
     }
 
-    // ── Landing screen: choose Chat or Voice ──
-    if (!selectedMode) {
+    // ── Language selection screen ──
+    if (!selectedLanguage) {
       return (
         <div className="flex flex-col items-center gap-6 py-8 relative">
           {watermark}
@@ -319,7 +319,49 @@ export function HistoryTakingSection({
           )}
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
-            <p className="text-sm text-muted-foreground">Choose how you want to take the history</p>
+            <p className="text-sm text-muted-foreground">Choose the language for the conversation</p>
+          </div>
+          <div className="flex gap-3 flex-wrap justify-center">
+            {availableLanguages.map(lang => {
+              const info = LANGUAGE_LABELS[lang];
+              if (!info) return null;
+              return (
+                <Button
+                  key={lang}
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 min-w-[140px]"
+                  onClick={() => setSelectedLanguage(lang)}
+                >
+                  <Globe className="w-5 h-5" />
+                  {info.label} ({info.native})
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Mode selection screen: choose Chat or Voice ──
+    if (!selectedMode) {
+      const langInfo = LANGUAGE_LABELS[selectedLanguage] || LANGUAGE_LABELS.en;
+      return (
+        <div className="flex flex-col items-center gap-6 py-8 relative">
+          {watermark}
+          {avatarUrl && (
+            <Avatar className="w-24 h-24 border-4 border-primary/20">
+              <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+              <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+            </Avatar>
+          )}
+          <div className="text-center">
+            <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
+            <Badge variant="outline" className="gap-1 mt-1">
+              <Globe className="w-3 h-3" />
+              {langInfo.label}
+            </Badge>
+            <p className="text-sm text-muted-foreground mt-2">Choose how you want to take the history</p>
           </div>
           <div className="flex gap-3">
             <Button
@@ -328,12 +370,11 @@ export function HistoryTakingSection({
               className="gap-2"
               onClick={() => {
                 setSelectedMode('chat');
-                // Send initial greeting
                 sendChatMessageInitial('chat');
               }}
             >
               <MessageCircle className="w-5 h-5" />
-              Chat (English)
+              Chat
             </Button>
             <Button
               size="lg"
@@ -345,9 +386,12 @@ export function HistoryTakingSection({
               }}
             >
               <Mic className="w-5 h-5" />
-              Voice (عربي)
+              Voice
             </Button>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedLanguage(null)} className="text-muted-foreground">
+            ← Change language
+          </Button>
         </div>
       );
     }
