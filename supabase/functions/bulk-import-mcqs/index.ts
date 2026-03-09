@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { mcqs, moduleId, chapterId, topicId } = body;
+    const { mcqs, moduleId, chapterId, topicId, questionFormat = 'mcq' } = body;
 
     if (!mcqs || !Array.isArray(mcqs) || mcqs.length === 0) {
       return new Response(
