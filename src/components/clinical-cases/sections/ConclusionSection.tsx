@@ -47,10 +47,18 @@ export function ConclusionSection({
           <Textarea
             value={taskAnswers[task.id] || ''}
             onChange={e => setTaskAnswers(prev => ({ ...prev, [task.id]: e.target.value }))}
-            rows={task.type === 'ward_round_presentation' ? 8 : 5}
+            rows={task.type === 'ward_round_presentation' ? 6 : 4}
             disabled={readOnly}
             placeholder={`Write your ${taskTypeLabel(task.type).toLowerCase()} here... (type 'pass' to skip)`}
           />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>
+              {task.type === 'ward_round_presentation'
+                ? 'Aim for 100–200 words (brief structured summary)'
+                : 'Aim for 50–100 words'}
+            </span>
+            <span>{(taskAnswers[task.id] || '').trim().split(/\s+/).filter(Boolean).length} words</span>
+          </div>
         </div>
       ))}
 

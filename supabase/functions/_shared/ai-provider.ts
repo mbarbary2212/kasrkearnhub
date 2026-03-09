@@ -125,7 +125,15 @@ Required units by lab type:
 - Sodium (Na), Potassium (K), Chloride (Cl), Bicarbonate (HCO3) → mEq/L
 - PSA → ng/mL
 - TSH → mIU/L, T3 → ng/dL, T4 → µg/dL
-This rule applies to all lab values, reference ranges, reports, MCQ options, case data, and any generated content involving laboratory values.`;
+This rule applies to all lab values, reference ranges, reports, MCQ options, case data, and any generated content involving laboratory values.
+
+VITAL SIGNS — MANDATORY UNITS:
+- Temperature → °C (Celsius). NEVER use Fahrenheit.
+- Blood Pressure → mmHg
+- Heart Rate → bpm
+- Respiratory Rate → breaths/min
+- SpO2 → %
+- Capillary Refill Time (CRT) → seconds`;
 
 /**
  * Enrich system prompt with global rules (lab units, etc.)

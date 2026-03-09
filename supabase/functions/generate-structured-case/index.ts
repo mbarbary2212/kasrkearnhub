@@ -340,7 +340,7 @@ ${activeSections.includes("physical_examination") ? `  "physical_examination": {
     "findings": {
       "general":     { "text": "string — general appearance findings", "ref": "string|null — optional chapter quote" },
       "head_neck":   { "text": "string — head and neck findings", "ref": "string|null" },
-      "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "string", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
+      "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "°C for Temp, mmHg for BP, bpm for HR, breaths/min for RR, % for SpO2, seconds for CRT — NEVER use Fahrenheit for temperature", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
       "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
       "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
       "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
@@ -402,9 +402,9 @@ ${activeSections.includes("patient_family_advice") ? `  "patient_family_advice":
     "max_score": 5
   },` : ""}
 ${activeSections.includes("conclusion") ? `  "conclusion": {
-    "ward_round_prompt": "string — present this case in a ward round format",
+    "ward_round_prompt": "string — Keep concise: ask student to present a brief structured ward round summary (5-8 sentences max, NOT a full case report)",
     "ward_round_prompt_ar": "string",
-    "key_decisions": ["string"],
+    "key_decisions": ["string — max 3-5 bullet points"],
     "max_score": 5
   },` : ""}
   "professional_attitude": {

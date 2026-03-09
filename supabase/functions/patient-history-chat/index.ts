@@ -68,7 +68,11 @@ serve(async (req) => {
     }
 
     const historyData = generatedData.history_taking;
-    const patientData = generatedData.patient || {};
+    // Fallback chain: patient data may be nested differently in older cases
+    const patientData = generatedData.patient
+      || generatedData.history_taking?.patient_profile
+      || generatedData.case_meta?.patient
+      || {};
     const handover = historyData.atmist_handover || {};
     const checklist = historyData.checklist || [];
     const arabicReference = historyData.arabic_reference || '';
