@@ -321,6 +321,21 @@ export function PhysicalExamSection({
                       {/* Finding text */}
                       {finding.text && <p className="whitespace-pre-line text-left">{finding.text}</p>}
 
+                      {/* Extra region images */}
+                      {regionKey === 'extra' && isExtraFinding(finding) && finding.image_urls?.length > 0 && (
+                        <div className="flex gap-2 mt-2">
+                          {finding.image_urls.map((url, imgIdx) => (
+                            <a key={imgIdx} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                              <img
+                                src={url}
+                                alt={`${finding.label} ${imgIdx + 1}`}
+                                className="rounded-lg border max-h-40 object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Chapter ref callout */}
                       {finding.ref && (
                         <div
