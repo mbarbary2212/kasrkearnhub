@@ -417,7 +417,7 @@ export function useBulkCreateMcqs() {
       return { moduleId, chapterId, topicId, count: mcqs.length };
     },
     onSuccess: (result) => {
-      toast({ title: `${result.count} MCQs imported successfully` });
+      toast({ title: `${result.count} questions imported successfully` });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
