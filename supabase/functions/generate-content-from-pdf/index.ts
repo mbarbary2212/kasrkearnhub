@@ -15,6 +15,7 @@ const corsHeaders = {
 
 type ContentType =
   | "mcq"
+  | "sba"
   | "flashcard"
   | "case_scenario"
   | "essay"
