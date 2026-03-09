@@ -1011,6 +1011,14 @@ function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData;
             {finding.ref !== undefined && (
               <Input value={finding.ref || ''} onChange={e => updateFinding(key, 'ref', e.target.value)} placeholder="Reference" className="h-7 text-xs" />
             )}
+            {key === 'extra' && (
+              <CaseImageUpload
+                imageUrls={(finding as any).image_urls || []}
+                onChange={urls => updateFinding(key, 'image_urls', urls)}
+                maxImages={2}
+                label="Wound / Misc Photos"
+              />
+            )}
           </div>
         ))}
       </div>
