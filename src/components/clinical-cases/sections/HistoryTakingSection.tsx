@@ -271,8 +271,51 @@ export function HistoryTakingSection({
     </div>
   );
 
-  // ══════════════════════════════════════════════════════
-  // PHASE 1: Interaction
+  // ── Timer badge (inline) ───────────────────────────────
+  const timerBadge = selectedMode && (
+    <Badge
+      variant="outline"
+      className={cn(
+        'gap-1 text-xs tabular-nums',
+        isOverTime && 'border-destructive text-destructive',
+        isNearLimit && !isOverTime && 'border-amber-500 text-amber-600 dark:text-amber-400',
+      )}
+    >
+      <Clock className="w-3 h-3" />
+      {isOverTime ? '0:00' : formatTime(timeRemaining)}
+    </Badge>
+  );
+
+  // ── Warning banner ─────────────────────────────────────
+  const warningBanner = (() => {
+    if (isAtMessageCap) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          You've reached the maximum number of questions ({MAX_STUDENT_MESSAGES}). Please end the conversation and proceed.
+        </div>
+      );
+    }
+    if (isOverTime) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          Time's up! Please end the conversation and proceed to questions.
+        </div>
+      );
+    }
+    if (isNearLimit) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <Clock className="w-4 h-4 shrink-0" />
+          Consider wrapping up your questions soon.
+        </div>
+      );
+    }
+    return null;
+  })();
+
+
   // ══════════════════════════════════════════════════════
   if (phase === 'interact') {
     // ── Text mode: show ATMIST handover ──
