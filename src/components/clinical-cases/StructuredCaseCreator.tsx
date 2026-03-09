@@ -50,6 +50,7 @@ import { useModules } from '@/hooks/useModules';
 import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useCreateStructuredCase } from '@/hooks/useStructuredCase';
 import { useNavigate } from 'react-router-dom';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 // ── Constants ──────────────────────────────────────────
 
@@ -315,9 +316,7 @@ export function StructuredCaseCreator({
                   <Select value={selectedModuleId} onValueChange={v => { setSelectedModuleId(v); setSelectedChapterId(''); }}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="Select module" /></SelectTrigger>
                     <SelectContent>
-                      {(modules || []).map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
+                      <YearGroupedModuleOptions modules={modules} />
                     </SelectContent>
                   </Select>
                 </div>

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowRight, BookOpen, ChevronLeft, Copy, Library } from 'lucide-react';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
+import { useYears } from '@/hooks/useYears';
 import { toast } from 'sonner';
 import { useBulkMoveToChapter, useBulkCopyToChapter, type ContentTableName } from '@/hooks/useContentBulkOperations';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -47,6 +48,7 @@ export function MoveToChapterModal({
   const [mode, setMode] = useState<ActionMode>('move');
 
   const { data: allModules = [] } = useModules();
+  const { data: years = [] } = useYears();
   const { data: chapters = [] } = useModuleChapters(selectedModuleId);
   const bulkMove = useBulkMoveToChapter(contentTable);
   const bulkCopy = useBulkCopyToChapter(contentTable);
@@ -209,28 +211,41 @@ export function MoveToChapterModal({
             </Button>
             <ScrollArea className="max-h-[350px] pr-2">
               <div className="space-y-1">
-                {[...allModules].sort((a, b) => a.name.localeCompare(b.name)).map(mod => (
-                  <button
-                    key={mod.id}
-                    onClick={() => handleSelectModule(mod.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                      selectedModuleId === mod.id
-                        ? 'bg-primary/10 border border-primary/30'
-                        : 'hover:bg-muted border border-transparent'
-                    }`}
-                  >
-                    <Library className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate block">{mod.name}</span>
-                      {mod.slug && (
-                        <span className="text-xs text-muted-foreground">{mod.slug}</span>
-                      )}
+                {[...years].sort((a, b) => a.number - b.number).map(year => {
+                  const yearModules = allModules
+                    .filter(m => m.year_id === year.id)
+                    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+                  if (!yearModules.length) return null;
+                  return (
+                    <div key={year.id}>
+                      <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0 rounded">
+                        {year.name}
+                      </div>
+                      {yearModules.map(mod => (
+                        <button
+                          key={mod.id}
+                          onClick={() => handleSelectModule(mod.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                            selectedModuleId === mod.id
+                              ? 'bg-primary/10 border border-primary/30'
+                              : 'hover:bg-muted border border-transparent'
+                          }`}
+                        >
+                          <Library className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block">{mod.name}</span>
+                            {mod.slug && (
+                              <span className="text-xs text-muted-foreground">{mod.slug}</span>
+                            )}
+                          </div>
+                          {mod.id === moduleId && (
+                            <Badge variant="outline" className="text-xs shrink-0">Current</Badge>
+                          )}
+                        </button>
+                      ))}
                     </div>
-                    {mod.id === moduleId && (
-                      <Badge variant="outline" className="text-xs shrink-0">Current</Badge>
-                    )}
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </>

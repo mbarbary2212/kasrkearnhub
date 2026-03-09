@@ -22,6 +22,7 @@ import { useChapterSections } from '@/hooks/useSections';
 import { useCreateBatchJob, useStartBatchJob } from '@/hooks/useAIBatchJobs';
 import { useIsAIContentFactoryEnabled } from '@/hooks/useAISettings';
 import { useAdminDocuments } from '@/hooks/useAdminDocuments';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQs', description: 'Multiple choice questions' },
@@ -170,15 +171,7 @@ export function AIBatchGeneratorModal({
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[...(modules || [])].sort((a, b) => {
-                        const numA = parseInt(a.slug?.match(/\d+/)?.[0] || '999');
-                        const numB = parseInt(b.slug?.match(/\d+/)?.[0] || '999');
-                        return numA - numB;
-                      }).map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.slug}: {m.name}
-                        </SelectItem>
-                      ))}
+                      <YearGroupedModuleOptions modules={modules} />
                     </SelectContent>
                   </Select>
                 </div>

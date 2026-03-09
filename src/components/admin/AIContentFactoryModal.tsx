@@ -42,6 +42,7 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useChapterSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 interface AdminDocument {
   id: string;
@@ -788,9 +789,7 @@ export function AIContentFactoryModal({
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
                     <SelectContent>
-                      {modules?.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
+                      <YearGroupedModuleOptions modules={modules} />
                     </SelectContent>
                   </Select>
                 </div>

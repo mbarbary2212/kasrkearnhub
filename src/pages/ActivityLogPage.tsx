@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { Download, RefreshCw, Activity, Users, BookOpen } from 'lucide-react';
 import { AppRole } from '@/types/database';
 import { useModules } from '@/hooks/useModules';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 interface ActivityLog {
   id: string;
@@ -342,15 +343,7 @@ export default function ActivityLogPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Modules</SelectItem>
-                  {[...(modules || [])].sort((a, b) => {
-                    const numA = parseInt(a.slug?.match(/\d+/)?.[0] || '999');
-                    const numB = parseInt(b.slug?.match(/\d+/)?.[0] || '999');
-                    return numA - numB;
-                  }).map(module => (
-                    <SelectItem key={module.id} value={module.id}>
-                      {module.name}
-                    </SelectItem>
-                  ))}
+                  <YearGroupedModuleOptions modules={modules} showSlug={false} />
                 </SelectContent>
               </Select>
 
