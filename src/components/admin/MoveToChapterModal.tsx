@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowRight, BookOpen, ChevronLeft, Copy, Library } from 'lucide-react';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useModules } from '@/hooks/useModules';
+import { useYears } from '@/hooks/useYears';
 import { toast } from 'sonner';
 import { useBulkMoveToChapter, useBulkCopyToChapter, type ContentTableName } from '@/hooks/useContentBulkOperations';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
