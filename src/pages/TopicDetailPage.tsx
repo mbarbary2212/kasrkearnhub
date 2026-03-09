@@ -163,6 +163,8 @@ export default function TopicDetailPage() {
   // Modern hooks for MCQ, True/False, OSCE
   const { data: mcqs, isLoading: mcqsLoading } = useTopicMcqs(topicId, false);
   const { data: deletedMcqs } = useTopicMcqs(topicId, true);
+  const { data: sbaQuestions, isLoading: sbaLoading } = useTopicSbas(topicId, false);
+  const { data: deletedSbas } = useTopicSbas(topicId, true);
   const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useTopicTrueFalseQuestions(topicId, false);
   const { data: deletedTrueFalse } = useTopicTrueFalseQuestions(topicId, true);
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
