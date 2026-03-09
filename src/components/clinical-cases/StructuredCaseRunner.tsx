@@ -26,6 +26,7 @@ import {
   Clock,
   Send,
   DoorOpen,
+  Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -200,10 +201,19 @@ export function StructuredCaseRunner({
         <CardContent className="py-3 px-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 min-w-0">
+              <Stethoscope className="w-4 h-4 text-primary shrink-0" />
+              <h2 className="font-semibold text-sm truncate">{caseData.title}</h2>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{Math.round((Date.now() - startTime) / 60000)} min</span>
+              </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                    <DoorOpen className="w-4 h-4" />
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
+                    <DoorOpen className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Exit</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -229,11 +239,6 @@ export function StructuredCaseRunner({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <h2 className="font-semibold text-sm truncate">{caseData.title}</h2>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{Math.round((Date.now() - startTime) / 60000)} min</span>
             </div>
           </div>
           <Progress value={progress} className="h-2" />
