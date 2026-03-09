@@ -103,8 +103,8 @@ export function ClinicalCaseCard({ clinicalCase, onStart, isLoading }: ClinicalC
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="relative h-10 overflow-hidden group/desc">
-          <p className="text-sm text-muted-foreground absolute animate-[marquee-vertical_8s_linear_infinite] group-hover/desc:[animation-play-state:paused]">
+        <div className="h-10 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+          <p className="text-sm text-muted-foreground">
             {clinicalCase.intro_text}
           </p>
         </div>
