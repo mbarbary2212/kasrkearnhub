@@ -26,6 +26,7 @@ import {
   Clock,
   Send,
   DoorOpen,
+  Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
