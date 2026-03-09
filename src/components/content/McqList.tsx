@@ -846,6 +846,7 @@ export function McqList({
                     onToggleMark={toggleMark}
                     isDeleted={showDeleted}
                     previousAttempt={previousAttempt}
+                    questionFormat={questionFormat}
                   />
                 </div>
               </div>
