@@ -88,6 +88,36 @@ export function HistoryTakingSection({
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
 
+  // ── Time & message limits ─────────────────────────────
+  const timeLimitMs = useMemo(
+    () => (estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
+    [estimatedMinutes]
+  );
+  const [interactionStart] = useState(Date.now());
+  const [timeRemaining, setTimeRemaining] = useState(timeLimitMs);
+
+  const studentMessageCount = chatMessages.filter(m => m.role === 'user').length;
+  const isOverTime = timeRemaining <= 0;
+  const isNearLimit = timeRemaining > 0 && timeRemaining < timeLimitMs * 0.25;
+  const isAtMessageCap = studentMessageCount >= MAX_STUDENT_MESSAGES;
+  const shouldDisableInput = isAtMessageCap;
+
+  // Countdown timer (only during Phase 1 interactive modes)
+  useEffect(() => {
+    if (phase !== 'interact' || isTextMode || !selectedMode) return;
+    const interval = setInterval(() => {
+      setTimeRemaining(Math.max(0, timeLimitMs - (Date.now() - interactionStart)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, isTextMode, selectedMode, timeLimitMs, interactionStart]);
+
+  const formatTime = (ms: number) => {
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   const handover = data.atmist_handover;
   const questions = data.comprehension_questions || [];
   const allAnswered = questions.every(q => answers[q.id]?.trim());
