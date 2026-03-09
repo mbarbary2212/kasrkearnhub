@@ -320,6 +320,7 @@ export function StructuredCaseRunner({
               caseId={caseId}
               studentName={studentName}
               patientTone={generatedData?.patient?.tone}
+              estimatedMinutes={caseData.estimated_minutes}
             />
           )}
         </CardContent>
