@@ -1158,6 +1158,12 @@ function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange:
             </div>
             <Input value={study.result} onChange={e => updateStudy(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
             <Input value={study.interpretation} onChange={e => updateStudy(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+            <CaseImageUpload
+              imageUrls={study.image_url ? [study.image_url] : []}
+              onChange={urls => updateStudy(key, 'image_url', urls[0] || null)}
+              maxImages={1}
+              label="X-ray / CT / Report"
+            />
           </div>
         ))}
       </div>
