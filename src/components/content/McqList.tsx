@@ -1201,7 +1201,7 @@ The AI will parse and extract the questions automatically.`}
       >
         <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete MCQ?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {questionFormat === 'sba' ? 'SBA Question' : 'MCQ'}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will 
               <span className="font-medium text-foreground"> soft-delete </span>
