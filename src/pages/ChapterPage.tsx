@@ -239,6 +239,7 @@ export default function ChapterPage() {
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
+  const deletedOnlySbas = (deletedSbas || []).filter(m => m.is_deleted);
   const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
   const deletedOnlyOsce = (deletedOsceQuestions || []).filter(q => q.is_deleted);
