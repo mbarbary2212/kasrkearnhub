@@ -435,7 +435,7 @@ export function useBulkCreateMcqs() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error importing MCQs', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error importing questions', description: error.message, variant: 'destructive' });
     },
   });
 }

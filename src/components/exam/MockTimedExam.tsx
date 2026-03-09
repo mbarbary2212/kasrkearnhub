@@ -313,7 +313,7 @@ export function MockTimedExam({
               {isChapterMode ? 'Test is not available yet for this chapter.' : 'Mock exam is not available yet for this module.'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              No MCQs have been added.
+              No questions have been added.
             </p>
             <Button variant="outline" className="mt-4" onClick={handleGoBack}>
               Go Back
