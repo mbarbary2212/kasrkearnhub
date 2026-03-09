@@ -213,7 +213,7 @@ export function StructuredCaseRunner({
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-7 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
                     <DoorOpen className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Exit</span>
+                    <span className="hidden sm:inline">Abort</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
