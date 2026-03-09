@@ -200,7 +200,8 @@ export function useCreateMcq() {
       return { ...data, id: result.id };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ added successfully' });
+      const label = result.question_format === 'sba' ? 'SBA question' : 'MCQ';
+      toast({ title: `${label} added successfully` });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.module_id] });
       if (result.chapter_id) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapter_id] });
