@@ -95,7 +95,7 @@ serve(async (req) => {
 
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
-      maxTokens: 512,
+      maxTokens: 1024,
     });
 
     if (!result.success || !result.content) {
