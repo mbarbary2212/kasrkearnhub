@@ -166,13 +166,14 @@ export default function VirtualPatientRunner() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <Avatar className="w-16 h-16 border-2 border-background shadow-md">
+            <div className="flex flex-col items-center text-center gap-3 mb-2">
+              <Avatar className="w-24 h-24 ring-4 ring-primary/20 border-2 border-background shadow-lg">
                 <AvatarImage src={examiner?.image_url} alt={examiner?.name} />
-                <AvatarFallback>{examiner?.name?.charAt(4) || 'E'}</AvatarFallback>
+                <AvatarFallback className="text-2xl">{examiner?.name?.charAt(0) || 'E'}</AvatarFallback>
               </Avatar>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-muted-foreground">{examiner?.name || 'Examiner'}</p>
+                <div className="flex items-center justify-center gap-2">
                   <Badge variant="outline">
                     {vpCase.level.charAt(0).toUpperCase() + vpCase.level.slice(1)} Level
                   </Badge>
@@ -182,7 +183,6 @@ export default function VirtualPatientRunner() {
                   </Badge>
                 </div>
                 <CardTitle className="text-xl">{vpCase.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">Examiner: {examiner?.name || 'Examiner'}</p>
               </div>
             </div>
             <CardDescription className="flex items-center gap-4 text-sm">

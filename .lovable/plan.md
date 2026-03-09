@@ -1,72 +1,53 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-# Enhance Examiner Avatar Presentation — Both Screens
+## Status: ✅ Complete (Step 12 added)
 
-## Problem
-The examiner avatar currently appears too small across the case UI:
-- **Intro screen** (`VirtualPatientPage`): w-16 h-16 (64px) — cramped next to metadata
-- **Case runner** (`StructuredCaseRunner`): No avatar in the header at all
-- **History Taking section**: w-12 h-12 (48px) in text mode, w-24 h-24 in chat/voice mode
+### Completed Steps
 
-The avatar images are detailed and look good at larger sizes but lose impact when constrained to small circles.
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
----
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-## Solution: Prominent Examiner Banner
+### All Steps
 
-### 1. Case Intro Screen (`VirtualPatientPage.tsx`)
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
-Replace the current compact avatar+title row with a **hero-style examiner banner**:
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-- Large avatar: **w-24 h-24** (96px) with a subtle ring/glow border (`ring-4 ring-primary/20`)
-- Centered layout above the title and metadata
-- Examiner name displayed prominently below the avatar
-- Badges (level, Interactive Case) move below the name
-- Chief complaint card stays as-is
-
-```text
-┌─────────────────────────────────────┐
-│         ┌──────────┐                │
-│         │  Avatar  │  96px circle   │
-│         │  (large) │  with ring     │
-│         └──────────┘                │
-│       Dr. Ahmed Hassan              │
-│    [Intermediate] [Interactive]     │
-│                                     │
-│    Case Title (xl text)             │
-│    Sections: 8  •  ~15 min          │
-├─────────────────────────────────────┤
-│    Chief Complaint box              │
-│    Start Interactive Case button    │
-└─────────────────────────────────────┘
-```
-
-### 2. Case Runner Header (`StructuredCaseRunner.tsx`)
-
-Add the examiner avatar to the progress header card, giving the student a persistent visual anchor:
-
-- Add a **w-10 h-10** avatar to the left of the case title in the progress header
-- Shows the examiner alongside the stethoscope icon and title
-
-```text
-┌─────────────────────────────────────────┐
-│ (Avatar 40px) Case Title    ⏱ 3min [X] │
-│ ████████████░░░░░░ progress bar         │
-│ Section 3 of 8          5/8 completed   │
-└─────────────────────────────────────────┘
-```
-
-### 3. History Taking Section (`HistoryTakingSection.tsx`)
-
-Increase the text-mode examiner avatar from **w-12 h-12 → w-16 h-16** so it matches the impact of the chat/voice mode avatars (which are already w-24 h-24).
-
----
-
-## Files Modified (3 files)
-
-| File | Change |
-|------|--------|
-| `src/pages/VirtualPatientPage.tsx` | Restructure CardHeader to centered hero layout with w-24 h-24 avatar, ring border, name below |
-| `src/components/clinical-cases/StructuredCaseRunner.tsx` | Add examiner avatar (w-10 h-10) next to case title in progress header |
-| `src/components/clinical-cases/sections/HistoryTakingSection.tsx` | Increase text-mode avatar from w-12 h-12 to w-16 h-16 |
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
