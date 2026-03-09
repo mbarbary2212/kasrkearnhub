@@ -519,6 +519,9 @@ export function HistoryTakingSection({
             </div>
           </ScrollArea>
 
+          {/* Warning banner */}
+          {warningBanner}
+
           {/* Input */}
           <div className="flex gap-2">
             <Input
@@ -530,27 +533,33 @@ export function HistoryTakingSection({
                   sendChatMessage(chatInput);
                 }
               }}
-              placeholder="Ask the patient a question..."
-              disabled={isSending}
+              placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
+              disabled={isSending || shouldDisableInput}
               className="text-sm"
             />
             <Button
               size="icon"
               onClick={() => sendChatMessage(chatInput)}
-              disabled={!chatInput.trim() || isSending}
+              disabled={!chatInput.trim() || isSending || shouldDisableInput}
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
 
-          <Button
-            onClick={handleFinishInteraction}
-            variant="secondary"
-            className="w-full"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            End Conversation — Proceed to Questions
-          </Button>
+          {/* Message counter */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+            </span>
+            <Button
+              onClick={handleFinishInteraction}
+              variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+              className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              End Conversation — Proceed to Questions
+            </Button>
+          </div>
         </div>
       );
     }
