@@ -38,7 +38,7 @@ import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
 import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
-import { useTopicMcqs } from '@/hooks/useMcqs';
+import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
 import { 
