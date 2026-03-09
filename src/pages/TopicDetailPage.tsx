@@ -920,6 +920,27 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
+                {/* SBA Questions */}
+                {practiceTab === 'sba' && (
+                  <div>
+                    {sbaLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <McqList
+                        mcqs={filterBySection(sbaQuestions || [])}
+                        deletedMcqs={deletedOnlySbas}
+                        moduleId={moduleId || ''}
+                        topicId={topicId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedSbas}
+                        onShowDeletedChange={setShowDeletedSbas}
+                        questionFormat="sba"
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* True/False Questions */}
                 {practiceTab === 'true_false' && (
                   <div>
