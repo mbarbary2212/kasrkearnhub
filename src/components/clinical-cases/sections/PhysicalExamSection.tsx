@@ -15,6 +15,7 @@ import type {
 } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { BodyMap } from './BodyMap';
+import { ImageLightbox } from './ImageLightbox';
 
 const REGION_LABELS: Record<RegionKey, { icon: string; label: string }> = {
   general: { icon: '🧍', label: 'General Appearance' },
@@ -325,13 +326,11 @@ export function PhysicalExamSection({
                       {regionKey === 'extra' && isExtraFinding(finding) && finding.image_urls?.length > 0 && (
                         <div className="flex gap-2 mt-2">
                           {finding.image_urls.map((url, imgIdx) => (
-                            <a key={imgIdx} href={url} target="_blank" rel="noopener noreferrer" className="block">
-                              <img
+                             <ImageLightbox
+                                key={imgIdx}
                                 src={url}
                                 alt={`${finding.label} ${imgIdx + 1}`}
-                                className="rounded-lg border max-h-40 object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
                               />
-                            </a>
                           ))}
                         </div>
                       )}
