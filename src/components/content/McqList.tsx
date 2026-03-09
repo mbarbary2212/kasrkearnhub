@@ -699,7 +699,7 @@ export function McqList({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
-                  <p>You can only manage MCQs in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
+                  <p>You can only manage {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} in modules you've been assigned to. Contact a Platform Admin if you need access.</p>
                 </TooltipContent>
               </Tooltip>
             )}
