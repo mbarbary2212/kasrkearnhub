@@ -227,7 +227,7 @@ export function McqCard({
                       size="sm"
                       onClick={onEdit}
                       className="h-8 w-8 p-0"
-                      title="Edit MCQ"
+                      title={questionFormat === 'sba' ? 'Edit SBA' : 'Edit MCQ'}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
