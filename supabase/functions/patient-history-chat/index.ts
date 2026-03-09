@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { case_id, messages, mode } = await req.json();
+    const { case_id, messages, mode, language } = await req.json();
 
     if (!case_id || !messages || !Array.isArray(messages)) {
       return new Response(
