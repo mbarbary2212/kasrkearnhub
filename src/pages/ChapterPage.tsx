@@ -364,6 +364,7 @@ export default function ChapterPage() {
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqCount,
+      sba: sbaCount,
       true_false: trueFalseCount,
       essays: essayCount,
       osce: osceCount,
@@ -373,6 +374,7 @@ export default function ChapterPage() {
     });
   }, [
     mcqCount,
+    sbaCount,
     trueFalseCount,
     essayCount,
     osceCount,
