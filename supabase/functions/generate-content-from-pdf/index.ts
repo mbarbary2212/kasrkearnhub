@@ -1194,8 +1194,18 @@ RULES:
 - Mix different stage types for variety.`
         : "";
 
-    const mcqArrayInstruction = content_type === "mcq"
-      ? `\n\nCRITICAL FOR MCQ: The 'choices' field MUST be an array of exactly 5 objects: [{ "key": "A", "text": "..." }, { "key": "B", "text": "..." }, { "key": "C", "text": "..." }, { "key": "D", "text": "..." }, { "key": "E", "text": "..." }]. DO NOT use an object format.`
+    const mcqArrayInstruction = (content_type === "mcq" || content_type === "sba")
+      ? `\n\nCRITICAL FOR ${content_type.toUpperCase()}: The 'choices' field MUST be an array of exactly 5 objects: [{ "key": "A", "text": "..." }, { "key": "B", "text": "..." }, { "key": "C", "text": "..." }, { "key": "D", "text": "..." }, { "key": "E", "text": "..." }]. DO NOT use an object format.`
+      : "";
+
+    const sbaInstruction = content_type === "sba"
+      ? `\n\nSBA (SINGLE BEST ANSWER) RULES:
+- ALL 5 answer choices MUST be medically plausible and potentially correct.
+- NO obviously wrong distractors — every option should represent a reasonable clinical approach.
+- Exactly ONE answer must be the SINGLE BEST answer given the specific clinical context.
+- The explanation MUST justify why the best answer is SUPERIOR to the other plausible alternatives, not just why it is correct.
+- Use "correct_key" to indicate the single best answer.
+- Set "question_format" to "sba" in each generated item.`
       : "";
 
     // Load AI rules from database (precedence: chapter > module > global)
