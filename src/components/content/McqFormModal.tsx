@@ -131,7 +131,7 @@ export function McqFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-[99999]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit MCQ' : 'Add New MCQ'}</DialogTitle>
+          <DialogTitle>{isEditing ? `Edit ${questionFormat === 'sba' ? 'SBA' : 'MCQ'}` : `Add New ${questionFormat === 'sba' ? 'SBA' : 'MCQ'}`}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
