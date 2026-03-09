@@ -220,7 +220,7 @@ export function useCreateMcq() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error adding MCQ', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error adding question', description: error.message, variant: 'destructive' });
     },
   });
 }
