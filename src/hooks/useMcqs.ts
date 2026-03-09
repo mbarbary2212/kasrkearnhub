@@ -111,15 +111,16 @@ export function useChapterSbaCount(chapterId?: string) {
 }
 
 // Fetch MCQs by chapter (with optional includeDeleted flag)
-export function useChapterMcqs(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+export function useChapterMcqs(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }, format: QuestionFormat = 'mcq') {
   const enabled = options?.enabled ?? true;
   return useQuery({
-    queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted }],
+    queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('chapter_id', chapterId!);
+        .eq('chapter_id', chapterId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
@@ -134,6 +135,11 @@ export function useChapterMcqs(chapterId?: string, includeDeleted = false, optio
     staleTime: 2 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
+}
+
+// SBA-specific chapter hooks
+export function useChapterSbas(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  return useChapterMcqs(chapterId, includeDeleted, options, 'sba');
 }
 
 // Fetch MCQs by topic (with optional includeDeleted flag)
