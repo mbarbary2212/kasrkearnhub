@@ -45,6 +45,7 @@ export function McqCard({
   onToggleMark, 
   isDeleted = false,
   previousAttempt,
+  questionFormat = 'mcq',
 }: McqCardProps) {
   // Restore previous answer if available
   const initialSelectedKey = useMemo(() => {
