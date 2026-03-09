@@ -273,7 +273,7 @@ export function useUpdateMcq() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error updating MCQ', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error updating question', description: error.message, variant: 'destructive' });
     },
   });
 }
