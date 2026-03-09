@@ -352,7 +352,7 @@ export function useRestoreMcq() {
       return { moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ restored successfully' });
+      toast({ title: 'Question restored successfully' });
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
         queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
