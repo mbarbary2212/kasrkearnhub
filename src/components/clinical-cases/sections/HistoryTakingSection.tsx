@@ -250,7 +250,7 @@ export function HistoryTakingSection({
           {/* Examiner Avatar */}
           {avatarUrl && (
             <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12 border-2 border-primary/20">
+              <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
                 <AvatarImage src={avatarUrl} alt={avatarName || 'Examiner'} />
                 <AvatarFallback>{avatarName?.charAt(0) || 'E'}</AvatarFallback>
               </Avatar>

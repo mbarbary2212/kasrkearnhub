@@ -201,7 +201,12 @@ export function StructuredCaseRunner({
         <CardContent className="py-3 px-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 min-w-0">
-              <Stethoscope className="w-4 h-4 text-primary shrink-0" />
+              {examinerAvatar?.image_url && (
+                <Avatar className="w-10 h-10 ring-2 ring-primary/20 border border-background shadow-sm shrink-0">
+                  <AvatarImage src={examinerAvatar.image_url} alt={examinerAvatar.name} />
+                  <AvatarFallback>{examinerAvatar?.name?.charAt(0) || 'E'}</AvatarFallback>
+                </Avatar>
+              )}
               <h2 className="font-semibold text-sm truncate">{caseData.title}</h2>
             </div>
             <div className="flex items-center gap-3 shrink-0">
