@@ -326,7 +326,10 @@ export function McqCard({
               <>
                 <X className="h-5 w-5 shrink-0" />
                 <span className="font-medium">
-                  Incorrect. The correct answer is {mcq.correct_key}.
+                  {questionFormat === 'sba' 
+                    ? `Not the best answer. The best answer is ${mcq.correct_key}.`
+                    : `Incorrect. The correct answer is ${mcq.correct_key}.`
+                  }
                 </span>
               </>
             )}

@@ -175,7 +175,7 @@ export function McqFormModal({
 
           {/* Correct Answer */}
           <div className="space-y-2">
-            <Label>Correct Answer *</Label>
+            <Label>{questionFormat === 'sba' ? 'Best Answer (most appropriate among plausible choices)' : 'Correct Answer'} *</Label>
             <Select value={correctKey} onValueChange={setCorrectKey}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select correct answer" />
