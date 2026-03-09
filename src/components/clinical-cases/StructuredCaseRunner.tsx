@@ -215,7 +215,15 @@ export function StructuredCaseRunner({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Continue Case</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => navigate(-1)}>
+                    <AlertDialogAction onClick={() => {
+                      const chapterId = caseData.chapter_id;
+                      const moduleId = caseData.module_id;
+                      if (chapterId && moduleId) {
+                        navigate(`/module/${moduleId}/chapter/${chapterId}?section=interactive`);
+                      } else {
+                        navigate(-1);
+                      }
+                    }}>
                       Exit Case
                     </AlertDialogAction>
                   </AlertDialogFooter>
