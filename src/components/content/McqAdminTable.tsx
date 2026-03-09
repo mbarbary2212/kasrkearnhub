@@ -42,7 +42,7 @@ export function McqAdminTable({
       ),
     },
     {
-      key: 'format',
+      key: 'question_format',
       header: 'Format',
       className: 'w-20',
       render: (mcq) => (
