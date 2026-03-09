@@ -57,6 +57,7 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     created_by: row.created_by as string | null,
     updated_by: row.updated_by as string | null,
     created_at: row.created_at as string,
+    question_format: (row.question_format as QuestionFormat) ?? 'mcq',
   };
 }
 
