@@ -151,6 +151,7 @@ export interface VitalsFinding {
 
 export interface ExtraFinding extends RegionFinding {
   label: string;
+  image_urls?: string[];
 }
 
 export interface TopicItem {
@@ -197,6 +198,7 @@ export interface ImagingStudy {
   interpretation: string;
   is_key: boolean;
   points: number;
+  image_url?: string;
 }
 
 export interface ImagingSectionData {

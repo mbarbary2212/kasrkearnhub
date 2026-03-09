@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CaseImageUpload } from './CaseImageUpload';
 import {
   StructuredCaseData,
   SectionType,
@@ -1010,6 +1011,14 @@ function PhysicalExamEditor({ data, onChange }: { data: PhysicalExamSectionData;
             {finding.ref !== undefined && (
               <Input value={finding.ref || ''} onChange={e => updateFinding(key, 'ref', e.target.value)} placeholder="Reference" className="h-7 text-xs" />
             )}
+            {key === 'extra' && (
+              <CaseImageUpload
+                imageUrls={(finding as any).image_urls || []}
+                onChange={urls => updateFinding(key, 'image_urls', urls)}
+                maxImages={2}
+                label="Wound / Misc Photos"
+              />
+            )}
           </div>
         ))}
       </div>
@@ -1149,6 +1158,12 @@ function ImagingEditor({ data, onChange }: { data: ImagingSectionData; onChange:
             </div>
             <Input value={study.result} onChange={e => updateStudy(key, 'result', e.target.value)} placeholder="Result" className="h-7 text-sm" />
             <Input value={study.interpretation} onChange={e => updateStudy(key, 'interpretation', e.target.value)} placeholder="Interpretation" className="h-7 text-sm" />
+            <CaseImageUpload
+              imageUrls={study.image_url ? [study.image_url] : []}
+              onChange={urls => updateStudy(key, 'image_url', urls[0] || null)}
+              maxImages={1}
+              label="X-ray / CT / Report"
+            />
           </div>
         ))}
       </div>

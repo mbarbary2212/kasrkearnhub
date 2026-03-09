@@ -113,6 +113,15 @@ export function InvestigationsImagingSection({
                   <span className="font-medium text-sm">{study.label}</span>
                   {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
                 </div>
+                {study.image_url && (
+                  <a href={study.image_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                    <img
+                      src={study.image_url}
+                      alt={study.label}
+                      className="rounded-lg border max-h-48 object-contain w-full cursor-zoom-in hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                )}
                 <p className="text-sm">{study.result}</p>
                 <p className="text-xs text-muted-foreground mt-1">{study.interpretation}</p>
               </div>
