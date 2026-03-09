@@ -61,12 +61,13 @@ interface Module {
 export interface McqAnalyticsDashboardProps {
   modules: Module[];
   moduleAdminModuleIds?: string[];
+  questionFormat?: 'mcq' | 'sba';
 }
 
 type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data';
 type ViewMode = 'flat' | 'grouped';
 
-export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds }: McqAnalyticsDashboardProps) {
+export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionFormat = 'mcq' }: McqAnalyticsDashboardProps) {
   const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [selectedBookLabel, setSelectedBookLabel] = useState<string>('all');
