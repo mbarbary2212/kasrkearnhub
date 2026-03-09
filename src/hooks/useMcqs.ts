@@ -365,7 +365,7 @@ export function useRestoreMcq() {
     onError: (error: Error) => {
       console.error('MCQ restore error:', error);
       toast({ 
-        title: 'Error restoring MCQ', 
+        title: 'Error restoring question', 
         description: error.message || 'Restore failed. You may not have permission.', 
         variant: 'destructive' 
       });
