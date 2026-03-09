@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
+import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice, type QuestionFormat } from '@/hooks/useMcqs';
 import { McqFormSchema } from '@/lib/validators';
 import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
