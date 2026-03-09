@@ -54,6 +54,9 @@ export function InvestigationsImagingSection({
       <p className="text-sm text-muted-foreground">
         Select the imaging studies you would order.
       </p>
+      <p className="text-amber-600 font-medium text-xs">
+        ⚠️ Choose carefully — unnecessary imaging will reduce your score.
+      </p>
 
       {!showResults ? (
         <>

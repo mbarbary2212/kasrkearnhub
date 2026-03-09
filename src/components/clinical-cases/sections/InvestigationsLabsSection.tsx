@@ -53,6 +53,9 @@ export function InvestigationsLabsSection({
       <p className="text-sm text-muted-foreground">
         Select the lab investigations you would order for this patient.
       </p>
+      <p className="text-amber-600 font-medium text-xs">
+        ⚠️ Choose carefully — unnecessary tests will reduce your score.
+      </p>
 
       {!showResults ? (
         <>
