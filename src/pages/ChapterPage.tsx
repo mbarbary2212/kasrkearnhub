@@ -134,6 +134,7 @@ export default function ChapterPage() {
   const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedSbas, setShowDeletedSbas] = useState(false);
   const [showDeletedCases, setShowDeletedCases] = useState(false);
   const [showDeletedMatching, setShowDeletedMatching] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
