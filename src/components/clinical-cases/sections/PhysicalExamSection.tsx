@@ -323,14 +323,14 @@ export function PhysicalExamSection({
                       {/* Finding text */}
                       {finding.text && <p className="whitespace-pre-line text-left">{finding.text}</p>}
 
-                      {/* Extra region images */}
-                      {regionKey === 'extra' && isExtraFinding(finding) && finding.image_urls?.length > 0 && (
+                      {/* Region images */}
+                      {(finding as any).image_urls?.length > 0 && (
                         <div className="flex gap-2 mt-2">
-                          {finding.image_urls.map((url, imgIdx) => (
+                          {((finding as any).image_urls as string[]).map((url, imgIdx) => (
                              <ImageLightbox
                                 key={imgIdx}
                                 src={url}
-                                alt={`${finding.label} ${imgIdx + 1}`}
+                                alt={`${REGION_LABELS[regionKey]?.label || regionKey} ${imgIdx + 1}`}
                               />
                           ))}
                         </div>
