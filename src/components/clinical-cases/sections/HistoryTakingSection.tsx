@@ -583,6 +583,7 @@ export function HistoryTakingSection({
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
             <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
+            <div className="mt-1">{timerBadge}</div>
           </div>
 
           {/* Last spoken */}
