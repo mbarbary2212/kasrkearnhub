@@ -143,14 +143,15 @@ export function useChapterSbas(chapterId?: string, includeDeleted = false, optio
 }
 
 // Fetch MCQs by topic (with optional includeDeleted flag)
-export function useTopicMcqs(topicId?: string, includeDeleted = false) {
+export function useTopicMcqs(topicId?: string, includeDeleted = false, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'topic', topicId, { includeDeleted }],
+    queryKey: ['mcqs', 'topic', topicId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('topic_id', topicId!);
+        .eq('topic_id', topicId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
@@ -163,6 +164,11 @@ export function useTopicMcqs(topicId?: string, includeDeleted = false) {
     },
     enabled: !!topicId,
   });
+}
+
+// SBA-specific topic hooks
+export function useTopicSbas(topicId?: string, includeDeleted = false) {
+  return useTopicMcqs(topicId, includeDeleted, 'sba');
 }
 
 // Create MCQ
