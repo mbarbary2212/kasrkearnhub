@@ -22,7 +22,10 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   caseId?: string;
   studentName?: string;
   patientTone?: PatientTone;
+  estimatedMinutes?: number;
 }
+
+const MAX_STUDENT_MESSAGES = 15;
 
 type Phase = 'interact' | 'questions';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
