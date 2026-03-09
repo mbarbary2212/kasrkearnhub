@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
@@ -48,9 +48,20 @@ export function HistoryTakingSection({
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
 
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<'chat' | 'voice' | null>(
     isTextMode ? null : null
   );
+
+  const availableLanguages = data.available_languages?.length ? data.available_languages : ['en', 'ar'];
+
+  const LANGUAGE_LABELS: Record<string, { label: string; native: string; greeting: string; speechLocale: string }> = {
+    en: { label: 'English', native: 'English', greeting: 'Hello', speechLocale: 'en-US' },
+    ar: { label: 'Arabic', native: 'عربي', greeting: 'السلام عليكم', speechLocale: 'ar-EG' },
+    fr: { label: 'French', native: 'Français', greeting: 'Bonjour', speechLocale: 'fr-FR' },
+    de: { label: 'German', native: 'Deutsch', greeting: 'Hallo', speechLocale: 'de-DE' },
+    es: { label: 'Spanish', native: 'Español', greeting: 'Hola', speechLocale: 'es-ES' },
+  };
   const [showHandover, setShowHandover] = useState(true);
 
   // Chat state
@@ -98,6 +109,7 @@ export function HistoryTakingSection({
           case_id: caseId,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           mode: selectedMode || 'chat',
+          language: selectedLanguage || 'en',
         },
       });
 
@@ -141,7 +153,7 @@ export function HistoryTakingSection({
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-EG';
+    recognition.lang = LANGUAGE_LABELS[selectedLanguage || 'ar']?.speechLocale || 'ar-EG';
     recognition.continuous = false;
     recognition.interimResults = true;
 
@@ -294,8 +306,8 @@ export function HistoryTakingSection({
       );
     }
 
-    // ── Landing screen: choose Chat or Voice ──
-    if (!selectedMode) {
+    // ── Language selection screen ──
+    if (!selectedLanguage) {
       return (
         <div className="flex flex-col items-center gap-6 py-8 relative">
           {watermark}
@@ -307,7 +319,49 @@ export function HistoryTakingSection({
           )}
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
-            <p className="text-sm text-muted-foreground">Choose how you want to take the history</p>
+            <p className="text-sm text-muted-foreground">Choose the language for the conversation</p>
+          </div>
+          <div className="flex gap-3 flex-wrap justify-center">
+            {availableLanguages.map(lang => {
+              const info = LANGUAGE_LABELS[lang];
+              if (!info) return null;
+              return (
+                <Button
+                  key={lang}
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 min-w-[140px]"
+                  onClick={() => setSelectedLanguage(lang)}
+                >
+                  <Globe className="w-5 h-5" />
+                  {info.label} ({info.native})
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Mode selection screen: choose Chat or Voice ──
+    if (!selectedMode) {
+      const langInfo = LANGUAGE_LABELS[selectedLanguage] || LANGUAGE_LABELS.en;
+      return (
+        <div className="flex flex-col items-center gap-6 py-8 relative">
+          {watermark}
+          {avatarUrl && (
+            <Avatar className="w-24 h-24 border-4 border-primary/20">
+              <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+              <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+            </Avatar>
+          )}
+          <div className="text-center">
+            <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
+            <Badge variant="outline" className="gap-1 mt-1">
+              <Globe className="w-3 h-3" />
+              {langInfo.label}
+            </Badge>
+            <p className="text-sm text-muted-foreground mt-2">Choose how you want to take the history</p>
           </div>
           <div className="flex gap-3">
             <Button
@@ -316,12 +370,11 @@ export function HistoryTakingSection({
               className="gap-2"
               onClick={() => {
                 setSelectedMode('chat');
-                // Send initial greeting
                 sendChatMessageInitial('chat');
               }}
             >
               <MessageCircle className="w-5 h-5" />
-              Chat (English)
+              Chat
             </Button>
             <Button
               size="lg"
@@ -333,9 +386,12 @@ export function HistoryTakingSection({
               }}
             >
               <Mic className="w-5 h-5" />
-              Voice (عربي)
+              Voice
             </Button>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedLanguage(null)} className="text-muted-foreground">
+            ← Change language
+          </Button>
         </div>
       );
     }
@@ -355,7 +411,7 @@ export function HistoryTakingSection({
             )}
             <div>
               <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
-              <p className="text-xs text-muted-foreground">Chat Mode — English</p>
+              <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
             </div>
           </div>
 
@@ -584,8 +640,9 @@ export function HistoryTakingSection({
 
   // ── Helper: send initial greeting ──────────────────────
   function sendChatMessageInitial(mode: 'chat' | 'voice') {
-    // Trigger the AI to send the first greeting
-    const initMsg: ChatMessage = { role: 'user', content: mode === 'voice' ? 'السلام عليكم' : 'Hello' };
+    const lang = selectedLanguage || 'en';
+    const langInfo = LANGUAGE_LABELS[lang] || LANGUAGE_LABELS.en;
+    const initMsg: ChatMessage = { role: 'user', content: langInfo.greeting };
     setChatMessages([initMsg]);
     setIsSending(true);
 
@@ -595,14 +652,16 @@ export function HistoryTakingSection({
           case_id: caseId,
           messages: [{ role: initMsg.role, content: initMsg.content }],
           mode,
+          language: lang,
         },
       })
       .then(({ data: fnData, error }) => {
         if (error) throw error;
-        const reply = fnData?.reply || (mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor');
+        const fallbackGreeting = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor';
+        const reply = fnData?.reply || fallbackGreeting;
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice') {
+        if (mode === 'voice' && lang === 'ar') {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
           const voiceId = gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
@@ -612,10 +671,8 @@ export function HistoryTakingSection({
       })
       .catch(err => {
         console.error('Initial chat error:', err);
-        setChatMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: mode === 'voice' ? 'أهلاً يا دكتور' : 'Hello doctor, how can I help?' },
-        ]);
+        const fallback = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor, how can I help?';
+        setChatMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
       })
       .finally(() => setIsSending(false));
   }

@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { case_id, messages, mode } = await req.json();
+    const { case_id, messages, mode, language } = await req.json();
 
     if (!case_id || !messages || !Array.isArray(messages)) {
       return new Response(
@@ -72,21 +72,23 @@ serve(async (req) => {
     const handover = historyData.atmist_handover || {};
     const checklist = historyData.checklist || [];
     const arabicReference = historyData.arabic_reference || '';
+    const englishReference = historyData.english_reference || '';
     const patientTone = patientData.tone || 'calm';
+    const lang = language || (mode === 'voice' ? 'ar' : 'en');
 
     // Build the hidden patient knowledge from ATMIST + checklist
     const patientKnowledge = buildPatientKnowledge(handover, checklist, patientData);
 
-    const isVoice = mode === 'voice';
-
-    // Build system prompt based on mode
-    let systemPrompt = isVoice
+    // Build system prompt based on language
+    let systemPrompt = lang === 'ar'
       ? buildArabicSystemPrompt(patientData, patientKnowledge, patientTone)
-      : buildEnglishSystemPrompt(patientData, patientKnowledge, patientTone);
+      : buildEnglishSystemPrompt(patientData, patientKnowledge, patientTone, lang);
 
-    // Append Arabic reference if available
-    if (arabicReference) {
+    // Append reference based on language
+    if (lang === 'ar' && arabicReference) {
       systemPrompt += `\n\nمرجع إضافي للمحادثة (استخدمه كمرجع للرد بالعربي):\n${arabicReference}`;
+    } else if (englishReference) {
+      systemPrompt += `\n\nAdditional reference for the conversation (use as context for your responses):\n${englishReference}`;
     }
 
     const provider = getAIProvider(aiSettings);
@@ -161,9 +163,18 @@ const TONE_DESCRIPTIONS_AR: Record<string, string> = {
   cooperative: 'أنت ودود ومتعاون وعايز تساعد الدكتور يفهم حالتك.',
 };
 
-function buildEnglishSystemPrompt(patient: Record<string, any>, knowledge: string, tone: string): string {
+function buildEnglishSystemPrompt(patient: Record<string, any>, knowledge: string, tone: string, lang = 'en'): string {
   const name = patient.name || 'the patient';
   const toneInstruction = TONE_DESCRIPTIONS_EN[tone] || TONE_DESCRIPTIONS_EN.calm;
+  
+  const LANG_NAMES: Record<string, string> = {
+    en: 'English',
+    fr: 'French',
+    de: 'German',
+    es: 'Spanish',
+  };
+  const langName = LANG_NAMES[lang] || 'English';
+
   return `You are role-playing as ${name}, a patient in a clinical simulation.
 
 PERSONALITY & TONE:
@@ -178,12 +189,12 @@ RULES:
 6. If the student asks something not covered in your history, say you don't know or it hasn't happened.
 7. Keep answers concise — 1-3 sentences typically.
 8. Never break character. Never mention you are an AI.
-9. Respond in English.
+9. Respond in ${langName}.
 
 YOUR MEDICAL HISTORY (hidden from student — only reveal when asked):
 ${knowledge}
 
-Start by greeting the student briefly when they initiate conversation, e.g. "Hello doctor" or "Hi, thanks for seeing me."`;
+Start by greeting the student briefly when they initiate conversation.`;
 }
 
 function buildArabicSystemPrompt(patient: Record<string, any>, knowledge: string, tone: string): string {

@@ -108,6 +108,8 @@ export interface HistorySectionData {
   checklist: HistoryCategory[];
   comprehension_questions: ComprehensionQuestion[];
   arabic_reference?: string;
+  english_reference?: string;
+  available_languages?: string[];
 }
 
 // ── Physical Examination ───────────────────────────────
