@@ -937,7 +937,7 @@ export function McqList({
                           setParseCorrections(corrections);
                           
                           if (parsed.length === 0) {
-                            setFileError('No valid MCQs found in the file. Check the format.');
+                            setFileError(`No valid ${questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} found in the file. Check the format.`);
                             return;
                           }
                           
