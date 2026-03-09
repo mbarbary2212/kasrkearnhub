@@ -1237,7 +1237,7 @@ The AI will parse and extract the questions automatically.`}
       >
         <AlertDialogContent className="z-[99999]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore MCQ?</AlertDialogTitle>
+            <AlertDialogTitle>Restore {questionFormat === 'sba' ? 'SBA Question' : 'MCQ'}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will restore the question and make it visible to students again.
               <br />
