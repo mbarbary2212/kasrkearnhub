@@ -234,7 +234,7 @@ export function StructuredCaseRunner({
                         navigate(-1);
                       }
                     }}>
-                      Exit Case
+                      Abort Case
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
