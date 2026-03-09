@@ -29,6 +29,7 @@ interface McqCardProps {
   isDeleted?: boolean;
   // Previous attempt data for restoring state
   previousAttempt?: McqAttemptData | null;
+  questionFormat?: QuestionFormat;
 }
 
 export function McqCard({ 
