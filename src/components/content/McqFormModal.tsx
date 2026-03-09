@@ -29,6 +29,7 @@ interface McqFormModalProps {
   topicId?: string | null;
   mcq?: Mcq;
   isAdmin: boolean;
+  questionFormat?: QuestionFormat;
 }
 
 const CHOICE_KEYS = ['A', 'B', 'C', 'D', 'E'] as const;
