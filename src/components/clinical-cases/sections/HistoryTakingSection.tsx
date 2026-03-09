@@ -637,6 +637,9 @@ export function HistoryTakingSection({
             <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
           )}
 
+          {/* Warning banner */}
+          {warningBanner && <div className="w-full max-w-xs">{warningBanner}</div>}
+
           {/* Fallback text input */}
           {showVoiceFallbackInput && (
             <div className="flex gap-2 w-full max-w-xs" dir="rtl">
@@ -652,8 +655,8 @@ export function HistoryTakingSection({
                     }
                   }
                 }}
-                placeholder="اكتب سؤالك هنا..."
-                disabled={isSending}
+                placeholder={shouldDisableInput ? 'تم الوصول للحد الأقصى' : 'اكتب سؤالك هنا...'}
+                disabled={isSending || shouldDisableInput}
                 className="text-sm"
               />
               <Button
@@ -664,19 +667,23 @@ export function HistoryTakingSection({
                     setVoiceFallbackInput('');
                   }
                 }}
-                disabled={!voiceFallbackInput.trim() || isSending}
+                disabled={!voiceFallbackInput.trim() || isSending || shouldDisableInput}
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
           )}
 
+          {/* Message counter + End button */}
+          <span className="text-xs text-muted-foreground">
+            {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+          </span>
           <Button
             onClick={handleFinishInteraction}
-            variant="secondary"
-            className="w-full max-w-xs"
+            variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+            className={cn('w-full max-w-xs gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
+            <CheckCircle2 className="w-4 h-4" />
             End Conversation — Proceed to Questions
           </Button>
         </div>
