@@ -10,6 +10,8 @@ export interface McqChoice {
   text: string;
 }
 
+export type QuestionFormat = 'mcq' | 'sba';
+
 export interface Mcq {
   id: string;
   module_id: string;
@@ -25,6 +27,7 @@ export interface Mcq {
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
+  question_format: QuestionFormat;
 }
 
 export interface McqFormData {
@@ -34,6 +37,7 @@ export interface McqFormData {
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
+  question_format?: QuestionFormat;
 }
 
 // Helper to convert DB row to Mcq type
