@@ -140,7 +140,7 @@ export function InvestigationsLabsSection({
             onChange={e => setFindingsSummary(e.target.value)}
             rows={3}
             disabled={readOnly}
-            placeholder="Describe what the lab findings reveal..."
+            placeholder="Justify your lab orders and describe what the findings reveal..."
           />
         </div>
       )}

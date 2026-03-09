@@ -150,7 +150,7 @@ export function InvestigationsImagingSection({
             onChange={e => setFindingsSummary(e.target.value)}
             rows={3}
             disabled={readOnly}
-            placeholder="Describe what the imaging findings reveal..."
+            placeholder="Justify your imaging orders and describe what the findings reveal..."
           />
         </div>
       )}
