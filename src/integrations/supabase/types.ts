@@ -2997,6 +2997,7 @@ export type Database = {
           module_id: string
           original_section_name: string | null
           original_section_number: string | null
+          question_format: string
           section_id: string | null
           stem: string
           topic_id: string | null
@@ -3019,6 +3020,7 @@ export type Database = {
           module_id: string
           original_section_name?: string | null
           original_section_number?: string | null
+          question_format?: string
           section_id?: string | null
           stem: string
           topic_id?: string | null
@@ -3041,6 +3043,7 @@ export type Database = {
           module_id?: string
           original_section_name?: string | null
           original_section_number?: string | null
+          question_format?: string
           section_id?: string | null
           stem?: string
           topic_id?: string | null
