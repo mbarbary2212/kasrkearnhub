@@ -61,6 +61,15 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     difficulty: "string - easy, medium, or hard",
     section_number: "string (optional) - section number from the provided list (e.g., '3.1', '3.2'). DO NOT invent.",
   },
+  sba: {
+    stem: "string - the clinical scenario question text",
+    choices: "array of exactly 5 objects - [{ key: 'A', text: 'option' }, { key: 'B', text: 'option' }, { key: 'C', text: 'option' }, { key: 'D', text: 'option' }, { key: 'E', text: 'option' }] - ALL choices must be medically plausible",
+    correct_key: "string - the single BEST answer key (A-E)",
+    explanation: "string - why this is the BEST answer compared to the other plausible alternatives",
+    difficulty: "string - easy, medium, or hard",
+    question_format: "string - must be 'sba'",
+    section_number: "string (optional) - section number from the provided list (e.g., '3.1', '3.2'). DO NOT invent.",
+  },
   flashcard: {
     front: "string - the question or term",
     back: "string - the answer or definition",

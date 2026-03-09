@@ -268,7 +268,7 @@ serve(async (req) => {
   try {
     console.log(`[${jobId}] Inserting ${items.length} ${contentType} items...`);
 
-    if (contentType === "mcq") {
+    if (contentType === "mcq" || contentType === "sba") {
       const mcqsToInsert = items.map((item: any, idx: number) => {
         // Normalize choices format
         const normalized = normalizeMcqChoices(item);
@@ -285,6 +285,7 @@ serve(async (req) => {
           display_order: idx,
           created_by: user.id,
           is_deleted: false,
+          question_format: contentType === "sba" ? "sba" : "mcq",
         };
       });
 
