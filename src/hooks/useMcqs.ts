@@ -302,7 +302,7 @@ export function useDeleteMcq() {
       return { id, moduleId, chapterId, topicId };
     },
     onSuccess: (result) => {
-      toast({ title: 'MCQ deleted successfully' });
+      toast({ title: 'Question deleted successfully' });
       // Force refetch to confirm deletion
       queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
       if (result.chapterId) {
