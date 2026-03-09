@@ -130,10 +130,10 @@ export function InvestigationsLabsSection({
       {showResults && (
         <div className="border-t pt-4 mt-2">
           <Label className="font-medium text-sm">
-            Summarize your interpretation of the lab results
+            Justify why you ordered these lab tests and summarize the findings
           </Label>
           <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-            What do these results tell you about the patient's condition?
+            Explain your clinical reasoning for ordering these investigations and interpret the results.
           </p>
           <Textarea
             value={findingsSummary}
