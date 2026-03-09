@@ -30,6 +30,7 @@ interface RequestBody {
   moduleId: string;
   chapterId?: string | null;
   topicId?: string | null;
+  questionFormat?: 'mcq' | 'sba';
 }
 
 const VALID_CORRECT_KEYS = ['A', 'B', 'C', 'D', 'E'];
