@@ -44,7 +44,7 @@ import {
   filterByStatus,
   countByStatus,
 } from './PracticeFilters';
-import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
