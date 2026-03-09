@@ -100,6 +100,7 @@ export function McqFormModal({
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
       section_id: sectionId,
+      question_format: questionFormat,
     };
 
     // Validate before submission
