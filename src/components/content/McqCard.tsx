@@ -147,6 +147,15 @@ export function McqCard({
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>
+              {/* SBA format badge */}
+              {questionFormat === 'sba' && (
+                <Badge 
+                  variant="outline" 
+                  className="text-[11px] font-semibold bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700"
+                >
+                  SBA
+                </Badge>
+              )}
               {/* Status indicator based on last attempt */}
               {statusLabel && !isAdmin && (
                 <Badge 
