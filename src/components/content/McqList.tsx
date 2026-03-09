@@ -862,6 +862,7 @@ export function McqList({
         moduleId={moduleId}
         chapterId={chapterId}
         isAdmin={isAdmin}
+        questionFormat={questionFormat}
       />
 
       {/* Edit Modal */}
