@@ -142,11 +142,12 @@ export function InvestigationsLabsSection({
             disabled={readOnly}
             placeholder="Justify your lab orders and describe what the findings reveal..."
           />
+          <p className="text-xs text-muted-foreground mt-1 italic">Type &quot;pass&quot; to skip this section.</p>
         </div>
       )}
 
       {showResults && !readOnly && (
-        <Button onClick={handleSubmit} disabled={isSubmitting || !findingsSummary.trim()} className="w-full">
+        <Button onClick={handleSubmit} disabled={isSubmitting || (!findingsSummary.trim() || (findingsSummary.trim().toLowerCase() !== 'pass' && findingsSummary.trim().length < 2))} className="w-full">
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Continue
         </Button>

@@ -393,15 +393,16 @@ export function PhysicalExamSection({
             rows={4}
             className="mt-1"
             disabled={readOnly}
-            placeholder="Summarize your key examination findings... (type 'pass' to skip)"
+            placeholder="Summarize your key examination findings..."
           />
+          <p className="text-xs text-muted-foreground mt-1 italic">Type &quot;pass&quot; to skip this section.</p>
         </div>
       )}
 
       {!readOnly && (
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting || revealedCount === 0 || !findingsSummary.trim()}
+          disabled={isSubmitting || revealedCount === 0 || (!findingsSummary.trim() || (findingsSummary.trim().toLowerCase() !== 'pass' && findingsSummary.trim().length < 2))}
           className="w-full mt-3"
         >
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
