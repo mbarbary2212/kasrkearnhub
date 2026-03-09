@@ -323,7 +323,7 @@ export function useDeleteMcq() {
     onError: (error: Error) => {
       console.error('MCQ delete error:', error);
       toast({ 
-        title: 'Error deleting MCQ', 
+        title: 'Error deleting question', 
         description: error.message || 'Delete failed. You may not have permission.', 
         variant: 'destructive' 
       });
