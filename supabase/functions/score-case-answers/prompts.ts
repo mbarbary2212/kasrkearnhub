@@ -30,7 +30,8 @@ export function buildScoringPrompt(
           `1. Which checklist categories/items the student successfully elicited through their questions\n` +
           `2. Which important items were missed\n` +
           `3. Quality of questioning technique (open vs closed questions, systematic approach)\n` +
-          `The main score should still be based on comprehension answers, but include conversation quality in feedback and strengths/gaps.`;
+          `The main score should still be based on comprehension answers, but include conversation quality in feedback and strengths/gaps.\n\n` +
+          `IMPORTANT: If the student states or acknowledges a condition (e.g., "the patient is diabetic", "history of diabetes"), count that checklist item as covered. Only mark items as missed if the student neither asked about nor mentioned them during the conversation.`;
       }
 
       return prompt;

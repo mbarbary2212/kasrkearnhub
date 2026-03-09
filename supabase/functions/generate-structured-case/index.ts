@@ -402,9 +402,9 @@ ${activeSections.includes("patient_family_advice") ? `  "patient_family_advice":
     "max_score": 5
   },` : ""}
 ${activeSections.includes("conclusion") ? `  "conclusion": {
-    "ward_round_prompt": "string — present this case in a ward round format",
+    "ward_round_prompt": "string — Keep concise: ask student to present a brief structured ward round summary (5-8 sentences max, NOT a full case report)",
     "ward_round_prompt_ar": "string",
-    "key_decisions": ["string"],
+    "key_decisions": ["string — max 3-5 bullet points"],
     "max_score": 5
   },` : ""}
   "professional_attitude": {
