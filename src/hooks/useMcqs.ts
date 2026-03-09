@@ -192,6 +192,7 @@ export function useCreateMcq() {
         correct_key: data.correct_key,
         explanation: data.explanation,
         difficulty: data.difficulty,
+        question_format: data.question_format || 'mcq',
         created_by: user?.id,
       }).select('id').single();
 

@@ -101,6 +101,7 @@ export function createInteractiveTabs(counts: {
 
 export function createPracticeTabs(counts: {
   mcqs?: number;
+  sba?: number;
   true_false?: number;
   essays?: number;
   osce?: number;
