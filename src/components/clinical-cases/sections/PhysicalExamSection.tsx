@@ -155,14 +155,15 @@ export function PhysicalExamSection({
         className="flex items-center justify-between px-6 py-3 rounded-t-lg"
         style={{ background: 'linear-gradient(135deg, #0d3f4f 0%, #1a7a8a 100%)' }}
       >
-        <p className="text-white/80 text-xs">
-          Click any region to reveal findings ·{' '}
+        <p className="text-white/80 text-xs flex items-center gap-1.5 flex-wrap">
+          <span>Click any region to reveal findings</span>
+          <span className="text-white/50">·</span>
           <button
             type="button"
-            className="text-white font-semibold underline underline-offset-2 hover:text-white/90"
+            className="inline-flex items-center gap-1 text-yellow-300 font-bold underline underline-offset-2 hover:text-yellow-200 transition-colors"
             onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
           >
-            Write a summary to score
+            ⚠️ Remember to write a summary to get a score
           </button>
         </p>
         <div
@@ -322,14 +323,14 @@ export function PhysicalExamSection({
                       {/* Finding text */}
                       {finding.text && <p className="whitespace-pre-line text-left">{finding.text}</p>}
 
-                      {/* Extra region images */}
-                      {regionKey === 'extra' && isExtraFinding(finding) && finding.image_urls?.length > 0 && (
+                      {/* Region images */}
+                      {(finding as any).image_urls?.length > 0 && (
                         <div className="flex gap-2 mt-2">
-                          {finding.image_urls.map((url, imgIdx) => (
+                          {((finding as any).image_urls as string[]).map((url, imgIdx) => (
                              <ImageLightbox
                                 key={imgIdx}
                                 src={url}
-                                alt={`${finding.label} ${imgIdx + 1}`}
+                                alt={`${REGION_LABELS[regionKey]?.label || regionKey} ${imgIdx + 1}`}
                               />
                           ))}
                         </div>

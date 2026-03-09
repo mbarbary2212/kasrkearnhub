@@ -141,6 +141,7 @@ export interface VitalSign {
 export interface RegionFinding {
   text: string;
   ref?: string | null;
+  image_urls?: string[];
 }
 
 export interface VitalsFinding {
