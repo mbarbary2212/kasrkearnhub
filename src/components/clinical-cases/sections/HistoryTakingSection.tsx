@@ -486,10 +486,11 @@ export function HistoryTakingSection({
                 <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
               </Avatar>
             )}
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
               <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
             </div>
+            {timerBadge}
           </div>
 
           {/* Messages */}
