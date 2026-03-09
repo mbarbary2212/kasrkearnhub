@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe } from 'lucide-react';
+import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
@@ -22,7 +22,10 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   caseId?: string;
   studentName?: string;
   patientTone?: PatientTone;
+  estimatedMinutes?: number;
 }
+
+const MAX_STUDENT_MESSAGES = 15;
 
 type Phase = 'interact' | 'questions';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -39,6 +42,7 @@ export function HistoryTakingSection({
   caseId,
   studentName,
   patientTone,
+  estimatedMinutes,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
@@ -83,6 +87,36 @@ export function HistoryTakingSection({
   const [answers, setAnswers] = useState<Record<string, string>>(
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
+
+  // ── Time & message limits ─────────────────────────────
+  const timeLimitMs = useMemo(
+    () => (estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
+    [estimatedMinutes]
+  );
+  const [interactionStart] = useState(Date.now());
+  const [timeRemaining, setTimeRemaining] = useState(timeLimitMs);
+
+  const studentMessageCount = chatMessages.filter(m => m.role === 'user').length;
+  const isOverTime = timeRemaining <= 0;
+  const isNearLimit = timeRemaining > 0 && timeRemaining < timeLimitMs * 0.25;
+  const isAtMessageCap = studentMessageCount >= MAX_STUDENT_MESSAGES;
+  const shouldDisableInput = isAtMessageCap;
+
+  // Countdown timer (only during Phase 1 interactive modes)
+  useEffect(() => {
+    if (phase !== 'interact' || isTextMode || !selectedMode) return;
+    const interval = setInterval(() => {
+      setTimeRemaining(Math.max(0, timeLimitMs - (Date.now() - interactionStart)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, isTextMode, selectedMode, timeLimitMs, interactionStart]);
+
+  const formatTime = (ms: number) => {
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const handover = data.atmist_handover;
   const questions = data.comprehension_questions || [];
@@ -237,8 +271,51 @@ export function HistoryTakingSection({
     </div>
   );
 
-  // ══════════════════════════════════════════════════════
-  // PHASE 1: Interaction
+  // ── Timer badge (inline) ───────────────────────────────
+  const timerBadge = selectedMode && (
+    <Badge
+      variant="outline"
+      className={cn(
+        'gap-1 text-xs tabular-nums',
+        isOverTime && 'border-destructive text-destructive',
+        isNearLimit && !isOverTime && 'border-amber-500 text-amber-600 dark:text-amber-400',
+      )}
+    >
+      <Clock className="w-3 h-3" />
+      {isOverTime ? '0:00' : formatTime(timeRemaining)}
+    </Badge>
+  );
+
+  // ── Warning banner ─────────────────────────────────────
+  const warningBanner = (() => {
+    if (isAtMessageCap) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          You've reached the maximum number of questions ({MAX_STUDENT_MESSAGES}). Please end the conversation and proceed.
+        </div>
+      );
+    }
+    if (isOverTime) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          Time's up! Please end the conversation and proceed to questions.
+        </div>
+      );
+    }
+    if (isNearLimit) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <Clock className="w-4 h-4 shrink-0" />
+          Consider wrapping up your questions soon.
+        </div>
+      );
+    }
+    return null;
+  })();
+
+
   // ══════════════════════════════════════════════════════
   if (phase === 'interact') {
     // ── Text mode: show ATMIST handover ──
@@ -409,10 +486,11 @@ export function HistoryTakingSection({
                 <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
               </Avatar>
             )}
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
               <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
             </div>
+            {timerBadge}
           </div>
 
           {/* Messages */}
@@ -441,6 +519,9 @@ export function HistoryTakingSection({
             </div>
           </ScrollArea>
 
+          {/* Warning banner */}
+          {warningBanner}
+
           {/* Input */}
           <div className="flex gap-2">
             <Input
@@ -452,27 +533,33 @@ export function HistoryTakingSection({
                   sendChatMessage(chatInput);
                 }
               }}
-              placeholder="Ask the patient a question..."
-              disabled={isSending}
+              placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
+              disabled={isSending || shouldDisableInput}
               className="text-sm"
             />
             <Button
               size="icon"
               onClick={() => sendChatMessage(chatInput)}
-              disabled={!chatInput.trim() || isSending}
+              disabled={!chatInput.trim() || isSending || shouldDisableInput}
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
 
-          <Button
-            onClick={handleFinishInteraction}
-            variant="secondary"
-            className="w-full"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            End Conversation — Proceed to Questions
-          </Button>
+          {/* Message counter */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+            </span>
+            <Button
+              onClick={handleFinishInteraction}
+              variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+              className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              End Conversation — Proceed to Questions
+            </Button>
+          </div>
         </div>
       );
     }
@@ -496,6 +583,7 @@ export function HistoryTakingSection({
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
             <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
+            <div className="mt-1">{timerBadge}</div>
           </div>
 
           {/* Last spoken */}
@@ -524,7 +612,7 @@ export function HistoryTakingSection({
             variant={isListening ? 'destructive' : 'default'}
             className="gap-2 rounded-full w-16 h-16"
             onClick={toggleVoice}
-            disabled={isSending}
+            disabled={isSending || shouldDisableInput}
           >
             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
@@ -549,6 +637,9 @@ export function HistoryTakingSection({
             <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
           )}
 
+          {/* Warning banner */}
+          {warningBanner && <div className="w-full max-w-xs">{warningBanner}</div>}
+
           {/* Fallback text input */}
           {showVoiceFallbackInput && (
             <div className="flex gap-2 w-full max-w-xs" dir="rtl">
@@ -564,8 +655,8 @@ export function HistoryTakingSection({
                     }
                   }
                 }}
-                placeholder="اكتب سؤالك هنا..."
-                disabled={isSending}
+                placeholder={shouldDisableInput ? 'تم الوصول للحد الأقصى' : 'اكتب سؤالك هنا...'}
+                disabled={isSending || shouldDisableInput}
                 className="text-sm"
               />
               <Button
@@ -576,19 +667,23 @@ export function HistoryTakingSection({
                     setVoiceFallbackInput('');
                   }
                 }}
-                disabled={!voiceFallbackInput.trim() || isSending}
+                disabled={!voiceFallbackInput.trim() || isSending || shouldDisableInput}
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
           )}
 
+          {/* Message counter + End button */}
+          <span className="text-xs text-muted-foreground">
+            {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+          </span>
           <Button
             onClick={handleFinishInteraction}
-            variant="secondary"
-            className="w-full max-w-xs"
+            variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+            className={cn('w-full max-w-xs gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
+            <CheckCircle2 className="w-4 h-4" />
             End Conversation — Proceed to Questions
           </Button>
         </div>

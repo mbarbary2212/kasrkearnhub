@@ -1,51 +1,53 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-# Add Time & Message Limits to History Taking Interaction
+## Status: ✅ Complete (Step 12 added)
 
-## Problem
-Students can spend unlimited time in the History Taking chat/voice interaction with no nudge to move on, wasting AI tokens and delaying case completion.
+### Completed Steps
 
-## Solution
-Add a **soft time limit + message count limit** with progressive nudges:
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-### Behavior
-1. **Countdown timer** visible during chat/voice interaction showing remaining time (e.g., "4:30 remaining")
-2. **Soft nudge at 75%** — timer turns amber, a gentle banner appears: "Consider wrapping up your questions soon"
-3. **Strong nudge at 100%** — timer turns red, banner says "Time's up! Please proceed to questions", the "End Conversation" button pulses with emphasis
-4. **Message cap** — after a configurable number of exchanges (default: 15 messages from the student), disable the input and show "You've reached the maximum number of questions. Please proceed."
-5. Students can **always** click "End Conversation" early — limits are soft, not hard locks (the input gets disabled only at the message cap)
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-### Configuration
-- **Time limit**: Derived from case `estimated_minutes` — allocate ~40% to history taking (e.g., 15 min case → 6 min for history). Fallback default: 5 minutes.
-- **Message limit**: Default 15 student messages. Could later be made configurable per case.
+### All Steps
 
-### UI Elements
-- Small timer badge next to the mode label in the chat/voice header (e.g., `⏱ 4:30`)
-- Warning banner (amber → red) appears inline above the input area
-- "End Conversation" button gets `animate-pulse` class when time is up
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 
-## Files Modified
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-| File | Change |
-|------|--------|
-| `src/components/clinical-cases/sections/HistoryTakingSection.tsx` | Add timer state, message counter, warning banners, input disabling, and visual nudges to chat and voice modes |
-
-## Technical Detail
-
-New state in `HistoryTakingSection`:
-```tsx
-const HISTORY_TIME_LIMIT_MS = (estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000;
-const MAX_STUDENT_MESSAGES = 15;
-
-const [interactionStartTime] = useState(Date.now());
-const [timeRemaining, setTimeRemaining] = useState(HISTORY_TIME_LIMIT_MS);
-const studentMessageCount = chatMessages.filter(m => m.role === 'user').length;
-const isOverTime = timeRemaining <= 0;
-const isNearLimit = timeRemaining < HISTORY_TIME_LIMIT_MS * 0.25;
-const isAtMessageCap = studentMessageCount >= MAX_STUDENT_MESSAGES;
-```
-
-A `useEffect` with `setInterval` ticks every second to update `timeRemaining`. Timer and warnings only render during Phase 1 chat/voice modes (not text mode, which is just reading).
-
-The `estimatedMinutes` prop will be threaded from `StructuredCaseRunner` which already has access to the case data.
-
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
