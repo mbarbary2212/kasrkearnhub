@@ -45,7 +45,7 @@ export function useUserManagedModules() {
       if (isSuperAdmin || isPlatformAdmin) {
         const { data } = await supabase
           .from('modules')
-          .select('id, name, slug')
+          .select('id, name, slug, year_id')
           .order('name');
         return data || [];
       }
