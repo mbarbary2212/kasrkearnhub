@@ -38,7 +38,7 @@ import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
 import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
-import { useTopicMcqs } from '@/hooks/useMcqs';
+import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
 import { 
@@ -120,6 +120,7 @@ export default function TopicDetailPage() {
 
   // Deleted items toggle state
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedSbas, setShowDeletedSbas] = useState(false);
   const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
   const [showDeletedOsce, setShowDeletedOsce] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
@@ -162,6 +163,8 @@ export default function TopicDetailPage() {
   // Modern hooks for MCQ, True/False, OSCE
   const { data: mcqs, isLoading: mcqsLoading } = useTopicMcqs(topicId, false);
   const { data: deletedMcqs } = useTopicMcqs(topicId, true);
+  const { data: sbaQuestions, isLoading: sbaLoading } = useTopicSbas(topicId, false);
+  const { data: deletedSbas } = useTopicSbas(topicId, true);
   const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useTopicTrueFalseQuestions(topicId, false);
   const { data: deletedTrueFalse } = useTopicTrueFalseQuestions(topicId, true);
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
@@ -175,6 +178,11 @@ export default function TopicDetailPage() {
     const activeIds = new Set((mcqs || []).map(m => m.id));
     return (deletedMcqs || []).filter(m => !activeIds.has(m.id));
   }, [mcqs, deletedMcqs]);
+
+  const deletedOnlySbas = useMemo(() => {
+    const activeIds = new Set((sbaQuestions || []).map(m => m.id));
+    return (deletedSbas || []).filter(m => !activeIds.has(m.id));
+  }, [sbaQuestions, deletedSbas]);
 
   const deletedOnlyTrueFalse = useMemo(() => {
     const activeIds = new Set((trueFalseQuestions || []).map(q => q.id));
@@ -313,6 +321,7 @@ export default function TopicDetailPage() {
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
+      sba: sbaQuestions?.length || 0,
       true_false: trueFalseQuestions?.length || 0,
       essays: essays?.length || 0,
       osce: osceQuestions?.length || 0,
@@ -320,7 +329,7 @@ export default function TopicDetailPage() {
       matching: matchingQuestions?.length || 0,
       images: 0,
     });
-  }, [mcqs?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -906,6 +915,27 @@ export default function TopicDetailPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMcqs}
                         onShowDeletedChange={setShowDeletedMcqs}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* SBA Questions */}
+                {practiceTab === 'sba' && (
+                  <div>
+                    {sbaLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <McqList
+                        mcqs={filterBySection(sbaQuestions || [])}
+                        deletedMcqs={deletedOnlySbas}
+                        moduleId={moduleId || ''}
+                        topicId={topicId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedSbas}
+                        onShowDeletedChange={setShowDeletedSbas}
+                        questionFormat="sba"
                       />
                     )}
                   </div>

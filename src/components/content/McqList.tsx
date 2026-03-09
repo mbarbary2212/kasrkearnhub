@@ -44,7 +44,7 @@ import {
   filterByStatus,
   countByStatus,
 } from './PracticeFilters';
-import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +81,7 @@ interface McqListProps {
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
   onShowDeletedChange?: (show: boolean) => void;
+  questionFormat?: QuestionFormat;
 }
 
 const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty
@@ -99,6 +100,7 @@ export function McqList({
   showDeletedToggle = false,
   showDeleted = false,
   onShowDeletedChange,
+  questionFormat = 'mcq',
 }: McqListProps) {
   const auth = useAuthContext();
 
@@ -844,6 +846,7 @@ export function McqList({
                     onToggleMark={toggleMark}
                     isDeleted={showDeleted}
                     previousAttempt={previousAttempt}
+                    questionFormat={questionFormat}
                   />
                 </div>
               </div>
@@ -859,6 +862,7 @@ export function McqList({
         moduleId={moduleId}
         chapterId={chapterId}
         isAdmin={isAdmin}
+        questionFormat={questionFormat}
       />
 
       {/* Edit Modal */}
@@ -870,6 +874,7 @@ export function McqList({
           chapterId={chapterId}
           mcq={editingMcq}
           isAdmin={isAdmin}
+          questionFormat={questionFormat}
         />
       )}
 

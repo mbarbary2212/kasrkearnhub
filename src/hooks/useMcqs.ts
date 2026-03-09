@@ -10,6 +10,8 @@ export interface McqChoice {
   text: string;
 }
 
+export type QuestionFormat = 'mcq' | 'sba';
+
 export interface Mcq {
   id: string;
   module_id: string;
@@ -25,6 +27,7 @@ export interface Mcq {
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
+  question_format: QuestionFormat;
 }
 
 export interface McqFormData {
@@ -34,6 +37,7 @@ export interface McqFormData {
   explanation: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
+  question_format?: QuestionFormat;
 }
 
 // Helper to convert DB row to Mcq type
@@ -53,18 +57,20 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     created_by: row.created_by as string | null,
     updated_by: row.updated_by as string | null,
     created_at: row.created_at as string,
+    question_format: (row.question_format as QuestionFormat) ?? 'mcq',
   };
 }
 
 // Fetch MCQs by module (with optional includeDeleted flag)
-export function useModuleMcqs(moduleId?: string, includeDeleted = false) {
+export function useModuleMcqs(moduleId?: string, includeDeleted = false, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'module', moduleId, { includeDeleted }],
+    queryKey: ['mcqs', 'module', moduleId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('module_id', moduleId!);
+        .eq('module_id', moduleId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
@@ -80,15 +86,16 @@ export function useModuleMcqs(moduleId?: string, includeDeleted = false) {
 }
 
 // Lightweight count-only hook for chapter MCQs (badges)
-export function useChapterMcqCount(chapterId?: string) {
+export function useChapterMcqCount(chapterId?: string, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'chapter-count', chapterId],
+    queryKey: ['mcqs', 'chapter-count', chapterId, format],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('mcqs')
         .select('id', { count: 'exact', head: true })
         .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .eq('question_format', format);
       if (error) throw error;
       return count ?? 0;
     },
@@ -98,16 +105,22 @@ export function useChapterMcqCount(chapterId?: string) {
   });
 }
 
+// SBA-specific chapter hooks
+export function useChapterSbaCount(chapterId?: string) {
+  return useChapterMcqCount(chapterId, 'sba');
+}
+
 // Fetch MCQs by chapter (with optional includeDeleted flag)
-export function useChapterMcqs(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+export function useChapterMcqs(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }, format: QuestionFormat = 'mcq') {
   const enabled = options?.enabled ?? true;
   return useQuery({
-    queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted }],
+    queryKey: ['mcqs', 'chapter', chapterId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('chapter_id', chapterId!);
+        .eq('chapter_id', chapterId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
@@ -124,15 +137,21 @@ export function useChapterMcqs(chapterId?: string, includeDeleted = false, optio
   });
 }
 
+// SBA-specific chapter hooks
+export function useChapterSbas(chapterId?: string, includeDeleted = false, options?: { enabled?: boolean }) {
+  return useChapterMcqs(chapterId, includeDeleted, options, 'sba');
+}
+
 // Fetch MCQs by topic (with optional includeDeleted flag)
-export function useTopicMcqs(topicId?: string, includeDeleted = false) {
+export function useTopicMcqs(topicId?: string, includeDeleted = false, format: QuestionFormat = 'mcq') {
   return useQuery({
-    queryKey: ['mcqs', 'topic', topicId, { includeDeleted }],
+    queryKey: ['mcqs', 'topic', topicId, { includeDeleted, format }],
     queryFn: async () => {
       let query = supabase
         .from('mcqs')
         .select('*')
-        .eq('topic_id', topicId!);
+        .eq('topic_id', topicId!)
+        .eq('question_format', format);
       
       if (!includeDeleted) {
         query = query.eq('is_deleted', false);
@@ -145,6 +164,11 @@ export function useTopicMcqs(topicId?: string, includeDeleted = false) {
     },
     enabled: !!topicId,
   });
+}
+
+// SBA-specific topic hooks
+export function useTopicSbas(topicId?: string, includeDeleted = false) {
+  return useTopicMcqs(topicId, includeDeleted, 'sba');
 }
 
 // Create MCQ
@@ -168,6 +192,7 @@ export function useCreateMcq() {
         correct_key: data.correct_key,
         explanation: data.explanation,
         difficulty: data.difficulty,
+        question_format: data.question_format || 'mcq',
         created_by: user?.id,
       }).select('id').single();
 

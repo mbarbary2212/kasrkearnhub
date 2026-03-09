@@ -47,7 +47,7 @@ import { VisualResourcesSection } from '@/components/study/VisualResourcesSectio
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
-import { useChapterMcqs, useChapterMcqCount } from '@/hooks/useMcqs';
+import { useChapterMcqs, useChapterMcqCount, useChapterSbas, useChapterSbaCount } from '@/hooks/useMcqs';
 import { useChapterTrueFalseQuestions, useChapterTrueFalseCount } from '@/hooks/useTrueFalseQuestions';
 import { TrueFalseList } from '@/components/content/TrueFalseList';
 import { useChapterAlgorithms } from '@/hooks/useInteractiveAlgorithms';
@@ -134,6 +134,7 @@ export default function ChapterPage() {
   const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedSbas, setShowDeletedSbas] = useState(false);
   const [showDeletedCases, setShowDeletedCases] = useState(false);
   const [showDeletedMatching, setShowDeletedMatching] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
@@ -170,6 +171,7 @@ export default function ChapterPage() {
   
   // Lightweight count hooks (always active) for practice tab badges
   const { data: mcqCount = 0 } = useChapterMcqCount(chapterId);
+  const { data: sbaCount = 0 } = useChapterSbaCount(chapterId);
   const { data: osceCount = 0 } = useChapterOsceCount(chapterId);
   const { data: matchingCount = 0 } = useChapterMatchingCount(chapterId);
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
@@ -180,6 +182,8 @@ export default function ChapterPage() {
   const isPracticeActive = activeSection === 'practice' || activeSection === 'test' || activeSection === 'interactive';
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedMcqs } = useChapterMcqs(chapterId, true, { enabled: isPracticeActive && canManageContent });
+  const { data: sbaQuestions, isLoading: sbaLoading } = useChapterSbas(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedSbas } = useChapterSbas(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedEssays } = useChapterEssays(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId, false, { enabled: isPracticeActive });
@@ -235,6 +239,7 @@ export default function ChapterPage() {
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
+  const deletedOnlySbas = (deletedSbas || []).filter(m => m.is_deleted);
   const deletedOnlyMatching = (deletedMatchingQuestions || []).filter(m => m.is_deleted);
   const deletedOnlyEssays = (deletedEssays || []).filter(e => e.is_deleted);
   const deletedOnlyOsce = (deletedOsceQuestions || []).filter(q => q.is_deleted);
@@ -361,6 +366,7 @@ export default function ChapterPage() {
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqCount,
+      sba: sbaCount,
       true_false: trueFalseCount,
       essays: essayCount,
       osce: osceCount,
@@ -370,6 +376,7 @@ export default function ChapterPage() {
     });
   }, [
     mcqCount,
+    sbaCount,
     trueFalseCount,
     essayCount,
     osceCount,
@@ -991,6 +998,27 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMcqs}
                         onShowDeletedChange={setShowDeletedMcqs}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* SBA Content */}
+                {practiceTab === 'sba' && (
+                  <div>
+                    {sbaLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <McqList
+                        mcqs={filterBySection(sbaQuestions || [])}
+                        deletedMcqs={deletedOnlySbas}
+                        moduleId={moduleId || ''}
+                        chapterId={chapterId}
+                        isAdmin={canManageContent}
+                        showDeletedToggle={canManageContent}
+                        showDeleted={showDeletedSbas}
+                        onShowDeletedChange={setShowDeletedSbas}
+                        questionFormat="sba"
                       />
                     )}
                   </div>

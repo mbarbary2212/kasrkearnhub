@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice } from '@/hooks/useMcqs';
+import { useCreateMcq, useUpdateMcq, type Mcq, type McqChoice, type QuestionFormat } from '@/hooks/useMcqs';
 import { McqFormSchema } from '@/lib/validators';
 import { SectionSelector, SectionWarningBanner } from '@/components/sections';
 
@@ -29,6 +29,7 @@ interface McqFormModalProps {
   topicId?: string | null;
   mcq?: Mcq;
   isAdmin: boolean;
+  questionFormat?: QuestionFormat;
 }
 
 const CHOICE_KEYS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -44,6 +45,7 @@ export function McqFormModal({
   topicId,
   mcq,
   isAdmin,
+  questionFormat = 'mcq',
 }: McqFormModalProps) {
   const isEditing = !!mcq;
 
@@ -98,6 +100,7 @@ export function McqFormModal({
       explanation: explanation || null,
       difficulty: isAdmin ? difficulty : null,
       section_id: sectionId,
+      question_format: questionFormat,
     };
 
     // Validate before submission
@@ -116,7 +119,7 @@ export function McqFormModal({
       );
     } else {
       createMutation.mutate(
-        { ...formData, module_id: moduleId, chapter_id: chapterId || null, topic_id: topicId || null },
+        { ...formData, module_id: moduleId, chapter_id: chapterId || null, topic_id: topicId || null, question_format: questionFormat },
         { onSuccess: () => onOpenChange(false) }
       );
     }
@@ -128,7 +131,7 @@ export function McqFormModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-[99999]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit MCQ' : 'Add New MCQ'}</DialogTitle>
+          <DialogTitle>{isEditing ? `Edit ${questionFormat === 'sba' ? 'SBA' : 'MCQ'}` : `Add New ${questionFormat === 'sba' ? 'SBA' : 'MCQ'}`}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -172,7 +175,7 @@ export function McqFormModal({
 
           {/* Correct Answer */}
           <div className="space-y-2">
-            <Label>Correct Answer *</Label>
+            <Label>{questionFormat === 'sba' ? 'Best Answer (most appropriate among plausible choices)' : 'Correct Answer'} *</Label>
             <Select value={correctKey} onValueChange={setCorrectKey}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select correct answer" />

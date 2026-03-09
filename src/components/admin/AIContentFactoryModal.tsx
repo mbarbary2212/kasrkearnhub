@@ -73,6 +73,7 @@ interface ContentTypeOption {
 
 const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Multiple choice questions (A-E)', category: 'practice' },
+  { value: 'sba', label: 'SBA Questions', icon: HelpCircle, description: 'Single Best Answer — all choices plausible, one is best', category: 'practice' },
   { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
   { value: 'clinical_case', label: 'Clinical Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },

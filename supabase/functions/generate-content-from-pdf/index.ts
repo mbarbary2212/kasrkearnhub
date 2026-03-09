@@ -15,6 +15,7 @@ const corsHeaders = {
 
 type ContentType =
   | "mcq"
+  | "sba"
   | "flashcard"
   | "case_scenario"
   | "essay"
@@ -58,6 +59,15 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     correct_key: "string - one of A, B, C, D, E (must match one of the choice keys)",
     explanation: "string - explanation of the correct answer",
     difficulty: "string - easy, medium, or hard",
+    section_number: "string (optional) - section number from the provided list (e.g., '3.1', '3.2'). DO NOT invent.",
+  },
+  sba: {
+    stem: "string - the clinical scenario question text",
+    choices: "array of exactly 5 objects - [{ key: 'A', text: 'option' }, { key: 'B', text: 'option' }, { key: 'C', text: 'option' }, { key: 'D', text: 'option' }, { key: 'E', text: 'option' }] - ALL choices must be medically plausible",
+    correct_key: "string - the single BEST answer key (A-E)",
+    explanation: "string - why this is the BEST answer compared to the other plausible alternatives",
+    difficulty: "string - easy, medium, or hard",
+    question_format: "string - must be 'sba'",
     section_number: "string (optional) - section number from the provided list (e.g., '3.1', '3.2'). DO NOT invent.",
   },
   flashcard: {
@@ -1194,8 +1204,18 @@ RULES:
 - Mix different stage types for variety.`
         : "";
 
-    const mcqArrayInstruction = content_type === "mcq"
-      ? `\n\nCRITICAL FOR MCQ: The 'choices' field MUST be an array of exactly 5 objects: [{ "key": "A", "text": "..." }, { "key": "B", "text": "..." }, { "key": "C", "text": "..." }, { "key": "D", "text": "..." }, { "key": "E", "text": "..." }]. DO NOT use an object format.`
+    const mcqArrayInstruction = (content_type === "mcq" || content_type === "sba")
+      ? `\n\nCRITICAL FOR ${content_type.toUpperCase()}: The 'choices' field MUST be an array of exactly 5 objects: [{ "key": "A", "text": "..." }, { "key": "B", "text": "..." }, { "key": "C", "text": "..." }, { "key": "D", "text": "..." }, { "key": "E", "text": "..." }]. DO NOT use an object format.`
+      : "";
+
+    const sbaInstruction = content_type === "sba"
+      ? `\n\nSBA (SINGLE BEST ANSWER) RULES:
+- ALL 5 answer choices MUST be medically plausible and potentially correct.
+- NO obviously wrong distractors — every option should represent a reasonable clinical approach.
+- Exactly ONE answer must be the SINGLE BEST answer given the specific clinical context.
+- The explanation MUST justify why the best answer is SUPERIOR to the other plausible alternatives, not just why it is correct.
+- Use "correct_key" to indicate the single best answer.
+- Set "question_format" to "sba" in each generated item.`
       : "";
 
     // Load AI rules from database (precedence: chapter > module > global)
@@ -1221,7 +1241,7 @@ CRITICAL SAFETY RULES:
 ${nbmeGuidelines}
 
 OUTPUT SCHEMA (you MUST use exactly these fields):
-${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
+${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sbaInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
 
 ${isLongFormType ? `You must output a JSON array with exactly 1 item matching the schema above. The "content" field must be a complete markdown document.
 Example format: [{ "title": "...", "content": "# Full markdown document here..." }]` : `You must output a JSON array of ${clampedQuantity} items, each matching the schema above.

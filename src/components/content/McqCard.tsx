@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Star, RotateCcw, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Mcq, McqChoice } from '@/hooks/useMcqs';
+import type { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
@@ -29,6 +29,7 @@ interface McqCardProps {
   isDeleted?: boolean;
   // Previous attempt data for restoring state
   previousAttempt?: McqAttemptData | null;
+  questionFormat?: QuestionFormat;
 }
 
 export function McqCard({ 
@@ -44,6 +45,7 @@ export function McqCard({
   onToggleMark, 
   isDeleted = false,
   previousAttempt,
+  questionFormat = 'mcq',
 }: McqCardProps) {
   // Restore previous answer if available
   const initialSelectedKey = useMemo(() => {
@@ -145,6 +147,15 @@ export function McqCard({
               <Badge variant="outline" className="font-mono">
                 Q{index + 1}
               </Badge>
+              {/* SBA format badge */}
+              {questionFormat === 'sba' && (
+                <Badge 
+                  variant="outline" 
+                  className="text-[11px] font-semibold bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700"
+                >
+                  SBA
+                </Badge>
+              )}
               {/* Status indicator based on last attempt */}
               {statusLabel && !isAdmin && (
                 <Badge 
@@ -315,7 +326,10 @@ export function McqCard({
               <>
                 <X className="h-5 w-5 shrink-0" />
                 <span className="font-medium">
-                  Incorrect. The correct answer is {mcq.correct_key}.
+                  {questionFormat === 'sba' 
+                    ? `Not the best answer. The best answer is ${mcq.correct_key}.`
+                    : `Incorrect. The correct answer is ${mcq.correct_key}.`
+                  }
                 </span>
               </>
             )}

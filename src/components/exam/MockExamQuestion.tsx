@@ -1,4 +1,4 @@
-import { Mcq, McqChoice } from '@/hooks/useMcqs';
+import { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,6 +36,11 @@ export function MockExamQuestion({
         <span className="text-sm font-medium text-muted-foreground">
           Question {questionIndex + 1} of {totalQuestions}
         </span>
+        {question.question_format === 'sba' && (
+          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+            Select the BEST answer
+          </span>
+        )}
       </div>
 
       {/* Question card */}

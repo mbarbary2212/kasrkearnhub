@@ -42,6 +42,22 @@ export function McqAdminTable({
       ),
     },
     {
+      key: 'question_format',
+      header: 'Format',
+      className: 'w-20',
+      render: (mcq) => (
+        <Badge 
+          variant="outline" 
+          className={mcq.question_format === 'sba' 
+            ? 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700'
+            : 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700'
+          }
+        >
+          {mcq.question_format === 'sba' ? 'SBA' : 'MCQ'}
+        </Badge>
+      ),
+    },
+    {
       key: 'difficulty',
       header: 'Difficulty',
       className: 'w-24',

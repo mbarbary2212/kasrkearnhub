@@ -25,6 +25,7 @@ import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQs', description: 'Multiple choice questions' },
+  { value: 'sba', label: 'SBA', description: 'Single Best Answer questions' },
   { value: 'flashcard', label: 'Flashcards', description: 'Study flashcards' },
   { value: 'osce', label: 'OSCE Questions', description: 'Clinical examination questions' },
   { value: 'essay', label: 'Essays', description: 'Short answer questions' },
