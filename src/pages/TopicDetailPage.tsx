@@ -179,6 +179,11 @@ export default function TopicDetailPage() {
     return (deletedMcqs || []).filter(m => !activeIds.has(m.id));
   }, [mcqs, deletedMcqs]);
 
+  const deletedOnlySbas = useMemo(() => {
+    const activeIds = new Set((sbaQuestions || []).map(m => m.id));
+    return (deletedSbas || []).filter(m => !activeIds.has(m.id));
+  }, [sbaQuestions, deletedSbas]);
+
   const deletedOnlyTrueFalse = useMemo(() => {
     const activeIds = new Set((trueFalseQuestions || []).map(q => q.id));
     return (deletedTrueFalse || []).filter(q => !activeIds.has(q.id));
