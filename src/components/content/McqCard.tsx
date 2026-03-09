@@ -238,7 +238,7 @@ export function McqCard({
                       size="sm"
                       onClick={onDelete}
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Delete MCQ"
+                      title={questionFormat === 'sba' ? 'Delete SBA' : 'Delete MCQ'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -1042,7 +1042,7 @@ The AI will parse and extract the questions automatically.`}
                         return;
                       }
                       if (!data.mcqs || data.mcqs.length === 0) {
-                        setFileError('No MCQs could be extracted from the text');
+                        setFileError(`No ${questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} could be extracted from the text`);
                         return;
                       }
                       const withDuplicates = processWithDuplicateDetection(data.mcqs);
