@@ -889,9 +889,9 @@ export function McqList({
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Bulk Import MCQs</DialogTitle>
+            <DialogTitle>Bulk Import {questionFormat === 'sba' ? 'SBA Questions' : 'MCQs'}</DialogTitle>
             <DialogDescription>
-              Upload a CSV file or paste CSV content to import multiple MCQs
+              Upload a CSV file or paste CSV content to import multiple {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'}
             </DialogDescription>
           </DialogHeader>
           
