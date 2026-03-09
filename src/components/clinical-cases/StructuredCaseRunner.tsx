@@ -218,7 +218,7 @@ export function StructuredCaseRunner({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Exit this case?</AlertDialogTitle>
+                    <AlertDialogTitle>Abort this case?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Your completed sections are saved, but any in-progress work on the current section will be lost.
                     </AlertDialogDescription>
