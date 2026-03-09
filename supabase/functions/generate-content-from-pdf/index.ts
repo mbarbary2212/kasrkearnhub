@@ -1231,7 +1231,7 @@ CRITICAL SAFETY RULES:
 ${nbmeGuidelines}
 
 OUTPUT SCHEMA (you MUST use exactly these fields):
-${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
+${JSON.stringify(schema, null, 2)}${vpStageInfo}${mcqArrayInstruction}${sbaInstruction}${sectionsList}${sectionFocusInstruction}${socraticInstruction}
 
 ${isLongFormType ? `You must output a JSON array with exactly 1 item matching the schema above. The "content" field must be a complete markdown document.
 Example format: [{ "title": "...", "content": "# Full markdown document here..." }]` : `You must output a JSON array of ${clampedQuantity} items, each matching the schema above.
