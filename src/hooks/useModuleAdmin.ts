@@ -53,7 +53,7 @@ export function useUserManagedModules() {
       // Module admins see only their assigned modules
       const { data } = await supabase
         .from('module_admins')
-        .select('module_id, modules(id, name, slug)')
+        .select('module_id, modules(id, name, slug, year_id)')
         .eq('user_id', user.id);
       
       return data?.map(d => d.modules).filter(Boolean) || [];
