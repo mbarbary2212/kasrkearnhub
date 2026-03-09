@@ -48,6 +48,7 @@ export function MoveToChapterModal({
   const [mode, setMode] = useState<ActionMode>('move');
 
   const { data: allModules = [] } = useModules();
+  const { data: years = [] } = useYears();
   const { data: chapters = [] } = useModuleChapters(selectedModuleId);
   const bulkMove = useBulkMoveToChapter(contentTable);
   const bulkCopy = useBulkCopyToChapter(contentTable);
