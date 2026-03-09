@@ -45,6 +45,7 @@ export function McqFormModal({
   topicId,
   mcq,
   isAdmin,
+  questionFormat = 'mcq',
 }: McqFormModalProps) {
   const isEditing = !!mcq;
 
