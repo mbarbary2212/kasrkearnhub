@@ -15,6 +15,7 @@ import type {
 } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { BodyMap } from './BodyMap';
+import { ImageLightbox } from './ImageLightbox';
 
 const REGION_LABELS: Record<RegionKey, { icon: string; label: string }> = {
   general: { icon: '🧍', label: 'General Appearance' },

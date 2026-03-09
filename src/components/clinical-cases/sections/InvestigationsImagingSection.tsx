@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImagingSectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
+import { ImageLightbox } from './ImageLightbox';
 
 export function InvestigationsImagingSection({
   data,
@@ -19,6 +21,9 @@ export function InvestigationsImagingSection({
     new Set((previousAnswer?.selected_studies as string[]) || [])
   );
   const [showResults, setShowResults] = useState(!!previousAnswer);
+  const [findingsSummary, setFindingsSummary] = useState(
+    (previousAnswer?.findings_summary as string) || ''
+  );
 
   const imagingEntries = Object.entries(data.available_imaging || {});
 
@@ -38,6 +43,7 @@ export function InvestigationsImagingSection({
     onSubmit({
       selected_studies: Array.from(selectedStudies),
       total_available: imagingEntries.length,
+      findings_summary: findingsSummary.trim(),
     });
   };
 
@@ -114,13 +120,13 @@ export function InvestigationsImagingSection({
                   {study.is_key && <Badge variant="default" className="text-[10px]">Key</Badge>}
                 </div>
                 {study.image_url && (
-                  <a href={study.image_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                    <img
+                  <div className="mb-2">
+                    <ImageLightbox
                       src={study.image_url}
                       alt={study.label}
                       className="rounded-lg border max-h-48 object-contain w-full cursor-zoom-in hover:opacity-90 transition-opacity"
                     />
-                  </a>
+                  </div>
                 )}
                 <p className="text-sm">{study.result}</p>
                 <p className="text-xs text-muted-foreground mt-1">{study.interpretation}</p>
@@ -130,8 +136,27 @@ export function InvestigationsImagingSection({
         </div>
       )}
 
+      {/* Findings interpretation summary */}
+      {showResults && (
+        <div className="border-t pt-4 mt-2">
+          <Label className="font-medium text-sm">
+            Summarize your interpretation of the imaging findings
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+            What do these results tell you about the patient's condition?
+          </p>
+          <Textarea
+            value={findingsSummary}
+            onChange={e => setFindingsSummary(e.target.value)}
+            rows={3}
+            disabled={readOnly}
+            placeholder="Describe what the imaging findings reveal..."
+          />
+        </div>
+      )}
+
       {showResults && !readOnly && (
-        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
+        <Button onClick={handleSubmit} disabled={isSubmitting || !findingsSummary.trim()} className="w-full">
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Continue
         </Button>

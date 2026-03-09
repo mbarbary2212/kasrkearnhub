@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LabsSectionData } from '@/types/structuredCase';
@@ -19,6 +20,9 @@ export function InvestigationsLabsSection({
     new Set((previousAnswer?.selected_tests as string[]) || [])
   );
   const [showResults, setShowResults] = useState(!!previousAnswer);
+  const [findingsSummary, setFindingsSummary] = useState(
+    (previousAnswer?.findings_summary as string) || ''
+  );
 
   const testEntries = Object.entries(data.available_tests || {});
 
@@ -38,6 +42,7 @@ export function InvestigationsLabsSection({
     onSubmit({
       selected_tests: Array.from(selectedTests),
       total_available: testEntries.length,
+      findings_summary: findingsSummary.trim(),
     });
   };
 
@@ -121,8 +126,27 @@ export function InvestigationsLabsSection({
         </div>
       )}
 
+      {/* Findings interpretation summary */}
+      {showResults && (
+        <div className="border-t pt-4 mt-2">
+          <Label className="font-medium text-sm">
+            Summarize your interpretation of the lab results
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+            What do these results tell you about the patient's condition?
+          </p>
+          <Textarea
+            value={findingsSummary}
+            onChange={e => setFindingsSummary(e.target.value)}
+            rows={3}
+            disabled={readOnly}
+            placeholder="Describe what the lab findings reveal..."
+          />
+        </div>
+      )}
+
       {showResults && !readOnly && (
-        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
+        <Button onClick={handleSubmit} disabled={isSubmitting || !findingsSummary.trim()} className="w-full">
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Continue
         </Button>
