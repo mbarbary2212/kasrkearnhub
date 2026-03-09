@@ -170,6 +170,7 @@ export default function ChapterPage() {
   
   // Lightweight count hooks (always active) for practice tab badges
   const { data: mcqCount = 0 } = useChapterMcqCount(chapterId);
+  const { data: sbaCount = 0 } = useChapterSbaCount(chapterId);
   const { data: osceCount = 0 } = useChapterOsceCount(chapterId);
   const { data: matchingCount = 0 } = useChapterMatchingCount(chapterId);
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
@@ -180,6 +181,8 @@ export default function ChapterPage() {
   const isPracticeActive = activeSection === 'practice' || activeSection === 'test' || activeSection === 'interactive';
   const { data: mcqs, isLoading: mcqsLoading } = useChapterMcqs(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedMcqs } = useChapterMcqs(chapterId, true, { enabled: isPracticeActive && canManageContent });
+  const { data: sbaQuestions, isLoading: sbaLoading } = useChapterSbas(chapterId, false, { enabled: isPracticeActive });
+  const { data: deletedSbas } = useChapterSbas(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: essays, isLoading: essaysLoading } = useChapterEssays(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedEssays } = useChapterEssays(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId, false, { enabled: isPracticeActive });
