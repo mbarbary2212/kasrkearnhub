@@ -100,6 +100,7 @@ export function McqList({
   showDeletedToggle = false,
   showDeleted = false,
   onShowDeletedChange,
+  questionFormat = 'mcq',
 }: McqListProps) {
   const auth = useAuthContext();
 
