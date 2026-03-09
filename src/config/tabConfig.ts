@@ -61,6 +61,7 @@ export const INTERACTIVE_TABS: TabConfig[] = [
 // clinical_cases moved to Interactive section
 export const PRACTICE_TABS: TabConfig[] = [
   { id: 'mcqs', label: 'MCQs', icon: HelpCircle },
+  { id: 'sba', label: 'SBA', icon: HelpCircle },
   { id: 'true_false', label: 'True/False', icon: ToggleLeft },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
   { id: 'osce', label: 'OSCE', icon: FlaskConical },
