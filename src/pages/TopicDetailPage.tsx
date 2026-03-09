@@ -120,6 +120,7 @@ export default function TopicDetailPage() {
 
   // Deleted items toggle state
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
+  const [showDeletedSbas, setShowDeletedSbas] = useState(false);
   const [showDeletedTrueFalse, setShowDeletedTrueFalse] = useState(false);
   const [showDeletedOsce, setShowDeletedOsce] = useState(false);
   const [showDeletedEssays, setShowDeletedEssays] = useState(false);
