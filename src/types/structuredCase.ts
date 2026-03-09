@@ -198,6 +198,7 @@ export interface ImagingStudy {
   interpretation: string;
   is_key: boolean;
   points: number;
+  image_url?: string;
 }
 
 export interface ImagingSectionData {
