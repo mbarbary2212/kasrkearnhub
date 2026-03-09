@@ -788,9 +788,7 @@ export function AIContentFactoryModal({
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
                     <SelectContent>
-                      {modules?.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
+                      <YearGroupedModuleOptions modules={modules} />
                     </SelectContent>
                   </Select>
                 </div>

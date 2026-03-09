@@ -201,11 +201,7 @@ export function AdminInboxTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Modules</SelectItem>
-                {modules?.map((mod: { id: string; name: string }) => (
-                  <SelectItem key={mod.id} value={mod.id}>
-                    {mod.name}
-                  </SelectItem>
-                ))}
+                <YearGroupedModuleOptions modules={modules} showSlug={false} />
               </SelectContent>
             </Select>
           )}
