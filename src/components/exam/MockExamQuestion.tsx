@@ -1,4 +1,4 @@
-import { Mcq, McqChoice } from '@/hooks/useMcqs';
+import { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
