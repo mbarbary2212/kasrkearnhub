@@ -223,7 +223,14 @@ export function PhysicalExamSection({
           </div>
 
           {/* Hint */}
-          {revealedCount === 0 && (
+          {activeRegions.length === 0 && (
+            <div className="mx-6 my-4 px-4 py-6 bg-muted/50 border border-dashed border-border rounded-lg text-center">
+              <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">No examination findings available for this case.</p>
+              <p className="text-xs text-muted-foreground mt-1">This case may not have physical examination data configured.</p>
+            </div>
+          )}
+          {activeRegions.length > 0 && revealedCount === 0 && (
             <div className="mx-6 my-1 px-3.5 py-2.5 bg-muted/50 border border-dashed border-border rounded-lg text-xs text-muted-foreground text-center">
               👆 Click any region on the figure or a card below to reveal findings
             </div>

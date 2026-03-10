@@ -780,7 +780,7 @@ export function HistoryTakingSection({
         const reply = fnData?.reply || fallbackGreeting;
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice' && lang === 'ar') {
+        if (mode === 'voice' && lang === 'ar' && !isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
           const voiceId = gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
