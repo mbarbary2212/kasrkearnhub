@@ -1,64 +1,37 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 13 added)
+# Fix: Stop TTS Audio Immediately on Abort/Navigation
 
-### Completed Steps
+## Problem
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+When the user aborts a case (or navigates away), the ElevenLabs audio keeps playing because the `speakArabic` function creates a standalone `Audio` object with no way to stop it later. The browser TTS has `speechSynthesis.cancel()` but the ElevenLabs audio reference is lost.
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+## Changes
 
-### All Steps
+### 1. `src/utils/tts.ts` -- Add global audio tracking + stop function
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
-| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
+- Store the currently playing `Audio` instance in a module-level variable
+- Export a new `stopAllTTS()` function that:
+  - Pauses and cleans up the ElevenLabs `Audio` object
+  - Calls `window.speechSynthesis.cancel()` for browser TTS
+- In `speakArabic`, stop any previous audio before starting new playback
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+### 2. `src/components/clinical-cases/StructuredCaseRunner.tsx` -- Stop audio on abort + add abort dialog to Back button
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+- Import `stopAllTTS` from `@/utils/tts`
+- Call `stopAllTTS()` inside the existing Abort Case `onClick` handler before navigating
+- Wrap the existing **Back** button (top-left, currently in `VirtualPatientPage.tsx`) with an `AlertDialog` abort confirmation when a case is running -- but since Back is on the intro page (not inside the runner), this is already handled by the abort button
+- Add cleanup on unmount via `useEffect` that calls `stopAllTTS()` when the component unmounts (handles browser back, home navigation, etc.)
 
-### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
-- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
-- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
-- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
-- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
-- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
-- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
-- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
-- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
+### 3. Navigation guard considerations
+
+The `useEffect` cleanup on unmount will catch all navigation scenarios (browser back, clicking Home, clicking avatar/logo) without needing individual abort dialogs on every nav element. The existing Abort button dialog remains the explicit confirmation path.
+
+## Summary of behavior after fix
+
+| Action | Abort dialog? | Audio stops? |
+|--------|--------------|-------------|
+| Click Abort button | Yes (existing) | Immediately on confirm |
+| Browser back / Home / avatar | No dialog (unmount cleanup) | Immediately |
+| Mute toggle | No | Immediately (already works) |
+
