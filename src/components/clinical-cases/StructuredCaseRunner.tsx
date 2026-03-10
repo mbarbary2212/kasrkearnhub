@@ -48,6 +48,7 @@ import {
   ConclusionSection,
 } from './sections';
 import { supabase } from '@/integrations/supabase/client';
+import { stopAllTTS } from '@/utils/tts';
 
 // ── Props ────────────────────────────────────────────
 interface StructuredCaseRunnerProps {
@@ -95,6 +96,11 @@ export function StructuredCaseRunner({
     supabase.auth.getUser().then(({ data }) => {
       setStudentName(data?.user?.user_metadata?.full_name || data?.user?.email || '');
     });
+  }, []);
+
+  // Stop all TTS on unmount (covers browser back, Home, avatar click, etc.)
+  useEffect(() => {
+    return () => { stopAllTTS(); };
   }, []);
 
   const currentSection = activeSections[currentIndex];
@@ -232,6 +238,7 @@ export function StructuredCaseRunner({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Continue Case</AlertDialogCancel>
                     <AlertDialogAction onClick={() => {
+                      stopAllTTS();
                       const chapterId = caseData.chapter_id;
                       const moduleId = caseData.module_id;
                       if (chapterId && moduleId) {
