@@ -223,12 +223,7 @@ export function AnnouncementFormModal({
                   <SelectValue placeholder="Select a module" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(isModuleAdminOnly 
-                    ? modules.filter(m => moduleAdminModuleIds.includes(m.id))
-                    : modules
-                  ).map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
+                  <YearGroupedModuleOptions modules={isModuleAdminOnly ? modules.filter(m => moduleAdminModuleIds.includes(m.id)) : modules} />
                 </SelectContent>
               </Select>
             </div>

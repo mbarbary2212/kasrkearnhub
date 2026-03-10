@@ -269,9 +269,7 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Modules</SelectItem>
-            {(modules || []).map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-            ))}
+            <YearGroupedModuleOptions modules={modules} />
           </SelectContent>
         </Select>
 
