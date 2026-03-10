@@ -164,6 +164,9 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       case 'module_assigned':
       case 'topic_assigned':
         return 'bg-purple-500/10 border-l-2 border-purple-500';
+      case 'avatar_request':
+      case 'voice_request':
+        return 'bg-amber-500/10 border-l-2 border-amber-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }
