@@ -100,6 +100,7 @@ export function CasePreviewEditor() {
   const [selectedAvatarId, setSelectedAvatarId] = useState<number>(1);
   const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
   const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
+  const [requestVoiceOpen, setRequestVoiceOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
