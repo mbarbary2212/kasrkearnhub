@@ -42,9 +42,28 @@ export function useUpdateStructuredCaseData() {
       history_interaction_mode?: string;
       active_sections?: SectionType[];
     }) => {
+      // Build update payload with JSONB data
       const updatePayload: Record<string, unknown> = {
         generated_case_data: data as any,
       };
+
+      // Sync top-level fields from generated_case_data so cards/lists stay current
+      const metaTitle = (data as any).case_meta?.title;
+      if (metaTitle) updatePayload.title = metaTitle;
+
+      const metaChief = (data as any).case_meta?.chief_complaint;
+      if (metaChief) updatePayload.chief_complaint = metaChief;
+
+      // Derive intro_text from patient info
+      const patient = (data as any).patient;
+      if (patient) {
+        const age = patient.age ?? '';
+        const gender = patient.gender ?? '';
+        const background = patient.background || patient.chief_complaint || metaChief || '';
+        if (age && gender) {
+          updatePayload.intro_text = `A ${age}-year-old ${gender} presents with ${background}`.trim();
+        }
+      }
       if (avatar_id !== undefined) updatePayload.avatar_id = avatar_id;
       if (history_interaction_mode !== undefined) updatePayload.history_interaction_mode = history_interaction_mode;
       if (active_sections !== undefined) updatePayload.active_sections = active_sections;
