@@ -27,7 +27,7 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
-  const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSubmitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autoSubmitPending, setAutoSubmitPending] = useState(false);
 
   // Inline forgot password state

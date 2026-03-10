@@ -77,8 +77,8 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const [transitioning, setTransitioning] = useState(false);
 
   // Timer refs
-  const flipTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const advanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Group cards by title (topic)
   const topicGroups = useMemo<TopicGroup[]>(() => {
