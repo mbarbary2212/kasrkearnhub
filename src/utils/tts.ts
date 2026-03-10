@@ -71,7 +71,7 @@ export async function speakArabic(
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ text, voiceId, tone }),
+          body: JSON.stringify({ text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }),
         }
       );
 

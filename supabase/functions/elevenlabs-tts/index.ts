@@ -54,6 +54,7 @@ serve(async (req) => {
           text,
           model_id: 'eleven_multilingual_v2',
           voice_settings: voiceSettings,
+          speed: ttsSpeed,
         }),
       }
     );
