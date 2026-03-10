@@ -71,8 +71,8 @@ export async function speakArabic(
   voiceId?: string,
   tone?: PatientTone
 ): Promise<void> {
-  // Cancel any ongoing browser speech
-  window.speechSynthesis?.cancel();
+  // Stop any ongoing playback
+  stopAllTTS();
 
   if (provider === 'elevenlabs' && voiceId) {
     try {
