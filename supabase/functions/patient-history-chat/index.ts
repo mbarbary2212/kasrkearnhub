@@ -153,23 +153,26 @@ function buildPatientKnowledge(
   return parts.join('\n');
 }
 
+const ANTI_REPETITION_EN = ' Express this naturally and subtly. Do NOT repeat the same phrases every response. Only show your emotional state occasionally — vary your wording each time.';
+const ANTI_REPETITION_AR = ' عبّر عن حالتك بشكل طبيعي ومش مبالغ فيه. ما تكررش نفس العبارات في كل رد. أظهر مشاعرك من وقت للتاني بس، ونوّع في كلامك.';
+
 const TONE_DESCRIPTIONS_EN: Record<string, string> = {
   calm: 'You are calm, composed, and speak in a relaxed manner.',
-  worried: 'You are noticeably worried and concerned about your condition. Your responses should reflect nervousness and need for reassurance.',
-  anxious: 'You are very anxious and restless. You speak quickly, may repeat concerns, and seek constant reassurance.',
-  angry: 'You are frustrated and angry about your situation. You may be short-tempered, raise objections, and express dissatisfaction.',
-  impolite: 'You are rude and dismissive. You give short, blunt answers, may interrupt, and show little respect for the doctor.',
-  in_pain: 'You are in significant pain. You may groan, struggle to answer, give incomplete sentences, and frequently mention your discomfort.',
+  worried: 'You are noticeably worried and concerned about your condition.' + ANTI_REPETITION_EN,
+  anxious: 'You are very anxious and restless. You speak quickly and seek reassurance.' + ANTI_REPETITION_EN,
+  angry: 'You are frustrated and angry about your situation. You may be short-tempered and raise objections.' + ANTI_REPETITION_EN,
+  impolite: 'You are rude and dismissive. You give short, blunt answers and show little respect for the doctor.' + ANTI_REPETITION_EN,
+  in_pain: 'You are in significant pain. You may groan, struggle to answer, and give incomplete sentences.' + ANTI_REPETITION_EN,
   cooperative: 'You are friendly, cooperative, and eager to help the doctor understand your condition.',
 };
 
 const TONE_DESCRIPTIONS_AR: Record<string, string> = {
   calm: 'أنت هادي ومرتاح وبتتكلم بشكل طبيعي.',
-  worried: 'أنت قلقان ومتوتر على حالتك. ردودك لازم تعكس القلق والحاجة للطمأنة.',
-  anxious: 'أنت متوتر جداً ومش مرتاح. بتتكلم بسرعة وممكن تكرر مخاوفك وعايز طمأنة طول الوقت.',
-  angry: 'أنت زعلان وعصبي من الموقف. ممكن تكون حاد في الكلام وتعترض وتعبر عن عدم رضاك.',
-  impolite: 'أنت وقح ومش مهتم. بترد بشكل قصير وجاف وممكن تقاطع وما تحترمش الدكتور.',
-  in_pain: 'أنت في ألم شديد. ممكن تتأوه وتلاقي صعوبة في الرد وتقول جمل ناقصة وتفضل تقول إنك تعبان.',
+  worried: 'أنت قلقان ومتوتر على حالتك.' + ANTI_REPETITION_AR,
+  anxious: 'أنت متوتر جداً ومش مرتاح. بتتكلم بسرعة وعايز طمأنة.' + ANTI_REPETITION_AR,
+  angry: 'أنت زعلان وعصبي من الموقف. ممكن تكون حاد في الكلام وتعترض.' + ANTI_REPETITION_AR,
+  impolite: 'أنت وقح ومش مهتم. بترد بشكل قصير وجاف وممكن تقاطع.' + ANTI_REPETITION_AR,
+  in_pain: 'أنت في ألم شديد. ممكن تتأوه وتلاقي صعوبة في الرد وتقول جمل ناقصة.' + ANTI_REPETITION_AR,
   cooperative: 'أنت ودود ومتعاون وعايز تساعد الدكتور يفهم حالتك.',
 };
 

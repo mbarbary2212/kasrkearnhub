@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle, VolumeX, Volume2 } from 'lucide-react';
+import * as Sentry from '@sentry/react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
@@ -82,6 +83,9 @@ export function HistoryTakingSection({
   const [voiceErrorCount, setVoiceErrorCount] = useState(0);
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
+  const [isMuted, setIsMuted] = useState(() => {
+    try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
+  });
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -152,8 +156,8 @@ export function HistoryTakingSection({
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-      // Voice mode: speak the response
-      if (selectedMode === 'voice') {
+      // Voice mode: speak the response (unless muted)
+      if (selectedMode === 'voice' && !isMuted) {
         const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
         const voiceId = gender === 'female'
           ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
@@ -216,6 +220,10 @@ export function HistoryTakingSection({
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      Sentry.captureMessage(`STT error: ${event.error}`, {
+        level: 'warning',
+        extra: { language: selectedLanguage, mode: selectedMode },
+      });
       const errorMessages: Record<string, string> = {
         'not-allowed': 'Microphone access denied. Please allow microphone permissions.',
         'no-speech': 'No speech detected. Please try again.',
@@ -226,14 +234,7 @@ export function HistoryTakingSection({
       toast.error(errorMessages[event.error] || `Speech error: ${event.error}`);
       setIsListening(false);
       setInterimTranscript('');
-      setVoiceErrorCount(prev => {
-        const next = prev + 1;
-        if (next >= 2) {
-          setShowVoiceFallbackInput(true);
-          toast.info('Voice input unavailable. You can type your message instead.');
-        }
-        return next;
-      });
+      setVoiceErrorCount(prev => prev + 1);
     };
 
     recognition.onend = () => {
@@ -459,6 +460,7 @@ export function HistoryTakingSection({
               className="gap-2"
               onClick={() => {
                 setSelectedMode('voice');
+                setShowVoiceFallbackInput(true); // Show text fallback by default
                 sendChatMessageInitial('voice');
               }}
             >
@@ -583,7 +585,28 @@ export function HistoryTakingSection({
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
             <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
-            <div className="mt-1">{timerBadge}</div>
+            <div className="mt-1 flex items-center justify-center gap-2">
+              {timerBadge}
+              <Button
+                size="sm"
+                variant={isMuted ? 'destructive' : 'outline'}
+                className="gap-1 text-xs h-6 px-2"
+                onClick={() => {
+                  const next = !isMuted;
+                  setIsMuted(next);
+                  try { localStorage.setItem('mute_ai_voice', String(next)); } catch {}
+                  if (next) {
+                    window.speechSynthesis?.cancel();
+                    toast.info('AI voice muted — responses will be shown as text only.');
+                  } else {
+                    toast.info('AI voice unmuted.');
+                  }
+                }}
+              >
+                {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                {isMuted ? 'Muted' : 'Mute'}
+              </Button>
+            </div>
           </div>
 
           {/* Last spoken */}
@@ -616,6 +639,7 @@ export function HistoryTakingSection({
           >
             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
+          <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
           {/* Listening indicator + interim transcript */}
           {isListening && (
             <div className="flex flex-col items-center gap-1">
@@ -756,7 +780,7 @@ export function HistoryTakingSection({
         const reply = fnData?.reply || fallbackGreeting;
         setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        if (mode === 'voice' && lang === 'ar') {
+        if (mode === 'voice' && lang === 'ar' && !isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
           const voiceId = gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
