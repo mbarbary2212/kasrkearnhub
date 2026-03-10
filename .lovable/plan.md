@@ -1,7 +1,7 @@
 
 # Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 12 added)
+## Status: ✅ Complete (Step 13 added)
 
 ### Completed Steps
 
@@ -32,6 +32,7 @@ All schema changes applied successfully:
 | 10 | Router integration in VirtualPatientPage | ✅ |
 | 11 | Physical Examination v8 rewrite | ✅ |
 | 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
+| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
@@ -51,3 +52,13 @@ All schema changes applied successfully:
 - **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
 - **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
 - **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+
+### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
+- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
+- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
+- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
+- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
+- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
+- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
+- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
+- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
