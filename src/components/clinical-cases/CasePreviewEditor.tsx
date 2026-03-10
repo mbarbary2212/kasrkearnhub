@@ -471,11 +471,26 @@ export function CasePreviewEditor() {
                   <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__default__">Global Default</SelectItem>
-                    {(ttsVoices || []).map(v => (
-                      <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
-                        {v.name} {v.label ? `— ${v.label}` : ''}
-                      </SelectItem>
-                    ))}
+                    {(() => {
+                      const males = (ttsVoices || []).filter(v => v.gender === 'male');
+                      const females = (ttsVoices || []).filter(v => v.gender === 'female');
+                      return (
+                        <>
+                          {males.length > 0 && <SelectLabel>Male Voices</SelectLabel>}
+                          {males.map(v => (
+                            <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                              {v.name} {v.label ? `— ${v.label}` : ''}
+                            </SelectItem>
+                          ))}
+                          {females.length > 0 && <SelectLabel>Female Voices</SelectLabel>}
+                          {females.map(v => (
+                            <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                              {v.name} {v.label ? `— ${v.label}` : ''}
+                            </SelectItem>
+                          ))}
+                        </>
+                      );
+                    })()}
                   </SelectContent>
                 </Select>
                 <button
