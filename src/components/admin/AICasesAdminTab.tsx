@@ -11,6 +11,7 @@ import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 const PAGE_SIZE = 10;
 
