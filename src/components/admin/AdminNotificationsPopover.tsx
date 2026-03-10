@@ -86,6 +86,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         }
         setOpen(false);
         break;
+      case 'avatar_request':
+      case 'voice_request':
+        navigate('/admin?tab=platform-settings');
+        setOpen(false);
+        break;
       default:
         setOpen(false);
     }
