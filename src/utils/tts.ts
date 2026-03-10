@@ -47,7 +47,7 @@ function getToneVoiceSettings(tone?: PatientTone) {
       return { stability: 0.6, similarity_boost: 0.75, style: 0.3, speed: 1.0 };
     case 'calm':
     default:
-      return { stability: 0.55, similarity_boost: 0.75, style: 0.2, speed: 1.0 };
+      return { stability: 0.55, similarity_boost: 0.75, style: 0.2, speed: 1.1 };
   }
 }
 
