@@ -911,11 +911,6 @@ serve(async (req) => {
 
   const aiProvider = getAIProvider(aiSettings);
 
-  // Override model based on content type mapping
-  const contentTypeOverrides = await getContentTypeOverrides(serviceClientEarly);
-  aiProvider.model = getModelForContentType(aiSettings, content_type, contentTypeOverrides);
-  console.log(`[model-select] content_type=${content_type} → model=${aiProvider.model}`);
-
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return jsonResponse({ error: "Unauthorized: Auth session missing!", step: "auth", items: [], warnings: [] }, 401);
