@@ -93,6 +93,8 @@ export function CasePreviewEditor() {
   const publishCase = usePublishStructuredCase();
   const generateCase = useGenerateStructuredCase();
   const { data: dynamicAvatars } = useExaminerAvatars();
+  const patientGender = (editedData?.patient?.gender === 'female' ? 'female' : 'male') as 'male' | 'female';
+  const { data: ttsVoices } = useTTSVoices(patientGender);
 
   const [editedData, setEditedData] = useState<StructuredCaseData | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
