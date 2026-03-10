@@ -607,33 +607,6 @@ export function CasePreviewEditor() {
                   placeholder="Brief background"
                 />
               </div>
-              <div>
-                <Label className="text-xs">Patient Tone</Label>
-                <Select
-                  value={editedData.patient?.tone || 'calm'}
-                  onValueChange={(v) => {
-                    setEditedData({
-                      ...editedData,
-                      patient: { ...editedData.patient, tone: v },
-                    });
-                    setHasChanges(true);
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Tone" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="calm">😌 Calm</SelectItem>
-                    <SelectItem value="worried">😟 Worried</SelectItem>
-                    <SelectItem value="anxious">😰 Anxious</SelectItem>
-                    <SelectItem value="angry">😠 Angry</SelectItem>
-                    <SelectItem value="impolite">😤 Impolite</SelectItem>
-                    <SelectItem value="in_pain">😣 In Pain</SelectItem>
-                    <SelectItem value="cooperative">🙂 Cooperative</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Affects AI text style &amp; voice playback
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>
