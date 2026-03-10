@@ -83,6 +83,9 @@ export function HistoryTakingSection({
   const [voiceErrorCount, setVoiceErrorCount] = useState(0);
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
+  const [isMuted, setIsMuted] = useState(() => {
+    try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
+  });
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
