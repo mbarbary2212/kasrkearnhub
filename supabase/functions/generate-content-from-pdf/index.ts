@@ -969,6 +969,11 @@ serve(async (req) => {
     items: finalizeItems, generation_stats,
   } = body;
 
+  // Override model based on content type mapping (must be after body parse)
+  const contentTypeOverrides = await getContentTypeOverrides(serviceClientEarly);
+  aiProvider.model = getModelForContentType(aiSettings, content_type, contentTypeOverrides);
+  console.log(`[model-select] content_type=${content_type} → model=${aiProvider.model}`);
+
   // ============================================
   // ACTION: FINALIZE (no AI call, just validate + save)
   // ============================================
