@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.virtual_patient_stages;

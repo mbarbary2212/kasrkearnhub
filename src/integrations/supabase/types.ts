@@ -5449,68 +5449,6 @@ export type Database = {
           },
         ]
       }
-      virtual_patient_stages: {
-        Row: {
-          case_id: string
-          choices: Json | null
-          consequence_text: string | null
-          correct_answer: Json
-          created_at: string
-          explanation: string | null
-          id: string
-          patient_info: string | null
-          prompt: string
-          rubric: Json | null
-          stage_order: number
-          stage_type: string
-          state_delta_json: Json | null
-          teaching_points: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          case_id: string
-          choices?: Json | null
-          consequence_text?: string | null
-          correct_answer: Json
-          created_at?: string
-          explanation?: string | null
-          id?: string
-          patient_info?: string | null
-          prompt: string
-          rubric?: Json | null
-          stage_order: number
-          stage_type?: string
-          state_delta_json?: Json | null
-          teaching_points?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          case_id?: string
-          choices?: Json | null
-          consequence_text?: string | null
-          correct_answer?: Json
-          created_at?: string
-          explanation?: string | null
-          id?: string
-          patient_info?: string | null
-          prompt?: string
-          rubric?: Json | null
-          stage_order?: number
-          stage_type?: string
-          state_delta_json?: Json | null
-          teaching_points?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "virtual_patient_stages_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "virtual_patient_cases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       years: {
         Row: {
           color: string | null
