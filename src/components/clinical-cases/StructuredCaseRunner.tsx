@@ -321,6 +321,8 @@ export function StructuredCaseRunner({
               studentName={studentName}
               patientTone={generatedData?.patient?.tone}
               estimatedMinutes={caseData.estimated_minutes}
+              voiceIdOverride={(generatedData?.patient as any)?.voice_id}
+              historyTimeLimitMinutes={(generatedData as any)?.history_time_limit_minutes}
             />
           )}
         </CardContent>
