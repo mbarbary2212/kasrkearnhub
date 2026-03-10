@@ -16,7 +16,7 @@ function getOrCreateClientId(): string {
 
 export function useSessionTracking(userId: string | null | undefined) {
   const sessionIdRef = useRef<string | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startSession = useCallback(async () => {
     if (!userId) return;
