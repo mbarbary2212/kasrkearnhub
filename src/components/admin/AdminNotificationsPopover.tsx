@@ -129,6 +129,9 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       case 'module_assigned':
       case 'topic_assigned':
         return <Activity className="w-4 h-4 text-purple-500" />;
+      case 'avatar_request':
+      case 'voice_request':
+        return <Megaphone className="w-4 h-4 text-amber-500" />;
       default:
         return <Megaphone className="w-4 h-4" />;
     }
