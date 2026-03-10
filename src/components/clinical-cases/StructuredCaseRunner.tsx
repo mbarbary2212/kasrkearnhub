@@ -98,6 +98,11 @@ export function StructuredCaseRunner({
     });
   }, []);
 
+  // Stop all TTS on unmount (covers browser back, Home, avatar click, etc.)
+  useEffect(() => {
+    return () => { stopAllTTS(); };
+  }, []);
+
   const currentSection = activeSections[currentIndex];
   const totalSections = activeSections.length;
   const progress = totalSections > 0 ? ((completedSections.size) / totalSections) * 100 : 0;
