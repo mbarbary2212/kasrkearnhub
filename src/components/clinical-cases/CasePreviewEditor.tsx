@@ -44,7 +44,10 @@ import {
   Check,
   X,
   PenLine,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import { speakArabic, stopAllTTS } from '@/utils/tts';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CaseImageUpload } from './CaseImageUpload';
