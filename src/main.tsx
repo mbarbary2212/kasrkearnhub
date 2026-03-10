@@ -6,6 +6,12 @@ import { ChunkLoadErrorBoundary, setupChunkErrorHandler } from "./components/Chu
 import { GlobalErrorBoundary } from "./components/GlobalErrorBoundary";
 import { setupVersionGuard, setupStartupHealthCheck, defaultHealthCheck } from "./lib/stabilityGuards";
 
+// Vite 4.4+ native preload error handler — catches chunk failures
+// at the earliest point before they propagate to other handlers
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload();
+});
+
 // Setup global chunk error handler for unhandled promise rejections
 // This catches dynamic import failures before they crash the app
 setupChunkErrorHandler();
