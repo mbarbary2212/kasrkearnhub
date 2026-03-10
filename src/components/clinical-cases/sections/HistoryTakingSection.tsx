@@ -220,6 +220,10 @@ export function HistoryTakingSection({
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      Sentry.captureMessage(`STT error: ${event.error}`, {
+        level: 'warning',
+        extra: { language: selectedLanguage, mode: selectedMode },
+      });
       const errorMessages: Record<string, string> = {
         'not-allowed': 'Microphone access denied. Please allow microphone permissions.',
         'no-speech': 'No speech detected. Please try again.',
@@ -230,14 +234,7 @@ export function HistoryTakingSection({
       toast.error(errorMessages[event.error] || `Speech error: ${event.error}`);
       setIsListening(false);
       setInterimTranscript('');
-      setVoiceErrorCount(prev => {
-        const next = prev + 1;
-        if (next >= 2) {
-          setShowVoiceFallbackInput(true);
-          toast.info('Voice input unavailable. You can type your message instead.');
-        }
-        return next;
-      });
+      setVoiceErrorCount(prev => prev + 1);
     };
 
     recognition.onend = () => {
