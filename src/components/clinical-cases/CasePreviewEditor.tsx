@@ -93,8 +93,6 @@ export function CasePreviewEditor() {
   const publishCase = usePublishStructuredCase();
   const generateCase = useGenerateStructuredCase();
   const { data: dynamicAvatars } = useExaminerAvatars();
-  const patientGender = (editedData?.patient?.gender === 'female' ? 'female' : 'male') as 'male' | 'female';
-  const { data: ttsVoices } = useTTSVoices(patientGender);
 
   const [editedData, setEditedData] = useState<StructuredCaseData | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
@@ -107,6 +105,9 @@ export function CasePreviewEditor() {
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
+
+  const patientGender = (editedData?.patient?.gender === 'female' ? 'female' : 'male') as 'male' | 'female';
+  const { data: ttsVoices } = useTTSVoices(patientGender);
 
   // Build avatar list from database
   const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
