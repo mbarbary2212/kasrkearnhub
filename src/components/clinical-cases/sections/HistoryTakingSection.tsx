@@ -83,10 +83,37 @@ export function HistoryTakingSection({
   const [interimTranscript, setInterimTranscript] = useState('');
   const [voiceErrorCount, setVoiceErrorCount] = useState(0);
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
-  const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
+  const [scribeConnecting, setScribeConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
   });
+
+  // Ref to hold latest sendChatMessage for scribe callbacks
+  const sendChatMessageRef = useRef<(text: string) => void>(() => {});
+
+  // ElevenLabs Scribe hook (always called — hooks can't be conditional)
+  const scribe = useScribe({
+    modelId: 'scribe_v2_realtime',
+    commitStrategy: 'vad',
+    onCommittedTranscript: (data) => {
+      if (data.text?.trim()) {
+        setLastSpoken(data.text);
+        setVoiceErrorCount(0);
+        sendChatMessageRef.current(data.text);
+      }
+    },
+    onPartialTranscript: (data) => {
+      setInterimTranscript(data.text || '');
+    },
+  });
+
+  // Sync scribe.isConnected → isListening
+  useEffect(() => {
+    setIsListening(scribe.isConnected);
+    if (!scribe.isConnected) {
+      setInterimTranscript('');
+    }
+  }, [scribe.isConnected]);
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -176,17 +203,15 @@ export function HistoryTakingSection({
     }
   }, [chatMessages, caseId, selectedMode]);
 
-  // ── Voice recognition ──────────────────────────────────
-  const toggleVoice = useCallback(() => {
+  // Keep ref in sync with latest sendChatMessage
+  useEffect(() => {
+    sendChatMessageRef.current = sendChatMessage;
+  }, [sendChatMessage]);
+
+  // ── Browser STT fallback ───────────────────────────────
+  const startBrowserSTT = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      setInterimTranscript('');
       return;
     }
 
@@ -195,10 +220,6 @@ export function HistoryTakingSection({
     recognition.lang = LANGUAGE_LABELS[selectedLanguage || 'ar']?.speechLocale || 'ar-EG';
     recognition.continuous = false;
     recognition.interimResults = true;
-
-    recognition.onaudiostart = () => {
-      // Mic is capturing — no action needed
-    };
 
     recognition.onresult = (event: any) => {
       let interim = '';
@@ -246,10 +267,63 @@ export function HistoryTakingSection({
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [isListening, sendChatMessage]);
+  }, [sendChatMessage, selectedLanguage, selectedMode]);
+
+  // ── Voice toggle (ElevenLabs Scribe with browser STT fallback) ──
+  const toggleVoice = useCallback(async () => {
+    // If currently listening, stop
+    if (isListening || scribe.isConnected) {
+      if (scribe.isConnected) {
+        scribe.disconnect();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+      setInterimTranscript('');
+      return;
+    }
+
+    // Try ElevenLabs Scribe first
+    setScribeConnecting(true);
+    try {
+      const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !tokenData?.token) {
+        throw new Error(error?.message || 'No token received');
+      }
+
+      await scribe.connect({
+        token: tokenData.token,
+        microphone: {
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+      // isListening will be set by the useEffect watching scribe.isConnected
+    } catch (err) {
+      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
+      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
+        level: 'info',
+        extra: { error: String(err) },
+      });
+      // Fall back to browser Web Speech API
+      startBrowserSTT();
+    } finally {
+      setScribeConnecting(false);
+    }
+  }, [isListening, scribe, startBrowserSTT]);
 
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
+    // Disconnect scribe if active
+    if (scribe.isConnected) {
+      scribe.disconnect();
+    }
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
     setPhase('questions');
   };
 
@@ -636,9 +710,15 @@ export function HistoryTakingSection({
             variant={isListening ? 'destructive' : 'default'}
             className="gap-2 rounded-full w-16 h-16"
             onClick={toggleVoice}
-            disabled={isSending || shouldDisableInput}
+            disabled={isSending || shouldDisableInput || scribeConnecting}
           >
-            {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            {scribeConnecting ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : isListening ? (
+              <MicOff className="w-6 h-6" />
+            ) : (
+              <Mic className="w-6 h-6" />
+            )}
           </Button>
           <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
           {/* Listening indicator + interim transcript */}
@@ -658,8 +738,11 @@ export function HistoryTakingSection({
               )}
             </div>
           )}
-          {!isListening && (
+          {!isListening && !scribeConnecting && (
             <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
+          )}
+          {scribeConnecting && (
+            <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
           )}
 
           {/* Warning banner */}
