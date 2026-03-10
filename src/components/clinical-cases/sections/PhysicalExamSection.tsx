@@ -112,6 +112,16 @@ export function PhysicalExamSection({
     [findings]
   );
 
+  // Track empty physical exam data for debugging
+  useEffect(() => {
+    if (Object.keys(findings).length === 0 || activeRegions.length === 0) {
+      Sentry.captureMessage('Physical exam: zero regions parsed', {
+        level: 'warning',
+        extra: { dataKeys: Object.keys(data), findingsKeys: Object.keys(findings) },
+      });
+    }
+  }, [findings, activeRegions, data]);
+
   const revealedCount = useMemo(
     () => activeRegions.filter(k => revealedRegions.has(k)).length,
     [activeRegions, revealedRegions]
