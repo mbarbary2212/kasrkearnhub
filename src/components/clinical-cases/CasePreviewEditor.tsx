@@ -460,18 +460,18 @@ export function CasePreviewEditor() {
               <div>
                 <Label className="text-xs">Voice Character</Label>
                 <Select
-                  value={(editedData as any).patient?.voice_id || ''}
+                  value={(editedData as any).patient?.voice_id || '__default__'}
                   onValueChange={(v) => {
                     setEditedData({
                       ...editedData,
-                      patient: { ...editedData.patient, voice_id: v },
+                      patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
                     } as any);
                     setHasChanges(true);
                   }}
                 >
                   <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Global Default</SelectItem>
+                    <SelectItem value="__default__">Global Default</SelectItem>
                     {(ttsVoices || []).map(v => (
                       <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
                         {v.name} {v.label ? `— ${v.label}` : ''}
