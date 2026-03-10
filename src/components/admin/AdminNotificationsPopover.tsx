@@ -86,6 +86,11 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
         }
         setOpen(false);
         break;
+      case 'avatar_request':
+      case 'voice_request':
+        navigate('/admin?tab=platform-settings');
+        setOpen(false);
+        break;
       default:
         setOpen(false);
     }
@@ -124,6 +129,9 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       case 'module_assigned':
       case 'topic_assigned':
         return <Activity className="w-4 h-4 text-purple-500" />;
+      case 'avatar_request':
+      case 'voice_request':
+        return <Megaphone className="w-4 h-4 text-amber-500" />;
       default:
         return <Megaphone className="w-4 h-4" />;
     }
@@ -156,6 +164,9 @@ export function AdminNotificationsPopover({ onNavigateToAnnouncement }: AdminNot
       case 'module_assigned':
       case 'topic_assigned':
         return 'bg-purple-500/10 border-l-2 border-purple-500';
+      case 'avatar_request':
+      case 'voice_request':
+        return 'bg-amber-500/10 border-l-2 border-amber-500';
       default:
         return 'bg-primary/10 border-l-2 border-primary';
     }
@@ -294,6 +305,15 @@ function GroupedNotificationItem({
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
             {latest.message}
           </p>
+          {(latest.type === 'avatar_request' || latest.type === 'voice_request') && (latest.metadata as Record<string, unknown>)?.requester_email && (
+            <a
+              href={`mailto:${(latest.metadata as Record<string, unknown>).requester_email}`}
+              className="text-xs text-primary hover:underline mt-1 inline-block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              ✉ Contact {(latest.metadata as Record<string, unknown>).requester_name as string || 'requester'}
+            </a>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             {formatDistanceToNow(new Date(latest.created_at), { addSuffix: true })}
           </p>
