@@ -1,46 +1,64 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-# Clean Up Old Cases + Fix Title/Intro Sync
+## Status: ✅ Complete (Step 13 added)
 
-## Problem
+### Completed Steps
 
-1. **Old deleted cases cluttering the database**: Many soft-deleted cases, attempts, and orphaned stages exist in the three `virtual_patient_*` tables.
-2. **Title/intro_text not syncing**: When you edit patient info (age, name, etc.) in the Case Editor, it only updates `generated_case_data` JSONB. The top-level `title` and `intro_text` columns are never updated, so the case card still shows "A 58-year-old..." even after changing age to 62.
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-## Changes
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-### 1. Delete old soft-deleted cases (SQL via insert tool)
+### All Steps
 
-Run these data cleanup queries in order:
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
+| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
 
-```sql
--- 1. Delete attempts linked to deleted cases
-DELETE FROM virtual_patient_attempts
-WHERE case_id IN (SELECT id FROM virtual_patient_cases WHERE is_deleted = true);
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
--- 2. Delete all orphaned stages (all point to deleted cases)
-DELETE FROM virtual_patient_stages
-WHERE case_id IN (SELECT id FROM virtual_patient_cases WHERE is_deleted = true);
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
 
--- 3. Delete the soft-deleted cases themselves
-DELETE FROM virtual_patient_cases WHERE is_deleted = true;
-```
-
-### 2. Sync title and intro_text on save
-
-**File**: `src/hooks/useStructuredCaseData.ts` — `useUpdateStructuredCaseData`
-
-When saving, extract patient info from `generated_case_data` and derive:
-- `title`: from `data.case_meta?.title` (if present) — keep existing title if no meta title
-- `intro_text`: build from patient data, e.g. "A {age}-year-old {gender} presents with..." using `data.patient?.age`, `data.patient?.gender`, and `data.patient?.background`
-- Also sync `chief_complaint` from `data.case_meta?.chief_complaint` if available
-
-Add these fields to the `updatePayload` so the top-level columns stay in sync with the JSONB content.
-
-### Summary
-
-| What | How |
-|---|---|
-| Delete old cases/attempts/stages | 3 SQL DELETE statements |
-| `useStructuredCaseData.ts` | Sync `title`, `intro_text` from `generated_case_data` patient info on every save |
-
+### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
+- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
+- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
+- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
+- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
+- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
+- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
+- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
+- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
