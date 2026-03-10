@@ -25,6 +25,8 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   studentName?: string;
   patientTone?: PatientTone;
   estimatedMinutes?: number;
+  voiceIdOverride?: string;
+  historyTimeLimitMinutes?: number;
 }
 
 const MAX_STUDENT_MESSAGES = 15;
@@ -45,6 +47,8 @@ export function HistoryTakingSection({
   studentName,
   patientTone,
   estimatedMinutes,
+  voiceIdOverride,
+  historyTimeLimitMinutes,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
@@ -124,8 +128,10 @@ export function HistoryTakingSection({
 
   // ── Time & message limits ─────────────────────────────
   const timeLimitMs = useMemo(
-    () => (estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
-    [estimatedMinutes]
+    () => (historyTimeLimitMinutes
+      ? historyTimeLimitMinutes
+      : estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
+    [historyTimeLimitMinutes, estimatedMinutes]
   );
   const [interactionStart] = useState(Date.now());
   const [timeRemaining, setTimeRemaining] = useState(timeLimitMs);
@@ -189,9 +195,10 @@ export function HistoryTakingSection({
       // Voice mode: speak the response (unless muted)
       if (selectedMode === 'voice' && !isMuted) {
         const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-        const voiceId = gender === 'female'
-          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+        const voiceId = voiceIdOverride
+          || (gender === 'female'
+            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
         speakArabic(reply, ttsProvider, voiceId, patientTone);
       }
     } catch (err) {
@@ -868,9 +875,10 @@ export function HistoryTakingSection({
 
         if (mode === 'voice' && lang === 'ar' && !isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-          const voiceId = gender === 'female'
-            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+          const voiceId = voiceIdOverride
+            || (gender === 'female'
+              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           speakArabic(reply, ttsProvider, voiceId, patientTone);
         }
       })

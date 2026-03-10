@@ -47,6 +47,7 @@ import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
+import { TTSVoicesCard } from '@/components/admin/TTSVoicesCard';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -194,8 +195,11 @@ function PlatformSettingsTab() {
         {isSuperAdmin && <SentryDiagnosticsSection />}
       </div>
 
-      {/* Examiner Avatars Management */}
-      <ExaminerAvatarsCard />
+      {/* Examiner Avatars & TTS Voices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <ExaminerAvatarsCard />
+        <TTSVoicesCard />
+      </div>
 
       {/* Email Notification Preferences */}
       <EmailNotificationPreferences />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useExaminerAvatars } from '@/lib/examinerAvatars';
+import { useTTSVoices } from '@/lib/ttsVoices';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -99,10 +100,14 @@ export function CasePreviewEditor() {
   const [selectedAvatarId, setSelectedAvatarId] = useState<number>(1);
   const [historyInteractionMode, setHistoryInteractionMode] = useState<'text' | 'voice'>('text');
   const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
+  const [requestVoiceOpen, setRequestVoiceOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
+
+  const patientGender = (editedData?.patient?.gender === 'female' ? 'female' : 'male') as 'male' | 'female';
+  const { data: ttsVoices } = useTTSVoices(patientGender);
 
   // Build avatar list from database
   const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
@@ -178,6 +183,33 @@ export function CasePreviewEditor() {
       }
       toast.success('Request sent to platform admins');
       setRequestAvatarOpen(false);
+      setRequestMessage('');
+    } catch {
+      toast.error('Failed to send request');
+    }
+  };
+
+  const handleRequestVoice = async () => {
+    if (!requestMessage.trim()) return;
+    try {
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['platform_admin', 'super_admin']);
+
+      if (admins?.length) {
+        const notifications = admins.map(a => ({
+          recipient_id: a.user_id,
+          type: 'voice_request',
+          title: 'TTS Voice Request',
+          message: requestMessage.trim(),
+          entity_type: 'tts_voice',
+          metadata: { requested_by: user?.id, case_id: caseId },
+        }));
+        await supabase.from('admin_notifications').insert(notifications);
+      }
+      toast.success('Request sent to platform admins');
+      setRequestVoiceOpen(false);
       setRequestMessage('');
     } catch {
       toast.error('Failed to send request');
@@ -357,11 +389,11 @@ export function CasePreviewEditor() {
           </CardContent>
         </Card>
 
-        <Card className="sm:w-56">
+        <Card className="flex-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">History Interaction</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Select
               value={historyInteractionMode}
               onValueChange={(v) => { setHistoryInteractionMode(v as 'text' | 'voice'); setHasChanges(true); }}
@@ -372,11 +404,102 @@ export function CasePreviewEditor() {
                 <SelectItem value="voice">Voice History</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground">
               {historyInteractionMode === 'text'
                 ? 'Student types questions to the patient'
                 : 'Student speaks via microphone'}
             </p>
+
+            {/* Patient Tone */}
+            {editedData && (
+              <div>
+                <Label className="text-xs">Patient Tone</Label>
+                <Select
+                  value={editedData.patient?.tone || 'calm'}
+                  onValueChange={(v) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, tone: v },
+                    });
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Tone" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="calm">😌 Calm</SelectItem>
+                    <SelectItem value="worried">😟 Worried</SelectItem>
+                    <SelectItem value="anxious">😰 Anxious</SelectItem>
+                    <SelectItem value="angry">😠 Angry</SelectItem>
+                    <SelectItem value="impolite">😤 Impolite</SelectItem>
+                    <SelectItem value="in_pain">😣 In Pain</SelectItem>
+                    <SelectItem value="cooperative">🙂 Cooperative</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Affects AI text style &amp; voice playback
+                </p>
+              </div>
+            )}
+
+            {/* Voice Character (only for voice mode) */}
+            {historyInteractionMode === 'voice' && editedData && (
+              <div>
+                <Label className="text-xs">Voice Character</Label>
+                <Select
+                  value={(editedData as any).patient?.voice_id || ''}
+                  onValueChange={(v) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, voice_id: v },
+                    } as any);
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Global Default</SelectItem>
+                    {(ttsVoices || []).map(v => (
+                      <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                        {v.name} {v.label ? `— ${v.label}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => setRequestVoiceOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors mt-1"
+                >
+                  Can't find the right voice? Contact <span className="underline">platform admin</span>
+                </button>
+              </div>
+            )}
+
+            {/* History Time Limit */}
+            {editedData && (
+              <div>
+                <Label className="text-xs">History Time Limit (minutes)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={(editedData as any).history_time_limit_minutes || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseInt(e.target.value) : undefined;
+                    setEditedData({
+                      ...editedData,
+                      history_time_limit_minutes: val,
+                    } as any);
+                    setHasChanges(true);
+                  }}
+                  placeholder={`Default: ${Math.ceil((caseData?.estimated_minutes || 15) * 0.4)} min`}
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Override the auto-calculated time limit for history taking
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -396,6 +519,25 @@ export function CasePreviewEditor() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRequestAvatarOpen(false)}>Cancel</Button>
             <Button onClick={handleRequestAvatar} disabled={!requestMessage.trim()}>Send Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Request Voice Dialog */}
+      <Dialog open={requestVoiceOpen} onOpenChange={setRequestVoiceOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request New Voice</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Describe the voice you need (e.g. an elderly male Egyptian voice)..."
+            value={requestMessage}
+            onChange={(e) => setRequestMessage(e.target.value)}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestVoiceOpen(false)}>Cancel</Button>
+            <Button onClick={handleRequestVoice} disabled={!requestMessage.trim()}>Send Request</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -483,33 +625,6 @@ export function CasePreviewEditor() {
                   }}
                   placeholder="Brief background"
                 />
-              </div>
-              <div>
-                <Label className="text-xs">Patient Tone</Label>
-                <Select
-                  value={editedData.patient?.tone || 'calm'}
-                  onValueChange={(v) => {
-                    setEditedData({
-                      ...editedData,
-                      patient: { ...editedData.patient, tone: v },
-                    });
-                    setHasChanges(true);
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Tone" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="calm">😌 Calm</SelectItem>
-                    <SelectItem value="worried">😟 Worried</SelectItem>
-                    <SelectItem value="anxious">😰 Anxious</SelectItem>
-                    <SelectItem value="angry">😠 Angry</SelectItem>
-                    <SelectItem value="impolite">😤 Impolite</SelectItem>
-                    <SelectItem value="in_pain">😣 In Pain</SelectItem>
-                    <SelectItem value="cooperative">🙂 Cooperative</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Affects AI text style &amp; voice playback
-                </p>
               </div>
             </div>
           </CardContent>

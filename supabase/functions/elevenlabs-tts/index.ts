@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId, tone } = await req.json();
+    const { text, voiceId, tone, speed: requestSpeed } = await req.json();
 
     if (!text || !voiceId) {
       return new Response(
@@ -31,6 +31,7 @@ serve(async (req) => {
       cooperative: { stability: 0.6,  similarity_boost: 0.75, style: 0.3 },
     };
     const voiceSettings = toneSettings[tone] || toneSettings.calm;
+    const ttsSpeed = typeof requestSpeed === 'number' ? requestSpeed : 1.1;
 
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     if (!ELEVENLABS_API_KEY) {
@@ -53,6 +54,7 @@ serve(async (req) => {
           text,
           model_id: 'eleven_multilingual_v2',
           voice_settings: voiceSettings,
+          speed: ttsSpeed,
         }),
       }
     );
