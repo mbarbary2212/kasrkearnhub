@@ -15,10 +15,25 @@ export function SentryDiagnosticsSection() {
   const handleFrontendTest = async () => {
     setFrontendLoading(true);
     try {
-      const err = new Error('SENTRY_FRONTEND_TEST');
+      // Ensure Sentry is initialized even in dev/preview
+      const dsn = import.meta.env.VITE_SENTRY_DSN;
+      if (dsn && !Sentry.getClient()) {
+        Sentry.init({
+          dsn,
+          environment: 'diagnostics-test',
+          tracesSampleRate: 1.0,
+        });
+      }
+
+      if (!Sentry.getClient()) {
+        toast.error('Sentry DSN not configured — cannot send test event');
+        return;
+      }
+
+      const err = new Error('SENTRY_FRONTEND_TEST — ' + new Date().toISOString());
       Sentry.captureException(err);
-      await Sentry.flush(2000);
-      toast.success('Frontend Sentry event sent');
+      await Sentry.flush(3000);
+      toast.success('Frontend Sentry test event sent ✓');
     } catch {
       toast.error('Failed to send frontend Sentry event');
     } finally {
