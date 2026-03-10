@@ -1,64 +1,32 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 13 added)
+# Voice Preview Button in Case Editor
 
-### Completed Steps
+## Problem
+Admins must start a full case attempt just to hear how a voice sounds, polluting analytics with test attempts.
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+## Solution
+Add a **"Preview Voice"** button next to the Voice Character dropdown in the case editor. When clicked, it sends a short sample Arabic phrase to the ElevenLabs TTS edge function using the currently selected voice and tone, and plays it back immediately. No attempt is created.
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+## Changes
 
-### All Steps
+### `src/components/clinical-cases/CasePreviewEditor.tsx`
+- Import `Volume2` icon from lucide-react and `speakArabic`, `stopAllTTS` from `@/utils/tts`
+- Add a small "Preview" icon button next to the Voice Character `<Select>` (or below it alongside the "Contact platform admin" link)
+- On click:
+  1. Resolve the voice ID (selected or global default from admin settings)
+  2. Call `speakArabic(sampleText, 'elevenlabs', voiceId, tone)` with a short Arabic sample like `"مرحباً يا دكتور، أنا عندي مشكلة عايز أقولك عليها"` (a natural Egyptian Arabic greeting)
+  3. Show a loading spinner while audio loads, then auto-play
+- If already playing, clicking again calls `stopAllTTS()` (toggle behavior)
+- Add a small `useState<boolean>` for `isPreviewPlaying` to toggle the button icon between play/stop
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
-| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
+### No backend changes needed
+The existing `elevenlabs-tts` edge function already accepts `text`, `voiceId`, `tone`, and `speed` -- the preview button just calls `speakArabic()` directly which already hits that function.
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+### UI Layout
+Below the voice select dropdown, next to the "Contact platform admin" link:
+```
+[Voice Character dropdown          ]
+🔊 Preview voice  |  Can't find the right voice? Contact platform admin
+```
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
-
-### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
-- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
-- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
-- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
-- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
-- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
-- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
-- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
-- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
