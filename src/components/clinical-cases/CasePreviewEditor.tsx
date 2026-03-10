@@ -161,10 +161,23 @@ export function CasePreviewEditor() {
     }
   };
 
+  const getRequesterInfo = async () => {
+    if (!user?.id) return { name: 'Unknown', email: '' };
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user.id)
+      .single();
+    return {
+      name: profile?.full_name || profile?.email || 'Unknown',
+      email: profile?.email || '',
+    };
+  };
+
   const handleRequestAvatar = async () => {
     if (!requestMessage.trim()) return;
     try {
-      // Insert notification for all platform_admin / super_admin
+      const requester = await getRequesterInfo();
       const { data: admins } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -175,9 +188,9 @@ export function CasePreviewEditor() {
           recipient_id: a.user_id,
           type: 'avatar_request',
           title: 'Avatar Request',
-          message: requestMessage.trim(),
+          message: `Request from ${requester.name} (${requester.email}): ${requestMessage.trim()}`,
           entity_type: 'examiner_avatar',
-          metadata: { requested_by: user?.id, case_id: caseId },
+          metadata: { requested_by: user?.id, requester_name: requester.name, requester_email: requester.email, case_id: caseId },
         }));
         await supabase.from('admin_notifications').insert(notifications);
       }
@@ -192,6 +205,7 @@ export function CasePreviewEditor() {
   const handleRequestVoice = async () => {
     if (!requestMessage.trim()) return;
     try {
+      const requester = await getRequesterInfo();
       const { data: admins } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -202,9 +216,9 @@ export function CasePreviewEditor() {
           recipient_id: a.user_id,
           type: 'voice_request',
           title: 'TTS Voice Request',
-          message: requestMessage.trim(),
+          message: `Request from ${requester.name} (${requester.email}): ${requestMessage.trim()}`,
           entity_type: 'tts_voice',
-          metadata: { requested_by: user?.id, case_id: caseId },
+          metadata: { requested_by: user?.id, requester_name: requester.name, requester_email: requester.email, case_id: caseId },
         }));
         await supabase.from('admin_notifications').insert(notifications);
       }

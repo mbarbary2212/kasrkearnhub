@@ -305,6 +305,15 @@ function GroupedNotificationItem({
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
             {latest.message}
           </p>
+          {(latest.type === 'avatar_request' || latest.type === 'voice_request') && (latest.metadata as Record<string, unknown>)?.requester_email && (
+            <a
+              href={`mailto:${(latest.metadata as Record<string, unknown>).requester_email}`}
+              className="text-xs text-primary hover:underline mt-1 inline-block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              ✉ Contact {(latest.metadata as Record<string, unknown>).requester_name as string || 'requester'}
+            </a>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             {formatDistanceToNow(new Date(latest.created_at), { addSuffix: true })}
           </p>
