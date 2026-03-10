@@ -639,6 +639,7 @@ export function HistoryTakingSection({
           >
             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
+          <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
           {/* Listening indicator + interim transcript */}
           {isListening && (
             <div className="flex flex-col items-center gap-1">
