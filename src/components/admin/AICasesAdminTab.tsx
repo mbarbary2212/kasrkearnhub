@@ -11,6 +11,7 @@ import { AICaseTranscriptModal } from './AICaseTranscriptModal';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 
 const PAGE_SIZE = 10;
 
@@ -268,9 +269,7 @@ export function AICasesAdminTab({ modules }: AICasesAdminTabProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Modules</SelectItem>
-            {(modules || []).map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-            ))}
+            <YearGroupedModuleOptions modules={modules} />
           </SelectContent>
         </Select>
 

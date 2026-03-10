@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -236,22 +237,7 @@ function UploadModal({ open, onOpenChange }: UploadModalProps) {
                   <SelectValue placeholder="Select module" />
                 </SelectTrigger>
                 <SelectContent>
-                  {years?.sort((a, b) => a.number - b.number).map(year => {
-                    const yearModules = modules
-                      ?.filter(m => m.year_id === year.id)
-                      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-                    if (!yearModules?.length) return null;
-                    return (
-                      <div key={year.id}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                          {year.name}
-                        </div>
-                        {yearModules.map(m => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                        ))}
-                      </div>
-                    );
-                  })}
+                  <YearGroupedModuleOptions modules={modules} />
                 </SelectContent>
               </Select>
             </div>
@@ -527,14 +513,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Modules</SelectItem>
-                {[...(availableModules || [])].sort((a, b) => {
-                  // Extract numeric part from slug (e.g., "ISK-101" → 101)
-                  const numA = parseInt(a.slug?.match(/\d+/)?.[0] || '999');
-                  const numB = parseInt(b.slug?.match(/\d+/)?.[0] || '999');
-                  return numA - numB;
-                }).map(m => (
-                  <SelectItem key={m.id} value={m.id}>{m.slug}: {m.name}</SelectItem>
-                ))}
+                <YearGroupedModuleOptions modules={availableModules} />
               </SelectContent>
             </Select>
             <Select value={filterDocType || 'all'} onValueChange={(v) => setFilterDocType(v === 'all' ? '' : v)}>

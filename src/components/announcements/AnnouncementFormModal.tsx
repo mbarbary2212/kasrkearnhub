@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -223,12 +224,7 @@ export function AnnouncementFormModal({
                   <SelectValue placeholder="Select a module" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(isModuleAdminOnly 
-                    ? modules.filter(m => moduleAdminModuleIds.includes(m.id))
-                    : modules
-                  ).map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
+                  <YearGroupedModuleOptions modules={isModuleAdminOnly ? modules.filter(m => moduleAdminModuleIds.includes(m.id)) : modules} />
                 </SelectContent>
               </Select>
             </div>
