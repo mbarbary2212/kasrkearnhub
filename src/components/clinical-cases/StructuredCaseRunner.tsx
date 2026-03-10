@@ -238,6 +238,7 @@ export function StructuredCaseRunner({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Continue Case</AlertDialogCancel>
                     <AlertDialogAction onClick={() => {
+                      stopAllTTS();
                       const chapterId = caseData.chapter_id;
                       const moduleId = caseData.module_id;
                       if (chapterId && moduleId) {

@@ -94,6 +94,8 @@ export async function speakArabic(
       const blob = await res.blob();
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
+      currentAudio = audio;
+      audio.addEventListener('ended', () => { if (currentAudio === audio) currentAudio = null; });
       await audio.play();
       return;
     } catch (err) {
