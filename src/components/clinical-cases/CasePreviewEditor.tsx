@@ -523,6 +523,25 @@ export function CasePreviewEditor() {
         </DialogContent>
       </Dialog>
 
+      {/* Request Voice Dialog */}
+      <Dialog open={requestVoiceOpen} onOpenChange={setRequestVoiceOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request New Voice</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Describe the voice you need (e.g. an elderly male Egyptian voice)..."
+            value={requestMessage}
+            onChange={(e) => setRequestMessage(e.target.value)}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestVoiceOpen(false)}>Cancel</Button>
+            <Button onClick={handleRequestVoice} disabled={!requestMessage.trim()}>Send Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Patient Info Editor */}
       {editedData && (
         <Card>
