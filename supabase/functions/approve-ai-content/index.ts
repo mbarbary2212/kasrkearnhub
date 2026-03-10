@@ -531,14 +531,8 @@ serve(async (req) => {
             };
           });
 
-          const { error: stagesError } = await serviceClient
-            .from("virtual_patient_stages")
-            .insert(stagesToInsert);
-
-          if (stagesError) {
-            console.error(`[${jobId}] Clinical case stages insert error:`, stagesError.message);
-            throw new Error(`Failed to insert stages for clinical case #${idx + 1}: ${stagesError.message}`);
-          }
+          // virtual_patient_stages table dropped — skip legacy insert
+          console.log(`[${jobId}] Skipping legacy stages for clinical case #${idx + 1}`);
         }
       }
     } else if (contentType === "mind_map") {
