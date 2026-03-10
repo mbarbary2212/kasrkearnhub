@@ -556,6 +556,7 @@ export function AIContentPreviewCard({
   const renderFullView = () => {
     switch (contentType) {
       case 'mcq':
+      case 'sba':
         return (
           <div className="space-y-4">
             <div>
