@@ -585,7 +585,28 @@ export function HistoryTakingSection({
           <div className="text-center">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
             <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
-            <div className="mt-1">{timerBadge}</div>
+            <div className="mt-1 flex items-center justify-center gap-2">
+              {timerBadge}
+              <Button
+                size="sm"
+                variant={isMuted ? 'destructive' : 'outline'}
+                className="gap-1 text-xs h-6 px-2"
+                onClick={() => {
+                  const next = !isMuted;
+                  setIsMuted(next);
+                  try { localStorage.setItem('mute_ai_voice', String(next)); } catch {}
+                  if (next) {
+                    window.speechSynthesis?.cancel();
+                    toast.info('AI voice muted — responses will be shown as text only.');
+                  } else {
+                    toast.info('AI voice unmuted.');
+                  }
+                }}
+              >
+                {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                {isMuted ? 'Muted' : 'Mute'}
+              </Button>
+            </div>
           </div>
 
           {/* Last spoken */}
