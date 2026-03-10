@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Collapsible,
   CollapsibleContent,
@@ -470,24 +470,32 @@ export function CasePreviewEditor() {
                 >
                   <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__default__">Global Default</SelectItem>
                     {(() => {
                       const males = (ttsVoices || []).filter(v => v.gender === 'male');
                       const females = (ttsVoices || []).filter(v => v.gender === 'female');
                       return (
                         <>
-                          {males.length > 0 && <SelectLabel>Male Voices</SelectLabel>}
-                          {males.map(v => (
-                            <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
-                              {v.name} {v.label ? `— ${v.label}` : ''}
-                            </SelectItem>
-                          ))}
-                          {females.length > 0 && <SelectLabel>Female Voices</SelectLabel>}
-                          {females.map(v => (
-                            <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
-                              {v.name} {v.label ? `— ${v.label}` : ''}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="__default__">Global Default</SelectItem>
+                          {males.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Male Voices</SelectLabel>
+                              {males.map(v => (
+                                <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                                  {v.name} {v.label ? `— ${v.label}` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          {females.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Female Voices</SelectLabel>
+                              {females.map(v => (
+                                <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                                  {v.name} {v.label ? `— ${v.label}` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
                         </>
                       );
                     })()}
