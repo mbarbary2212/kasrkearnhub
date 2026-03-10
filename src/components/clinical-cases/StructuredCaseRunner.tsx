@@ -48,6 +48,7 @@ import {
   ConclusionSection,
 } from './sections';
 import { supabase } from '@/integrations/supabase/client';
+import { stopAllTTS } from '@/utils/tts';
 
 // ── Props ────────────────────────────────────────────
 interface StructuredCaseRunnerProps {
