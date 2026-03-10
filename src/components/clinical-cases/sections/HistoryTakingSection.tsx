@@ -25,6 +25,8 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   studentName?: string;
   patientTone?: PatientTone;
   estimatedMinutes?: number;
+  voiceIdOverride?: string;
+  historyTimeLimitMinutes?: number;
 }
 
 const MAX_STUDENT_MESSAGES = 15;
