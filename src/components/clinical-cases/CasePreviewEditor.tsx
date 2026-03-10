@@ -389,11 +389,11 @@ export function CasePreviewEditor() {
           </CardContent>
         </Card>
 
-        <Card className="sm:w-56">
+        <Card className="flex-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">History Interaction</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Select
               value={historyInteractionMode}
               onValueChange={(v) => { setHistoryInteractionMode(v as 'text' | 'voice'); setHasChanges(true); }}
@@ -404,11 +404,102 @@ export function CasePreviewEditor() {
                 <SelectItem value="voice">Voice History</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground">
               {historyInteractionMode === 'text'
                 ? 'Student types questions to the patient'
                 : 'Student speaks via microphone'}
             </p>
+
+            {/* Patient Tone */}
+            {editedData && (
+              <div>
+                <Label className="text-xs">Patient Tone</Label>
+                <Select
+                  value={editedData.patient?.tone || 'calm'}
+                  onValueChange={(v) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, tone: v },
+                    });
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Tone" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="calm">😌 Calm</SelectItem>
+                    <SelectItem value="worried">😟 Worried</SelectItem>
+                    <SelectItem value="anxious">😰 Anxious</SelectItem>
+                    <SelectItem value="angry">😠 Angry</SelectItem>
+                    <SelectItem value="impolite">😤 Impolite</SelectItem>
+                    <SelectItem value="in_pain">😣 In Pain</SelectItem>
+                    <SelectItem value="cooperative">🙂 Cooperative</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Affects AI text style &amp; voice playback
+                </p>
+              </div>
+            )}
+
+            {/* Voice Character (only for voice mode) */}
+            {historyInteractionMode === 'voice' && editedData && (
+              <div>
+                <Label className="text-xs">Voice Character</Label>
+                <Select
+                  value={(editedData as any).patient?.voice_id || ''}
+                  onValueChange={(v) => {
+                    setEditedData({
+                      ...editedData,
+                      patient: { ...editedData.patient, voice_id: v },
+                    } as any);
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Global Default</SelectItem>
+                    {(ttsVoices || []).map(v => (
+                      <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                        {v.name} {v.label ? `— ${v.label}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => setRequestVoiceOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors mt-1"
+                >
+                  Can't find the right voice? Contact <span className="underline">platform admin</span>
+                </button>
+              </div>
+            )}
+
+            {/* History Time Limit */}
+            {editedData && (
+              <div>
+                <Label className="text-xs">History Time Limit (minutes)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={(editedData as any).history_time_limit_minutes || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseInt(e.target.value) : undefined;
+                    setEditedData({
+                      ...editedData,
+                      history_time_limit_minutes: val,
+                    } as any);
+                    setHasChanges(true);
+                  }}
+                  placeholder={`Default: ${Math.ceil((caseData?.estimated_minutes || 15) * 0.4)} min`}
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Override the auto-calculated time limit for history taking
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
