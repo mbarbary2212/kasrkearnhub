@@ -95,7 +95,7 @@ export function HistoryTakingSection({
   // ElevenLabs Scribe hook (always called — hooks can't be conditional)
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
-    commitStrategy: 'vad',
+    commitStrategy: CommitStrategy.VAD,
     onCommittedTranscript: (data) => {
       if (data.text?.trim()) {
         setLastSpoken(data.text);
