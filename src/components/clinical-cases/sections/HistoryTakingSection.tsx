@@ -195,9 +195,10 @@ export function HistoryTakingSection({
       // Voice mode: speak the response (unless muted)
       if (selectedMode === 'voice' && !isMuted) {
         const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-        const voiceId = gender === 'female'
-          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
+        const voiceId = voiceIdOverride
+          || (gender === 'female'
+            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
         speakArabic(reply, ttsProvider, voiceId, patientTone);
       }
     } catch (err) {
