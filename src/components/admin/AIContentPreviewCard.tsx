@@ -103,6 +103,7 @@ export function AIContentPreviewCard({
   const renderCollapsedPreview = () => {
     switch (contentType) {
       case 'mcq':
+      case 'sba':
         return (
           <>
             <p className="font-medium text-sm line-clamp-2">{item.stem}</p>
@@ -226,6 +227,7 @@ export function AIContentPreviewCard({
   const renderEditForm = () => {
     switch (contentType) {
       case 'mcq':
+      case 'sba':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -554,6 +556,7 @@ export function AIContentPreviewCard({
   const renderFullView = () => {
     switch (contentType) {
       case 'mcq':
+      case 'sba':
         return (
           <div className="space-y-4">
             <div>
