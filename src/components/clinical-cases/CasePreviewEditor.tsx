@@ -189,6 +189,33 @@ export function CasePreviewEditor() {
     }
   };
 
+  const handleRequestVoice = async () => {
+    if (!requestMessage.trim()) return;
+    try {
+      const { data: admins } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['platform_admin', 'super_admin']);
+
+      if (admins?.length) {
+        const notifications = admins.map(a => ({
+          recipient_id: a.user_id,
+          type: 'voice_request',
+          title: 'TTS Voice Request',
+          message: requestMessage.trim(),
+          entity_type: 'tts_voice',
+          metadata: { requested_by: user?.id, case_id: caseId },
+        }));
+        await supabase.from('admin_notifications').insert(notifications);
+      }
+      toast.success('Request sent to platform admins');
+      setRequestVoiceOpen(false);
+      setRequestMessage('');
+    } catch {
+      toast.error('Failed to send request');
+    }
+  };
+
   const handlePublish = async (publish: boolean) => {
     if (!caseId) return;
     try {
