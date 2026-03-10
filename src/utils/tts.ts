@@ -24,6 +24,20 @@ export const ELEVENLABS_VOICES: Record<'male' | 'female', ElevenLabsVoice[]> = {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+/** Module-level reference to the currently playing ElevenLabs audio */
+let currentAudio: HTMLAudioElement | null = null;
+
+/** Stop all TTS playback immediately (ElevenLabs + browser) */
+export function stopAllTTS() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio.src = '';
+    currentAudio = null;
+  }
+  window.speechSynthesis?.cancel();
+}
+
 /**
  * Speak Arabic text using either browser TTS or ElevenLabs streaming.
  * Falls back to browser TTS on any ElevenLabs error.
