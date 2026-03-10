@@ -47,6 +47,7 @@ import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
+import { TTSVoicesCard } from '@/components/admin/TTSVoicesCard';
 
 interface UserWithRole extends Profile {
   role: AppRole;
