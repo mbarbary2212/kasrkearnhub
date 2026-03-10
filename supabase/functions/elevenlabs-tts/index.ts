@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId, tone } = await req.json();
+    const { text, voiceId, tone, speed: requestSpeed } = await req.json();
 
     if (!text || !voiceId) {
       return new Response(
