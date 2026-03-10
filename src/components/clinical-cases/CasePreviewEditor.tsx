@@ -44,7 +44,10 @@ import {
   Check,
   X,
   PenLine,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import { speakArabic, stopAllTTS } from '@/utils/tts';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CaseImageUpload } from './CaseImageUpload';
@@ -102,6 +105,7 @@ export function CasePreviewEditor() {
   const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
   const [requestVoiceOpen, setRequestVoiceOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
@@ -501,13 +505,49 @@ export function CasePreviewEditor() {
                     })()}
                   </SelectContent>
                 </Select>
-                <button
-                  type="button"
-                  onClick={() => setRequestVoiceOpen(true)}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors mt-1"
-                >
-                  Can't find the right voice? Contact <span className="underline">platform admin</span>
-                </button>
+                <div className="flex items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (isPreviewPlaying) {
+                        stopAllTTS();
+                        setIsPreviewPlaying(false);
+                        return;
+                      }
+                      const voiceId = (editedData as any).patient?.voice_id || '';
+                      if (!voiceId) {
+                        toast.info('Select a voice first (not Global Default)');
+                        return;
+                      }
+                      const tone = editedData?.patient?.tone || 'calm';
+                      setIsPreviewPlaying(true);
+                      try {
+                        await speakArabic(
+                          'مرحباً يا دكتور، أنا عندي مشكلة عايز أقولك عليها',
+                          'elevenlabs',
+                          voiceId,
+                          tone as any,
+                        );
+                      } catch {
+                        toast.error('Voice preview failed');
+                      } finally {
+                        setIsPreviewPlaying(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                  >
+                    {isPreviewPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    {isPreviewPlaying ? 'Stop' : 'Preview voice'}
+                  </button>
+                  <span className="text-muted-foreground/40">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setRequestVoiceOpen(true)}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Can't find the right voice? Contact <span className="underline">platform admin</span>
+                  </button>
+                </div>
               </div>
             )}
 
