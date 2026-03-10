@@ -460,6 +460,7 @@ export function HistoryTakingSection({
               className="gap-2"
               onClick={() => {
                 setSelectedMode('voice');
+                setShowVoiceFallbackInput(true); // Show text fallback by default
                 sendChatMessageInitial('voice');
               }}
             >
