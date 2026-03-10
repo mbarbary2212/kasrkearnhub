@@ -96,7 +96,7 @@ export function HistoryTakingSection({
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
     commitStrategy: CommitStrategy.VAD,
-    endOfSpeechSilenceThreshold: 1500, // 1.5s silence before committing — prevents cut-off during natural Arabic pauses
+    vadSilenceThresholdSecs: 1.5, // 1.5s silence before committing — prevents cut-off during natural Arabic pauses
     onCommittedTranscript: (data) => {
       if (data.text?.trim()) {
         setLastSpoken(data.text);
