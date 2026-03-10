@@ -5,6 +5,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options);
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After');
+      let waitMs: number;
+
+      if (retryAfter) {
+        const parsed = parseInt(retryAfter, 10);
+        waitMs = !isNaN(parsed) ? parsed * 1000 : Math.pow(2, attempt) * 1000;
+      } else {
+        waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+      }
+
+      console.warn(`Rate limited (429). Waiting ${waitMs}ms before retry ${attempt + 1}/${maxRetries}.`);
+      await response.text(); // consume body
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Final attempt
+  return await fetch(url, options);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,7 +48,6 @@ serve(async (req) => {
       );
     }
 
-    // Map patient tone to ElevenLabs voice_settings
     const toneSettings: Record<string, any> = {
       calm:        { stability: 0.55, similarity_boost: 0.75, style: 0.2 },
       worried:     { stability: 0.35, similarity_boost: 0.7,  style: 0.4 },
@@ -41,7 +68,7 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         method: 'POST',
