@@ -103,6 +103,7 @@ export function AIContentPreviewCard({
   const renderCollapsedPreview = () => {
     switch (contentType) {
       case 'mcq':
+      case 'sba':
         return (
           <>
             <p className="font-medium text-sm line-clamp-2">{item.stem}</p>
