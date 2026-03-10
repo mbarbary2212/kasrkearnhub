@@ -105,6 +105,7 @@ export function CasePreviewEditor() {
   const [requestAvatarOpen, setRequestAvatarOpen] = useState(false);
   const [requestVoiceOpen, setRequestVoiceOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
