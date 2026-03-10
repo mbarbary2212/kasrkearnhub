@@ -4979,6 +4979,42 @@ export type Database = {
           },
         ]
       }
+      tts_voices: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          elevenlabs_voice_id: string
+          gender: string
+          id: number
+          is_active: boolean | null
+          label: string | null
+          name: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          elevenlabs_voice_id: string
+          gender: string
+          id?: number
+          is_active?: boolean | null
+          label?: string | null
+          name: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          elevenlabs_voice_id?: string
+          gender?: string
+          id?: number
+          is_active?: boolean | null
+          label?: string | null
+          name?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
