@@ -128,8 +128,10 @@ export function HistoryTakingSection({
 
   // ── Time & message limits ─────────────────────────────
   const timeLimitMs = useMemo(
-    () => (estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
-    [estimatedMinutes]
+    () => (historyTimeLimitMinutes
+      ? historyTimeLimitMinutes
+      : estimatedMinutes ? Math.ceil(estimatedMinutes * 0.4) : 5) * 60 * 1000,
+    [historyTimeLimitMinutes, estimatedMinutes]
   );
   const [interactionStart] = useState(Date.now());
   const [timeRemaining, setTimeRemaining] = useState(timeLimitMs);
