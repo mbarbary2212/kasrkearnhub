@@ -33,6 +33,8 @@ import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCase
 import { useNavigate } from 'react-router-dom';
 import { StructuredCaseCreator } from './StructuredCaseCreator';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { useCreateVirtualPatientCase } from '@/hooks/useVirtualPatient';
+import { SectionType } from '@/types/structuredCase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
