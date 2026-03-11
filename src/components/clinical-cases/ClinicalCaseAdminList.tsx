@@ -25,6 +25,8 @@ import {
   Download,
   Play,
   ClipboardList,
+  Upload,
+  HelpCircle,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
