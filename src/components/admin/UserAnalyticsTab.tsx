@@ -214,7 +214,7 @@ export function UserAnalyticsTab() {
               <TableHead className="bg-background">Role</TableHead>
               <TableHead className="bg-background">Status</TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer hover:bg-muted/50 bg-background"
                 onClick={() => handleSort('last_seen')}
               >
                 <div className="flex items-center gap-1">
@@ -223,7 +223,7 @@ export function UserAnalyticsTab() {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer hover:bg-muted/50 bg-background"
                 onClick={() => handleSort('sessions')}
               >
                 <div className="flex items-center gap-1">
@@ -232,13 +232,13 @@ export function UserAnalyticsTab() {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer hover:bg-muted/50 bg-background"
                 onClick={() => handleSort('time_7d')}
               >
                 Time (7d)
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer hover:bg-muted/50 bg-background"
                 onClick={() => handleSort('time_30d')}
               >
                 Time (30d)
