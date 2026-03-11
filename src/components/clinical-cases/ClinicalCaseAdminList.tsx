@@ -235,6 +235,20 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             <Download className="w-4 h-4 mr-1" />
             Download
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportJson}
+          />
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={createCase.isPending}>
+            {createCase.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+            Import JSON
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => navigate('/admin?tab=help')} title="Help & Templates">
+            <HelpCircle className="w-4 h-4" />
+          </Button>
           <Button size="sm" onClick={() => setStructuredCaseOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
             Create Case
