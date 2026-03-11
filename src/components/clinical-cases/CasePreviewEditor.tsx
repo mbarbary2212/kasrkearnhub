@@ -537,45 +537,47 @@ export function CasePreviewEditor() {
                     className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
                   >
                     {isPreviewPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    {isPreviewPlaying ? 'Stop' : 'Preview voice'}
-                  </button>
-                  <span className="text-muted-foreground/40">|</span>
-                  <button
-                    type="button"
-                    onClick={() => setRequestVoiceOpen(true)}
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Can't find the right voice? Contact <span className="underline">platform admin</span>
-                  </button>
-                </div>
-              </div>
-            )}
+                     {isPreviewPlaying ? 'Stop' : 'Preview voice'}
+                   </button>
+                 </div>
+                 <p className="text-[10px] text-muted-foreground mt-0.5">
+                   Allow ~1 min between preview trials to avoid rate limits
+                 </p>
+               </div>
+             )}
 
-            {/* History Time Limit */}
-            {editedData && (
-              <div>
-                <Label className="text-xs">History Time Limit (minutes)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={(editedData as any).history_time_limit_minutes || ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? parseInt(e.target.value) : undefined;
-                    setEditedData({
-                      ...editedData,
-                      history_time_limit_minutes: val,
-                    } as any);
-                    setHasChanges(true);
-                  }}
-                  placeholder={`Default: ${Math.ceil((caseData?.estimated_minutes || 15) * 0.4)} min`}
-                  className="mt-1"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Override the auto-calculated time limit for history taking
-                </p>
-              </div>
-            )}
+             {/* History Time Limit */}
+             {editedData && (
+               <div>
+                 <Label className="text-xs">History Time Limit (minutes)</Label>
+                 <Input
+                   type="number"
+                   min={1}
+                   max={30}
+                   value={(editedData as any).history_time_limit_minutes || ''}
+                   onChange={(e) => {
+                     const val = e.target.value ? parseInt(e.target.value) : undefined;
+                     setEditedData({
+                       ...editedData,
+                       history_time_limit_minutes: val,
+                     } as any);
+                     setHasChanges(true);
+                   }}
+                   placeholder={`Default: ${Math.ceil((caseData?.estimated_minutes || 15) * 0.4)} min`}
+                   className="mt-1"
+                 />
+                 <p className="text-[10px] text-muted-foreground mt-1">
+                   Override the auto-calculated time limit for history taking
+                 </p>
+                 <button
+                   type="button"
+                   onClick={() => setRequestVoiceOpen(true)}
+                   className="text-xs text-muted-foreground hover:text-primary transition-colors mt-2"
+                 >
+                   Can't find the right voice? Contact <span className="underline">platform admin</span>
+                 </button>
+               </div>
+             )}
           </CardContent>
         </Card>
       </div>
