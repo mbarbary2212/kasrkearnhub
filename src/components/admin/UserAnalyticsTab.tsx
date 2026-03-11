@@ -206,8 +206,8 @@ export function UserAnalyticsTab() {
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-22rem)] relative">
-        <Table>
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-22rem)]">
+        <table className="w-full caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-20 bg-background">
             <TableRow className="hover:bg-background border-b">
               <TableHead className="w-[250px] bg-background">User</TableHead>
@@ -312,7 +312,7 @@ export function UserAnalyticsTab() {
               ))
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
     </div>
   );
