@@ -58,6 +58,8 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
 
   const [structuredCaseOpen, setStructuredCaseOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
+  const createCase = useCreateVirtualPatientCase();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
