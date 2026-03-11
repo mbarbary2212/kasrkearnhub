@@ -548,6 +548,11 @@ export function CasePreviewEditor() {
                     {isPreviewPlaying ? 'Stop' : previewCooldown ? 'Wait ~1 min…' : 'Preview voice'}
                    </button>
                  </div>
+                 <p className="text-xs text-muted-foreground mt-1">
+                   {previewCooldown
+                     ? 'Voice preview is temporarily paused to avoid rate limits. It will re-enable automatically in ~1 minute.'
+                     : 'After each preview, the button will pause for ~1 min to stay within voice API limits.'}
+                 </p>
                </div>
              )}
 
