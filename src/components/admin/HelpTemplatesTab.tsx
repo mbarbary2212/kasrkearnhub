@@ -320,6 +320,20 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'file',
   },
   {
+    id: 'interactive_case_guide',
+    title: 'Interactive Cases — How It Works',
+    description: 'Comprehensive guide covering case logic, 10-section structure, scoring, voice, and admin workflow',
+    format: 'txt',
+    icon: 'file',
+  },
+  {
+    id: 'interactive_case_prompt',
+    title: 'Interactive Cases — AI Prompt Template',
+    description: 'Ready-to-paste prompt for Claude/ChatGPT to generate valid case JSON for import',
+    format: 'txt',
+    icon: 'file',
+  },
+  {
     id: 'essay',
     title: 'Short Answer Questions Template',
     description: 'Essay-type questions with scenario, model answer, and keywords',
