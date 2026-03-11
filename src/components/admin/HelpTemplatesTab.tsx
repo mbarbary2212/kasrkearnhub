@@ -901,9 +901,6 @@ function generateTemplateDownload(templateId: string) {
       }
       break;
       
-    case 'clinical_case':
-      downloadClinicalCaseTemplate();
-      break;
 
     case 'interactive_case_guide':
       downloadInteractiveCaseGuide();
