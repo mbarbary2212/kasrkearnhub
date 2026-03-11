@@ -86,6 +86,62 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
     })
     .sort((a, b) => (LEVEL_ORDER[a.level] ?? 1) - (LEVEL_ORDER[b.level] ?? 1));
 
+  const ALL_SECTION_KEYS: SectionType[] = [
+    'history_taking', 'physical_examination', 'investigations_labs',
+    'investigations_imaging', 'diagnosis', 'medical_management',
+    'surgical_management', 'monitoring_followup', 'patient_family_advice', 'conclusion',
+  ];
+
+  const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      if (!json.case_meta?.title) {
+        toast.error('Invalid JSON: missing case_meta.title');
+        return;
+      }
+
+      const activeSections = ALL_SECTION_KEYS.filter(k => !!json[k]);
+
+      const insertData = {
+        title: json.case_meta.title,
+        intro_text: json.case_meta.chief_complaint || json.case_meta.title,
+        chief_complaint: json.case_meta.chief_complaint || '',
+        level: json.case_meta.level || 'intermediate',
+        estimated_minutes: json.case_meta.estimated_minutes || 20,
+        tags: json.case_meta.tags || [],
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
+        is_ai_driven: true,
+        is_published: false,
+        is_deleted: false,
+        max_turns: 10,
+        generated_case_data: json,
+        active_sections: activeSections,
+        patient_name: json.patient?.name || null,
+        patient_age: json.patient?.age || null,
+        patient_gender: json.patient?.gender || null,
+      };
+
+      const result = await createCase.mutateAsync(insertData as any);
+      toast.success(`Case "${json.case_meta.title}" imported as draft`);
+      navigate(`/structured-case/${result.id}/edit`);
+    } catch (err: any) {
+      if (err instanceof SyntaxError) {
+        toast.error('Invalid JSON file — could not parse');
+      } else {
+        toast.error(err.message || 'Failed to import case');
+      }
+    }
+  };
+
   const handleDownloadCases = () => {
     if (filteredCases.length === 0) {
       toast.error('No cases to download');
