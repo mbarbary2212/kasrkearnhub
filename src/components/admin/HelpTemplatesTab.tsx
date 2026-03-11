@@ -516,6 +516,14 @@ function generateTemplateDownload(templateId: string) {
     case 'clinical_case':
       downloadClinicalCaseTemplate();
       break;
+
+    case 'interactive_case_guide':
+      downloadInteractiveCaseGuide();
+      break;
+
+    case 'interactive_case_prompt':
+      downloadInteractiveCasePrompt();
+      break;
       
     default:
       toast.error('Unknown template type');
