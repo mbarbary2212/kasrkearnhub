@@ -106,6 +106,7 @@ export function CasePreviewEditor() {
   const [requestVoiceOpen, setRequestVoiceOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewCooldown, setPreviewCooldown] = useState(false);
   const [enabledSections, setEnabledSections] = useState<SectionType[]>([]);
 
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
@@ -532,17 +533,21 @@ export function CasePreviewEditor() {
                         toast.error('Voice preview failed');
                       } finally {
                         setIsPreviewPlaying(false);
+                        setPreviewCooldown(true);
+                        setTimeout(() => setPreviewCooldown(false), 60000);
                       }
                     }}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                    disabled={previewCooldown}
+                    className={`inline-flex items-center gap-1.5 text-xs font-medium transition-all duration-500 ${
+                      previewCooldown
+                        ? 'text-muted-foreground/40 cursor-not-allowed'
+                        : 'text-primary hover:text-primary/80'
+                    }`}
                   >
                     {isPreviewPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                     {isPreviewPlaying ? 'Stop' : 'Preview voice'}
+                    {isPreviewPlaying ? 'Stop' : previewCooldown ? 'Wait ~1 min…' : 'Preview voice'}
                    </button>
                  </div>
-                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                   Allow ~1 min between preview trials to avoid rate limits
-                 </p>
                </div>
              )}
 
