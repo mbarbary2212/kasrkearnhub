@@ -313,13 +313,6 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'spreadsheet',
   },
   {
-    id: 'clinical_case',
-    title: 'AI Cases Template',
-    description: 'AI-driven OSCE case simulations with metadata for bulk import',
-    format: 'txt',
-    icon: 'file',
-  },
-  {
     id: 'interactive_case_guide',
     title: 'Interactive Cases — How It Works',
     description: 'Comprehensive guide covering case logic, 10-section structure, scoring, voice, and admin workflow',
