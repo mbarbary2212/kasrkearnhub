@@ -206,13 +206,13 @@ export function UserAnalyticsTab() {
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-22rem)]">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-22rem)] relative">
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
-            <TableRow className="hover:bg-background">
-              <TableHead className="w-[250px]">User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
+          <TableHeader className="sticky top-0 z-20 bg-background">
+            <TableRow className="hover:bg-background border-b">
+              <TableHead className="w-[250px] bg-background">User</TableHead>
+              <TableHead className="bg-background">Role</TableHead>
+              <TableHead className="bg-background">Status</TableHead>
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('last_seen')}
