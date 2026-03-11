@@ -206,10 +206,10 @@ export function UserAnalyticsTab() {
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-22rem)]">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
+            <TableRow className="hover:bg-background">
               <TableHead className="w-[250px]">User</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
