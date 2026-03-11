@@ -312,7 +312,7 @@ export function UserAnalyticsTab() {
               ))
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
     </div>
   );
