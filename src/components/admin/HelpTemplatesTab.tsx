@@ -320,6 +320,20 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'file',
   },
   {
+    id: 'interactive_case_guide',
+    title: 'Interactive Cases — How It Works',
+    description: 'Comprehensive guide covering case logic, 10-section structure, scoring, voice, and admin workflow',
+    format: 'txt',
+    icon: 'file',
+  },
+  {
+    id: 'interactive_case_prompt',
+    title: 'Interactive Cases — AI Prompt Template',
+    description: 'Ready-to-paste prompt for Claude/ChatGPT to generate valid case JSON for import',
+    format: 'txt',
+    icon: 'file',
+  },
+  {
     id: 'essay',
     title: 'Short Answer Questions Template',
     description: 'Essay-type questions with scenario, model answer, and keywords',
@@ -459,6 +473,464 @@ PATIENT_GENDER: male`;
 }
 
 
+function downloadInteractiveCaseGuide() {
+  const content = `# Interactive Cases — How It Works
+# ================================================
+# KALM Hub — Structured Interactive Clinical Cases
+# ================================================
+
+## Overview
+
+Interactive Cases are structured, pre-built clinical simulations where students
+work through a realistic patient encounter section by section. Unlike free-form
+AI chat, every case is authored (or AI-generated) with fixed content, rubrics,
+and scoring — ensuring consistency and medical accuracy.
+
+Cases are stored in the "virtual_patient_cases" table. The authoritative data
+lives in the "generated_case_data" JSONB column.
+
+---
+
+## The 10 Sections
+
+Each case can include up to 10 sections (admins toggle which are active):
+
+1. HISTORY TAKING
+   Modes: full_conversation, paramedic_handover, triage_note, witness_account, no_history
+   - Full conversation: student chats with the patient in Egyptian Arabic
+     (with ElevenLabs text-to-speech voice). A checklist of expected questions
+     is used for scoring (categories A–E).
+   - Paramedic handover: ATMIST format, student answers comprehension Qs.
+   - Other modes: read-only narrative with comprehension questions.
+   Max score set per case.
+
+2. PHYSICAL EXAMINATION
+   Body map with 8 fixed anatomical regions:
+     general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra
+   - Each region has a text finding (hidden until student clicks).
+   - vital_signs includes a structured vitals grid (name, value, unit, abnormal).
+   - "extra" has a custom label for special exams (e.g., DRE, fundoscopy).
+   Students reveal regions to gather findings. Score = max_score awarded holistically.
+
+3. INVESTIGATIONS — LABS
+   A pool of available lab tests (e.g., CBC, CRP, LFT).
+   Each test is marked "is_key" (essential) or not.
+   - Selecting a key test: +points
+   - Selecting an unnecessary test: −1 penalty
+   Students must pick wisely. Score = sum of key test points minus penalties.
+
+4. INVESTIGATIONS — IMAGING
+   Same logic as labs but for imaging (X-ray, CT, MRI, etc.).
+   Each study has result text, interpretation, and optional image_url.
+
+5. DIAGNOSIS
+   Three-part rubric:
+   a) Possible diagnoses (list expected differentials)
+   b) Differential diagnosis (reasoning points)
+   c) Final diagnosis (single answer)
+   Each part has points and a model_answer for AI scoring.
+
+6. MEDICAL MANAGEMENT
+   Mix of MCQ and free-text questions.
+   - MCQ: options[], correct answer, explanation, points
+   - Free-text: rubric with expected_points[], model_answer, points
+   Score = sum of question points.
+
+7. SURGICAL MANAGEMENT
+   Same format as Medical Management.
+
+8. MONITORING & FOLLOW-UP
+   Single free-text question with rubric (expected_points, model_answer, points).
+
+9. PATIENT & FAMILY ADVICE
+   Single free-text question with rubric.
+
+10. CONCLUSION
+    Tasks of type: ward_round_presentation, key_decision, or learning_point.
+    Each task has instruction text and a rubric.
+
+PROFESSIONAL ATTITUDE (bonus)
+   Scored holistically across the entire case.
+   Items like: introduces self, maintains eye contact, shows empathy.
+   Default max_score: 10.
+
+---
+
+## Scoring
+
+Default total: 120 points (distributed across active sections + professional attitude).
+After a student completes all sections, the AI scores their answers via an edge
+function and produces a 5-category summary report:
+  - Professional Attitude
+  - History Taking
+  - Physical Examination
+  - Investigations
+  - Diagnosis & Management
+
+Each category shows score, percentage, and qualitative feedback.
+
+---
+
+## Anti-Cheat
+
+During a case attempt:
+  - Text selection disabled (select-none)
+  - Copy/paste blocked
+  - Watermark overlay with student name
+  - Time tracking per section
+
+---
+
+## Admin Workflow
+
+### Creating a Case
+Open the "Create Case" dialog (5 tabs):
+  Tab 1 — Basics: title, chief complaint, module, chapter, level, time, tags
+  Tab 2 — Sections: toggle active sections, set question counts
+  Tab 3 — History Mode: choose mode + patient language
+  Tab 4 — Patient: name, age, gender, avatar, delivery mode
+  Tab 5 — Review: summary before creation
+
+Two paths after creation:
+  a) "Generate with AI" — uses chapter PDF + optional reference documents
+     to auto-generate all section content via edge function
+  b) "Build Manually" — creates an empty skeleton; admin fills in content
+     via the Case Preview Editor
+
+### Case Preview Editor
+After a case exists, admins can edit every detail:
+  - Edit all section content inline
+  - Voice character: pick an ElevenLabs voice for TTS (per-case override)
+  - Preview voice: hear a sample (1-minute cooldown between previews to
+    respect API rate limits — the button disables temporarily)
+  - Patient tone: adjust the AI patient's conversational tone
+  - History time limit: set max minutes for history-taking
+  - Section toggles: enable/disable individual sections
+  - Score recalculation: auto-update total score from section max_scores
+  - Avatar picker: choose a patient avatar image
+  - Move / Copy: move or copy the case to another chapter or module
+
+### JSON Import
+Admins can also upload a JSON file (matching the StructuredCaseData schema)
+to create a new draft case directly. Use the "Import JSON" button in the
+Interactive Cases admin list. The JSON can be generated using the AI Prompt
+Template available in Help & Templates.
+
+---
+
+## Voice (ElevenLabs TTS)
+
+History-taking in full_conversation mode uses ElevenLabs for patient voice.
+  - Each case can have a per-case voice override (voice_id field)
+  - Default voices are configured at the platform level
+  - Preview button plays a sample; after each preview there is a ~1 minute
+    cooldown to stay within API rate limits
+  - To add new voices, contact the platform admin
+
+---
+
+## Tips for Creating Good Cases
+
+1. Start with a clear chief complaint that anchors the scenario
+2. Include 3–5 key history questions the student must ask
+3. Make physical exam findings clinically consistent
+4. Include both key and unnecessary labs/imaging to test clinical reasoning
+5. Write clear rubrics with model answers for fair AI scoring
+6. Set appropriate difficulty level and estimated time
+7. Review the case in the Preview Editor before publishing
+8. Use reference documents (PDFs) for AI generation to improve accuracy
+`;
+
+  downloadTxt('interactive_cases_guide.md', content);
+}
+
+function downloadInteractiveCasePrompt() {
+  const content = `# Interactive Cases — AI Generation Prompt
+# ================================================
+# Copy everything below, fill in the [PLACEHOLDERS], paste into Claude or
+# ChatGPT, copy the JSON output, and upload it using the "Import JSON"
+# button in KALM Hub's Interactive Cases admin list.
+# ================================================
+
+You are a medical education content creator. Generate a complete structured
+clinical case in JSON format for an interactive medical simulation platform.
+
+## CASE REQUIREMENTS
+
+- Clinical scenario: [DESCRIBE THE CASE — e.g., "45-year-old male presenting with acute right iliac fossa pain suggestive of appendicitis"]
+- Difficulty level: [beginner / intermediate / advanced]
+- Target audience: [e.g., "3rd year medical students"]
+- History mode: [full_conversation / paramedic_handover / triage_note / witness_account / no_history]
+- Active sections: [list which sections to include, e.g., "all 10" or "history, physical exam, labs, diagnosis, medical management"]
+
+## OUTPUT FORMAT
+
+Return a single JSON object with this exact structure. Do NOT wrap in markdown code fences.
+
+{
+  "case_meta": {
+    "title": "Case title",
+    "chief_complaint": "One-line presenting complaint",
+    "level": "beginner | intermediate | advanced",
+    "estimated_minutes": 20,
+    "tags": ["tag1", "tag2"]
+  },
+  "patient": {
+    "name": "Patient Name",
+    "age": 45,
+    "gender": "male | female",
+    "occupation": "Optional",
+    "social_history": "Optional background"
+  },
+  "professional_attitude": {
+    "max_score": 10,
+    "items": [
+      { "key": "pa_intro", "label": "Introduces self and role", "expected_behaviour": "States name and title clearly" },
+      { "key": "pa_consent", "label": "Obtains consent", "expected_behaviour": "Asks permission before proceeding" },
+      { "key": "pa_empathy", "label": "Shows empathy", "expected_behaviour": "Acknowledges patient concerns" },
+      { "key": "pa_communication", "label": "Clear communication", "expected_behaviour": "Uses simple language" },
+      { "key": "pa_closure", "label": "Appropriate closure", "expected_behaviour": "Summarizes and checks understanding" }
+    ],
+    "scoring_note": "Each item scored 0-2. Total = sum of item scores."
+  },
+  "history_taking": {
+    "mode": "full_conversation",
+    "max_score": 20,
+    "checklist": [
+      {
+        "key": "A",
+        "label": "Presenting Complaint",
+        "items": [
+          { "key": "hx_onset", "label": "Onset of symptoms" },
+          { "key": "hx_character", "label": "Character of pain" },
+          { "key": "hx_location", "label": "Location" },
+          { "key": "hx_duration", "label": "Duration" },
+          { "key": "hx_severity", "label": "Severity (scale)" }
+        ]
+      },
+      {
+        "key": "B",
+        "label": "Associated Symptoms",
+        "items": [
+          { "key": "hx_nausea", "label": "Nausea/vomiting" },
+          { "key": "hx_fever", "label": "Fever" }
+        ]
+      },
+      {
+        "key": "C",
+        "label": "Past Medical History",
+        "items": [
+          { "key": "hx_pmh", "label": "Previous illnesses/surgeries" },
+          { "key": "hx_meds", "label": "Current medications" },
+          { "key": "hx_allergies", "label": "Allergies" }
+        ]
+      },
+      {
+        "key": "D",
+        "label": "Social History",
+        "items": [
+          { "key": "hx_smoking", "label": "Smoking" },
+          { "key": "hx_alcohol", "label": "Alcohol" }
+        ]
+      },
+      {
+        "key": "E",
+        "label": "Family History",
+        "items": [
+          { "key": "hx_fhx", "label": "Relevant family history" }
+        ]
+      }
+    ],
+    "comprehension_questions": [],
+    "arabic_reference": "نص مرجعي بالعربية يصف شكوى المريض وتاريخه المرضي بالتفصيل",
+    "english_reference": "Reference text describing the patient's complaint and history in detail"
+  },
+  "physical_examination": {
+    "max_score": 15,
+    "findings": {
+      "general": { "text": "Patient appears [description]" },
+      "vital_signs": {
+        "vitals": [
+          { "name": "HR", "value": "88", "unit": "bpm", "abnormal": false },
+          { "name": "BP", "value": "130/85", "unit": "mmHg", "abnormal": false },
+          { "name": "RR", "value": "18", "unit": "/min", "abnormal": false },
+          { "name": "Temp", "value": "38.2", "unit": "°C", "abnormal": true },
+          { "name": "SpO2", "value": "98", "unit": "%", "abnormal": false }
+        ],
+        "text": "Vital signs summary"
+      },
+      "head_neck": { "text": "Finding or 'Normal examination'" },
+      "chest": { "text": "Finding or 'Normal examination'" },
+      "abdomen": { "text": "Finding description" },
+      "upper_limbs": { "text": "Normal examination" },
+      "lower_limbs": { "text": "Normal examination" },
+      "extra": { "label": "Special Examination", "text": "e.g., DRE findings" }
+    }
+  },
+  "investigations_labs": {
+    "max_score": 10,
+    "key_tests": ["cbc", "crp"],
+    "available_tests": {
+      "cbc": {
+        "label": "Complete Blood Count",
+        "result": "WBC 14.2 × 10⁹/L (↑), Hb 13.5 g/dL, Plt 250 × 10⁹/L",
+        "interpretation": "Leukocytosis suggesting infection/inflammation",
+        "is_key": true,
+        "points": 3
+      },
+      "crp": {
+        "label": "C-Reactive Protein",
+        "result": "45 mg/L (↑)",
+        "interpretation": "Elevated, consistent with acute inflammation",
+        "is_key": true,
+        "points": 3
+      },
+      "lft": {
+        "label": "Liver Function Tests",
+        "result": "All within normal limits",
+        "interpretation": "Normal — rules out hepatobiliary cause",
+        "is_key": false,
+        "points": 0
+      }
+    }
+  },
+  "investigations_imaging": {
+    "max_score": 10,
+    "key_investigations": ["us_abdomen"],
+    "available_imaging": {
+      "us_abdomen": {
+        "label": "Ultrasound Abdomen",
+        "result": "Findings description",
+        "interpretation": "Interpretation",
+        "is_key": true,
+        "points": 5
+      },
+      "ct_abdomen": {
+        "label": "CT Abdomen with Contrast",
+        "result": "Findings description",
+        "interpretation": "Interpretation",
+        "is_key": false,
+        "points": 0
+      }
+    }
+  },
+  "diagnosis": {
+    "max_score": 15,
+    "rubric": {
+      "possible_diagnosis": {
+        "label": "List possible diagnoses",
+        "expected": ["Diagnosis A", "Diagnosis B", "Diagnosis C"],
+        "points": 5,
+        "model_answer": "The possible diagnoses include..."
+      },
+      "differential_diagnosis": {
+        "label": "Justify your differential",
+        "reasoning_points": ["Point 1", "Point 2"],
+        "points": 5,
+        "model_answer": "The most likely differential..."
+      },
+      "final_diagnosis": {
+        "label": "State the most likely diagnosis",
+        "expected_top": "Final Diagnosis",
+        "points": 5,
+        "model_answer": "The final diagnosis is..."
+      }
+    }
+  },
+  "medical_management": {
+    "max_score": 10,
+    "questions": [
+      {
+        "id": "mm_1",
+        "type": "mcq",
+        "question": "What is the first-line treatment?",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "correct": "Option A",
+        "explanation": "Because...",
+        "points": 5
+      },
+      {
+        "id": "mm_2",
+        "type": "free_text",
+        "question": "Outline your management plan.",
+        "points": 5,
+        "rubric": {
+          "expected_points": ["Point 1", "Point 2", "Point 3"],
+          "model_answer": "The management plan includes...",
+          "points": 5
+        }
+      }
+    ]
+  },
+  "surgical_management": {
+    "max_score": 10,
+    "questions": [
+      {
+        "id": "sm_1",
+        "type": "free_text",
+        "question": "What surgical intervention is indicated?",
+        "points": 10,
+        "rubric": {
+          "expected_points": ["Indication", "Procedure", "Complications"],
+          "model_answer": "The indicated procedure is...",
+          "points": 10
+        }
+      }
+    ]
+  },
+  "monitoring_followup": {
+    "max_score": 5,
+    "question": "What monitoring and follow-up would you arrange?",
+    "rubric": {
+      "expected_points": ["Vital signs monitoring", "Repeat labs", "Follow-up appointment"],
+      "model_answer": "Post-procedure monitoring includes...",
+      "points": 5
+    }
+  },
+  "patient_family_advice": {
+    "max_score": 5,
+    "question": "What advice would you give the patient and family?",
+    "rubric": {
+      "expected_points": ["Explain diagnosis", "Explain procedure", "Warning signs"],
+      "model_answer": "I would explain to the patient...",
+      "points": 5
+    }
+  },
+  "conclusion": {
+    "max_score": 10,
+    "tasks": [
+      {
+        "id": "conc_1",
+        "type": "ward_round_presentation",
+        "label": "Ward Round Presentation",
+        "instruction": "Present this case as if on a ward round.",
+        "rubric": {
+          "expected_structure": ["Demographics", "Presenting complaint", "Key findings", "Diagnosis", "Plan"],
+          "model_answer": "This is a [age]-year-old [gender] who presented with...",
+          "points": 10
+        }
+      }
+    ]
+  }
+}
+
+## RULES
+
+1. Return ONLY the JSON object — no markdown, no explanation, no code fences
+2. All section max_scores should sum to approximately 120 (adjust as needed)
+3. Use medically accurate content appropriate for the difficulty level
+4. Include at least 3-5 unnecessary labs/imaging to test clinical reasoning
+5. History checklist should have 12-20 items across categories A-E
+6. Physical exam findings must be clinically consistent with the diagnosis
+7. Diagnosis rubric must include plausible differentials, not just the answer
+8. Management questions should mix MCQ and free-text types
+9. All IDs must be unique strings (use prefixes like hx_, mm_, sm_, conc_)
+10. For full_conversation mode, include both arabic_reference and english_reference
+`;
+
+  downloadTxt('interactive_cases_ai_prompt.md', content);
+}
+
 function generateTemplateDownload(templateId: string) {
   const schema = TEMPLATE_SCHEMAS[templateId];
   
@@ -501,6 +973,14 @@ function generateTemplateDownload(templateId: string) {
       
     case 'clinical_case':
       downloadClinicalCaseTemplate();
+      break;
+
+    case 'interactive_case_guide':
+      downloadInteractiveCaseGuide();
+      break;
+
+    case 'interactive_case_prompt':
+      downloadInteractiveCasePrompt();
       break;
       
     default:

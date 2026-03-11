@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,12 +25,16 @@ import {
   Download,
   Play,
   ClipboardList,
+  Upload,
+  HelpCircle,
 } from 'lucide-react';
 import { ClinicalCase } from '@/types/clinicalCase';
 import { useClinicalCases, useDeleteClinicalCase } from '@/hooks/useClinicalCases';
 import { useNavigate } from 'react-router-dom';
 import { StructuredCaseCreator } from './StructuredCaseCreator';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { useCreateVirtualPatientCase } from '@/hooks/useVirtualPatient';
+import { SectionType } from '@/types/structuredCase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +58,8 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
 
   const [structuredCaseOpen, setStructuredCaseOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<ClinicalCase | null>(null);
+  const createCase = useCreateVirtualPatientCase();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
@@ -79,6 +85,62 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       return true;
     })
     .sort((a, b) => (LEVEL_ORDER[a.level] ?? 1) - (LEVEL_ORDER[b.level] ?? 1));
+
+  const ALL_SECTION_KEYS: SectionType[] = [
+    'history_taking', 'physical_examination', 'investigations_labs',
+    'investigations_imaging', 'diagnosis', 'medical_management',
+    'surgical_management', 'monitoring_followup', 'patient_family_advice', 'conclusion',
+  ];
+
+  const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      if (!json.case_meta?.title) {
+        toast.error('Invalid JSON: missing case_meta.title');
+        return;
+      }
+
+      const activeSections = ALL_SECTION_KEYS.filter(k => !!json[k]);
+
+      const insertData = {
+        title: json.case_meta.title,
+        intro_text: json.case_meta.chief_complaint || json.case_meta.title,
+        chief_complaint: json.case_meta.chief_complaint || '',
+        level: json.case_meta.level || 'intermediate',
+        estimated_minutes: json.case_meta.estimated_minutes || 20,
+        tags: json.case_meta.tags || [],
+        module_id: moduleId,
+        chapter_id: chapterId || null,
+        topic_id: topicId || null,
+        is_ai_driven: true,
+        is_published: false,
+        is_deleted: false,
+        max_turns: 10,
+        generated_case_data: json,
+        active_sections: activeSections,
+        patient_name: json.patient?.name || null,
+        patient_age: json.patient?.age || null,
+        patient_gender: json.patient?.gender || null,
+      };
+
+      const result = await createCase.mutateAsync(insertData as any);
+      toast.success(`Case "${json.case_meta.title}" imported as draft`);
+      navigate(`/structured-case/${result.id}/edit`);
+    } catch (err: any) {
+      if (err instanceof SyntaxError) {
+        toast.error('Invalid JSON file — could not parse');
+      } else {
+        toast.error(err.message || 'Failed to import case');
+      }
+    }
+  };
 
   const handleDownloadCases = () => {
     if (filteredCases.length === 0) {
@@ -172,6 +234,20 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
           <Button size="sm" variant="outline" onClick={handleDownloadCases}>
             <Download className="w-4 h-4 mr-1" />
             Download
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportJson}
+          />
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={createCase.isPending}>
+            {createCase.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+            Import JSON
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => navigate('/admin?tab=help')} title="Help & Templates">
+            <HelpCircle className="w-4 h-4" />
           </Button>
           <Button size="sm" onClick={() => setStructuredCaseOpen(true)}>
             <Sparkles className="w-4 h-4 mr-1" />
