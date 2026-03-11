@@ -313,13 +313,6 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'spreadsheet',
   },
   {
-    id: 'clinical_case',
-    title: 'AI Cases Template',
-    description: 'AI-driven OSCE case simulations with metadata for bulk import',
-    format: 'txt',
-    icon: 'file',
-  },
-  {
     id: 'interactive_case_guide',
     title: 'Interactive Cases — How It Works',
     description: 'Comprehensive guide covering case logic, 10-section structure, scoring, voice, and admin workflow',
@@ -408,69 +401,6 @@ function downloadTxt(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadClinicalCaseTemplate() {
-  const template = `# AI Cases – Bulk Import Template
-# ================================================
-#
-# All cases are AI-driven OSCE simulations. The AI conducts a multi-turn
-# clinical conversation with the student based on the metadata you provide.
-# No manual stages needed — the AI generates questions dynamically.
-#
-# HOW IT WORKS:
-# 1. You provide case metadata (title, scenario, learning objectives, difficulty)
-# 2. The AI uses this to run a realistic clinical encounter
-# 3. Students interact via chat; the AI scores and debriefs at the end
-#
-# TEMPLATE FORMAT:
-# - Separate multiple cases with a blank line
-# - Each case starts with "CASE:" followed by the title
-# - INTRO: The clinical scenario / presenting complaint
-# - LEVEL: beginner | intermediate | advanced
-# - MAX_TURNS: Number of conversation turns (default: 10)
-# - ESTIMATED_MINUTES: Expected completion time in minutes
-# - OBJECTIVES: Learning objectives (one per line, starting with -)
-# - TAGS: Comma-separated tags for categorisation
-# - PUBLISHED: true | false (default: false)
-#
-# PATIENT DEMOGRAPHICS (optional):
-# - PATIENT_NAME: Name for the simulated patient
-# - PATIENT_AGE: Age in years
-# - PATIENT_GENDER: male | female | other
-#
-# ================================================
-
-CASE: Acute Chest Pain Assessment
-INTRO: A 55-year-old male presents to the emergency department with central crushing chest pain radiating to the left arm, onset 45 minutes ago. He is diaphoretic and anxious. PMH: Hypertension, Type 2 Diabetes, Smoker (30 pack-years).
-LEVEL: intermediate
-MAX_TURNS: 12
-ESTIMATED_MINUTES: 15
-OBJECTIVES:
-- Perform a focused cardiovascular history and examination
-- Identify red flag features of acute coronary syndrome
-- Initiate appropriate first-line investigations and management
-TAGS: cardiology, emergency, ACS
-PUBLISHED: true
-PATIENT_NAME: Ahmed Al-Rashid
-PATIENT_AGE: 55
-PATIENT_GENDER: male
-
-CASE: Paediatric Wheeze
-INTRO: A 4-year-old boy is brought by his mother with recurrent episodes of cough and wheeze over the past 3 months, worse at night and during exercise. No fever. Family history of eczema.
-LEVEL: beginner
-MAX_TURNS: 8
-ESTIMATED_MINUTES: 10
-OBJECTIVES:
-- Take a structured paediatric respiratory history
-- Differentiate between asthma and other causes of childhood wheeze
-- Outline initial management of suspected childhood asthma
-TAGS: paediatrics, respiratory
-PUBLISHED: false
-PATIENT_NAME: Omar
-PATIENT_AGE: 4
-PATIENT_GENDER: male`;
-
-  downloadTxt('ai_cases_template.txt', template);
-}
 
 
 function downloadInteractiveCaseGuide() {
@@ -971,9 +901,6 @@ function generateTemplateDownload(templateId: string) {
       }
       break;
       
-    case 'clinical_case':
-      downloadClinicalCaseTemplate();
-      break;
 
     case 'interactive_case_guide':
       downloadInteractiveCaseGuide();
