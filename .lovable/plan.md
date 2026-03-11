@@ -1,64 +1,66 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 13 added)
+# Help Docs + JSON Import for Interactive Cases — Updated Plan
 
-### Completed Steps
+## Overview
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+Three deliverables:
+1. **Guide doc** — "Interactive Cases — How It Works" (downloadable from Help & Templates)
+2. **AI prompt doc** — "Interactive Cases — AI Generation Prompt" (downloadable, ready to paste into Claude/ChatGPT)
+3. **JSON Import** — Upload button in the Interactive Cases admin list + navigation link to Help & Templates
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+All content will be written fresh inline (not copied from the outdated `docs/` file) to reflect the current state: voice preview with cooldown, per-case voice/tone/time-limit controls, move/copy, body map v8, ElevenLabs TTS, etc.
 
-### All Steps
+## Changes
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
-| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
+### 1. `src/components/admin/HelpTemplatesTab.tsx`
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+**Add two new built-in templates** to `BUILTIN_TEMPLATES`:
+- `interactive_case_guide` — format `txt`, title "Interactive Cases — How It Works"
+- `interactive_case_prompt` — format `txt`, title "Interactive Cases — AI Prompt Template"
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+**Add two new download functions** with inline content:
 
-### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
-- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
-- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
-- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
-- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
-- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
-- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
-- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
-- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
+**Guide content** (covers current reality):
+- 10-section structure with Professional Attitude
+- History Taking: full conversation (Egyptian Arabic chat + ElevenLabs voice), paramedic handover, triage note, witness account, no history
+- Physical Exam: body map with 8 fixed regions (general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra), vitals grid
+- Labs & Imaging: key/unnecessary penalty system
+- Diagnosis: 3-part rubric (possible, differential, final)
+- Management: MCQ + free-text with rubric scoring
+- Monitoring, Advice, Conclusion: rubric-based free-text
+- Scoring: 120 default total, AI-scored via edge function, 5-category summary report
+- Anti-cheat: select-none, copy/paste blocked, watermark
+- Admin workflow: Create Case dialog (5 tabs), Generate with AI vs Build Manually, Case Preview Editor features (voice character + preview with cooldown, patient tone, history time limit, section toggles, score recalculation, avatar picker, move/copy)
+- Voice: ElevenLabs TTS, per-case voice override, preview button with 1-min cooldown, contact admin for new voices
+- JSON import: upload a JSON file to create a draft case
+
+**Prompt content** (updated JSON schema):
+- Full schema matching `StructuredCaseData` type exactly
+- Includes `case_meta`, `patient`, all 10 sections + `professional_attitude`
+- Physical exam uses v8 `findings` record with `RegionKey` types
+- Complete example (appendicitis) adapted from existing doc
+- Instructions for the AI (10 rules)
+- Note at top: "Copy this prompt, fill in placeholders, paste into Claude/ChatGPT, copy the JSON output, and upload it using the Import JSON button in KALMHUB"
+
+**Wire into `generateTemplateDownload`** switch statement for both new IDs.
+
+### 2. `src/components/clinical-cases/ClinicalCaseAdminList.tsx`
+
+**Add "Import JSON" button** next to "Create Case":
+- `Upload` icon + "Import JSON" label
+- Hidden `<input type="file" accept=".json" />` triggered on click
+- On file select:
+  - Parse JSON, validate `case_meta.title` exists
+  - Auto-derive `active_sections` from which section keys are present
+  - Call `useCreateVirtualPatientCase` with `title`, `chief_complaint`, `level`, `estimated_minutes`, `generated_case_data`, `module_id`, `chapter_id`/`topic_id`, `is_published: false`, `patient_name`, `patient_age`, `patient_gender` from parsed data
+  - Toast success → navigate to the new case's editor
+  - Toast error on validation failure
+
+**Add "Help & Templates" link** (small `HelpCircle` icon button) that navigates to `/admin?tab=help`:
+- Placed in the toolbar next to Download button
+
+### 3. No backend changes needed
+
+The existing `virtual_patient_cases` table accepts `generated_case_data` as JSONB via `useCreateVirtualPatientCase`.
+
