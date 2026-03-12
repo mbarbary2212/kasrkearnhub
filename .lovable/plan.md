@@ -1,7 +1,7 @@
 
 # Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 13 added)
+## Status: ✅ Complete (Step 14 added)
 
 ### Completed Steps
 
@@ -33,6 +33,7 @@ All schema changes applied successfully:
 | 11 | Physical Examination v8 rewrite | ✅ |
 | 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 | 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
+| 14 | N+1 Progress API Optimization (RPC) | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
@@ -62,3 +63,11 @@ All schema changes applied successfully:
 - **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
 - **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
 - **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
+
+### Step 14: N+1 Progress API Optimization ✅
+- **Problem**: Sentry N+1 alert — `useChapterProgress` and `useContentProgress` each made ~17 sequential Supabase REST calls per page load
+- **Solution**: Created single `get_content_progress(p_chapter_id, p_topic_id, p_user_id)` RPC using CTEs to aggregate all content totals and completion counts in one SQL query
+- **RPC returns**: JSONB with `mcq_total/completed`, `essay_total/completed`, `osce_total/completed`, `case_total/completed`, `matching_total/completed`, `lectures` array, `video_progress` array
+- **Video matching**: Kept client-side (video_id is YouTube/GDrive ID extracted via JS regex from video_url — not joinable in SQL)
+- **Impact**: 17 API calls → 1 per chapter/topic page load
+- **No breaking changes**: Hook interfaces unchanged, all consumer components unaffected
