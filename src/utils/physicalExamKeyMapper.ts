@@ -27,16 +27,27 @@ export function mapLegacyKey(key: string): RegionKey {
   // Exact matches first
   if (VALID_REGION_KEYS.includes(k as RegionKey)) return k as RegionKey;
 
-  // Fuzzy mapping
+  // Exact aliases
   if (k === 'general_appearance') return 'general';
   if (k === 'vitals') return 'vital_signs';
+
+  // ── Extra-type matches FIRST (prevents substring collisions) ──
+  if (k.includes('wound') || k.includes('skin') || k.includes('dre') || k.includes('rectal') || k.includes('fundoscop')) {
+    return 'extra';
+  }
+
+  // ── Anatomical region fuzzy matches ──
   if (k.includes('abdomen') || k.includes('abdominal')) return 'abdomen';
-  if (k.includes('head') || k.includes('neck') || k.includes('cranial') || k.includes('thyroid') || k.includes('ent')) return 'head_neck';
+  // ENT: exact match or specific compound keys only — NOT k.includes('ent') which collides with -ment, -ent suffixes
+  if (k.includes('head') || k.includes('neck') || k.includes('cranial') || k.includes('thyroid') || k === 'ent' || k.includes('ear_nose') || k.includes('ent_exam')) return 'head_neck';
   if (k.includes('chest') || k.includes('cardio') || k.includes('respiratory') || k.includes('lung') || k.includes('heart') || k.includes('pulmonary')) return 'chest';
   if (k.includes('upper') || k.includes('arm') || k.includes('hand') || k.includes('shoulder')) return 'upper_limbs';
   if (k.includes('lower') || k.includes('leg') || k.includes('foot') || k.includes('feet') || k.includes('knee')) return 'lower_limbs';
   if (k.includes('vital') || k.includes('bp') || k.includes('pulse') || k.includes('temperature')) return 'vital_signs';
   if (k.includes('general') || k.includes('appearance') || k.includes('overall')) return 'general';
+
+  // Sentry warning for unmapped keys falling to extra
+  Sentry.captureMessage(`PE fuzzy mapper: unknown key "${key}" → extra`, 'warning');
 
   // Everything else → extra
   return 'extra';

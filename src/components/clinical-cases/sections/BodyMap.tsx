@@ -68,7 +68,8 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
         />
 
         {/* ── GENERAL APPEARANCE pill ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.general && onRegionClick('general')}>
+        {findings.general && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('general')}>
           <rect
             x={55} y={-48} width={200} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
@@ -82,9 +83,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           <line x1={155} y1={-48 + pillH} x2={155} y2={-3} stroke={LABEL_BORDER} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.6} />
           <polygon points="151,-4 155,4 159,-4" fill={LABEL_BORDER} opacity={0.5} />
         </g>
+        )}
 
         {/* ── HEAD / NECK — left inside ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.head_neck && onRegionClick('head_neck')}>
+        {findings.head_neck && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('head_neck')}>
           <rect x={110} y={5} width={90} height={140} rx={6} fill="transparent" />
           <rect x={15} y={52} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
@@ -94,9 +97,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             Head / Neck
           </text>
         </g>
+        )}
 
         {/* ── CHEST pill on body ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.chest && onRegionClick('chest')}>
+        {findings.chest && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('chest')}>
           <rect
             x={128} y={100} width={74} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
@@ -109,9 +114,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           </text>
           <rect x={98} y={88} width={134} height={80} rx={6} fill="transparent" />
         </g>
+        )}
 
         {/* ── UPPER LIMB — left inside ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.upper_limbs && onRegionClick('upper_limbs')}>
+        {findings.upper_limbs && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('upper_limbs')}>
           <rect x={8} y={138} width={72} height={205} rx={6} fill="transparent" />
           <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
           <rect x={15} y={150} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
@@ -122,9 +129,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             Upper limb
           </text>
         </g>
+        )}
 
         {/* ── VITALS — right inside ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.vital_signs && onRegionClick('vital_signs')}>
+        {findings.vital_signs && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('vital_signs')}>
           <rect x={230} y={138} width={72} height={205} rx={6} fill="transparent" />
           <rect x={220} y={150} width={75} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
@@ -134,9 +143,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             Vitals
           </text>
         </g>
+        )}
 
         {/* ── ABDOMEN pill (centered on body) ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.abdomen && onRegionClick('abdomen')}>
+        {findings.abdomen && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('abdomen')}>
           <rect
             x={122} y={195} width={86} height={pillH} rx={pillR}
             fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW}
@@ -149,9 +160,11 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
           </text>
           <rect x={98} y={183} width={134} height={80} rx={6} fill="transparent" />
         </g>
+        )}
 
         {/* ── LOWER LIMB — left inside ── */}
-        <g style={{ cursor: 'pointer' }} onClick={() => findings.lower_limbs && onRegionClick('lower_limbs')}>
+        {findings.lower_limbs && (
+        <g style={{ cursor: 'pointer' }} onClick={() => onRegionClick('lower_limbs')}>
           <rect x={88} y={325} width={134} height={160} rx={6} fill="transparent" />
           <rect x={15} y={340} width={95} height={pillH} rx={pillR} fill={LABEL_BG} stroke={LABEL_BORDER} strokeWidth={LABEL_SW} />
           <text
@@ -161,6 +174,7 @@ export function BodyMap({ findings, revealedRegions, selectedRegion, onRegionCli
             Lower limb
           </text>
         </g>
+        )}
 
         {/* ── MISC dashed pill — only show when extra finding exists ── */}
         {hasExtra && (
