@@ -51,7 +51,10 @@ async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; 
 
   if (data) {
     for (const row of data) {
-      const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+      let value = row.value;
+      if (typeof value === 'string') {
+        try { value = JSON.parse(value); } catch { /* keep as-is */ }
+      }
       switch (row.key) {
         case 'ai_provider':
           provider = value === 'gemini' ? 'gemini' : 'lovable';
