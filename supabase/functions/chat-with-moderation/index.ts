@@ -33,8 +33,8 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
     enabled: true,
     dailyLimit: 5,
     disabledMessage: 'The MedGPT Tutor is temporarily unavailable. Please use Feedback & Inquiries.',
-    provider: 'lovable',
-    model: 'google/gemini-3-flash-preview',
+    provider: 'gemini',
+    model: 'gemini-3.1-pro-preview',
   };
 
   if (!data) return defaults;
