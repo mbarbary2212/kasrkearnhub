@@ -16,7 +16,7 @@ interface TutorSettings {
   enabled: boolean;
   dailyLimit: number;
   disabledMessage: string;
-  provider: 'lovable' | 'gemini';
+  provider: 'gemini' | 'lovable';
   model: string;
 }
 
@@ -33,8 +33,8 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
     enabled: true,
     dailyLimit: 5,
     disabledMessage: 'The MedGPT Tutor is temporarily unavailable. Please use Feedback & Inquiries.',
-    provider: 'lovable',
-    model: 'google/gemini-3-flash-preview',
+    provider: 'gemini',
+    model: 'gemini-3.1-pro-preview',
   };
 
   if (!data) return defaults;
@@ -47,7 +47,10 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
   let globalLovableModel: string | null = null;
 
   for (const row of data) {
-    const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    let value = row.value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep as-is */ }
+    }
     switch (row.key) {
       case 'tutor_enabled':
         defaults.enabled = value === true || value === 'true';
@@ -77,8 +80,8 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
   }
 
   // Resolve provider: feature-specific > global > default
-  const resolvedProvider = featureProvider ?? globalProvider ?? 'lovable';
-  defaults.provider = resolvedProvider === 'gemini' ? 'gemini' : 'lovable';
+  const resolvedProvider = featureProvider ?? globalProvider ?? 'gemini';
+  defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : 'gemini';
 
   // Resolve model: feature-specific > global (based on provider) > default
   if (featureModel) {

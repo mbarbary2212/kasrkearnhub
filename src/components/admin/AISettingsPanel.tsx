@@ -102,7 +102,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   };
 
   const factoryEnabled = getValue('ai_content_factory_enabled', true);
-  const provider = getValue('ai_provider', 'lovable');
+  const provider = getValue('ai_provider', 'gemini');
   const lovableModel = getValue('lovable_model', 'google/gemini-3-flash-preview');
   const geminiModel = getValue('gemini_model', 'gemini-2.5-flash');
   const anthropicModel = getValue('anthropic_model', 'claude-sonnet-4-20250514');
@@ -230,7 +230,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
           <div className="space-y-3">
             <Label className="text-base font-medium">AI Provider & Model</Label>
             <div className="grid gap-4 md:grid-cols-3">
-              {AI_PROVIDERS.map((p) => {
+              {AI_PROVIDERS.filter((p) => p.value !== 'lovable' || isSuperAdmin).map((p) => {
                 const isActive = provider === p.value;
                 const models = p.value === 'lovable' ? LOVABLE_MODELS : p.value === 'gemini' ? GEMINI_MODELS : CLAUDE_MODELS;
                 const modelKey = p.value === 'lovable' ? 'lovable_model' : p.value === 'gemini' ? 'gemini_model' : 'anthropic_model';
@@ -293,7 +293,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
               <span className="text-sm font-medium">Provider Notes</span>
             </div>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li><strong>Lovable AI Gateway:</strong> Uses your Lovable workspace credits. No API key needed.</li>
+              {isSuperAdmin && <li><strong>Lovable AI Gateway:</strong> Uses your Lovable workspace credits. No API key needed.</li>}
               <li><strong>Google Gemini API:</strong> Requires <code>GOOGLE_API_KEY</code> secret in Edge Functions.</li>
               <li><strong>Anthropic Claude API:</strong> Requires <code>ANTHROPIC_API_KEY</code> secret in Edge Functions.</li>
               <li>Changes take effect immediately for new generation requests.</li>

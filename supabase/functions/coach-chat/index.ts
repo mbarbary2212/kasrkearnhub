@@ -70,7 +70,7 @@ interface CoachSettings {
   enabled: boolean;
   dailyLimit: number;
   disabledMessage: string;
-  provider: 'lovable' | 'gemini';
+  provider: 'gemini' | 'lovable';
   model: string;
 }
 
@@ -93,8 +93,8 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
     enabled: true,
     dailyLimit: 5,
     disabledMessage: 'The study coach is currently disabled by the course administrators due to usage limits. Please use your course materials and send questions via Feedback & Inquiries.',
-    provider: 'lovable',
-    model: 'google/gemini-3-flash-preview',
+    provider: 'gemini',
+    model: 'gemini-3.1-pro-preview',
   };
 
   if (error || !data) return defaults;
@@ -140,8 +140,8 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
   }
 
   // Resolve provider: feature-specific > global > default
-  const resolvedProvider = featureProvider ?? globalProvider ?? 'lovable';
-  defaults.provider = resolvedProvider === 'gemini' ? 'gemini' : 'lovable';
+  const resolvedProvider = featureProvider ?? globalProvider ?? 'gemini';
+  defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : 'gemini';
 
   // Resolve model: feature-specific > global (based on provider) > default
   if (featureModel) {

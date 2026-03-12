@@ -27,7 +27,7 @@ export interface AISettings {
 }
 
 const DEFAULT_SETTINGS: AISettings = {
-  ai_provider: 'lovable',
+  ai_provider: 'gemini',
   gemini_model: 'gemini-3.1-pro-preview',
   lovable_model: 'google/gemini-3-flash-preview',
   anthropic_model: 'claude-sonnet-4-20250514',
@@ -72,7 +72,7 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
     
     switch (row.key) {
       case 'ai_provider':
-        settings.ai_provider = (['gemini', 'anthropic', 'lovable'].includes(value) ? value : 'lovable') as AIProviderName;
+        settings.ai_provider = (['gemini', 'anthropic', 'lovable'].includes(value) ? value : 'gemini') as AIProviderName;
         break;
       case 'gemini_model':
         settings.gemini_model = (value as string) || DEFAULT_SETTINGS.gemini_model;
@@ -106,7 +106,7 @@ export function getAIProvider(settings: AISettings): AIProvider {
   };
   return {
     name: settings.ai_provider,
-    model: modelMap[settings.ai_provider] || settings.lovable_model,
+    model: modelMap[settings.ai_provider] || settings.gemini_model,
   };
 }
 
@@ -292,7 +292,7 @@ export function getModelForContentType(
     lovable: settings.lovable_model,
     anthropic: settings.anthropic_model,
   };
-  return modelMap[settings.ai_provider] || settings.lovable_model;
+  return modelMap[settings.ai_provider] || settings.gemini_model;
 }
 
 /**
