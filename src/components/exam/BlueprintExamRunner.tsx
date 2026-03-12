@@ -169,14 +169,16 @@ export function BlueprintExamRunner({
     const blockCopy = (e: ClipboardEvent) => e.preventDefault();
     const blockContextMenu = (e: MouseEvent) => e.preventDefault();
     const blockSelection = (e: Event) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
       if (!target.closest('textarea') && !target.closest('input')) {
         e.preventDefault();
       }
     };
     const blockKeyboard = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
-        const target = e.target as HTMLElement;
+        const target = e.target;
+        if (!(target instanceof Element)) return;
         if (!target.closest('textarea') && !target.closest('input')) {
           e.preventDefault();
         }
