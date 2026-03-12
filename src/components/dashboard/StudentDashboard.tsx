@@ -59,6 +59,8 @@ export function StudentDashboard() {
     }
   }, [selectedYearId]);
   
+  const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
+
   // Fetch test progress (shared data — also used by DashboardTestProgress)
   const { data: testProgress, isLoading: testProgressLoading } = useTestProgress(
     moduleSelected ? selectedModuleId : undefined
