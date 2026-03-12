@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       supabase.from('mcqs').select('id').eq('module_id', moduleId).eq('is_deleted', false),
       supabase.from('essays').select('id').eq('module_id', moduleId).eq('is_deleted', false),
       supabase.from('virtual_patient_cases').select('id').eq('module_id', moduleId).eq('is_deleted', false),
-      supabase.from('question_attempts').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('question_attempts').select('question_type, is_correct, selected_answer, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100),
     ]);
 
     const chapters = chaptersRes.data || [];
