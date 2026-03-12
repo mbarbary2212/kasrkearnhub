@@ -29,7 +29,7 @@ interface OsceQuestionCardProps {
   onDelete?: () => void;
   onRestore?: () => void;
   // Previous attempt data for restoring state
-  previousAttempt?: QuestionAttempt | null;
+  previousAttempt?: QuestionAttemptSummary | null;
   // Starred support
   isStarred?: boolean;
   onToggleStar?: (id: string) => void;
