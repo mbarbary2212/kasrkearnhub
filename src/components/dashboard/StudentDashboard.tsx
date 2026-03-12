@@ -232,7 +232,7 @@ export function StudentDashboard() {
       {/* Content based on module selection */}
       {!moduleSelected ? (
         <LearningHubEmptyState onSelectModule={handleSelectModuleClick} />
-      ) : dashboardLoading ? (
+      ) : (dashboardLoading || testProgressLoading) ? (
         <DashboardContentSkeleton />
       ) : dashboard ? (
         <LearningHubTabs 
