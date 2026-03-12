@@ -17,6 +17,7 @@ import type {
 import { SectionComponentProps } from './types';
 import { BodyMap } from './BodyMap';
 import { ImageLightbox } from './ImageLightbox';
+import { normalizePhysicalExamFindings } from '@/utils/physicalExamKeyMapper';
 
 const REGION_LABELS: Record<RegionKey, { icon: string; label: string }> = {
   general: { icon: '🧍', label: 'General Appearance' },
