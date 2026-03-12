@@ -6,6 +6,7 @@ import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput, isVimeoUrl
 /**
  * Unified Content Progress Hook
  * 
+ * Uses a single RPC call (get_content_progress) instead of ~17 separate REST calls.
  * Supports both chapter-based and topic-based modules with identical progress calculation.
  * CRITICAL: chapterId and topicId are mutually exclusive - never pass both.
  */
@@ -22,12 +23,26 @@ interface ContentProgressData {
   practiceTotal: number;
   videosCompleted: number;
   videosTotal: number;
-  // Legacy compatibility
   resourcesProgress: number;
   resourcesCompleted: number;
   resourcesTotal: number;
   completedItems: number;
   totalItems: number;
+}
+
+interface RpcProgressResult {
+  mcq_total: number;
+  essay_total: number;
+  osce_total: number;
+  case_total: number;
+  matching_total: number;
+  mcq_completed: number;
+  essay_completed: number;
+  osce_completed: number;
+  case_completed: number;
+  matching_completed: number;
+  lectures: { video_url: string | null }[];
+  video_progress: { video_id: string; percent_watched: number }[];
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -48,7 +63,6 @@ export interface ContentProgressParams {
 export function useContentProgress({ chapterId, topicId }: ContentProgressParams) {
   const { user } = useAuthContext();
   
-  // Determine which column to filter by
   const containerColumn = chapterId ? 'chapter_id' : 'topic_id';
   const containerId = chapterId || topicId;
 
@@ -72,148 +86,31 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
 
       if (!user?.id || !containerId) return emptyResult;
 
-      // Fetch content counts - use explicit queries instead of dynamic function
-      const mcqsQuery = chapterId 
-        ? supabase.from('mcqs').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('mcqs').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
+      // Single RPC call replaces ~17 separate REST calls
+      const { data, error } = await supabase.rpc('get_content_progress', {
+        p_chapter_id: chapterId || null,
+        p_topic_id: topicId || null,
+        p_user_id: user.id,
+      });
 
-      const essaysQuery = chapterId
-        ? supabase.from('essays').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('essays').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
+      if (error || !data) return emptyResult;
 
-      const oscesQuery = chapterId
-        ? supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('osce_questions').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
+      const rpc = data as unknown as RpcProgressResult;
 
-      const virtualPatientQuery = chapterId
-        ? supabase.from('virtual_patient_cases').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('virtual_patient_cases').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
+      // Practice totals
+      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total;
+      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed;
 
-      const matchingQuery = chapterId
-        ? supabase.from('matching_questions').select('id', { count: 'exact', head: true }).eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('matching_questions').select('id', { count: 'exact', head: true }).eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const lecturesQuery = chapterId
-        ? supabase.from('lectures').select('id, video_url').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('lectures').select('id, video_url').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const [
-        mcqsRes,
-        essaysRes,
-        oscesRes,
-        vpCasesRes,
-        matchingRes,
-        lecturesRes,
-      ] = await Promise.all([
-        mcqsQuery,
-        essaysQuery,
-        oscesQuery,
-        virtualPatientQuery,
-        matchingQuery,
-        lecturesQuery,
-      ]);
-
-      // Fetch question IDs for each type to check attempts
-      const mcqIdsQuery = chapterId
-        ? supabase.from('mcqs').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('mcqs').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const essayIdsQuery = chapterId
-        ? supabase.from('essays').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('essays').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const osceIdsQuery = chapterId
-        ? supabase.from('osce_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('osce_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const vpCaseIdsQuery = chapterId
-        ? supabase.from('virtual_patient_cases').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('virtual_patient_cases').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const matchingIdsQuery = chapterId
-        ? supabase.from('matching_questions').select('id').eq('chapter_id', chapterId).eq('is_deleted', false)
-        : supabase.from('matching_questions').select('id').eq('topic_id', topicId!).eq('is_deleted', false);
-
-      const [mcqIds, essayIds, osceIds, vpCaseIds, matchingIds] = await Promise.all([
-        mcqIdsQuery,
-        essayIdsQuery,
-        osceIdsQuery,
-        vpCaseIdsQuery,
-        matchingIdsQuery,
-      ]);
-
-      // Fetch user attempts
-      const [
-        mcqAttempts,
-        essayAttempts,
-        osceAttempts,
-        caseAttempts,
-        matchingAttempts,
-        videoProgressRes,
-      ] = await Promise.all([
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
-          .eq('question_type', 'mcq')
-          .in('question_id', mcqIds.data?.map(m => m.id) || []),
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
-          .eq('question_type', 'mcq')
-          .in('question_id', essayIds.data?.map(e => e.id) || []),
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
-          .eq('question_type', 'osce')
-          .in('question_id', osceIds.data?.map(o => o.id) || []),
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
-          .eq('question_type', 'osce')
-          .in('question_id', vpCaseIds.data?.map(c => c.id) || []),
-        supabase
-          .from('question_attempts')
-          .select('question_id')
-          .eq('user_id', user.id)
-          .eq('question_type', 'mcq')
-          .in('question_id', matchingIds.data?.map(m => m.id) || []),
-        supabase
-          .from('video_progress')
-          .select('video_id, percent_watched')
-          .eq('user_id', user.id),
-      ]);
-
-      // Calculate totals
-      const mcqTotal = mcqsRes.count || 0;
-      const essayTotal = essaysRes.count || 0;
-      const osceTotal = oscesRes.count || 0;
-      const caseTotal = vpCasesRes.count || 0;
-      const matchingTotal = matchingRes.count || 0;
-      const practiceTotal = mcqTotal + essayTotal + osceTotal + caseTotal + matchingTotal;
-
-      // Calculate completed (unique items)
-      const mcqCompleted = new Set(mcqAttempts.data?.map(a => a.question_id) || []).size;
-      const essayCompleted = new Set(essayAttempts.data?.map(a => a.question_id) || []).size;
-      const osceCompleted = new Set(osceAttempts.data?.map(a => a.question_id) || []).size;
-      const caseCompleted = new Set(caseAttempts.data?.map(a => a.question_id) || []).size;
-      const matchingCompleted = new Set(matchingAttempts.data?.map(a => a.question_id) || []).size;
-      const practiceCompleted = mcqCompleted + essayCompleted + osceCompleted + caseCompleted + matchingCompleted;
-
-      // Video progress
-      const lectures = lecturesRes.data || [];
+      // Video progress (client-side matching since video_id is extracted via regex)
       const videoProgressMap = new Map(
-        (videoProgressRes.data || []).map(vp => [vp.video_id, vp.percent_watched])
+        (rpc.video_progress || []).map(vp => [vp.video_id, vp.percent_watched])
       );
 
       let videosTotal = 0;
       let videosCompleted = 0;
       let totalVideoProgress = 0;
 
-      for (const lecture of lectures) {
+      for (const lecture of rpc.lectures || []) {
         const videoId = extractVideoId(lecture.video_url);
         if (videoId) {
           videosTotal++;
@@ -277,7 +174,6 @@ export function useInvalidateContentProgress() {
   return {
     invalidateChapter: (chapterId: string) => {
       queryClient.invalidateQueries({ queryKey: ['content-progress', 'chapter_id', chapterId] });
-      // Also invalidate legacy key
       queryClient.invalidateQueries({ queryKey: ['chapter-progress', chapterId] });
     },
     invalidateTopic: (topicId: string) => {

@@ -5741,6 +5741,10 @@ export type Database = {
         }
         Returns: number
       }
+      get_content_progress: {
+        Args: { p_chapter_id?: string; p_topic_id?: string; p_user_id?: string }
+        Returns: Json
+      }
       get_module_feedback_for_admin: {
         Args: { _module_id?: string }
         Returns: {
