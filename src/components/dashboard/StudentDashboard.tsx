@@ -99,7 +99,6 @@ export function StudentDashboard() {
     examTarget = selectedModule.name;
   }
 
-  const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
   return (
     <div className="space-y-4 animate-fade-in max-w-5xl mx-auto overflow-x-hidden">
