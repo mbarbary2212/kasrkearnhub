@@ -106,7 +106,7 @@ export function getAIProvider(settings: AISettings): AIProvider {
   };
   return {
     name: settings.ai_provider,
-    model: modelMap[settings.ai_provider] || settings.lovable_model,
+    model: modelMap[settings.ai_provider] || settings.gemini_model,
   };
 }
 
