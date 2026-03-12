@@ -97,8 +97,10 @@ export function normalizePhysicalExamFindings(
         existing.image_urls = [...(existing.image_urls || []), ...val.image_urls];
       }
     } else {
+      // If this key was remapped, prefix text with its label for clarity when merging later
+      const prefixedText = (key !== regionKey && text) ? `**${label}:** ${text}` : text;
       converted[regionKey] = {
-        text,
+        text: prefixedText,
         ref: val.ref || null,
         ...(regionKey === 'extra' ? { label } : {}),
         ...(val.vitals ? { vitals: val.vitals } : {}),

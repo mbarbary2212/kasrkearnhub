@@ -793,7 +793,7 @@ export function HistoryTakingSection({
 
           {/* Message counter + End button */}
           <span className="text-xs text-muted-foreground">
-            {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+            {studentMessageCount} questions asked
           </span>
           <Button
             onClick={handleFinishInteraction}

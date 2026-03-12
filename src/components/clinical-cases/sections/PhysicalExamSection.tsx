@@ -274,7 +274,7 @@ export function PhysicalExamSection({
                   {/* Card body */}
                   {isOpen && (
                     <div
-                      className="px-4 py-3 text-sm leading-relaxed border-t border-border"
+                      className="px-4 py-3 text-sm leading-relaxed border-t border-border max-h-[280px] overflow-y-auto"
                       style={{ color: '#3d5166' }}
                       onClick={e => e.stopPropagation()}
                     >
