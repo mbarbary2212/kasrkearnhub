@@ -49,9 +49,10 @@ export function useTestProgress(moduleId?: string) {
       // Fetch all question attempts for this user
       let query = supabase
         .from('question_attempts')
-        .select('*')
+        .select('question_type, is_correct, selected_answer, created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false }); // Most recent first
+        .order('created_at', { ascending: false })
+        .limit(100); // Only need ~20 for improvement calc, 100 gives accurate aggregates
 
       // If moduleId provided, we need to filter by chapters in that module
       let chapterIds: string[] = [];

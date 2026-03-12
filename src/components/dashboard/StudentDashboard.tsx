@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
+import { useTestProgress } from '@/hooks/useTestProgress';
 import { useYears } from '@/hooks/useYears';
 import { useModules } from '@/hooks/useModules';
 import { DashboardHeader } from './DashboardHeader';
@@ -58,11 +59,18 @@ export function StudentDashboard() {
     }
   }, [selectedYearId]);
   
-  // Fetch dashboard with filters - only when module is selected
+  const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
+
+  // Fetch test progress (shared data — also used by DashboardTestProgress)
+  const { data: testProgress, isLoading: testProgressLoading } = useTestProgress(
+    moduleSelected ? selectedModuleId : undefined
+  );
+
+  // Fetch dashboard with filters — passes testProgress to avoid duplicate fetch
   const { data: dashboard, isLoading: dashboardLoading } = useStudentDashboard({
     yearId: selectedYearId || undefined,
     moduleId: selectedModuleId || undefined,
-  });
+  }, testProgress);
 
   const isLoading = yearsLoading;
 
@@ -91,7 +99,6 @@ export function StudentDashboard() {
     examTarget = selectedModule.name;
   }
 
-  const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
   return (
     <div className="space-y-4 animate-fade-in max-w-5xl mx-auto overflow-x-hidden">
@@ -225,7 +232,7 @@ export function StudentDashboard() {
       {/* Content based on module selection */}
       {!moduleSelected ? (
         <LearningHubEmptyState onSelectModule={handleSelectModuleClick} />
-      ) : dashboardLoading ? (
+      ) : (dashboardLoading || testProgressLoading) ? (
         <DashboardContentSkeleton />
       ) : dashboard ? (
         <LearningHubTabs 
