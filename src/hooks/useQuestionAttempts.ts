@@ -157,7 +157,9 @@ export function useAllChapterQuestionAttempts(chapterId?: string) {
         .from('question_attempts')
         .select('question_id, question_type, is_correct, selected_answer, score, status')
         .eq('user_id', user.id)
-        .eq('chapter_id', chapterId);
+        .eq('chapter_id', chapterId)
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
       return (data || []) as QuestionAttemptSummary[];
