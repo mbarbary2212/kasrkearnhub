@@ -850,43 +850,24 @@ export function HistoryTakingSection({
     </div>
   );
 
-  // ── Helper: send initial greeting ──────────────────────
+  // ── Helper: send initial greeting (local only — no edge function call) ──
   function sendChatMessageInitial(mode: 'chat' | 'voice') {
     const lang = selectedLanguage || 'en';
-    const langInfo = LANGUAGE_LABELS[lang] || LANGUAGE_LABELS.en;
-    const initMsg: ChatMessage = { role: 'user', content: langInfo.greeting };
-    setChatMessages([initMsg]);
-    setIsSending(true);
+    const greeting = lang === 'ar'
+      ? 'السلام عليكم يا دكتور'
+      : 'Hello doctor';
 
-    supabase.functions
-      .invoke('patient-history-chat', {
-        body: {
-          case_id: caseId,
-          messages: [{ role: initMsg.role, content: initMsg.content }],
-          mode,
-          language: lang,
-        },
-      })
-      .then(({ data: fnData, error }) => {
-        if (error) throw error;
-        const fallbackGreeting = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor';
-        const reply = fnData?.reply || fallbackGreeting;
-        setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    // Show patient greeting locally — student sends the first real message
+    setChatMessages([{ role: 'assistant', content: greeting }]);
 
-        if (mode === 'voice' && lang === 'ar' && !isMuted) {
-          const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-          const voiceId = voiceIdOverride
-            || (gender === 'female'
-              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-          speakArabic(reply, ttsProvider, voiceId, patientTone);
-        }
-      })
-      .catch(err => {
-        console.error('Initial chat error:', err);
-        const fallback = lang === 'ar' ? 'أهلاً يا دكتور' : 'Hello doctor, how can I help?';
-        setChatMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
-      })
-      .finally(() => setIsSending(false));
+    // Speak the greeting aloud in voice mode
+    if (mode === 'voice' && lang === 'ar' && !isMuted) {
+      const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+      const voiceId = voiceIdOverride
+        || (gender === 'female'
+          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+      speakArabic(greeting, ttsProvider, voiceId, patientTone);
+    }
   }
 }
