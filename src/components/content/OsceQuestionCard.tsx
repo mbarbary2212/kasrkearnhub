@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { OsceQuestion } from '@/hooks/useOsceQuestions';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
-import { useSaveQuestionAttempt, QuestionAttempt } from '@/hooks/useQuestionAttempts';
+import { useSaveQuestionAttempt, type QuestionAttemptSummary } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
 import { AttachOsceImageModal } from './AttachOsceImageModal';
 
