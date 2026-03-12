@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  useChapterQuestionAttempts, 
+  useAllChapterQuestionAttempts, 
   useResetChapterAttempt,
 } from '@/hooks/useQuestionAttempts';
 
@@ -99,19 +99,18 @@ export function MatchingQuestionList({
   const restoreMutation = useRestoreMatchingQuestion();
   const bulkDelete = useBulkDeleteContent('matching_questions');
 
-  // Question attempt tracking hooks (for students)
-  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
-    chapterId ?? undefined, 
-    'mcq' // Matching uses 'mcq' type in DB
-  );
+  // Question attempt tracking hooks (for students) — consolidated single query
+  const { data: allAttempts = [] } = useAllChapterQuestionAttempts(chapterId ?? undefined);
   const resetAttemptMutation = useResetChapterAttempt();
 
-  // Create a map of question attempts for quick lookup
+  // Create a map of question attempts for quick lookup (matching uses 'mcq' type in DB)
   const attemptMap = useMemo(() => {
     const map = new Map<string, { is_correct: boolean | null }>();
-    questionAttempts.forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
+    allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
     return map;
-  }, [questionAttempts]);
+  }, [allAttempts]);
 
   const toggleSelection = useCallback((id: string, checked: boolean) => {
     setSelectedIds(prev => {

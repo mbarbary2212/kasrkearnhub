@@ -54,7 +54,7 @@ import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { 
-  useChapterQuestionAttempts, 
+  useAllChapterQuestionAttempts, 
   useResetChapterAttempt,
 } from '@/hooks/useQuestionAttempts';
 import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
@@ -238,23 +238,21 @@ export function McqList({
   // Search and filter state (for both admin and students)
   const [searchFilters, setSearchFilters] = useState<McqSearchFilterState>(DEFAULT_SEARCH_FILTER);
 
-  // Question attempt tracking hooks (for students)
-  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
-    chapterId ?? undefined, 
-    'mcq'
-  );
+  // Question attempt tracking hooks (for students) — consolidated single query
+  const { data: allAttempts = [] } = useAllChapterQuestionAttempts(chapterId ?? undefined);
   const resetAttemptMutation = useResetChapterAttempt();
 
-  // Create a map of question attempts for quick lookup
-  // Only need is_correct for the new simplified model
+  // Filter to mcq type and create a map for quick lookup
   const attemptMap = useMemo(() => {
     const map = new Map<string, { is_correct: boolean | null; selected_answer: Json }>();
-    questionAttempts.forEach(a => map.set(a.question_id, {
-      is_correct: a.is_correct,
-      selected_answer: a.selected_answer as Json,
-    }));
+    allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .forEach(a => map.set(a.question_id, {
+        is_correct: a.is_correct,
+        selected_answer: a.selected_answer as Json,
+      }));
     return map;
-  }, [questionAttempts]);
+  }, [allAttempts]);
 
   const totalQuestions = mcqs.length;
 
