@@ -1,7 +1,7 @@
 
 # Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 14 added)
+## Status: ✅ Complete (Step 15 added)
 
 ### Completed Steps
 
@@ -34,6 +34,7 @@ All schema changes applied successfully:
 | 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
 | 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
 | 14 | N+1 Progress API Optimization (RPC) | ✅ |
+| 15 | Bound question_attempts + Deduplicate Dashboard Query | ✅ |
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
@@ -71,3 +72,11 @@ All schema changes applied successfully:
 - **Video matching**: Kept client-side (video_id is YouTube/GDrive ID extracted via JS regex from video_url — not joinable in SQL)
 - **Impact**: 17 API calls → 1 per chapter/topic page load
 - **No breaking changes**: Hook interfaces unchanged, all consumer components unaffected
+
+### Step 15: Bound question_attempts + Deduplicate Dashboard Query ✅
+- **Problem**: `useTestProgress` and `useStudentDashboard` both fetched unbounded `select('*')` from `question_attempts`, duplicating ~80 lines of MCQ/OSCE/improvement calculation logic
+- **Fix 1 — `useTestProgress.ts`**: Narrowed select to 4 used columns (`question_type, is_correct, selected_answer, created_at`) and added `.limit(100)` — ~90% data reduction
+- **Fix 2 — `useStudentDashboard.ts`**: Removed duplicate `question_attempts` fetch entirely. Now accepts `testProgress?: TestProgressData` parameter from `useTestProgress`. Uses it for performance/improvement/readiness calculations. Eliminates one full unbounded query and ~80 lines of duplicate code
+- **Fix 3 — `cache-readiness/index.ts`**: Same `.limit(100)` + narrowed select applied to edge function for consistency
+- **Loading state**: Dashboard shows skeleton when `testProgressLoading` is true (not zeros). Zeros only appear when testProgress resolves with no data (new user)
+- **Impact**: 2 unbounded queries → 1 bounded (100 rows, 4 cols). One entire fetch eliminated from dashboard load. Zero breaking changes
