@@ -37,6 +37,8 @@ import { useCreateVirtualPatientCase } from '@/hooks/useVirtualPatient';
 import { SectionType } from '@/types/structuredCase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { normalizePhysicalExamFindings, VALID_REGION_KEYS } from '@/utils/physicalExamKeyMapper';
+import * as Sentry from '@sentry/react';
 
 interface ClinicalCaseAdminListProps {
   moduleId: string;
