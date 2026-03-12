@@ -47,7 +47,10 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
   let globalLovableModel: string | null = null;
 
   for (const row of data) {
-    const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    let value = row.value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep as-is */ }
+    }
     switch (row.key) {
       case 'tutor_enabled':
         defaults.enabled = value === true || value === 'true';
