@@ -45,7 +45,7 @@ async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; 
     .select('key, value')
     .in('key', ['ai_provider', 'gemini_model', 'lovable_model']);
 
-  let provider: 'lovable' | 'gemini' = 'lovable';
+  let provider: 'gemini' | 'lovable' = 'gemini';
   let geminiModel: string | null = null;
   let lovableModel: string | null = null;
 
