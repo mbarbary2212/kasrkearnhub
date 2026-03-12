@@ -108,26 +108,29 @@ export function OsceList({
   const deleteQuestion = useDeleteOsceQuestion();
   const restoreQuestion = useRestoreOsceQuestion();
 
-  // Question attempt tracking hooks (for students)
-  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
-    chapterId, 
-    'osce'
-  );
+  // Question attempt tracking hooks (for students) — consolidated single query
+  const { data: allAttempts = [] } = useAllChapterQuestionAttempts(chapterId);
   const resetAttemptMutation = useResetChapterAttempt();
+
+  // Filter to osce type
+  const osceAttempts = useMemo(() => 
+    allAttempts.filter(a => a.question_type === 'osce'),
+    [allAttempts]
+  );
 
   // Create a map of question attempts for quick lookup
   const attemptMap = useMemo(() => {
     const map = new Map<string, { is_correct: boolean | null }>();
-    questionAttempts.forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
+    osceAttempts.forEach(a => map.set(a.question_id, { is_correct: a.is_correct }));
     return map;
-  }, [questionAttempts]);
+  }, [osceAttempts]);
 
   // Full attempt map for card display
   const fullAttemptMap = useMemo(() => {
-    const map = new Map<string, typeof questionAttempts[0]>();
-    questionAttempts.forEach(a => map.set(a.question_id, a));
+    const map = new Map<string, typeof osceAttempts[0]>();
+    osceAttempts.forEach(a => map.set(a.question_id, a));
     return map;
-  }, [questionAttempts]);
+  }, [osceAttempts]);
 
   // Starred questions - stored in localStorage
   const [starredIds, setStarredIds] = useState<Set<string>>(() => {

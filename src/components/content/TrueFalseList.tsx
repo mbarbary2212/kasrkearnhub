@@ -101,21 +101,20 @@ export function TrueFalseList({
   const deleteMutation = useDeleteTrueFalseQuestion();
   const restoreMutation = useRestoreTrueFalseQuestion();
   
-  // Question attempt tracking (use 'mcq' type for DB compatibility)
-  const { data: questionAttempts = [] } = useChapterQuestionAttempts(
-    chapterId ?? undefined, 
-    'mcq'
-  );
+  // Question attempt tracking — consolidated single query
+  const { data: allAttempts = [] } = useAllChapterQuestionAttempts(chapterId ?? undefined);
 
-  // Create a map of question attempts for quick lookup
+  // Create a map of question attempts for quick lookup (true_false uses 'mcq' type in DB)
   const attemptMap = useMemo(() => {
     const map = new Map<string, { is_correct: boolean | null; selected_answer: Json }>();
-    questionAttempts.forEach(a => map.set(a.question_id, {
-      is_correct: a.is_correct,
-      selected_answer: a.selected_answer as Json,
-    }));
+    allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .forEach(a => map.set(a.question_id, {
+        is_correct: a.is_correct,
+        selected_answer: a.selected_answer as Json,
+      }));
     return map;
-  }, [questionAttempts]);
+  }, [allAttempts]);
 
   const displayQuestions = showDeleted ? deletedQuestions : questions;
   
