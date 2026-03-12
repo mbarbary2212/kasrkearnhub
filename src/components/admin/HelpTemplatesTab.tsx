@@ -696,7 +696,7 @@ Return a single JSON object with this exact structure. Do NOT wrap in markdown c
       },
       "head_neck": { "text": "Finding or 'Normal examination'" },
       "chest": { "text": "Finding or 'Normal examination'" },
-      "abdomen": { "text": "Finding description" },
+      "abdomen": { "text": "**Inspection:** Distended abdomen with visible surgical scar in RIF.\\n**Palpation:** Tender in RIF with guarding, no rebound tenderness.\\n**Percussion:** Tympanic.\\n**Auscultation:** Reduced bowel sounds." },
       "upper_limbs": { "text": "Normal examination" },
       "lower_limbs": { "text": "Normal examination" },
       "extra": { "label": "Special Examination", "text": "e.g., DRE findings" }
