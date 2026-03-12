@@ -856,6 +856,7 @@ Return a single JSON object with this exact structure. Do NOT wrap in markdown c
 8. Management questions should mix MCQ and free-text types
 9. All IDs must be unique strings (use prefixes like hx_, mm_, sm_, conc_)
 10. For full_conversation mode, include both arabic_reference and english_reference
+11. Physical examination findings MUST use ONLY these 8 region keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment, abdomen_palpation, or chest_auscultation — map them to the closest fixed key. Use "extra" with a custom "label" for special exams (e.g., DRE, Wound, Fundoscopy).
 `;
 
   downloadTxt('interactive_cases_ai_prompt.md', content);
