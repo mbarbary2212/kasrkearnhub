@@ -390,16 +390,16 @@ ${activeSections.includes("history_taking") ? `  "history_taking": {
   },` : ""}
 ${activeSections.includes("physical_examination") ? `  "physical_examination": {
     "findings": {
-      "general":     { "text": "string — general appearance findings", "ref": "string|null — optional chapter quote" },
-      "head_neck":   { "text": "string — head and neck findings", "ref": "string|null" },
+      "general":     { "text": "string — ALL general appearance findings (observation, posture, mental state) combined in one text block. Use **bold** sub-headings if multiple components.", "ref": "string|null — optional chapter quote" },
+      "head_neck":   { "text": "string — ALL head & neck findings (inspection, palpation, ENT, cranial nerves, thyroid) combined in one text block with **bold** sub-headings.", "ref": "string|null" },
       "vital_signs": { "vitals": [{ "name": "HR|BP|Temp|RR|SpO2|CRT", "value": "string", "unit": "°C for Temp, mmHg for BP, bpm for HR, breaths/min for RR, % for SpO2, seconds for CRT — NEVER use Fahrenheit for temperature", "abnormal": true|false }], "text": "string — additional vitals commentary", "ref": "string|null" },
-      "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
-      "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
-      "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
-      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" },
+      "chest":       { "text": "string — ALL chest findings (inspection, palpation, percussion, auscultation — cardiac AND respiratory) combined in one text block with **bold** sub-headings.", "ref": "string|null" },
+      "upper_limbs": { "text": "string — ALL upper limb findings (inspection, motor, sensory, reflexes, special tests) combined in one text block with **bold** sub-headings.", "ref": "string|null" },
+      "abdomen":     { "text": "string — ALL abdominal findings (inspection, palpation, percussion, auscultation, special tests like Murphy's/Rovsing's) combined in one text block with **bold** sub-headings. Example: **Inspection:** Distended with visible scar.\\n**Palpation:** Tender in RIF with guarding.\\n**Auscultation:** Reduced bowel sounds.", "ref": "string|null" },
+      "lower_limbs": { "text": "string — ALL lower limb findings (inspection, motor, sensory, reflexes, pulses, special tests) combined in one text block with **bold** sub-headings.", "ref": "string|null" },
       "extra":       { "label": "string — custom label e.g. Wound, DRE, Fundoscopy", "text": "string — special exam findings (omit if not applicable)", "ref": "string|null" }
     },
-    "IMPORTANT_NOTE": "Use ONLY these 8 exact keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment or abdomen_palpation.",
+    "IMPORTANT_NOTE": "Use ONLY these 8 exact keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment or abdomen_palpation. Combine ALL examination components (inspection, palpation, percussion, auscultation, special tests) into a SINGLE 'text' field per region using **bold** markdown sub-headings.",
     "related_topics": [
       { "key": "string", "label": "short label", "title": "topic title", "chapter": "Chapter X — Section Y", "body": "educational explanation", "quote": "quoted text from chapter" }
     ],

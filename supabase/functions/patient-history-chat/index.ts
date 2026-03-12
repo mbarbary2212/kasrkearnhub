@@ -146,7 +146,11 @@ function buildPatientKnowledge(
   for (const category of checklist) {
     parts.push(`\n[${category.label}]`);
     for (const item of category.items || []) {
-      parts.push(`- ${item.label}: ${item.expected_behaviour || 'N/A'}`);
+      if (item.expected_behaviour) {
+        parts.push(`- ${item.label}: ${item.expected_behaviour}`);
+      } else {
+        parts.push(`- ${item.label}`);
+      }
     }
   }
 
