@@ -7,7 +7,6 @@ import { useYears } from '@/hooks/useYears';
 import { useModules } from '@/hooks/useModules';
 import { DashboardHeader } from './DashboardHeader';
 import { LearningHubTabs } from './LearningHubTabs';
-import { LearningHubTabs } from './LearningHubTabs';
 import { LearningHubEmptyState } from './LearningHubEmptyState';
 import { ExportReportDropdown } from './ExportReportDropdown';
 import { Skeleton } from '@/components/ui/skeleton';
