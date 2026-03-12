@@ -102,7 +102,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   };
 
   const factoryEnabled = getValue('ai_content_factory_enabled', true);
-  const provider = getValue('ai_provider', 'lovable');
+  const provider = getValue('ai_provider', 'gemini');
   const lovableModel = getValue('lovable_model', 'google/gemini-3-flash-preview');
   const geminiModel = getValue('gemini_model', 'gemini-2.5-flash');
   const anthropicModel = getValue('anthropic_model', 'claude-sonnet-4-20250514');
