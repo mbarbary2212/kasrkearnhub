@@ -177,6 +177,58 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Post-generation: normalize physical exam keys ──
+    if (generatedData.physical_examination?.findings) {
+      const VALID_PE_KEYS = ["general", "head_neck", "vital_signs", "chest", "upper_limbs", "abdomen", "lower_limbs", "extra"];
+      const rawFindings = generatedData.physical_examination.findings;
+      const normalizedFindings: Record<string, any> = {};
+      const remapped: string[] = [];
+
+      function mapPEKey(key: string): string {
+        const k = key.toLowerCase();
+        if (VALID_PE_KEYS.includes(k)) return k;
+        if (k === "general_appearance") return "general";
+        if (k === "vitals") return "vital_signs";
+        if (k.includes("abdomen") || k.includes("abdominal")) return "abdomen";
+        if (k.includes("head") || k.includes("neck") || k.includes("cranial")) return "head_neck";
+        if (k.includes("chest") || k.includes("cardio") || k.includes("respiratory") || k.includes("lung")) return "chest";
+        if (k.includes("upper") || k.includes("arm") || k.includes("hand")) return "upper_limbs";
+        if (k.includes("lower") || k.includes("leg") || k.includes("foot")) return "lower_limbs";
+        if (k.includes("vital") || k.includes("bp") || k.includes("pulse")) return "vital_signs";
+        return "extra";
+      }
+
+      for (const [key, val] of Object.entries(rawFindings)) {
+        if (!val || typeof val !== "object") continue;
+        const mapped = mapPEKey(key);
+        if (key !== mapped) remapped.push(`${key}→${mapped}`);
+
+        const v = val as Record<string, any>;
+        const text = v.finding || v.text || "";
+        const label = v.label || key.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+        if (normalizedFindings[mapped]) {
+          normalizedFindings[mapped].text = [normalizedFindings[mapped].text, `**${label}:** ${text}`].filter(Boolean).join("\n\n");
+          if (v.ref && !normalizedFindings[mapped].ref) normalizedFindings[mapped].ref = v.ref;
+        } else {
+          normalizedFindings[mapped] = {
+            text,
+            ref: v.ref || null,
+            ...(mapped === "extra" ? { label } : {}),
+            ...(v.vitals ? { vitals: v.vitals } : {}),
+          };
+        }
+      }
+
+      generatedData.physical_examination.findings = normalizedFindings;
+      // Remove IMPORTANT_NOTE if AI echoed it
+      delete generatedData.physical_examination.IMPORTANT_NOTE;
+
+      if (remapped.length > 0) {
+        console.log(`[generate-structured-case] PE keys normalized: ${remapped.join(", ")}`);
+      }
+    }
+
     // ── Save generated data to the case ──
     const { error: updateError } = await serviceClient
       .from("virtual_patient_cases")
@@ -344,8 +396,10 @@ ${activeSections.includes("physical_examination") ? `  "physical_examination": {
       "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
       "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
       "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
-      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" }
+      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" },
+      "extra":       { "label": "string — custom label e.g. Wound, DRE, Fundoscopy", "text": "string — special exam findings (omit if not applicable)", "ref": "string|null" }
     },
+    "IMPORTANT_NOTE": "Use ONLY these 8 exact keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment or abdomen_palpation.",
     "related_topics": [
       { "key": "string", "label": "short label", "title": "topic title", "chapter": "Chapter X — Section Y", "body": "educational explanation", "quote": "quoted text from chapter" }
     ],

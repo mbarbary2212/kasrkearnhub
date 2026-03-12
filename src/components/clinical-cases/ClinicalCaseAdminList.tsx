@@ -37,6 +37,8 @@ import { useCreateVirtualPatientCase } from '@/hooks/useVirtualPatient';
 import { SectionType } from '@/types/structuredCase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { normalizePhysicalExamFindings, VALID_REGION_KEYS } from '@/utils/physicalExamKeyMapper';
+import * as Sentry from '@sentry/react';
 
 interface ClinicalCaseAdminListProps {
   moduleId: string;
@@ -105,6 +107,23 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
       if (!json.case_meta?.title) {
         toast.error('Invalid JSON: missing case_meta.title');
         return;
+      }
+
+      // Normalize physical exam findings keys before saving
+      if (json.physical_examination?.findings && typeof json.physical_examination.findings === 'object') {
+        const { normalized, remappedKeys } = normalizePhysicalExamFindings(
+          json.physical_examination.findings,
+          'JSON import'
+        );
+        json.physical_examination.findings = normalized;
+        if (remappedKeys.length > 0) {
+          const mappingList = remappedKeys.map(r => `${r.from} → ${r.to}`).join(', ');
+          toast.info(`Physical exam keys auto-normalized: ${mappingList}`);
+          Sentry.captureMessage('PE keys normalized during JSON import', {
+            level: 'info',
+            extra: { remappedKeys, caseTitle: json.case_meta.title },
+          });
+        }
       }
 
       const activeSections = ALL_SECTION_KEYS.filter(k => !!json[k]);
