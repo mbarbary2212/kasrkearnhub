@@ -60,11 +60,16 @@ export function StudentDashboard() {
     }
   }, [selectedYearId]);
   
-  // Fetch dashboard with filters - only when module is selected
+  // Fetch test progress (shared data — also used by DashboardTestProgress)
+  const { data: testProgress, isLoading: testProgressLoading } = useTestProgress(
+    moduleSelected ? selectedModuleId : undefined
+  );
+
+  // Fetch dashboard with filters — passes testProgress to avoid duplicate fetch
   const { data: dashboard, isLoading: dashboardLoading } = useStudentDashboard({
     yearId: selectedYearId || undefined,
     moduleId: selectedModuleId || undefined,
-  });
+  }, testProgress);
 
   const isLoading = yearsLoading;
 
