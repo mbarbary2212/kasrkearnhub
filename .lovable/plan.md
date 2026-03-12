@@ -35,6 +35,15 @@ All schema changes applied successfully:
 | 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
 | 14 | N+1 Progress API Optimization (RPC) | ✅ |
 | 15 | Bound question_attempts + Deduplicate Dashboard Query | ✅ |
+| 16 | History Counter + PE Merge Fix + Combined Exam Prompts | ✅ |
+
+### Step 16: History Counter + PE Merge Fix + Combined Exam Prompts ✅
+- **Question counter**: Removed `/15` denominator from both chat and voice mode — now shows `X questions asked` without pressuring students to hit a target
+- **Patient diabetes denial**: Fixed `expected_behaviour` fallback in `patient-history-chat` — was `'N/A'` causing AI to deny conditions; now outputs label alone when no expected_behaviour exists
+- **PE first-entry label**: Fixed `normalizePhysicalExamFindings` — first remapped entry (e.g. `abdomen_inspection` → `abdomen`) now gets `**Label:**` prefix matching subsequent merged entries
+- **PE card scroll**: Added `max-h-[280px] overflow-y-auto` to expanded finding cards so long combined text is scrollable
+- **AI generation prompt**: Updated `generate-structured-case` PE schema hints to explicitly require combining ALL exam components (inspection, palpation, percussion, auscultation, special tests) into a single text field per region with bold sub-headings
+- **Help & Templates**: Updated template JSON example (abdomen shows combined format) and expanded rule 11 to mandate combining exam components per region
 
 ### Key Design Decisions
 - Checklist PDFs are optional reference documents (not required)
