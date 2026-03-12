@@ -106,7 +106,70 @@ async function getCurrentAttemptNumber(
 }
 
 /**
+ * Get the max attempt number across ALL question types for a chapter.
+ * Used by the consolidated hook to avoid per-type queries.
+ */
+async function getMaxAttemptNumberForChapter(
+  userId: string,
+  chapterId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from('chapter_attempts')
+    .select('attempt_number, is_completed')
+    .eq('user_id', userId)
+    .eq('chapter_id', chapterId)
+    .order('attempt_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (data?.attempt_number) {
+    if (data.is_completed) {
+      return data.attempt_number + 1;
+    }
+    return data.attempt_number;
+  }
+  return 1;
+}
+
+// Lightweight type for the consolidated query (only fetched columns)
+export interface QuestionAttemptSummary {
+  question_id: string;
+  question_type: string;
+  is_correct: boolean | null;
+  selected_answer: Json;
+  score: number | null;
+  status: string;
+}
+
+/**
+ * Consolidated hook: fetches ALL question attempts for a chapter in ONE query.
+ * Replaces multiple per-type useChapterQuestionAttempts calls.
+ */
+export function useAllChapterQuestionAttempts(chapterId?: string) {
+  const { user } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['chapter-question-attempts', chapterId, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !chapterId) return [];
+
+      const { data, error } = await supabase
+        .from('question_attempts')
+        .select('question_id, question_type, is_correct, selected_answer, score, status')
+        .eq('user_id', user.id)
+        .eq('chapter_id', chapterId);
+
+      if (error) throw error;
+      return (data || []) as QuestionAttemptSummary[];
+    },
+    enabled: !!chapterId && !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
  * Hook to get all question attempts for a chapter (current attempt)
+ * @deprecated Use useAllChapterQuestionAttempts instead for consolidated fetching
  */
 export function useChapterQuestionAttempts(
   chapterId?: string,
@@ -141,7 +204,7 @@ export function useChapterQuestionAttempts(
       return (data || []) as QuestionAttempt[];
     },
     enabled: !!chapterId && !!user?.id,
-    staleTime: 10000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
