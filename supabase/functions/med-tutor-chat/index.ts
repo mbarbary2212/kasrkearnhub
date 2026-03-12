@@ -57,7 +57,7 @@ async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; 
       }
       switch (row.key) {
         case 'ai_provider':
-          provider = value === 'gemini' ? 'gemini' : 'lovable';
+          provider = value === 'lovable' ? 'lovable' : 'gemini';
           break;
         case 'gemini_model':
           geminiModel = value || null;

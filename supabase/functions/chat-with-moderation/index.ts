@@ -80,8 +80,8 @@ async function getTutorSettings(serviceClient: any): Promise<TutorSettings> {
   }
 
   // Resolve provider: feature-specific > global > default
-  const resolvedProvider = featureProvider ?? globalProvider ?? 'lovable';
-  defaults.provider = resolvedProvider === 'gemini' ? 'gemini' : 'lovable';
+  const resolvedProvider = featureProvider ?? globalProvider ?? 'gemini';
+  defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : 'gemini';
 
   // Resolve model: feature-specific > global (based on provider) > default
   if (featureModel) {

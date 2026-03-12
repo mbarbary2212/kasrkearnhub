@@ -292,7 +292,7 @@ export function getModelForContentType(
     lovable: settings.lovable_model,
     anthropic: settings.anthropic_model,
   };
-  return modelMap[settings.ai_provider] || settings.lovable_model;
+  return modelMap[settings.ai_provider] || settings.gemini_model;
 }
 
 /**
