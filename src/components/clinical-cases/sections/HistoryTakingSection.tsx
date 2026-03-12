@@ -635,7 +635,7 @@ export function HistoryTakingSection({
           {/* Message counter */}
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              {studentMessageCount}/{MAX_STUDENT_MESSAGES} questions
+              {studentMessageCount} questions asked
             </span>
             <Button
               onClick={handleFinishInteraction}
