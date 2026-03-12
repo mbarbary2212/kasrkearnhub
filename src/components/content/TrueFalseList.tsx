@@ -33,7 +33,7 @@ import {
   useRestoreTrueFalseQuestion,
   type TrueFalseQuestion,
 } from '@/hooks/useTrueFalseQuestions';
-import { useChapterQuestionAttempts } from '@/hooks/useQuestionAttempts';
+import { useAllChapterQuestionAttempts } from '@/hooks/useQuestionAttempts';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
