@@ -70,7 +70,7 @@ interface CoachSettings {
   enabled: boolean;
   dailyLimit: number;
   disabledMessage: string;
-  provider: 'lovable' | 'gemini';
+  provider: 'gemini' | 'lovable';
   model: string;
 }
 
