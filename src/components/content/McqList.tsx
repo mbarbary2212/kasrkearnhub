@@ -54,7 +54,7 @@ import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddPermissionGuard } from '@/hooks/useAddPermissionGuard';
 import { 
-  useChapterQuestionAttempts, 
+  useAllChapterQuestionAttempts, 
   useResetChapterAttempt,
 } from '@/hooks/useQuestionAttempts';
 import { BulkUploadAnalyzer } from '@/components/admin/BulkUploadAnalyzer';
