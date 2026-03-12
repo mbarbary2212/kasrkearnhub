@@ -437,6 +437,11 @@ Each case can include up to 10 sections (admins toggle which are active):
 2. PHYSICAL EXAMINATION
    Body map with 8 fixed anatomical regions:
      general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra
+   ⚠️ IMPORTANT: Only these 8 exact keys are valid. Do NOT use descriptive keys
+   like "wound_assessment", "abdomen_palpation", or "chest_auscultation".
+   Use "extra" with a custom "label" for any special examination (e.g., Wound, DRE, Fundoscopy).
+   Non-standard keys are auto-normalized during import/generation but may cause
+   unexpected merging — always use the correct keys from the start.
    - Each region has a text finding (hidden until student clicks).
    - vital_signs includes a structured vitals grid (name, value, unit, abnormal).
    - "extra" has a custom label for special exams (e.g., DRE, fundoscopy).
