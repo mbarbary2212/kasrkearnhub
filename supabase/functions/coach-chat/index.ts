@@ -107,7 +107,10 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
   let globalLovableModel: string | null = null;
 
   for (const row of data) {
-    const value = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    let value = row.value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep as-is */ }
+    }
     switch (row.key) {
       case 'study_coach_enabled':
         defaults.enabled = value === true || value === 'true';
