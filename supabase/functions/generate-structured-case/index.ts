@@ -344,8 +344,10 @@ ${activeSections.includes("physical_examination") ? `  "physical_examination": {
       "chest":       { "text": "string — chest and cardiovascular findings", "ref": "string|null" },
       "upper_limbs": { "text": "string — upper limb findings", "ref": "string|null" },
       "abdomen":     { "text": "string — abdominal examination findings", "ref": "string|null" },
-      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" }
+      "lower_limbs": { "text": "string — lower limb findings", "ref": "string|null" },
+      "extra":       { "label": "string — custom label e.g. Wound, DRE, Fundoscopy", "text": "string — special exam findings (omit if not applicable)", "ref": "string|null" }
     },
+    "IMPORTANT_NOTE": "Use ONLY these 8 exact keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment or abdomen_palpation.",
     "related_topics": [
       { "key": "string", "label": "short label", "title": "topic title", "chapter": "Chapter X — Section Y", "body": "educational explanation", "quote": "quoted text from chapter" }
     ],
