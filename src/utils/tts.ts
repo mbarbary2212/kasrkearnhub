@@ -40,6 +40,7 @@ export function stopAllTTS() {
 
 /**
  * Speak Arabic text using either browser TTS or ElevenLabs streaming.
+ * The returned Promise resolves when playback **ends** (not when it starts).
  * Falls back to browser TTS on any ElevenLabs error.
  */
 export type PatientTone = 'calm' | 'worried' | 'anxious' | 'angry' | 'impolite' | 'in_pain' | 'cooperative';
@@ -95,9 +96,33 @@ export async function speakArabic(
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       currentAudio = audio;
-      audio.addEventListener('ended', () => { if (currentAudio === audio) currentAudio = null; });
-      await audio.play();
-      return;
+
+      // Return a Promise that resolves when playback finishes
+      return new Promise<void>((resolve) => {
+        audio.addEventListener('ended', () => {
+          if (currentAudio === audio) currentAudio = null;
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        });
+        audio.addEventListener('error', () => {
+          if (currentAudio === audio) currentAudio = null;
+          URL.revokeObjectURL(audioUrl);
+          resolve(); // resolve gracefully — don't block callers
+        });
+        // If externally stopped via stopAllTTS(), the pause event fires
+        audio.addEventListener('pause', () => {
+          // Only resolve if this audio was cleared (stopAllTTS sets src='')
+          if (!audio.src || audio.src === '') {
+            URL.revokeObjectURL(audioUrl);
+            resolve();
+          }
+        });
+        audio.play().catch(() => {
+          if (currentAudio === audio) currentAudio = null;
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        });
+      });
     } catch (err) {
       console.error('ElevenLabs TTS failed, falling back to browser:', err);
       // Fall through to browser TTS
@@ -106,9 +131,13 @@ export async function speakArabic(
 
   // Browser fallback (also default for provider === 'browser')
   if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-EG';
-    utterance.rate = 1.1;
-    window.speechSynthesis.speak(utterance);
+    return new Promise<void>((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ar-EG';
+      utterance.rate = 1.1;
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.speak(utterance);
+    });
   }
 }

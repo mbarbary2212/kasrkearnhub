@@ -108,6 +108,9 @@ export function HistoryTakingSection({
         setLastSpoken(data.text);
         setVoiceErrorCount(0);
         sendChatMessageRef.current(data.text);
+        // Immediately disconnect to prevent echo/phantom responses during TTS
+        // Auto-reconnect happens in sendChatMessage after TTS finishes
+        scribe.disconnect();
       }
     },
     onPartialTranscript: (data) => {
@@ -194,14 +197,29 @@ export function HistoryTakingSection({
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-      // Voice mode: speak the response (unless muted)
-      if (selectedMode === 'voice' && !isMuted) {
-        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-        const voiceId = voiceIdOverride
-          || (gender === 'female'
-            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-        speakArabic(reply, ttsProvider, voiceId, patientTone);
+      // Voice mode: speak the response (unless muted), then auto-reconnect mic
+      if (selectedMode === 'voice') {
+        // Ensure scribe is disconnected during TTS to prevent echo
+        if (scribe.isConnected) scribe.disconnect();
+
+        if (!isMuted) {
+          const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+          const voiceId = voiceIdOverride
+            || (gender === 'female'
+              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+          await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          // 800ms conversational pause before re-opening mic
+          await new Promise(r => setTimeout(r, 800));
+        } else {
+          // Muted: short pause then reconnect
+          await new Promise(r => setTimeout(r, 200));
+        }
+
+        // Auto-reconnect scribe for the next question (if not at limits)
+        if (!shouldDisableInput && !isOverTime && phase === 'interact') {
+          connectScribe();
+        }
       }
     } catch (err) {
       console.error('Chat error:', err);
@@ -280,6 +298,33 @@ export function HistoryTakingSection({
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
 
+  // ── Reusable scribe connect helper ──────────────────────
+  const connectScribe = useCallback(async () => {
+    setScribeConnecting(true);
+    try {
+      const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !tokenData?.token) {
+        throw new Error(error?.message || 'No token received');
+      }
+      await scribe.connect({
+        token: tokenData.token,
+        microphone: {
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+    } catch (err) {
+      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
+      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
+        level: 'info',
+        extra: { error: String(err) },
+      });
+      startBrowserSTT();
+    } finally {
+      setScribeConnecting(false);
+    }
+  }, [scribe, startBrowserSTT]);
+
   // ── Voice toggle (ElevenLabs Scribe with browser STT fallback) ──
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
@@ -296,34 +341,9 @@ export function HistoryTakingSection({
       return;
     }
 
-    // Try ElevenLabs Scribe first
-    setScribeConnecting(true);
-    try {
-      const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !tokenData?.token) {
-        throw new Error(error?.message || 'No token received');
-      }
-
-      await scribe.connect({
-        token: tokenData.token,
-        microphone: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
-      // isListening will be set by the useEffect watching scribe.isConnected
-    } catch (err) {
-      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
-      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
-        level: 'info',
-        extra: { error: String(err) },
-      });
-      // Fall back to browser Web Speech API
-      startBrowserSTT();
-    } finally {
-      setScribeConnecting(false);
-    }
-  }, [isListening, scribe, startBrowserSTT]);
+    // Connect scribe (or fallback)
+    await connectScribe();
+  }, [isListening, scribe, connectScribe]);
 
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
@@ -708,7 +728,7 @@ export function HistoryTakingSection({
               {/* Fading speech bubble — last AI response */}
               <div
                 className={cn(
-                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
+                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground max-h-24 overflow-y-auto text-center w-full transition-opacity duration-500',
                   lastAiMessage ? 'opacity-100' : 'opacity-0'
                 )}
                 dir="rtl"
