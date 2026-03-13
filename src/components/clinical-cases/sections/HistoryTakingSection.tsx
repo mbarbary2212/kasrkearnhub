@@ -576,12 +576,24 @@ export function HistoryTakingSection({
               <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
               <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
             </div>
-            {timerBadge}
           </div>
 
-          {/* Scrollable Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20">
-            <div className="space-y-3">
+          {/* Scrollable Messages with floating overlays */}
+          <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20 relative">
+            {/* Floating timer */}
+            {timerBadge && (
+              <div className="pointer-events-none absolute top-2 right-2 z-20">
+                {timerBadge}
+              </div>
+            )}
+            {/* Floating question counter */}
+            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
+              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
+                {studentMessageCount} questions asked
+              </Badge>
+            </div>
+
+            <div className="space-y-3 pt-8 pb-6">
               {chatMessages.map((msg, i) => (
                 <div
                   key={i}
@@ -634,11 +646,8 @@ export function HistoryTakingSection({
               </Button>
             </div>
 
-            {/* Message counter */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {studentMessageCount} questions asked
-              </span>
+            {/* End button */}
+            <div className="flex items-center justify-end">
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
@@ -675,7 +684,6 @@ export function HistoryTakingSection({
               <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
               <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
               <div className="mt-1 flex items-center justify-center gap-2">
-                {timerBadge}
                 <Button
                   size="sm"
                   variant={isMuted ? 'destructive' : 'outline'}
@@ -699,8 +707,20 @@ export function HistoryTakingSection({
             </div>
           </div>
 
-          {/* Scrollable Middle */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2">
+          {/* Scrollable Middle with floating overlays */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2 relative">
+            {/* Floating timer */}
+            {timerBadge && (
+              <div className="pointer-events-none absolute top-2 right-2 z-20">
+                {timerBadge}
+              </div>
+            )}
+            {/* Floating question counter */}
+            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
+              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
+                {studentMessageCount} questions asked
+              </Badge>
+            </div>
             {/* Last spoken */}
             {lastSpoken && (
               <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-2 max-w-xs text-center">
@@ -802,11 +822,8 @@ export function HistoryTakingSection({
               </div>
             )}
 
-            {/* Message counter + End button */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {studentMessageCount} questions asked
-              </span>
+            {/* End button */}
+            <div className="flex items-center justify-end">
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
