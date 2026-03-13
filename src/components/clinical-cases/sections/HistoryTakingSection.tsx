@@ -97,6 +97,7 @@ export function HistoryTakingSection({
 
   // Ref to hold latest sendChatMessage for scribe callbacks
   const sendChatMessageRef = useRef<(text: string) => void>(() => {});
+  const voiceBubbleRef = useRef<HTMLDivElement>(null);
 
   // ElevenLabs Scribe hook (always called — hooks can't be conditional)
   const scribe = useScribe({
@@ -171,6 +172,18 @@ export function HistoryTakingSection({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Last AI message for voice bubble
+  const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
+    ? chatMessages[chatMessages.length - 1].content
+    : '';
+
+  // Auto-scroll voice bubble to bottom when patient response changes
+  useEffect(() => {
+    if (voiceBubbleRef.current) {
+      voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [lastAiMessage]);
 
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
@@ -705,9 +718,6 @@ export function HistoryTakingSection({
 
     // ── Voice mode ──
     if (selectedMode === 'voice') {
-      const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
-        ? chatMessages[chatMessages.length - 1].content
-        : '';
 
       return (
         <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
@@ -727,6 +737,7 @@ export function HistoryTakingSection({
               </div>
               {/* Fading speech bubble — last AI response */}
               <div
+                ref={voiceBubbleRef}
                 className={cn(
                   'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground max-h-24 overflow-y-auto text-center w-full transition-opacity duration-500',
                   lastAiMessage ? 'opacity-100' : 'opacity-0'
