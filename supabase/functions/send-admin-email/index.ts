@@ -230,34 +230,28 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Send via Resend
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [profile.email],
+    // Send via Resend with Brevo fallback
+    try {
+      const result = await sendWithBrevoFallback({
+        resendApiKey: resendApiKey!,
+        fromEmail: fromEmail!,
+        toEmail: profile.email,
+        toName: recipientName,
         subject,
         html,
-      }),
-    });
+      });
 
-    if (!resendRes.ok) {
-      const errText = await resendRes.text();
-      console.error('Resend error:', errText);
-      return new Response(JSON.stringify({ sent: false, reason: 'resend_error' }), {
+      return new Response(JSON.stringify({ sent: true, provider: result.provider }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (emailError) {
+      console.error('All email providers failed:', emailError);
+      return new Response(JSON.stringify({ sent: false, reason: 'all_providers_failed' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    return new Response(JSON.stringify({ sent: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
     console.error('Error in send-admin-email:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
