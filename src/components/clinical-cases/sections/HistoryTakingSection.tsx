@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle, VolumeX, Volume2 } from 'lucide-react';
+import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle, VolumeX, Volume2, Stethoscope } from 'lucide-react';
 import * as Sentry from '@sentry/react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';

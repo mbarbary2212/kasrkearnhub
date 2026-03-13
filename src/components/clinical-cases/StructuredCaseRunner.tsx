@@ -339,6 +339,7 @@ export function StructuredCaseRunner({
               historyInteractionMode={historyInteractionMode}
               caseId={caseId}
               studentName={studentName}
+              studentAvatarUrl={studentAvatarUrl}
               patientTone={generatedData?.patient?.tone}
               estimatedMinutes={caseData.estimated_minutes}
               voiceIdOverride={(generatedData?.patient as any)?.voice_id}
