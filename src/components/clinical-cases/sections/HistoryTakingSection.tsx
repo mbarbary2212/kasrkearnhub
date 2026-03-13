@@ -197,14 +197,29 @@ export function HistoryTakingSection({
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-      // Voice mode: speak the response (unless muted)
-      if (selectedMode === 'voice' && !isMuted) {
-        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-        const voiceId = voiceIdOverride
-          || (gender === 'female'
-            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-        speakArabic(reply, ttsProvider, voiceId, patientTone);
+      // Voice mode: speak the response (unless muted), then auto-reconnect mic
+      if (selectedMode === 'voice') {
+        // Ensure scribe is disconnected during TTS to prevent echo
+        if (scribe.isConnected) scribe.disconnect();
+
+        if (!isMuted) {
+          const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+          const voiceId = voiceIdOverride
+            || (gender === 'female'
+              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+          await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          // 800ms conversational pause before re-opening mic
+          await new Promise(r => setTimeout(r, 800));
+        } else {
+          // Muted: short pause then reconnect
+          await new Promise(r => setTimeout(r, 200));
+        }
+
+        // Auto-reconnect scribe for the next question (if not at limits)
+        if (!shouldDisableInput && !isOverTime && phase === 'interact') {
+          connectScribe();
+        }
       }
     } catch (err) {
       console.error('Chat error:', err);
