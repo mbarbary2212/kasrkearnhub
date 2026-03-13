@@ -46,6 +46,7 @@ export function HistoryTakingSection({
   historyInteractionMode,
   caseId,
   studentName,
+  studentAvatarUrl,
   patientTone,
   estimatedMinutes,
   voiceIdOverride,
