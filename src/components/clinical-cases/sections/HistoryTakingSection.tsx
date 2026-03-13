@@ -696,20 +696,19 @@ export function HistoryTakingSection({
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar + speech bubble */}
-            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+            <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               <div className={cn('rounded-full', isListening && 'animate-pulse-ring')}>
                 {avatarUrl && (
-                  <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                  <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
                     <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
                     <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
                   </Avatar>
                 )}
               </div>
-              <p className="text-sm font-medium mt-1 text-center truncate w-full">{avatarName || 'Patient'}</p>
               {/* Fading speech bubble — last AI response */}
               <div
                 className={cn(
-                  'mt-2 rounded-lg bg-card border px-2 py-1 text-xs text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
+                  'mt-1.5 rounded-lg bg-card border px-1.5 py-0.5 text-[11px] text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
                   lastAiMessage ? 'opacity-100' : 'opacity-0'
                 )}
                 dir="rtl"
@@ -719,7 +718,7 @@ export function HistoryTakingSection({
             </div>
 
             {/* Center column: Mic button + status */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <div className="flex-1 flex flex-col items-start pt-2 gap-4">
               {isSending && (
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
                   <Loader2 className="w-3 h-3 animate-spin" />
