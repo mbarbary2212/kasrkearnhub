@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle, VolumeX, Volume2 } from 'lucide-react';
+import { Loader2, FileText, MessageCircle, Mic, MicOff, Send, CheckCircle2, Globe, Clock, AlertTriangle, VolumeX, Volume2, Stethoscope } from 'lucide-react';
 import * as Sentry from '@sentry/react';
 import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
@@ -23,6 +23,7 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   historyInteractionMode?: string;
   caseId?: string;
   studentName?: string;
+  studentAvatarUrl?: string;
   patientTone?: PatientTone;
   estimatedMinutes?: number;
   voiceIdOverride?: string;
@@ -45,6 +46,7 @@ export function HistoryTakingSection({
   historyInteractionMode,
   caseId,
   studentName,
+  studentAvatarUrl,
   patientTone,
   estimatedMinutes,
   voiceIdOverride,
@@ -564,65 +566,79 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          {/* Sticky Header */}
-          <div className="flex items-center gap-3 pb-3 shrink-0">
-            {avatarUrl && (
-              <Avatar className="w-10 h-10 border-2 border-primary/20">
-                <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-              </Avatar>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
-              <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
-            </div>
-          </div>
 
-          {/* Scrollable Messages with floating overlays */}
-          <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20 relative">
-            {/* Floating timer */}
-            {timerBadge && (
-              <div className="pointer-events-none absolute top-2 right-2 z-20">
-                {timerBadge}
-              </div>
-            )}
-            {/* Floating question counter */}
-            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
-              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
-                {studentMessageCount} questions asked
-              </Badge>
-            </div>
-
-            <div className="space-y-3 pt-8 pb-6">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'max-w-[80%] rounded-xl px-3 py-2 text-sm',
-                    msg.role === 'user'
-                      ? 'ml-auto bg-primary text-primary-foreground'
-                      : 'bg-card border text-card-foreground'
-                  )}
-                >
-                  {msg.content}
-                </div>
-              ))}
-              {isSending && (
-                <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Thinking...
-                </div>
+          {/* Three-column face-to-face layout */}
+          <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
+            {/* Left column: Patient avatar */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              {avatarUrl && (
+                <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                  <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                </Avatar>
               )}
-              <div ref={chatEndRef} />
+              <p className="text-sm font-medium mt-1 text-center truncate w-full">{avatarName || 'Patient'}</p>
+            </div>
+
+            {/* Center column: Scrollable messages */}
+            <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20">
+              <div className="space-y-3">
+                {chatMessages.map((msg, i) => {
+                  const isUser = msg.role === 'user';
+                  const userMsgIndex = isUser
+                    ? chatMessages.slice(0, i + 1).filter(m => m.role === 'user').length
+                    : 0;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        'max-w-[85%] rounded-xl px-3 py-2 text-sm',
+                        isUser
+                          ? 'ml-auto bg-primary text-primary-foreground'
+                          : 'bg-card border text-card-foreground'
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="flex-1">{msg.content}</span>
+                        {isUser && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0 ml-1">
+                            Q{userMsgIndex}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {isSending && (
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Thinking...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* Right column: Student avatar */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                {studentAvatarUrl ? (
+                  <AvatarImage src={studentAvatarUrl} alt="You" />
+                ) : null}
+                <AvatarFallback>
+                  <Stethoscope className="w-6 h-6 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium mt-1 text-center">أنت</p>
             </div>
           </div>
 
           {/* Sticky Footer */}
-          <div className="pt-3 space-y-3 shrink-0">
+          <div className="pt-3 space-y-2 shrink-0">
             {/* Warning banner */}
             {warningBanner}
 
-            {/* Input */}
+            {/* Input row */}
             <div className="flex gap-2">
               <Input
                 value={chatInput}
@@ -636,6 +652,7 @@ export function HistoryTakingSection({
                 placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
                 disabled={isSending || shouldDisableInput}
                 className="text-sm"
+                autoFocus
               />
               <Button
                 size="icon"
@@ -646,11 +663,17 @@ export function HistoryTakingSection({
               </Button>
             </div>
 
-            {/* End button */}
-            <div className="flex items-center justify-end">
+            {/* Footer row: timer + count + end button */}
+            <div className="flex items-center gap-3">
+              {timerBadge}
+              <span className="text-xs text-muted-foreground">
+                {studentMessageCount} questions asked
+              </span>
+              <div className="flex-1" />
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+                size="sm"
                 className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
               >
                 <CheckCircle2 className="w-4 h-4" />
@@ -664,169 +687,119 @@ export function HistoryTakingSection({
 
     // ── Voice mode ──
     if (selectedMode === 'voice') {
+      const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
+        ? chatMessages[chatMessages.length - 1].content
+        : '';
+
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          {/* Sticky Header */}
-          <div className="flex flex-col items-center gap-3 pb-4 shrink-0">
-            <div className={cn(
-              'rounded-full',
-              isListening && 'animate-pulse-ring'
-            )}>
-              {avatarUrl && (
-                <Avatar className="w-24 h-24 border-4 border-primary/20">
-                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                  <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-                </Avatar>
-              )}
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
-              <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
-              <div className="mt-1 flex items-center justify-center gap-2">
-                <Button
-                  size="sm"
-                  variant={isMuted ? 'destructive' : 'outline'}
-                  className="gap-1 text-xs h-6 px-2"
-                  onClick={() => {
-                    const next = !isMuted;
-                    setIsMuted(next);
-                    try { localStorage.setItem('mute_ai_voice', String(next)); } catch {}
-                    if (next) {
-                      window.speechSynthesis?.cancel();
-                      toast.info('AI voice muted — responses will be shown as text only.');
-                    } else {
-                      toast.info('AI voice unmuted.');
-                    }
-                  }}
-                >
-                  {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                  {isMuted ? 'Muted' : 'Mute'}
-                </Button>
-              </div>
-            </div>
-          </div>
 
-          {/* Scrollable Middle with floating overlays */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2 relative">
-            {/* Floating timer */}
-            {timerBadge && (
-              <div className="pointer-events-none absolute top-2 right-2 z-20">
-                {timerBadge}
-              </div>
-            )}
-            {/* Floating question counter */}
-            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
-              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
-                {studentMessageCount} questions asked
-              </Badge>
-            </div>
-            {/* Last spoken */}
-            {lastSpoken && (
-              <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-2 max-w-xs text-center">
-                "{lastSpoken}"
-              </div>
-            )}
-
-            {/* Last AI reply */}
-            {chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' && (
-              <div className="text-sm bg-card border rounded-lg px-4 py-2 max-w-xs text-center">
-                {chatMessages[chatMessages.length - 1].content}
-              </div>
-            )}
-
-            {isSending && (
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                جاري التفكير...
-              </div>
-            )}
-
-            <Button
-              size="lg"
-              variant={isListening ? 'destructive' : 'default'}
-              className="gap-2 rounded-full w-16 h-16"
-              onClick={toggleVoice}
-              disabled={isSending || shouldDisableInput || scribeConnecting}
-            >
-              {scribeConnecting ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : isListening ? (
-                <MicOff className="w-6 h-6" />
-              ) : (
-                <Mic className="w-6 h-6" />
-              )}
-            </Button>
-            <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
-            {/* Listening indicator + interim transcript */}
-            {isListening && (
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-2 text-sm text-primary">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
-                  </span>
-                  جاري الاستماع... اضغط لإيقاف
-                </div>
-                {interimTranscript && (
-                  <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
-                    {interimTranscript}
-                  </p>
+          {/* Three-column face-to-face layout */}
+          <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
+            {/* Left column: Patient avatar + speech bubble */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              <div className={cn('rounded-full', isListening && 'animate-pulse-ring')}>
+                {avatarUrl && (
+                  <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                    <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                    <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                  </Avatar>
                 )}
               </div>
-            )}
-            {!isListening && !scribeConnecting && (
-              <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
-            )}
-            {scribeConnecting && (
-              <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
-            )}
+              <p className="text-sm font-medium mt-1 text-center truncate w-full">{avatarName || 'Patient'}</p>
+              {/* Fading speech bubble — last AI response */}
+              <div
+                className={cn(
+                  'mt-2 rounded-lg bg-card border px-2 py-1 text-xs text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
+                  lastAiMessage ? 'opacity-100' : 'opacity-0'
+                )}
+                dir="rtl"
+              >
+                {lastAiMessage || '\u00A0'}
+              </div>
+            </div>
+
+            {/* Center column: Mic button + status */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+              {isSending && (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  جاري التفكير...
+                </div>
+              )}
+
+              <Button
+                size="lg"
+                variant={isListening ? 'destructive' : 'default'}
+                className="gap-2 rounded-full w-16 h-16"
+                onClick={toggleVoice}
+                disabled={isSending || shouldDisableInput || scribeConnecting}
+              >
+                {scribeConnecting ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="w-6 h-6" />
+                ) : (
+                  <Mic className="w-6 h-6" />
+                )}
+              </Button>
+
+              {/* Listening indicator + interim transcript */}
+              {isListening && (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-2 text-sm text-primary">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                    </span>
+                    جاري الاستماع...
+                  </div>
+                  {interimTranscript && (
+                    <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
+                      {interimTranscript}
+                    </p>
+                  )}
+                </div>
+              )}
+              {!isListening && !scribeConnecting && !isSending && (
+                <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
+              )}
+              {scribeConnecting && (
+                <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
+              )}
+            </div>
+
+            {/* Right column: Student avatar */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                {studentAvatarUrl ? (
+                  <AvatarImage src={studentAvatarUrl} alt="You" />
+                ) : null}
+                <AvatarFallback>
+                  <Stethoscope className="w-6 h-6 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium mt-1 text-center">أنت</p>
+            </div>
           </div>
 
           {/* Sticky Footer */}
-          <div className="pt-3 space-y-3 shrink-0">
+          <div className="pt-3 space-y-2 shrink-0">
             {/* Warning banner */}
-            {warningBanner && <div className="w-full">{warningBanner}</div>}
+            {warningBanner}
 
-            {/* Fallback text input */}
-            {showVoiceFallbackInput && (
-              <div className="flex gap-2 w-full" dir="rtl">
-                <Input
-                  value={voiceFallbackInput}
-                  onChange={e => setVoiceFallbackInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (voiceFallbackInput.trim()) {
-                        sendChatMessage(voiceFallbackInput);
-                        setVoiceFallbackInput('');
-                      }
-                    }
-                  }}
-                  placeholder={shouldDisableInput ? 'تم الوصول للحد الأقصى' : 'اكتب سؤالك هنا...'}
-                  disabled={isSending || shouldDisableInput}
-                  className="text-sm"
-                />
-                <Button
-                  size="icon"
-                  onClick={() => {
-                    if (voiceFallbackInput.trim()) {
-                      sendChatMessage(voiceFallbackInput);
-                      setVoiceFallbackInput('');
-                    }
-                  }}
-                  disabled={!voiceFallbackInput.trim() || isSending || shouldDisableInput}
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-
-            {/* End button */}
-            <div className="flex items-center justify-end">
+            {/* Footer row: timer + count + end button */}
+            <div className="flex items-center gap-3">
+              {timerBadge}
+              <span className="text-xs text-muted-foreground">
+                {studentMessageCount} questions asked
+              </span>
+              <div className="flex-1" />
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+                size="sm"
                 className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
               >
                 <CheckCircle2 className="w-4 h-4" />
