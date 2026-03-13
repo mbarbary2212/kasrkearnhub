@@ -562,10 +562,10 @@ export function HistoryTakingSection({
     // ── Chat mode ──
     if (selectedMode === 'chat') {
       return (
-        <div className="space-y-3 relative">
+        <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          {/* Header */}
-          <div className="flex items-center gap-3">
+          {/* Sticky Header */}
+          <div className="flex items-center gap-3 pb-3 shrink-0">
             {avatarUrl && (
               <Avatar className="w-10 h-10 border-2 border-primary/20">
                 <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
@@ -579,8 +579,8 @@ export function HistoryTakingSection({
             {timerBadge}
           </div>
 
-          {/* Messages */}
-          <ScrollArea className="h-[320px] border rounded-lg p-3 bg-muted/20">
+          {/* Scrollable Messages */}
+          <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20">
             <div className="space-y-3">
               {chatMessages.map((msg, i) => (
                 <div
@@ -603,48 +603,51 @@ export function HistoryTakingSection({
               )}
               <div ref={chatEndRef} />
             </div>
-          </ScrollArea>
-
-          {/* Warning banner */}
-          {warningBanner}
-
-          {/* Input */}
-          <div className="flex gap-2">
-            <Input
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendChatMessage(chatInput);
-                }
-              }}
-              placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
-              disabled={isSending || shouldDisableInput}
-              className="text-sm"
-            />
-            <Button
-              size="icon"
-              onClick={() => sendChatMessage(chatInput)}
-              disabled={!chatInput.trim() || isSending || shouldDisableInput}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
           </div>
 
-          {/* Message counter */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {studentMessageCount} questions asked
-            </span>
-            <Button
-              onClick={handleFinishInteraction}
-              variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
-              className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              End Conversation — Proceed to Questions
-            </Button>
+          {/* Sticky Footer */}
+          <div className="pt-3 space-y-3 shrink-0">
+            {/* Warning banner */}
+            {warningBanner}
+
+            {/* Input */}
+            <div className="flex gap-2">
+              <Input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage(chatInput);
+                  }
+                }}
+                placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
+                disabled={isSending || shouldDisableInput}
+                className="text-sm"
+              />
+              <Button
+                size="icon"
+                onClick={() => sendChatMessage(chatInput)}
+                disabled={!chatInput.trim() || isSending || shouldDisableInput}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Message counter */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {studentMessageCount} questions asked
+              </span>
+              <Button
+                onClick={handleFinishInteraction}
+                variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+                className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                End Conversation — Proceed to Questions
+              </Button>
+            </div>
           </div>
         </div>
       );
