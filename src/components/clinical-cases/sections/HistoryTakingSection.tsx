@@ -690,7 +690,7 @@ export function HistoryTakingSection({
         : '';
 
       return (
-        <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
+        <div className="flex flex-col h-[calc(100vh-340px)] min-h-[400px] relative">
           {watermark}
 
           {/* Three-column face-to-face layout */}
@@ -708,7 +708,7 @@ export function HistoryTakingSection({
               {/* Fading speech bubble — last AI response */}
               <div
                 className={cn(
-                  'mt-1.5 rounded-lg bg-card border px-1.5 py-0.5 text-[11px] text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
+                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
                   lastAiMessage ? 'opacity-100' : 'opacity-0'
                 )}
                 dir="rtl"
@@ -718,7 +718,7 @@ export function HistoryTakingSection({
             </div>
 
             {/* Center column: Mic button + status */}
-            <div className="flex-1 flex flex-col items-start pt-2 gap-4">
+            <div className="flex-1 flex flex-col items-center justify-center gap-3">
               {isSending && (
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -742,28 +742,14 @@ export function HistoryTakingSection({
                 )}
               </Button>
 
-              {/* Listening indicator + interim transcript */}
               {isListening && (
-                <div className="flex flex-col items-center gap-1">
-                  <div className="flex items-center gap-2 text-sm text-primary">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
-                    </span>
-                    جاري الاستماع...
-                  </div>
-                  {interimTranscript && (
-                    <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
-                      {interimTranscript}
-                    </p>
-                  )}
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                  </span>
+                  جاري الاستماع...
                 </div>
-              )}
-              {!isListening && !scribeConnecting && !isSending && (
-                <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
-              )}
-              {scribeConnecting && (
-                <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
               )}
             </div>
 
