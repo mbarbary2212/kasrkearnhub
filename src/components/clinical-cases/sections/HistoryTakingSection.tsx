@@ -822,11 +822,8 @@ export function HistoryTakingSection({
               </div>
             )}
 
-            {/* Message counter + End button */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {studentMessageCount} questions asked
-              </span>
+            {/* End button */}
+            <div className="flex items-center justify-end">
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
