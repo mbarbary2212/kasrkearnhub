@@ -220,12 +220,12 @@ export function PhysicalExamSection({
                   key={regionKey}
                   ref={el => { cardRefs.current[regionKey] = el; }}
                   className={cn(
-                    'border rounded-xl overflow-hidden cursor-pointer transition-all duration-150',
+                    'border rounded-xl overflow-hidden cursor-pointer transition-all duration-200',
                     isOpen
-                      ? 'border-[#1a7a8a] shadow-md'
+                      ? 'border-[#1a7a8a] shadow-[0_0_12px_rgba(26,122,138,0.35)] ring-1 ring-[#1a7a8a]/30 scale-[1.01]'
                       : isDone
-                        ? 'border-[#10b981]'
-                        : 'border-l-[3px] border-l-[#1a5568] border-border hover:border-[#1a7a8a] hover:shadow-sm'
+                        ? 'border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.25)] ring-1 ring-[#10b981]/20'
+                        : 'border-l-[3px] border-l-[#1a5568] border-border hover:border-[#1a7a8a] hover:shadow-sm hover:scale-[1.01]'
                   )}
                   onClick={() => handleTap(regionKey)}
                 >
