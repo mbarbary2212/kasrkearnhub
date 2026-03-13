@@ -6,6 +6,7 @@ import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 import { AppMindMap } from '@/components/dashboard/AppMindMap';
 import { Button } from '@/components/ui/button';
@@ -189,29 +190,27 @@ function LoggedInHome() {
           <span>Welcome back,</span>
           <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
           {hasMessages && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center gap-1.5 cursor-pointer">
-                    {(unreadCounts?.announcements ?? 0) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
-                        <Megaphone className="w-3.5 h-3.5" />
-                        {unreadCounts.announcements}
-                      </span>
-                    )}
-                    {(unreadCounts?.replies ?? 0) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
-                        <Mail className="w-3.5 h-3.5" />
-                        {unreadCounts.replies}
-                      </span>
-                    )}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-popover-foreground">Go to your module to check your messages</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Popover>
+              <PopoverTrigger asChild>
+                <span className="inline-flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform">
+                  {(unreadCounts?.announcements ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">
+                      <Megaphone className="w-3.5 h-3.5" />
+                      {unreadCounts.announcements}
+                    </span>
+                  )}
+                  {(unreadCounts?.replies ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
+                      <Mail className="w-3.5 h-3.5" />
+                      {unreadCounts.replies}
+                    </span>
+                  )}
+                </span>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" className="w-auto px-4 py-2 text-sm">
+                <p className="text-popover-foreground">Go to your module to check your messages</p>
+              </PopoverContent>
+            </Popover>
           )}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
