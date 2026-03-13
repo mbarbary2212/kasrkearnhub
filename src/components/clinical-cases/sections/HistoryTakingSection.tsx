@@ -684,7 +684,6 @@ export function HistoryTakingSection({
               <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
               <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
               <div className="mt-1 flex items-center justify-center gap-2">
-                {timerBadge}
                 <Button
                   size="sm"
                   variant={isMuted ? 'destructive' : 'outline'}
@@ -708,8 +707,20 @@ export function HistoryTakingSection({
             </div>
           </div>
 
-          {/* Scrollable Middle */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2">
+          {/* Scrollable Middle with floating overlays */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2 relative">
+            {/* Floating timer */}
+            {timerBadge && (
+              <div className="pointer-events-none absolute top-2 right-2 z-20">
+                {timerBadge}
+              </div>
+            )}
+            {/* Floating question counter */}
+            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
+              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
+                {studentMessageCount} questions asked
+              </Badge>
+            </div>
             {/* Last spoken */}
             {lastSpoken && (
               <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-2 max-w-xs text-center">
