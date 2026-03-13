@@ -411,20 +411,15 @@ const { data: listData, error: listError } = await supabaseAdmin.auth.admin.list
         resendPayload.reply_to = resendReplyTo;
       }
 
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(resendPayload),
+      await sendWithBrevoFallback({
+        resendApiKey: resendApiKey!,
+        resendPayload: resendPayload,
+        toEmail: email,
+        toName: fullName,
+        subject: 'Reset your KALM Hub password',
+        html: emailHtml,
+        text: resendPayload.text,
       });
-
-      if (!resendResponse.ok) {
-        const resendError = await resendResponse.text();
-        console.error('Resend error:', resendError);
-        throw new Error(`Failed to send reset email: ${resendError}`);
-      }
 
       await supabaseAdmin.from('audit_log').insert({
         actor_id: caller.id,
