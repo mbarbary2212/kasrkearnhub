@@ -690,7 +690,7 @@ export function HistoryTakingSection({
         : '';
 
       return (
-        <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
+        <div className="flex flex-col h-[calc(100vh-340px)] min-h-[400px] relative">
           {watermark}
 
           {/* Three-column face-to-face layout */}
