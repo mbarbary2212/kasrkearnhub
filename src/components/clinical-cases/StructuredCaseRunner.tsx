@@ -239,6 +239,7 @@ export function StructuredCaseRunner({
                     <AlertDialogCancel>Continue Case</AlertDialogCancel>
                     <AlertDialogAction onClick={() => {
                       stopAllTTS();
+                      sessionStorage.removeItem('ai_case_session');
                       const chapterId = caseData.chapter_id;
                       const moduleId = caseData.module_id;
                       if (chapterId && moduleId) {
