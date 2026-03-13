@@ -690,7 +690,7 @@ export function HistoryTakingSection({
         : '';
 
       return (
-        <div className="flex flex-col h-[calc(100vh-340px)] min-h-[400px] relative">
+        <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
           {watermark}
 
           {/* Three-column face-to-face layout */}
@@ -718,29 +718,24 @@ export function HistoryTakingSection({
             </div>
 
             {/* Center column: Mic button + status */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              {isSending && (
-                <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  جاري التفكير...
-                </div>
-              )}
-
-              <Button
-                size="lg"
-                variant={isListening ? 'destructive' : 'default'}
-                className="gap-2 rounded-full w-14 h-14"
-                onClick={toggleVoice}
-                disabled={isSending || shouldDisableInput || scribeConnecting}
-              >
-                {scribeConnecting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : isListening ? (
-                  <MicOff className="w-5 h-5" />
-                ) : (
-                  <Mic className="w-5 h-5" />
-                )}
-              </Button>
+            <div className="flex-1 flex flex-col items-center self-start pt-2 gap-3">
+              <div className="h-20 flex items-center">
+                <Button
+                  size="lg"
+                  variant={isListening ? 'destructive' : 'default'}
+                  className="gap-2 rounded-full w-14 h-14"
+                  onClick={toggleVoice}
+                  disabled={isSending || shouldDisableInput || scribeConnecting}
+                >
+                  {scribeConnecting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : isListening ? (
+                    <MicOff className="w-5 h-5" />
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
+                </Button>
+              </div>
 
               {isListening && (
                 <div className="flex items-center gap-2 text-sm text-primary">
@@ -749,6 +744,13 @@ export function HistoryTakingSection({
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
                   </span>
                   جاري الاستماع...
+                </div>
+              )}
+
+              {isSending && (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  جاري التفكير...
                 </div>
               )}
             </div>
