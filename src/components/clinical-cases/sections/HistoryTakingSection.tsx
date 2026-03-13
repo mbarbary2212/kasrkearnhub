@@ -570,14 +570,13 @@ export function HistoryTakingSection({
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar */}
-            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+            <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               {avatarUrl && (
-                <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
                   <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
                   <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
                 </Avatar>
               )}
-              <p className="text-sm font-medium mt-1 text-center truncate w-full">{avatarName || 'Patient'}</p>
             </div>
 
             {/* Center column: Scrollable messages */}
