@@ -173,6 +173,11 @@ export function HistoryTakingSection({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Last AI message for voice bubble
+  const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
+    ? chatMessages[chatMessages.length - 1].content
+    : '';
+
   // Auto-scroll voice bubble to bottom when patient response changes
   useEffect(() => {
     if (voiceBubbleRef.current) {
