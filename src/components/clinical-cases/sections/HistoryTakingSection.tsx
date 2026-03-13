@@ -797,7 +797,7 @@ export function HistoryTakingSection({
             {/* Right column: Student avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               <div className={cn('rounded-full', isListening && 'animate-pulse-ring-green')}>
-                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-[0_0_18px_-4px_hsl(var(--primary)/0.35)]">
                   {studentAvatarUrl ? (
                     <AvatarImage src={studentAvatarUrl} alt="You" />
                   ) : null}
