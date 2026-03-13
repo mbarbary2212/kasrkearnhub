@@ -222,7 +222,12 @@ export function HistoryTakingSection({
             || (gender === 'female'
               ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-          await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          setIsSpeaking(true);
+          try {
+            await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          } finally {
+            setIsSpeaking(false);
+          }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
         } else {
