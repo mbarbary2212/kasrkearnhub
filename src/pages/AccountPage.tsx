@@ -455,7 +455,8 @@ export default function AccountPage() {
 
 function AdminApiKeyCard() {
   const { isAdmin, isPlatformAdmin, isSuperAdmin, isDepartmentAdmin } = useAuthContext();
-  const { data: keyStatus, isLoading } = useAdminApiKeyStatus();
+  const isAdminRole = isAdmin || isPlatformAdmin || isSuperAdmin || isDepartmentAdmin;
+  const { data: keyStatus, isLoading } = useAdminApiKeyStatus(isAdminRole);
   const { data: platformSettings } = useAIPlatformSettings();
   const saveKey = useSaveAdminApiKey();
   const revokeKey = useRevokeAdminApiKey();
