@@ -207,7 +207,7 @@ export interface AdminApiKeyStatus {
   revoked: boolean;
 }
 
-export function useAdminApiKeyStatus() {
+export function useAdminApiKeyStatus(enabled = true) {
   return useQuery({
     queryKey: ['admin-api-key-status'],
     queryFn: async () => {
@@ -218,6 +218,7 @@ export function useAdminApiKeyStatus() {
       if (error) throw error;
       return data as AdminApiKeyStatus;
     },
+    enabled,
   });
 }
 

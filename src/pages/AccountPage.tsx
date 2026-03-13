@@ -455,14 +455,14 @@ export default function AccountPage() {
 
 function AdminApiKeyCard() {
   const { isAdmin, isPlatformAdmin, isSuperAdmin, isDepartmentAdmin } = useAuthContext();
-  const { data: keyStatus, isLoading } = useAdminApiKeyStatus();
+  const isAdminRole = isAdmin || isPlatformAdmin || isSuperAdmin || isDepartmentAdmin;
+  const { data: keyStatus, isLoading } = useAdminApiKeyStatus(isAdminRole);
   const { data: platformSettings } = useAIPlatformSettings();
   const saveKey = useSaveAdminApiKey();
   const revokeKey = useRevokeAdminApiKey();
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showInput, setShowInput] = useState(false);
 
-  const isAdminRole = isAdmin || isPlatformAdmin || isSuperAdmin || isDepartmentAdmin;
   if (!isAdminRole) return null;
 
   const needsKey = !keyStatus?.has_key && !platformSettings?.allow_admin_fallback_to_global_key && !isSuperAdmin;
