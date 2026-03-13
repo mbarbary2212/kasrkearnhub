@@ -857,9 +857,17 @@ export function HistoryTakingSection({
                 <span className="text-xs text-muted-foreground ml-2">({q.points} pts)</span>
               </Label>
               <Input
+                id={`comp-q-${i}`}
                 value={answers[q.id] || ''}
                 onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
                 onPaste={e => e.preventDefault()}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const next = document.getElementById(`comp-q-${i + 1}`);
+                    if (next) next.focus();
+                  }
+                }}
                 disabled={readOnly}
                 placeholder="Type your answer... (type 'pass' to skip)"
                 className="text-sm"
