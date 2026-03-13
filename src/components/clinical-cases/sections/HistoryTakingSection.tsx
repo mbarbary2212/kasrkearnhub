@@ -84,6 +84,7 @@ export function HistoryTakingSection({
 
   // Voice state
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
