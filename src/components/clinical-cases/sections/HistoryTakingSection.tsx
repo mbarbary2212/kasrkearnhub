@@ -173,6 +173,13 @@ export function HistoryTakingSection({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Auto-scroll voice bubble to bottom when patient response changes
+  useEffect(() => {
+    if (voiceBubbleRef.current) {
+      voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [lastAiMessage]);
+
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
     if (!text.trim() || !caseId) return;
