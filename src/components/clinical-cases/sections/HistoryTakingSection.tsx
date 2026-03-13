@@ -718,9 +718,6 @@ export function HistoryTakingSection({
 
     // ── Voice mode ──
     if (selectedMode === 'voice') {
-      const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
-        ? chatMessages[chatMessages.length - 1].content
-        : '';
 
       return (
         <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
