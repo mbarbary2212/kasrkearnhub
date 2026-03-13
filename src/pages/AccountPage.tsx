@@ -463,7 +463,6 @@ function AdminApiKeyCard() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showInput, setShowInput] = useState(false);
 
-  const isAdminRole = isAdmin || isPlatformAdmin || isSuperAdmin || isDepartmentAdmin;
   if (!isAdminRole) return null;
 
   const needsKey = !keyStatus?.has_key && !platformSettings?.allow_admin_fallback_to_global_key && !isSuperAdmin;
