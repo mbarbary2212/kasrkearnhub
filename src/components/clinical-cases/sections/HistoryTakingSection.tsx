@@ -611,10 +611,12 @@ export function HistoryTakingSection({
             {/* Left column: Patient avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               {avatarUrl && (
-                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
-                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                  <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-                </Avatar>
+                <div className={cn('rounded-full', isSending && 'animate-pulse-ring-amber')}>
+                  <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                    <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                    <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                  </Avatar>
+                </div>
               )}
             </div>
 
