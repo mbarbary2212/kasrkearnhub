@@ -110,6 +110,21 @@ export default {
           "70%": { boxShadow: "0 0 0 8px hsl(var(--primary) / 0)" },
           "100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0)" },
         },
+        "pulse-ring-green": {
+          "0%": { boxShadow: "0 0 0 0 hsl(142 71% 45% / 0.6)" },
+          "70%": { boxShadow: "0 0 0 8px hsl(142 71% 45% / 0)" },
+          "100%": { boxShadow: "0 0 0 0 hsl(142 71% 45% / 0)" },
+        },
+        "pulse-ring-blue": {
+          "0%": { boxShadow: "0 0 0 0 hsl(217 91% 60% / 0.6)" },
+          "70%": { boxShadow: "0 0 0 8px hsl(217 91% 60% / 0)" },
+          "100%": { boxShadow: "0 0 0 0 hsl(217 91% 60% / 0)" },
+        },
+        "pulse-ring-amber": {
+          "0%": { boxShadow: "0 0 0 0 hsl(38 92% 50% / 0.6)" },
+          "70%": { boxShadow: "0 0 0 10px hsl(38 92% 50% / 0)" },
+          "100%": { boxShadow: "0 0 0 0 hsl(38 92% 50% / 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
