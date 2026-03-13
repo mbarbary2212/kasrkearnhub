@@ -6,6 +6,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function mapToBrevoPayload(params: { toEmail: string; toName: string; subject: string; html: string; text?: string }) {
+  return {
+    sender: { name: 'SurgTeach', email: 'no-reply@kalmhub.com' },
+    to: [{ email: params.toEmail, name: params.toName }],
+    subject: params.subject,
+    htmlContent: params.html,
+    ...(params.text ? { textContent: params.text } : {}),
+  };
+}
+
+async function sendWithBrevoFallback(params: {
+  resendApiKey: string;
+  resendPayload: any;
+  toEmail: string;
+  toName: string;
+  subject: string;
+  html: string;
+  text?: string;
+}): Promise<void> {
+  try {
+    const resendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${params.resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params.resendPayload),
+    });
+
+    if (resendRes.ok) {
+      const resendData = await resendRes.json();
+      console.log(`Email sent via Resend to ${params.toEmail}, ID: ${resendData.id}`);
+      return;
+    }
+
+    const errText = await resendRes.text();
+    if (resendRes.status === 429 || resendRes.status === 403) {
+      console.warn(`Resend returned ${resendRes.status}, falling back to Brevo: ${errText}`);
+    } else {
+      console.warn(`Resend error (${resendRes.status}), falling back to Brevo: ${errText}`);
+    }
+  } catch (err) {
+    console.warn('Resend threw an error, falling back to Brevo:', err);
+  }
+
+  const brevoApiKey = Deno.env.get('BREVO_API_KEY');
+  if (!brevoApiKey) {
+    throw new Error('Resend failed and BREVO_API_KEY is not configured');
+  }
+
+  const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': brevoApiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(mapToBrevoPayload(params)),
+  });
+
+  if (!brevoRes.ok) {
+    const brevoErr = await brevoRes.text();
+    console.error('Brevo also failed:', brevoErr);
+    throw new Error(`Both Resend and Brevo failed. Brevo error: ${brevoErr}`);
+  }
+
+  console.log(`Email sent via Brevo fallback to ${params.toEmail}`);
+}
+
 interface UserToInvite {
   email: string;
   full_name: string;
