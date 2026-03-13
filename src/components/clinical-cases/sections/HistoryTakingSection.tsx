@@ -708,7 +708,7 @@ export function HistoryTakingSection({
               {/* Fading speech bubble — last AI response */}
               <div
                 className={cn(
-                  'mt-1.5 rounded-lg bg-card border px-1.5 py-0.5 text-[11px] text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
+                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground line-clamp-2 text-center w-full transition-opacity duration-500',
                   lastAiMessage ? 'opacity-100' : 'opacity-0'
                 )}
                 dir="rtl"
