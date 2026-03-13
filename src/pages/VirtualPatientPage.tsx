@@ -17,7 +17,18 @@ import {
   CheckCircle2,
   XCircle,
   ClipboardList,
+  BookOpen,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useVirtualPatientCase, useStartVirtualPatientAttempt, useVirtualPatientAttempts } from '@/hooks/useVirtualPatient';
 import { toast } from 'sonner';
 import { format } from 'date-fns';

@@ -656,156 +656,167 @@ export function HistoryTakingSection({
     // ── Voice mode ──
     if (selectedMode === 'voice') {
       return (
-        <div className="flex flex-col items-center gap-6 py-6 relative">
+        <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          <div className={cn(
-            'rounded-full',
-            isListening && 'animate-pulse-ring'
-          )}>
-            {avatarUrl && (
-              <Avatar className="w-24 h-24 border-4 border-primary/20">
-                <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
-            <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
-            <div className="mt-1 flex items-center justify-center gap-2">
-              {timerBadge}
-              <Button
-                size="sm"
-                variant={isMuted ? 'destructive' : 'outline'}
-                className="gap-1 text-xs h-6 px-2"
-                onClick={() => {
-                  const next = !isMuted;
-                  setIsMuted(next);
-                  try { localStorage.setItem('mute_ai_voice', String(next)); } catch {}
-                  if (next) {
-                    window.speechSynthesis?.cancel();
-                    toast.info('AI voice muted — responses will be shown as text only.');
-                  } else {
-                    toast.info('AI voice unmuted.');
-                  }
-                }}
-              >
-                {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                {isMuted ? 'Muted' : 'Mute'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Last spoken */}
-          {lastSpoken && (
-            <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-2 max-w-xs text-center">
-              "{lastSpoken}"
-            </div>
-          )}
-
-          {/* Last AI reply */}
-          {chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' && (
-            <div className="text-sm bg-card border rounded-lg px-4 py-2 max-w-xs text-center">
-              {chatMessages[chatMessages.length - 1].content}
-            </div>
-          )}
-
-          {isSending && (
-            <div className="flex items-center gap-2 text-muted-foreground text-xs">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              جاري التفكير...
-            </div>
-          )}
-
-          <Button
-            size="lg"
-            variant={isListening ? 'destructive' : 'default'}
-            className="gap-2 rounded-full w-16 h-16"
-            onClick={toggleVoice}
-            disabled={isSending || shouldDisableInput || scribeConnecting}
-          >
-            {scribeConnecting ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : isListening ? (
-              <MicOff className="w-6 h-6" />
-            ) : (
-              <Mic className="w-6 h-6" />
-            )}
-          </Button>
-          <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
-          {/* Listening indicator + interim transcript */}
-          {isListening && (
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-2 text-sm text-primary">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
-                </span>
-                جاري الاستماع... اضغط لإيقاف
-              </div>
-              {interimTranscript && (
-                <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
-                  {interimTranscript}
-                </p>
+          {/* Sticky Header */}
+          <div className="flex flex-col items-center gap-3 pb-4 shrink-0">
+            <div className={cn(
+              'rounded-full',
+              isListening && 'animate-pulse-ring'
+            )}>
+              {avatarUrl && (
+                <Avatar className="w-24 h-24 border-4 border-primary/20">
+                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                  <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                </Avatar>
               )}
             </div>
-          )}
-          {!isListening && !scribeConnecting && (
-            <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
-          )}
-          {scribeConnecting && (
-            <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
-          )}
+            <div className="text-center">
+              <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
+              <p className="text-xs text-muted-foreground">وضع الصوت — العامية المصرية</p>
+              <div className="mt-1 flex items-center justify-center gap-2">
+                {timerBadge}
+                <Button
+                  size="sm"
+                  variant={isMuted ? 'destructive' : 'outline'}
+                  className="gap-1 text-xs h-6 px-2"
+                  onClick={() => {
+                    const next = !isMuted;
+                    setIsMuted(next);
+                    try { localStorage.setItem('mute_ai_voice', String(next)); } catch {}
+                    if (next) {
+                      window.speechSynthesis?.cancel();
+                      toast.info('AI voice muted — responses will be shown as text only.');
+                    } else {
+                      toast.info('AI voice unmuted.');
+                    }
+                  }}
+                >
+                  {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  {isMuted ? 'Muted' : 'Mute'}
+                </Button>
+              </div>
+            </div>
+          </div>
 
-          {/* Warning banner */}
-          {warningBanner && <div className="w-full max-w-xs">{warningBanner}</div>}
+          {/* Scrollable Middle */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-4 py-2">
+            {/* Last spoken */}
+            {lastSpoken && (
+              <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-2 max-w-xs text-center">
+                "{lastSpoken}"
+              </div>
+            )}
 
-          {/* Fallback text input */}
-          {showVoiceFallbackInput && (
-            <div className="flex gap-2 w-full max-w-xs" dir="rtl">
-              <Input
-                value={voiceFallbackInput}
-                onChange={e => setVoiceFallbackInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
+            {/* Last AI reply */}
+            {chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' && (
+              <div className="text-sm bg-card border rounded-lg px-4 py-2 max-w-xs text-center">
+                {chatMessages[chatMessages.length - 1].content}
+              </div>
+            )}
+
+            {isSending && (
+              <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                جاري التفكير...
+              </div>
+            )}
+
+            <Button
+              size="lg"
+              variant={isListening ? 'destructive' : 'default'}
+              className="gap-2 rounded-full w-16 h-16"
+              onClick={toggleVoice}
+              disabled={isSending || shouldDisableInput || scribeConnecting}
+            >
+              {scribeConnecting ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : isListening ? (
+                <MicOff className="w-6 h-6" />
+              ) : (
+                <Mic className="w-6 h-6" />
+              )}
+            </Button>
+            <p className="text-[10px] text-muted-foreground">🎤 Mic is optional — you can type below</p>
+            {/* Listening indicator + interim transcript */}
+            {isListening && (
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                  </span>
+                  جاري الاستماع... اضغط لإيقاف
+                </div>
+                {interimTranscript && (
+                  <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-1 max-w-xs text-center italic" dir="rtl">
+                    {interimTranscript}
+                  </p>
+                )}
+              </div>
+            )}
+            {!isListening && !scribeConnecting && (
+              <p className="text-xs text-muted-foreground">اضغط للتحدث</p>
+            )}
+            {scribeConnecting && (
+              <p className="text-xs text-muted-foreground">جاري الاتصال...</p>
+            )}
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="pt-3 space-y-3 shrink-0">
+            {/* Warning banner */}
+            {warningBanner && <div className="w-full">{warningBanner}</div>}
+
+            {/* Fallback text input */}
+            {showVoiceFallbackInput && (
+              <div className="flex gap-2 w-full" dir="rtl">
+                <Input
+                  value={voiceFallbackInput}
+                  onChange={e => setVoiceFallbackInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (voiceFallbackInput.trim()) {
+                        sendChatMessage(voiceFallbackInput);
+                        setVoiceFallbackInput('');
+                      }
+                    }
+                  }}
+                  placeholder={shouldDisableInput ? 'تم الوصول للحد الأقصى' : 'اكتب سؤالك هنا...'}
+                  disabled={isSending || shouldDisableInput}
+                  className="text-sm"
+                />
+                <Button
+                  size="icon"
+                  onClick={() => {
                     if (voiceFallbackInput.trim()) {
                       sendChatMessage(voiceFallbackInput);
                       setVoiceFallbackInput('');
                     }
-                  }
-                }}
-                placeholder={shouldDisableInput ? 'تم الوصول للحد الأقصى' : 'اكتب سؤالك هنا...'}
-                disabled={isSending || shouldDisableInput}
-                className="text-sm"
-              />
+                  }}
+                  disabled={!voiceFallbackInput.trim() || isSending || shouldDisableInput}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Message counter + End button */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {studentMessageCount} questions asked
+              </span>
               <Button
-                size="icon"
-                onClick={() => {
-                  if (voiceFallbackInput.trim()) {
-                    sendChatMessage(voiceFallbackInput);
-                    setVoiceFallbackInput('');
-                  }
-                }}
-                disabled={!voiceFallbackInput.trim() || isSending || shouldDisableInput}
+                onClick={handleFinishInteraction}
+                variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+                className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
               >
-                <Send className="w-4 h-4" />
+                <CheckCircle2 className="w-4 h-4" />
+                End Conversation — Proceed to Questions
               </Button>
             </div>
-          )}
-
-          {/* Message counter + End button */}
-          <span className="text-xs text-muted-foreground">
-            {studentMessageCount} questions asked
-          </span>
-          <Button
-            onClick={handleFinishInteraction}
-            variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
-            className={cn('w-full max-w-xs gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            End Conversation — Proceed to Questions
-          </Button>
+          </div>
         </div>
       );
     }
