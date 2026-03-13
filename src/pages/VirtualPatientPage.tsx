@@ -217,18 +217,7 @@ export default function VirtualPatientRunner() {
             </div>
 
             <Button 
-              onClick={async () => {
-                try {
-                  const result = await startAttempt.mutateAsync({
-                    caseId: vpCase.id,
-                  });
-                  setAttemptId(result.id);
-                  setStarted(true);
-                  saveSession(result.id);
-                } catch {
-                  toast.error('Failed to start case. Please try again.');
-                }
-              }} 
+              onClick={() => setShowBriefing(true)}
               className="w-full gap-2" 
               size="lg"
               disabled={startAttempt.isPending}
@@ -236,6 +225,86 @@ export default function VirtualPatientRunner() {
               <Play className="w-5 h-5" />
               {startAttempt.isPending ? 'Starting...' : 'Start Interactive Case'}
             </Button>
+
+            {/* Pre-case briefing dialog */}
+            <AlertDialog open={showBriefing} onOpenChange={setShowBriefing}>
+              <AlertDialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    Before You Begin
+                  </AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3 text-sm text-muted-foreground">
+                      <p>This case has several sections. After each section you will submit your answers before moving on.</p>
+                      
+                      <div className="space-y-2.5">
+                        <div>
+                          <p className="font-medium text-foreground">History Taking</p>
+                          <p>Interview the virtual patient. Gather focused data to answer follow-up questions about the presenting complaint, symptoms, and relevant history.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Physical Examination</p>
+                          <p>Select body regions on a body map. After revealing findings, write a brief summary of the key abnormalities you identified.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Investigations — Labs</p>
+                          <p>Select which laboratory tests you would order. Review the results provided.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Investigations — Imaging</p>
+                          <p>Select which imaging studies you would request. Review and interpret the results.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Diagnosis</p>
+                          <p>Write your possible diagnosis, list differential diagnoses, and state your final diagnosis with justification.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Management</p>
+                          <p>Answer multiple-choice and free-text questions about your treatment plan (medical and/or surgical).</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Monitoring & Follow-up</p>
+                          <p>Describe your monitoring plan and follow-up strategy.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Patient & Family Advice</p>
+                          <p>Write the advice you would give the patient and their family.</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">Conclusion</p>
+                          <p>Complete final tasks such as a ward round presentation or key learning reflections.</p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs border-t pt-2 text-muted-foreground">
+                        Only sections active for this case will appear. You can review completed sections but cannot change your answers.
+                      </p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={startAttempt.isPending}
+                    onClick={async () => {
+                      try {
+                        const result = await startAttempt.mutateAsync({
+                          caseId: vpCase.id,
+                        });
+                        setAttemptId(result.id);
+                        setStarted(true);
+                        saveSession(result.id);
+                      } catch {
+                        toast.error('Failed to start case. Please try again.');
+                      }
+                    }}
+                  >
+                    {startAttempt.isPending ? 'Starting...' : 'Begin Case'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
 
