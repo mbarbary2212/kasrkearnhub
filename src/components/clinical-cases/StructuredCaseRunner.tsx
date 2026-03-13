@@ -267,14 +267,6 @@ export function StructuredCaseRunner({
             </div>
           </div>
           <Progress value={progress} className="h-2" />
-          <div className="flex justify-between mt-2">
-            <span className="text-xs text-muted-foreground">
-              Section {currentIndex + 1} of {totalSections}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {completedSections.size}/{totalSections} completed
-            </span>
-          </div>
         </CardContent>
       </Card>
 
