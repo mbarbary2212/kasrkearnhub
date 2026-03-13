@@ -227,12 +227,11 @@ export function StructuredCaseRunner({
                 </Avatar>
               )}
               <h2 className="font-semibold text-sm truncate">{caseData.title}</h2>
+              <span className="text-xs text-muted-foreground shrink-0">
+                {currentIndex + 1}/{totalSections} · {completedSections.size} done
+              </span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
-                <span>{Math.round((Date.now() - startTime) / 60000)} min</span>
-              </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-7 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
