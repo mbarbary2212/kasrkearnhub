@@ -84,6 +84,7 @@ export function HistoryTakingSection({
 
   // Voice state
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -221,7 +222,12 @@ export function HistoryTakingSection({
             || (gender === 'female'
               ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-          await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          setIsSpeaking(true);
+          try {
+            await speakArabic(reply, ttsProvider, voiceId, patientTone);
+          } finally {
+            setIsSpeaking(false);
+          }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
         } else {
@@ -605,10 +611,12 @@ export function HistoryTakingSection({
             {/* Left column: Patient avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               {avatarUrl && (
-                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
-                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                  <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-                </Avatar>
+                <div className={cn('rounded-full', isSending && 'animate-pulse-ring-amber')}>
+                  <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                    <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                    <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                  </Avatar>
+                </div>
               )}
             </div>
 
@@ -727,7 +735,7 @@ export function HistoryTakingSection({
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar + speech bubble */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
-              <div className={cn('rounded-full', isListening && 'animate-pulse-ring')}>
+              <div className={cn('rounded-full', isSpeaking ? 'animate-pulse-ring-blue' : isSending ? 'animate-pulse-ring-amber' : isListening ? 'animate-pulse-ring-green' : '')}>
                 {avatarUrl && (
                   <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
                     <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
@@ -788,14 +796,16 @@ export function HistoryTakingSection({
 
             {/* Right column: Student avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
-              <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
-                {studentAvatarUrl ? (
-                  <AvatarImage src={studentAvatarUrl} alt="You" />
-                ) : null}
-                <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
-                  {studentName ? studentName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'أنت'}
-                </AvatarFallback>
-              </Avatar>
+              <div className={cn('rounded-full', isListening && 'animate-pulse-ring-green')}>
+                <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                  {studentAvatarUrl ? (
+                    <AvatarImage src={studentAvatarUrl} alt="You" />
+                  ) : null}
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
+                    {studentName ? studentName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'أنت'}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </div>
           </div>
 
