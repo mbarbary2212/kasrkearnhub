@@ -90,11 +90,23 @@ export function StructuredCaseRunner({
   const [isFinishing, setIsFinishing] = useState(false);
   const [startTime] = useState(Date.now());
   const [studentName, setStudentName] = useState('');
+  const [studentAvatarUrl, setStudentAvatarUrl] = useState('');
 
-  // Fetch student name for watermark
+  // Fetch student name + avatar for watermark & face-to-face layout
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setStudentName(data?.user?.user_metadata?.full_name || data?.user?.email || '');
+      const user = data?.user;
+      setStudentName(user?.user_metadata?.full_name || user?.email || '');
+      if (user?.id) {
+        supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.avatar_url) setStudentAvatarUrl(profile.avatar_url);
+          });
+      }
     });
   }, []);
 
