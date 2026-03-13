@@ -23,6 +23,7 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   historyInteractionMode?: string;
   caseId?: string;
   studentName?: string;
+  studentAvatarUrl?: string;
   patientTone?: PatientTone;
   estimatedMinutes?: number;
   voiceIdOverride?: string;
