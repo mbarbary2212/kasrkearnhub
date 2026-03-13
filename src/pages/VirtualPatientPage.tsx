@@ -60,6 +60,7 @@ export default function VirtualPatientRunner() {
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
 
   const hasStructuredData = !!(vpCase as any)?.generated_case_data && !!(vpCase as any)?.active_sections?.length;
 
