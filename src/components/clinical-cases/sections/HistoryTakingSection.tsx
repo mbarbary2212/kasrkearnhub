@@ -566,65 +566,79 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          {/* Sticky Header */}
-          <div className="flex items-center gap-3 pb-3 shrink-0">
-            {avatarUrl && (
-              <Avatar className="w-10 h-10 border-2 border-primary/20">
-                <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
-                <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
-              </Avatar>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{avatarName || 'Patient'}</p>
-              <p className="text-xs text-muted-foreground">Chat Mode — {LANGUAGE_LABELS[selectedLanguage || 'en']?.label || 'English'}</p>
-            </div>
-          </div>
 
-          {/* Scrollable Messages with floating overlays */}
-          <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20 relative">
-            {/* Floating timer */}
-            {timerBadge && (
-              <div className="pointer-events-none absolute top-2 right-2 z-20">
-                {timerBadge}
-              </div>
-            )}
-            {/* Floating question counter */}
-            <div className="pointer-events-none absolute bottom-2 left-2 z-20">
-              <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
-                {studentMessageCount} questions asked
-              </Badge>
-            </div>
-
-            <div className="space-y-3 pt-8 pb-6">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'max-w-[80%] rounded-xl px-3 py-2 text-sm',
-                    msg.role === 'user'
-                      ? 'ml-auto bg-primary text-primary-foreground'
-                      : 'bg-card border text-card-foreground'
-                  )}
-                >
-                  {msg.content}
-                </div>
-              ))}
-              {isSending && (
-                <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Thinking...
-                </div>
+          {/* Three-column face-to-face layout */}
+          <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
+            {/* Left column: Patient avatar */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              {avatarUrl && (
+                <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                  <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
+                  <AvatarFallback>{avatarName?.charAt(0) || 'P'}</AvatarFallback>
+                </Avatar>
               )}
-              <div ref={chatEndRef} />
+              <p className="text-sm font-medium mt-1 text-center truncate w-full">{avatarName || 'Patient'}</p>
+            </div>
+
+            {/* Center column: Scrollable messages */}
+            <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20">
+              <div className="space-y-3">
+                {chatMessages.map((msg, i) => {
+                  const isUser = msg.role === 'user';
+                  const userMsgIndex = isUser
+                    ? chatMessages.slice(0, i + 1).filter(m => m.role === 'user').length
+                    : 0;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        'max-w-[85%] rounded-xl px-3 py-2 text-sm',
+                        isUser
+                          ? 'ml-auto bg-primary text-primary-foreground'
+                          : 'bg-card border text-card-foreground'
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="flex-1">{msg.content}</span>
+                        {isUser && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0 ml-1">
+                            Q{userMsgIndex}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {isSending && (
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Thinking...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* Right column: Student avatar */}
+            <div className="w-20 flex flex-col items-center sticky top-0 self-start pt-2">
+              <Avatar className="w-16 h-16 ring-2 ring-primary/20 border-2 border-background shadow-md">
+                {studentAvatarUrl ? (
+                  <AvatarImage src={studentAvatarUrl} alt="You" />
+                ) : null}
+                <AvatarFallback>
+                  <Stethoscope className="w-6 h-6 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium mt-1 text-center">أنت</p>
             </div>
           </div>
 
           {/* Sticky Footer */}
-          <div className="pt-3 space-y-3 shrink-0">
+          <div className="pt-3 space-y-2 shrink-0">
             {/* Warning banner */}
             {warningBanner}
 
-            {/* Input */}
+            {/* Input row */}
             <div className="flex gap-2">
               <Input
                 value={chatInput}
@@ -638,6 +652,7 @@ export function HistoryTakingSection({
                 placeholder={shouldDisableInput ? 'Message limit reached' : 'Ask the patient a question...'}
                 disabled={isSending || shouldDisableInput}
                 className="text-sm"
+                autoFocus
               />
               <Button
                 size="icon"
@@ -648,11 +663,17 @@ export function HistoryTakingSection({
               </Button>
             </div>
 
-            {/* End button */}
-            <div className="flex items-center justify-end">
+            {/* Footer row: timer + count + end button */}
+            <div className="flex items-center gap-3">
+              {timerBadge}
+              <span className="text-xs text-muted-foreground">
+                {studentMessageCount} questions asked
+              </span>
+              <div className="flex-1" />
               <Button
                 onClick={handleFinishInteraction}
                 variant={isOverTime || isAtMessageCap ? 'default' : 'secondary'}
+                size="sm"
                 className={cn('gap-2', (isOverTime || isAtMessageCap) && 'animate-pulse')}
               >
                 <CheckCircle2 className="w-4 h-4" />
