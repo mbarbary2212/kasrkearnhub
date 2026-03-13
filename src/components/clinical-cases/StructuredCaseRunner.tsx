@@ -24,10 +24,8 @@ import {
   Loader2,
   CheckCircle2,
   Sparkles,
-  Clock,
   Send,
   DoorOpen,
-  Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
