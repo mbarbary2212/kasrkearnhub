@@ -645,27 +645,19 @@ KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub`;
       resendPayload.reply_to = resendReplyTo;
     }
 
-    console.log(`Sending email via Resend - From: ${resendFromEmail}, To: ${email}`);
+    console.log(`Sending email - From: ${resendFromEmail}, To: ${email}`);
     
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(resendPayload),
+    await sendWithBrevoFallback({
+      resendApiKey,
+      resendPayload: resendPayload,
+      toEmail: email,
+      toName: fullName,
+      subject: emailSubject,
+      html: emailHtml,
+      text: emailText,
     });
 
-    console.log(`Resend API response status: ${resendResponse.status}`);
-
-    if (!resendResponse.ok) {
-      const resendError = await resendResponse.text();
-      console.error('Resend error:', resendError);
-      throw new Error(`Failed to send email: ${resendError}`);
-    }
-
-    const resendData = await resendResponse.json();
-    console.log(`Email sent to ${email}, Resend ID: ${resendData.id}`);
+    console.log(`Email sent to ${email}`);
 
     // Update user role if needed (only if user was just created or role differs)
     const { data: existingRole } = await supabaseAdmin
