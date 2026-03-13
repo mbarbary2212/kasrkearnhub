@@ -298,6 +298,33 @@ export function HistoryTakingSection({
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
 
+  // ── Reusable scribe connect helper ──────────────────────
+  const connectScribe = useCallback(async () => {
+    setScribeConnecting(true);
+    try {
+      const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !tokenData?.token) {
+        throw new Error(error?.message || 'No token received');
+      }
+      await scribe.connect({
+        token: tokenData.token,
+        microphone: {
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+    } catch (err) {
+      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
+      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
+        level: 'info',
+        extra: { error: String(err) },
+      });
+      startBrowserSTT();
+    } finally {
+      setScribeConnecting(false);
+    }
+  }, [scribe, startBrowserSTT]);
+
   // ── Voice toggle (ElevenLabs Scribe with browser STT fallback) ──
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
@@ -314,34 +341,9 @@ export function HistoryTakingSection({
       return;
     }
 
-    // Try ElevenLabs Scribe first
-    setScribeConnecting(true);
-    try {
-      const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !tokenData?.token) {
-        throw new Error(error?.message || 'No token received');
-      }
-
-      await scribe.connect({
-        token: tokenData.token,
-        microphone: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
-      // isListening will be set by the useEffect watching scribe.isConnected
-    } catch (err) {
-      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
-      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
-        level: 'info',
-        extra: { error: String(err) },
-      });
-      // Fall back to browser Web Speech API
-      startBrowserSTT();
-    } finally {
-      setScribeConnecting(false);
-    }
-  }, [isListening, scribe, startBrowserSTT]);
+    // Connect scribe (or fallback)
+    await connectScribe();
+  }, [isListening, scribe, connectScribe]);
 
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
