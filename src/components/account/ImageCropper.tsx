@@ -103,7 +103,7 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
         <DialogHeader>
           <DialogTitle>Crop Avatar</DialogTitle>
         </DialogHeader>
-        <div className="flex justify-center">
+        <div className="flex justify-center overflow-auto max-h-[50vh]">
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -116,7 +116,7 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
               alt="Crop preview"
               src={imageSrc}
               onLoad={onImageLoad}
-              className="max-h-[400px] max-w-full"
+              className="max-h-[45vh] max-w-full"
             />
           </ReactCrop>
         </div>
