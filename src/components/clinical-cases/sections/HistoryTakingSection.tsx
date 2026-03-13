@@ -735,7 +735,7 @@ export function HistoryTakingSection({
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar + speech bubble */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
-              <div className={cn('rounded-full', isListening && 'animate-pulse-ring')}>
+              <div className={cn('rounded-full', isSpeaking ? 'animate-pulse-ring-blue' : isSending ? 'animate-pulse-ring-amber' : isListening ? 'animate-pulse-ring-green' : '')}>
                 {avatarUrl && (
                   <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
                     <AvatarImage src={avatarUrl} alt={avatarName || 'Patient'} />
