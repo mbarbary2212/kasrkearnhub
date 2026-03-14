@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AudioResource {
   id: string;
@@ -54,7 +55,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   // Fetch signed URL from edge function
   const fetchSignedUrl = useCallback(async (resourceId: string): Promise<string | null> => {
     try {
-      const { supabase } = await import('@/integrations/supabase/client');
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
