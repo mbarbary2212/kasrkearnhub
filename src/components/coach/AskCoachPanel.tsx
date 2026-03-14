@@ -61,8 +61,28 @@ export function AskCoachPanel() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<CoachError | null>(null);
+  const [chapterPdfText, setChapterPdfText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasInjectedContext = useRef(false);
+
+  // Fetch chapter pdf_text for grounding
+  useEffect(() => {
+    if (!askCoachOpen || !studyContext?.chapterId) {
+      setChapterPdfText(null);
+      return;
+    }
+    const fetchPdfText = async () => {
+      const { data } = await supabase
+        .from('module_chapters')
+        .select('pdf_text')
+        .eq('id', studyContext.chapterId!)
+        .maybeSingle();
+      if (data?.pdf_text) {
+        setChapterPdfText(data.pdf_text);
+      }
+    };
+    fetchPdfText();
+  }, [askCoachOpen, studyContext?.chapterId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
