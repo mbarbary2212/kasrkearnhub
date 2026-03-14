@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
+      workbox: {
+        navigateFallbackDenylist: [/^\/~oauth/],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
       manifest: {
         name: 'KALM Hub',
         short_name: 'KALM Hub',
