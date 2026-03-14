@@ -76,13 +76,12 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'mcq', label: 'MCQ Questions', icon: HelpCircle, description: 'Multiple choice questions (A-E)', category: 'practice' },
   { value: 'sba', label: 'SBA Questions', icon: HelpCircle, description: 'Single Best Answer — all choices plausible, one is best', category: 'practice' },
   { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
-  { value: 'clinical_case', label: 'Clinical Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
+  { value: 'clinical_case', label: 'Interactive Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
   { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
   { value: 'pathway', label: 'Pathways', icon: GitBranch, description: 'Interactive clinical decision trees', category: 'resources', requiresChapter: true },
-  { value: 'worked_case', label: 'Worked Case', icon: Stethoscope, description: 'Step-by-step clinical walkthrough', category: 'resources', requiresChapter: true },
   { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
   { value: 'socratic_tutorial', label: 'Socratic Tutorial', icon: GraduationCap, description: 'Long-form narrative tutorial using Socratic teaching method', category: 'resources', requiresChapter: true },
   { value: 'topic_summary', label: 'Topic Summary', icon: FileText, description: 'Concise study summary with key concepts', category: 'resources', requiresChapter: true },
@@ -116,11 +115,8 @@ function getPrimaryText(item: any, contentType: string): string {
     case 'essay': return item.question || '';
     case 'osce': return item.history_text || '';
     case 'matching': return item.instruction || '';
-    case 'case_scenario':
-    case 'clinical_case':
-    case 'virtual_patient': return item.title || '';
+    case 'clinical_case': return item.title || '';
     case 'mind_map': return item.title || '';
-    case 'worked_case': return item.title || '';
     case 'guided_explanation': return item.topic || '';
     case 'socratic_tutorial':
     case 'topic_summary': return item.title || '';
@@ -192,7 +188,7 @@ export function AIContentFactoryModal({
   const selectedContentType = CONTENT_TYPES.find(t => t.value === contentType);
   const requiresChapter = selectedContentType?.requiresChapter ?? false;
 
-  const isLowCapType = contentType === 'virtual_patient' || contentType === 'clinical_case';
+  const isLowCapType = contentType === 'clinical_case';
   const isLongFormType = contentType === 'socratic_tutorial' || contentType === 'topic_summary';
   const maxQty = isLongFormType ? 1 : (isLowCapType ? 5 : 50);
 

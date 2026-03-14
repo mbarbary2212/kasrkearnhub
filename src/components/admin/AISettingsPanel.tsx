@@ -57,12 +57,9 @@ const CONTENT_TYPES = [
   { value: 'osce', label: 'OSCE Questions' },
   { value: 'matching', label: 'Matching Questions' },
   { value: 'flashcard', label: 'Flashcards' },
-  { value: 'clinical_case', label: 'Clinical Cases' },
+  { value: 'clinical_case', label: 'Interactive Cases' },
   { value: 'guided_explanation', label: 'Guided Explanations' },
-  { value: 'virtual_patient', label: 'Virtual Patient' },
   { value: 'mind_map', label: 'Mind Maps' },
-  { value: 'worked_case', label: 'Worked Cases' },
-  { value: 'case_scenario', label: 'Case Scenarios' },
 ];
 
 interface AISettingsPanelProps {

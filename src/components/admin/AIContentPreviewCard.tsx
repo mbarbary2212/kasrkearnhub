@@ -114,6 +114,7 @@ export function AIContentPreviewCard({
           </>
         );
       case 'virtual_patient':
+      case 'clinical_case':
         return (
           <>
             <p className="font-medium text-sm">{item.title}</p>
@@ -152,13 +153,6 @@ export function AIContentPreviewCard({
             <p className="text-xs text-muted-foreground line-clamp-2">{item.back}</p>
           </>
         );
-      case 'case_scenario':
-        return (
-          <>
-            <p className="font-medium text-sm">{item.title}</p>
-            <p className="text-xs text-muted-foreground line-clamp-2">{item.case_history}</p>
-          </>
-        );
       case 'matching':
         return (
           <>
@@ -180,16 +174,6 @@ export function AIContentPreviewCard({
           <>
             <p className="font-medium text-sm">{item.title}</p>
             <p className="text-xs text-muted-foreground">Root: {item.root_node?.label}</p>
-          </>
-        );
-      case 'worked_case':
-        return (
-          <>
-            <p className="font-medium text-sm">{item.title}</p>
-            <p className="text-xs text-muted-foreground line-clamp-2">{item.presentation}</p>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="outline">{item.steps?.length || 0} steps</Badge>
-            </div>
           </>
         );
       case 'socratic_tutorial':
@@ -439,43 +423,6 @@ export function AIContentPreviewCard({
                 value={editedItem.back || ''}
                 onChange={(e) => updateField('back', e.target.value)}
                 rows={5}
-              />
-            </div>
-          </div>
-        );
-
-      case 'case_scenario':
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input
-                value={editedItem.title || ''}
-                onChange={(e) => updateField('title', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Case History</Label>
-              <Textarea
-                value={editedItem.case_history || ''}
-                onChange={(e) => updateField('case_history', e.target.value)}
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Questions</Label>
-              <Textarea
-                value={editedItem.case_questions || ''}
-                onChange={(e) => updateField('case_questions', e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Model Answer</Label>
-              <Textarea
-                value={editedItem.model_answer || ''}
-                onChange={(e) => updateField('model_answer', e.target.value)}
-                rows={4}
               />
             </div>
           </div>
