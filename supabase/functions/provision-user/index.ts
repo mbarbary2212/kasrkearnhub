@@ -166,7 +166,11 @@ serve(async (req: Request) => {
       );
 
       return new Response(
-        JSON.stringify({ success: result.status === 'success', ...result }),
+        JSON.stringify({ 
+          success: result.status === 'success', 
+          error: result.status === 'error' ? result.message : undefined,
+          ...result 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
