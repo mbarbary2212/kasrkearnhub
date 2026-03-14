@@ -29,7 +29,7 @@ export function useInviteSingleUser() {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Failed to send invite');
+      if (!data?.success) throw new Error(data?.error || data?.message || 'Failed to send invite');
 
       return data;
     },
