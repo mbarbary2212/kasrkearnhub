@@ -36,6 +36,14 @@ All schema changes applied successfully:
 | 14 | N+1 Progress API Optimization (RPC) | ✅ |
 | 15 | Bound question_attempts + Deduplicate Dashboard Query | ✅ |
 | 16 | History Counter + PE Merge Fix + Combined Exam Prompts | ✅ |
+| 17 | Section Tagging at Import + AI-Only Auto-Tag + SBA Fix | ✅ |
+
+### Step 17: Section Tagging at Import + AI-Only Auto-Tag + SBA Fix ✅
+- **Import-time section resolution**: `bulk-import-mcqs` and `bulk-import-true-false` now resolve `original_section_name`/`original_section_number` to `section_id` before insert (number match first, then name with prefix stripping and contains fallback)
+- **OSCE column bug fix**: `bulk-import-osce` fixed `s.title` → `s.name` in section matching query
+- **SBA questionFormat passthrough**: `useBulkCreateMcqs` and `McqList.tsx` now forward `questionFormat` to the edge function so SBAs save as `question_format: 'sba'`
+- **AI-only Auto-Tag**: Removed all keyword/prefix matching from `useAutoTagSections.ts`; now purely AI-driven with rich content (stem+choices+explanation for MCQs, statement+explanation for T/F, etc.) sent to `ai-auto-tag-sections` edge function
+- **Edge function prompt update**: `ai-auto-tag-sections` now accepts `content` field instead of `title` for more accurate AI categorization
 
 ### Step 16: History Counter + PE Merge Fix + Combined Exam Prompts ✅
 - **Question counter**: Removed `/15` denominator from both chat and voice mode — now shows `X questions asked` without pressuring students to hit a target
