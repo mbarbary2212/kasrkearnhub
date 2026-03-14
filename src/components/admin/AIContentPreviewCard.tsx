@@ -153,13 +153,6 @@ export function AIContentPreviewCard({
             <p className="text-xs text-muted-foreground line-clamp-2">{item.back}</p>
           </>
         );
-      case 'case_scenario':
-        return (
-          <>
-            <p className="font-medium text-sm">{item.title}</p>
-            <p className="text-xs text-muted-foreground line-clamp-2">{item.case_history}</p>
-          </>
-        );
       case 'matching':
         return (
           <>
