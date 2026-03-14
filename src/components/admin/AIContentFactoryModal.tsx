@@ -115,9 +115,7 @@ function getPrimaryText(item: any, contentType: string): string {
     case 'essay': return item.question || '';
     case 'osce': return item.history_text || '';
     case 'matching': return item.instruction || '';
-    case 'case_scenario':
-    case 'clinical_case':
-    case 'virtual_patient': return item.title || '';
+    case 'clinical_case': return item.title || '';
     case 'mind_map': return item.title || '';
     case 'worked_case': return item.title || '';
     case 'guided_explanation': return item.topic || '';
