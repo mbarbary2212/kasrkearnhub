@@ -16,7 +16,10 @@ import {
   X,
   AlertCircle,
   GraduationCap,
+  Download,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useCoachContext, useCoachPrompt } from '@/contexts/CoachContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
@@ -58,8 +61,28 @@ export function AskCoachPanel() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<CoachError | null>(null);
+  const [chapterPdfText, setChapterPdfText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasInjectedContext = useRef(false);
+
+  // Fetch chapter pdf_text for grounding
+  useEffect(() => {
+    if (!askCoachOpen || !studyContext?.chapterId) {
+      setChapterPdfText(null);
+      return;
+    }
+    const fetchPdfText = async () => {
+      const { data } = await supabase
+        .from('module_chapters')
+        .select('pdf_text')
+        .eq('id', studyContext.chapterId!)
+        .maybeSingle();
+      if (data?.pdf_text) {
+        setChapterPdfText(data.pdf_text);
+      }
+    };
+    fetchPdfText();
+  }, [askCoachOpen, studyContext?.chapterId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -87,7 +110,13 @@ export function AskCoachPanel() {
   }, [askCoachOpen, initialCoachMessage]);
 
   const streamChat = useCallback(async (userMessages: Message[], contextPrompt: string | null) => {
-    const systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
+    let systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
+    
+    // Append chapter content for grounding (truncate to ~8000 chars)
+    if (chapterPdfText) {
+      const truncated = chapterPdfText.slice(0, 8000);
+      systemContext += `\n\n[CHAPTER CONTENT]\n${truncated}`;
+    }
     
     // Get auth token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
@@ -201,7 +230,7 @@ export function AskCoachPanel() {
         }
       }
     }
-  }, []);
+  }, [chapterPdfText]);
 
   const handleSend = useCallback(async (text?: string) => {
     const messageText = text || input.trim();
@@ -390,17 +419,46 @@ export function AskCoachPanel() {
                       </AvatarFallback>
                     </Avatar>
                   )}
-                  <Card
-                    className={`max-w-[85%] p-3 ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-all text-sm">
-                      {msg.content}
-                    </div>
-                  </Card>
+                  <div className="flex flex-col gap-1 max-w-[85%]">
+                    <Card
+                      className={`p-3 ${
+                        msg.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-sm overflow-x-auto [&_table]:min-w-[300px] [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap break-all text-sm">
+                          {msg.content}
+                        </div>
+                      )}
+                    </Card>
+                    {msg.role === 'assistant' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="self-start h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground gap-1"
+                        onClick={() => {
+                          const blob = new Blob([msg.content], { type: 'text/markdown' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `coach-answer-${i + 1}.md`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </Button>
+                    )}
+                  </div>
                   {msg.role === 'user' && (
                     <Avatar className="h-7 w-7 shrink-0">
                       <AvatarFallback className="bg-secondary">
