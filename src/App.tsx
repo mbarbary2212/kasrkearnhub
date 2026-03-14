@@ -14,6 +14,7 @@ import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { AskCoachPanel } from "@/components/coach";
 import { AudioMiniPlayer } from "@/components/audio";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
