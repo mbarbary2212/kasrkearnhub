@@ -942,7 +942,7 @@ export function McqList({
                             return;
                           }
                           
-                          const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+                          const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(text);
                           setParseCorrections(corrections);
                           
                           if (parsed.length === 0) {
@@ -950,7 +950,12 @@ export function McqList({
                             return;
                           }
                           
-                          const withDuplicates = processWithDuplicateDetection(parsed);
+                          const withSections = parsed.map((mcq, i) => ({
+                            ...mcq,
+                            original_section_name: parsedRows[i]?.sectionName || null,
+                            original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+                          }));
+                          const withDuplicates = processWithDuplicateDetection(withSections);
                           setPreviewData(withDuplicates);
                           setCsvText(text);
                         } catch (err) {
