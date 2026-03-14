@@ -191,7 +191,7 @@ export function AIContentFactoryModal({
   const selectedContentType = CONTENT_TYPES.find(t => t.value === contentType);
   const requiresChapter = selectedContentType?.requiresChapter ?? false;
 
-  const isLowCapType = contentType === 'virtual_patient' || contentType === 'clinical_case';
+  const isLowCapType = contentType === 'clinical_case';
   const isLongFormType = contentType === 'socratic_tutorial' || contentType === 'topic_summary';
   const maxQty = isLongFormType ? 1 : (isLowCapType ? 5 : 50);
 
