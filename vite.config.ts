@@ -37,11 +37,11 @@ export default defineConfig(({ mode }) => ({
         ],
       },
     }),
-    sentryVitePlugin({
+    process.env.SENTRY_AUTH_TOKEN ? sentryVitePlugin({
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
-    }),
+    }) : null,
   ].filter(Boolean),
   build: {
     sourcemap: true,
