@@ -27,6 +27,27 @@ setupStartupHealthCheck(defaultHealthCheck, 3000);
 // Initialize Sentry error monitoring (production only, requires VITE_SENTRY_DSN)
 initSentry();
 
+// Register service worker manually with error handling
+// (vite-plugin-pwa injectRegister is disabled to prevent unhandled rejections)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        // Check for SW updates every 60 min
+        setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000);
+        // Also check when user returns to the tab
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(() => {});
+          }
+        });
+      })
+      .catch(() => {
+        // Silently catch — e.g. insecure context, Android restrictions
+      });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   // ChunkLoadErrorBoundary: catches chunk/dynamic import failures
   // GlobalErrorBoundary: catches all other runtime errors
