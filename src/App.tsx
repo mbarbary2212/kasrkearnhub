@@ -89,6 +89,7 @@ const App = () => {
                <BadgeCelebration />
                <AskCoachPanel />
                <AudioMiniPlayer />
+               <PWAInstallBanner />
                
             <BrowserRouter>
               <ScrollToTop />
