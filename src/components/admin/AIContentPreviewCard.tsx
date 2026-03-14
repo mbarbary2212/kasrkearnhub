@@ -114,6 +114,7 @@ export function AIContentPreviewCard({
           </>
         );
       case 'virtual_patient':
+      case 'clinical_case':
         return (
           <>
             <p className="font-medium text-sm">{item.title}</p>
