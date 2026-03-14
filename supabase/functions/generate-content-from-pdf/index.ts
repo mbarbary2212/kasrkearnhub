@@ -1283,7 +1283,7 @@ ${additional_instructions ? `\nAdditional instructions: ${additional_instruction
 
 Reference material from document "${doc.title}":
 ---
-${pdfTextPlaceholder}
+${pdfContent}
 ---
 ${dedupContext}
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;
