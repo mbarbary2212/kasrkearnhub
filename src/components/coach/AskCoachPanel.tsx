@@ -230,7 +230,7 @@ export function AskCoachPanel() {
         }
       }
     }
-  }, []);
+  }, [chapterPdfText]);
 
   const handleSend = useCallback(async (text?: string) => {
     const messageText = text || input.trim();
