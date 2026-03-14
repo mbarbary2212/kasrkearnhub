@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
       manifest: {
         name: 'KALM Hub',
