@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AudioResource {
   id: string;
