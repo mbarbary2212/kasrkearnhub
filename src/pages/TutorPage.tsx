@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, Send, Loader2, Bot, User, Sparkles, BookOpen, Stethoscope, Brain } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
