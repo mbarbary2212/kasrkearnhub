@@ -616,7 +616,7 @@ export function McqList({
     }
     
     bulkCreateMutation.mutate(
-      { mcqs: itemsToImport, moduleId, chapterId, topicId },
+      { mcqs: itemsToImport, moduleId, chapterId, topicId, questionFormat },
       {
         onSuccess: () => {
           setShowBulkModal(false);

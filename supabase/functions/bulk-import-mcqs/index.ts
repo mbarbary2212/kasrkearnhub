@@ -207,6 +207,69 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Section resolution ──
+    // Resolve original_section_name/number to section_id before insert
+    const sectionIdMap = new Map<number, string>(); // index → section_id
+    const needsSectionResolution = validatedMcqs.some(
+      m => m.original_section_name || m.original_section_number
+    );
+
+    if (needsSectionResolution && (chapterId || topicId)) {
+      const filterCol = chapterId ? 'chapter_id' : 'topic_id';
+      const filterVal = chapterId || topicId;
+
+      const { data: sections } = await adminClient
+        .from('sections')
+        .select('id, name, section_number')
+        .eq(filterCol, filterVal!);
+
+      if (sections && sections.length > 0) {
+        for (let i = 0; i < validatedMcqs.length; i++) {
+          const mcq = validatedMcqs[i];
+          const origName = mcq.original_section_name;
+          const origNum = mcq.original_section_number;
+          if (!origName && !origNum) continue;
+
+          let matched: string | null = null;
+
+          // 1. Match by section_number first
+          if (origNum) {
+            const numMatch = sections.find(s => s.section_number === origNum.trim());
+            if (numMatch) { matched = numMatch.id; }
+          }
+
+          // 2. Fallback to name matching
+          if (!matched && origName) {
+            const nameLower = origName.toLowerCase().trim();
+            // Exact match
+            const exact = sections.find(s => s.name?.toLowerCase().trim() === nameLower);
+            if (exact) {
+              matched = exact.id;
+            } else {
+              // Stripped prefix match
+              const stripped = nameLower.replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
+              if (stripped) {
+                const prefixMatch = sections.find(s => {
+                  const sStripped = s.name?.toLowerCase().trim().replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
+                  return sStripped === stripped;
+                });
+                if (prefixMatch) matched = prefixMatch.id;
+              }
+              // Contains match
+              if (!matched) {
+                const containsMatch = sections.find(s =>
+                  s.name?.toLowerCase().includes(nameLower) || nameLower.includes(s.name?.toLowerCase() || '')
+                );
+                if (containsMatch) matched = containsMatch.id;
+              }
+            }
+          }
+
+          if (matched) sectionIdMap.set(i, matched);
+        }
+      }
+    }
+
     // Prepare records for insertion with normalized correct_key and filtered choices
     const records = validatedMcqs.map((mcq, index) => ({
       module_id: moduleId,
@@ -222,6 +285,7 @@ Deno.serve(async (req) => {
       original_section_name: mcq.original_section_name || null,
       original_section_number: mcq.original_section_number || null,
       question_format: questionFormat,
+      section_id: sectionIdMap.get(index) || null,
     }));
 
     console.log(`Inserting ${records.length} MCQs for module ${moduleId}, chapter ${chapterId}`);

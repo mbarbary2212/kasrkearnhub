@@ -362,7 +362,7 @@ Deno.serve(async (req: Request) => {
     if (needsSectionResolution && chapterId) {
       const { data: sections } = await supabase
         .from('sections')
-        .select('id, title, section_number')
+        .select('id, name, section_number')
         .eq('chapter_id', chapterId);
 
       if (sections && sections.length > 0) {
@@ -373,7 +373,7 @@ Deno.serve(async (req: Request) => {
           }
           if (row.sectionName) {
             const normalizedName = row.sectionName.toLowerCase().trim();
-            const match = sections.find(s => s.title?.toLowerCase().trim() === normalizedName);
+            const match = sections.find(s => s.name?.toLowerCase().trim() === normalizedName);
             if (match) { row.resolvedSectionId = match.id; }
           }
         }
