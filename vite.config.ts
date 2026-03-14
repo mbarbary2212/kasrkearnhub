@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: null, // intentional — manual registration in main.tsx handles error catching
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
