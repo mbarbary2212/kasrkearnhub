@@ -466,9 +466,15 @@ export function McqList({
 
   const handlePreviewCsv = () => {
     if (!csvText.trim()) return;
-    const { mcqs: parsed, corrections } = parseSmartMcqCsv(csvText);
+    const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(csvText);
     setParseCorrections(corrections);
-    const withDuplicates = processWithDuplicateDetection(parsed);
+    // Merge section metadata from parsedRows into McqFormData
+    const withSections = parsed.map((mcq, i) => ({
+      ...mcq,
+      original_section_name: parsedRows[i]?.sectionName || null,
+      original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+    }));
+    const withDuplicates = processWithDuplicateDetection(withSections);
     setPreviewData(withDuplicates);
   };
 
