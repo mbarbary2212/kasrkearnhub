@@ -38,6 +38,8 @@ export interface McqFormData {
   difficulty: 'easy' | 'medium' | 'hard' | null;
   section_id?: string | null;
   question_format?: QuestionFormat;
+  original_section_name?: string | null;
+  original_section_number?: string | null;
 }
 
 // Helper to convert DB row to Mcq type
