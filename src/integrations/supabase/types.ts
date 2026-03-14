@@ -5047,6 +5047,30 @@ export type Database = {
           },
         ]
       }
+      user_bookmarks: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_flashcard_stars: {
         Row: {
           card_id: string
@@ -5186,6 +5210,36 @@ export type Database = {
         }
         Relationships: []
       }
+      video_notes: {
+        Row: {
+          created_at: string | null
+          id: string
+          note_text: string
+          timestamp_seconds: number
+          updated_at: string | null
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          note_text: string
+          timestamp_seconds?: number
+          updated_at?: string | null
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          note_text?: string
+          timestamp_seconds?: number
+          updated_at?: string | null
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
       video_progress: {
         Row: {
           duration_seconds: number | null
@@ -5211,6 +5265,30 @@ export type Database = {
           last_time_seconds?: number
           percent_watched?: number
           updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
+      video_ratings: {
+        Row: {
+          created_at: string | null
+          id: string
+          rating: number
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          rating: number
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          rating?: number
           user_id?: string
           video_id?: string
         }
