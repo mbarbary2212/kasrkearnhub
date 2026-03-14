@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, ShieldAlert, BrainCircuit } from 'lucide-react';
+import { BarChart3, ShieldAlert, BrainCircuit, Video } from 'lucide-react';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { AICasesAdminTab } from './AICasesAdminTab';
+import { VideoAnalyticsTab } from './VideoAnalyticsTab';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ContentAnalyticsTabProps {
