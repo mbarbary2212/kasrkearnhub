@@ -1056,10 +1056,10 @@ serve(async (req) => {
   }
 
   // Validate chapter exists if provided
-  let chapterInfo: { title: string; chapter_number: number } | null = null;
+  let chapterInfo: { title: string; chapter_number: number; pdf_text?: string | null } | null = null;
   if (chapter_id) {
     const { data: chapterCheck, error: chapterError } = await serviceClient
-      .from("module_chapters").select("id, title, chapter_number").eq("id", chapter_id).eq("module_id", module_id).single();
+      .from("module_chapters").select("id, title, chapter_number, pdf_text").eq("id", chapter_id).eq("module_id", module_id).single();
 
     if (chapterError || !chapterCheck) {
       return jsonResponse({ error: "Invalid chapter ID or chapter does not belong to module", step: "validation", items: [], warnings: [] }, 400);
@@ -1172,7 +1172,34 @@ If content doesn't fit any specific section, set section_number to null.`;
       }
     }
 
-    const pdfTextPlaceholder = `[PDF Content from: ${doc.title}]\n\nNote: In production, this would be extracted text from the PDF. The AI should generate content based on medical education best practices for the specified module/chapter.`;
+    // Use real chapter PDF text when available, with fallback
+    let pdfContent: string;
+    if (chapterInfo?.pdf_text && chapterInfo.pdf_text.length > 100) {
+      pdfContent = chapterInfo.pdf_text;
+      console.log(`[${jobId}] Using chapter pdf_text (${pdfContent.length} chars)`);
+    } else {
+      // Try downloading PDF from signed URL
+      try {
+        const pdfResponse = await fetch(signedUrlData.signedUrl);
+        if (pdfResponse.ok) {
+          const pdfBuffer = await pdfResponse.arrayBuffer();
+          const rawText = new TextDecoder().decode(new Uint8Array(pdfBuffer));
+          const textMatches = rawText.match(/\(([^)]+)\)/g);
+          if (textMatches && textMatches.length > 10) {
+            pdfContent = textMatches.map(m => m.slice(1, -1)).join(' ');
+            console.log(`[${jobId}] Extracted ${pdfContent.length} chars from PDF binary`);
+          } else {
+            pdfContent = `[PDF from: ${doc.title}] — Text extraction unavailable. Generate content based on the module "${moduleCheck.name}"${chapterInfo ? ` chapter "${chapterInfo.title}"` : ''} using standard medical education knowledge.`;
+            console.warn(`[${jobId}] PDF text extraction yielded minimal results`);
+          }
+        } else {
+          throw new Error(`PDF download failed: ${pdfResponse.status}`);
+        }
+      } catch (err) {
+        console.warn(`[${jobId}] PDF download/extract failed:`, err);
+        pdfContent = `[PDF from: ${doc.title}] — Text extraction unavailable. Generate content based on the module "${moduleCheck.name}"${chapterInfo ? ` chapter "${chapterInfo.title}"` : ''} using standard medical education knowledge.`;
+      }
+    }
 
     const schema = CONTENT_SCHEMAS[content_type];
 
@@ -1256,7 +1283,7 @@ ${additional_instructions ? `\nAdditional instructions: ${additional_instruction
 
 Reference material from document "${doc.title}":
 ---
-${pdfTextPlaceholder}
+${pdfContent}
 ---
 ${dedupContext}
 Remember: Output ONLY a valid JSON array matching the schema. No explanations, no markdown, just pure JSON.`;

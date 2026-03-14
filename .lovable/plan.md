@@ -1,93 +1,91 @@
 
+# Structured Interactive Cases — Implementation Plan
 
-# Fix: "Failed to generate" in AI Content Factory — PDF Text Never Sent to AI
+## Status: ✅ Complete (Step 16 added)
 
-## Problem
+### Completed Steps
 
-The `generate-content-from-pdf` edge function **never sends actual PDF content to the AI**. On line 1175, it uses a hardcoded placeholder string:
+#### Step 1: Database Migration ✅
+All schema changes applied successfully:
+- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
+- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
+- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
+- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
+- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
+- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
+- RLS policies on both new tables
 
-```typescript
-const pdfTextPlaceholder = `[PDF Content from: ${doc.title}]\n\nNote: In production, this would be extracted text from the PDF...`;
-```
+#### Step 2: TypeScript Types ✅
+- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
 
-The AI receives no real content and either hallucinates generic items or fails to produce valid output — hence Basma's "Failed to generate" error. The "No items generated. Please retry." message comes from the client when zero items are returned.
+### All Steps
 
-Meanwhile, the `module_chapters` table already stores extracted chapter text in a `pdf_text` column (populated during chapter PDF upload), but the edge function never reads it.
+| Step | Description | Status |
+|------|-------------|--------|
+| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
+| 4 | `generate-structured-case` edge function | ✅ |
+| 5 | CasePreviewEditor screen | ✅ |
+| 6 | Section components (10 + checklist + missed items) | ✅ |
+| 7 | StructuredCaseRunner | ✅ |
+| 8 | `score-case-answers` edge function | ✅ |
+| 9 | CaseSummary screen | ✅ |
+| 10 | Router integration in VirtualPatientPage | ✅ |
+| 11 | Physical Examination v8 rewrite | ✅ |
+| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
+| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
+| 14 | N+1 Progress API Optimization (RPC) | ✅ |
+| 15 | Bound question_attempts + Deduplicate Dashboard Query | ✅ |
+| 16 | History Counter + PE Merge Fix + Combined Exam Prompts | ✅ |
 
-## Root Cause Chain
+### Step 16: History Counter + PE Merge Fix + Combined Exam Prompts ✅
+- **Question counter**: Removed `/15` denominator from both chat and voice mode — now shows `X questions asked` without pressuring students to hit a target
+- **Patient diabetes denial**: Fixed `expected_behaviour` fallback in `patient-history-chat` — was `'N/A'` causing AI to deny conditions; now outputs label alone when no expected_behaviour exists
+- **PE first-entry label**: Fixed `normalizePhysicalExamFindings` — first remapped entry (e.g. `abdomen_inspection` → `abdomen`) now gets `**Label:**` prefix matching subsequent merged entries
+- **PE card scroll**: Added `max-h-[280px] overflow-y-auto` to expanded finding cards so long combined text is scrollable
+- **AI generation prompt**: Updated `generate-structured-case` PE schema hints to explicitly require combining ALL exam components (inspection, palpation, percussion, auscultation, special tests) into a single text field per region with bold sub-headings
+- **Help & Templates**: Updated template JSON example (abdomen shows combined format) and expanded rule 11 to mandate combining exam components per region
 
-1. Edge function fetches a signed URL for the PDF (line 1122) but never downloads it
-2. Chapter query (line 1062) selects only `id, title, chapter_number` — does **not** select `pdf_text`
-3. The `pdfTextPlaceholder` variable (line 1175) is a static string, not actual content
-4. The AI generates content from module/chapter **names** alone, which is unreliable
+### Key Design Decisions
+- Checklist PDFs are optional reference documents (not required)
+- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
+- Teachers set their own `max_score` per section (not imported from PDF)
+- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
+- 10-section detail view available in expandable breakdown
+- `generated_case_data` stores full case structure as JSONB
+- Edge functions use `service_role` key to bypass RLS for AI scoring
+- Professional attitude scored holistically from transcript at submission
 
-## Fix
+### Physical Examination v8 Changes (Step 11)
+- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
+- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
+- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
+- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
+- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
+- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
+- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
 
-**File: `supabase/functions/generate-content-from-pdf/index.ts`**
+### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
+- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
+- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
+- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
+- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
+- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
+- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
+- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
+- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
 
-Two changes:
+### Step 14: N+1 Progress API Optimization ✅
+- **Problem**: Sentry N+1 alert — `useChapterProgress` and `useContentProgress` each made ~17 sequential Supabase REST calls per page load
+- **Solution**: Created single `get_content_progress(p_chapter_id, p_topic_id, p_user_id)` RPC using CTEs to aggregate all content totals and completion counts in one SQL query
+- **RPC returns**: JSONB with `mcq_total/completed`, `essay_total/completed`, `osce_total/completed`, `case_total/completed`, `matching_total/completed`, `lectures` array, `video_progress` array
+- **Video matching**: Kept client-side (video_id is YouTube/GDrive ID extracted via JS regex from video_url — not joinable in SQL)
+- **Impact**: 17 API calls → 1 per chapter/topic page load
+- **No breaking changes**: Hook interfaces unchanged, all consumer components unaffected
 
-### 1. Fetch `pdf_text` from `module_chapters` (line 1062)
-
-Add `pdf_text` to the chapter select query:
-
-```typescript
-.select("id, title, chapter_number, pdf_text")
-```
-
-Update the `chapterInfo` type to include `pdf_text: string | null`.
-
-### 2. Replace placeholder with real content (around line 1175)
-
-Use the chapter's `pdf_text` when available. If not available, download the PDF from the signed URL and use the raw text. Fall back to the placeholder only as a last resort with a warning.
-
-```typescript
-// Priority 1: Use chapter pdf_text (already extracted during upload)
-let pdfContent: string;
-if (chapterInfo?.pdf_text && chapterInfo.pdf_text.length > 100) {
-  pdfContent = chapterInfo.pdf_text;
-  console.log(`[${jobId}] Using chapter pdf_text (${pdfContent.length} chars)`);
-} else {
-  // Priority 2: Download PDF and extract text
-  try {
-    const pdfResponse = await fetch(signedUrlData.signedUrl);
-    if (pdfResponse.ok) {
-      const pdfBuffer = await pdfResponse.arrayBuffer();
-      // Extract text from PDF using basic text extraction
-      const rawText = new TextDecoder().decode(new Uint8Array(pdfBuffer));
-      // Simple stream-based text extraction for PDF
-      const textMatches = rawText.match(/\(([^)]+)\)/g);
-      if (textMatches && textMatches.length > 10) {
-        pdfContent = textMatches.map(m => m.slice(1, -1)).join(' ');
-        console.log(`[${jobId}] Extracted ${pdfContent.length} chars from PDF binary`);
-      } else {
-        pdfContent = `[PDF from: ${doc.title}] — Text extraction unavailable. Generate content based on the module "${moduleCheck.name}"${chapterInfo ? ` chapter "${chapterInfo.title}"` : ''} using standard medical education knowledge.`;
-        console.warn(`[${jobId}] PDF text extraction yielded minimal results`);
-      }
-    } else {
-      throw new Error(`PDF download failed: ${pdfResponse.status}`);
-    }
-  } catch (err) {
-    console.warn(`[${jobId}] PDF download/extract failed:`, err);
-    pdfContent = `[PDF from: ${doc.title}] — Text extraction unavailable. Generate content based on the module "${moduleCheck.name}"${chapterInfo ? ` chapter "${chapterInfo.title}"` : ''} using standard medical education knowledge.`;
-  }
-}
-```
-
-Then replace `pdfTextPlaceholder` usage in the user prompt (line 1259) with `pdfContent`.
-
-This ensures:
-- When a chapter has `pdf_text` (the common case for Basma's workflow: PDF Library → chapter → Use as AI Source), the AI gets the actual textbook content
-- The AI can generate accurate, chapter-specific MCQs instead of generic or empty results
-- No permission issue — Basma's role is already checked and passes; the problem is purely that the AI has no content to work with
-
-## Regarding Basma's Permission Question
-
-Basma does **not** need any additional permissions. The edge function checks for `platform_admin`, `super_admin`, `department_admin`, or `admin` roles (line 936). If she can see the Admin Panel and PDF Library, her role is sufficient. The failure is purely the missing PDF content.
-
-## Summary
-
-| File | Change |
-|------|--------|
-| `generate-content-from-pdf/index.ts` | Add `pdf_text` to chapter select; replace placeholder with real chapter text; add PDF download fallback |
-
+### Step 15: Bound question_attempts + Deduplicate Dashboard Query ✅
+- **Problem**: `useTestProgress` and `useStudentDashboard` both fetched unbounded `select('*')` from `question_attempts`, duplicating ~80 lines of MCQ/OSCE/improvement calculation logic
+- **Fix 1 — `useTestProgress.ts`**: Narrowed select to 4 used columns (`question_type, is_correct, selected_answer, created_at`) and added `.limit(100)` — ~90% data reduction
+- **Fix 2 — `useStudentDashboard.ts`**: Removed duplicate `question_attempts` fetch entirely. Now accepts `testProgress?: TestProgressData` parameter from `useTestProgress`. Uses it for performance/improvement/readiness calculations. Eliminates one full unbounded query and ~80 lines of duplicate code
+- **Fix 3 — `cache-readiness/index.ts`**: Same `.limit(100)` + narrowed select applied to edge function for consistency
+- **Loading state**: Dashboard shows skeleton when `testProgressLoading` is true (not zeros). Zeros only appear when testProgress resolves with no data (new user)
+- **Impact**: 2 unbounded queries → 1 bounded (100 rows, 4 cols). One entire fetch eliminated from dashboard load. Zero breaking changes
