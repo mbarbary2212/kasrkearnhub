@@ -8,10 +8,37 @@ interface YouTubePlayerProps {
   onReady?: () => void;
 }
 
-// Extend window for YT API
+// Minimal YT type declarations
+interface YTPlayer {
+  destroy(): void;
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  unMute(): void;
+}
+
+interface YTPlayerEvent {
+  target: YTPlayer;
+  data?: number;
+}
+
+interface YTPlayerConstructor {
+  new (element: HTMLElement, options: Record<string, unknown>): YTPlayer;
+}
+
+interface YTNamespace {
+  Player: YTPlayerConstructor;
+  PlayerState: {
+    PLAYING: number;
+    PAUSED: number;
+    ENDED: number;
+    BUFFERING: number;
+  };
+}
+
 declare global {
   interface Window {
-    YT: typeof YT;
+    YT: YTNamespace;
     onYouTubeIframeAPIReady: (() => void) | undefined;
   }
 }
@@ -19,7 +46,7 @@ declare global {
 let apiLoadPromise: Promise<void> | null = null;
 
 function loadYouTubeAPI(): Promise<void> {
-  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (window.YT?.Player) return Promise.resolve();
   if (apiLoadPromise) return apiLoadPromise;
 
   apiLoadPromise = new Promise<void>((resolve) => {
@@ -37,7 +64,7 @@ function loadYouTubeAPI(): Promise<void> {
 
 export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<YT.Player | null>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
   const userRef = useRef(user);
@@ -73,12 +100,13 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
       await loadYouTubeAPI();
       if (destroyed || !containerRef.current) return;
 
-      // Create a child div for the player
       const el = document.createElement('div');
       containerRef.current.innerHTML = '';
       containerRef.current.appendChild(el);
 
-      playerRef.current = new window.YT.Player(el, {
+      const YT = window.YT;
+
+      playerRef.current = new YT.Player(el, {
         videoId,
         width: '100%',
         height: '100%',
@@ -89,9 +117,8 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
           modestbranding: 1,
         },
         events: {
-          onReady: async (event: YT.PlayerEvent) => {
+          onReady: async (event: YTPlayerEvent) => {
             onReady?.();
-            // Resume playback
             const u = userRef.current;
             if (!u) return;
             const { data } = await supabase
@@ -105,13 +132,13 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
               const seekTo = Number(data.last_time_seconds);
               console.log(`Resume playback: seeking to ${seekTo}s`);
               event.target.seekTo(seekTo, true);
-              // Unmute after seek since autoplay requires muted on some browsers
               event.target.unMute();
             }
           },
-          onStateChange: (event: YT.OnStateChangeEvent) => {
+          onStateChange: (event: YTPlayerEvent) => {
             const player = event.target;
-            if (event.data === YT.PlayerState.PLAYING) {
+            const state = event.data;
+            if (state === YT.PlayerState.PLAYING) {
               clearProgressInterval();
               intervalRef.current = setInterval(() => {
                 const currentTime = player.getCurrentTime();
@@ -121,22 +148,21 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
                   saveProgress(currentTime, duration, percent);
                 }
               }, 10000);
-            } else if (event.data === YT.PlayerState.PAUSED) {
+            } else if (state === YT.PlayerState.PAUSED) {
               clearProgressInterval();
-              // Save current position on pause
               const currentTime = player.getCurrentTime();
               const duration = player.getDuration();
               if (duration > 0) {
                 saveProgress(currentTime, duration, (currentTime / duration) * 100);
               }
-            } else if (event.data === YT.PlayerState.ENDED) {
+            } else if (state === YT.PlayerState.ENDED) {
               clearProgressInterval();
               const duration = player.getDuration();
               saveProgress(0, duration, 100);
             }
           },
         },
-      });
+      } as Record<string, unknown>);
     }
 
     init();
