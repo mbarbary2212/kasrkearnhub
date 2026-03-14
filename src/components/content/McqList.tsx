@@ -84,9 +84,9 @@ interface McqListProps {
   questionFormat?: QuestionFormat;
 }
 
-const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty
-"What is the capital of France?",Paris,London,Berlin,Madrid,Rome,A,"Paris is the capital and largest city of France.",easy
-"Which organ produces insulin?",Heart,Liver,Pancreas,Kidney,Spleen,C,"The pancreas contains islet cells that produce insulin.",medium`;
+const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty,section_name,section_number
+"What is the capital of France?",Paris,London,Berlin,Madrid,Rome,A,"Paris is the capital and largest city of France.",easy,Introduction,1
+"Which organ produces insulin?",Heart,Liver,Pancreas,Kidney,Spleen,C,"The pancreas contains islet cells that produce insulin.",medium,Endocrine System,2`;
 
 const SIMILARITY_THRESHOLD = 0.85;
 
@@ -466,9 +466,15 @@ export function McqList({
 
   const handlePreviewCsv = () => {
     if (!csvText.trim()) return;
-    const { mcqs: parsed, corrections } = parseSmartMcqCsv(csvText);
+    const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(csvText);
     setParseCorrections(corrections);
-    const withDuplicates = processWithDuplicateDetection(parsed);
+    // Merge section metadata from parsedRows into McqFormData
+    const withSections = parsed.map((mcq, i) => ({
+      ...mcq,
+      original_section_name: parsedRows[i]?.sectionName || null,
+      original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+    }));
+    const withDuplicates = processWithDuplicateDetection(withSections);
     setPreviewData(withDuplicates);
   };
 
@@ -492,14 +498,19 @@ export function McqList({
         // Set csvText early so AI analysis works even if parsing fails
         setCsvText(text);
         
-        const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+        const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(text);
         setParseCorrections(corrections);
         
         if (parsed.length === 0) {
           setFileError('No valid MCQs found in the file. Check the format.');
           // Don't return - allow AI analysis to help with format issues
         } else {
-          const withDuplicates = processWithDuplicateDetection(parsed);
+          const withSections = parsed.map((mcq, i) => ({
+            ...mcq,
+            original_section_name: parsedRows[i]?.sectionName || null,
+            original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+          }));
+          const withDuplicates = processWithDuplicateDetection(withSections);
           setPreviewData(withDuplicates);
         }
       } catch (err) {
@@ -931,7 +942,7 @@ export function McqList({
                             return;
                           }
                           
-                          const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+                          const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(text);
                           setParseCorrections(corrections);
                           
                           if (parsed.length === 0) {
@@ -939,7 +950,12 @@ export function McqList({
                             return;
                           }
                           
-                          const withDuplicates = processWithDuplicateDetection(parsed);
+                          const withSections = parsed.map((mcq, i) => ({
+                            ...mcq,
+                            original_section_name: parsedRows[i]?.sectionName || null,
+                            original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+                          }));
+                          const withDuplicates = processWithDuplicateDetection(withSections);
                           setPreviewData(withDuplicates);
                           setCsvText(text);
                         } catch (err) {
