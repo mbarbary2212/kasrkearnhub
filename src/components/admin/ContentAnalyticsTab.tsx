@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, ShieldAlert, BrainCircuit } from 'lucide-react';
+import { BarChart3, ShieldAlert, BrainCircuit, Video } from 'lucide-react';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { AICasesAdminTab } from './AICasesAdminTab';
+import { VideoAnalyticsTab } from './VideoAnalyticsTab';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ContentAnalyticsTabProps {
@@ -18,6 +19,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
     { value: 'questions', label: 'Question Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
     { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+    { value: 'video-analytics', label: 'Video Analytics', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
   ].filter(t => t.visible);
 
   const defaultTab = tabs[0]?.value || 'questions';
@@ -52,6 +54,10 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
 
         <TabsContent value="ai-cases" className="mt-4">
           <AICasesAdminTab modules={modules} />
+        </TabsContent>
+
+        <TabsContent value="video-analytics" className="mt-4">
+          <VideoAnalyticsTab />
         </TabsContent>
       </Tabs>
     </div>
