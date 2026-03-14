@@ -1056,10 +1056,10 @@ serve(async (req) => {
   }
 
   // Validate chapter exists if provided
-  let chapterInfo: { title: string; chapter_number: number } | null = null;
+  let chapterInfo: { title: string; chapter_number: number; pdf_text?: string | null } | null = null;
   if (chapter_id) {
     const { data: chapterCheck, error: chapterError } = await serviceClient
-      .from("module_chapters").select("id, title, chapter_number").eq("id", chapter_id).eq("module_id", module_id).single();
+      .from("module_chapters").select("id, title, chapter_number, pdf_text").eq("id", chapter_id).eq("module_id", module_id).single();
 
     if (chapterError || !chapterCheck) {
       return jsonResponse({ error: "Invalid chapter ID or chapter does not belong to module", step: "validation", items: [], warnings: [] }, 400);
