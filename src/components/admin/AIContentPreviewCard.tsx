@@ -176,16 +176,6 @@ export function AIContentPreviewCard({
             <p className="text-xs text-muted-foreground">Root: {item.root_node?.label}</p>
           </>
         );
-      case 'worked_case':
-        return (
-          <>
-            <p className="font-medium text-sm">{item.title}</p>
-            <p className="text-xs text-muted-foreground line-clamp-2">{item.presentation}</p>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="outline">{item.steps?.length || 0} steps</Badge>
-            </div>
-          </>
-        );
       case 'socratic_tutorial':
         return (
           <>

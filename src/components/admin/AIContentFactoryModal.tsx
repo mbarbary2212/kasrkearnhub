@@ -117,7 +117,6 @@ function getPrimaryText(item: any, contentType: string): string {
     case 'matching': return item.instruction || '';
     case 'clinical_case': return item.title || '';
     case 'mind_map': return item.title || '';
-    case 'worked_case': return item.title || '';
     case 'guided_explanation': return item.topic || '';
     case 'socratic_tutorial':
     case 'topic_summary': return item.title || '';

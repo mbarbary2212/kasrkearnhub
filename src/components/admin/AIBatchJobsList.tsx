@@ -67,11 +67,12 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   osce: 'OSCE Questions',
   essay: 'Essays',
   matching: 'Matching Questions',
-  clinical_case: 'Clinical Cases',
-  virtual_patient: 'Virtual Patients',
+  clinical_case: 'Interactive Cases',
+  virtual_patient: 'Interactive Cases',
   mind_map: 'Mind Maps',
   guided_explanation: 'Guided Explanations',
-  worked_case: 'Worked Cases',
+  worked_case: 'Interactive Cases',
+  case_scenario: 'Interactive Cases',
 };
 
 interface StepResultItemProps {
