@@ -19,18 +19,19 @@ const CONTENT_TABLES = [
 
 type ContentTable = typeof CONTENT_TABLES[number];
 
-const TITLE_COLUMN: Record<ContentTable, string> = {
-  lectures: 'title',
-  resources: 'title',
-  study_resources: 'title',
-  essays: 'title',
-  practicals: 'title',
-  mcq_sets: 'title',
-  virtual_patient_cases: 'title',
-  mcqs: 'stem',
-  true_false_questions: 'statement',
-  osce_questions: 'history_text',
-  matching_questions: 'instruction',
+/** Columns to fetch per table for rich AI content analysis */
+const CONTENT_COLUMNS: Record<ContentTable, string[]> = {
+  lectures: ['title'],
+  resources: ['title'],
+  study_resources: ['title'],
+  mcqs: ['stem', 'explanation'],
+  mcq_sets: ['title'],
+  essays: ['title', 'model_answer'],
+  practicals: ['title'],
+  osce_questions: ['history_text'],
+  matching_questions: ['instruction'],
+  true_false_questions: ['statement', 'explanation'],
+  virtual_patient_cases: ['title'],
 };
 
 interface AutoTagResult {
@@ -41,113 +42,36 @@ interface AutoTagResult {
 
 interface UnmatchedItem {
   id: string;
-  title: string;
+  content: string;
   table: string;
 }
 
-const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for',
-  'is', 'are', 'was', 'were', 'be', 'been', 'with', 'by', 'from', 'as',
-  'it', 'its', 'this', 'that', 'which', 'who', 'what', 'how', 'when',
-  'where', 'not', 'no', 'do', 'does', 'did', 'has', 'have', 'had',
-]);
-
-function stripPrefix(name: string): string {
-  return name.replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '').toLowerCase().trim();
+/** Build a select string that includes id + all content columns */
+function buildSelect(table: ContentTable): string {
+  const cols = CONTENT_COLUMNS[table];
+  return ['id', ...cols].join(', ');
 }
 
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[\s\-–—_.,;:!?/\\()\[\]{}]+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
-}
+/** Concatenate content columns from a row into a single string */
+function extractContent(row: any, table: ContentTable): string {
+  const cols = CONTENT_COLUMNS[table];
+  const parts: string[] = [];
 
-function matchSection(
-  sections: Section[],
-  originalName: string | null,
-  originalNumber: string | null
-): string | null {
-  if (!originalName && !originalNumber) return null;
-
-  if (originalName) {
-    const nameLower = originalName.toLowerCase().trim();
-    const exact = sections.find(s => s.name.toLowerCase().trim() === nameLower);
-    if (exact) return exact.id;
-
-    const stripped = nameLower.replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
-    if (stripped) {
-      const prefixMatch = sections.find(s => {
-        const sStripped = s.name.toLowerCase().trim().replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
-        return sStripped === stripped;
-      });
-      if (prefixMatch) return prefixMatch.id;
-    }
-
-    const containsMatch = sections.find(s =>
-      s.name.toLowerCase().includes(nameLower) || nameLower.includes(s.name.toLowerCase())
-    );
-    if (containsMatch) return containsMatch.id;
-
-    const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2);
-    if (nameWords.length >= 2) {
-      let bestMatch: Section | null = null;
-      let bestOverlap = 0;
-      for (const section of sections) {
-        const sWords = section.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        const overlap = nameWords.filter(w => sWords.includes(w)).length;
-        if (overlap >= 2 && overlap > bestOverlap) {
-          bestOverlap = overlap;
-          bestMatch = section;
-        }
-      }
-      if (bestMatch) return bestMatch.id;
+  for (const col of cols) {
+    const val = row[col];
+    if (val && typeof val === 'string' && val.trim()) {
+      parts.push(val.trim());
     }
   }
 
-  if (originalNumber) {
-    const numMatch = sections.find(s => s.section_number === originalNumber.trim());
-    if (numMatch) return numMatch.id;
-  }
-
-  return null;
-}
-
-function matchSectionByTitle(
-  sections: Section[],
-  title: string | null
-): string | null {
-  if (!title || !title.trim()) return null;
-
-  const titleTokens = tokenize(title);
-  if (!titleTokens.length) return null;
-
-  let bestSection: Section | null = null;
-  let bestScore = 0;
-  let bestIsSubstring = false;
-
-  for (const section of sections) {
-    const strippedName = stripPrefix(section.name);
-    const sectionTokens = tokenize(strippedName);
-    if (!sectionTokens.length) continue;
-
-    const overlap = sectionTokens.filter(w => titleTokens.includes(w)).length;
-    if (overlap < 1) continue;
-
-    const isSubstring = title.toLowerCase().includes(strippedName) ||
-      strippedName.includes(title.toLowerCase().trim());
-
-    if (
-      overlap > bestScore ||
-      (overlap === bestScore && isSubstring && !bestIsSubstring)
-    ) {
-      bestScore = overlap;
-      bestSection = section;
-      bestIsSubstring = isSubstring;
+  // For MCQs, also include choices text if fetched via stem
+  if ((table === 'mcqs') && row.choices && Array.isArray(row.choices)) {
+    for (const c of row.choices) {
+      if (c.text) parts.push(`${c.key}: ${c.text}`);
     }
   }
 
-  return bestSection?.id ?? null;
+  return parts.join(' | ').substring(0, 500);
 }
 
 export function useAutoTagSections() {
@@ -169,18 +93,15 @@ export function useAutoTagSections() {
     const filterVal = chapterId || topicId;
     if (!filterVal) { setIsRunning(false); return []; }
 
-    // Track keyword-matched items per table for DB updates
-    const keywordUpdates: Record<string, Record<string, string[]>> = {};
-
     try {
-      // ── Step 1: Keyword matching pass ──
+      // ── Collect untagged items with rich content ──
       for (const table of CONTENT_TABLES) {
         setProgress(`Scanning ${table.replace(/_/g, ' ')}...`);
 
-        const titleCol = TITLE_COLUMN[table];
-        const selectCols = `id, ${titleCol}, original_section_name, original_section_number`;
-
-        let items: any[] | null = null;
+        // For MCQs we need choices too — add it to select
+        const selectCols = table === 'mcqs'
+          ? `${buildSelect(table)}, choices`
+          : buildSelect(table);
 
         const baseQuery = () => supabase
           .from(table)
@@ -188,11 +109,13 @@ export function useAutoTagSections() {
           .eq(filterCol, filterVal)
           .is('section_id', null);
 
+        let items: any[] | null = null;
+
+        // Try with is_deleted filter first, fallback without
         const { data: d1, error: e1 } = await baseQuery().eq('is_deleted', false) as any;
         if (e1) {
-          const { data: d2, error: e2 } = await baseQuery() as any;
+          const { data: d2 } = await baseQuery() as any;
           items = d2;
-          if (e2) { results.push({ table, tagged: 0, total: 0 }); continue; }
         } else {
           items = d1;
         }
@@ -202,63 +125,26 @@ export function useAutoTagSections() {
           continue;
         }
 
-        let tagged = 0;
-        const updates: Record<string, string[]> = {};
+        results.push({ table, tagged: 0, total: items.length });
 
         for (const item of items) {
-          // Try original section info first
-          let sectionId = matchSection(
-            sections,
-            item.original_section_name,
-            item.original_section_number
-          );
-
-          // Fallback to title-based matching
-          if (!sectionId) {
-            sectionId = matchSectionByTitle(sections, item[titleCol]);
-          }
-
-          if (sectionId) {
-            if (!updates[sectionId]) updates[sectionId] = [];
-            updates[sectionId].push(item.id);
-            tagged++;
-          } else {
-            // Collect unmatched for AI pass
-            const titleText = item[titleCol];
-            if (titleText && titleText.trim()) {
-              allUnmatched.push({
-                id: item.id,
-                title: titleText.trim().substring(0, 200),
-                table,
-              });
-            }
+          const content = extractContent(item, table);
+          if (content) {
+            allUnmatched.push({
+              id: item.id,
+              content: content.substring(0, 500),
+              table,
+            });
           }
         }
-
-        // Apply keyword matches to DB
-        for (const [sectionId, ids] of Object.entries(updates)) {
-          await supabase
-            .from(table)
-            .update({ section_id: sectionId } as never)
-            .in('id', ids);
-        }
-
-        keywordUpdates[table] = updates;
-        results.push({ table, tagged, total: items.length });
       }
 
-      const keywordTagged = results.reduce((s, r) => s + r.tagged, 0);
-
-      // ── Step 2: AI matching pass (only for unmatched) ──
+      // ── AI matching pass ──
       let aiTagged = 0;
       if (allUnmatched.length > 0) {
-        setProgress(`AI analyzing ${allUnmatched.length} remaining items...`);
+        setProgress(`AI analyzing ${allUnmatched.length} items...`);
 
         try {
-          const { data: session } = await supabase.auth.getSession();
-          const token = session?.session?.access_token;
-          if (!token) throw new Error('No auth session');
-
           const response = await supabase.functions.invoke('ai-auto-tag-sections', {
             body: {
               items: allUnmatched.slice(0, 200),
@@ -303,17 +189,15 @@ export function useAutoTagSections() {
             }
           }
         } catch (aiErr) {
-          console.error('AI auto-tag failed, falling back to keyword-only:', aiErr);
-          // Graceful fallback - keyword results still apply
+          console.error('AI auto-tag failed:', aiErr);
         }
       }
 
       queryClient.invalidateQueries({ predicate: () => true });
       setProgress('');
 
-      // Store AI tagged count for the caller
       (results as any).__aiTagged = aiTagged;
-      (results as any).__keywordTagged = keywordTagged;
+      (results as any).__keywordTagged = 0;
 
       return results;
     } finally {

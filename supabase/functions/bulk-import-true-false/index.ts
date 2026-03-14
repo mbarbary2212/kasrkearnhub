@@ -102,6 +102,63 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Section resolution ──
+    const sectionIdMap = new Map<number, string>();
+    const needsSectionResolution = questions.some(
+      q => q.original_section_name || q.original_section_number
+    );
+
+    if (needsSectionResolution && (chapterId || topicId)) {
+      const filterCol = chapterId ? 'chapter_id' : 'topic_id';
+      const filterVal = chapterId || topicId;
+
+      const { data: sections } = await adminClient
+        .from('sections')
+        .select('id, name, section_number')
+        .eq(filterCol, filterVal!);
+
+      if (sections && sections.length > 0) {
+        for (let i = 0; i < questions.length; i++) {
+          const q = questions[i];
+          const origName = q.original_section_name;
+          const origNum = q.original_section_number;
+          if (!origName && !origNum) continue;
+
+          let matched: string | null = null;
+
+          if (origNum) {
+            const numMatch = sections.find(s => s.section_number === origNum.trim());
+            if (numMatch) { matched = numMatch.id; }
+          }
+
+          if (!matched && origName) {
+            const nameLower = origName.toLowerCase().trim();
+            const exact = sections.find(s => s.name?.toLowerCase().trim() === nameLower);
+            if (exact) {
+              matched = exact.id;
+            } else {
+              const stripped = nameLower.replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
+              if (stripped) {
+                const prefixMatch = sections.find(s => {
+                  const sStripped = s.name?.toLowerCase().trim().replace(/^\d+(\.\d+)*\s*[-–—.]?\s*/, '');
+                  return sStripped === stripped;
+                });
+                if (prefixMatch) matched = prefixMatch.id;
+              }
+              if (!matched) {
+                const containsMatch = sections.find(s =>
+                  s.name?.toLowerCase().includes(nameLower) || nameLower.includes(s.name?.toLowerCase() || '')
+                );
+                if (containsMatch) matched = containsMatch.id;
+              }
+            }
+          }
+
+          if (matched) sectionIdMap.set(i, matched);
+        }
+      }
+    }
+
     const records = questions.map((q, index) => ({
       module_id: moduleId,
       chapter_id: chapterId || null,
@@ -114,6 +171,7 @@ Deno.serve(async (req) => {
       created_by: user.id,
       original_section_name: q.original_section_name || null,
       original_section_number: q.original_section_number || null,
+      section_id: sectionIdMap.get(index) || null,
     }));
 
     console.log(`Inserting ${records.length} T/F questions for module ${moduleId}`);

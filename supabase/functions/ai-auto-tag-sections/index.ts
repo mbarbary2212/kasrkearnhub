@@ -152,10 +152,10 @@ RESPONSE FORMAT (raw JSON, no markdown):
       const batch = cappedItems.slice(i, i + MAX_ITEMS_PER_BATCH);
 
       const itemList = batch
-        .map((item: any) => `- ID: "${item.id}" | Title: "${item.title}"`)
+        .map((item: any) => `- ID: "${item.id}" | Content: "${item.content || item.title || ''}"`)
         .join("\n");
 
-      const userPrompt = `Assign each content item below to the most relevant section. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
+      const userPrompt = `Assign each content item below to the most relevant section based on its content. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
 
       let result;
 

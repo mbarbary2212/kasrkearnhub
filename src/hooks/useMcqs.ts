@@ -385,11 +385,13 @@ export function useBulkCreateMcqs() {
       moduleId, 
       chapterId,
       topicId,
+      questionFormat,
     }: { 
       mcqs: McqFormData[]; 
       moduleId: string; 
       chapterId?: string | null;
       topicId?: string | null;
+      questionFormat?: QuestionFormat;
     }) => {
       // Get current session for auth header
       const { data: { session } } = await supabase.auth.getSession();
@@ -406,7 +408,7 @@ export function useBulkCreateMcqs() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ mcqs, moduleId, chapterId, topicId }),
+          body: JSON.stringify({ mcqs, moduleId, chapterId, topicId, questionFormat }),
         }
       );
 
