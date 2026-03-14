@@ -428,43 +428,6 @@ export function AIContentPreviewCard({
           </div>
         );
 
-      case 'case_scenario':
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input
-                value={editedItem.title || ''}
-                onChange={(e) => updateField('title', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Case History</Label>
-              <Textarea
-                value={editedItem.case_history || ''}
-                onChange={(e) => updateField('case_history', e.target.value)}
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Questions</Label>
-              <Textarea
-                value={editedItem.case_questions || ''}
-                onChange={(e) => updateField('case_questions', e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Model Answer</Label>
-              <Textarea
-                value={editedItem.model_answer || ''}
-                onChange={(e) => updateField('model_answer', e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-        );
-
       case 'essay':
         return (
           <div className="space-y-4">
