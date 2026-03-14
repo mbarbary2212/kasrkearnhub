@@ -128,6 +128,18 @@ export function HistoryTakingSection({
     }
   }, [scribe.isConnected]);
 
+  // Cleanup: disconnect scribe on unmount to prevent WS race condition
+  const scribeRef = useRef(scribe);
+  scribeRef.current = scribe;
+
+  useEffect(() => {
+    return () => {
+      if (scribeRef.current.isConnected) {
+        scribeRef.current.disconnect();
+      }
+    };
+  }, []);
+
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}

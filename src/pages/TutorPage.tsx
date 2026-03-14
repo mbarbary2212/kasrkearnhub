@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, Send, Loader2, Bot, User, Sparkles, BookOpen, Stethoscope, Brain } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -38,11 +39,18 @@ export default function TutorPage() {
   }, [messages]);
 
   const streamChat = async (userMessages: Message[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      toast.error('Please sign in to use the tutor.');
+      return;
+    }
+
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ messages: userMessages }),
     });
