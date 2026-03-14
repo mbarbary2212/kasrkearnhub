@@ -19,6 +19,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
     { value: 'questions', label: 'Question Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
     { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+    { value: 'video-analytics', label: 'Video Analytics', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
   ].filter(t => t.visible);
 
   const defaultTab = tabs[0]?.value || 'questions';
