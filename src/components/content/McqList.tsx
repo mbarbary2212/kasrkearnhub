@@ -498,14 +498,19 @@ export function McqList({
         // Set csvText early so AI analysis works even if parsing fails
         setCsvText(text);
         
-        const { mcqs: parsed, corrections } = parseSmartMcqCsv(text);
+        const { mcqs: parsed, parsedRows, corrections } = parseSmartMcqCsv(text);
         setParseCorrections(corrections);
         
         if (parsed.length === 0) {
           setFileError('No valid MCQs found in the file. Check the format.');
           // Don't return - allow AI analysis to help with format issues
         } else {
-          const withDuplicates = processWithDuplicateDetection(parsed);
+          const withSections = parsed.map((mcq, i) => ({
+            ...mcq,
+            original_section_name: parsedRows[i]?.sectionName || null,
+            original_section_number: parsedRows[i]?.sectionNumber?.toString() || null,
+          }));
+          const withDuplicates = processWithDuplicateDetection(withSections);
           setPreviewData(withDuplicates);
         }
       } catch (err) {
