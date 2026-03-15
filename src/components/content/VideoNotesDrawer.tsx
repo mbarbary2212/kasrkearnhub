@@ -115,7 +115,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(note.id)}
+                  onClick={() => setNoteToDelete(note.id)}
                   disabled={deleteNote.isPending}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
