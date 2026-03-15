@@ -421,7 +421,22 @@ export function FlashcardsStudentView({
           <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
           
           {/* Rating buttons - shown when card is flipped */}
-
+          <FSRSRatingButtons
+            cardId={currentCard?.resource?.id}
+            fsrsState={fsrsState ?? null}
+            visible={flipped}
+            onRated={(rating) => {
+              // Show next-due toast
+              const due = fsrsState?.due;
+              if (due) {
+                const daysUntil = Math.round((new Date(due).getTime() - Date.now()) / 86400000);
+                if (daysUntil <= 0) toast.success('Next review: today');
+                else if (daysUntil === 1) toast.success('Next review: tomorrow');
+                else toast.success(`Next review in ${daysUntil} days`);
+              }
+              handleNext();
+            }}
+          />
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
 
