@@ -216,6 +216,9 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
   // Student view with mode selector
   return (
     <div className="space-y-4">
+      {/* Scheduled Review Banner */}
+      <ScheduledReviewBanner />
+
       {/* Mode Selector and Filter - Students Only */}
       <div className="flex items-center justify-center gap-2 flex-wrap">
         <Button

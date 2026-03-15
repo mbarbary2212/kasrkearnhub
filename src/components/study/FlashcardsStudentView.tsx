@@ -567,6 +567,16 @@ function FlashcardsStudentViewInner({
           </div>
         </div>
       )}
+
+      {/* Floating Exit Fullscreen pill */}
+      {isFullscreen && (
+        <button
+          onClick={exitFullscreen}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded-full px-5 py-2 text-sm font-medium z-[10000] hover:bg-muted transition-colors"
+        >
+          ✕ Exit Fullscreen
+        </button>
+      )}
     </div>
   );
 }
