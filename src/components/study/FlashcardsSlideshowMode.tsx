@@ -72,13 +72,15 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   } = useFlashcardSettings({ chapterId, topicId });
 
   const [topicSectionOpen, setTopicSectionOpen] = useState<boolean>(false);
-
-  // Slideshow state
   const [state, setState] = useState<SlideshowState>('idle');
   const [sessionCards, setSessionCards] = useState<StudyResource[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+  const scheduleCard = useScheduleCard();
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
 
   // Timer refs
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
