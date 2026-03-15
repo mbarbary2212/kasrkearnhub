@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import {
   Dialog,
   DialogContent,
@@ -148,7 +148,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
               [&_li]:text-sm
               [&_strong]:text-foreground
             ">
-              <ReactMarkdown>{markdownText}</ReactMarkdown>
+              <SafeMarkdown>{markdownText}</SafeMarkdown>
             </div>
           </ScrollArea>
         ) : null}

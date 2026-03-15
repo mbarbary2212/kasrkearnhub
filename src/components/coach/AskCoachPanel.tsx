@@ -18,7 +18,7 @@ import {
   GraduationCap,
   Download,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import remarkGfm from 'remark-gfm';
 import { useCoachContext, useCoachPrompt } from '@/contexts/CoachContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -429,9 +429,9 @@ export function AskCoachPanel() {
                     >
                       {msg.role === 'assistant' ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none text-sm overflow-x-auto [&_table]:min-w-[300px] [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          <SafeMarkdown remarkPlugins={[remarkGfm]}>
                             {msg.content}
-                          </ReactMarkdown>
+                          </SafeMarkdown>
                         </div>
                       ) : (
                         <div className="whitespace-pre-wrap break-all text-sm">

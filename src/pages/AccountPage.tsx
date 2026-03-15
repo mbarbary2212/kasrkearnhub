@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
@@ -492,7 +492,7 @@ function AdminApiKeyCard() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3">
                   <div className="prose prose-sm dark:prose-invert prose-amber max-w-none [&_a]:text-amber-700 dark:[&_a]:text-amber-300">
-                    <ReactMarkdown>{platformSettings.global_key_disabled_message}</ReactMarkdown>
+                    <SafeMarkdown>{platformSettings.global_key_disabled_message}</SafeMarkdown>
                   </div>
                 </CollapsibleContent>
               </Collapsible>

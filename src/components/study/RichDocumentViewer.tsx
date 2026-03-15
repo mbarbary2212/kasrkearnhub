@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Printer, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { cn } from '@/lib/utils';
 
 interface RichDocumentViewerProps {
@@ -103,7 +103,7 @@ export function RichDocumentViewer({
             className="text-sm text-muted-foreground cursor-pointer line-clamp-3"
             onClick={() => setIsExpanded(true)}
           >
-            <ReactMarkdown>{previewContent}</ReactMarkdown>
+            <SafeMarkdown>{previewContent}</SafeMarkdown>
           </div>
         ) : (
           <div
@@ -114,7 +114,7 @@ export function RichDocumentViewer({
               prose-blockquote:text-muted-foreground prose-li:text-foreground/90
               prose-a:text-primary"
           >
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <SafeMarkdown>{content}</SafeMarkdown>
           </div>
         )}
       </CardContent>
