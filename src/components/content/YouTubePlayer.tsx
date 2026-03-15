@@ -219,7 +219,7 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
 
       playerRef.current = null;
     };
-  }, [videoId, clearProgressInterval, clearTimeInterval, saveProgress, onReady]);
+  }, [videoId, clearProgressInterval, clearTimeInterval, saveProgress]);
 
   return (
     <div className="aspect-video w-full bg-black">
