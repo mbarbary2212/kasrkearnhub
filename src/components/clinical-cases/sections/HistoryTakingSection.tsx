@@ -134,8 +134,12 @@ export function HistoryTakingSection({
 
   useEffect(() => {
     return () => {
-      if (scribeRef.current.isConnected) {
-        scribeRef.current.disconnect();
+      try {
+        if (scribeRef.current.isConnected) {
+          scribeRef.current.disconnect();
+        }
+      } catch {
+        // Suppress InvalidStateError from AudioContext double-close on unmount
       }
     };
   }, []);
