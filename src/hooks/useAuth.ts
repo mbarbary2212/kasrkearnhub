@@ -39,6 +39,8 @@ export function useAuth() {
     isLoading: true,
   });
 
+  const queryClient = useQueryClient();
+
   // Deduplicate concurrent fetchUserData calls
   const fetchInFlightRef = useRef<string | null>(null);
 
