@@ -71,6 +71,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
         <SheetHeader>
