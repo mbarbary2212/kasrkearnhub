@@ -11,8 +11,6 @@ import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
-import { FlashcardRatingButtons, RatingDot } from './FlashcardRatingButtons';
-import { useCardRating, useRateCard, useClearCardRating, CardRatingType } from '@/hooks/useCardRatings';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
