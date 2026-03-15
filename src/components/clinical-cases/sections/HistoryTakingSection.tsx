@@ -112,7 +112,7 @@ export function HistoryTakingSection({
         sendChatMessageRef.current(data.text);
         // Immediately disconnect to prevent echo/phantom responses during TTS
         // Auto-reconnect happens in sendChatMessage after TTS finishes
-        try { scribe.disconnect(); } catch { /* suppress AudioContext double-close */ }
+        safeDisconnect();
       }
     },
     onPartialTranscript: (data) => {
@@ -131,18 +131,25 @@ export function HistoryTakingSection({
   // Cleanup: disconnect scribe on unmount to prevent WS race condition
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
+  const disconnectingRef = useRef(false);
+
+  const safeDisconnect = useCallback(async () => {
+    if (disconnectingRef.current) return;
+    disconnectingRef.current = true;
+    try {
+      if (scribeRef.current.isConnected) {
+        await scribeRef.current.disconnect();
+      }
+    } catch {
+      // Suppress AudioContext double-close
+    } finally {
+      disconnectingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    return () => {
-      try {
-        if (scribeRef.current.isConnected) {
-          scribeRef.current.disconnect();
-        }
-      } catch {
-        // Suppress InvalidStateError from AudioContext double-close on unmount
-      }
-    };
-  }, []);
+    return () => { safeDisconnect(); };
+  }, [safeDisconnect]);
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -230,7 +237,7 @@ export function HistoryTakingSection({
       // Voice mode: speak the response (unless muted), then auto-reconnect mic
       if (selectedMode === 'voice') {
         // Ensure scribe is disconnected during TTS to prevent echo
-        try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+        await safeDisconnect();
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
@@ -341,6 +348,7 @@ export function HistoryTakingSection({
       if (error || !tokenData?.token) {
         throw new Error(error?.message || 'No token received');
       }
+      disconnectingRef.current = false;
       await scribe.connect({
         token: tokenData.token,
         microphone: {
@@ -364,7 +372,7 @@ export function HistoryTakingSection({
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
     if (isListening || scribe.isConnected) {
-      try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+      await safeDisconnect();
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -381,7 +389,7 @@ export function HistoryTakingSection({
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
-    try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+    safeDisconnect();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
