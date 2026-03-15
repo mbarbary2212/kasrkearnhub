@@ -419,11 +419,6 @@ export function FlashcardsStudentView({
           <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
           
           {/* Rating buttons - shown when card is flipped */}
-          <FlashcardRatingButtons
-            cardId={currentCard.resource.id}
-            visible={true}
-            onRated={handleNext}
-          />
 
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
