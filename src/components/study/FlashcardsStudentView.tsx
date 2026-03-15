@@ -12,7 +12,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { FlashcardRatingButtons, RatingDot } from './FlashcardRatingButtons';
-import { useCardRating, useCardRatingsBulk, useRateCard, CardRatingType } from '@/hooks/useCardRatings';
+import { useCardRating, useCardRatingsBulk, useRateCard, useClearCardRating, CardRatingType } from '@/hooks/useCardRatings';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
