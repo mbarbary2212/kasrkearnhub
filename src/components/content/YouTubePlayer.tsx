@@ -149,7 +149,6 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
             if (data && Number(data.last_time_seconds) > 10 && Number(data.percent_watched) < 95) {
               const seekTo = Number(data.last_time_seconds);
               event.target.seekTo(seekTo, true);
-              event.target.unMute();
               onTimeUpdateRef.current?.(seekTo);
             } else {
               onTimeUpdateRef.current?.(0);
