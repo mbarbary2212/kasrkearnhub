@@ -25,6 +25,18 @@ export function initSentry() {
       integrations: [Sentry.browserTracingIntegration()],
       tracesSampleRate: 0.2,
       replaysOnErrorSampleRate: 1.0,
+      beforeSend(event, hint) {
+        const exc = hint?.originalException;
+        const msg = (exc instanceof Error ? exc.message : typeof exc === 'string' ? exc : '') || '';
+        if (
+          msg.includes('Failed to fetch dynamically imported module') ||
+          msg.includes('Loading chunk') ||
+          msg.includes('ChunkLoadError') ||
+          msg.includes('Importing a module script failed') ||
+          msg.includes('error loading dynamically imported module')
+        ) return null;
+        return event;
+      },
     });
   }
 
