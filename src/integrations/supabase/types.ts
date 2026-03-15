@@ -3933,6 +3933,44 @@ export type Database = {
           },
         ]
       }
+      scheduled_reviews: {
+        Row: {
+          card_id: string
+          created_at: string
+          due_date: string
+          id: string
+          interval_label: string
+          is_completed: boolean
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          interval_label: string
+          is_completed?: boolean
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          interval_label?: string
+          is_completed?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reviews_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "study_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sections: {
         Row: {
           chapter_id: string | null
