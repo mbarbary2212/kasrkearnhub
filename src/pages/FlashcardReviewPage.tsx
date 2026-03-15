@@ -75,12 +75,7 @@ export default function FlashcardReviewPage() {
   }
 
   if (!cards.length && !completed) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-4">
-        <p className="text-lg text-muted-foreground">No cards due for review! 🎉</p>
-        <Button onClick={() => navigate('/')}>Go Home</Button>
-      </div>
-    );
+    return <NoCardsDueScreen />;
   }
 
   if (completed) {
