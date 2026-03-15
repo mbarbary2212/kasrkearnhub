@@ -468,12 +468,9 @@ function FlashcardsStudentViewInner({
             </div>
           </div>
 
-          {/* Progress indicator */}
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            Card {cardIndex + 1} of {displayCards.length}
-            {shuffledCards && <span className="ml-2 text-primary">(Shuffled)</span>}
-            {isCurrentMarked && <span className="ml-2 text-amber-500">★</span>}
-          </div>
+          <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
+          {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
+          {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
 
           {/* Navigation controls */}
           <TooltipProvider delayDuration={300}>
