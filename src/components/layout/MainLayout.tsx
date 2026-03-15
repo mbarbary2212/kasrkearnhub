@@ -40,8 +40,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
   const { data: dueCount } = useDueCardCount();
-  const { data: upcoming } = useUpcomingCardCounts();
-  const totalScheduledCount = (upcoming?.today ?? 0) + (upcoming?.tomorrow ?? 0) + (upcoming?.inWeek ?? 0) + (upcoming?.inMonth ?? 0);
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
