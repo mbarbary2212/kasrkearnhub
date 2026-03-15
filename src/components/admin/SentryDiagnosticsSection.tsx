@@ -1,21 +1,22 @@
 import { useState } from 'react';
 import * as Sentry from '@sentry/react';
+import { BrowserClient, defaultStackParser, makeFetchTransport, Scope } from '@sentry/react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getBetterStackClient } from '@/lib/sentry';
 
 export function SentryDiagnosticsSection() {
   const [frontendLoading, setFrontendLoading] = useState(false);
   const [edgeLoading, setEdgeLoading] = useState(false);
+  const [betterStackLoading, setBetterStackLoading] = useState(false);
 
   const handleFrontendTest = async () => {
     setFrontendLoading(true);
     try {
-      // Ensure Sentry is initialized even in dev/preview
       const dsn = import.meta.env.VITE_SENTRY_DSN;
       if (dsn && !Sentry.getClient()) {
         Sentry.init({
@@ -60,27 +61,67 @@ export function SentryDiagnosticsSection() {
     }
   };
 
+  const handleBetterStackTest = async () => {
+    setBetterStackLoading(true);
+    try {
+      const dsn = import.meta.env.VITE_BETTERSTACK_DSN;
+      let client = getBetterStackClient();
+
+      // If not initialized (e.g. in dev/preview), create a temporary client
+      if (!client && dsn) {
+        client = new BrowserClient({
+          dsn,
+          transport: makeFetchTransport,
+          stackParser: defaultStackParser,
+          integrations: [],
+          environment: 'diagnostics-test',
+        });
+        client.init();
+      }
+
+      if (!client) {
+        toast.error('Better Stack DSN not configured — cannot send test event');
+        return;
+      }
+
+      const scope = new Scope();
+      scope.setClient(client);
+      const err = new Error('BETTERSTACK_FRONTEND_TEST — ' + new Date().toISOString());
+      scope.captureException(err);
+      await client.flush(3000);
+      toast.success('Better Stack test event sent ✓');
+    } catch {
+      toast.error('Failed to send Better Stack event');
+    } finally {
+      setBetterStackLoading(false);
+    }
+  };
+
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Activity className="w-5 h-5" />
-          Monitoring / Sentry
+          Monitoring / Error Tracking
           <Badge variant="secondary" className="text-xs ml-auto">Super Admin</Badge>
         </CardTitle>
         <CardDescription>
-          Send a test event to verify Sentry is capturing errors correctly.
+          Send test events to verify Sentry and Better Stack are capturing errors correctly.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button size="sm" variant="outline" onClick={handleFrontendTest} disabled={frontendLoading}>
             {frontendLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            Test Frontend
+            Test Sentry
           </Button>
           <Button size="sm" variant="outline" onClick={handleEdgeTest} disabled={edgeLoading}>
             {edgeLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
             Test Edge
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleBetterStackTest} disabled={betterStackLoading}>
+            {betterStackLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+            Test Better Stack
           </Button>
         </div>
       </CardContent>
