@@ -80,7 +80,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const [transitioning, setTransitioning] = useState(false);
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
-  const scheduleCard = useScheduleCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
 
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
