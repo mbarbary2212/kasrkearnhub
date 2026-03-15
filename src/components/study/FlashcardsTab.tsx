@@ -3,6 +3,7 @@ import { FlashcardsStudentView } from './FlashcardsStudentView';
 import { FlashcardsSlideshowMode } from './FlashcardsSlideshowMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
 import { FlashcardsAdminTable } from './FlashcardsAdminTable';
+import { ScheduledReviewBanner } from './ScheduledReviewBanner';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { StudyResource } from '@/hooks/useStudyResources';
