@@ -138,7 +138,7 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
         },
         events: {
           onReady: async (event: YTPlayerEvent) => {
-            onReady?.();
+            onReadyRef.current?.();
             const u = userRef.current;
             if (!u) return;
 
