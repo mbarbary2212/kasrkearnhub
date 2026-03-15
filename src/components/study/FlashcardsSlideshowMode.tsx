@@ -7,10 +7,11 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
-import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useScheduleCard, useIsCardScheduled, useCardState } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
+import FSRSRatingButtons from './FSRSRatingButtons';
 import { cn } from '@/lib/utils';
 
 // Global admin constant: time to show question before auto-flip to answer
