@@ -70,8 +70,6 @@ export function FlashcardsStudentView({
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const scheduleCard = useScheduleCard();
-  const rateCard = useRateCard();
-  const clearCardRating = useClearCardRating();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
