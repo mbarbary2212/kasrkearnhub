@@ -10,12 +10,12 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { useDueReviewCount, useDueReviews } from '@/hooks/useScheduledReviews';
+import { useDueCardCount, useDueCards } from '@/hooks/useFSRS';
 
 export function ScheduledReviewAlert() {
   const navigate = useNavigate();
-  const { data: dueCount } = useDueReviewCount();
-  const { data: dueReviews } = useDueReviews();
+  const { data: dueCount } = useDueCardCount();
+  const { data: dueReviews } = useDueCards();
   const [dismissed, setDismissed] = useState(false);
 
   const show = !dismissed && (dueCount ?? 0) > 0;

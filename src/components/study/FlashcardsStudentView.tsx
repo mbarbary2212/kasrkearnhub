@@ -7,11 +7,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
-import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useScheduleCard, useIsCardScheduled, useCardState } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
+import FSRSRatingButtons from './FSRSRatingButtons';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface FlashcardsStudentViewProps {
   cards: StudyResource[];
@@ -113,7 +115,7 @@ export function FlashcardsStudentView({
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
-  
+  const { data: fsrsState } = useCardState(currentCard?.resource?.id);
 
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
@@ -419,7 +421,22 @@ export function FlashcardsStudentView({
           <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
           
           {/* Rating buttons - shown when card is flipped */}
-
+          <FSRSRatingButtons
+            cardId={currentCard?.resource?.id}
+            fsrsState={fsrsState ?? null}
+            visible={flipped}
+            onRated={(rating) => {
+              // Show next-due toast
+              const due = fsrsState?.due;
+              if (due) {
+                const daysUntil = Math.round((new Date(due).getTime() - Date.now()) / 86400000);
+                if (daysUntil <= 0) toast.success('Next review: today');
+                else if (daysUntil === 1) toast.success('Next review: tomorrow');
+                else toast.success(`Next review in ${daysUntil} days`);
+              }
+              handleNext();
+            }}
+          />
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
 

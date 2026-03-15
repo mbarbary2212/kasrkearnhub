@@ -3,19 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { XCircle, Maximize2, Minimize2, CalendarClock, BookOpen, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FlashcardProgressBar } from '@/components/study/FlashcardProgressBar';
-import { useDueReviews, useMarkReviewsComplete, useUpcomingReviewCounts } from '@/hooks/useScheduledReviews';
+import { useDueCards, useUpcomingCardCounts } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardContent } from '@/hooks/useStudyResources';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import FSRSRatingButtons from '@/components/study/FSRSRatingButtons';
 
 export default function FlashcardReviewPage() {
   const navigate = useNavigate();
-  const { data: dueReviews, isLoading } = useDueReviews();
-  const markComplete = useMarkReviewsComplete();
+  const { data: dueReviews, isLoading } = useDueCards();
   const containerRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(containerRef);
 
@@ -23,6 +21,9 @@ export default function FlashcardReviewPage() {
   const [flipped, setFlipped] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [ratingCounts, setRatingCounts] = useState<Record<string, number>>({
+    Again: 0, Hard: 0, Good: 0, Easy: 0,
+  });
 
   const cards = useMemo(() => dueReviews ?? [], [dueReviews]);
 
@@ -36,12 +37,9 @@ export default function FlashcardReviewPage() {
     return Array.from(map.entries());
   }, [cards]);
 
-  const handleNext = useCallback(() => {
-    if (transitioning || !cards.length) return;
+  const advanceToNext = useCallback(() => {
+    if (!cards.length) return;
     if (currentIndex >= cards.length - 1) {
-      // Complete
-      const reviewIds = cards.map(c => c.reviewId);
-      markComplete.mutate(reviewIds);
       setCompleted(true);
       return;
     }
@@ -49,7 +47,7 @@ export default function FlashcardReviewPage() {
     setFlipped(false);
     setTimeout(() => setCurrentIndex(prev => prev + 1), 250);
     setTimeout(() => setTransitioning(false), 400);
-  }, [currentIndex, cards, transitioning, markComplete]);
+  }, [currentIndex, cards]);
 
   const handlePrev = useCallback(() => {
     if (transitioning || !cards.length || currentIndex === 0) return;
@@ -59,7 +57,7 @@ export default function FlashcardReviewPage() {
     setTimeout(() => setTransitioning(false), 400);
   }, [currentIndex, cards, transitioning]);
 
-  useSwipeGesture(containerRef, { onSwipeLeft: handleNext, onSwipeRight: handlePrev });
+  useSwipeGesture(containerRef, { onSwipeLeft: advanceToNext, onSwipeRight: handlePrev });
 
   const handleExit = async () => {
     if (isFullscreen) await exitFullscreen();
@@ -79,12 +77,20 @@ export default function FlashcardReviewPage() {
   }
 
   if (completed) {
-    // Find next due date from all scheduled reviews
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-4 text-center">
         <div className="text-4xl">✅</div>
         <h2 className="text-2xl font-bold text-foreground">Revision complete!</h2>
         <p className="text-muted-foreground">You reviewed {cards.length} card{cards.length > 1 ? 's' : ''}.</p>
+        <div className="flex flex-wrap justify-center gap-2 text-sm">
+          <span className="text-red-500 font-medium">{ratingCounts.Again} Again</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-orange-500 font-medium">{ratingCounts.Hard} Hard</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-green-500 font-medium">{ratingCounts.Good} Good</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-blue-500 font-medium">{ratingCounts.Easy} Easy</span>
+        </div>
         <Button size="lg" onClick={() => navigate('/')}>Go Home</Button>
       </div>
     );
@@ -92,6 +98,19 @@ export default function FlashcardReviewPage() {
 
   const current = cards[currentIndex];
   const content = current.content as unknown as FlashcardContent;
+
+  // Build fsrsState object for FSRSRatingButtons (needs DB row shape)
+  const fsrsState = {
+    due: current.due,
+    stability: current.stability,
+    difficulty: current.difficulty,
+    elapsed_days: current.elapsedDays,
+    scheduled_days: current.scheduledDays,
+    reps: current.reps,
+    lapses: current.lapses,
+    state: current.fsrsState,
+    last_review: current.lastReview,
+  };
 
   return (
     <div
@@ -143,19 +162,22 @@ export default function FlashcardReviewPage() {
             </div>
           </div>
 
-          
-
           <FlashcardProgressBar current={currentIndex + 1} total={cards.length} />
 
-          {/* Nav buttons */}
-          <div className="flex items-center justify-between mt-4">
-            <Button variant="outline" onClick={handlePrev} disabled={currentIndex === 0}>
-              ← Prev
-            </Button>
-            <Button onClick={handleNext}>
-              {currentIndex === cards.length - 1 ? 'Finish →' : 'Next →'}
-            </Button>
-          </div>
+          {/* Rating buttons - shown after flip */}
+          {flipped ? (
+            <FSRSRatingButtons
+              cardId={current.cardId}
+              fsrsState={fsrsState}
+              visible={flipped}
+              onRated={(rating) => {
+                setRatingCounts(prev => ({ ...prev, [rating]: (prev[rating] || 0) + 1 }));
+                advanceToNext();
+              }}
+            />
+          ) : (
+            <p className="text-center text-sm text-muted-foreground mt-4">Tap card to reveal answer</p>
+          )}
         </div>
       </div>
 
@@ -175,54 +197,7 @@ export default function FlashcardReviewPage() {
 // ─── No Cards Due Screen ──────────────────────────────────────
 function NoCardsDueScreen() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
-  const { data: upcoming } = useUpcomingReviewCounts();
-
-  // Fetch scheduled cards with their chapter/module info for links
-  const { data: scheduledChapters } = useQuery({
-    queryKey: ['scheduled-reviews', 'chapter-links', user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('scheduled_reviews' as any)
-        .select('card_id, due_date')
-        .eq('user_id', user!.id)
-        .eq('is_completed', false)
-        .order('due_date', { ascending: true })
-        .limit(100);
-      if (error) throw error;
-
-      const reviews = data as any[];
-      if (!reviews.length) return { nextDueDate: null, chapters: [] };
-
-      const cardIds = [...new Set(reviews.map((r: any) => r.card_id))];
-      const { data: resources } = await supabase
-        .from('study_resources')
-        .select('id, chapter_id, module_id')
-        .in('id', cardIds)
-        .eq('is_deleted', false);
-
-      const chapterIds = [...new Set((resources || []).map(r => r.chapter_id).filter(Boolean))];
-      let chapters: { id: string; title: string; moduleId: string }[] = [];
-      if (chapterIds.length) {
-        const { data: chData } = await supabase
-          .from('module_chapters')
-          .select('id, title, module_id')
-          .in('id', chapterIds);
-        chapters = (chData || []).map(c => ({ id: c.id, title: c.title, moduleId: c.module_id }));
-      }
-
-      return {
-        nextDueDate: reviews[0]?.due_date as string,
-        chapters,
-      };
-    },
-  });
-
-  const nextDate = scheduledChapters?.nextDueDate;
-  const nextDateLabel = nextDate
-    ? formatRelativeDate(nextDate)
-    : null;
+  const { data: upcoming } = useUpcomingCardCounts();
 
   const totalUpcoming = (upcoming?.tomorrow ?? 0) + (upcoming?.inWeek ?? 0) + (upcoming?.inMonth ?? 0);
 
@@ -231,9 +206,9 @@ function NoCardsDueScreen() {
       <CalendarClock className="w-12 h-12 text-muted-foreground" />
       <div>
         <h2 className="text-xl font-bold text-foreground mb-1">No cards due right now 🎉</h2>
-        {nextDateLabel && (
+        {totalUpcoming > 0 && (
           <p className="text-muted-foreground">
-            Next review: <span className="font-medium text-foreground">{nextDateLabel}</span>
+            You have upcoming reviews scheduled.
           </p>
         )}
       </div>
@@ -258,39 +233,9 @@ function NoCardsDueScreen() {
         </div>
       )}
 
-      {(scheduledChapters?.chapters?.length ?? 0) > 0 && (
-        <div className="w-full max-w-sm space-y-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Study these chapters now</p>
-          {scheduledChapters!.chapters.map(ch => (
-            <Button
-              key={ch.id}
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => navigate(`/module/${ch.moduleId}/chapter/${ch.id}`)}
-            >
-              <BookOpen className="w-4 h-4 shrink-0" />
-              <span className="truncate">{ch.title}</span>
-            </Button>
-          ))}
-        </div>
-      )}
-
       <Button onClick={() => navigate('/')} className="gap-2 mt-2">
         <Home className="w-4 h-4" /> Go Home
       </Button>
     </div>
   );
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + 'T00:00:00');
-  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diffDays <= 0) return 'Today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays <= 7) return `In ${diffDays} days`;
-  if (diffDays <= 30) return `In ${Math.ceil(diffDays / 7)} weeks`;
-  return `In ${Math.ceil(diffDays / 30)} months`;
 }
