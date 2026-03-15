@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
