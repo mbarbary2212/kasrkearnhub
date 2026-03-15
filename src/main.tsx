@@ -24,7 +24,7 @@ setupVersionGuard();
 // Triggers one-time reload if core UI failed to initialize
 setupStartupHealthCheck(defaultHealthCheck, 3000);
 
-// Initialize Sentry error monitoring (production only, requires VITE_SENTRY_DSN)
+// Initialize Sentry + Better Stack error monitoring (production only)
 initSentry();
 
 // Register service worker manually with error handling
