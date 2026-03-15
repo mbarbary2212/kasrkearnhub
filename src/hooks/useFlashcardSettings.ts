@@ -13,7 +13,7 @@ export interface FlashcardSettings {
 }
 
 const DEFAULT_SETTINGS: FlashcardSettings = {
-  mode: 'slideshow',
+  mode: 'interactive',
   selectedTopics: [], // Empty means "all"
   numberOfCards: '20',
   intervalSeconds: 7,
