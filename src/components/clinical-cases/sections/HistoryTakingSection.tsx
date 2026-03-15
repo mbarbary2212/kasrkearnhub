@@ -348,6 +348,7 @@ export function HistoryTakingSection({
       if (error || !tokenData?.token) {
         throw new Error(error?.message || 'No token received');
       }
+      disconnectingRef.current = false;
       await scribe.connect({
         token: tokenData.token,
         microphone: {
