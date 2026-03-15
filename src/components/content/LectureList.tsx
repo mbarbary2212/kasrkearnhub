@@ -597,6 +597,7 @@ export function LectureList({
         onOpenChange={(open) => {
           if (!open) {
             setSelectedLecture(null);
+            setCurrentVideoTime(0);
             setIsPlayerReady(false);
             setPlayerKey(0);
           }
