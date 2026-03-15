@@ -399,9 +399,22 @@ function FlashcardsStudentViewInner({
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
-            {/* Mark for Review star */}
-            {onToggleMark && (
-              <div className="absolute -top-2 -right-2 z-20">
+            {/* Mark for Review star + Schedule icon */}
+            <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSchedule();
+                }}
+                className={cn(
+                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                  isScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
+                )}
+                title={isScheduled ? 'Remove from schedule' : 'Schedule for review'}
+              >
+                {isScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
+              </button>
+              {onToggleMark && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -415,8 +428,18 @@ function FlashcardsStudentViewInner({
                 >
                   <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isFullscreen ? exitFullscreen() : enterFullscreen();
+                }}
+                className="p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted text-muted-foreground/60 hover:text-foreground"
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            </div>
 
             {/* Transition blackout overlay */}
             <div 
