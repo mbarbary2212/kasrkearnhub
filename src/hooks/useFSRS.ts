@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { createEmptyCard, Rating, type Grade } from 'ts-fsrs';
 import { scheduler, rowToCard } from '@/lib/fsrs';
 
-// ─── Rating string → ts-fsrs Rating enum ──────────────────────
-const RATING_MAP: Record<string, Rating> = {
+// ─── Rating string → ts-fsrs Grade ────────────────────────────
+const RATING_MAP: Record<string, Grade> = {
   Again: Rating.Again,
   Hard: Rating.Hard,
   Good: Rating.Good,
