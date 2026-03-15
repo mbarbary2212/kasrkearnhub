@@ -8,7 +8,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardContent } from '@/hooks/useStudyResources';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FlashcardRatingButtons } from '@/components/study/FlashcardRatingButtons';
+
 
 export default function FlashcardReviewPage() {
   const navigate = useNavigate();
