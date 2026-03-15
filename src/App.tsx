@@ -36,6 +36,7 @@ import ActivityLogPage from "./pages/ActivityLogPage";
 import ExamResultsPage from "./pages/ExamResultsPage";
 import CasePreviewEditorPage from "./pages/CasePreviewEditorPage";
 import CaseSummaryPage from "./pages/CaseSummaryPage";
+import FlashcardReviewPage from "./pages/FlashcardReviewPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
