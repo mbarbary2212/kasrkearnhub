@@ -539,7 +539,7 @@ export function FlashcardsStudentView({
 
           {/* Keyboard hint */}
           <div className="hidden md:block text-center text-xs text-muted-foreground mt-4">
-            Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark
+            Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark • 1/2/3 to rate
           </div>
         </div>
       )}
