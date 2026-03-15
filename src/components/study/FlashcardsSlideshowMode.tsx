@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
