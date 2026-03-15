@@ -112,7 +112,7 @@ export function HistoryTakingSection({
         sendChatMessageRef.current(data.text);
         // Immediately disconnect to prevent echo/phantom responses during TTS
         // Auto-reconnect happens in sendChatMessage after TTS finishes
-        scribe.disconnect();
+        try { scribe.disconnect(); } catch { /* suppress AudioContext double-close */ }
       }
     },
     onPartialTranscript: (data) => {
@@ -134,8 +134,12 @@ export function HistoryTakingSection({
 
   useEffect(() => {
     return () => {
-      if (scribeRef.current.isConnected) {
-        scribeRef.current.disconnect();
+      try {
+        if (scribeRef.current.isConnected) {
+          scribeRef.current.disconnect();
+        }
+      } catch {
+        // Suppress InvalidStateError from AudioContext double-close on unmount
       }
     };
   }, []);
@@ -226,7 +230,7 @@ export function HistoryTakingSection({
       // Voice mode: speak the response (unless muted), then auto-reconnect mic
       if (selectedMode === 'voice') {
         // Ensure scribe is disconnected during TTS to prevent echo
-        if (scribe.isConnected) scribe.disconnect();
+        try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
@@ -360,9 +364,7 @@ export function HistoryTakingSection({
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
     if (isListening || scribe.isConnected) {
-      if (scribe.isConnected) {
-        scribe.disconnect();
-      }
+      try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -379,9 +381,7 @@ export function HistoryTakingSection({
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
-    if (scribe.isConnected) {
-      scribe.disconnect();
-    }
+    try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
