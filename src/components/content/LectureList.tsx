@@ -605,7 +605,23 @@ export function LectureList({
       >
         <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2">
-            <DialogTitle className="pr-8">{selectedLecture?.title}</DialogTitle>
+            <div className="flex items-center justify-between gap-2 pr-8">
+              <DialogTitle className="truncate">{selectedLecture?.title}</DialogTitle>
+              {isStudent && user && selectedLecture && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => {
+                    setNotesLecture(selectedLecture);
+                    setNotesDrawerOpen(true);
+                  }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Note @ {formatPlaybackTime(currentVideoTime)}
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="w-full bg-black">
             {isVimeoVideo ? (
