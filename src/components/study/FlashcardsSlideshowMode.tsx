@@ -291,7 +291,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const canStart = allCards.length > 0;
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
+    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-center bg-background")}>
       {/* Settings (only when idle) */}
       {state === 'idle' && (
         <div className="w-full max-w-md space-y-4">
