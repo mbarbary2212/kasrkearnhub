@@ -642,6 +642,7 @@ export function LectureList({
                 videoId={selectedYouTubeId}
                 title={selectedLecture?.title}
                 onReady={() => setIsPlayerReady(true)}
+                onTimeUpdate={handlePlayerTimeUpdate}
               />
             ) : isGoogleDrive && googleDriveEmbedUrl ? (
               <div className="aspect-video w-full">
