@@ -108,6 +108,7 @@ export function useAuth() {
             fetchUserData(session.user.id);
           }, 0);
         } else {
+          queryClient.clear();
           setState(prev => ({
             ...prev,
             profile: null,
