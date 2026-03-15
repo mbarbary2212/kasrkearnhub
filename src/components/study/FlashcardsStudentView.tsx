@@ -421,8 +421,22 @@ export function FlashcardsStudentView({
           </div>
 
           <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
+          
+          {/* Rating buttons - shown when card is flipped */}
+          <FlashcardRatingButtons
+            cardId={currentCard.resource.id}
+            visible={flipped}
+            onRated={handleNext}
+          />
+
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
+          {currentCardRating && (
+            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+              <RatingDot rating={currentCardRating.rating} />
+              <span className="capitalize">{currentCardRating.rating}</span>
+            </div>
+          )}
 
           {/* Navigation controls */}
           <TooltipProvider delayDuration={300}>
