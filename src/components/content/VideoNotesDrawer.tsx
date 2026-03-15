@@ -39,6 +39,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   const { notes, addNote, deleteNote } = useVideoNotes(videoId);
   const [noteText, setNoteText] = useState('');
   const [timestamp, setTimestamp] = useState('');
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const handleAdd = async () => {
     if (!noteText.trim()) {
