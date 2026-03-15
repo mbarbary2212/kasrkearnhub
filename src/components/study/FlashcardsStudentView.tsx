@@ -114,11 +114,6 @@ export function FlashcardsStudentView({
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
 
-  useSwipeGesture(cardContainerRef, {
-    onSwipeLeft: handleNext,
-    onSwipeRight: handlePrev,
-  });
-
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
     scheduleCard.mutate({
