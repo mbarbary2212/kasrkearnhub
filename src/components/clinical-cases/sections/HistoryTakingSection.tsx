@@ -131,18 +131,25 @@ export function HistoryTakingSection({
   // Cleanup: disconnect scribe on unmount to prevent WS race condition
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
+  const disconnectingRef = useRef(false);
+
+  const safeDisconnect = useCallback(async () => {
+    if (disconnectingRef.current) return;
+    disconnectingRef.current = true;
+    try {
+      if (scribeRef.current.isConnected) {
+        await scribeRef.current.disconnect();
+      }
+    } catch {
+      // Suppress AudioContext double-close
+    } finally {
+      disconnectingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    return () => {
-      try {
-        if (scribeRef.current.isConnected) {
-          scribeRef.current.disconnect();
-        }
-      } catch {
-        // Suppress InvalidStateError from AudioContext double-close on unmount
-      }
-    };
-  }, []);
+    return () => { safeDisconnect(); };
+  }, [safeDisconnect]);
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
