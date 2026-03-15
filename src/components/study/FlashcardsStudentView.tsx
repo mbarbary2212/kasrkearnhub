@@ -113,7 +113,7 @@ export function FlashcardsStudentView({
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
-  const { data: currentCardRating } = useCardRating(currentCard?.resource?.id);
+  
 
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
