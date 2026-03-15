@@ -38,7 +38,8 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
         ...r,
         interval: formatInterval(scheduler.next(card, now, r.grade).card.scheduled_days),
       }));
-    } catch {
+    } catch (e) {
+      console.error('[FSRSRatingButtons] interval calc error:', e);
       return null;
     }
   }, [fsrsState]);
