@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
+import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { cn } from '@/lib/utils';
 
 // Global admin constant: time to show question before auto-flip to answer
