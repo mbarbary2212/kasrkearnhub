@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useDueReviewCount, useDueReviews, useUpcomingReviewCounts } from '@/hooks/useScheduledReviews';
+import { useDueCardCount, useDueCards, useUpcomingCardCounts } from '@/hooks/useFSRS';
 
 export function ScheduledReviewBanner() {
   const navigate = useNavigate();
-  const { data: dueCount } = useDueReviewCount();
-  const { data: dueReviews } = useDueReviews();
-  const { data: upcoming } = useUpcomingReviewCounts();
+  const { data: dueCount } = useDueCardCount();
+  const { data: dueReviews } = useDueCards();
+  const { data: upcoming } = useUpcomingCardCounts();
 
   if (!dueCount || dueCount === 0) return null;
 
