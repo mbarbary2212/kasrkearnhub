@@ -171,3 +171,126 @@ export default function FlashcardReviewPage() {
     </div>
   );
 }
+
+// ─── No Cards Due Screen ──────────────────────────────────────
+function NoCardsDueScreen() {
+  const navigate = useNavigate();
+  const { user } = useAuthContext();
+  const { data: upcoming } = useUpcomingReviewCounts();
+
+  // Fetch scheduled cards with their chapter/module info for links
+  const { data: scheduledChapters } = useQuery({
+    queryKey: ['scheduled-reviews', 'chapter-links', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scheduled_reviews' as any)
+        .select('card_id, due_date')
+        .eq('user_id', user!.id)
+        .eq('is_completed', false)
+        .order('due_date', { ascending: true })
+        .limit(100);
+      if (error) throw error;
+
+      const reviews = data as any[];
+      if (!reviews.length) return { nextDueDate: null, chapters: [] };
+
+      const cardIds = [...new Set(reviews.map((r: any) => r.card_id))];
+      const { data: resources } = await supabase
+        .from('study_resources')
+        .select('id, chapter_id, module_id')
+        .in('id', cardIds)
+        .eq('is_deleted', false);
+
+      const chapterIds = [...new Set((resources || []).map(r => r.chapter_id).filter(Boolean))];
+      let chapters: { id: string; title: string; moduleId: string }[] = [];
+      if (chapterIds.length) {
+        const { data: chData } = await supabase
+          .from('module_chapters')
+          .select('id, title, module_id')
+          .in('id', chapterIds);
+        chapters = (chData || []).map(c => ({ id: c.id, title: c.title, moduleId: c.module_id }));
+      }
+
+      return {
+        nextDueDate: reviews[0]?.due_date as string,
+        chapters,
+      };
+    },
+  });
+
+  const nextDate = scheduledChapters?.nextDueDate;
+  const nextDateLabel = nextDate
+    ? formatRelativeDate(nextDate)
+    : null;
+
+  const totalUpcoming = (upcoming?.tomorrow ?? 0) + (upcoming?.inWeek ?? 0) + (upcoming?.inMonth ?? 0);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-6 text-center">
+      <CalendarClock className="w-12 h-12 text-muted-foreground" />
+      <div>
+        <h2 className="text-xl font-bold text-foreground mb-1">No cards due right now 🎉</h2>
+        {nextDateLabel && (
+          <p className="text-muted-foreground">
+            Next review: <span className="font-medium text-foreground">{nextDateLabel}</span>
+          </p>
+        )}
+      </div>
+
+      {totalUpcoming > 0 && (
+        <div className="flex flex-wrap justify-center gap-3">
+          {(upcoming?.tomorrow ?? 0) > 0 && (
+            <div className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm">
+              <span className="font-semibold">{upcoming!.tomorrow}</span> tomorrow
+            </div>
+          )}
+          {(upcoming?.inWeek ?? 0) > 0 && (
+            <div className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm">
+              <span className="font-semibold">{upcoming!.inWeek}</span> this week
+            </div>
+          )}
+          {(upcoming?.inMonth ?? 0) > 0 && (
+            <div className="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg text-sm">
+              <span className="font-semibold">{upcoming!.inMonth}</span> this month
+            </div>
+          )}
+        </div>
+      )}
+
+      {(scheduledChapters?.chapters?.length ?? 0) > 0 && (
+        <div className="w-full max-w-sm space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Study these chapters now</p>
+          {scheduledChapters!.chapters.map(ch => (
+            <Button
+              key={ch.id}
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate(`/module/${ch.moduleId}/chapter/${ch.id}`)}
+            >
+              <BookOpen className="w-4 h-4 shrink-0" />
+              <span className="truncate">{ch.title}</span>
+            </Button>
+          ))}
+        </div>
+      )}
+
+      <Button onClick={() => navigate('/')} className="gap-2 mt-2">
+        <Home className="w-4 h-4" /> Go Home
+      </Button>
+    </div>
+  );
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays <= 7) return `In ${diffDays} days`;
+  if (diffDays <= 30) return `In ${Math.ceil(diffDays / 7)} weeks`;
+  return `In ${Math.ceil(diffDays / 30)} months`;
+}
