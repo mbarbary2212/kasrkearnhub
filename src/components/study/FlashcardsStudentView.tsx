@@ -252,6 +252,12 @@ export function FlashcardsStudentView({
     setShuffle(false);
   };
 
+  // Swipe gesture - must be after handler declarations
+  useSwipeGesture(cardContainerRef, {
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrev,
+  });
+
   if (safeCards.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
