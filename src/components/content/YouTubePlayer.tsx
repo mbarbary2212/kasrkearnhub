@@ -73,6 +73,9 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
   const userRef = useRef(user);
   userRef.current = user;
 
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+
   const onTimeUpdateRef = useRef(onTimeUpdate);
   onTimeUpdateRef.current = onTimeUpdate;
 
