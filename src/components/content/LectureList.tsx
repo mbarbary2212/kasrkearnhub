@@ -157,6 +157,10 @@ export function LectureList({
     setPlayerKey(prev => prev + 1);
   }, []);
 
+  const handlePlayerTimeUpdate = useCallback((seconds: number) => {
+    setCurrentVideoTime(seconds);
+  }, []);
+
   const toggleSelection = useCallback((id: string, checked: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
