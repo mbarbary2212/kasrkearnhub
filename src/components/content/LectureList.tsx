@@ -116,6 +116,7 @@ export function LectureList({
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesLecture, setNotesLecture] = useState<Lecture | null>(null);
+  const [currentVideoTime, setCurrentVideoTime] = useState(0);
 
   const bulkDelete = useBulkDeleteContent('lectures');
 
