@@ -93,7 +93,7 @@ export default function FlashcardReviewPage() {
   }
 
   const current = cards[currentIndex];
-  const content = current.content as FlashcardContent;
+  const content = current.content as unknown as FlashcardContent;
 
   return (
     <div
