@@ -532,6 +532,14 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
               Stop
             </Button>
           </div>
+
+          {/* FSRS Rating buttons - shown when paused and flipped */}
+          <FSRSRatingButtons
+            cardId={currentResource?.id}
+            fsrsState={slideshowFsrsState ?? null}
+            visible={state === 'paused' && flipped}
+            onRated={() => handleResume()}
+          />
         </div>
       )}
 
