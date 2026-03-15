@@ -185,7 +185,7 @@ function LoggedInHome() {
 
   return (
     <div className="space-y-4 md:space-y-6 animate-fade-in">
-      <ScheduledReviewAlert />
+      
       {/* Welcome Section */}
       <section className="text-center py-3 md:py-4">
         <h1 className="text-lg md:text-xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
