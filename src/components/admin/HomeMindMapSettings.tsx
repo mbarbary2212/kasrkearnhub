@@ -216,12 +216,12 @@ function MindMapVersionEditor({ audience, label }: { audience: 'student' | 'admi
 
 // Lazy wrapper to avoid importing react-markdown in admin page bundle if not needed
 function ReactMarkdownLazy({ children }: { children: string }) {
-  const [Md, setMd] = useState<any>(null);
+  const [Comp, setComp] = useState<any>(null);
   useEffect(() => {
-    import('react-markdown').then((mod) => setMd(() => mod.default));
+    import('@/components/ui/SafeMarkdown').then((mod) => setComp(() => mod.SafeMarkdown));
   }, []);
-  if (!Md) return <p className="text-muted-foreground">Loading preview…</p>;
-  return <Md>{children}</Md>;
+  if (!Comp) return <p className="text-muted-foreground">Loading preview…</p>;
+  return <Comp>{children}</Comp>;
 }
 
 export function HomeMindMapSettings() {

@@ -114,7 +114,7 @@ export function RichDocumentViewer({
               prose-blockquote:text-muted-foreground prose-li:text-foreground/90
               prose-a:text-primary"
           >
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <SafeMarkdown>{content}</SafeMarkdown>
           </div>
         )}
       </CardContent>

@@ -492,7 +492,7 @@ function AdminApiKeyCard() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3">
                   <div className="prose prose-sm dark:prose-invert prose-amber max-w-none [&_a]:text-amber-700 dark:[&_a]:text-amber-300">
-                    <ReactMarkdown>{platformSettings.global_key_disabled_message}</ReactMarkdown>
+                    <SafeMarkdown>{platformSettings.global_key_disabled_message}</SafeMarkdown>
                   </div>
                 </CollapsibleContent>
               </Collapsible>

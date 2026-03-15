@@ -148,7 +148,7 @@ export function AppMindMap({ open, onOpenChange }: AppMindMapProps) {
               [&_li]:text-sm
               [&_strong]:text-foreground
             ">
-              <ReactMarkdown>{markdownText}</ReactMarkdown>
+              <SafeMarkdown>{markdownText}</SafeMarkdown>
             </div>
           </ScrollArea>
         ) : null}
