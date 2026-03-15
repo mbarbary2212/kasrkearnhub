@@ -73,6 +73,9 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
   const userRef = useRef(user);
   userRef.current = user;
 
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+
   const onTimeUpdateRef = useRef(onTimeUpdate);
   onTimeUpdateRef.current = onTimeUpdate;
 
@@ -135,7 +138,7 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
         },
         events: {
           onReady: async (event: YTPlayerEvent) => {
-            onReady?.();
+            onReadyRef.current?.();
             const u = userRef.current;
             if (!u) return;
 
@@ -216,7 +219,7 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
 
       playerRef.current = null;
     };
-  }, [videoId, clearProgressInterval, clearTimeInterval, saveProgress, onReady]);
+  }, [videoId, clearProgressInterval, clearTimeInterval, saveProgress]);
 
   return (
     <div className="aspect-video w-full bg-black">
