@@ -71,7 +71,6 @@ export function FlashcardsStudentView({
   const [transitioning, setTransitioning] = useState(false);
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
-  const scheduleCard = useScheduleCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
