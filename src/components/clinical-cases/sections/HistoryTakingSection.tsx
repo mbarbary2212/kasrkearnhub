@@ -371,7 +371,7 @@ export function HistoryTakingSection({
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
     if (isListening || scribe.isConnected) {
-      try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+      await safeDisconnect();
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
