@@ -103,7 +103,7 @@ export function RichDocumentViewer({
             className="text-sm text-muted-foreground cursor-pointer line-clamp-3"
             onClick={() => setIsExpanded(true)}
           >
-            <ReactMarkdown>{previewContent}</ReactMarkdown>
+            <SafeMarkdown>{previewContent}</SafeMarkdown>
           </div>
         ) : (
           <div
