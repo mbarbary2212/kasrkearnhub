@@ -237,7 +237,7 @@ export function HistoryTakingSection({
       // Voice mode: speak the response (unless muted), then auto-reconnect mic
       if (selectedMode === 'voice') {
         // Ensure scribe is disconnected during TTS to prevent echo
-        try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+        await safeDisconnect();
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
