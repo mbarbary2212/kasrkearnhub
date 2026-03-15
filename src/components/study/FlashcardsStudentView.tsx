@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
-import { useScheduleCard, useIsCardScheduled, useCardState } from '@/hooks/useFSRS';
+import { useCardState } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
@@ -71,7 +71,6 @@ export function FlashcardsStudentView({
   const [transitioning, setTransitioning] = useState(false);
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
-  const scheduleCard = useScheduleCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
@@ -114,16 +113,7 @@ export function FlashcardsStudentView({
   const displayCards = shuffledCards ?? filteredCards;
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
-  const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
   const { data: fsrsState } = useCardState(currentCard?.resource?.id);
-
-  const handleToggleSchedule = useCallback(() => {
-    if (!currentCard) return;
-    scheduleCard.mutate({
-      cardId: currentCard.resource.id,
-      unschedule: !!isScheduled,
-    });
-  }, [currentCard, isScheduled, scheduleCard]);
 
   // Reset when filtered cards change
   useEffect(() => {
@@ -349,21 +339,8 @@ export function FlashcardsStudentView({
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
-            {/* Mark for Review star + Schedule icon */}
+            {/* Mark for Review star */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleSchedule();
-                }}
-                className={cn(
-                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
-                  isScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
-                )}
-                title={isScheduled ? 'Remove from schedule' : 'Schedule for review'}
-              >
-                {isScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
-              </button>
               {onToggleMark && (
                 <button
                   onClick={(e) => {

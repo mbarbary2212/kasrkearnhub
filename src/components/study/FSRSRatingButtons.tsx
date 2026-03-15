@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { scheduler, rowToCard } from '@/lib/fsrs';
-import { Rating } from 'ts-fsrs';
+import { Rating, createEmptyCard } from 'ts-fsrs';
 import { useRateCard } from '@/hooks/useFSRS';
 
 interface FSRSRatingButtonsProps {
@@ -31,9 +31,8 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
   const rateCard = useRateCard();
 
   const intervals = useMemo(() => {
-    if (!fsrsState) return null;
     try {
-      const card = rowToCard(fsrsState);
+      const card = fsrsState ? rowToCard(fsrsState) : createEmptyCard();
       const now = new Date();
       return RATINGS.map(r => ({
         ...r,
@@ -44,7 +43,7 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
     }
   }, [fsrsState]);
 
-  if (!visible || !fsrsState || !intervals || !cardId) return null;
+  if (!visible || !intervals || !cardId) return null;
 
   const handleRate = (rating: string) => {
     if (rateCard.isPending) return;

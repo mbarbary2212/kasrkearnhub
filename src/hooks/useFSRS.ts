@@ -73,17 +73,17 @@ export function useRateCard() {
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // 1. Fetch current state
+      // 1. Fetch current state (may not exist for first-time ratings)
       const { data: row, error: fetchErr } = await supabase
         .from('flashcard_states' as any)
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user!.id)
         .eq('card_id', cardId)
-        .single();
+        .maybeSingle();
       if (fetchErr) throw fetchErr;
 
-      // 2. Reconstruct Card and compute next state
-      const card = rowToCard(row as any);
+      // 2. Reconstruct Card — use empty card if no prior state
+      const card = row ? rowToCard(row as any) : createEmptyCard();
       const mappedRating = RATING_MAP[rating];
       if (mappedRating === undefined) throw new Error(`Invalid rating: ${rating}`);
 

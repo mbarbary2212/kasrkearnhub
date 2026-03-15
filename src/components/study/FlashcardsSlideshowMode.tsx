@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
-import { useScheduleCard, useIsCardScheduled, useCardState } from '@/hooks/useFSRS';
+import { useCardState } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
@@ -80,7 +80,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const [transitioning, setTransitioning] = useState(false);
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
-  const scheduleCard = useScheduleCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
 
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,7 +87,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
 
   // Derived values needed for hooks
   const currentResource = sessionCards[currentIndex];
-  const { data: isCurrentScheduled } = useIsCardScheduled(currentResource?.id);
   const { data: slideshowFsrsState } = useCardState(currentResource?.id);
 
   // Swipe gestures for manual nav when paused
@@ -443,24 +441,8 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
           </div>
 
           <div className="perspective-1000 relative">
-            {/* Schedule + Star + Fullscreen icons */}
+            {/* Star + Fullscreen icons */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  scheduleCard.mutate({
-                    cardId: currentResource.id,
-                    unschedule: !!isCurrentScheduled,
-                  });
-                }}
-                className={cn(
-                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
-                  isCurrentScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
-                )}
-                title={isCurrentScheduled ? 'Remove from schedule' : 'Schedule for review'}
-              >
-                {isCurrentScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
-              </button>
               {onToggleMark && (
                 <button
                   onClick={(e) => {
