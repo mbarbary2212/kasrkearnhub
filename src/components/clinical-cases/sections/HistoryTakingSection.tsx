@@ -147,9 +147,6 @@ export function HistoryTakingSection({
     }
   }, []);
 
-  useEffect(() => {
-    return () => { safeDisconnect(); };
-  }, [safeDisconnect]);
 
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
