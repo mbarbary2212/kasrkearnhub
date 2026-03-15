@@ -63,11 +63,13 @@ export function FlashcardsStudentView({
   const [topicSectionOpen, setTopicSectionOpen] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  // Interactive mode: Auto-flip defaults to OFF (global app-wide rule)
   const [autoReturn, setAutoReturn] = useState(false);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
   const [shuffledCards, setShuffledCards] = useState<{ front: string; back: string; resource: StudyResource }[] | null>(null);
   const [transitioning, setTransitioning] = useState(false);
+
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+  const scheduleCard = useScheduleCard();
 
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
