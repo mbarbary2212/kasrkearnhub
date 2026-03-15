@@ -422,12 +422,6 @@ export function FlashcardsStudentView({
 
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
-          {currentCardRating && (
-            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-              <RatingDot rating={currentCardRating.rating} />
-              <span className="capitalize">{currentCardRating.rating}</span>
-            </div>
-          )}
 
           {/* Navigation controls */}
           <TooltipProvider delayDuration={300}>
