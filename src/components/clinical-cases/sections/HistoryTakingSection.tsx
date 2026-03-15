@@ -112,7 +112,7 @@ export function HistoryTakingSection({
         sendChatMessageRef.current(data.text);
         // Immediately disconnect to prevent echo/phantom responses during TTS
         // Auto-reconnect happens in sendChatMessage after TTS finishes
-        try { scribe.disconnect(); } catch { /* suppress AudioContext double-close */ }
+        safeDisconnect();
       }
     },
     onPartialTranscript: (data) => {
