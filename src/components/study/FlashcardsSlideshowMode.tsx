@@ -440,11 +440,26 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
             <Progress value={progressPercent} className="h-2" />
           </div>
 
-          {/* Card with transition overlay */}
           <div className="perspective-1000 relative">
-            {/* Mark for Review star */}
-            {onToggleMark && (
-              <div className="absolute -top-2 -right-2 z-20">
+            {/* Schedule + Star + Fullscreen icons */}
+            <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  scheduleCard.mutate({
+                    cardId: currentResource.id,
+                    unschedule: !!isCurrentScheduled,
+                  });
+                }}
+                className={cn(
+                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                  isCurrentScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
+                )}
+                title={isCurrentScheduled ? 'Remove from schedule' : 'Schedule for review'}
+              >
+                {isCurrentScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
+              </button>
+              {onToggleMark && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -458,8 +473,18 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
                 >
                   <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isFullscreen ? exitFullscreen() : enterFullscreen();
+                }}
+                className="p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted text-muted-foreground/60 hover:text-foreground"
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            </div>
 
             {/* Transition blackout overlay */}
             <div 
