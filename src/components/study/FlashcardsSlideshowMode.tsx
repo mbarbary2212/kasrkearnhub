@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
-import { useScheduleCard, useIsCardScheduled, useCardState } from '@/hooks/useFSRS';
+import { useCardState } from '@/hooks/useFSRS';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
