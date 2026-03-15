@@ -25,7 +25,7 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
-import { useDueCardCount } from '@/hooks/useFSRS';
+import { useDueCards } from '@/hooks/useFSRS';
 
 interface MainLayoutProps {
   children: ReactNode;
