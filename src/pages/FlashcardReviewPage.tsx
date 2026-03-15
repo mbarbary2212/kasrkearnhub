@@ -146,7 +146,7 @@ export default function FlashcardReviewPage() {
             </div>
           </div>
 
-          <FlashcardRatingButtons cardId={current.cardId} visible={flipped} />
+          <FlashcardRatingButtons cardId={current.cardId} visible={true} />
 
           <FlashcardProgressBar current={currentIndex + 1} total={cards.length} />
 

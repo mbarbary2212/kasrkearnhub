@@ -443,7 +443,7 @@ export function FlashcardsStudentView({
           {/* Rating buttons - shown when card is flipped */}
           <FlashcardRatingButtons
             cardId={currentCard.resource.id}
-            visible={flipped}
+            visible={true}
             onRated={handleNext}
           />
 
