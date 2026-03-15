@@ -25,7 +25,7 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
-import { useDueCardCount } from '@/hooks/useFSRS';
+import { useDueCards } from '@/hooks/useFSRS';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -39,7 +39,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
-  const { data: dueCount } = useDueCardCount();
+  const { data: dueCards } = useDueCards();
+  const dueCount = dueCards?.length ?? 0;
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
