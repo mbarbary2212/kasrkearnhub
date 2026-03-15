@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Shield, Settings, Trophy, GraduationCap } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, CalendarClock } from 'lucide-react';
 import logo from '@/assets/kalm-hub-logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -25,6 +25,7 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
+import { useDueReviewCount, useDueReviews } from '@/hooks/useScheduledReviews';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -38,6 +39,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
+  const { data: dueCount } = useDueReviewCount();
+  const { data: dueReviews } = useDueReviews();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
@@ -133,6 +136,41 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
                     Achievements
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Review Due Icon - Right of trophy (students only, when cards are due) */}
+            {user && !isAdmin && (dueCount ?? 0) > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => {
+                        if (!dueReviews?.length) {
+                          navigate('/review/flashcards');
+                          return;
+                        }
+                        const chapters = new Set(dueReviews.map(r => r.chapterId).filter(Boolean));
+                        if (chapters.size === 1) {
+                          const first = dueReviews[0];
+                          navigate(`/module/${first.moduleId}/chapter/${first.chapterId}?section=resources&tab=flashcards`);
+                        } else {
+                          navigate('/review/flashcards');
+                        }
+                      }}
+                      variant="ghost"
+                      size="icon"
+                      className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
+                    >
+                      <CalendarClock className="h-4 w-4 text-primary" />
+                      <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                        {(dueCount ?? 0) > 9 ? '9+' : dueCount}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Flashcard Reviews Due
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

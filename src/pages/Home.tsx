@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 import { AppMindMap } from '@/components/dashboard/AppMindMap';
-import { ScheduledReviewAlert } from '@/components/review/ScheduledReviewAlert';
+
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
@@ -185,7 +185,7 @@ function LoggedInHome() {
 
   return (
     <div className="space-y-4 md:space-y-6 animate-fade-in">
-      <ScheduledReviewAlert />
+      
       {/* Welcome Section */}
       <section className="text-center py-3 md:py-4">
         <h1 className="text-lg md:text-xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
