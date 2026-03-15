@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { scheduler, rowToCard } from '@/lib/fsrs';
-import { Rating } from 'ts-fsrs';
+import { Rating, createEmptyCard } from 'ts-fsrs';
 import { useRateCard } from '@/hooks/useFSRS';
 
 interface FSRSRatingButtonsProps {
