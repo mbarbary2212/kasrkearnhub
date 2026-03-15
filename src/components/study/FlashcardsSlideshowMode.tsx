@@ -441,24 +441,8 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
           </div>
 
           <div className="perspective-1000 relative">
-            {/* Schedule + Star + Fullscreen icons */}
+            {/* Star + Fullscreen icons */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  scheduleCard.mutate({
-                    cardId: currentResource.id,
-                    unschedule: !!isCurrentScheduled,
-                  });
-                }}
-                className={cn(
-                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
-                  isCurrentScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
-                )}
-                title={isCurrentScheduled ? 'Remove from schedule' : 'Schedule for review'}
-              >
-                {isCurrentScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
-              </button>
               {onToggleMark && (
                 <button
                   onClick={(e) => {

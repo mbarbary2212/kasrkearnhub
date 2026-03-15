@@ -339,21 +339,8 @@ export function FlashcardsStudentView({
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
-            {/* Mark for Review star + Schedule icon */}
+            {/* Mark for Review star */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleSchedule();
-                }}
-                className={cn(
-                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
-                  isScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
-                )}
-                title={isScheduled ? 'Remove from schedule' : 'Schedule for review'}
-              >
-                {isScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
-              </button>
               {onToggleMark && (
                 <button
                   onClick={(e) => {
