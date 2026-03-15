@@ -743,6 +743,8 @@ export function LectureList({
           }}
           videoId={getVideoIdForLecture(notesLecture)}
           videoTitle={notesLecture.title}
+          currentTimestampSeconds={selectedLecture?.id === notesLecture.id ? currentVideoTime : undefined}
+          isTimestampLive={!!selectedYouTubeId && selectedLecture?.id === notesLecture.id}
         />
       )}
     </TooltipProvider>
