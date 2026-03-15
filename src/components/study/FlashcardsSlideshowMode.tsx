@@ -284,7 +284,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   }, [state, currentIndex, sessionCards.length, flipTime, settings.intervalSeconds, advanceToNext, clearTimers]);
 
   const currentCard = sessionCards[currentIndex]?.content as FlashcardContent | undefined;
-  const currentResource = sessionCards[currentIndex];
   const currentTitle = sessionCards[currentIndex]?.title;
   const progressPercent = sessionCards.length > 0 ? ((currentIndex + 1) / sessionCards.length) * 100 : 0;
   const isCurrentMarked = currentResource && markedIds?.has(currentResource.id);
