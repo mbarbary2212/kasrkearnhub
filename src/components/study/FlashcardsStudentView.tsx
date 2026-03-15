@@ -7,6 +7,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
+import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
