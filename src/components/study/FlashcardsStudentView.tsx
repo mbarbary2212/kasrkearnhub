@@ -118,8 +118,6 @@ export function FlashcardsStudentView({
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
   const { data: currentCardRating } = useCardRating(currentCard?.resource?.id);
-  const allCardIds = useMemo(() => displayCards.map(c => c.resource.id), [displayCards]);
-  const { data: ratingsMap } = useCardRatingsBulk(allCardIds);
 
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
