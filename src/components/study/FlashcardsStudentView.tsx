@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, Star, ChevronDown, ChevronUp, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
+import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
@@ -59,12 +63,14 @@ export function FlashcardsStudentView({
   const [topicSectionOpen, setTopicSectionOpen] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  // Interactive mode: Auto-flip defaults to OFF (global app-wide rule)
   const [autoReturn, setAutoReturn] = useState(false);
   const [autoFlipMs, setAutoFlipMs] = useState(5000);
   const [shuffledCards, setShuffledCards] = useState<{ front: string; back: string; resource: StudyResource }[] | null>(null);
   const [transitioning, setTransitioning] = useState(false);
 
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+  const scheduleCard = useScheduleCard();
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
 
@@ -106,6 +112,15 @@ export function FlashcardsStudentView({
   const displayCards = shuffledCards ?? filteredCards;
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
+  const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
+
+  const handleToggleSchedule = useCallback(() => {
+    if (!currentCard) return;
+    scheduleCard.mutate({
+      cardId: currentCard.resource.id,
+      unschedule: !!isScheduled,
+    });
+  }, [currentCard, isScheduled, scheduleCard]);
 
   // Reset when filtered cards change
   useEffect(() => {
@@ -237,6 +252,12 @@ export function FlashcardsStudentView({
     setShuffle(false);
   };
 
+  // Swipe gesture - must be after handler declarations
+  useSwipeGesture(cardContainerRef, {
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrev,
+  });
+
   if (safeCards.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -257,7 +278,7 @@ export function FlashcardsStudentView({
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
+    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-center bg-background")}>
       {/* Topic selector (like slideshow) */}
       {allTopicNames.length > 1 && (
         <div className="w-full max-w-md">
@@ -325,9 +346,22 @@ export function FlashcardsStudentView({
         <div className="w-full max-w-md">
           {/* Flip Card */}
           <div className="perspective-1000 cursor-pointer relative">
-            {/* Mark for Review star */}
-            {onToggleMark && (
-              <div className="absolute -top-2 -right-2 z-20">
+            {/* Mark for Review star + Schedule icon */}
+            <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSchedule();
+                }}
+                className={cn(
+                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                  isScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
+                )}
+                title={isScheduled ? 'Remove from schedule' : 'Schedule for review'}
+              >
+                {isScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
+              </button>
+              {onToggleMark && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -341,8 +375,18 @@ export function FlashcardsStudentView({
                 >
                   <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isFullscreen ? exitFullscreen() : enterFullscreen();
+                }}
+                className="p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted text-muted-foreground/60 hover:text-foreground"
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            </div>
 
             {/* Transition blackout overlay */}
             <div 
@@ -371,12 +415,9 @@ export function FlashcardsStudentView({
             </div>
           </div>
 
-          {/* Progress indicator */}
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            Card {cardIndex + 1} of {displayCards.length}
-            {shuffledCards && <span className="ml-2 text-primary">(Shuffled)</span>}
-            {isCurrentMarked && <span className="ml-2 text-amber-500">★</span>}
-          </div>
+          <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
+          {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
+          {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
 
           {/* Navigation controls */}
           <TooltipProvider delayDuration={300}>
@@ -472,6 +513,16 @@ export function FlashcardsStudentView({
             Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark
           </div>
         </div>
+      )}
+
+      {/* Floating Exit Fullscreen pill */}
+      {isFullscreen && (
+        <button
+          onClick={exitFullscreen}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded-full px-5 py-2 text-sm font-medium z-[10000] hover:bg-muted transition-colors"
+        >
+          ✕ Exit Fullscreen
+        </button>
       )}
     </div>
   );

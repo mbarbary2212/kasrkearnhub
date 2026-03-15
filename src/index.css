@@ -172,3 +172,19 @@
   45%, 55% { transform: translateY(calc(-100% + 2.5rem)); }
   85%, 100% { transform: translateY(0); }
 }
+
+/* Fullscreen overlay fallback (iOS Safari) */
+.kalmhub-fullscreen-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  background: hsl(var(--background)) !important;
+  overflow: auto !important;
+}
+
+/* Hide nav in fullscreen mode */
+body.kalmhub-hide-nav nav,
+body.kalmhub-hide-nav header,
+body.kalmhub-hide-nav [data-navbar] {
+  display: none !important;
+}

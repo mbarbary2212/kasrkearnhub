@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Play, Pause, Square, Shuffle, ChevronDown, ChevronUp, Star, CalendarPlus, CalendarCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
+import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { cn } from '@/lib/utils';
 
 // Global admin constant: time to show question before auto-flip to answer
@@ -68,17 +72,42 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   } = useFlashcardSettings({ chapterId, topicId });
 
   const [topicSectionOpen, setTopicSectionOpen] = useState<boolean>(false);
-
-  // Slideshow state
   const [state, setState] = useState<SlideshowState>('idle');
   const [sessionCards, setSessionCards] = useState<StudyResource[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
-  // Timer refs
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+  const scheduleCard = useScheduleCard();
+  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
+
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Derived values needed for hooks
+  const currentResource = sessionCards[currentIndex];
+  const { data: isCurrentScheduled } = useIsCardScheduled(currentResource?.id);
+
+  // Swipe gestures for manual nav when paused
+  const handleSwipePrev = useCallback(() => {
+    if (state !== 'paused' || !sessionCards.length || currentIndex === 0) return;
+    setTransitioning(true);
+    setFlipped(false);
+    setTimeout(() => setCurrentIndex(prev => prev - 1), 250);
+    setTimeout(() => setTransitioning(false), 400);
+  }, [state, sessionCards.length, currentIndex]);
+
+  const handleSwipeNext = useCallback(() => {
+    if (state !== 'paused' || !sessionCards.length) return;
+    if (currentIndex >= sessionCards.length - 1) return;
+    setTransitioning(true);
+    setFlipped(false);
+    setTimeout(() => setCurrentIndex(prev => prev + 1), 250);
+    setTimeout(() => setTransitioning(false), 400);
+  }, [state, sessionCards.length, currentIndex]);
+
+  useSwipeGesture(cardContainerRef, { onSwipeLeft: handleSwipeNext, onSwipeRight: handleSwipePrev });
 
   // Group cards by title (topic)
   const topicGroups = useMemo<TopicGroup[]>(() => {
@@ -255,7 +284,6 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   }, [state, currentIndex, sessionCards.length, flipTime, settings.intervalSeconds, advanceToNext, clearTimers]);
 
   const currentCard = sessionCards[currentIndex]?.content as FlashcardContent | undefined;
-  const currentResource = sessionCards[currentIndex];
   const currentTitle = sessionCards[currentIndex]?.title;
   const progressPercent = sessionCards.length > 0 ? ((currentIndex + 1) / sessionCards.length) * 100 : 0;
   const isCurrentMarked = currentResource && markedIds?.has(currentResource.id);
@@ -263,7 +291,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const canStart = allCards.length > 0;
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
+    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-center bg-background")}>
       {/* Settings (only when idle) */}
       {state === 'idle' && (
         <div className="w-full max-w-md space-y-4">
@@ -412,11 +440,26 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
             <Progress value={progressPercent} className="h-2" />
           </div>
 
-          {/* Card with transition overlay */}
           <div className="perspective-1000 relative">
-            {/* Mark for Review star */}
-            {onToggleMark && (
-              <div className="absolute -top-2 -right-2 z-20">
+            {/* Schedule + Star + Fullscreen icons */}
+            <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  scheduleCard.mutate({
+                    cardId: currentResource.id,
+                    unschedule: !!isCurrentScheduled,
+                  });
+                }}
+                className={cn(
+                  'p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted',
+                  isCurrentScheduled ? 'text-primary' : 'text-muted-foreground/40 hover:text-primary/70'
+                )}
+                title={isCurrentScheduled ? 'Remove from schedule' : 'Schedule for review'}
+              >
+                {isCurrentScheduled ? <CalendarCheck className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
+              </button>
+              {onToggleMark && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -430,8 +473,18 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
                 >
                   <Star className={cn('h-5 w-5', isCurrentMarked && 'fill-current')} />
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isFullscreen ? exitFullscreen() : enterFullscreen();
+                }}
+                className="p-2 rounded-full transition-colors bg-background border shadow-sm hover:bg-muted text-muted-foreground/60 hover:text-foreground"
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            </div>
 
             {/* Transition blackout overlay */}
             <div 
@@ -497,6 +550,16 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Floating Exit Fullscreen pill */}
+      {isFullscreen && (
+        <button
+          onClick={exitFullscreen}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded-full px-5 py-2 text-sm font-medium z-[10000] hover:bg-muted transition-colors"
+        >
+          ✕ Exit Fullscreen
+        </button>
       )}
     </div>
   );
