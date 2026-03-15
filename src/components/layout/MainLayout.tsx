@@ -26,6 +26,7 @@ import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useDueReviewCount, useDueReviews } from '@/hooks/useScheduledReviews';
+import { useScheduledReviewTotalCount } from '@/hooks/useScheduledReviewTotalCount';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -41,6 +42,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const { data: dueCount } = useDueReviewCount();
   const { data: dueReviews } = useDueReviews();
+  const { data: totalScheduledCount } = useScheduledReviewTotalCount();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
@@ -164,15 +166,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
                     >
                       <CalendarClock className="h-4 w-4 text-primary" />
-                      {(dueCount ?? 0) > 0 && (
+                      {(dueCount ?? 0) > 0 ? (
                         <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
                           {(dueCount ?? 0) > 9 ? '9+' : dueCount}
                         </span>
-                      )}
+                      ) : (totalScheduledCount ?? 0) > 0 ? (
+                        <span className="absolute top-0.5 right-0.5 h-2 w-2 rounded-full bg-primary border border-background" />
+                      ) : null}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    {(dueCount ?? 0) > 0 ? 'Flashcard Reviews Due' : 'Scheduled Reviews'}
+                    {(dueCount ?? 0) > 0
+                      ? 'Flashcard Reviews Due'
+                      : (totalScheduledCount ?? 0) > 0
+                        ? `${totalScheduledCount} scheduled (none due yet)`
+                        : 'No scheduled reviews yet'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

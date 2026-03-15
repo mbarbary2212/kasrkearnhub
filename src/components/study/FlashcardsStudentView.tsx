@@ -12,7 +12,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
 import { FlashcardRatingButtons, RatingDot } from './FlashcardRatingButtons';
-import { useCardRating, useCardRatingsBulk, useRateCard, CardRatingType } from '@/hooks/useCardRatings';
+import { useCardRating, useRateCard, useClearCardRating, CardRatingType } from '@/hooks/useCardRatings';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
@@ -73,6 +73,7 @@ export function FlashcardsStudentView({
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const scheduleCard = useScheduleCard();
   const rateCard = useRateCard();
+  const clearCardRating = useClearCardRating();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
@@ -117,8 +118,6 @@ export function FlashcardsStudentView({
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
   const { data: currentCardRating } = useCardRating(currentCard?.resource?.id);
-  const allCardIds = useMemo(() => displayCards.map(c => c.resource.id), [displayCards]);
-  const { data: ratingsMap } = useCardRatingsBulk(allCardIds);
 
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
@@ -225,16 +224,25 @@ export function FlashcardsStudentView({
       // Rating shortcuts: 1=Easy, 2=Hard, 3=Revise (only when flipped)
       if (flipped && currentCard) {
         const ratingKeys: Record<string, CardRatingType> = { '1': 'easy', '2': 'hard', '3': 'revise' };
-        if (ratingKeys[e.key]) {
-          rateCard.mutate({ cardId: currentCard.resource.id, rating: ratingKeys[e.key] }, {
-            onSuccess: () => handleNext(),
-          });
+        const selectedRating = ratingKeys[e.key];
+
+        if (selectedRating) {
+          if (currentCardRating?.rating === selectedRating) {
+            clearCardRating.mutate({ cardId: currentCard.resource.id });
+          } else {
+            rateCard.mutate(
+              { cardId: currentCard.resource.id, rating: selectedRating },
+              {
+                onSuccess: () => handleNext(),
+              }
+            );
+          }
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayCards.length, handleShuffle, currentCard, onToggleMark, flipped, rateCard]);
+  }, [displayCards.length, handleShuffle, currentCard, currentCardRating?.rating, onToggleMark, flipped, rateCard, clearCardRating]);
 
   const handlePrev = () => {
     if (!displayCards.length || transitioning) return;

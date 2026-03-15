@@ -82,6 +82,13 @@ function isRecentlyAdded(createdAt: string | null | undefined): boolean {
   return new Date(createdAt).getTime() > fourteenDaysAgo;
 }
 
+function formatPlaybackTime(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remaining = safeSeconds % 60;
+  return `${minutes}:${remaining.toString().padStart(2, '0')}`;
+}
+
 export function LectureList({
   lectures,
   moduleId,
@@ -109,6 +116,7 @@ export function LectureList({
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesLecture, setNotesLecture] = useState<Lecture | null>(null);
+  const [currentVideoTime, setCurrentVideoTime] = useState(0);
 
   const bulkDelete = useBulkDeleteContent('lectures');
 
@@ -144,8 +152,13 @@ export function LectureList({
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
+    setCurrentVideoTime(0);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
+  }, []);
+
+  const handlePlayerTimeUpdate = useCallback((seconds: number) => {
+    setCurrentVideoTime(seconds);
   }, []);
 
   const toggleSelection = useCallback((id: string, checked: boolean) => {
@@ -584,6 +597,7 @@ export function LectureList({
         onOpenChange={(open) => {
           if (!open) {
             setSelectedLecture(null);
+            setCurrentVideoTime(0);
             setIsPlayerReady(false);
             setPlayerKey(0);
           }
@@ -591,7 +605,23 @@ export function LectureList({
       >
         <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2">
-            <DialogTitle className="pr-8">{selectedLecture?.title}</DialogTitle>
+            <div className="flex items-center justify-between gap-2 pr-8">
+              <DialogTitle className="truncate">{selectedLecture?.title}</DialogTitle>
+              {isStudent && user && selectedLecture && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => {
+                    setNotesLecture(selectedLecture);
+                    setNotesDrawerOpen(true);
+                  }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Note @ {formatPlaybackTime(currentVideoTime)}
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="w-full bg-black">
             {isVimeoVideo ? (
@@ -612,6 +642,7 @@ export function LectureList({
                 videoId={selectedYouTubeId}
                 title={selectedLecture?.title}
                 onReady={() => setIsPlayerReady(true)}
+                onTimeUpdate={handlePlayerTimeUpdate}
               />
             ) : isGoogleDrive && googleDriveEmbedUrl ? (
               <div className="aspect-video w-full">
@@ -712,6 +743,8 @@ export function LectureList({
           }}
           videoId={getVideoIdForLecture(notesLecture)}
           videoTitle={notesLecture.title}
+          currentTimestampSeconds={selectedLecture?.id === notesLecture.id ? currentVideoTime : undefined}
+          isTimestampLive={!!selectedYouTubeId && selectedLecture?.id === notesLecture.id}
         />
       )}
     </TooltipProvider>

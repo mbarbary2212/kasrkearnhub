@@ -6,6 +6,7 @@ interface YouTubePlayerProps {
   videoId: string;
   title?: string;
   onReady?: () => void;
+  onTimeUpdate?: (seconds: number) => void;
 }
 
 // Minimal YT type declarations
@@ -59,39 +60,55 @@ function loadYouTubeAPI(): Promise<void> {
     };
     document.head.appendChild(tag);
   });
+
   return apiLoadPromise;
 }
 
-export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
+export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
   const userRef = useRef(user);
   userRef.current = user;
 
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  onTimeUpdateRef.current = onTimeUpdate;
+
   const clearProgressInterval = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
   }, []);
 
-  const saveProgress = useCallback(async (currentTime: number, duration: number, percentWatched: number) => {
-    const u = userRef.current;
-    if (!u) return;
-    await supabase.from('video_progress').upsert(
-      {
-        user_id: u.id,
-        video_id: videoId,
-        last_time_seconds: Math.floor(currentTime),
-        duration_seconds: Math.floor(duration),
-        percent_watched: Math.min(100, percentWatched),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,video_id' }
-    );
-  }, [videoId]);
+  const clearTimeInterval = useCallback(() => {
+    if (timeIntervalRef.current) {
+      clearInterval(timeIntervalRef.current);
+      timeIntervalRef.current = null;
+    }
+  }, []);
+
+  const saveProgress = useCallback(
+    async (currentTime: number, duration: number, percentWatched: number) => {
+      const u = userRef.current;
+      if (!u) return;
+
+      await supabase.from('video_progress').upsert(
+        {
+          user_id: u.id,
+          video_id: videoId,
+          last_time_seconds: Math.floor(currentTime),
+          duration_seconds: Math.floor(duration),
+          percent_watched: Math.min(100, percentWatched),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,video_id' }
+      );
+    },
+    [videoId]
+  );
 
   useEffect(() => {
     let destroyed = false;
@@ -121,6 +138,7 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
             onReady?.();
             const u = userRef.current;
             if (!u) return;
+
             const { data } = await supabase
               .from('video_progress')
               .select('last_time_seconds, percent_watched')
@@ -130,34 +148,53 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
 
             if (data && Number(data.last_time_seconds) > 10 && Number(data.percent_watched) < 95) {
               const seekTo = Number(data.last_time_seconds);
-              console.log(`Resume playback: seeking to ${seekTo}s`);
               event.target.seekTo(seekTo, true);
               event.target.unMute();
+              onTimeUpdateRef.current?.(seekTo);
+            } else {
+              onTimeUpdateRef.current?.(0);
             }
           },
           onStateChange: (event: YTPlayerEvent) => {
             const player = event.target;
             const state = event.data;
+
             if (state === YT.PlayerState.PLAYING) {
               clearProgressInterval();
-              intervalRef.current = setInterval(() => {
+              clearTimeInterval();
+
+              onTimeUpdateRef.current?.(player.getCurrentTime());
+
+              progressIntervalRef.current = setInterval(() => {
                 const currentTime = player.getCurrentTime();
                 const duration = player.getDuration();
+
                 if (duration > 0) {
                   const percent = (currentTime / duration) * 100;
                   saveProgress(currentTime, duration, percent);
                 }
               }, 10000);
+
+              timeIntervalRef.current = setInterval(() => {
+                onTimeUpdateRef.current?.(player.getCurrentTime());
+              }, 1000);
             } else if (state === YT.PlayerState.PAUSED) {
               clearProgressInterval();
+              clearTimeInterval();
+
               const currentTime = player.getCurrentTime();
               const duration = player.getDuration();
+              onTimeUpdateRef.current?.(currentTime);
+
               if (duration > 0) {
                 saveProgress(currentTime, duration, (currentTime / duration) * 100);
               }
             } else if (state === YT.PlayerState.ENDED) {
               clearProgressInterval();
+              clearTimeInterval();
+
               const duration = player.getDuration();
+              onTimeUpdateRef.current?.(duration);
               saveProgress(0, duration, 100);
             }
           },
@@ -170,12 +207,17 @@ export function YouTubePlayer({ videoId, title, onReady }: YouTubePlayerProps) {
     return () => {
       destroyed = true;
       clearProgressInterval();
+      clearTimeInterval();
+
       try {
         playerRef.current?.destroy();
-      } catch {}
+      } catch {
+        // no-op
+      }
+
       playerRef.current = null;
     };
-  }, [videoId, clearProgressInterval, saveProgress, onReady]);
+  }, [videoId, clearProgressInterval, clearTimeInterval, saveProgress, onReady]);
 
   return (
     <div className="aspect-video w-full bg-black">
