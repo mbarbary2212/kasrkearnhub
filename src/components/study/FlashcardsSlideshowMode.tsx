@@ -89,6 +89,7 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   // Derived values needed for hooks
   const currentResource = sessionCards[currentIndex];
   const { data: isCurrentScheduled } = useIsCardScheduled(currentResource?.id);
+  const { data: slideshowFsrsState } = useCardState(currentResource?.id);
 
   // Swipe gestures for manual nav when paused
   const handleSwipePrev = useCallback(() => {
