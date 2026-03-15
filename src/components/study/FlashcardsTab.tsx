@@ -222,15 +222,6 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
       {/* Mode Selector and Filter - Students Only */}
       <div className="flex items-center justify-center gap-2 flex-wrap">
         <Button
-          variant={studentMode === 'slideshow' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setMode('slideshow')}
-          className="gap-2"
-        >
-          <Play className="w-4 h-4" />
-          Slideshow Mode
-        </Button>
-        <Button
           variant={studentMode === 'interactive' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setMode('interactive')}
@@ -238,6 +229,15 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <Layers className="w-4 h-4" />
           Interactive Mode
+        </Button>
+        <Button
+          variant={studentMode === 'slideshow' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setMode('slideshow')}
+          className="gap-2"
+        >
+          <Play className="w-4 h-4" />
+          Slideshow Mode
         </Button>
 
         {/* Filter dropdown */}
