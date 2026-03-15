@@ -234,7 +234,7 @@ export function FlashcardsStudentView({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayCards.length, handleShuffle, currentCard, onToggleMark]);
+  }, [displayCards.length, handleShuffle, currentCard, onToggleMark, flipped, rateCard]);
 
   const handlePrev = () => {
     if (!displayCards.length || transitioning) return;
