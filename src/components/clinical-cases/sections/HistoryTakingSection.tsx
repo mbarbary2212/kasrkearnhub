@@ -388,7 +388,7 @@ export function HistoryTakingSection({
   // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
-    try { if (scribe.isConnected) scribe.disconnect(); } catch { /* safe */ }
+    safeDisconnect();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
