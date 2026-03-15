@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
