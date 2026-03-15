@@ -148,19 +148,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => {
-                        if (!dueReviews?.length) {
-                          navigate('/review/flashcards');
-                          return;
-                        }
-                        const chapters = new Set(dueReviews.map(r => r.chapterId).filter(Boolean));
-                        if (chapters.size === 1) {
-                          const first = dueReviews[0];
-                          navigate(`/module/${first.moduleId}/chapter/${first.chapterId}?section=resources&tab=flashcards`);
-                        } else {
-                          navigate('/review/flashcards');
-                        }
-                      }}
+                      onClick={() => navigate('/review/flashcards')}
                       variant="ghost"
                       size="icon"
                       className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
