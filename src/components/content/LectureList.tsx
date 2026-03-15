@@ -152,6 +152,7 @@ export function LectureList({
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
+    setCurrentVideoTime(0);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
   }, []);
