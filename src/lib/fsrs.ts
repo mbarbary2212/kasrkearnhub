@@ -23,6 +23,13 @@ export function rowToCard(row: {
   state: string;
   last_review: string | null;
 }): Card {
+  const stateMap: Record<string, State> = {
+    New: State.New,
+    Learning: State.Learning,
+    Review: State.Review,
+    Relearning: State.Relearning,
+  };
+
   return {
     due: new Date(row.due),
     stability: row.stability,
@@ -31,7 +38,8 @@ export function rowToCard(row: {
     scheduled_days: row.scheduled_days,
     reps: row.reps,
     lapses: row.lapses,
-    state: row.state as State,
+    state: stateMap[row.state] ?? State.New,
     last_review: row.last_review ? new Date(row.last_review) : undefined,
+    learning_steps: 0,
   };
 }
