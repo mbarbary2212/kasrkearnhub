@@ -222,6 +222,15 @@ export function FlashcardsStudentView({
           onToggleMark(currentCard.resource.id);
         }
       }
+      // Rating shortcuts: 1=Easy, 2=Hard, 3=Revise (only when flipped)
+      if (flipped && currentCard) {
+        const ratingKeys: Record<string, CardRatingType> = { '1': 'easy', '2': 'hard', '3': 'revise' };
+        if (ratingKeys[e.key]) {
+          rateCard.mutate({ cardId: currentCard.resource.id, rating: ratingKeys[e.key] }, {
+            onSuccess: () => handleNext(),
+          });
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
