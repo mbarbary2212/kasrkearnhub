@@ -31,9 +31,8 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
   const rateCard = useRateCard();
 
   const intervals = useMemo(() => {
-    if (!fsrsState) return null;
     try {
-      const card = rowToCard(fsrsState);
+      const card = fsrsState ? rowToCard(fsrsState) : createEmptyCard();
       const now = new Date();
       return RATINGS.map(r => ({
         ...r,
