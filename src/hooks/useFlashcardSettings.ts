@@ -69,7 +69,7 @@ export function useFlashcardSettings(params: { chapterId?: string; topicId?: str
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+        setSettings({ ...DEFAULT_SETTINGS, ...parsed, mode: 'interactive' as FlashcardMode });
       } catch {
         setSettings(DEFAULT_SETTINGS);
       }
