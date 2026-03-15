@@ -39,6 +39,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
+  const { data: dueCount } = useDueReviewCount();
+  const { data: dueReviews } = useDueReviews();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
