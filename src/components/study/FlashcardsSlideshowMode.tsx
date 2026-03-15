@@ -82,10 +82,11 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const scheduleCard = useScheduleCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
 
-  // Timer refs
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Derived values needed for hooks
+  const currentResource = sessionCards[currentIndex];
   const { data: isCurrentScheduled } = useIsCardScheduled(currentResource?.id);
 
   // Swipe gestures for manual nav when paused
