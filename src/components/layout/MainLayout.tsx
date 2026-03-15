@@ -26,6 +26,7 @@ import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useDueReviewCount, useDueReviews } from '@/hooks/useScheduledReviews';
+import { useScheduledReviewTotalCount } from '@/hooks/useScheduledReviewTotalCount';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -41,6 +42,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const { data: dueCount } = useDueReviewCount();
   const { data: dueReviews } = useDueReviews();
+  const { data: totalScheduledCount } = useScheduledReviewTotalCount();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
