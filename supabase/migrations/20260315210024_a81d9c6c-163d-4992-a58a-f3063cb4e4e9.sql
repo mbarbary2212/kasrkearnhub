@@ -1,0 +1,1 @@
+UPDATE ai_platform_settings SET allow_admin_fallback_to_global_key = true WHERE id = 1;
