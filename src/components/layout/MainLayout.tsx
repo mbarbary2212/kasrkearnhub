@@ -140,8 +140,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {/* Review Due Icon - Right of trophy (students only, when cards are due) */}
-            {user && !isAdmin && (dueCount ?? 0) > 0 && (
+            {/* Review Due Icon - Right of trophy (students only, always visible) */}
+            {user && !isAdmin && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -164,13 +164,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
                     >
                       <CalendarClock className="h-4 w-4 text-primary" />
-                      <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
-                        {(dueCount ?? 0) > 9 ? '9+' : dueCount}
-                      </span>
+                      {(dueCount ?? 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                          {(dueCount ?? 0) > 9 ? '9+' : dueCount}
+                        </span>
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black text-white border-black">
-                    Flashcard Reviews Due
+                    {(dueCount ?? 0) > 0 ? 'Flashcard Reviews Due' : 'Scheduled Reviews'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
