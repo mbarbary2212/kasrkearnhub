@@ -2043,6 +2043,44 @@ export type Database = {
           },
         ]
       }
+      flashcard_review_logs: {
+        Row: {
+          card_id: string
+          elapsed_days: number
+          id: string
+          rating: string
+          reviewed_at: string
+          scheduled_days: number
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          elapsed_days: number
+          id?: string
+          rating: string
+          reviewed_at?: string
+          scheduled_days: number
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          elapsed_days?: number
+          id?: string
+          rating?: string
+          reviewed_at?: string
+          scheduled_days?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_review_logs_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "study_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flashcard_settings: {
         Row: {
           id: string
@@ -2066,6 +2104,62 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      flashcard_states: {
+        Row: {
+          card_id: string
+          created_at: string
+          difficulty: number
+          due: string
+          elapsed_days: number
+          id: string
+          lapses: number
+          last_review: string | null
+          reps: number
+          scheduled_days: number
+          stability: number
+          state: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          difficulty?: number
+          due?: string
+          elapsed_days?: number
+          id?: string
+          lapses?: number
+          last_review?: string | null
+          reps?: number
+          scheduled_days?: number
+          stability?: number
+          state?: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          difficulty?: number
+          due?: string
+          elapsed_days?: number
+          id?: string
+          lapses?: number
+          last_review?: string | null
+          reps?: number
+          scheduled_days?: number
+          stability?: number
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_states_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "study_resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       flashcards: {
         Row: {
