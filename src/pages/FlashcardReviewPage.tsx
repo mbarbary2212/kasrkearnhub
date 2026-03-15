@@ -1,14 +1,16 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { XCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { XCircle, Maximize2, Minimize2, CalendarClock, BookOpen, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FlashcardProgressBar } from '@/components/study/FlashcardProgressBar';
-import { useDueReviews, useMarkReviewsComplete } from '@/hooks/useScheduledReviews';
+import { useDueReviews, useMarkReviewsComplete, useUpcomingReviewCounts } from '@/hooks/useScheduledReviews';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardContent } from '@/hooks/useStudyResources';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function FlashcardReviewPage() {
   const navigate = useNavigate();
