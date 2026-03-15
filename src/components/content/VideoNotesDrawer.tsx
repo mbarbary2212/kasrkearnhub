@@ -9,6 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useVideoNotes } from '@/hooks/useVideoNotes';
 import { toast } from 'sonner';
 
@@ -29,6 +39,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   const { notes, addNote, deleteNote } = useVideoNotes(videoId);
   const [noteText, setNoteText] = useState('');
   const [timestamp, setTimestamp] = useState('');
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const handleAdd = async () => {
     if (!noteText.trim()) {
@@ -52,6 +63,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   const handleDelete = async (noteId: string) => {
     try {
       await deleteNote.mutateAsync(noteId);
+      setNoteToDelete(null);
       toast.success('Note deleted');
     } catch {
       toast.error('Failed to delete note');
@@ -59,6 +71,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
         <SheetHeader>
@@ -103,7 +116,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(note.id)}
+                  onClick={() => setNoteToDelete(note.id)}
                   disabled={deleteNote.isPending}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -114,5 +127,26 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
         </div>
       </SheetContent>
     </Sheet>
+
+    <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Note</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this note? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => noteToDelete && handleDelete(noteToDelete)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
