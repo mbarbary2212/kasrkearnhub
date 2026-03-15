@@ -86,6 +86,28 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const { data: isCurrentScheduled } = useIsCardScheduled(currentResource?.id);
+
+  // Swipe gestures for manual nav when paused
+  const handleSwipePrev = useCallback(() => {
+    if (state !== 'paused' || !sessionCards.length || currentIndex === 0) return;
+    setTransitioning(true);
+    setFlipped(false);
+    setTimeout(() => setCurrentIndex(prev => prev - 1), 250);
+    setTimeout(() => setTransitioning(false), 400);
+  }, [state, sessionCards.length, currentIndex]);
+
+  const handleSwipeNext = useCallback(() => {
+    if (state !== 'paused' || !sessionCards.length) return;
+    if (currentIndex >= sessionCards.length - 1) return;
+    setTransitioning(true);
+    setFlipped(false);
+    setTimeout(() => setCurrentIndex(prev => prev + 1), 250);
+    setTimeout(() => setTransitioning(false), 400);
+  }, [state, sessionCards.length, currentIndex]);
+
+  useSwipeGesture(cardContainerRef, { onSwipeLeft: handleSwipeNext, onSwipeRight: handleSwipePrev });
+
   // Group cards by title (topic)
   const topicGroups = useMemo<TopicGroup[]>(() => {
     const groupMap = new Map<string, TopicGroup>();
