@@ -226,10 +226,19 @@ export function FlashcardsStudentView({
       // Rating shortcuts: 1=Easy, 2=Hard, 3=Revise (only when flipped)
       if (flipped && currentCard) {
         const ratingKeys: Record<string, CardRatingType> = { '1': 'easy', '2': 'hard', '3': 'revise' };
-        if (ratingKeys[e.key]) {
-          rateCard.mutate({ cardId: currentCard.resource.id, rating: ratingKeys[e.key] }, {
-            onSuccess: () => handleNext(),
-          });
+        const selectedRating = ratingKeys[e.key];
+
+        if (selectedRating) {
+          if (currentCardRating?.rating === selectedRating) {
+            clearCardRating.mutate({ cardId: currentCard.resource.id });
+          } else {
+            rateCard.mutate(
+              { cardId: currentCard.resource.id, rating: selectedRating },
+              {
+                onSuccess: () => handleNext(),
+              }
+            );
+          }
         }
       }
     };
