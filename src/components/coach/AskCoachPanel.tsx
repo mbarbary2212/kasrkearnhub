@@ -18,7 +18,7 @@ import {
   GraduationCap,
   Download,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import remarkGfm from 'remark-gfm';
 import { useCoachContext, useCoachPrompt } from '@/contexts/CoachContext';
 import { useIsMobile } from '@/hooks/use-mobile';
