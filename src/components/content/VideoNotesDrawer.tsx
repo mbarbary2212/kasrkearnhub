@@ -63,6 +63,7 @@ export function VideoNotesDrawer({ open, onOpenChange, videoId, videoTitle }: Vi
   const handleDelete = async (noteId: string) => {
     try {
       await deleteNote.mutateAsync(noteId);
+      setNoteToDelete(null);
       toast.success('Note deleted');
     } catch {
       toast.error('Failed to delete note');
