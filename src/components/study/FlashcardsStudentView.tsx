@@ -220,7 +220,7 @@ export function FlashcardsStudentView({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayCards.length, handleShuffle, currentCard, currentCardRating?.rating, onToggleMark, flipped, rateCard, clearCardRating]);
+  }, [displayCards.length, handleShuffle, currentCard, onToggleMark]);
 
   const handlePrev = () => {
     if (!displayCards.length || transitioning) return;
