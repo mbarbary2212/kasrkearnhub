@@ -23,7 +23,7 @@ export function useCardRating(cardId: string | undefined) {
         .eq('card_id', cardId!)
         .maybeSingle();
       if (error) throw error;
-      return data as CardRating | null;
+      return (data as unknown as CardRating) ?? null;
     },
   });
 }
@@ -45,7 +45,7 @@ export function useRateCard() {
         .select()
         .single();
       if (error) throw error;
-      return data as CardRating;
+      return data as unknown as CardRating;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['card-rating', data.card_id], data);
