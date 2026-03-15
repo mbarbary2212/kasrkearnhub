@@ -8,6 +8,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardContent } from '@/hooks/useStudyResources';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FlashcardRatingButtons } from '@/components/study/FlashcardRatingButtons';
 
 export default function FlashcardReviewPage() {
   const navigate = useNavigate();
@@ -144,6 +145,8 @@ export default function FlashcardReviewPage() {
               </div>
             </div>
           </div>
+
+          <FlashcardRatingButtons cardId={current.cardId} visible={flipped} />
 
           <FlashcardProgressBar current={currentIndex + 1} total={cards.length} />
 
