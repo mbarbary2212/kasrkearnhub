@@ -11,6 +11,8 @@ import { useScheduleCard, useIsCardScheduled } from '@/hooks/useScheduledReviews
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { FlashcardProgressBar } from './FlashcardProgressBar';
+import { FlashcardRatingButtons, RatingDot } from './FlashcardRatingButtons';
+import { useCardRating, useCardRatingsBulk, useRateCard, CardRatingType } from '@/hooks/useCardRatings';
 import { cn } from '@/lib/utils';
 
 interface FlashcardsStudentViewProps {
@@ -70,6 +72,7 @@ export function FlashcardsStudentView({
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const scheduleCard = useScheduleCard();
+  const rateCard = useRateCard();
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
   // Defensive: ensure cards is always an array
   const safeCards = cards ?? [];
@@ -113,6 +116,9 @@ export function FlashcardsStudentView({
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
+  const { data: currentCardRating } = useCardRating(currentCard?.resource?.id);
+  const allCardIds = useMemo(() => displayCards.map(c => c.resource.id), [displayCards]);
+  const { data: ratingsMap } = useCardRatingsBulk(allCardIds);
 
   const handleToggleSchedule = useCallback(() => {
     if (!currentCard) return;
@@ -216,10 +222,19 @@ export function FlashcardsStudentView({
           onToggleMark(currentCard.resource.id);
         }
       }
+      // Rating shortcuts: 1=Easy, 2=Hard, 3=Revise (only when flipped)
+      if (flipped && currentCard) {
+        const ratingKeys: Record<string, CardRatingType> = { '1': 'easy', '2': 'hard', '3': 'revise' };
+        if (ratingKeys[e.key]) {
+          rateCard.mutate({ cardId: currentCard.resource.id, rating: ratingKeys[e.key] }, {
+            onSuccess: () => handleNext(),
+          });
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayCards.length, handleShuffle, currentCard, onToggleMark]);
+  }, [displayCards.length, handleShuffle, currentCard, onToggleMark, flipped, rateCard]);
 
   const handlePrev = () => {
     if (!displayCards.length || transitioning) return;
@@ -416,8 +431,22 @@ export function FlashcardsStudentView({
           </div>
 
           <FlashcardProgressBar current={cardIndex + 1} total={displayCards.length} />
+          
+          {/* Rating buttons - shown when card is flipped */}
+          <FlashcardRatingButtons
+            cardId={currentCard.resource.id}
+            visible={flipped}
+            onRated={handleNext}
+          />
+
           {shuffledCards && <p className="text-center text-xs text-primary">(Shuffled)</p>}
           {isCurrentMarked && <p className="text-center text-xs text-amber-500">★ Marked</p>}
+          {currentCardRating && (
+            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+              <RatingDot rating={currentCardRating.rating} />
+              <span className="capitalize">{currentCardRating.rating}</span>
+            </div>
+          )}
 
           {/* Navigation controls */}
           <TooltipProvider delayDuration={300}>
@@ -510,7 +539,7 @@ export function FlashcardsStudentView({
 
           {/* Keyboard hint */}
           <div className="hidden md:block text-center text-xs text-muted-foreground mt-4">
-            Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark
+            Arrow keys to navigate • Space/Enter to flip • S to shuffle • M to mark • 1/2/3 to rate
           </div>
         </div>
       )}

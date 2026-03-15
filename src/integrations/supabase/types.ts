@@ -977,6 +977,33 @@ export type Database = {
         }
         Relationships: []
       }
+      card_ratings: {
+        Row: {
+          card_id: string
+          created_at: string | null
+          id: string
+          rating: Database["public"]["Enums"]["card_rating_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string | null
+          id?: string
+          rating: Database["public"]["Enums"]["card_rating_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string | null
+          id?: string
+          rating?: Database["public"]["Enums"]["card_rating_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       case_reference_documents: {
         Row: {
           case_id: string | null
@@ -5981,6 +6008,7 @@ export type Database = {
         | "platform_admin"
         | "super_admin"
         | "topic_admin"
+      card_rating_type: "easy" | "hard" | "revise"
       content_type:
         | "lecture"
         | "resource"
@@ -6149,6 +6177,7 @@ export const Constants = {
         "super_admin",
         "topic_admin",
       ],
+      card_rating_type: ["easy", "hard", "revise"],
       content_type: [
         "lecture",
         "resource",
