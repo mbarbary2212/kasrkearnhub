@@ -112,6 +112,20 @@ export function FlashcardsStudentView({
   const displayCards = shuffledCards ?? filteredCards;
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
+  const { data: isScheduled } = useIsCardScheduled(currentCard?.resource?.id);
+
+  useSwipeGesture(cardContainerRef, {
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrev,
+  });
+
+  const handleToggleSchedule = useCallback(() => {
+    if (!currentCard) return;
+    scheduleCard.mutate({
+      cardId: currentCard.resource.id,
+      unschedule: !!isScheduled,
+    });
+  }, [currentCard, isScheduled, scheduleCard]);
 
   // Reset when filtered cards change
   useEffect(() => {
