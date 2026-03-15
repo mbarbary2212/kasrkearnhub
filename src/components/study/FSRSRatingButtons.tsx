@@ -44,7 +44,7 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
     }
   }, [fsrsState]);
 
-  if (!visible || !fsrsState || !intervals || !cardId) return null;
+  if (!visible || !intervals || !cardId) return null;
 
   const handleRate = (rating: string) => {
     if (rateCard.isPending) return;
