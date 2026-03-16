@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SYSTEM_PROMPT = `You are MedGPT Tutor, a specialized medical tutor for Cairo University medical students. Your tone is supportive, academic, and professional.
@@ -33,13 +35,7 @@ Always remind students when discussing clinical scenarios: "This is a study aid.
 - If they write in Arabic, respond in Arabic
 - If they write in English, respond in English`;
 
-async function getGlobalAISettings(): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-
+async function getGlobalAISettings(serviceClient: ReturnType<typeof createClient>): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
   const { data } = await serviceClient
     .from('ai_settings')
     .select('key, value')
@@ -82,8 +78,98 @@ serve(async (req) => {
   }
 
   try {
+    // --- Auth guard ---
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userError } = await anonClient.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = userData.user.id;
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: roleData } = await serviceClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
+
+    const allowedRoles = [
+      "student", "admin", "teacher", "department_admin",
+      "platform_admin", "super_admin", "topic_admin",
+    ];
+    if (!roleData || !allowedRoles.includes(roleData.role)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Student daily quota ---
+    const adminRoles = [
+      "super_admin", "platform_admin", "department_admin",
+      "admin", "teacher", "topic_admin",
+    ];
+    const isAdmin = adminRoles.includes(roleData.role);
+
+    if (!isAdmin) {
+      const today = new Date().toISOString().split("T")[0];
+
+      const { data: usageRow } = await serviceClient
+        .from("coach_usage")
+        .select("question_count")
+        .eq("user_id", userId)
+        .eq("question_date", today)
+        .maybeSingle();
+
+      const currentCount = usageRow?.question_count ?? 0;
+
+      if (currentCount >= 5) {
+        return new Response(
+          JSON.stringify({
+            limitReached: true,
+            message:
+              "You have reached your 5-question daily limit for MedGPT Tutor. To get this question answered, please submit it through Feedback & Inquiries and an instructor will respond.",
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Increment usage count
+      await serviceClient.from("coach_usage").upsert(
+        {
+          user_id: userId,
+          question_date: today,
+          question_count: currentCount + 1,
+        },
+        { onConflict: "user_id,question_date" }
+      );
+    }
+
+    // --- Parse request body ---
     const { messages } = await req.json();
-    const settings = await getGlobalAISettings();
+    const settings = await getGlobalAISettings(serviceClient);
 
     if (settings.provider === 'gemini') {
       const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
@@ -173,20 +259,20 @@ serve(async (req) => {
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), 
+          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI service usage limit reached. Please contact support." }), 
+          JSON.stringify({ error: "AI service usage limit reached. Please contact support." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       return new Response(
-        JSON.stringify({ error: "AI service temporarily unavailable" }), 
+        JSON.stringify({ error: "AI service temporarily unavailable" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -197,7 +283,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("med-tutor-chat error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), 
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
