@@ -215,7 +215,7 @@ export function HistoryTakingSection({
 
     // Pre-unlock audio element while still in user gesture context
     const preUnlockedAudio = selectedMode === 'voice' && !isMuted
-      ? createUnlockedAudio()
+      ? (unlockedAudioRef.current ?? createUnlockedAudio())
       : undefined;
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
