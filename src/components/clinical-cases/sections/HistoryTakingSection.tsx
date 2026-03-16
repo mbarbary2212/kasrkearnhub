@@ -392,6 +392,10 @@ export function HistoryTakingSection({
       return;
     }
 
+    // Pre-unlock audio element within user tap gesture context
+    unlockedAudioRef.current = createUnlockedAudio();
+    unlockedAudioRef.current.play().catch(() => {});
+
     // Connect scribe (or fallback)
     await connectScribe();
   }, [isListening, scribe, connectScribe]);
