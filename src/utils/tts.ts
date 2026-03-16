@@ -93,6 +93,7 @@ export async function speakArabic(
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('No session token — user not logged in');
 
+      console.log('[TTS] Calling ElevenLabs, provider:', provider, 'voiceId:', voiceId);
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
