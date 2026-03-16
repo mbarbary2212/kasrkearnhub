@@ -124,9 +124,6 @@ serve(async (req) => {
 
     // Reuse serviceClient for AI settings
     const aiSettings = await getAISettings(serviceClient);
-
-    // Get AI provider configuration from database
-    const aiSettings = await getAISettings(serviceClient);
     const provider = getAIProvider(aiSettings);
 
     console.log(`Using AI provider: ${provider.name}, model: ${provider.model}, aiDriven: ${!!aiDriven}`);
