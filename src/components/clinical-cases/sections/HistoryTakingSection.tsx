@@ -341,7 +341,9 @@ export function HistoryTakingSection({
   const connectScribe = useCallback(async () => {
     setScribeConnecting(true);
     try {
+      console.log('[Scribe] Requesting token from elevenlabs-scribe-token...');
       const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      console.log('[Scribe] Token response:', { tokenData, error });
       if (error || !tokenData?.token) {
         throw new Error(error?.message || 'No token received');
       }
@@ -353,6 +355,8 @@ export function HistoryTakingSection({
           noiseSuppression: true,
         },
       });
+      console.log('[Scribe] Connected successfully');
+      toast.success('Scribe connected to ElevenLabs');
     } catch (err) {
       console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
       Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
