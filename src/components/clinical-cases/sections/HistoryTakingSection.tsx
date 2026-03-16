@@ -251,7 +251,7 @@ export function HistoryTakingSection({
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           setIsSpeaking(true);
           try {
-            await speakArabic(reply, ttsProvider, voiceId, patientTone);
+            await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
           } finally {
             setIsSpeaking(false);
           }
