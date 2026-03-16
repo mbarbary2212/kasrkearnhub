@@ -16,7 +16,7 @@ export interface TutorError {
   action_label?: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 export function useTutorChat() {
   const [messages, setMessages] = useState<Message[]>([]);
