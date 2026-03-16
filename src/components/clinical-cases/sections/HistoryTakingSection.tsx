@@ -209,6 +209,7 @@ export function HistoryTakingSection({
 
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
+    console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
