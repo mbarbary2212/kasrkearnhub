@@ -98,6 +98,7 @@ export function HistoryTakingSection({
 
   // Ref to hold latest sendChatMessage for scribe callbacks
   const sendChatMessageRef = useRef<(text: string) => void>(() => {});
+  const unlockedAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceBubbleRef = useRef<HTMLDivElement>(null);
 
   // ElevenLabs Scribe hook (always called — hooks can't be conditional)
@@ -214,7 +215,7 @@ export function HistoryTakingSection({
 
     // Pre-unlock audio element while still in user gesture context
     const preUnlockedAudio = selectedMode === 'voice' && !isMuted
-      ? createUnlockedAudio()
+      ? (unlockedAudioRef.current ?? createUnlockedAudio())
       : undefined;
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
@@ -254,6 +255,7 @@ export function HistoryTakingSection({
             await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
           } finally {
             setIsSpeaking(false);
+            unlockedAudioRef.current = null;
           }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
@@ -389,6 +391,10 @@ export function HistoryTakingSection({
       setInterimTranscript('');
       return;
     }
+
+    // Pre-unlock audio element within user tap gesture context
+    unlockedAudioRef.current = createUnlockedAudio();
+    unlockedAudioRef.current.play().catch(() => {});
 
     // Connect scribe (or fallback)
     await connectScribe();
