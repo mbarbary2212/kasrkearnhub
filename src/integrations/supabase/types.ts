@@ -1181,6 +1181,7 @@ export type Database = {
       coach_usage: {
         Row: {
           created_at: string
+          feature: string
           id: string
           question_count: number
           question_date: string
@@ -1189,6 +1190,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          feature?: string
           id?: string
           question_count?: number
           question_date?: string
@@ -1197,6 +1199,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          feature?: string
           id?: string
           question_count?: number
           question_date?: string

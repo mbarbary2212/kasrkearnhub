@@ -189,6 +189,7 @@ async function checkAndIncrementQuota(supabase: any, userId: string, limit: numb
     .select('question_count')
     .eq('user_id', userId)
     .eq('question_date', today)
+    .eq('feature', 'study_coach')
     .maybeSingle();
 
   const currentCount = usage?.question_count || 0;
@@ -205,9 +206,10 @@ async function checkAndIncrementQuota(supabase: any, userId: string, limit: numb
         user_id: userId, 
         question_date: today, 
         question_count: currentCount + 1,
+        feature: 'study_coach',
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'user_id,question_date' }
+      { onConflict: 'user_id,question_date,feature' }
     );
 
   if (upsertError) {

@@ -110,6 +110,7 @@ async function checkAndIncrementQuota(
     .select('question_count')
     .eq('user_id', userId)
     .eq('question_date', today)
+    .eq('feature', 'study_coach')
     .single();
 
   const currentCount = existing?.question_count || 0;
@@ -126,8 +127,9 @@ async function checkAndIncrementQuota(
         user_id: userId,
         question_date: today,
         question_count: currentCount + 1,
+        feature: 'study_coach',
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,question_date' });
+      }, { onConflict: 'user_id,question_date,feature' });
   }
 
   return { allowed: true, currentCount };
@@ -141,6 +143,7 @@ async function incrementQuotaOnly(serviceClient: any, userId: string): Promise<v
     .select('question_count')
     .eq('user_id', userId)
     .eq('question_date', today)
+    .eq('feature', 'study_coach')
     .single();
 
   const currentCount = existing?.question_count || 0;
@@ -151,8 +154,9 @@ async function incrementQuotaOnly(serviceClient: any, userId: string): Promise<v
       user_id: userId,
       question_date: today,
       question_count: currentCount + 1,
+      feature: 'study_coach',
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,question_date' });
+    }, { onConflict: 'user_id,question_date,feature' });
 }
 
 // ============= System Prompt with RAG Constraint =============
