@@ -79,6 +79,10 @@ export async function speakArabic(
 
   if (provider === 'elevenlabs' && voiceId) {
     try {
+      // Get the user's session token for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -86,7 +90,7 @@ export async function speakArabic(
           headers: {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }),
         }
