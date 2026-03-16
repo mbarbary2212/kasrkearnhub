@@ -106,9 +106,11 @@ export async function speakArabic(
         }
       );
 
+      console.log('[TTS] Response status:', res.status);
       if (!res.ok) throw new Error(`ElevenLabs TTS failed: ${res.status}`);
 
       const blob = await res.blob();
+      console.log('[TTS] Got audio blob, size:', blob.size);
       const audioUrl = URL.createObjectURL(blob);
       const audio = preUnlockedAudio || new Audio();
       audio.src = audioUrl;
