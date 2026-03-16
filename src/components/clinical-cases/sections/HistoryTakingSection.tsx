@@ -212,6 +212,11 @@ export function HistoryTakingSection({
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
 
+    // Pre-unlock audio element while still in user gesture context
+    const preUnlockedAudio = selectedMode === 'voice' && !isMuted
+      ? createUnlockedAudio()
+      : undefined;
+
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
     const updatedMessages = [...chatMessages, userMsg];
     setChatMessages(updatedMessages);
