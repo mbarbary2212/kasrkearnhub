@@ -106,6 +106,7 @@ export function HistoryTakingSection({
     commitStrategy: CommitStrategy.VAD,
     vadSilenceThresholdSecs: 1.5, // 1.5s silence before committing — prevents cut-off during natural Arabic pauses
     onCommittedTranscript: (data) => {
+      console.log('[Scribe] Committed transcript:', data.text);
       if (data.text?.trim()) {
         setLastSpoken(data.text);
         setVoiceErrorCount(0);
@@ -208,6 +209,7 @@ export function HistoryTakingSection({
 
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
+    console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };

@@ -87,6 +87,30 @@ serve(async (req) => {
   }
 
   try {
+    // ── Auth guard ──
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const userId = claimsData.claims.sub as string;
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: roleData } = await serviceClient.from('user_roles').select('role').eq('user_id', userId).single();
+    const userRole = roleData?.role || 'student';
+    const allowedRoles = ['super_admin', 'platform_admin', 'admin', 'teacher', 'department_admin'];
+    if (!allowedRoles.includes(userRole)) {
+      return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { 
       topic, 
       chapterTitle, 
@@ -98,12 +122,7 @@ serve(async (req) => {
       aiDriven,
     } = await req.json();
 
-    // Create Supabase client to read AI settings
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get AI provider configuration from database
+    // Reuse serviceClient for AI settings
     const aiSettings = await getAISettings(serviceClient);
     const provider = getAIProvider(aiSettings);
 
