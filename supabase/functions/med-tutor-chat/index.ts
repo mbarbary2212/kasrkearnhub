@@ -138,6 +138,7 @@ serve(async (req) => {
         .select("question_count")
         .eq("user_id", userId)
         .eq("question_date", today)
+        .eq("feature", "med_tutor")
         .maybeSingle();
 
       const currentCount = usageRow?.question_count ?? 0;
@@ -162,8 +163,9 @@ serve(async (req) => {
           user_id: userId,
           question_date: today,
           question_count: currentCount + 1,
+          feature: "med_tutor",
         },
-        { onConflict: "user_id,question_date" }
+        { onConflict: "user_id,question_date,feature" }
       );
     }
 
