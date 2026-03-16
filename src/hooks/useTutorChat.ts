@@ -59,6 +59,12 @@ export function useTutorChat() {
     if (contentType.includes('application/json')) {
       const data = await resp.json();
       
+      // Handle daily limit reached — show as assistant message
+      if (data.limitReached) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message || 'You have reached your daily question limit.' }]);
+        return;
+      }
+      
       if (data.blocked) {
         // Set structured error for CoachErrorState to display
         setError({

@@ -59,6 +59,13 @@ export default function TutorPage() {
     const contentType = resp.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const data = await resp.json();
+      
+      // Handle daily limit reached — show as assistant message
+      if (data.limitReached) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message || 'You have reached your daily question limit.' }]);
+        return;
+      }
+      
       if (data.blocked) {
         toast.warning(data.message || 'Your message could not be processed.');
         return;
