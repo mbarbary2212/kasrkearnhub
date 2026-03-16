@@ -1,3 +1,4 @@
+declare const EdgeRuntime: { waitUntil(p: Promise<any>): void };
 import * as Sentry from "https://deno.land/x/sentry@8.45.0/index.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
