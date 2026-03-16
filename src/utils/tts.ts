@@ -145,7 +145,7 @@ export async function speakArabic(
         });
       });
     } catch (err) {
-      console.error('ElevenLabs TTS failed, falling back to browser:', err);
+      console.error('[TTS] ElevenLabs failed:', err);
       // Fall through to browser TTS
     }
   }
