@@ -255,6 +255,7 @@ export function HistoryTakingSection({
             await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
           } finally {
             setIsSpeaking(false);
+            unlockedAudioRef.current = null;
           }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
