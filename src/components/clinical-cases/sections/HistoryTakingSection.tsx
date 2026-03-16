@@ -98,6 +98,7 @@ export function HistoryTakingSection({
 
   // Ref to hold latest sendChatMessage for scribe callbacks
   const sendChatMessageRef = useRef<(text: string) => void>(() => {});
+  const unlockedAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceBubbleRef = useRef<HTMLDivElement>(null);
 
   // ElevenLabs Scribe hook (always called — hooks can't be conditional)
