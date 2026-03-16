@@ -91,6 +91,7 @@ export async function speakArabic(
       // Get the user's session token for auth
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
+      if (!accessToken) throw new Error('No session token — user not logged in');
 
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
@@ -98,8 +99,7 @@ export async function speakArabic(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }),
         }
