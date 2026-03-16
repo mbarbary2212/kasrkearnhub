@@ -109,7 +109,8 @@ export async function speakArabic(
 
       const blob = await res.blob();
       const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
+      const audio = preUnlockedAudio || new Audio();
+      audio.src = audioUrl;
       currentAudio = audio;
 
       // Return a Promise that resolves when playback finishes
