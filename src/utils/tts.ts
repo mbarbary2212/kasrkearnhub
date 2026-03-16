@@ -93,6 +93,7 @@ export async function speakArabic(
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('No session token — user not logged in');
 
+      console.log('[TTS] Calling ElevenLabs, provider:', provider, 'voiceId:', voiceId);
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -105,9 +106,11 @@ export async function speakArabic(
         }
       );
 
+      console.log('[TTS] Response status:', res.status);
       if (!res.ok) throw new Error(`ElevenLabs TTS failed: ${res.status}`);
 
       const blob = await res.blob();
+      console.log('[TTS] Got audio blob, size:', blob.size);
       const audioUrl = URL.createObjectURL(blob);
       const audio = preUnlockedAudio || new Audio();
       audio.src = audioUrl;
@@ -133,14 +136,16 @@ export async function speakArabic(
             resolve();
           }
         });
-        audio.play().catch(() => {
+        console.log('[TTS] Attempting audio.play()');
+        audio.play().catch((err) => {
+          console.warn('[TTS] play() rejected:', err);
           if (currentAudio === audio) currentAudio = null;
           URL.revokeObjectURL(audioUrl);
           resolve();
         });
       });
     } catch (err) {
-      console.error('ElevenLabs TTS failed, falling back to browser:', err);
+      console.error('[TTS] ElevenLabs failed:', err);
       // Fall through to browser TTS
     }
   }
