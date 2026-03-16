@@ -14,7 +14,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic, PatientTone } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
@@ -212,6 +212,11 @@ export function HistoryTakingSection({
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
 
+    // Pre-unlock audio element while still in user gesture context
+    const preUnlockedAudio = selectedMode === 'voice' && !isMuted
+      ? createUnlockedAudio()
+      : undefined;
+
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
     const updatedMessages = [...chatMessages, userMsg];
     setChatMessages(updatedMessages);
@@ -246,7 +251,7 @@ export function HistoryTakingSection({
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           setIsSpeaking(true);
           try {
-            await speakArabic(reply, ttsProvider, voiceId, patientTone);
+            await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
           } finally {
             setIsSpeaking(false);
           }
@@ -271,7 +276,7 @@ export function HistoryTakingSection({
     } finally {
       setIsSending(false);
     }
-  }, [chatMessages, caseId, selectedMode]);
+  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase]);
 
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {

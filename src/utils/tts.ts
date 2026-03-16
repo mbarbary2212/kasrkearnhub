@@ -68,11 +68,20 @@ function getToneVoiceSettings(tone?: PatientTone) {
   }
 }
 
+/** Create and unlock an Audio element (call synchronously in a user gesture) */
+export function createUnlockedAudio(): HTMLAudioElement {
+  const audio = new Audio();
+  audio.play().catch(() => {}); // unlock for autoplay policy
+  audio.pause();
+  return audio;
+}
+
 export async function speakArabic(
   text: string,
   provider: 'browser' | 'elevenlabs',
   voiceId?: string,
-  tone?: PatientTone
+  tone?: PatientTone,
+  preUnlockedAudio?: HTMLAudioElement
 ): Promise<void> {
   // Stop any ongoing playback
   stopAllTTS();
@@ -100,7 +109,8 @@ export async function speakArabic(
 
       const blob = await res.blob();
       const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
+      const audio = preUnlockedAudio || new Audio();
+      audio.src = audioUrl;
       currentAudio = audio;
 
       // Return a Promise that resolves when playback finishes
