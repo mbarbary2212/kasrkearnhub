@@ -51,11 +51,12 @@ serve(async (req) => {
 
     const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
     const svcClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: roleData } = await svcClient.from('user_roles').select('role').eq('user_id', userId).single();
     const userRole = roleData?.role || 'student';
