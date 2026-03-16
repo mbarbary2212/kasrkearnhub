@@ -141,9 +141,7 @@ serve(async (req) => {
       pdfContent,
     } = await req.json();
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceClient = authServiceClient;
 
     const aiSettings = await getAISettings(serviceClient);
     const provider = getAIProvider(aiSettings);

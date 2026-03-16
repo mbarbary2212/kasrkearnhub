@@ -122,10 +122,8 @@ serve(async (req) => {
       aiDriven,
     } = await req.json();
 
-    // Create Supabase client to read AI settings
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Reuse serviceClient for AI settings
+    const aiSettings = await getAISettings(serviceClient);
 
     // Get AI provider configuration from database
     const aiSettings = await getAISettings(serviceClient);
