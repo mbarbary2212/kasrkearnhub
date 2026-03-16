@@ -15,7 +15,7 @@ interface Message {
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 const SUGGESTED_QUESTIONS = [
   { icon: BookOpen, text: "Explain the renin-angiotensin-aldosterone system", category: "Physiology" },
