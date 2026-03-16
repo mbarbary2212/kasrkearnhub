@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export interface ElevenLabsVoice {
   id: string;
   name: string;
