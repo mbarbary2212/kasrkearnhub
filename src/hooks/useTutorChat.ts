@@ -16,7 +16,7 @@ export interface TutorError {
   action_label?: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 export function useTutorChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -58,6 +58,12 @@ export function useTutorChat() {
     const contentType = resp.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const data = await resp.json();
+      
+      // Handle daily limit reached — show as assistant message
+      if (data.limitReached) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message || 'You have reached your daily question limit.' }]);
+        return;
+      }
       
       if (data.blocked) {
         // Set structured error for CoachErrorState to display

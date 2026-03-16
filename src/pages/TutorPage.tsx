@@ -15,7 +15,7 @@ interface Message {
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-moderation`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 const SUGGESTED_QUESTIONS = [
   { icon: BookOpen, text: "Explain the renin-angiotensin-aldosterone system", category: "Physiology" },
@@ -59,6 +59,13 @@ export default function TutorPage() {
     const contentType = resp.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const data = await resp.json();
+      
+      // Handle daily limit reached — show as assistant message
+      if (data.limitReached) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message || 'You have reached your daily question limit.' }]);
+        return;
+      }
+      
       if (data.blocked) {
         toast.warning(data.message || 'Your message could not be processed.');
         return;
