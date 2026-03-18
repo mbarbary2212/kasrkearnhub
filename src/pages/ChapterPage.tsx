@@ -429,7 +429,7 @@ export default function ChapterPage() {
                   )}
                   <div>
                     <p className="text-sm text-muted-foreground">{module?.name}</p>
-                    <h1 className="text-2xl font-heading font-semibold">
+                    <h1 className="text-lg font-heading font-semibold">
                       Chapter {chapter?.chapter_number}: {chapter?.title}
                     </h1>
                   </div>
