@@ -57,7 +57,16 @@ export function HistoryTakingSection({
 
   // TTS settings
   const { data: ttsSettings } = useAISettings();
-  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
+  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
+  const ttsGeminiVoice = getSettingValue(ttsSettings, 'tts_gemini_voice', 'Kore') as string;
+  const toneStyleMap: Record<string, string> = {
+    worried:   '[تحدث بالعامية المصرية. نبرتك قلقة وخايف من الموضوع]',
+    in_pain:   '[تحدث بالعامية المصرية. نبرتك تعبانة وحاسس بألم شديد]',
+    anxious:   '[تحدث بالعامية المصرية. نبرتك متوترة ومش قادر تتمالك نفسك]',
+    calm:      '[تحدث بالعامية المصرية. نبرتك هادية ومتعاون مع الدكتور]',
+    exhausted: '[تحدث بالعامية المصرية. نبرتك تعبانة جداً ومش قادر تتكلم بسهولة]',
+  };
+  const geminiStylePrompt = toneStyleMap[patientTone || 'calm'] ?? toneStyleMap['calm'];
 
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
