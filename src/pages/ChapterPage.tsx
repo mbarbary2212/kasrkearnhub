@@ -462,7 +462,20 @@ export default function ChapterPage() {
               }}
             />
           )}
+          {/* Customize View button for students */}
+          {!canManageContent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCustomizeOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Customize View"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          )}
         </div>
+        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Chapter Progress Bar - hidden for admins */}
         {!canManageContent && (

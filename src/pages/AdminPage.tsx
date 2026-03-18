@@ -190,6 +190,9 @@ function PlatformSettingsTab() {
         </CardContent>
       </Card>
 
+      {/* Pinned Modules */}
+      <ModulePinSettings />
+
       {/* App Architecture + Sentry side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <HomeMindMapSettings />

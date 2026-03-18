@@ -410,7 +410,20 @@ export default function TopicDetailPage() {
               }}
             />
           )}
+          {/* Customize View button for students */}
+          {!canManageContent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCustomizeOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Customize View"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          )}
         </div>
+        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Topic Progress Bar - hidden for admins */}
         {!canManageContent && (
