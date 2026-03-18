@@ -129,37 +129,46 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
     return <ContentRulesSection />;
   }
 
+  const [mainOpen, setMainOpen] = useState(false);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Superadmin Global AI Policy */}
       {isSuperAdmin && <GlobalAIPolicySection />}
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                AI Content Factory Settings
-              </CardTitle>
-              <CardDescription>
-                Configure AI provider, models, and content generation controls.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Refresh
-              </Button>
-              {hasPendingChanges && (
-                <Button size="sm" onClick={handleSaveAll} disabled={updateSetting.isPending}>
-                  <Save className="w-4 h-4 mr-1" />
-                  Save All
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
+        <Collapsible open={mainOpen} onOpenChange={setMainOpen}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ChevronRight className={`w-4 h-4 transition-transform ${mainOpen ? 'rotate-90' : ''}`} />
+                    <Sparkles className="w-5 h-5" />
+                    AI Content Factory Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure AI provider, models, and content generation controls.
+                  </CardDescription>
+                </div>
+                {mainOpen && (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" onClick={() => refetch()}>
+                      <RefreshCw className="w-4 h-4 mr-1" />
+                      Refresh
+                    </Button>
+                    {hasPendingChanges && (
+                      <Button size="sm" onClick={handleSaveAll} disabled={updateSetting.isPending}>
+                        <Save className="w-4 h-4 mr-1" />
+                        Save All
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
         <CardContent className="space-y-6">
           {/* Factory Enable/Disable */}
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
