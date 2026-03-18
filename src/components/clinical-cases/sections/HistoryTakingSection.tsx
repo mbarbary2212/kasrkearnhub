@@ -272,7 +272,7 @@ export function HistoryTakingSection({
               if (error) throw error;
               if (data?.audioContent) {
                 const audio = preUnlockedAudio || new Audio();
-                audio.src = `data:audio/mpeg;base64,${data.audioContent}`;
+                audio.src = `data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`;
                 await audio.play();
                 await new Promise<void>(resolve => { audio.onended = () => resolve(); });
               }
@@ -969,7 +969,7 @@ export function HistoryTakingSection({
           body: { text: greeting, voiceName: ttsGeminiVoice, stylePrompt: geminiStylePrompt },
         }).then(({ data }) => {
           if (data?.audioContent) {
-            const audio = new Audio(`data:audio/mpeg;base64,${data.audioContent}`);
+            const audio = new Audio(`data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`);
             audio.play();
           }
         });
