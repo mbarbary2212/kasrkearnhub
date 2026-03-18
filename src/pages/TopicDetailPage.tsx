@@ -323,8 +323,9 @@ export default function TopicDetailPage() {
 
   const interactiveTabs = useMemo(() => {
     if (canManageContent) return allInteractiveTabs;
-    return filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allInteractiveTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
