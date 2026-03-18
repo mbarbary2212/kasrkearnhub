@@ -271,10 +271,19 @@ export function HistoryTakingSection({
               });
               if (error) throw error;
               if (data?.audioContent) {
+                const byteCharacters = atob(data.audioContent);
+                const byteArray = new Uint8Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteArray[i] = byteCharacters.charCodeAt(i);
+                }
+                const blob = new Blob([byteArray], { type: 'audio/wav' });
+                const blobUrl = URL.createObjectURL(blob);
                 const audio = preUnlockedAudio || new Audio();
-                audio.src = `data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`;
+                audio.src = blobUrl;
                 await audio.play();
-                await new Promise<void>(resolve => { audio.onended = () => resolve(); });
+                await new Promise<void>(resolve => {
+                  audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+                });
               }
             } else {
               await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
