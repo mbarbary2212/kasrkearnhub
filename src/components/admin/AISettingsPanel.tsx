@@ -494,59 +494,67 @@ function VoiceProviderSection({
 function GlobalAIPolicySection() {
   const { data: platformSettings, isLoading } = useAIPlatformSettings();
   const updateSettings = useUpdateAIPlatformSettings();
+  const [isOpen, setIsOpen] = useState(false);
 
   if (isLoading || !platformSettings) return null;
 
   return (
     <Card className="border-amber-200 dark:border-amber-800">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-          <Shield className="w-5 h-5" />
-          Global AI Policy
-          <Badge variant="outline" className="text-xs">Super Admin Only</Badge>
-        </CardTitle>
-        <CardDescription>
-          Control who can use the platform's global API key for AI generation.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-base font-medium">Allow Superadmin Global AI</Label>
-            <p className="text-sm text-muted-foreground">
-              Allow super admins to use the platform's global API key.
-            </p>
-          </div>
-          <Switch
-            checked={platformSettings.allow_superadmin_global_ai}
-            onCheckedChange={(checked) => updateSettings.mutate({ allow_superadmin_global_ai: checked })}
-            disabled={updateSettings.isPending}
-          />
-        </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Shield className="w-5 h-5" />
+              Global AI Policy
+              <Badge variant="outline" className="text-xs">Super Admin Only</Badge>
+            </CardTitle>
+            <CardDescription>
+              Control who can use the platform's global API key for AI generation.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Allow Superadmin Global AI</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow super admins to use the platform's global API key.
+                </p>
+              </div>
+              <Switch
+                checked={platformSettings.allow_superadmin_global_ai}
+                onCheckedChange={(checked) => updateSettings.mutate({ allow_superadmin_global_ai: checked })}
+                disabled={updateSettings.isPending}
+              />
+            </div>
 
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-base font-medium">Allow Admin Fallback to Global Key</Label>
-            <p className="text-sm text-muted-foreground">
-              If disabled, admins without their own API key cannot generate content.
-            </p>
-          </div>
-          <Switch
-            checked={platformSettings.allow_admin_fallback_to_global_key}
-            onCheckedChange={(checked) => updateSettings.mutate({ allow_admin_fallback_to_global_key: checked })}
-            disabled={updateSettings.isPending}
-          />
-        </div>
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Allow Admin Fallback to Global Key</Label>
+                <p className="text-sm text-muted-foreground">
+                  If disabled, admins without their own API key cannot generate content.
+                </p>
+              </div>
+              <Switch
+                checked={platformSettings.allow_admin_fallback_to_global_key}
+                onCheckedChange={(checked) => updateSettings.mutate({ allow_admin_fallback_to_global_key: checked })}
+                disabled={updateSettings.isPending}
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label>Cost Message (shown to admins without API key)</Label>
-          <Textarea
-            value={platformSettings.global_key_disabled_message}
-            onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
-            rows={12}
-          />
-        </div>
-      </CardContent>
+            <div className="space-y-2">
+              <Label>Cost Message (shown to admins without API key)</Label>
+              <Textarea
+                value={platformSettings.global_key_disabled_message}
+                onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
+                rows={12}
+              />
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
