@@ -154,8 +154,8 @@ function PlatformSettingsTab() {
       toast.error('Failed to update setting');
     }
   };
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ReactNode } from 'react';
+
+
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
   icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
