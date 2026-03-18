@@ -449,6 +449,52 @@ function VoiceProviderSection({
             </div>
           </div>
         )}
+
+        {ttsProvider === 'gemini' && (
+          <div className="space-y-4 pt-2 border-t">
+            {/* Gemini Male Voice */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gemini Voice (Male)</Label>
+              <Select
+                value={geminiMaleVoice}
+                onValueChange={(val) => handleChange('tts_gemini_male_voice', val)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GEMINI_MALE_VOICES.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {'tts_gemini_male_voice' in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave('tts_gemini_male_voice')} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Male Voice
+                </Button>
+              )}
+            </div>
+
+            {/* Gemini Female Voice */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gemini Voice (Female)</Label>
+              <Select
+                value={geminiFemaleVoice}
+                onValueChange={(val) => handleChange('tts_gemini_female_voice', val)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GEMINI_FEMALE_VOICES.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {'tts_gemini_female_voice' in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave('tts_gemini_female_voice')} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Female Voice
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -462,100 +462,112 @@ export function CasePreviewEditor() {
 
             {/* Voice Character (only for voice mode) */}
             {historyInteractionMode === 'voice' && editedData && (
-              <div>
-                <Label className="text-xs">Voice Character</Label>
-                <Select
-                  value={(editedData as any).patient?.voice_id || '__default__'}
-                  onValueChange={(v) => {
-                    setEditedData({
-                      ...editedData,
-                      patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
-                    } as any);
-                    setHasChanges(true);
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      const males = (ttsVoices || []).filter(v => v.gender === 'male');
-                      const females = (ttsVoices || []).filter(v => v.gender === 'female');
-                      return (
-                        <>
-                          <SelectItem value="__default__">Global Default</SelectItem>
-                          {males.length > 0 && (
-                            <SelectGroup>
-                              <SelectLabel>Male Voices</SelectLabel>
-                              {males.map(v => (
-                                <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
-                                  {v.name} {v.label ? `— ${v.label}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
-                          {females.length > 0 && (
-                            <SelectGroup>
-                              <SelectLabel>Female Voices</SelectLabel>
-                              {females.map(v => (
-                                <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
-                                  {v.name} {v.label ? `— ${v.label}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-3 mt-1">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (isPreviewPlaying) {
-                        stopAllTTS();
-                        setIsPreviewPlaying(false);
-                        return;
-                      }
-                      const voiceId = (editedData as any).patient?.voice_id || '';
-                      if (!voiceId) {
-                        toast.info('Select a voice first (not Global Default)');
-                        return;
-                      }
-                      const tone = editedData?.patient?.tone || 'calm';
-                      setIsPreviewPlaying(true);
-                      try {
-                        await speakArabic(
-                          'مرحباً يا دكتور، أنا عندي مشكلة عايز أقولك عليها',
-                          'elevenlabs',
-                          voiceId,
-                          tone as any,
-                        );
-                      } catch {
-                        toast.error('Voice preview failed');
-                      } finally {
-                        setIsPreviewPlaying(false);
-                        setPreviewCooldown(true);
-                        setTimeout(() => setPreviewCooldown(false), 60000);
-                      }
+              globalTtsProvider === 'gemini' ? (
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-primary" />
+                    Voice Character
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Using global Gemini voice settings (configured in Admin → Content Factory → Settings)
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-xs">Voice Character</Label>
+                  <Select
+                    value={(editedData as any).patient?.voice_id || '__default__'}
+                    onValueChange={(v) => {
+                      setEditedData({
+                        ...editedData,
+                        patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
+                      } as any);
+                      setHasChanges(true);
                     }}
-                    disabled={previewCooldown}
-                    className={`inline-flex items-center gap-1.5 text-xs font-medium transition-all duration-500 ${
-                      previewCooldown
-                        ? 'text-muted-foreground/40 cursor-not-allowed'
-                        : 'text-primary hover:text-primary/80'
-                    }`}
                   >
-                    {isPreviewPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    {isPreviewPlaying ? 'Stop' : previewCooldown ? 'Wait ~1 min…' : 'Preview voice'}
-                   </button>
-                 </div>
-                 <p className="text-xs text-muted-foreground mt-1">
-                   {previewCooldown
-                     ? 'Voice preview is temporarily paused to avoid rate limits. It will re-enable automatically in ~1 minute.'
-                     : 'After each preview, the button will pause for ~1 min to stay within voice API limits.'}
-                 </p>
-               </div>
-             )}
+                    <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const males = (ttsVoices || []).filter(v => v.gender === 'male');
+                        const females = (ttsVoices || []).filter(v => v.gender === 'female');
+                        return (
+                          <>
+                            <SelectItem value="__default__">Global Default</SelectItem>
+                            {males.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Male Voices</SelectLabel>
+                                {males.map(v => (
+                                  <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                                    {v.name} {v.label ? `— ${v.label}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                            {females.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Female Voices</SelectLabel>
+                                {females.map(v => (
+                                  <SelectItem key={v.id} value={v.elevenlabs_voice_id}>
+                                    {v.name} {v.label ? `— ${v.label}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (isPreviewPlaying) {
+                          stopAllTTS();
+                          setIsPreviewPlaying(false);
+                          return;
+                        }
+                        const voiceId = (editedData as any).patient?.voice_id || '';
+                        if (!voiceId) {
+                          toast.info('Select a voice first (not Global Default)');
+                          return;
+                        }
+                        const tone = editedData?.patient?.tone || 'calm';
+                        setIsPreviewPlaying(true);
+                        try {
+                          await speakArabic(
+                            'مرحباً يا دكتور، أنا عندي مشكلة عايز أقولك عليها',
+                            'elevenlabs',
+                            voiceId,
+                            tone as any,
+                          );
+                        } catch {
+                          toast.error('Voice preview failed');
+                        } finally {
+                          setIsPreviewPlaying(false);
+                          setPreviewCooldown(true);
+                          setTimeout(() => setPreviewCooldown(false), 60000);
+                        }
+                      }}
+                      disabled={previewCooldown}
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium transition-all duration-500 ${
+                        previewCooldown
+                          ? 'text-muted-foreground/40 cursor-not-allowed'
+                          : 'text-primary hover:text-primary/80'
+                      }`}
+                    >
+                      {isPreviewPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      {isPreviewPlaying ? 'Stop' : previewCooldown ? 'Wait ~1 min…' : 'Preview voice'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {previewCooldown
+                      ? 'Voice preview is temporarily paused to avoid rate limits. It will re-enable automatically in ~1 minute.'
+                      : 'After each preview, the button will pause for ~1 min to stay within voice API limits.'}
+                  </p>
+                </div>
+              )
+            )}
 
              {/* History Time Limit */}
              {editedData && (
