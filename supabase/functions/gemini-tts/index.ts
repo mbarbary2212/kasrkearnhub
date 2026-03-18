@@ -46,7 +46,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('gemini-tts invoked, method:', req.method);
     // ── Auth guard ──
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -91,9 +90,8 @@ serve(async (req) => {
 
     const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
 
-    console.log('Calling Gemini API with text length:', finalText.length, 'voice:', voiceName || 'Kore');
     const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
       {
         method: 'POST',
         headers: {
@@ -103,11 +101,11 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [{ parts: [{ text: finalText }] }],
           generationConfig: {
-            response_modalities: ['AUDIO'],
-            speech_config: {
-              voice_config: {
-                prebuilt_voice_config: {
-                  voice_name: voiceName || 'Kore',
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName || 'Kore',
                 },
               },
             },
