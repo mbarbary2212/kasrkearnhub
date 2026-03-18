@@ -255,43 +255,52 @@ function EmailNotificationPreferences() {
     { key: 'notify_new_content', label: 'New Content Uploads', description: 'When other admins create or modify content (can be noisy)' },
   ];
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="w-5 h-5" />
-          Email Notifications
-        </CardTitle>
-        <CardDescription>
-          Choose which events send you an email alert. Emails are sent only for selected events.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          toggleItems.map(item => (
-            <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-1">
-                <Label htmlFor={item.key} className="text-base font-medium">
-                  {item.label}
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {item.description}
-                </p>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Mail className="w-5 h-5" />
+              Email Notifications
+            </CardTitle>
+            <CardDescription>
+              Choose which events send you an email alert.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
-              <Switch
-                id={item.key}
-                checked={prefs ? (prefs as unknown as Record<string, unknown>)[item.key] as boolean : false}
-                onCheckedChange={(checked) => handleToggle(item.key, checked)}
-                disabled={updatePrefs.isPending}
-              />
-            </div>
-          ))
-        )}
-      </CardContent>
+            ) : (
+              toggleItems.map(item => (
+                <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <Label htmlFor={item.key} className="text-base font-medium">
+                      {item.label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                  <Switch
+                    id={item.key}
+                    checked={prefs ? (prefs as unknown as Record<string, unknown>)[item.key] as boolean : false}
+                    onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                    disabled={updatePrefs.isPending}
+                  />
+                </div>
+              ))
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

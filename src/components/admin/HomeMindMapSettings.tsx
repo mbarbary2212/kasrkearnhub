@@ -225,21 +225,29 @@ function ReactMarkdownLazy({ children }: { children: string }) {
 }
 
 export function HomeMindMapSettings() {
+  const [isOpen, setIsOpen] = useState(false);
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Network className="w-5 h-5" />
-          App Mind Map
-        </CardTitle>
-        <CardDescription>
-          Configure the mind map view on the Home page.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <MindMapVersionEditor audience="student" label="Student" />
-        <MindMapVersionEditor audience="admin" label="Admin" />
-      </CardContent>
+    <Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Network className="w-5 h-5" />
+              App Mind Map
+            </CardTitle>
+            <CardDescription>
+              Configure the mind map view on the Home page.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-3">
+            <MindMapVersionEditor audience="student" label="Student" />
+            <MindMapVersionEditor audience="admin" label="Admin" />
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
