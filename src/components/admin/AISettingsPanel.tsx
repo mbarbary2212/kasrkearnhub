@@ -73,6 +73,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   const { isSuperAdmin } = useAuthContext();
   
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
+  const [mainOpen, setMainOpen] = useState(false);
 
   const getValue = <T,>(key: string, defaultValue: T): T => {
     if (key in pendingChanges) return pendingChanges[key] as T;
@@ -128,8 +129,6 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   if (showRules === 'only') {
     return <ContentRulesSection />;
   }
-
-  const [mainOpen, setMainOpen] = useState(false);
 
   return (
     <div className="space-y-4">
