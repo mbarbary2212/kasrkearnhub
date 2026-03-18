@@ -366,16 +366,23 @@ function VoiceProviderSection({
     ...(isSuperAdmin ? [{ value: 'gemini', label: '🤖 Google Gemini', description: 'Google Gemini TTS. Uses GOOGLE_API_KEY.' }] : []),
   ];
 
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
   return (
     <>
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Volume2 className="w-5 h-5" />
-          Voice Provider (TTS)
-        </CardTitle>
-        <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
-      </CardHeader>
+      <Collapsible open={voiceOpen} onOpenChange={setVoiceOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2">
+              <ChevronRight className={`w-4 h-4 transition-transform ${voiceOpen ? 'rotate-90' : ''}`} />
+              <Volume2 className="w-5 h-5" />
+              Voice Provider (TTS)
+            </CardTitle>
+            <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {providers.map((p) => (
