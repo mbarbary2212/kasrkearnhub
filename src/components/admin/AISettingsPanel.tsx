@@ -497,6 +497,12 @@ function VoiceProviderSection({
         )}
       </CardContent>
     </Card>
+
+    {/* ElevenLabs Voice Registry — shown only when provider is elevenlabs */}
+    {ttsProvider === 'elevenlabs' && (
+      <TTSVoicesCard />
+    )}
+    </>
   );
 }
 
