@@ -135,8 +135,9 @@ serve(async (req) => {
       );
     }
 
+    const wavBase64 = addWavHeader(audioData);
     return new Response(
-      JSON.stringify({ audioContent: audioData, mimeType: mimeType }),
+      JSON.stringify({ audioContent: wavBase64, mimeType: 'audio/wav' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {

@@ -978,7 +978,16 @@ export function HistoryTakingSection({
           body: { text: greeting, voiceName: ttsGeminiVoice, stylePrompt: geminiStylePrompt },
         }).then(({ data }) => {
           if (data?.audioContent) {
-            const audio = new Audio(`data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`);
+            const byteCharacters = atob(data.audioContent);
+            const byteArray = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteArray[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([byteArray], { type: 'audio/wav' });
+            const blobUrl = URL.createObjectURL(blob);
+            const audio = new Audio();
+            audio.src = blobUrl;
+            audio.onended = () => URL.revokeObjectURL(blobUrl);
             audio.play();
           }
         });
