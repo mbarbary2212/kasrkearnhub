@@ -98,34 +98,43 @@ export function SentryDiagnosticsSection() {
     }
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Activity className="w-5 h-5" />
-          Monitoring / Error Tracking
-          <Badge variant="secondary" className="text-xs ml-auto">Super Admin</Badge>
-        </CardTitle>
-        <CardDescription>
-          Send test events to verify Sentry and Better Stack are capturing errors correctly.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button size="sm" variant="outline" onClick={handleFrontendTest} disabled={frontendLoading}>
-            {frontendLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            Test Sentry
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleEdgeTest} disabled={edgeLoading}>
-            {edgeLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            Test Edge
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleBetterStackTest} disabled={betterStackLoading}>
-            {betterStackLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            Test Better Stack
-          </Button>
-        </div>
-      </CardContent>
+    <Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Activity className="w-5 h-5" />
+              Monitoring / Error Tracking
+              <Badge variant="secondary" className="text-xs ml-auto">Super Admin</Badge>
+            </CardTitle>
+            <CardDescription>
+              Send test events to verify Sentry and Better Stack are capturing errors correctly.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button size="sm" variant="outline" onClick={handleFrontendTest} disabled={frontendLoading}>
+                {frontendLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Test Sentry
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleEdgeTest} disabled={edgeLoading}>
+                {edgeLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Test Edge
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleBetterStackTest} disabled={betterStackLoading}>
+                {betterStackLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Test Better Stack
+              </Button>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

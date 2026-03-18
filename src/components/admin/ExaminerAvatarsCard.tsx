@@ -292,6 +292,8 @@ export function ExaminerAvatarsCard() {
           </div>
         )}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
