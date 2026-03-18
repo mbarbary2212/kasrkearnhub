@@ -480,7 +480,7 @@ export default function ChapterPage() {
                 className="hidden md:inline-flex gap-2 text-muted-foreground hover:text-foreground"
               >
                 <SlidersHorizontal className="w-4 h-4" />
-                Customize Your View
+                Customize View
               </Button>
             </>
           )}
