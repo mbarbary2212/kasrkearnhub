@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Layers, BookOpen } from 'lucide-react';
+import { Layers, BookOpen } from 'lucide-react';
 import { AISettingsPanel } from './AISettingsPanel';
 import { AIBatchJobsList } from './AIBatchJobsList';
 import { Button } from '@/components/ui/button';
