@@ -113,6 +113,8 @@ export function CasePreviewEditor() {
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
   const { data: ttsVoices } = useTTSVoices();
+  const { data: aiSettings } = useAISettings();
+  const globalTtsProvider = getSettingValue(aiSettings, 'tts_provider', 'browser') as string;
 
   // Build avatar list from database
   const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
