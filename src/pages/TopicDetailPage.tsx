@@ -297,10 +297,15 @@ export default function TopicDetailPage() {
   }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources]);
 
   // Admin sees all tabs; students see filtered based on setting
+  const { data: pinSettings } = useModulePinSettings();
+  const { data: studentPrefs } = useStudentModulePreferences();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
   const resourcesTabs = useMemo(() => {
     if (canManageContent) return allResourcesTabs;
-    return filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allResourcesTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset resources tab if current tab becomes hidden
   useEffect(() => {
