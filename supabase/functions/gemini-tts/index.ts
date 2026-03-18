@@ -91,6 +91,7 @@ serve(async (req) => {
 
     const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
 
+    console.log('Calling Gemini API with text length:', finalText.length, 'voice:', voiceName || 'Kore');
     const response = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
       {
