@@ -343,8 +343,9 @@ export default function TopicDetailPage() {
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allPracticeTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset practice tab if current tab becomes hidden
   useEffect(() => {
