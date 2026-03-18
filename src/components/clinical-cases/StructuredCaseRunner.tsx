@@ -332,6 +332,7 @@ export function StructuredCaseRunner({
               patientTone={generatedData?.patient?.tone}
               estimatedMinutes={caseData.estimated_minutes}
               voiceIdOverride={(generatedData?.patient as any)?.voice_id}
+              patientGender={(generatedData?.patient as any)?.gender}
               historyTimeLimitMinutes={(generatedData as any)?.history_time_limit_minutes}
             />
           )}

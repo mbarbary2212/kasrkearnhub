@@ -334,6 +334,7 @@ function VoiceProviderSection({
   pendingChanges: Record<string, unknown>;
   updateIsPending: boolean;
 }) {
+  const { isSuperAdmin } = useAuthContext();
   const ttsProvider = getValue('tts_provider', 'browser') as string;
   const ttsGender = getValue('tts_voice_gender', 'male') as 'male' | 'female';
   const maleVoice = getValue('tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
@@ -341,9 +342,16 @@ function VoiceProviderSection({
   const activeVoiceKey = ttsGender === 'female' ? 'tts_elevenlabs_female_voice' : 'tts_elevenlabs_male_voice';
   const activeVoiceId = ttsGender === 'female' ? femaleVoice : maleVoice;
 
+  const geminiMaleVoice = getValue('tts_gemini_male_voice', 'Kore') as string;
+  const geminiFemaleVoice = getValue('tts_gemini_female_voice', 'Aoede') as string;
+
+  const GEMINI_MALE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Orus', 'Zephyr'];
+  const GEMINI_FEMALE_VOICES = ['Aoede', 'Leda'];
+
   const providers = [
     { value: 'browser', label: '🌐 Browser (Built-in)', description: 'Free, works on all devices. Quality varies by browser and OS.' },
     { value: 'elevenlabs', label: '🟢 ElevenLabs', description: 'Authentic Egyptian Arabic voices. Powered by professional voice actors.' },
+    ...(isSuperAdmin ? [{ value: 'gemini', label: '🤖 Google Gemini', description: 'Google Gemini TTS. Uses GOOGLE_API_KEY.' }] : []),
   ];
 
   return (
@@ -436,6 +444,52 @@ function VoiceProviderSection({
               {activeVoiceKey in pendingChanges && (
                 <Button size="sm" onClick={() => handleSave(activeVoiceKey)} disabled={updateIsPending}>
                   <Save className="w-4 h-4 mr-1" /> Save Voice
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {ttsProvider === 'gemini' && (
+          <div className="space-y-4 pt-2 border-t">
+            {/* Gemini Male Voice */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gemini Voice (Male)</Label>
+              <Select
+                value={geminiMaleVoice}
+                onValueChange={(val) => handleChange('tts_gemini_male_voice', val)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GEMINI_MALE_VOICES.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {'tts_gemini_male_voice' in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave('tts_gemini_male_voice')} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Male Voice
+                </Button>
+              )}
+            </div>
+
+            {/* Gemini Female Voice */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gemini Voice (Female)</Label>
+              <Select
+                value={geminiFemaleVoice}
+                onValueChange={(val) => handleChange('tts_gemini_female_voice', val)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GEMINI_FEMALE_VOICES.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {'tts_gemini_female_voice' in pendingChanges && (
+                <Button size="sm" onClick={() => handleSave('tts_gemini_female_voice')} disabled={updateIsPending}>
+                  <Save className="w-4 h-4 mr-1" /> Save Female Voice
                 </Button>
               )}
             </div>

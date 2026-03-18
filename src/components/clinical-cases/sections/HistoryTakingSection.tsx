@@ -28,6 +28,7 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   estimatedMinutes?: number;
   voiceIdOverride?: string;
   historyTimeLimitMinutes?: number;
+  patientGender?: string;
 }
 
 const MAX_STUDENT_MESSAGES = 15;
@@ -51,6 +52,7 @@ export function HistoryTakingSection({
   estimatedMinutes,
   voiceIdOverride,
   historyTimeLimitMinutes,
+  patientGender,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
@@ -58,7 +60,9 @@ export function HistoryTakingSection({
   // TTS settings
   const { data: ttsSettings } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
-  const ttsGeminiVoice = getSettingValue(ttsSettings, 'tts_gemini_voice', 'Kore') as string;
+  const ttsGeminiVoice = patientGender === 'female'
+    ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoede') as string
+    : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore') as string;
   const toneStyleMap: Record<string, string> = {
     worried:   '[تحدث بالعامية المصرية. نبرتك قلقة وخايف من الموضوع]',
     in_pain:   '[تحدث بالعامية المصرية. نبرتك تعبانة وحاسس بألم شديد]',
