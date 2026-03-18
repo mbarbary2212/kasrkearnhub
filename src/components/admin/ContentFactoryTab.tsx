@@ -29,15 +29,11 @@ export function ContentFactoryTab() {
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold">Content Factory</h2>
-        <p className="text-muted-foreground">AI settings, batch generation, and content rules</p>
+        <p className="text-muted-foreground">Batch generation and content rules</p>
       </div>
 
-      <Tabs defaultValue="settings" className="w-full">
+      <Tabs defaultValue="batch" className="w-full">
         <TabsList className="h-auto gap-1 p-1.5 w-full justify-start flex-wrap">
-          <TabsTrigger value="settings" className="gap-2">
-            <Settings className="w-4 h-4" />
-            Settings
-          </TabsTrigger>
           <TabsTrigger value="batch" className="gap-2">
             <Layers className="w-4 h-4" />
             Batch Generation & Jobs
@@ -47,10 +43,6 @@ export function ContentFactoryTab() {
             AI Rules
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="settings" className="mt-4">
-          <AISettingsPanel showRules={false} />
-        </TabsContent>
 
         <TabsContent value="batch" className="mt-4">
           <div className="space-y-6">
