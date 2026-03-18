@@ -78,7 +78,10 @@ import {
   Image,
   Sparkles,
   HelpCircle,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
@@ -294,10 +297,15 @@ export default function TopicDetailPage() {
   }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources]);
 
   // Admin sees all tabs; students see filtered based on setting
+  const { data: pinSettings } = useModulePinSettings();
+  const { data: studentPrefs } = useStudentModulePreferences();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
   const resourcesTabs = useMemo(() => {
     if (canManageContent) return allResourcesTabs;
-    return filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allResourcesTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset resources tab if current tab becomes hidden
   useEffect(() => {
@@ -315,8 +323,9 @@ export default function TopicDetailPage() {
 
   const interactiveTabs = useMemo(() => {
     if (canManageContent) return allInteractiveTabs;
-    return filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allInteractiveTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
@@ -334,8 +343,9 @@ export default function TopicDetailPage() {
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
     if (canManageContent) return allPracticeTabs;
-    return filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
-  }, [canManageContent, allPracticeTabs, hideEmptyTabs]);
+    const filtered = filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
+    return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
+  }, [canManageContent, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset practice tab if current tab becomes hidden
   useEffect(() => {
@@ -400,7 +410,20 @@ export default function TopicDetailPage() {
               }}
             />
           )}
+          {/* Customize View button for students */}
+          {!canManageContent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCustomizeOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Customize View"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          )}
         </div>
+        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Topic Progress Bar - hidden for admins */}
         {!canManageContent && (

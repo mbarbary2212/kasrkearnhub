@@ -3503,6 +3503,30 @@ export type Database = {
           },
         ]
       }
+      module_pin_settings: {
+        Row: {
+          id: string
+          is_pinned: boolean
+          module_key: string
+          pinned_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          is_pinned?: boolean
+          module_key: string
+          pinned_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_pinned?: boolean
+          module_key?: string
+          pinned_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       modules: {
         Row: {
           created_at: string | null
@@ -4216,6 +4240,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      student_module_preferences: {
+        Row: {
+          id: string
+          is_hidden: boolean
+          module_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_hidden?: boolean
+          module_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_hidden?: boolean
+          module_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       student_readiness_cache: {
         Row: {

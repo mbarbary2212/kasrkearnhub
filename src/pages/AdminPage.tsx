@@ -48,6 +48,7 @@ import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { TTSVoicesCard } from '@/components/admin/TTSVoicesCard';
+import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 
 interface UserWithRole extends Profile {
   role: AppRole;
@@ -188,6 +189,9 @@ function PlatformSettingsTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pinned Modules */}
+      <ModulePinSettings />
 
       {/* App Architecture + Sentry side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
