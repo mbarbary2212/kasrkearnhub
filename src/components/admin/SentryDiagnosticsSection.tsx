@@ -4,7 +4,8 @@ import { BrowserClient, defaultStackParser, makeFetchTransport, Scope } from '@s
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Activity } from 'lucide-react';
+import { Loader2, Activity, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getBetterStackClient } from '@/lib/sentry';

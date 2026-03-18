@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, Users, Check, X, Edit2 } from 'lucide-react';
+import { Loader2, Upload, Users, Check, X, Edit2, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 
 interface AvatarRow {
