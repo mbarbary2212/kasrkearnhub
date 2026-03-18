@@ -46,6 +46,7 @@ serve(async (req) => {
   }
 
   try {
+    console.log('gemini-tts invoked, method:', req.method);
     // ── Auth guard ──
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
