@@ -157,50 +157,43 @@ function PlatformSettingsTab() {
 
 
   return (
-    <div className="space-y-6">
-      {/* Global Display Toggle */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Settings className="w-5 h-5" />
-            Platform Settings
-          </CardTitle>
-          <CardDescription>
-            Configure global platform behavior.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="space-y-1">
-              <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
-                Hide Empty Practice Tabs
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
-                Admins always see all tabs.
-              </p>
-            </div>
-            <Switch
-              id="hide-empty-tabs"
-              checked={hideEmptyTabs ?? false}
-              onCheckedChange={handleToggle}
-              disabled={isLoading || upsertSetting.isPending}
-            />
+    <div className="space-y-4">
+      {/* Hide Empty Practice Tabs */}
+      <CollapsibleSettingsCard
+        icon={<Settings className="w-5 h-5" />}
+        title="Hide Empty Practice Tabs"
+        description="Configure which practice sub-tabs are visible to students."
+      >
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
+              Hide Empty Practice Tabs
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
+              Admins always see all tabs.
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <Switch
+            id="hide-empty-tabs"
+            checked={hideEmptyTabs ?? false}
+            onCheckedChange={handleToggle}
+            disabled={isLoading || upsertSetting.isPending}
+          />
+        </div>
+      </CollapsibleSettingsCard>
 
       {/* Pinned Modules */}
       <ModulePinSettings />
 
-      {/* App Architecture + Sentry side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <HomeMindMapSettings />
-        {isSuperAdmin && <SentryDiagnosticsSection />}
-      </div>
+      {/* App Mind Map */}
+      <HomeMindMapSettings />
 
       {/* Examiner Avatars */}
       <ExaminerAvatarsCard />
+
+      {/* Sentry Diagnostics — SuperAdmin only */}
+      {isSuperAdmin && <SentryDiagnosticsSection />}
 
       {/* AI Content Factory Settings — SuperAdmin only */}
       {isSuperAdmin && (

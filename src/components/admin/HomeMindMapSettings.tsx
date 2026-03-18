@@ -230,10 +230,10 @@ export function HomeMindMapSettings() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Network className="w-5 h-5" />
-          App Architecture
+          App Mind Map
         </CardTitle>
         <CardDescription>
-          Configure the architecture view on the Home page.
+          Configure the mind map view on the Home page.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
