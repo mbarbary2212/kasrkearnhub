@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.check-elevenlabs-quota]
 verify_jwt = false
+
+[functions.gemini-tts]
+verify_jwt = false

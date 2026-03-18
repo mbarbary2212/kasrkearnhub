@@ -57,7 +57,16 @@ export function HistoryTakingSection({
 
   // TTS settings
   const { data: ttsSettings } = useAISettings();
-  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs');
+  const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
+  const ttsGeminiVoice = getSettingValue(ttsSettings, 'tts_gemini_voice', 'Kore') as string;
+  const toneStyleMap: Record<string, string> = {
+    worried:   '[تحدث بالعامية المصرية. نبرتك قلقة وخايف من الموضوع]',
+    in_pain:   '[تحدث بالعامية المصرية. نبرتك تعبانة وحاسس بألم شديد]',
+    anxious:   '[تحدث بالعامية المصرية. نبرتك متوترة ومش قادر تتمالك نفسك]',
+    calm:      '[تحدث بالعامية المصرية. نبرتك هادية ومتعاون مع الدكتور]',
+    exhausted: '[تحدث بالعامية المصرية. نبرتك تعبانة جداً ومش قادر تتكلم بسهولة]',
+  };
+  const geminiStylePrompt = toneStyleMap[patientTone || 'calm'] ?? toneStyleMap['calm'];
 
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
@@ -252,7 +261,24 @@ export function HistoryTakingSection({
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           setIsSpeaking(true);
           try {
-            await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+            if (ttsProvider === 'gemini') {
+              const { data, error } = await supabase.functions.invoke('gemini-tts', {
+                body: {
+                  text: reply,
+                  voiceName: ttsGeminiVoice,
+                  stylePrompt: geminiStylePrompt,
+                },
+              });
+              if (error) throw error;
+              if (data?.audioContent) {
+                const audio = preUnlockedAudio || new Audio();
+                audio.src = `data:audio/mpeg;base64,${data.audioContent}`;
+                await audio.play();
+                await new Promise<void>(resolve => { audio.onended = () => resolve(); });
+              }
+            } else {
+              await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+            }
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = null;
@@ -938,7 +964,18 @@ export function HistoryTakingSection({
         || (gender === 'female'
           ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
           : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-      speakArabic(greeting, ttsProvider, voiceId, patientTone);
+      if (ttsProvider === 'gemini') {
+        supabase.functions.invoke('gemini-tts', {
+          body: { text: greeting, voiceName: ttsGeminiVoice, stylePrompt: geminiStylePrompt },
+        }).then(({ data }) => {
+          if (data?.audioContent) {
+            const audio = new Audio(`data:audio/mpeg;base64,${data.audioContent}`);
+            audio.play();
+          }
+        });
+      } else {
+        speakArabic(greeting, ttsProvider, voiceId, patientTone);
+      }
     }
   }
 }
