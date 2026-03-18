@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, BookOpen, Shield, History, Check, Volume2
+  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
