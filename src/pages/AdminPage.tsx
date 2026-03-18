@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare, MoreHorizontal, Mail, Ban, UserX, UserCheck, ArrowUpDown, RotateCcw, Send } from 'lucide-react';
+import { Loader2, Shield, ShieldAlert, Users, Building2, ChevronRight, ChevronDown, Trash2, Plus, Edit, BookOpen, Calendar, Layers, Settings, HelpCircle, FileText, Search, GraduationCap, Megaphone, BarChart3, Activity, AlertTriangle, CheckCircle2, Copy, Download, Stethoscope, CreditCard, HeartPulse, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, Sparkles, UserPlus, KeyRound, MessageSquare, MoreHorizontal, Mail, Ban, UserX, UserCheck, ArrowUpDown, RotateCcw, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -156,51 +157,70 @@ function PlatformSettingsTab() {
   };
 
 
+
+function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
+  icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-6">
-      {/* Global Display Toggle */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Settings className="w-5 h-5" />
-            Platform Settings
-          </CardTitle>
-          <CardDescription>
-            Configure global platform behavior.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="space-y-1">
-              <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
-                Hide Empty Practice Tabs
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
-                Admins always see all tabs.
-              </p>
-            </div>
-            <Switch
-              id="hide-empty-tabs"
-              checked={hideEmptyTabs ?? false}
-              onCheckedChange={handleToggle}
-              disabled={isLoading || upsertSetting.isPending}
-            />
+    <Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              {icon}
+              {title}
+            </CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>{children}</CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
+  return (
+    <div className="space-y-4">
+      {/* Hide Empty Practice Tabs */}
+      <CollapsibleSettingsCard
+        icon={<Settings className="w-5 h-5" />}
+        title="Hide Empty Practice Tabs"
+        description="Configure which practice sub-tabs are visible to students."
+      >
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="hide-empty-tabs" className="text-base font-medium">
+              Hide Empty Practice Tabs
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When enabled, students will only see practice sub-tabs (MCQ, Essays, Matching, etc.) that have content. 
+              Admins always see all tabs.
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <Switch
+            id="hide-empty-tabs"
+            checked={hideEmptyTabs ?? false}
+            onCheckedChange={handleToggle}
+            disabled={isLoading || upsertSetting.isPending}
+          />
+        </div>
+      </CollapsibleSettingsCard>
 
       {/* Pinned Modules */}
       <ModulePinSettings />
 
-      {/* App Architecture + Sentry side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <HomeMindMapSettings />
-        {isSuperAdmin && <SentryDiagnosticsSection />}
-      </div>
+      {/* App Mind Map */}
+      <HomeMindMapSettings />
 
       {/* Examiner Avatars */}
       <ExaminerAvatarsCard />
+
+      {/* Sentry Diagnostics — SuperAdmin only */}
+      {isSuperAdmin && <SentryDiagnosticsSection />}
 
       {/* AI Content Factory Settings — SuperAdmin only */}
       {isSuperAdmin && (
@@ -235,43 +255,52 @@ function EmailNotificationPreferences() {
     { key: 'notify_new_content', label: 'New Content Uploads', description: 'When other admins create or modify content (can be noisy)' },
   ];
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="w-5 h-5" />
-          Email Notifications
-        </CardTitle>
-        <CardDescription>
-          Choose which events send you an email alert. Emails are sent only for selected events.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          toggleItems.map(item => (
-            <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-1">
-                <Label htmlFor={item.key} className="text-base font-medium">
-                  {item.label}
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {item.description}
-                </p>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Mail className="w-5 h-5" />
+              Email Notifications
+            </CardTitle>
+            <CardDescription>
+              Choose which events send you an email alert.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
-              <Switch
-                id={item.key}
-                checked={prefs ? (prefs as unknown as Record<string, unknown>)[item.key] as boolean : false}
-                onCheckedChange={(checked) => handleToggle(item.key, checked)}
-                disabled={updatePrefs.isPending}
-              />
-            </div>
-          ))
-        )}
-      </CardContent>
+            ) : (
+              toggleItems.map(item => (
+                <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <Label htmlFor={item.key} className="text-base font-medium">
+                      {item.label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                  <Switch
+                    id={item.key}
+                    checked={prefs ? (prefs as unknown as Record<string, unknown>)[item.key] as boolean : false}
+                    onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                    disabled={updatePrefs.isPending}
+                  />
+                </div>
+              ))
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

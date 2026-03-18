@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, Users, Check, X, Edit2 } from 'lucide-react';
+import { Loader2, Upload, Users, Check, X, Edit2, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 
 interface AvatarRow {
@@ -161,43 +162,52 @@ export function ExaminerAvatarsCard() {
     }
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="w-5 h-5" />
-              Examiner Avatars
-            </CardTitle>
-            <CardDescription>
-              Manage examiner avatars used in structured cases.
-            </CardDescription>
-          </div>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            <Button
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
-            >
-              {uploadMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Upload className="w-4 h-4 mr-2" />
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                  <Users className="w-5 h-5" />
+                  Examiner Avatars
+                </CardTitle>
+                <CardDescription>
+                  Manage examiner avatars used in structured cases.
+                </CardDescription>
+              </div>
+              {isOpen && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadMutation.isPending}
+                  >
+                    {uploadMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    Upload Avatar
+                  </Button>
+                </div>
               )}
-              Upload Avatar
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -282,6 +292,8 @@ export function ExaminerAvatarsCard() {
           </div>
         )}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
