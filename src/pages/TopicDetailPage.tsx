@@ -78,7 +78,10 @@ import {
   Image,
   Sparkles,
   HelpCircle,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
