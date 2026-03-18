@@ -484,6 +484,11 @@ function VoiceProviderSection({
     {ttsProvider === 'elevenlabs' && (
       <TTSVoicesCard />
     )}
+
+    {/* Gemini Voice Registry — shown only when provider is gemini */}
+    {ttsProvider === 'gemini' && (
+      <GeminiVoicesCard />
+    )}
     </>
   );
 }
