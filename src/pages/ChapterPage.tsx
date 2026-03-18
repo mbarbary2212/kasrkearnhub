@@ -88,7 +88,10 @@ import {
   Sparkles,
   Download,
   HelpCircle,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 import { cn } from '@/lib/utils';
 
 
