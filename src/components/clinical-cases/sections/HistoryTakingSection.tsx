@@ -52,6 +52,7 @@ export function HistoryTakingSection({
   estimatedMinutes,
   voiceIdOverride,
   historyTimeLimitMinutes,
+  patientGender,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
