@@ -387,7 +387,7 @@ export default function TopicDetailPage() {
                 {/* Desktop: Full two-line header */}
                 <div className="hidden md:block">
                   <p className="text-sm text-muted-foreground">{module?.name}</p>
-                  <h1 className="text-2xl font-heading font-semibold">
+                  <h1 className="text-lg font-heading font-semibold">
                     {topic?.name}
                   </h1>
                 </div>
