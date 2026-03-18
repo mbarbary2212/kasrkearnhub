@@ -91,6 +91,7 @@ serve(async (req) => {
 
     const result = await response.json();
     const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const mimeType = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType;
 
     if (!audioData) {
       console.error('No audio data in Gemini response:', JSON.stringify(result).slice(0, 500));
@@ -101,7 +102,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ audioContent: audioData }),
+      JSON.stringify({ audioContent: audioData, mimeType: mimeType }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
