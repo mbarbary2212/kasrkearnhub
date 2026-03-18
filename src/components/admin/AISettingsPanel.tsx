@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, BookOpen, Shield, History, Check, Volume2
+  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
@@ -73,6 +73,7 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   const { isSuperAdmin } = useAuthContext();
   
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
+  const [mainOpen, setMainOpen] = useState(false);
 
   const getValue = <T,>(key: string, defaultValue: T): T => {
     if (key in pendingChanges) return pendingChanges[key] as T;
@@ -130,36 +131,43 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Superadmin Global AI Policy */}
       {isSuperAdmin && <GlobalAIPolicySection />}
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                AI Content Factory Settings
-              </CardTitle>
-              <CardDescription>
-                Configure AI provider, models, and content generation controls.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Refresh
-              </Button>
-              {hasPendingChanges && (
-                <Button size="sm" onClick={handleSaveAll} disabled={updateSetting.isPending}>
-                  <Save className="w-4 h-4 mr-1" />
-                  Save All
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
+        <Collapsible open={mainOpen} onOpenChange={setMainOpen}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ChevronRight className={`w-4 h-4 transition-transform ${mainOpen ? 'rotate-90' : ''}`} />
+                    <Sparkles className="w-5 h-5" />
+                    AI Content Factory Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure AI provider, models, and content generation controls.
+                  </CardDescription>
+                </div>
+                {mainOpen && (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" onClick={() => refetch()}>
+                      <RefreshCw className="w-4 h-4 mr-1" />
+                      Refresh
+                    </Button>
+                    {hasPendingChanges && (
+                      <Button size="sm" onClick={handleSaveAll} disabled={updateSetting.isPending}>
+                        <Save className="w-4 h-4 mr-1" />
+                        Save All
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
         <CardContent className="space-y-6">
           {/* Factory Enable/Disable */}
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
@@ -298,6 +306,8 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
             </ul>
           </div>
         </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       {/* Voice Provider Section */}
@@ -355,111 +365,118 @@ function VoiceProviderSection({
     ...(isSuperAdmin ? [{ value: 'gemini', label: '🤖 Google Gemini', description: 'Google Gemini TTS. Uses GOOGLE_API_KEY.' }] : []),
   ];
 
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
   return (
     <>
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Volume2 className="w-5 h-5" />
-          Voice Provider (TTS)
-        </CardTitle>
-        <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {providers.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => handleChange('tts_provider', p.value)}
-              className={cn(
-                'flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all',
-                ttsProvider === p.value
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-muted-foreground/50'
-              )}
-            >
-              <div className="flex items-center gap-2 w-full">
-                <span className="font-medium text-sm">{p.label}</span>
-                {ttsProvider === p.value && <Check className="w-4 h-4 text-primary ml-auto" />}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{p.description}</p>
-            </button>
-          ))}
-        </div>
-
-        {'tts_provider' in pendingChanges && (
-          <Button size="sm" onClick={() => handleSave('tts_provider')} disabled={updateIsPending}>
-            <Save className="w-4 h-4 mr-1" /> Save Provider
-          </Button>
-        )}
-
-        {(ttsProvider === 'elevenlabs' || ttsProvider === 'gemini') && (
-          <div className="space-y-4 pt-2 border-t">
-            {/* Gender Toggle */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Voice Gender</Label>
-              <div className="flex gap-2">
-                {(['male', 'female'] as const).map((g) => (
-                  <Button
-                    key={g}
-                    variant={ttsGender === g ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleChange('tts_voice_gender', g)}
-                  >
-                    {g === 'male' ? '👨 Male' : '👩 Female'}
-                  </Button>
-                ))}
-              </div>
-              {'tts_voice_gender' in pendingChanges && (
-                <Button size="sm" onClick={() => handleSave('tts_voice_gender')} disabled={updateIsPending}>
-                  <Save className="w-4 h-4 mr-1" /> Save Gender
-                </Button>
-              )}
+      <Collapsible open={voiceOpen} onOpenChange={setVoiceOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2">
+              <ChevronRight className={`w-4 h-4 transition-transform ${voiceOpen ? 'rotate-90' : ''}`} />
+              <Volume2 className="w-5 h-5" />
+              Voice Provider (TTS)
+            </CardTitle>
+            <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {providers.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => handleChange('tts_provider', p.value)}
+                  className={cn(
+                    'flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all',
+                    ttsProvider === p.value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-muted-foreground/50'
+                  )}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="font-medium text-sm">{p.label}</span>
+                    {ttsProvider === p.value && <Check className="w-4 h-4 text-primary ml-auto" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{p.description}</p>
+                </button>
+              ))}
             </div>
 
-            {/* Gemini Voice Selection */}
-            {ttsProvider === 'gemini' && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Voice</Label>
-                {(() => {
-                  const voices = ttsGender === 'female' ? GEMINI_FEMALE_VOICES : GEMINI_MALE_VOICES;
-                  const voiceKey = ttsGender === 'female' ? 'tts_gemini_female_voice' : 'tts_gemini_male_voice';
-                  const voiceValue = ttsGender === 'female' ? geminiFemaleVoice : geminiMaleVoice;
-                  return (
-                    <>
-                      <RadioGroup
-                        value={voiceValue}
-                        onValueChange={(val) => handleChange(voiceKey, val)}
-                        className="space-y-2"
+            {'tts_provider' in pendingChanges && (
+              <Button size="sm" onClick={() => handleSave('tts_provider')} disabled={updateIsPending}>
+                <Save className="w-4 h-4 mr-1" /> Save Provider
+              </Button>
+            )}
+
+            {(ttsProvider === 'elevenlabs' || ttsProvider === 'gemini') && (
+              <div className="space-y-4 pt-2 border-t">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Voice Gender</Label>
+                  <div className="flex gap-2">
+                    {(['male', 'female'] as const).map((g) => (
+                      <Button
+                        key={g}
+                        variant={ttsGender === g ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleChange('tts_voice_gender', g)}
                       >
-                        {voices.map((v) => (
-                          <label
-                            key={v}
-                            className={cn(
-                              'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
-                              voiceValue === v
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-muted-foreground/50'
-                            )}
+                        {g === 'male' ? '👨 Male' : '👩 Female'}
+                      </Button>
+                    ))}
+                  </div>
+                  {'tts_voice_gender' in pendingChanges && (
+                    <Button size="sm" onClick={() => handleSave('tts_voice_gender')} disabled={updateIsPending}>
+                      <Save className="w-4 h-4 mr-1" /> Save Gender
+                    </Button>
+                  )}
+                </div>
+
+                {ttsProvider === 'gemini' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Voice</Label>
+                    {(() => {
+                      const voices = ttsGender === 'female' ? GEMINI_FEMALE_VOICES : GEMINI_MALE_VOICES;
+                      const voiceKey = ttsGender === 'female' ? 'tts_gemini_female_voice' : 'tts_gemini_male_voice';
+                      const voiceValue = ttsGender === 'female' ? geminiFemaleVoice : geminiMaleVoice;
+                      return (
+                        <>
+                          <RadioGroup
+                            value={voiceValue}
+                            onValueChange={(val) => handleChange(voiceKey, val)}
+                            className="space-y-2"
                           >
-                            <RadioGroupItem value={v} />
-                            <span className="font-medium text-sm">{v}</span>
-                          </label>
-                        ))}
-                      </RadioGroup>
-                      {voiceKey in pendingChanges && (
-                        <Button size="sm" onClick={() => handleSave(voiceKey)} disabled={updateIsPending}>
-                          <Save className="w-4 h-4 mr-1" /> Save Voice
-                        </Button>
-                      )}
-                    </>
-                  );
-                })()}
+                            {voices.map((v) => (
+                              <label
+                                key={v}
+                                className={cn(
+                                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                                  voiceValue === v
+                                    ? 'border-primary bg-primary/5'
+                                    : 'border-border hover:border-muted-foreground/50'
+                                )}
+                              >
+                                <RadioGroupItem value={v} />
+                                <span className="font-medium text-sm">{v}</span>
+                              </label>
+                            ))}
+                          </RadioGroup>
+                          {voiceKey in pendingChanges && (
+                            <Button size="sm" onClick={() => handleSave(voiceKey)} disabled={updateIsPending}>
+                              <Save className="w-4 h-4 mr-1" /> Save Voice
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
 
     {/* ElevenLabs Voice Registry — shown only when provider is elevenlabs */}
@@ -477,59 +494,67 @@ function VoiceProviderSection({
 function GlobalAIPolicySection() {
   const { data: platformSettings, isLoading } = useAIPlatformSettings();
   const updateSettings = useUpdateAIPlatformSettings();
+  const [isOpen, setIsOpen] = useState(false);
 
   if (isLoading || !platformSettings) return null;
 
   return (
     <Card className="border-amber-200 dark:border-amber-800">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-          <Shield className="w-5 h-5" />
-          Global AI Policy
-          <Badge variant="outline" className="text-xs">Super Admin Only</Badge>
-        </CardTitle>
-        <CardDescription>
-          Control who can use the platform's global API key for AI generation.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-base font-medium">Allow Superadmin Global AI</Label>
-            <p className="text-sm text-muted-foreground">
-              Allow super admins to use the platform's global API key.
-            </p>
-          </div>
-          <Switch
-            checked={platformSettings.allow_superadmin_global_ai}
-            onCheckedChange={(checked) => updateSettings.mutate({ allow_superadmin_global_ai: checked })}
-            disabled={updateSettings.isPending}
-          />
-        </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Shield className="w-5 h-5" />
+              Global AI Policy
+              <Badge variant="outline" className="text-xs">Super Admin Only</Badge>
+            </CardTitle>
+            <CardDescription>
+              Control who can use the platform's global API key for AI generation.
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Allow Superadmin Global AI</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow super admins to use the platform's global API key.
+                </p>
+              </div>
+              <Switch
+                checked={platformSettings.allow_superadmin_global_ai}
+                onCheckedChange={(checked) => updateSettings.mutate({ allow_superadmin_global_ai: checked })}
+                disabled={updateSettings.isPending}
+              />
+            </div>
 
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-base font-medium">Allow Admin Fallback to Global Key</Label>
-            <p className="text-sm text-muted-foreground">
-              If disabled, admins without their own API key cannot generate content.
-            </p>
-          </div>
-          <Switch
-            checked={platformSettings.allow_admin_fallback_to_global_key}
-            onCheckedChange={(checked) => updateSettings.mutate({ allow_admin_fallback_to_global_key: checked })}
-            disabled={updateSettings.isPending}
-          />
-        </div>
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Allow Admin Fallback to Global Key</Label>
+                <p className="text-sm text-muted-foreground">
+                  If disabled, admins without their own API key cannot generate content.
+                </p>
+              </div>
+              <Switch
+                checked={platformSettings.allow_admin_fallback_to_global_key}
+                onCheckedChange={(checked) => updateSettings.mutate({ allow_admin_fallback_to_global_key: checked })}
+                disabled={updateSettings.isPending}
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label>Cost Message (shown to admins without API key)</Label>
-          <Textarea
-            value={platformSettings.global_key_disabled_message}
-            onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
-            rows={12}
-          />
-        </div>
-      </CardContent>
+            <div className="space-y-2">
+              <Label>Cost Message (shown to admins without API key)</Label>
+              <Textarea
+                value={platformSettings.global_key_disabled_message}
+                onChange={(e) => updateSettings.mutate({ global_key_disabled_message: e.target.value })}
+                rows={12}
+              />
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
@@ -541,6 +566,7 @@ function GlobalAIPolicySection() {
 function ContentTypeModelSection({ provider }: { provider: string }) {
   const { data: settings } = useAISettings();
   const updateSetting = useUpdateAISetting();
+  const [isOpen, setIsOpen] = useState(false);
   
   const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
   
@@ -559,36 +585,43 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Model per Content Type
-        </CardTitle>
-        <CardDescription>
-          Automatically select the best model for each content type. "Use Global Default" falls back to: <Badge variant="outline" className="ml-1">{String(globalModel)}</Badge>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {CONTENT_TYPES.map(ct => {
-            const current = overrides[ct.value] || 'default';
-            return (
-              <div key={ct.value} className="flex items-center gap-2">
-                <Label className="w-36 text-sm shrink-0">{ct.label}</Label>
-                <Select value={current} onValueChange={(v) => handleModelChange(ct.value, v)} disabled={updateSetting.isPending}>
-                  <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Use Global Default</SelectItem>
-                    {models.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Settings className="w-5 h-5" />
+              Model per Content Type
+            </CardTitle>
+            <CardDescription>
+              Automatically select the best model for each content type. "Use Global Default" falls back to: <Badge variant="outline" className="ml-1">{String(globalModel)}</Badge>
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CONTENT_TYPES.map(ct => {
+                const current = overrides[ct.value] || 'default';
+                return (
+                  <div key={ct.value} className="flex items-center gap-2">
+                    <Label className="w-36 text-sm shrink-0">{ct.label}</Label>
+                    <Select value={current} onValueChange={(v) => handleModelChange(ct.value, v)} disabled={updateSetting.isPending}>
+                      <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Use Global Default</SelectItem>
+                        {models.map(m => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
