@@ -261,7 +261,24 @@ export function HistoryTakingSection({
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           setIsSpeaking(true);
           try {
-            await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+            if (ttsProvider === 'gemini') {
+              const { data, error } = await supabase.functions.invoke('gemini-tts', {
+                body: {
+                  text: reply,
+                  voiceName: ttsGeminiVoice,
+                  stylePrompt: geminiStylePrompt,
+                },
+              });
+              if (error) throw error;
+              if (data?.audioContent) {
+                const audio = preUnlockedAudio || new Audio();
+                audio.src = `data:audio/mpeg;base64,${data.audioContent}`;
+                await audio.play();
+                await new Promise<void>(resolve => { audio.onended = () => resolve(); });
+              }
+            } else {
+              await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+            }
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = null;
