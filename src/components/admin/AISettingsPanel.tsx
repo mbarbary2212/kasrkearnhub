@@ -307,6 +307,8 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
             </ul>
           </div>
         </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       {/* Voice Provider Section */}
