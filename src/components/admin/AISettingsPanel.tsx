@@ -17,7 +17,7 @@ import {
   ChevronDown, BookOpen, Shield, History, Check, Volume2
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ELEVENLABS_VOICES } from '@/utils/tts';
+// ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
 import { useAISettings, useUpdateAISetting, getSettingValue } from '@/hooks/useAISettings';
 import { 
   useActiveAIRules, useAIRules, useCreateAIRule, useActivateAIRule,
