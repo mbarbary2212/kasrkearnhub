@@ -566,6 +566,7 @@ function GlobalAIPolicySection() {
 function ContentTypeModelSection({ provider }: { provider: string }) {
   const { data: settings } = useAISettings();
   const updateSetting = useUpdateAISetting();
+  const [isOpen, setIsOpen] = useState(false);
   
   const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
   
@@ -584,36 +585,43 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Model per Content Type
-        </CardTitle>
-        <CardDescription>
-          Automatically select the best model for each content type. "Use Global Default" falls back to: <Badge variant="outline" className="ml-1">{String(globalModel)}</Badge>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {CONTENT_TYPES.map(ct => {
-            const current = overrides[ct.value] || 'default';
-            return (
-              <div key={ct.value} className="flex items-center gap-2">
-                <Label className="w-36 text-sm shrink-0">{ct.label}</Label>
-                <Select value={current} onValueChange={(v) => handleModelChange(ct.value, v)} disabled={updateSetting.isPending}>
-                  <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Use Global Default</SelectItem>
-                    {models.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="flex items-center gap-2">
+              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+              <Settings className="w-5 h-5" />
+              Model per Content Type
+            </CardTitle>
+            <CardDescription>
+              Automatically select the best model for each content type. "Use Global Default" falls back to: <Badge variant="outline" className="ml-1">{String(globalModel)}</Badge>
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CONTENT_TYPES.map(ct => {
+                const current = overrides[ct.value] || 'default';
+                return (
+                  <div key={ct.value} className="flex items-center gap-2">
+                    <Label className="w-36 text-sm shrink-0">{ct.label}</Label>
+                    <Select value={current} onValueChange={(v) => handleModelChange(ct.value, v)} disabled={updateSetting.isPending}>
+                      <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Use Global Default</SelectItem>
+                        {models.map(m => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
