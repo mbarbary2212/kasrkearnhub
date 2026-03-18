@@ -199,8 +199,13 @@ function PlatformSettingsTab() {
         {isSuperAdmin && <SentryDiagnosticsSection />}
       </div>
 
-      {/* Examiner Avatars & TTS Voices */}
+      {/* Examiner Avatars */}
       <ExaminerAvatarsCard />
+
+      {/* AI Content Factory Settings — SuperAdmin only */}
+      {isSuperAdmin && (
+        <AISettingsPanel showRules={false} />
+      )}
 
       {/* Email Notification Preferences */}
       <EmailNotificationPreferences />
