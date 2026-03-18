@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TTSVoicesCard } from '@/components/admin/TTSVoicesCard';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
