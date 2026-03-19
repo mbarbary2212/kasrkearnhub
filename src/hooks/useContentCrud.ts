@@ -5,6 +5,26 @@ import { logActivity } from '@/lib/activityLog';
 
 type ContentTable = 'lectures' | 'resources' | 'mcq_sets' | 'essays' | 'practicals';
 
+const CONTENT_QUERY_KEY_MAP: Record<string, string[]> = {
+  lectures:   ['chapter-lectures', 'module-lectures'],
+  resources:  ['chapter-resources', 'module-resources'],
+  mcq_sets:   ['chapter-mcq-sets', 'module-mcq-sets'],
+  essays:     ['chapter-essays', 'module-essays'],
+  practicals: ['chapter-practicals', 'module-practicals'],
+};
+
+function invalidateContentQueries(queryClient: ReturnType<typeof useQueryClient>, table: string) {
+  const keys = CONTENT_QUERY_KEY_MAP[table];
+  if (keys) {
+    keys.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+  } else {
+    console.warn(`[useContentCrud] Unmapped table "${table}" — falling back to full invalidation`);
+    Object.values(CONTENT_QUERY_KEY_MAP)
+      .flat()
+      .forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+  }
+}
+
 export function useUpdateContent(table: ContentTable) {
   const queryClient = useQueryClient();
   const { user } = useAuthContext();
@@ -25,16 +45,7 @@ export function useUpdateContent(table: ContentTable) {
       return { id, moduleId, chapterId };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-practicals'] });
-      queryClient.invalidateQueries({ queryKey: ['module-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['module-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['module-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['module-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['module-practicals'] });
+      invalidateContentQueries(queryClient, table);
       
       // Log activity for essays
       if (table === 'essays' && result.id) {
@@ -69,16 +80,7 @@ export function useSoftDeleteContent(table: ContentTable) {
       return { id, moduleId, chapterId };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-practicals'] });
-      queryClient.invalidateQueries({ queryKey: ['module-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['module-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['module-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['module-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['module-practicals'] });
+      invalidateContentQueries(queryClient, table);
       
       // Log activity for essays
       if (table === 'essays' && result.id) {

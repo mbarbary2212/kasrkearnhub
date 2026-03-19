@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserStatus {
@@ -8,63 +9,53 @@ interface UserStatus {
 }
 
 export function useUserStatus(userId: string | null | undefined) {
-  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [blockMessage, setBlockMessage] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-
-  const checkStatus = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
+  const query = useQuery({
+    queryKey: ['user-status', userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('status, banned_until, status_reason')
-        .eq('id', userId)
+        .eq('id', userId!)
         .single();
 
-      if (error) {
-        console.error('Error fetching user status:', error);
-        setLoading(false);
-        return;
-      }
+      if (error) throw error;
+      return data as UserStatus;
+    },
+  });
 
-      const status = data as UserStatus;
-      setUserStatus(status);
+  const { isBlocked, blockMessage } = useMemo(() => {
+    const status = query.data;
+    if (!status) return { isBlocked: false, blockMessage: '' };
 
-      // Check if user is blocked
-      if (status.status === 'removed') {
-        setIsBlocked(true);
-        setBlockMessage('Your account has been deactivated. Please contact support for assistance.');
-      } else if (status.status === 'banned') {
-        const bannedUntil = status.banned_until ? new Date(status.banned_until) : null;
-        if (!bannedUntil || bannedUntil > new Date()) {
-          setIsBlocked(true);
-          if (bannedUntil) {
-            setBlockMessage(`Your account has been temporarily suspended until ${bannedUntil.toLocaleDateString()}. Please contact support for assistance.`);
-          } else {
-            setBlockMessage('Your account has been suspended. Please contact support for assistance.');
-          }
-        } else {
-          // Ban has expired
-          setIsBlocked(false);
-        }
-      } else {
-        setIsBlocked(false);
-      }
-    } catch (err) {
-      console.error('User status check error:', err);
-    } finally {
-      setLoading(false);
+    if (status.status === 'removed') {
+      return {
+        isBlocked: true,
+        blockMessage: 'Your account has been deactivated. Please contact support for assistance.',
+      };
     }
-  }, [userId]);
 
-  useEffect(() => {
-    checkStatus();
-  }, [checkStatus]);
+    if (status.status === 'banned') {
+      const bannedUntil = status.banned_until ? new Date(status.banned_until) : null;
+      if (!bannedUntil || bannedUntil > new Date()) {
+        return {
+          isBlocked: true,
+          blockMessage: bannedUntil
+            ? `Your account has been temporarily suspended until ${bannedUntil.toLocaleDateString()}. Please contact support for assistance.`
+            : 'Your account has been suspended. Please contact support for assistance.',
+        };
+      }
+    }
 
-  return { userStatus, isBlocked, blockMessage, loading, refetch: checkStatus };
+    return { isBlocked: false, blockMessage: '' };
+  }, [query.data]);
+
+  return {
+    userStatus: query.data ?? null,
+    isBlocked,
+    blockMessage,
+    loading: query.isLoading,
+    refetch: query.refetch,
+  };
 }
