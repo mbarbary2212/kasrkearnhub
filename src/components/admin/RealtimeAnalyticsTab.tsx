@@ -1,9 +1,11 @@
-import { Users, User, Monitor, BookOpen } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { User, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { usePresence, type PresenceUserState } from '@/contexts/PresenceContext';
+import { useYears } from '@/hooks/useYears';
 import { useMemo } from 'react';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Label maps ────────────────────────────────────────────────────────────────
 
 const ROLE_CONFIG: Record<string, { label: string; className: string }> = {
   student:          { label: 'Student',        className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' },
@@ -11,7 +13,6 @@ const ROLE_CONFIG: Record<string, { label: string; className: string }> = {
   admin:            { label: 'Admin',          className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300' },
   department_admin: { label: 'Dept Admin',     className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
   topic_admin:      { label: 'Topic Admin',    className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300' },
-  module_admin:     { label: 'Module Admin',   className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300' },
   platform_admin:   { label: 'Platform Admin', className: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
   super_admin:      { label: 'Super Admin',    className: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
 };
@@ -45,13 +46,13 @@ const ACTIVITY_MAP: Record<string, Record<string, string>> = {
 };
 
 const PAGE_LABELS: Record<string, string> = {
-  home:            'Home Page',
-  year:            'Year Overview',
-  module:          'Module Browser',
+  home:            'On Home Page',
+  year:            'Browsing Year Overview',
+  module:          'Browsing Module',
   exam:            'Taking an Exam',
-  practice:        'Flashcard Review',
-  virtual_patient: 'Virtual Patient',
-  case_summary:    'Case Summary',
+  practice:        'Reviewing Flashcards',
+  virtual_patient: 'With Virtual Patient',
+  case_summary:    'Reviewing Case Summary',
   other:           'Browsing',
 };
 
@@ -72,29 +73,55 @@ function getActivity(state: PresenceUserState): string {
   return PAGE_LABELS[state.page] ?? 'Browsing';
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── User card ────────────────────────────────────────────────────────────────
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
+function UserCard({
+  state,
+  yearName,
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: number;
-  color: string;
+  state: PresenceUserState;
+  yearName?: string;
 }) {
+  const roleConfig = ROLE_CONFIG[state.role] ?? { label: state.role, className: '' };
+  const activity = getActivity(state);
+
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex flex-col gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-            <Icon className="w-5 h-5" />
+    <Card className="hover:border-primary/40 transition-colors">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+            <User className="w-4 h-4 text-muted-foreground" />
           </div>
-          <div>
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-sm text-muted-foreground">{label}</p>
+
+          <div className="flex-1 min-w-0">
+            {/* Role + Year badges */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${roleConfig.className}`}
+              >
+                {roleConfig.label}
+              </span>
+              {yearName && (
+                <Badge variant="outline" className="text-xs h-5">
+                  {yearName}
+                </Badge>
+              )}
+            </div>
+
+            {/* Module */}
+            {state.module_name && (
+              <p className="text-sm font-medium truncate leading-tight">{state.module_name}</p>
+            )}
+
+            {/* Topic / Chapter */}
+            {state.topic_name && (
+              <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                {state.topic_name}
+              </p>
+            )}
+
+            {/* Activity */}
+            <p className="text-xs text-primary/80 mt-1.5 font-medium">{activity}</p>
           </div>
         </div>
       </CardContent>
@@ -102,197 +129,49 @@ function StatCard({
   );
 }
 
-function BreakdownRow({ label, count, total }: { label: string; count: number; total: number }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground w-4 text-right shrink-0">{count}</span>
-      <div className="flex-1">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium">{label}</span>
-          <span className="text-xs text-muted-foreground">{pct}%</span>
-        </div>
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary/60 rounded-full transition-all duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main tab ─────────────────────────────────────────────────────────────────
 
 export function RealtimeAnalyticsTab() {
   const { onlineUsers, onlineCount } = usePresence();
+  const { data: years } = useYears();
 
-  const stats = useMemo(() => {
-    const students = onlineUsers.filter(u => u.state.role === 'student').length;
-    const staff    = onlineUsers.filter(u => ['teacher', 'module_admin', 'topic_admin', 'department_admin'].includes(u.state.role)).length;
-    const admins   = onlineUsers.filter(u => ['admin', 'platform_admin', 'super_admin'].includes(u.state.role)).length;
-    return { students, staff, admins };
-  }, [onlineUsers]);
-
-  const byPage = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const u of onlineUsers) {
-      const label = PAGE_LABELS[u.state.page] ?? 'Browsing';
-      counts[label] = (counts[label] ?? 0) + 1;
-    }
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [onlineUsers]);
-
-  const byActivity = useMemo(() => {
-    // section → { total, tabs: { tabLabel → count } }
-    const sections: Record<string, { total: number; tabs: Record<string, number> }> = {};
-
-    for (const u of onlineUsers) {
-      const s = u.state;
-      const isContentPage = s.page === 'topic' || s.page === 'chapter';
-
-      if (isContentPage && s.section_mode) {
-        const sectionLabel: Record<string, string> = {
-          resources:   'Resources',
-          interactive: 'Interactive',
-          practice:    'Practice',
-          test:        'Test',
-        };
-        const secLabel = sectionLabel[s.section_mode] ?? s.section_mode;
-
-        if (!sections[secLabel]) sections[secLabel] = { total: 0, tabs: {} };
-        sections[secLabel].total += 1;
-
-        // tab label within section
-        let tabLabel = 'General';
-        if (s.section_mode === 'test') {
-          tabLabel = 'Testing Themselves';
-        } else {
-          const tabMap = ACTIVITY_MAP[s.section_mode];
-          if (tabMap && s.active_tab && tabMap[s.active_tab]) {
-            tabLabel = tabMap[s.active_tab];
-          }
-        }
-        sections[secLabel].tabs[tabLabel] = (sections[secLabel].tabs[tabLabel] ?? 0) + 1;
-      } else {
-        // Non-content pages go under "Other"
-        const pageLabel = PAGE_LABELS[s.page] ?? 'Browsing';
-        if (!sections['Other']) sections['Other'] = { total: 0, tabs: {} };
-        sections['Other'].total += 1;
-        sections['Other'].tabs[pageLabel] = (sections['Other'].tabs[pageLabel] ?? 0) + 1;
-      }
-    }
-
-    return Object.entries(sections).sort((a, b) => b[1].total - a[1].total);
-  }, [onlineUsers]);
-
-  const byRole = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const u of onlineUsers) {
-      const label = ROLE_CONFIG[u.state.role]?.label ?? u.state.role;
-      counts[label] = (counts[label] ?? 0) + 1;
-    }
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [onlineUsers]);
+  const yearMap = useMemo(() => {
+    const map = new Map<string, string>();
+    years?.forEach((y) => map.set(y.id, y.name));
+    return map;
+  }, [years]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
-          </span>
-          <h3 className="text-lg font-semibold">
-            {onlineCount} {onlineCount === 1 ? 'user' : 'users'} online
-          </h3>
-        </div>
-        <span className="text-xs text-muted-foreground">Supabase Realtime · Updates live</span>
+      <div className="flex items-center gap-3">
+        <span className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+        </span>
+        <h3 className="text-lg font-semibold">
+          {onlineCount} {onlineCount === 1 ? 'user' : 'users'} online
+        </h3>
+        <span className="text-xs text-muted-foreground ml-auto">
+          Updates in real time · All users shown anonymously
+        </span>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={Users}    label="Total Online" value={onlineCount}      color="bg-primary/10 text-primary" />
-        <StatCard icon={User}     label="Students"     value={stats.students}   color="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" />
-        <StatCard icon={BookOpen} label="Staff"        value={stats.staff}      color="bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400" />
-        <StatCard icon={Monitor}  label="Admins"       value={stats.admins}     color="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" />
-      </div>
-
-      {/* Breakdowns */}
+      {/* Empty state */}
       {onlineCount === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center text-muted-foreground">
-            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No users currently online</p>
-          </CardContent>
-        </Card>
+        <div className="text-center py-16 text-muted-foreground">
+          <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No users currently online</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* By Page */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Monitor className="w-4 h-4 text-muted-foreground" />
-                By Page
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {byPage.length > 0
-                ? byPage.map(([label, count]) => (
-                    <BreakdownRow key={label} label={label} count={count} total={onlineCount} />
-                  ))
-                : <p className="text-sm text-muted-foreground">No users online</p>
-              }
-            </CardContent>
-          </Card>
-
-          {/* By Activity */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-muted-foreground" />
-                By Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {byActivity.length > 0
-                ? byActivity.map(([section, { total, tabs }]) => (
-                    <div key={section}>
-                      {/* Section header */}
-                      <BreakdownRow label={section} count={total} total={onlineCount} />
-                      {/* Sub-tabs */}
-                      {Object.entries(tabs).sort((a, b) => b[1] - a[1]).map(([tabLabel, tabCount]) => (
-                        <div key={tabLabel} className="ml-5 mt-1.5 flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground w-3 text-right shrink-0">{tabCount}</span>
-                          <span className="text-xs text-muted-foreground">↳ {tabLabel}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                : <p className="text-sm text-muted-foreground">No users online</p>
-              }
-            </CardContent>
-          </Card>
-
-          {/* By Role */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                By Role
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {byRole.length > 0
-                ? byRole.map(([label, count]) => (
-                    <BreakdownRow key={label} label={label} count={count} total={onlineCount} />
-                  ))
-                : <p className="text-sm text-muted-foreground">No users online</p>
-              }
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {onlineUsers.map((user) => (
+            <UserCard
+              key={user.presence_ref}
+              state={user.state}
+              yearName={user.state.year_id ? yearMap.get(user.state.year_id) : undefined}
+            />
+          ))}
         </div>
       )}
     </div>
