@@ -154,7 +154,7 @@ function LoggedInHome() {
 
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => {
-    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) < 5;
+    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) < 5 && year.number !== 5;
     
     return (
       <div
