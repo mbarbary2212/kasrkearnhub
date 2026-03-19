@@ -266,10 +266,12 @@ export function HistoryTakingSection({
           setIsSpeaking(true);
           try {
             if (ttsProvider === 'gemini') {
+              stopAllTTS();
+              const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
               const { data, error } = await supabase.functions.invoke('gemini-tts', {
                 body: {
                   text: reply,
-                  voiceName: ttsGeminiVoice,
+                  voiceName: geminiVoiceToUse,
                   stylePrompt: geminiStylePrompt,
                 },
               });
@@ -284,6 +286,7 @@ export function HistoryTakingSection({
                 const blobUrl = URL.createObjectURL(blob);
                 const audio = preUnlockedAudio || new Audio();
                 audio.src = blobUrl;
+                registerCurrentAudio(audio);
                 await audio.play();
                 await new Promise<void>(resolve => {
                   audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
