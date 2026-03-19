@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function addWavHeader(pcmBase64: string, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): string {
+function addWavHeader(pcmBase64: string, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): ArrayBuffer {
   const pcmBuffer = Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0));
   const byteRate = sampleRate * numChannels * bitsPerSample / 8;
   const blockAlign = numChannels * bitsPerSample / 8;
@@ -30,14 +30,7 @@ function addWavHeader(pcmBase64: string, sampleRate = 24000, numChannels = 1, bi
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
   new Uint8Array(buffer).set(pcmBuffer, 44);
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
+  return buffer;
 }
 
 serve(async (req) => {
@@ -46,14 +39,13 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth guard ──
+    // ── Auth guard (token only, no role check) ──
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace('Bearer ', '');
@@ -61,14 +53,6 @@ serve(async (req) => {
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const userId = user.id;
-    const svcClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await svcClient.from('user_roles').select('role').eq('user_id', userId).single();
-    const userRole = roleData?.role || 'student';
-    const allowedRoles = ['super_admin', 'platform_admin', 'admin', 'teacher', 'department_admin', 'topic_admin', 'student'];
-    if (!allowedRoles.includes(userRole)) {
-      return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { text, voiceName, stylePrompt } = await req.json();
@@ -125,7 +109,6 @@ serve(async (req) => {
 
     const result = await response.json();
     const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    const mimeType = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType;
 
     if (!audioData) {
       console.error('No audio data in Gemini response:', JSON.stringify(result).slice(0, 500));
@@ -135,11 +118,10 @@ serve(async (req) => {
       );
     }
 
-    const wavBase64 = addWavHeader(audioData);
-    return new Response(
-      JSON.stringify({ audioContent: wavBase64, mimeType: 'audio/wav' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const wavBuffer = addWavHeader(audioData);
+    return new Response(wavBuffer, {
+      headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
+    });
   } catch (err) {
     console.error('gemini-tts error:', err);
     return new Response(
