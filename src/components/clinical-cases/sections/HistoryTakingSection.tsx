@@ -301,7 +301,7 @@ export function HistoryTakingSection({
             }
           } finally {
             setIsSpeaking(false);
-            unlockedAudioRef.current = null;
+            unlockedAudioRef.current = createUnlockedAudio();
           }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
@@ -664,9 +664,12 @@ export function HistoryTakingSection({
               variant="outline"
               className="gap-2"
               onClick={() => {
+                // Pre-unlock audio in direct user gesture context (before any async)
+                const preAudio = createUnlockedAudio();
+                unlockedAudioRef.current = preAudio;
                 setSelectedMode('voice');
                 setShowVoiceFallbackInput(true); // Show text fallback by default
-                sendChatMessageInitial('voice');
+                sendChatMessageInitial('voice', preAudio);
               }}
             >
               <Mic className="w-5 h-5" />
@@ -982,7 +985,7 @@ export function HistoryTakingSection({
   );
 
   // ── Helper: send initial greeting (local only — no edge function call) ──
-  async function sendChatMessageInitial(mode: 'chat' | 'voice') {
+  async function sendChatMessageInitial(mode: 'chat' | 'voice', preUnlockedAudio?: HTMLAudioElement) {
     const lang = selectedLanguage || 'en';
     const greeting = lang === 'ar'
       ? 'السلام عليكم يا دكتور'
@@ -1021,17 +1024,19 @@ export function HistoryTakingSection({
               console.warn('[TTS] Gemini greeting blob too small:', blob.size, '— skipping audio');
             } else {
               const blobUrl = URL.createObjectURL(blob);
-              const audio = new Audio();
+              const audio = preUnlockedAudio || new Audio();
               audio.src = blobUrl;
               registerCurrentAudio(audio);
+              console.log('[Greeting TTS] Playing audio, blob size:', blob.size);
               await audio.play();
+              console.log('[Greeting TTS] Audio started');
               await new Promise<void>(resolve => {
                 audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
               });
             }
           }
         } else {
-          await speakArabic(greeting, ttsProvider, voiceId, patientTone);
+          await speakArabic(greeting, ttsProvider, voiceId, patientTone, preUnlockedAudio);
         }
       } catch (err) {
         console.error('[Greeting TTS] Error:', err);
