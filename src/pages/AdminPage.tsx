@@ -39,6 +39,7 @@ import { AccountsTab } from '@/components/admin/AccountsTab';
 import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { ActivityLogTab } from '@/components/admin/ActivityLogTab';
+import { RealtimeAnalyticsTab } from '@/components/admin/RealtimeAnalyticsTab';
 import { AdminTabsNavigation } from '@/components/admin/AdminTabsNavigation';
 import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
@@ -1588,6 +1589,11 @@ export default function AdminPage() {
                       </TabsTrigger>
                     )}
                     {(isSuperAdmin || isPlatformAdmin) && (
+                      <TabsTrigger value="live" className="data-[state=active]:bg-background">
+                        Live
+                      </TabsTrigger>
+                    )}
+                    {(isSuperAdmin || isPlatformAdmin) && (
                       <TabsTrigger value="deactivated" className="data-[state=active]:bg-background">
                         Deactivated
                       </TabsTrigger>
@@ -2129,6 +2135,13 @@ export default function AdminPage() {
                   {(isSuperAdmin || isPlatformAdmin) && (
                     <TabsContent value="analytics" className="mt-4">
                       <UserAnalyticsTab />
+                    </TabsContent>
+                  )}
+
+                  {/* Live Presence Sub-tab */}
+                  {(isSuperAdmin || isPlatformAdmin) && (
+                    <TabsContent value="live" className="mt-4">
+                      <RealtimeAnalyticsTab />
                     </TabsContent>
                   )}
 
