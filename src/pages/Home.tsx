@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
-import { useQuery } from '@tanstack/react-query';
+
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
@@ -118,22 +118,6 @@ function LoggedInHome() {
   const { data: unreadCounts } = useUnreadMessages();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
-  // Fetch resource counts per year to detect years with no actual content
-  const { data: resourceCounts } = useQuery({
-    queryKey: ['year-resource-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('resources')
-        .select('chapter_id, module_chapters!inner(module_id, modules!inner(year_id))')
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      (data || []).forEach((r: any) => {
-        const yearId = r.module_chapters?.modules?.year_id;
-        if (yearId) counts[yearId] = (counts[yearId] || 0) + 1;
-      });
-      return counts;
-    },
-  });
 
   // Color mapping for year accent borders
   const getYearColor = (color: string | null): string => {
@@ -160,7 +144,6 @@ function LoggedInHome() {
 
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => {
-    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) < 5 && year.number !== 5;
     const highlight = yearHighlights[year.number];
     
     return (
@@ -185,12 +168,6 @@ function LoggedInHome() {
             <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
               {year.subtitle || year.name}
             </p>
-            {isEmpty && (
-              <p className="text-xs text-muted-foreground/70 mt-1.5 italic flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Content coming soon — tap to preview structure
-              </p>
-            )}
             {highlight && (
               <p className="text-xs text-muted-foreground/70 mt-1.5 italic flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
