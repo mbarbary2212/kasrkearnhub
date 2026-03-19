@@ -1063,11 +1063,17 @@ export function HistoryTakingSection({
               const audio = preUnlockedAudio || new Audio();
               audio.src = blobUrl;
               registerCurrentAudio(audio);
-              console.log('[Greeting TTS] Playing audio, blob size:', blob.size);
-              await audio.play();
-              console.log('[Greeting TTS] Audio started');
-              await new Promise<void>(resolve => {
-                audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+              console.log('[Greeting TTS] Playing audio, blob size:', blob.size, 'type:', blob.type);
+              await new Promise<void>((resolve) => {
+                audio.onended = () => { console.log('[Greeting TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
+                audio.onerror = (e) => { console.error('[Greeting TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
+                audio.play().then(() => {
+                  console.log('[Greeting TTS] Audio playing, duration:', audio.duration);
+                }).catch((err) => {
+                  console.error('[Greeting TTS] play() rejected:', err);
+                  URL.revokeObjectURL(blobUrl);
+                  resolve();
+                });
               });
             }
           }
