@@ -148,6 +148,8 @@ export function HistoryTakingSection({
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
   const disconnectingRef = useRef(false);
+  const wsFailCountRef = useRef(0);
+  const scribeDisabledRef = useRef(false);
 
   const safeDisconnect = useCallback(async () => {
     if (disconnectingRef.current) return;
