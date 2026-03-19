@@ -1589,11 +1589,6 @@ export default function AdminPage() {
                       </TabsTrigger>
                     )}
                     {(isSuperAdmin || isPlatformAdmin) && (
-                      <TabsTrigger value="live" className="data-[state=active]:bg-background">
-                        Live
-                      </TabsTrigger>
-                    )}
-                    {(isSuperAdmin || isPlatformAdmin) && (
                       <TabsTrigger value="deactivated" className="data-[state=active]:bg-background">
                         Deactivated
                       </TabsTrigger>
@@ -2138,13 +2133,6 @@ export default function AdminPage() {
                     </TabsContent>
                   )}
 
-                  {/* Live Presence Sub-tab */}
-                  {(isSuperAdmin || isPlatformAdmin) && (
-                    <TabsContent value="live" className="mt-4">
-                      <RealtimeAnalyticsTab />
-                    </TabsContent>
-                  )}
-
                   {/* Deactivated Users Sub-tab */}
                   {(isSuperAdmin || isPlatformAdmin) && (
                     <TabsContent value="deactivated" className="mt-4">
@@ -2326,6 +2314,13 @@ export default function AdminPage() {
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="activity-log">
               <ActivityLogTab />
+            </TabsContent>
+          )}
+
+          {/* Live Presence Tab */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="live">
+              <RealtimeAnalyticsTab />
             </TabsContent>
           )}
         </Tabs>
