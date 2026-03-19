@@ -122,9 +122,16 @@ serve(async (req) => {
     const voice = voiceName || 'Kore';
     const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
 
-    // First attempt with style prompt
+    // First attempt with style prompt (with retry on 500)
     console.log('[gemini-tts] Attempt 1 with style prompt:', !!stylePrompt);
     let result = await callGemini(finalText, voice);
+
+    // Retry once on transient 500 errors from Gemini API
+    if (!result.ok && result.status === 500) {
+      console.log('[gemini-tts] Got 500 from Gemini, retrying after 500ms...');
+      await new Promise(r => setTimeout(r, 500));
+      result = await callGemini(finalText, voice);
+    }
 
     if (!result.ok) {
       return new Response(
