@@ -154,7 +154,7 @@ function LoggedInHome() {
 
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => {
-    const isEmpty = moduleCounts && (moduleCounts[year.id] || 0) === 0;
+    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) === 0;
     
     return (
       <div
