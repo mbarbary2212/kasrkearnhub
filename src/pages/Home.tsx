@@ -118,22 +118,6 @@ function LoggedInHome() {
   const { data: unreadCounts } = useUnreadMessages();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
-  // Fetch resource counts per year to detect years with no actual content
-  const { data: resourceCounts } = useQuery({
-    queryKey: ['year-resource-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('resources')
-        .select('chapter_id, module_chapters!inner(module_id, modules!inner(year_id))')
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      (data || []).forEach((r: any) => {
-        const yearId = r.module_chapters?.modules?.year_id;
-        if (yearId) counts[yearId] = (counts[yearId] || 0) + 1;
-      });
-      return counts;
-    },
-  });
 
   // Color mapping for year accent borders
   const getYearColor = (color: string | null): string => {
