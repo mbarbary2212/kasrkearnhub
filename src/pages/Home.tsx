@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
-import { useQuery } from '@tanstack/react-query';
+
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
