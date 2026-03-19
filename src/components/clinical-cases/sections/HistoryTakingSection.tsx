@@ -285,6 +285,7 @@ export function HistoryTakingSection({
               const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
               const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
               const { data: { session } } = await supabase.auth.getSession();
+              console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
               const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
                 method: 'POST',
                 headers: {
@@ -294,19 +295,28 @@ export function HistoryTakingSection({
                 body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
               });
               if (!res.ok) {
-                console.warn('[TTS] Gemini reply failed:', res.status, '— skipping audio');
+                console.warn('[Response TTS] Gemini reply failed:', res.status, '— skipping audio');
               } else {
                 const blob = await res.blob();
+                console.log('[Response TTS] Got blob, size:', blob.size, 'type:', blob.type);
                 if (blob.size < 100) {
-                  console.warn('[TTS] Gemini reply blob too small:', blob.size, '— skipping audio');
+                  console.warn('[Response TTS] Gemini reply blob too small:', blob.size, '— skipping audio');
                 } else {
                   const blobUrl = URL.createObjectURL(blob);
                   const audio = preUnlockedAudio || new Audio();
                   audio.src = blobUrl;
                   registerCurrentAudio(audio);
-                  await audio.play();
-                  await new Promise<void>(resolve => {
-                    audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+                  console.log('[Response TTS] Calling audio.play()');
+                  await new Promise<void>((resolve, reject) => {
+                    audio.onended = () => { console.log('[Response TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
+                    audio.onerror = (e) => { console.error('[Response TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
+                    audio.play().then(() => {
+                      console.log('[Response TTS] Audio playing, duration:', audio.duration);
+                    }).catch((err) => {
+                      console.error('[Response TTS] play() rejected:', err);
+                      URL.revokeObjectURL(blobUrl);
+                      resolve();
+                    });
                   });
                 }
               }
@@ -1053,11 +1063,17 @@ export function HistoryTakingSection({
               const audio = preUnlockedAudio || new Audio();
               audio.src = blobUrl;
               registerCurrentAudio(audio);
-              console.log('[Greeting TTS] Playing audio, blob size:', blob.size);
-              await audio.play();
-              console.log('[Greeting TTS] Audio started');
-              await new Promise<void>(resolve => {
-                audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+              console.log('[Greeting TTS] Playing audio, blob size:', blob.size, 'type:', blob.type);
+              await new Promise<void>((resolve) => {
+                audio.onended = () => { console.log('[Greeting TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
+                audio.onerror = (e) => { console.error('[Greeting TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
+                audio.play().then(() => {
+                  console.log('[Greeting TTS] Audio playing, duration:', audio.duration);
+                }).catch((err) => {
+                  console.error('[Greeting TTS] play() rejected:', err);
+                  URL.revokeObjectURL(blobUrl);
+                  resolve();
+                });
               });
             }
           }
