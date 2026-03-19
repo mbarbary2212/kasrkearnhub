@@ -118,18 +118,18 @@ function LoggedInHome() {
   const { data: unreadCounts } = useUnreadMessages();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
-  // Fetch module counts per year to detect empty years
-  const { data: moduleCounts } = useQuery({
-    queryKey: ['year-module-counts'],
+  // Fetch resource counts per year to detect years with no actual content
+  const { data: resourceCounts } = useQuery({
+    queryKey: ['year-resource-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('modules')
-        .select('year_id')
-        .eq('is_published', true);
+        .from('resources')
+        .select('chapter_id, module_chapters!inner(module_id, modules!inner(year_id))')
       if (error) throw error;
       const counts: Record<string, number> = {};
-      (data || []).forEach(m => {
-        counts[m.year_id] = (counts[m.year_id] || 0) + 1;
+      (data || []).forEach((r: any) => {
+        const yearId = r.module_chapters?.modules?.year_id;
+        if (yearId) counts[yearId] = (counts[yearId] || 0) + 1;
       });
       return counts;
     },
@@ -154,7 +154,7 @@ function LoggedInHome() {
 
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => {
-    const isEmpty = moduleCounts && (moduleCounts[year.id] || 0) === 0;
+    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) === 0;
     
     return (
       <div
