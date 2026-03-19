@@ -301,7 +301,7 @@ export function HistoryTakingSection({
             }
           } finally {
             setIsSpeaking(false);
-            unlockedAudioRef.current = null;
+            unlockedAudioRef.current = createUnlockedAudio();
           }
           // 800ms conversational pause before re-opening mic
           await new Promise(r => setTimeout(r, 800));
