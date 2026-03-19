@@ -841,7 +841,7 @@ export function HistoryTakingSection({
                   variant={isListening ? 'destructive' : 'default'}
                   className="gap-2 rounded-full w-14 h-14"
                   onClick={toggleVoice}
-                  disabled={isSending || shouldDisableInput || scribeConnecting}
+                  disabled={isSending || shouldDisableInput || scribeConnecting || greetingPlaying || isSpeaking}
                 >
                   {scribeConnecting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
