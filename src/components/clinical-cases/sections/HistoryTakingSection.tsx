@@ -105,6 +105,7 @@ export function HistoryTakingSection({
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
   const [scribeConnecting, setScribeConnecting] = useState(false);
+  const [greetingPlaying, setGreetingPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
   });
@@ -840,7 +841,7 @@ export function HistoryTakingSection({
                   variant={isListening ? 'destructive' : 'default'}
                   className="gap-2 rounded-full w-14 h-14"
                   onClick={toggleVoice}
-                  disabled={isSending || shouldDisableInput || scribeConnecting}
+                  disabled={isSending || shouldDisableInput || scribeConnecting || greetingPlaying || isSpeaking}
                 >
                   {scribeConnecting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -852,13 +853,27 @@ export function HistoryTakingSection({
                 </Button>
               </div>
 
-              {isListening && (
+              {greetingPlaying && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Volume2 className="w-4 h-4 animate-pulse" />
+                  Patient is speaking...
+                </div>
+              )}
+
+              {isListening && !greetingPlaying && (
                 <div className="flex items-center gap-2 text-sm text-primary">
                   <span className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
                   </span>
                   جاري الاستماع...
+                </div>
+              )}
+
+              {isSpeaking && !greetingPlaying && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Volume2 className="w-4 h-4 animate-pulse" />
+                  Patient is speaking...
                 </div>
               )}
 
@@ -975,33 +990,42 @@ export function HistoryTakingSection({
 
     // Speak the greeting aloud in voice mode
     if (mode === 'voice' && lang === 'ar' && !isMuted) {
-      const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-      const voiceId = voiceIdOverride
-        || (gender === 'female'
-          ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-          : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-      if (ttsProvider === 'gemini') {
-        stopAllTTS();
-        const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-        const { data } = await supabase.functions.invoke('gemini-tts', {
-          body: { text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt },
-        });
-        if (data?.audioContent) {
-          const byteCharacters = atob(data.audioContent);
-          const byteArray = new Uint8Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteArray[i] = byteCharacters.charCodeAt(i);
+      setGreetingPlaying(true);
+      try {
+        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+        const voiceId = voiceIdOverride
+          || (gender === 'female'
+            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+        if (ttsProvider === 'gemini') {
+          stopAllTTS();
+          const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
+          const { data } = await supabase.functions.invoke('gemini-tts', {
+            body: { text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt },
+          });
+          if (data?.audioContent) {
+            const byteCharacters = atob(data.audioContent);
+            const byteArray = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteArray[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([byteArray], { type: 'audio/wav' });
+            const blobUrl = URL.createObjectURL(blob);
+            const audio = new Audio();
+            audio.src = blobUrl;
+            registerCurrentAudio(audio);
+            await audio.play();
+            await new Promise<void>(resolve => {
+              audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+            });
           }
-          const blob = new Blob([byteArray], { type: 'audio/wav' });
-          const blobUrl = URL.createObjectURL(blob);
-          const audio = new Audio();
-          audio.src = blobUrl;
-          registerCurrentAudio(audio);
-          audio.onended = () => URL.revokeObjectURL(blobUrl);
-          await audio.play();
+        } else {
+          await speakArabic(greeting, ttsProvider, voiceId, patientTone);
         }
-      } else {
-        speakArabic(greeting, ttsProvider, voiceId, patientTone);
+      } catch (err) {
+        console.error('[Greeting TTS] Error:', err);
+      } finally {
+        setGreetingPlaying(false);
       }
     }
   }
