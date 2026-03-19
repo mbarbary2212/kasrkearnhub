@@ -1,99 +1,75 @@
 
-# Structured Interactive Cases — Implementation Plan
 
-## Status: ✅ Complete (Step 17 added)
+## Fix: Audio Never Plays Due to Autoplay Policy Violation
 
-### Completed Steps
+### Root Cause
+The browser's autoplay policy requires `Audio.play()` to happen within (or very close to) a direct user gesture. In the current code:
 
-#### Step 1: Database Migration ✅
-All schema changes applied successfully:
-- `module_chapters`: Added `pdf_url`, `pdf_text`, `pdf_pages`, `pdf_uploaded_at`, `case_count`, `created_by`
-- `virtual_patient_cases`: Added `history_mode`, `delivery_mode`, `patient_language`, `chief_complaint`, `additional_instructions`, `active_sections`, `section_question_counts`, `generated_case_data`
-- Enforced FKs: `fk_cases_module_id` → `modules(id)`, `fk_cases_chapter_id` → `module_chapters(id)`
-- Created `case_reference_documents` with XOR constraint (`case_or_chapter_not_both`)
-- Created `case_section_answers` with `UNIQUE(attempt_id, section_type)`
-- Created trigger `trg_update_chapter_case_count` (handles INSERT, UPDATE, DELETE)
-- RLS policies on both new tables
+1. **Greeting**: User clicks "Voice" → `sendChatMessageInitial` runs several async operations (getSession, fetch, blob) → creates `new Audio()` → `audio.play()` is BLOCKED because the user gesture context expired.
+2. **Replies**: `unlockedAudioRef.current` is pre-unlocked in `toggleVoice` (mic click), but after the first reply it's set to `null` and never refreshed. Subsequent replies create fresh `new Audio()` outside a user gesture, also blocked.
+3. **ElevenLabs path**: Same issue — `speakArabic()` is called without a `preUnlockedAudio` argument in the greeting, and the internal `new Audio()` also gets blocked.
 
-#### Step 2: TypeScript Types ✅
-- Created `src/types/structuredCase.ts` with all interfaces, enums, section labels, and summary category mapping
+### Fix (1 file: `HistoryTakingSection.tsx`)
 
-### All Steps
+**Change 1: Pre-unlock audio SYNCHRONOUSLY in the "Voice" button click handler**
 
-| Step | Description | Status |
-|------|-------------|--------|
-| 3 | 5-tab StructuredCaseCreator dialog | ✅ |
-| 4 | `generate-structured-case` edge function | ✅ |
-| 5 | CasePreviewEditor screen | ✅ |
-| 6 | Section components (10 + checklist + missed items) | ✅ |
-| 7 | StructuredCaseRunner | ✅ |
-| 8 | `score-case-answers` edge function | ✅ |
-| 9 | CaseSummary screen | ✅ |
-| 10 | Router integration in VirtualPatientPage | ✅ |
-| 11 | Physical Examination v8 rewrite | ✅ |
-| 12 | Two-Phase History Taking with AI Chat + Voice | ✅ |
-| 13 | Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls | ✅ |
-| 14 | N+1 Progress API Optimization (RPC) | ✅ |
-| 15 | Bound question_attempts + Deduplicate Dashboard Query | ✅ |
-| 16 | History Counter + PE Merge Fix + Combined Exam Prompts | ✅ |
-| 17 | Section Tagging at Import + AI-Only Auto-Tag + SBA Fix | ✅ |
+In the onClick for the Voice button (line 666-670), create and store the unlocked audio element BEFORE calling `sendChatMessageInitial`:
 
-### Step 17: Section Tagging at Import + AI-Only Auto-Tag + SBA Fix ✅
-- **Import-time section resolution**: `bulk-import-mcqs` and `bulk-import-true-false` now resolve `original_section_name`/`original_section_number` to `section_id` before insert (number match first, then name with prefix stripping and contains fallback)
-- **OSCE column bug fix**: `bulk-import-osce` fixed `s.title` → `s.name` in section matching query
-- **SBA questionFormat passthrough**: `useBulkCreateMcqs` and `McqList.tsx` now forward `questionFormat` to the edge function so SBAs save as `question_format: 'sba'`
-- **AI-only Auto-Tag**: Removed all keyword/prefix matching from `useAutoTagSections.ts`; now purely AI-driven with rich content (stem+choices+explanation for MCQs, statement+explanation for T/F, etc.) sent to `ai-auto-tag-sections` edge function
-- **Edge function prompt update**: `ai-auto-tag-sections` now accepts `content` field instead of `title` for more accurate AI categorization
+```typescript
+onClick={() => {
+  // Pre-unlock audio in direct user gesture context
+  const preAudio = createUnlockedAudio();
+  unlockedAudioRef.current = preAudio;
+  setSelectedMode('voice');
+  setShowVoiceFallbackInput(true);
+  sendChatMessageInitial('voice', preAudio);
+}}
+```
 
-### Step 16: History Counter + PE Merge Fix + Combined Exam Prompts ✅
-- **Question counter**: Removed `/15` denominator from both chat and voice mode — now shows `X questions asked` without pressuring students to hit a target
-- **Patient diabetes denial**: Fixed `expected_behaviour` fallback in `patient-history-chat` — was `'N/A'` causing AI to deny conditions; now outputs label alone when no expected_behaviour exists
-- **PE first-entry label**: Fixed `normalizePhysicalExamFindings` — first remapped entry (e.g. `abdomen_inspection` → `abdomen`) now gets `**Label:**` prefix matching subsequent merged entries
-- **PE card scroll**: Added `max-h-[280px] overflow-y-auto` to expanded finding cards so long combined text is scrollable
-- **AI generation prompt**: Updated `generate-structured-case` PE schema hints to explicitly require combining ALL exam components (inspection, palpation, percussion, auscultation, special tests) into a single text field per region with bold sub-headings
-- **Help & Templates**: Updated template JSON example (abdomen shows combined format) and expanded rule 11 to mandate combining exam components per region
+**Change 2: Accept and use pre-unlocked audio in `sendChatMessageInitial`**
 
-### Key Design Decisions
-- Checklist PDFs are optional reference documents (not required)
-- Only Professional Attitude + History Taking (A–E) from checklists matter for rubrics
-- Teachers set their own `max_score` per section (not imported from PDF)
-- 5-item final report: Professional Attitude, History Taking, Physical Exam, Investigations, Diagnosis & Management
-- 10-section detail view available in expandable breakdown
-- `generated_case_data` stores full case structure as JSONB
-- Edge functions use `service_role` key to bypass RLS for AI scoring
-- Professional attitude scored holistically from transcript at submission
+Update the function signature to accept an optional pre-unlocked audio element:
 
-### Physical Examination v8 Changes (Step 11)
-- **Data model**: Fixed 8 `RegionKey` values (`general`, `head_neck`, `vital_signs`, `chest`, `upper_limbs`, `abdomen`, `lower_limbs`, `extra`)
-- **New types**: `VitalSign`, `RegionFinding`, `VitalsFinding`, `ExtraFinding`, `TopicItem`
-- **BodyMap.tsx**: Full rewrite with dark gradient panel, body figure image, SVG region labels/boxes, 3-state interactions (default/active/done)
-- **PhysicalExamSection.tsx**: Teal gradient header, two-panel layout (figure + card-based findings), vitals grid, topic strip with modal
-- **Edge functions**: Updated `generate-structured-case` prompt schema and `score-case-answers` scoring prompt
-- **CasePreviewEditor**: Updated `PhysicalExamEditor` for new `findings` record shape with backward compat for old `regions`
-- **Backward compat**: Old cases with `regions` key still work via fallback in editor and scoring prompt
+```typescript
+async function sendChatMessageInitial(mode: 'chat' | 'voice', preUnlockedAudio?: HTMLAudioElement) {
+```
 
-### Step 13: Dialect Fix + TTS Speed + Voice Registry + Per-Case Controls ✅
-- **Egyptian dialect reinforcement**: Updated `patient-history-chat` prompt with explicit Egyptian colloquial examples and repeated strict constraints (rules 10-11 + closing reminder)
-- **TTS speed**: `elevenlabs-tts` now accepts and passes `speed` parameter (top-level, not inside voice_settings); default bumped to 1.1
-- **Voice Registry**: New `tts_voices` DB table (like `examiner_avatars`) with RLS, seeded with all 10 existing voices
-- **TTSVoicesCard**: Admin CRUD component in Platform Settings for managing ElevenLabs voices (add/edit/toggle active)
-- **Per-case controls in CasePreviewEditor**: Voice Character dropdown (filtered by patient gender), History Time Limit input, Patient Tone moved to History Interaction card
-- **Contact platform admin**: "Can't find the right voice?" link opens request dialog → notification to platform/super admins
-- **Runner wiring**: `StructuredCaseRunner` passes `voiceIdOverride` and `historyTimeLimitMinutes` to `HistoryTakingSection`
-- **HistoryTakingSection**: Uses per-case voice override and time limit when set, falls back to global defaults
+In the Gemini path (line 1024), use the pre-unlocked audio instead of `new Audio()`:
+```typescript
+const audio = preUnlockedAudio || new Audio();
+```
 
-### Step 14: N+1 Progress API Optimization ✅
-- **Problem**: Sentry N+1 alert — `useChapterProgress` and `useContentProgress` each made ~17 sequential Supabase REST calls per page load
-- **Solution**: Created single `get_content_progress(p_chapter_id, p_topic_id, p_user_id)` RPC using CTEs to aggregate all content totals and completion counts in one SQL query
-- **RPC returns**: JSONB with `mcq_total/completed`, `essay_total/completed`, `osce_total/completed`, `case_total/completed`, `matching_total/completed`, `lectures` array, `video_progress` array
-- **Video matching**: Kept client-side (video_id is YouTube/GDrive ID extracted via JS regex from video_url — not joinable in SQL)
-- **Impact**: 17 API calls → 1 per chapter/topic page load
-- **No breaking changes**: Hook interfaces unchanged, all consumer components unaffected
+In the ElevenLabs path (line 1034), pass the pre-unlocked audio:
+```typescript
+await speakArabic(greeting, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+```
 
-### Step 15: Bound question_attempts + Deduplicate Dashboard Query ✅
-- **Problem**: `useTestProgress` and `useStudentDashboard` both fetched unbounded `select('*')` from `question_attempts`, duplicating ~80 lines of MCQ/OSCE/improvement calculation logic
-- **Fix 1 — `useTestProgress.ts`**: Narrowed select to 4 used columns (`question_type, is_correct, selected_answer, created_at`) and added `.limit(100)` — ~90% data reduction
-- **Fix 2 — `useStudentDashboard.ts`**: Removed duplicate `question_attempts` fetch entirely. Now accepts `testProgress?: TestProgressData` parameter from `useTestProgress`. Uses it for performance/improvement/readiness calculations. Eliminates one full unbounded query and ~80 lines of duplicate code
-- **Fix 3 — `cache-readiness/index.ts`**: Same `.limit(100)` + narrowed select applied to edge function for consistency
-- **Loading state**: Dashboard shows skeleton when `testProgressLoading` is true (not zeros). Zeros only appear when testProgress resolves with no data (new user)
-- **Impact**: 2 unbounded queries → 1 bounded (100 rows, 4 cols). One entire fetch eliminated from dashboard load. Zero breaking changes
+**Change 3: Re-create unlocked audio after each reply (not just null it)**
+
+In `sendChatMessage` (around line 302-304), after TTS finishes, refresh the unlocked audio reference for the next reply instead of nulling it:
+
+```typescript
+// Instead of: unlockedAudioRef.current = null;
+unlockedAudioRef.current = createUnlockedAudio();
+```
+
+This works because the `toggleVoice` user gesture previously "activated" audio on the page, and many browsers allow subsequent Audio objects if the page is already "activated".
+
+**Change 4: Add diagnostic console.log to greeting path**
+
+Add logging before and after `audio.play()` in the greeting to make failures visible:
+
+```typescript
+console.log('[Greeting TTS] Playing audio, blob size:', blob.size);
+await audio.play();
+console.log('[Greeting TTS] Audio started');
+```
+
+### Files Changed
+- `src/components/clinical-cases/sections/HistoryTakingSection.tsx` (4 small edits)
+
+### Why this fixes both providers
+- ElevenLabs greeting: `speakArabic()` receives `preUnlockedAudio`, uses it instead of creating a fresh blocked `new Audio()`
+- Gemini greeting: Uses the same pre-unlocked element directly
+- Both reply paths: `unlockedAudioRef.current` is refreshed after each reply instead of being nulled
+
