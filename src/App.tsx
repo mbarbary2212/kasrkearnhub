@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import * as Sentry from "@sentry/react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -16,27 +16,30 @@ import { AskCoachPanel } from "@/components/coach";
 import { AudioMiniPlayer } from "@/components/audio";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { Loader2 } from "lucide-react";
+import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
-import YearPage from "./pages/YearPage";
-import ModulePage from "./pages/ModulePage";
-import ChapterPage from "./pages/ChapterPage";
-import TopicDetailPage from "./pages/TopicDetailPage";
-import MockExamPage from "./pages/MockExamPage";
-import BlueprintExamPage from "./pages/BlueprintExamPage";
-import AdminPage from "./pages/AdminPage";
-import FeedbackPage from "./pages/FeedbackPage";
-import AdminInboxPage from "./pages/AdminInboxPage";
-import ProgressPage from "./pages/ProgressPage";
-import AccountPage from "./pages/AccountPage";
-import VirtualPatientPage from "./pages/VirtualPatientPage";
-import NotFound from "./pages/NotFound";
-import IntegrityReportPage from "./pages/IntegrityReportPage";
-import ActivityLogPage from "./pages/ActivityLogPage";
-import ExamResultsPage from "./pages/ExamResultsPage";
-import CasePreviewEditorPage from "./pages/CasePreviewEditorPage";
-import CaseSummaryPage from "./pages/CaseSummaryPage";
-import FlashcardReviewPage from "./pages/FlashcardReviewPage";
+
+const YearPage = lazy(() => import("./pages/YearPage"));
+const ModulePage = lazy(() => import("./pages/ModulePage"));
+const ChapterPage = lazy(() => import("./pages/ChapterPage"));
+const TopicDetailPage = lazy(() => import("./pages/TopicDetailPage"));
+const MockExamPage = lazy(() => import("./pages/MockExamPage"));
+const BlueprintExamPage = lazy(() => import("./pages/BlueprintExamPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
+const AdminInboxPage = lazy(() => import("./pages/AdminInboxPage"));
+const ProgressPage = lazy(() => import("./pages/ProgressPage"));
+const AccountPage = lazy(() => import("./pages/AccountPage"));
+const VirtualPatientPage = lazy(() => import("./pages/VirtualPatientPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const IntegrityReportPage = lazy(() => import("./pages/IntegrityReportPage"));
+const ActivityLogPage = lazy(() => import("./pages/ActivityLogPage"));
+const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
+const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
+const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
+const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,7 +53,6 @@ const queryClient = new QueryClient({
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {
     if (window.location.pathname.startsWith('/auth')) return false;
-    // Skip splash if user already has a session stored
     const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
     if (storageKey && localStorage.getItem(storageKey)) return false;
     return true;
@@ -60,7 +62,6 @@ const App = () => {
     setShowSplash(false);
   };
 
-  // Prevent browser from opening dropped files in new tabs
   useEffect(() => {
     const preventBrowserDrop = (e: DragEvent) => {
       e.preventDefault();
@@ -94,29 +95,31 @@ const App = () => {
                
             <BrowserRouter>
               <ScrollToTop />
+              <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin mr-2" />Loading...</div>}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/progress" element={<ProgressPage />} />
-                <Route path="/account" element={<AccountPage />} />
-                <Route path="/year/:yearId" element={<YearPage />} />
-                <Route path="/module/:moduleId" element={<ModulePage />} />
-                <Route path="/module/:moduleId/mock-exam" element={<MockExamPage />} />
-                <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<BlueprintExamPage />} />
-                <Route path="/module/:moduleId/exam-results/:attemptId" element={<ExamResultsPage />} />
-                <Route path="/module/:moduleId/chapter/:chapterId" element={<ChapterPage />} />
-                <Route path="/module/:moduleId/topic/:topicId" element={<TopicDetailPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/admin/inbox" element={<AdminInboxPage />} />
-                <Route path="/admin/integrity-report" element={<IntegrityReportPage />} />
-                <Route path="/admin/activity-log" element={<ActivityLogPage />} />
-                <Route path="/feedback" element={<FeedbackPage />} />
-                <Route path="/virtual-patient/:caseId" element={<VirtualPatientPage />} />
-                <Route path="/structured-case/:caseId/edit" element={<CasePreviewEditorPage />} />
-                <Route path="/case-summary/:attemptId" element={<CaseSummaryPage />} />
-                <Route path="/review/flashcards" element={<FlashcardReviewPage />} />
-                <Route path="*" element={<NotFound />} />
+                <Route path="/progress" element={<RouteErrorBoundary><ProgressPage /></RouteErrorBoundary>} />
+                <Route path="/account" element={<RouteErrorBoundary><AccountPage /></RouteErrorBoundary>} />
+                <Route path="/year/:yearId" element={<RouteErrorBoundary><YearPage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId" element={<RouteErrorBoundary><ModulePage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId/mock-exam" element={<RouteErrorBoundary><MockExamPage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<RouteErrorBoundary><BlueprintExamPage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId/exam-results/:attemptId" element={<RouteErrorBoundary><ExamResultsPage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId/chapter/:chapterId" element={<RouteErrorBoundary><ChapterPage /></RouteErrorBoundary>} />
+                <Route path="/module/:moduleId/topic/:topicId" element={<RouteErrorBoundary><TopicDetailPage /></RouteErrorBoundary>} />
+                <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />
+                <Route path="/admin/inbox" element={<RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary>} />
+                <Route path="/admin/integrity-report" element={<RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary>} />
+                <Route path="/admin/activity-log" element={<RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary>} />
+                <Route path="/feedback" element={<RouteErrorBoundary><FeedbackPage /></RouteErrorBoundary>} />
+                <Route path="/virtual-patient/:caseId" element={<RouteErrorBoundary><VirtualPatientPage /></RouteErrorBoundary>} />
+                <Route path="/structured-case/:caseId/edit" element={<RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary>} />
+                <Route path="/case-summary/:attemptId" element={<RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary>} />
+                <Route path="/review/flashcards" element={<RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary>} />
+                <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
+              </Suspense>
               </BrowserRouter>
             </TooltipProvider>
           </AudioPlayerProvider>
