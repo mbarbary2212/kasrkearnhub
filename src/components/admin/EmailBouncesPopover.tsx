@@ -91,7 +91,7 @@ export function EmailBouncesPopover() {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
         {bounceCount > 0 && (
           <div className="p-3 border-t bg-muted/50">
             <p className="text-xs text-muted-foreground">
