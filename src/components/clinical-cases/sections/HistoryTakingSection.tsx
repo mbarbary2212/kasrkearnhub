@@ -1036,7 +1036,7 @@ export function HistoryTakingSection({
             }
           }
         } else {
-          await speakArabic(greeting, ttsProvider, voiceId, patientTone);
+          await speakArabic(greeting, ttsProvider, voiceId, patientTone, preUnlockedAudio);
         }
       } catch (err) {
         console.error('[Greeting TTS] Error:', err);
