@@ -73,36 +73,50 @@ serve(async (req) => {
     }
 
     async function callGemini(inputText: string, voiceName: string) {
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
-        {
-          method: 'POST',
-          headers: {
-            'X-Goog-Api-Key': GEMINI_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: inputText }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName },
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
+          {
+            method: 'POST',
+            headers: {
+              'X-Goog-Api-Key': GEMINI_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: inputText }] }],
+              generationConfig: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName },
+                  },
                 },
               },
-            },
-          }),
+            }),
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeoutId);
+        console.log('[gemini-tts] Gemini API responded:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Gemini TTS API error:', response.status, errorText);
+          return { ok: false, status: response.status, audioData: null, finishReason: null };
         }
-      );
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Gemini TTS API error:', response.status, errorText);
-        return { ok: false, status: response.status, audioData: null };
+        const result = await response.json();
+        const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        const finishReason = result?.candidates?.[0]?.finishReason;
+        return { ok: true, status: 200, audioData, finishReason };
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          console.error('[gemini-tts] Gemini API timed out after 15s');
+          return { ok: false, status: 504, audioData: null, finishReason: 'TIMEOUT' };
+        }
+        throw err;
       }
-      const result = await response.json();
-      const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      const finishReason = result?.candidates?.[0]?.finishReason;
-      return { ok: true, status: 200, audioData, finishReason };
     }
 
     const voice = voiceName || 'Kore';
