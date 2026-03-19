@@ -58,7 +58,7 @@ export function HistoryTakingSection({
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
 
   // TTS settings
-  const { data: ttsSettings } = useAISettings();
+  const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
   const ttsGeminiVoice = patientGender === 'female'
     ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoede') as string
@@ -698,8 +698,10 @@ export function HistoryTakingSection({
             <Button
               size="lg"
               variant="outline"
-              className="gap-2"
+              className={`gap-2 ${ttsSettingsLoading ? 'opacity-50' : ''}`}
+              disabled={ttsSettingsLoading}
               onClick={() => {
+                if (ttsSettingsLoading) return;
                 // Pre-unlock audio in direct user gesture context (before any async)
                 const preAudio = createUnlockedAudio();
                 unlockedAudioRef.current = preAudio;
@@ -1039,6 +1041,7 @@ export function HistoryTakingSection({
           || (gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
             : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+        console.log('[Greeting] ttsProvider resolved as:', ttsProvider);
         if (ttsProvider === 'gemini') {
           stopAllTTS();
           const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
