@@ -271,7 +271,7 @@ export function useSaveQuestionAttempt() {
         p_chapter_id:      chapterId ?? null,
         p_topic_id:        topicId ?? null,
         p_module_id:       moduleId,
-        p_selected_answer: selectedAnswer as Record<string, unknown>,
+        p_selected_answer: selectedAnswer as unknown as Json,
         p_is_correct:      isCorrect,
         p_score:           score ?? null,
       });
