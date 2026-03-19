@@ -1041,6 +1041,7 @@ export function HistoryTakingSection({
           || (gender === 'female'
             ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
             : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+        console.log('[Greeting] ttsProvider resolved as:', ttsProvider);
         if (ttsProvider === 'gemini') {
           stopAllTTS();
           const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
