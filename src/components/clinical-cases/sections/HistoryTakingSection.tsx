@@ -159,11 +159,23 @@ export function HistoryTakingSection({
         await scribeRef.current.disconnect();
       }
     } catch {
-      // Suppress AudioContext double-close
+      wsFailCountRef.current++;
+      if (wsFailCountRef.current >= 3) {
+        scribeDisabledRef.current = true;
+        toast.error('Voice connection lost. Please refresh.');
+      }
     } finally {
       disconnectingRef.current = false;
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      wsFailCountRef.current = 0;
+      scribeDisabledRef.current = false;
+      safeDisconnect();
+    };
+  }, [safeDisconnect]);
 
 
   // Comprehension answers
