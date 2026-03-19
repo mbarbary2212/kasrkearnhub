@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -157,6 +157,18 @@ function LoggedInHome() {
           <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
             {year.subtitle || year.name}
           </p>
+          {year.number <= 3 && (
+            <p className="text-xs italic text-muted-foreground mt-1 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Content coming soon — you can still see the structure
+            </p>
+          )}
+          {year.number === 4 && (
+            <p className="text-xs italic text-muted-foreground mt-1">SUR-423: Surgery 1</p>
+          )}
+          {year.number === 5 && (
+            <p className="text-xs italic text-muted-foreground mt-1">SUR-523: Surgery 2</p>
+          )}
         </div>
         
         {/* Year Icon */}
