@@ -118,6 +118,23 @@ function LoggedInHome() {
   const { data: unreadCounts } = useUnreadMessages();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
+  // Fetch module counts per year to detect empty years
+  const { data: moduleCounts } = useQuery({
+    queryKey: ['year-module-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('modules')
+        .select('year_id')
+        .eq('is_published', true);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach(m => {
+        counts[m.year_id] = (counts[m.year_id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+
   // Color mapping for year accent borders
   const getYearColor = (color: string | null): string => {
     const colorMap: Record<string, string> = {
@@ -136,50 +153,60 @@ function LoggedInHome() {
   };
 
   // Year Card Component
-  const YearCard = ({ year }: { year: typeof years[0] }) => (
-    <div
-      className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
-                 transition-all duration-300 ease-out 
-                 hover:shadow-xl hover:-translate-y-1 group"
-      onClick={() => navigate(`/year/${year.number}`)}
-    >
-      {/* Colored Left Accent Border */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-1.5 md:w-2"
-        style={{ backgroundColor: getYearColor(year.color) }}
-      />
-      
-      {/* Card Content */}
-      <div className="flex items-center justify-between p-4 md:p-5 pl-5 md:pl-6">
-        <div className="flex-1 min-w-0 pr-4">
-          <h3 className="text-lg md:text-xl font-heading font-semibold text-foreground">
-            Year {year.number}
-          </h3>
-          <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
-            {year.subtitle || year.name}
-          </p>
-        </div>
+  const YearCard = ({ year }: { year: typeof years[0] }) => {
+    const isEmpty = moduleCounts && (moduleCounts[year.id] || 0) === 0;
+    
+    return (
+      <div
+        className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
+                   transition-all duration-300 ease-out 
+                   hover:shadow-xl hover:-translate-y-1 group"
+        onClick={() => navigate(`/year/${year.number}`)}
+      >
+        {/* Colored Left Accent Border */}
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-1.5 md:w-2"
+          style={{ backgroundColor: getYearColor(year.color) }}
+        />
         
-        {/* Year Icon */}
-        {getYearIcon(year.number) ? (
-          <img 
-            src={getYearIcon(year.number)} 
-            alt={`Year ${year.number}`}
-            className="w-16 h-16 md:w-20 md:h-20 object-contain flex-shrink-0
-                       transition-transform duration-300 
-                       group-hover:scale-110 group-hover:rotate-3"
-          />
-        ) : (
-          <div 
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: getYearColor(year.color) }}
-          >
-            <span className="text-2xl font-bold text-white">{year.number}</span>
+        {/* Card Content */}
+        <div className="flex items-center justify-between p-4 md:p-5 pl-5 md:pl-6">
+          <div className="flex-1 min-w-0 pr-4">
+            <h3 className="text-lg md:text-xl font-heading font-semibold text-foreground">
+              Year {year.number}
+            </h3>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
+              {year.subtitle || year.name}
+            </p>
+            {isEmpty && (
+              <p className="text-xs text-muted-foreground/70 mt-1.5 italic flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Content coming soon — tap to preview structure
+              </p>
+            )}
           </div>
-        )}
+          
+          {/* Year Icon */}
+          {getYearIcon(year.number) ? (
+            <img 
+              src={getYearIcon(year.number)} 
+              alt={`Year ${year.number}`}
+              className="w-16 h-16 md:w-20 md:h-20 object-contain flex-shrink-0
+                         transition-transform duration-300 
+                         group-hover:scale-110 group-hover:rotate-3"
+            />
+          ) : (
+            <div 
+              className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: getYearColor(year.color) }}
+            >
+              <span className="text-2xl font-bold text-white">{year.number}</span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
