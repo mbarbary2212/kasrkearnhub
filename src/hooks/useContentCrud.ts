@@ -80,16 +80,7 @@ export function useSoftDeleteContent(table: ContentTable) {
       return { id, moduleId, chapterId };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['chapter-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['chapter-practicals'] });
-      queryClient.invalidateQueries({ queryKey: ['module-lectures'] });
-      queryClient.invalidateQueries({ queryKey: ['module-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['module-mcq-sets'] });
-      queryClient.invalidateQueries({ queryKey: ['module-essays'] });
-      queryClient.invalidateQueries({ queryKey: ['module-practicals'] });
+      invalidateContentQueries(queryClient, table);
       
       // Log activity for essays
       if (table === 'essays' && result.id) {
