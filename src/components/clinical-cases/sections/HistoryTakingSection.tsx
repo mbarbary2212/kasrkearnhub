@@ -1036,15 +1036,34 @@ export function HistoryTakingSection({
     if (mode === 'voice' && lang === 'ar' && !isMuted) {
       setGreetingPlaying(true);
       try {
-        const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
+        // ── Resolve TTS settings fresh from DB to avoid stale closure ──
+        let resolvedSettings = ttsSettings;
+        if (!resolvedSettings || ttsSettingsLoading) {
+          console.log('[Greeting] Settings not yet loaded, fetching directly...');
+          const { data: freshSettings } = await supabase
+            .from('ai_settings')
+            .select('*')
+            .order('key');
+          if (freshSettings) {
+            resolvedSettings = freshSettings;
+          }
+        }
+
+        const resolvedProvider = getSettingValue(resolvedSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini';
+        const resolvedGeminiVoice = patientGender === 'female'
+          ? getSettingValue(resolvedSettings, 'tts_gemini_female_voice', 'Aoede') as string
+          : getSettingValue(resolvedSettings, 'tts_gemini_male_voice', 'Kore') as string;
+
+        const gender = getSettingValue(resolvedSettings, 'tts_voice_gender', 'male') as string;
         const voiceId = voiceIdOverride
           || (gender === 'female'
-            ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-            : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-        console.log('[Greeting] ttsProvider resolved as:', ttsProvider);
-        if (ttsProvider === 'gemini') {
+            ? getSettingValue(resolvedSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
+            : getSettingValue(resolvedSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+
+        console.log('[Greeting] ttsProvider resolved as:', resolvedProvider);
+        if (resolvedProvider === 'gemini') {
           stopAllTTS();
-          const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
+          const geminiVoiceToUse = voiceIdOverride || resolvedGeminiVoice;
           const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
           const { data: { session } } = await supabase.auth.getSession();
           const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
@@ -1081,7 +1100,7 @@ export function HistoryTakingSection({
             }
           }
         } else {
-          await speakArabic(greeting, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+          await speakArabic(greeting, resolvedProvider, voiceId, patientTone, preUnlockedAudio);
         }
       } catch (err) {
         console.error('[Greeting TTS] Error:', err);
