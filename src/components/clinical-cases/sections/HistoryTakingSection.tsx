@@ -664,9 +664,12 @@ export function HistoryTakingSection({
               variant="outline"
               className="gap-2"
               onClick={() => {
+                // Pre-unlock audio in direct user gesture context (before any async)
+                const preAudio = createUnlockedAudio();
+                unlockedAudioRef.current = preAudio;
                 setSelectedMode('voice');
                 setShowVoiceFallbackInput(true); // Show text fallback by default
-                sendChatMessageInitial('voice');
+                sendChatMessageInitial('voice', preAudio);
               }}
             >
               <Mic className="w-5 h-5" />
