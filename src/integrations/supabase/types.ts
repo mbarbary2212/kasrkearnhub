@@ -6146,6 +6146,19 @@ export type Database = {
         Args: { _feedback_id: string; _reason: string }
         Returns: string
       }
+      save_question_attempt: {
+        Args: {
+          p_chapter_id?: string
+          p_is_correct?: boolean
+          p_module_id?: string
+          p_question_id: string
+          p_question_type: Database["public"]["Enums"]["practice_question_type"]
+          p_score?: number
+          p_selected_answer?: Json
+          p_topic_id?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:

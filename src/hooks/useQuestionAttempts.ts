@@ -258,71 +258,32 @@ export function useSaveQuestionAttempt() {
     mutationFn: async (params: SaveQuestionAttemptParams) => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      const { questionId, questionType, chapterId, topicId, moduleId, selectedAnswer, isCorrect, score } = params;
+      const {
+        questionId, questionType, chapterId, topicId,
+        moduleId, selectedAnswer, isCorrect, score,
+      } = params;
+
       const dbType = mapToDbQuestionType(questionType);
-      
-      // Use chapterId or topicId for container identification
-      const containerId = chapterId || topicId;
-      if (!containerId) throw new Error('Either chapterId or topicId is required');
 
-      // Get current attempt number (using chapter_attempts table for now)
-      const attemptNumber = chapterId 
-        ? await getCurrentAttemptNumber(user.id, chapterId, dbType)
-        : 1; // Topics start at attempt 1 for now
+      const { data, error } = await supabase.rpc('save_question_attempt', {
+        p_question_id:     questionId,
+        p_question_type:   dbType,
+        p_chapter_id:      chapterId ?? null,
+        p_topic_id:        topicId ?? null,
+        p_module_id:       moduleId,
+        p_selected_answer: selectedAnswer as Record<string, unknown>,
+        p_is_correct:      isCorrect,
+        p_score:           score ?? null,
+      });
 
-      // Determine status
-      const status: QuestionAttemptStatus = isCorrect ? 'correct' : 'incorrect';
+      if (error) throw error;
 
-      // Check if we already have an attempt for this question in current attempt
-      const { data: existing } = await supabase
-        .from('question_attempts')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('question_id', questionId)
-        .eq('question_type', dbType)
-        .eq('attempt_number', attemptNumber)
-        .maybeSingle();
-
-      if (existing) {
-        // Update existing
-        const { error } = await supabase
-          .from('question_attempts')
-          .update({
-            selected_answer: selectedAnswer as Json,
-            status,
-            is_correct: isCorrect,
-            score: score ?? null,
-          })
-          .eq('id', existing.id);
-
-        if (error) throw error;
-      } else {
-        // Insert new with correct chapter_id OR topic_id
-        const { error } = await supabase
-          .from('question_attempts')
-          .insert({
-            user_id: user.id,
-            question_id: questionId,
-            question_type: dbType,
-            chapter_id: chapterId || null,
-            topic_id: topicId || null,
-            module_id: moduleId,
-            attempt_number: attemptNumber,
-            selected_answer: selectedAnswer as Json,
-            status,
-            is_correct: isCorrect,
-            score: score ?? null,
-          });
-
-        if (error) throw error;
-      }
-
-      // Update chapter attempt record (only for chapter-based)
-      if (chapterId) {
-        await updateChapterAttempt(user.id, chapterId, moduleId, dbType, attemptNumber, isCorrect, score);
-      }
-
-      return { success: true, chapterId, topicId };
+      return {
+        success: true,
+        chapterId,
+        topicId,
+        attemptNumber: (data as { attempt_number: number })?.attempt_number,
+      };
     },
     onSuccess: (result) => {
       // Invalidate queries to refresh UI
