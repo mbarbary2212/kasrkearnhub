@@ -985,7 +985,7 @@ export function HistoryTakingSection({
   );
 
   // ── Helper: send initial greeting (local only — no edge function call) ──
-  async function sendChatMessageInitial(mode: 'chat' | 'voice') {
+  async function sendChatMessageInitial(mode: 'chat' | 'voice', preUnlockedAudio?: HTMLAudioElement) {
     const lang = selectedLanguage || 'en';
     const greeting = lang === 'ar'
       ? 'السلام عليكم يا دكتور'
