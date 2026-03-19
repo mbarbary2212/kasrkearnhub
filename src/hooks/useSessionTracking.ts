@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://dwmxnokprfiwmvzksyjg.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3bXhub2twcmZpd212emtzeWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MjM3NjQsImV4cCI6MjA4MTQ5OTc2NH0.wGf_n_j8hOIXCRzd2fV_-Zy0suHEY1vI4ggFaU-f6oo';
+
 const CLIENT_ID_KEY = 'session_client_id';
 const SESSION_ID_KEY = 'current_session_id';
 const HEARTBEAT_INTERVAL = 60000; // 60 seconds
@@ -16,6 +19,7 @@ function getOrCreateClientId(): string {
 
 export function useSessionTracking(userId: string | null | undefined) {
   const sessionIdRef = useRef<string | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startSession = useCallback(async () => {
