@@ -981,23 +981,25 @@ export function HistoryTakingSection({
           ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
           : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
       if (ttsProvider === 'gemini') {
-        supabase.functions.invoke('gemini-tts', {
-          body: { text: greeting, voiceName: ttsGeminiVoice, stylePrompt: geminiStylePrompt },
-        }).then(({ data }) => {
-          if (data?.audioContent) {
-            const byteCharacters = atob(data.audioContent);
-            const byteArray = new Uint8Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteArray[i] = byteCharacters.charCodeAt(i);
-            }
-            const blob = new Blob([byteArray], { type: 'audio/wav' });
-            const blobUrl = URL.createObjectURL(blob);
-            const audio = new Audio();
-            audio.src = blobUrl;
-            audio.onended = () => URL.revokeObjectURL(blobUrl);
-            audio.play();
-          }
+        stopAllTTS();
+        const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
+        const { data } = await supabase.functions.invoke('gemini-tts', {
+          body: { text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt },
         });
+        if (data?.audioContent) {
+          const byteCharacters = atob(data.audioContent);
+          const byteArray = new Uint8Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteArray[i] = byteCharacters.charCodeAt(i);
+          }
+          const blob = new Blob([byteArray], { type: 'audio/wav' });
+          const blobUrl = URL.createObjectURL(blob);
+          const audio = new Audio();
+          audio.src = blobUrl;
+          registerCurrentAudio(audio);
+          audio.onended = () => URL.revokeObjectURL(blobUrl);
+          await audio.play();
+        }
       } else {
         speakArabic(greeting, ttsProvider, voiceId, patientTone);
       }
