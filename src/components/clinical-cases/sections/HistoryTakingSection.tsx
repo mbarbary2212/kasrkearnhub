@@ -58,7 +58,7 @@ export function HistoryTakingSection({
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
 
   // TTS settings
-  const { data: ttsSettings } = useAISettings();
+  const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
   const ttsGeminiVoice = patientGender === 'female'
     ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoede') as string
