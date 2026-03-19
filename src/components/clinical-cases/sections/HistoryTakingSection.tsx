@@ -223,6 +223,53 @@ export function HistoryTakingSection({
     }
   }, [lastAiMessage]);
 
+  // ── Helper: fetch Gemini TTS for a single text chunk ──
+  const fetchGeminiAudio = useCallback(async (text: string, voiceName: string): Promise<string | null> => {
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text, voiceName, stylePrompt: geminiStylePrompt }),
+      });
+      if (!res.ok) {
+        console.error(`Gemini TTS chunk failed: ${res.status}`);
+        return null;
+      }
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.error('fetchGeminiAudio error:', err);
+      return null;
+    }
+  }, [geminiStylePrompt]);
+
+  // ── Helper: typewriter animation for a sentence ──
+  const animateTypewriter = useCallback((sentence: string, existingText: string): Promise<void> => {
+    return new Promise(resolve => {
+      const words = sentence.split(/\s+/).filter(Boolean);
+      if (words.length === 0) { resolve(); return; }
+      let idx = 0;
+      const prefix = existingText ? existingText + ' ' : '';
+      const interval = setInterval(() => {
+        idx++;
+        const partial = prefix + words.slice(0, idx).join(' ');
+        setDisplayedText(partial);
+        if (voiceBubbleRef.current) {
+          voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
+        }
+        if (idx >= words.length) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 80);
+    });
+  }, []);
+
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
     console.log('[sendChatMessage] called with:', text);
@@ -237,6 +284,7 @@ export function HistoryTakingSection({
     const updatedMessages = [...chatMessages, userMsg];
     setChatMessages(updatedMessages);
     setChatInput('');
+    setDisplayedText('');
     setIsSending(true);
 
     try {
