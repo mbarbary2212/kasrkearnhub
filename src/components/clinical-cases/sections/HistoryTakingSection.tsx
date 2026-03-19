@@ -1013,16 +1013,23 @@ export function HistoryTakingSection({
             },
             body: JSON.stringify({ text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
           });
-          if (!res.ok) throw new Error(`Gemini TTS greeting failed: ${res.status}`);
-          const blob = await res.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const audio = new Audio();
-          audio.src = blobUrl;
-          registerCurrentAudio(audio);
-          await audio.play();
-          await new Promise<void>(resolve => {
-            audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
-          });
+          if (!res.ok) {
+            console.warn('[TTS] Gemini greeting failed:', res.status, '— skipping audio');
+          } else {
+            const blob = await res.blob();
+            if (blob.size < 100) {
+              console.warn('[TTS] Gemini greeting blob too small:', blob.size, '— skipping audio');
+            } else {
+              const blobUrl = URL.createObjectURL(blob);
+              const audio = new Audio();
+              audio.src = blobUrl;
+              registerCurrentAudio(audio);
+              await audio.play();
+              await new Promise<void>(resolve => {
+                audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+              });
+            }
+          }
         } else {
           await speakArabic(greeting, ttsProvider, voiceId, patientTone);
         }
