@@ -39,24 +39,8 @@ export function useChapterResources(chapterId?: string) {
   });
 }
 
-// Fetch MCQ sets for a chapter
-export function useChapterMcqSets(chapterId?: string) {
-  return useQuery({
-    queryKey: ['chapter-mcq-sets', chapterId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mcq_sets')
-        .select('*')
-        .eq('chapter_id', chapterId!)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
 
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!chapterId,
-  });
-}
+
 
 // Lightweight count-only hook for chapter essays (badges)
 export function useChapterEssayCount(chapterId?: string) {
