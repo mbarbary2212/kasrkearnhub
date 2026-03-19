@@ -106,6 +106,7 @@ export function HistoryTakingSection({
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
   const [scribeConnecting, setScribeConnecting] = useState(false);
   const [greetingPlaying, setGreetingPlaying] = useState(false);
+  const [displayedText, setDisplayedText] = useState('');
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
   });
