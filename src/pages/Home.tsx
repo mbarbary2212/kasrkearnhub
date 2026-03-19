@@ -7,7 +7,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { AppMindMap } from '@/components/dashboard/AppMindMap';
 
 import { Button } from '@/components/ui/button';
