@@ -1,39 +1,48 @@
 
 
-## Stop Scribe WebSocket Crash Loop
+## Fix ttsProvider Race Condition
 
 ### Problem
-`connectScribe` is called after every TTS reply (line 315) and during greeting flow. When the WebSocket fails, it falls back to browser STT but the next reply cycle calls `connectScribe` again, creating hundreds of failures.
+`useAISettings()` is async. When the user clicks "Voice", settings may not be loaded yet, causing `ttsProvider` to default to `'browser'` instead of `'gemini'`.
 
 ### Changes (1 file: `HistoryTakingSection.tsx`)
 
-**1. Add `wsFailCountRef` and `scribeDisabledRef` refs (after line 150)**
+**1. Destructure `isLoading` from the hook (line 61)**
 
+Change:
 ```typescript
-const wsFailCountRef = useRef(0);
-const scribeDisabledRef = useRef(false);
+const { data: ttsSettings } = useAISettings();
+```
+To:
+```typescript
+const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
 ```
 
-**2. Update `connectScribe` (lines 396-425)**
+**2. Guard the Voice button onClick (line 702)**
 
-- At the top, check `scribeDisabledRef.current` — if true, fall back to browser STT immediately without attempting connection.
-- On successful connection (line 413), reset `wsFailCountRef.current = 0`.
-- In the catch block (line 415-421), increment `wsFailCountRef.current`. If >= 3, set `scribeDisabledRef.current = true`, show a toast error "Voice connection lost. Please refresh.", and do NOT call `startBrowserSTT`. Otherwise, fall back to browser STT as before.
-
-**3. Update `safeDisconnect` (lines 152-164)**
-
-- In the catch block, increment `wsFailCountRef.current`. If >= 3, set `scribeDisabledRef.current = true` and show the same toast.
-
-**4. Add unmount cleanup useEffect (after line 164)**
-
+Add at the top of the onClick handler:
 ```typescript
-useEffect(() => {
-  return () => {
-    wsFailCountRef.current = 0;
-    scribeDisabledRef.current = false;
-    safeDisconnect();
-  };
-}, [safeDisconnect]);
+if (ttsSettingsLoading) return;
+```
+
+**3. Disable the Voice button while loading (line 698)**
+
+Add `disabled={ttsSettingsLoading}` and apply a loading opacity class:
+```typescript
+<Button
+  size="lg"
+  variant="outline"
+  className={cn("gap-2", ttsSettingsLoading && "opacity-50")}
+  disabled={ttsSettingsLoading}
+  onClick={() => { ... }}
+>
+```
+
+**4. Add debug log in greeting handler**
+
+At the start of `sendChatMessageInitial` (or the greeting TTS section), add:
+```typescript
+console.log('[Greeting] ttsProvider resolved as:', ttsProvider);
 ```
 
 ### No other files touched.
