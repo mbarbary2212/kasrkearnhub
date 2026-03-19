@@ -72,46 +72,68 @@ serve(async (req) => {
       );
     }
 
-    const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
-
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'X-Goog-Api-Key': GEMINI_API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: finalText }] }],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voiceName || 'Kore',
+    async function callGemini(inputText: string, voiceName: string) {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'X-Goog-Api-Key': GEMINI_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: inputText }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName },
                 },
               },
             },
-          },
-        }),
+          }),
+        }
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini TTS API error:', response.status, errorText);
+        return { ok: false, status: response.status, audioData: null };
       }
-    );
+      const result = await response.json();
+      const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      const finishReason = result?.candidates?.[0]?.finishReason;
+      return { ok: true, status: 200, audioData, finishReason };
+    }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini TTS API error:', response.status, errorText);
+    const voice = voiceName || 'Kore';
+    const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
+
+    // First attempt with style prompt
+    console.log('[gemini-tts] Attempt 1 with style prompt:', !!stylePrompt);
+    let result = await callGemini(finalText, voice);
+
+    if (!result.ok) {
       return new Response(
-        JSON.stringify({ error: `Gemini TTS API error: ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Gemini TTS API error: ${result.status}` }),
+        { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const result = await response.json();
-    const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    // If no audio and we had a style prompt, retry without it
+    if (!result.audioData && stylePrompt) {
+      console.log('[gemini-tts] No audio (finishReason:', result.finishReason, ') — retrying without style prompt');
+      result = await callGemini(text, voice);
+      if (!result.ok) {
+        return new Response(
+          JSON.stringify({ error: `Gemini TTS API error on retry: ${result.status}` }),
+          { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
+    const audioData = result.audioData;
     if (!audioData) {
-      console.error('No audio data in Gemini response:', JSON.stringify(result).slice(0, 500));
+      console.error('[gemini-tts] No audio data after all attempts, finishReason:', result.finishReason);
       return new Response(
         JSON.stringify({ error: 'No audio data returned from Gemini' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
