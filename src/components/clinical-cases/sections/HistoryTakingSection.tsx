@@ -269,30 +269,26 @@ export function HistoryTakingSection({
             if (ttsProvider === 'gemini') {
               stopAllTTS();
               const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const { data, error } = await supabase.functions.invoke('gemini-tts', {
-                body: {
-                  text: reply,
-                  voiceName: geminiVoiceToUse,
-                  stylePrompt: geminiStylePrompt,
+              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+              const { data: { session } } = await supabase.auth.getSession();
+              const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session?.access_token}`,
+                  'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
               });
-              if (error) throw error;
-              if (data?.audioContent) {
-                const byteCharacters = atob(data.audioContent);
-                const byteArray = new Uint8Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                  byteArray[i] = byteCharacters.charCodeAt(i);
-                }
-                const blob = new Blob([byteArray], { type: 'audio/wav' });
-                const blobUrl = URL.createObjectURL(blob);
-                const audio = preUnlockedAudio || new Audio();
-                audio.src = blobUrl;
-                registerCurrentAudio(audio);
-                await audio.play();
-                await new Promise<void>(resolve => {
-                  audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
-                });
-              }
+              if (!res.ok) throw new Error(`Gemini TTS failed: ${res.status}`);
+              const blob = await res.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const audio = preUnlockedAudio || new Audio();
+              audio.src = blobUrl;
+              registerCurrentAudio(audio);
+              await audio.play();
+              await new Promise<void>(resolve => {
+                audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+              });
             } else {
               await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
             }
