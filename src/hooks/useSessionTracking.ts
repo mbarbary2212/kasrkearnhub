@@ -117,6 +117,16 @@ export function useSessionTracking(userId: string | null | undefined) {
     }
   }, [userId]);
 
+  // Keep access token ref in sync for synchronous reads in unload handler
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     if (userId) {
       startSession();
@@ -131,15 +141,21 @@ export function useSessionTracking(userId: string | null | undefined) {
         }
       };
 
-      // Handle beforeunload
+      // Handle beforeunload — use keepalive fetch with auth headers
       const handleBeforeUnload = () => {
-        // Use sendBeacon for reliable delivery on page close
-        if (sessionIdRef.current) {
-          const url = `${import.meta.env.VITE_SUPABASE_URL || 'https://dwmxnokprfiwmvzksyjg.supabase.co'}/rest/v1/user_sessions?id=eq.${sessionIdRef.current}`;
-          const now = new Date().toISOString();
-          navigator.sendBeacon(url, JSON.stringify({
-            last_seen_at: now,
-          }));
+        const token = accessTokenRef.current;
+        if (sessionIdRef.current && token) {
+          fetch(`${SUPABASE_URL}/rest/v1/user_sessions?id=eq.${sessionIdRef.current}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
+            keepalive: true,
+          });
         }
       };
 
