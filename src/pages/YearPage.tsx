@@ -104,11 +104,11 @@ export default function YearPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-card rounded-xl border border-border">
-              <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-lg font-medium text-foreground mb-1">Structure ready</p>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                This year's modules and content are being prepared. You'll be able to access resources, practice questions, and more once they're published.
+            <div className="text-center py-12">
+              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No modules available for this year yet.</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Check back later or contact your administrator.
               </p>
             </div>
           )}
