@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useExaminerAvatars } from '@/lib/examinerAvatars';
 import { useTTSVoices } from '@/lib/ttsVoices';
+import { useGeminiVoices } from '@/lib/geminiVoices';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,7 @@ export function CasePreviewEditor() {
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
   const { data: ttsVoices } = useTTSVoices();
+  const { data: geminiVoices } = useGeminiVoices();
   const { data: aiSettings } = useAISettings();
   const globalTtsProvider = getSettingValue(aiSettings, 'tts_provider', 'browser') as string;
 
@@ -465,13 +467,53 @@ export function CasePreviewEditor() {
             {/* Voice Character (only for voice mode) */}
             {historyInteractionMode === 'voice' && editedData && (
               globalTtsProvider === 'gemini' ? (
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <Label className="text-xs font-medium flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-primary" />
-                    Voice Character
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Using global Gemini voice settings (configured in Admin → Content Factory → Settings)
+                <div>
+                  <Label className="text-xs">Voice Character</Label>
+                  <Select
+                    value={(editedData as any).patient?.voice_id || '__default__'}
+                    onValueChange={(v) => {
+                      setEditedData({
+                        ...editedData,
+                        patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
+                      } as any);
+                      setHasChanges(true);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Use global default" /></SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const males = (geminiVoices || []).filter(v => v.gender === 'male');
+                        const females = (geminiVoices || []).filter(v => v.gender === 'female');
+                        return (
+                          <>
+                            <SelectItem value="__default__">Global Default</SelectItem>
+                            {males.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Male Voices</SelectLabel>
+                                {males.map(v => (
+                                  <SelectItem key={v.id} value={v.name}>
+                                    {v.name} {v.label ? `— ${v.label}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                            {females.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Female Voices</SelectLabel>
+                                {females.map(v => (
+                                  <SelectItem key={v.id} value={v.name}>
+                                    {v.name} {v.label ? `— ${v.label}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Gemini voice — select any active voice from the registry
                   </p>
                 </div>
               ) : (

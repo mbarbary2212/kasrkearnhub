@@ -17,7 +17,7 @@ import {
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
   ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2
 } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
 import { useAISettings, useUpdateAISetting, getSettingValue } from '@/hooks/useAISettings';
 import { 
@@ -348,17 +348,6 @@ function VoiceProviderSection({
 }) {
   const { isSuperAdmin } = useAuthContext();
   const ttsProvider = getValue('tts_provider', 'browser') as string;
-  const ttsGender = getValue('tts_voice_gender', 'male') as 'male' | 'female';
-  const maleVoice = getValue('tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
-  const femaleVoice = getValue('tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string;
-  const activeVoiceKey = ttsGender === 'female' ? 'tts_elevenlabs_female_voice' : 'tts_elevenlabs_male_voice';
-  const activeVoiceId = ttsGender === 'female' ? femaleVoice : maleVoice;
-
-  const geminiMaleVoice = getValue('tts_gemini_male_voice', 'Kore') as string;
-  const geminiFemaleVoice = getValue('tts_gemini_female_voice', 'Aoede') as string;
-
-  const GEMINI_MALE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Orus', 'Zephyr'];
-  const GEMINI_FEMALE_VOICES = ['Aoede', 'Leda'];
 
   const providers = [
     { value: 'browser', label: '🌐 Browser (Built-in)', description: 'Free, works on all devices. Quality varies by browser and OS.' },
@@ -411,70 +400,6 @@ function VoiceProviderSection({
               </Button>
             )}
 
-            {(ttsProvider === 'elevenlabs' || ttsProvider === 'gemini') && (
-              <div className="space-y-4 pt-2 border-t">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Voice Gender</Label>
-                  <div className="flex gap-2">
-                    {(['male', 'female'] as const).map((g) => (
-                      <Button
-                        key={g}
-                        variant={ttsGender === g ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleChange('tts_voice_gender', g)}
-                      >
-                        {g === 'male' ? '👨 Male' : '👩 Female'}
-                      </Button>
-                    ))}
-                  </div>
-                  {'tts_voice_gender' in pendingChanges && (
-                    <Button size="sm" onClick={() => handleSave('tts_voice_gender')} disabled={updateIsPending}>
-                      <Save className="w-4 h-4 mr-1" /> Save Gender
-                    </Button>
-                  )}
-                </div>
-
-                {ttsProvider === 'gemini' && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Voice</Label>
-                    {(() => {
-                      const voices = ttsGender === 'female' ? GEMINI_FEMALE_VOICES : GEMINI_MALE_VOICES;
-                      const voiceKey = ttsGender === 'female' ? 'tts_gemini_female_voice' : 'tts_gemini_male_voice';
-                      const voiceValue = ttsGender === 'female' ? geminiFemaleVoice : geminiMaleVoice;
-                      return (
-                        <>
-                          <RadioGroup
-                            value={voiceValue}
-                            onValueChange={(val) => handleChange(voiceKey, val)}
-                            className="space-y-2"
-                          >
-                            {voices.map((v) => (
-                              <label
-                                key={v}
-                                className={cn(
-                                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
-                                  voiceValue === v
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-border hover:border-muted-foreground/50'
-                                )}
-                              >
-                                <RadioGroupItem value={v} />
-                                <span className="font-medium text-sm">{v}</span>
-                              </label>
-                            ))}
-                          </RadioGroup>
-                          {voiceKey in pendingChanges && (
-                            <Button size="sm" onClick={() => handleSave(voiceKey)} disabled={updateIsPending}>
-                              <Save className="w-4 h-4 mr-1" /> Save Voice
-                            </Button>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
