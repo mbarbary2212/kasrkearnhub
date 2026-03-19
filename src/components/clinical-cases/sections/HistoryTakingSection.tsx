@@ -318,26 +318,53 @@ export function HistoryTakingSection({
             if (ttsProvider === 'gemini') {
               stopAllTTS();
               const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-              const { data: { session } } = await supabase.auth.getSession();
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${session?.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
-              });
-              if (!res.ok) throw new Error(`Gemini TTS failed: ${res.status}`);
-              const blob = await res.blob();
-              const blobUrl = URL.createObjectURL(blob);
-              const audio = preUnlockedAudio || new Audio();
-              audio.src = blobUrl;
-              registerCurrentAudio(audio);
-              await audio.play();
-              await new Promise<void>(resolve => {
-                audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
-              });
+
+              // Split reply into sentences for pipelined TTS
+              const sentences = reply
+                .split(/(?<=[.!?؟،])\s+/)
+                .map((s: string) => s.trim())
+                .filter(Boolean);
+              const chunks = sentences.length > 0 ? sentences : [reply];
+
+              let nextAudioPromise = fetchGeminiAudio(chunks[0], geminiVoiceToUse);
+              let accumulatedText = '';
+
+              for (let i = 0; i < chunks.length; i++) {
+                const blobUrl = await nextAudioPromise;
+
+                // Prefetch next sentence while current plays
+                if (i + 1 < chunks.length) {
+                  nextAudioPromise = fetchGeminiAudio(chunks[i + 1], geminiVoiceToUse);
+                }
+
+                if (blobUrl) {
+                  const audio = i === 0 ? (preUnlockedAudio || new Audio()) : new Audio();
+                  audio.src = blobUrl;
+                  registerCurrentAudio(audio);
+
+                  // Start typewriter animation for this sentence
+                  const typewriterPromise = animateTypewriter(chunks[i], accumulatedText);
+
+                  await audio.play();
+
+                  // After first sentence starts playing, clear thinking state
+                  if (i === 0) {
+                    setIsSending(false);
+                  }
+
+                  await new Promise<void>(resolve => {
+                    audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
+                  });
+
+                  // Ensure typewriter finishes too
+                  await typewriterPromise;
+                }
+
+                accumulatedText += (accumulatedText ? ' ' : '') + chunks[i];
+              }
+
+              // Safety net: ensure full text is displayed
+              setDisplayedText(reply);
             } else {
               await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
             }
