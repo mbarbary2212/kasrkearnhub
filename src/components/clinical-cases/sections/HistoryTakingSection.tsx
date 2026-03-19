@@ -148,6 +148,8 @@ export function HistoryTakingSection({
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
   const disconnectingRef = useRef(false);
+  const wsFailCountRef = useRef(0);
+  const scribeDisabledRef = useRef(false);
 
   const safeDisconnect = useCallback(async () => {
     if (disconnectingRef.current) return;
@@ -157,11 +159,23 @@ export function HistoryTakingSection({
         await scribeRef.current.disconnect();
       }
     } catch {
-      // Suppress AudioContext double-close
+      wsFailCountRef.current++;
+      if (wsFailCountRef.current >= 3) {
+        scribeDisabledRef.current = true;
+        toast.error('Voice connection lost. Please refresh.');
+      }
     } finally {
       disconnectingRef.current = false;
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      wsFailCountRef.current = 0;
+      scribeDisabledRef.current = false;
+      safeDisconnect();
+    };
+  }, [safeDisconnect]);
 
 
   // Comprehension answers
@@ -394,6 +408,11 @@ export function HistoryTakingSection({
 
   // ── Reusable scribe connect helper ──────────────────────
   const connectScribe = useCallback(async () => {
+    if (scribeDisabledRef.current) {
+      console.warn('[Scribe] Disabled after repeated failures, falling back to browser STT');
+      startBrowserSTT();
+      return;
+    }
     setScribeConnecting(true);
     try {
       console.log('[Scribe] Requesting token from elevenlabs-scribe-token...');
@@ -410,15 +429,22 @@ export function HistoryTakingSection({
           noiseSuppression: true,
         },
       });
+      wsFailCountRef.current = 0;
       console.log('[Scribe] Connected successfully');
       toast.success('Scribe connected to ElevenLabs');
     } catch (err) {
-      console.warn('ElevenLabs Scribe failed, falling back to browser STT:', err);
+      wsFailCountRef.current++;
+      console.warn(`ElevenLabs Scribe failed (${wsFailCountRef.current}/3), falling back to browser STT:`, err);
       Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
         level: 'info',
-        extra: { error: String(err) },
+        extra: { error: String(err), failCount: wsFailCountRef.current },
       });
-      startBrowserSTT();
+      if (wsFailCountRef.current >= 3) {
+        scribeDisabledRef.current = true;
+        toast.error('Voice connection lost. Please refresh.');
+      } else {
+        startBrowserSTT();
+      }
     } finally {
       setScribeConnecting(false);
     }
