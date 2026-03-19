@@ -114,6 +114,7 @@ export function CasePreviewEditor() {
   const generatedData = caseData?.generated_case_data as StructuredCaseData | null;
 
   const { data: ttsVoices } = useTTSVoices();
+  const { data: geminiVoices } = useGeminiVoices();
   const { data: aiSettings } = useAISettings();
   const globalTtsProvider = getSettingValue(aiSettings, 'tts_provider', 'browser') as string;
 
