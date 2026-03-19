@@ -1024,10 +1024,12 @@ export function HistoryTakingSection({
               console.warn('[TTS] Gemini greeting blob too small:', blob.size, '— skipping audio');
             } else {
               const blobUrl = URL.createObjectURL(blob);
-              const audio = new Audio();
+              const audio = preUnlockedAudio || new Audio();
               audio.src = blobUrl;
               registerCurrentAudio(audio);
+              console.log('[Greeting TTS] Playing audio, blob size:', blob.size);
               await audio.play();
+              console.log('[Greeting TTS] Audio started');
               await new Promise<void>(resolve => {
                 audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
               });
