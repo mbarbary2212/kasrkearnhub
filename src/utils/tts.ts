@@ -26,10 +26,21 @@ export const ELEVENLABS_VOICES: Record<'male' | 'female', ElevenLabsVoice[]> = {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-/** Module-level reference to the currently playing ElevenLabs audio */
+/** Module-level reference to the currently playing audio (ElevenLabs or Gemini) */
 let currentAudio: HTMLAudioElement | null = null;
 
-/** Stop all TTS playback immediately (ElevenLabs + browser) */
+/** Register an externally-created Audio element so stopAllTTS() can manage it */
+export function registerCurrentAudio(audio: HTMLAudioElement) {
+  // Stop any previous audio first
+  if (currentAudio && currentAudio !== audio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio.src = '';
+  }
+  currentAudio = audio;
+}
+
+/** Stop all TTS playback immediately (ElevenLabs + Gemini + browser) */
 export function stopAllTTS() {
   if (currentAudio) {
     currentAudio.pause();

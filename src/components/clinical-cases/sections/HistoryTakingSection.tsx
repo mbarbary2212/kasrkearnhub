@@ -14,7 +14,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic, createUnlockedAudio, PatientTone } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
@@ -266,10 +266,12 @@ export function HistoryTakingSection({
           setIsSpeaking(true);
           try {
             if (ttsProvider === 'gemini') {
+              stopAllTTS();
+              const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
               const { data, error } = await supabase.functions.invoke('gemini-tts', {
                 body: {
                   text: reply,
-                  voiceName: ttsGeminiVoice,
+                  voiceName: geminiVoiceToUse,
                   stylePrompt: geminiStylePrompt,
                 },
               });
@@ -284,6 +286,7 @@ export function HistoryTakingSection({
                 const blobUrl = URL.createObjectURL(blob);
                 const audio = preUnlockedAudio || new Audio();
                 audio.src = blobUrl;
+                registerCurrentAudio(audio);
                 await audio.play();
                 await new Promise<void>(resolve => {
                   audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve(); };
@@ -961,7 +964,7 @@ export function HistoryTakingSection({
   );
 
   // ── Helper: send initial greeting (local only — no edge function call) ──
-  function sendChatMessageInitial(mode: 'chat' | 'voice') {
+  async function sendChatMessageInitial(mode: 'chat' | 'voice') {
     const lang = selectedLanguage || 'en';
     const greeting = lang === 'ar'
       ? 'السلام عليكم يا دكتور'
@@ -978,23 +981,25 @@ export function HistoryTakingSection({
           ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
           : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
       if (ttsProvider === 'gemini') {
-        supabase.functions.invoke('gemini-tts', {
-          body: { text: greeting, voiceName: ttsGeminiVoice, stylePrompt: geminiStylePrompt },
-        }).then(({ data }) => {
-          if (data?.audioContent) {
-            const byteCharacters = atob(data.audioContent);
-            const byteArray = new Uint8Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteArray[i] = byteCharacters.charCodeAt(i);
-            }
-            const blob = new Blob([byteArray], { type: 'audio/wav' });
-            const blobUrl = URL.createObjectURL(blob);
-            const audio = new Audio();
-            audio.src = blobUrl;
-            audio.onended = () => URL.revokeObjectURL(blobUrl);
-            audio.play();
-          }
+        stopAllTTS();
+        const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
+        const { data } = await supabase.functions.invoke('gemini-tts', {
+          body: { text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt },
         });
+        if (data?.audioContent) {
+          const byteCharacters = atob(data.audioContent);
+          const byteArray = new Uint8Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteArray[i] = byteCharacters.charCodeAt(i);
+          }
+          const blob = new Blob([byteArray], { type: 'audio/wav' });
+          const blobUrl = URL.createObjectURL(blob);
+          const audio = new Audio();
+          audio.src = blobUrl;
+          registerCurrentAudio(audio);
+          audio.onended = () => URL.revokeObjectURL(blobUrl);
+          await audio.play();
+        }
       } else {
         speakArabic(greeting, ttsProvider, voiceId, patientTone);
       }
