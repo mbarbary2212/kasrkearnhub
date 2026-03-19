@@ -82,6 +82,7 @@ import {
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
 import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
+import { usePresence } from '@/contexts/PresenceContext';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
@@ -97,6 +98,7 @@ export default function TopicDetailPage() {
   const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, topicId });
   const deleteStudyResource = useDeleteStudyResource();
   const { setStudyContext } = useCoachContext();
+  const { updatePresence } = usePresence();
 
   const showAddControls = !!(
     auth.isTeacher ||
@@ -232,6 +234,24 @@ export default function TopicDetailPage() {
       });
     }
   }, [module, topic, activeSection, setStudyContext]);
+
+  // Broadcast realtime presence — what the user is currently doing
+  useEffect(() => {
+    if (!module || !topic) return;
+    const activeTab =
+      activeSection === 'resources' ? resourcesTab
+      : activeSection === 'interactive' ? interactiveTab
+      : activeSection === 'practice' ? practiceTab
+      : undefined;
+    updatePresence({
+      year_id: module.year_id,
+      module_name: module.name,
+      topic_name: topic.name,
+      page: 'topic',
+      section_mode: activeSection,
+      active_tab: activeTab,
+    });
+  }, [module, topic, activeSection, resourcesTab, interactiveTab, practiceTab, updatePresence]);
   
   // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {

@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PresenceProvider } from "@/contexts/PresenceContext";
+import { PresencePageTracker } from "@/components/PresencePageTracker";
 import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
@@ -82,6 +84,7 @@ const App = () => {
       {showSplash && <SplashScreen onDismiss={handleDismissSplash} />}
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
           <AudioPlayerProvider>
@@ -94,6 +97,7 @@ const App = () => {
                <PWAInstallBanner />
                
             <BrowserRouter>
+              <PresencePageTracker />
               <ScrollToTop />
               <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin mr-2" />Loading...</div>}>
               <Routes>
@@ -125,6 +129,7 @@ const App = () => {
           </AudioPlayerProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
+      </PresenceProvider>
     </AuthProvider>
       </QueryClientProvider>
     </Sentry.ErrorBoundary>
