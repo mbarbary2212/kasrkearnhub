@@ -348,17 +348,6 @@ function VoiceProviderSection({
 }) {
   const { isSuperAdmin } = useAuthContext();
   const ttsProvider = getValue('tts_provider', 'browser') as string;
-  const ttsGender = getValue('tts_voice_gender', 'male') as 'male' | 'female';
-  const maleVoice = getValue('tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string;
-  const femaleVoice = getValue('tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string;
-  const activeVoiceKey = ttsGender === 'female' ? 'tts_elevenlabs_female_voice' : 'tts_elevenlabs_male_voice';
-  const activeVoiceId = ttsGender === 'female' ? femaleVoice : maleVoice;
-
-  const geminiMaleVoice = getValue('tts_gemini_male_voice', 'Kore') as string;
-  const geminiFemaleVoice = getValue('tts_gemini_female_voice', 'Aoede') as string;
-
-  const GEMINI_MALE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Orus', 'Zephyr'];
-  const GEMINI_FEMALE_VOICES = ['Aoede', 'Leda'];
 
   const providers = [
     { value: 'browser', label: '🌐 Browser (Built-in)', description: 'Free, works on all devices. Quality varies by browser and OS.' },
