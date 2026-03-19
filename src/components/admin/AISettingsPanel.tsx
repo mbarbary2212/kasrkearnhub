@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { TTSVoicesCard } from '@/components/admin/TTSVoicesCard';
-import { GeminiVoicesCard } from '@/components/admin/GeminiVoicesCard';
+import { VoiceRegistryCard } from '@/components/admin/VoiceRegistryCard';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -480,15 +479,8 @@ function VoiceProviderSection({
       </Collapsible>
     </Card>
 
-    {/* ElevenLabs Voice Registry — shown only when provider is elevenlabs */}
-    {ttsProvider === 'elevenlabs' && (
-      <TTSVoicesCard />
-    )}
-
-    {/* Gemini Voice Registry — shown only when provider is gemini */}
-    {ttsProvider === 'gemini' && (
-      <GeminiVoicesCard />
-    )}
+    {/* Unified Voice Registry */}
+    <VoiceRegistryCard />
     </>
   );
 }
