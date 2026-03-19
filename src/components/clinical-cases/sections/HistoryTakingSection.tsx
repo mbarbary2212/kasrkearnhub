@@ -393,7 +393,7 @@ export function HistoryTakingSection({
     } finally {
       setIsSending(false);
     }
-  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase]);
+  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase, fetchGeminiAudio, animateTypewriter]);
 
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {
