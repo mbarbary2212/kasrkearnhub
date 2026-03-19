@@ -55,7 +55,7 @@ export function EmailBouncesPopover() {
             These email addresses had delivery problems
           </p>
         </div>
-        <ScrollArea className="max-h-80">
+        <div className="max-h-72 overflow-y-auto">
           <div className="p-2 space-y-2">
             {uniqueBounces.map((event) => (
               <div 
