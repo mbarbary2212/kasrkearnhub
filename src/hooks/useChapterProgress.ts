@@ -210,33 +210,8 @@ export function useMarkItemComplete() {
       isCorrect?: boolean;
       selectedAnswer?: unknown;
     }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      let dbQuestionType: 'mcq' | 'osce' | 'guided_explanation';
-      if (questionType === 'true_false') {
-        dbQuestionType = 'mcq';
-      } else if (questionType === 'osce' || questionType === 'case_scenario') {
-        dbQuestionType = 'osce';
-      } else {
-        dbQuestionType = 'mcq';
-      }
-
-      const { error } = await supabase.from('question_attempts').upsert(
-        {
-          user_id: user.id,
-          question_id: questionId,
-          question_type: dbQuestionType,
-          is_correct: isCorrect ?? null,
-          selected_answer: (selectedAnswer ?? null) as import('@/integrations/supabase/types').Json,
-          chapter_id: chapterId || null,
-          module_id: '',
-          attempt_number: 1,
-          status: isCorrect ? 'correct' : 'incorrect',
-        },
-        { onConflict: 'user_id,question_id,question_type,attempt_number' }
-      );
-
-      if (error) throw error;
+      // Attempt saving is now handled by useSaveQuestionAttempt via RPC.
+      // This hook is retained for backward compatibility but no longer writes to the DB.
       return { questionId, chapterId: chapterId || '' };
     },
     onSuccess: ({ chapterId }) => {
