@@ -144,7 +144,6 @@ function LoggedInHome() {
 
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => {
-    const isEmpty = resourceCounts && (resourceCounts[year.id] || 0) < 5 && year.number !== 5;
     const highlight = yearHighlights[year.number];
     
     return (
@@ -169,12 +168,6 @@ function LoggedInHome() {
             <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
               {year.subtitle || year.name}
             </p>
-            {isEmpty && (
-              <p className="text-xs text-muted-foreground/70 mt-1.5 italic flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Content coming soon — tap to preview structure
-              </p>
-            )}
             {highlight && (
               <p className="text-xs text-muted-foreground/70 mt-1.5 italic flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
