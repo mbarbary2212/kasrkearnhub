@@ -46,6 +46,7 @@ interface SavedSession {
 export default function VirtualPatientRunner() {
   const { caseId } = useParams();
   const navigate = useNavigate();
+  const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
   
   const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
 
