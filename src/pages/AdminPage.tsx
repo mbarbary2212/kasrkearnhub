@@ -1,4 +1,6 @@
 import { useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
