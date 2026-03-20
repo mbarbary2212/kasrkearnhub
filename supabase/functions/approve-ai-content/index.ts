@@ -544,22 +544,25 @@ serve(async (req) => {
         );
       }
 
-      const mindMapsToInsert = items.map((item: any, idx: number) => ({
-        module_id: moduleId,
+      // Insert into mind_maps table with Markmap markdown format
+      const mindMapsToInsert = items.map((item: any) => ({
         chapter_id: chapterId,
-        resource_type: "mind_map",
-        title: item.title,
-        content: {
-          central_concept: item.central_concept,
-          nodes: ensureArray(item.nodes),
+        topic_id: topicId || null,
+        title: item.title || "Mind Map",
+        map_type: "full" as const,
+        source_type: "generated_markdown" as const,
+        markdown_content: item.markdown_content || "",
+        source_detection_metadata: {
+          source: "ai_content_factory",
+          job_id: jobId,
+          generated_at: new Date().toISOString(),
         },
-        display_order: idx,
+        status: "draft" as const,
         created_by: user.id,
-        is_deleted: false,
       }));
 
       const { error } = await serviceClient
-        .from("study_resources")
+        .from("mind_maps")
         .insert(mindMapsToInsert);
       if (error) {
         console.error(`[${jobId}] Mind map insert error:`, error.message);

@@ -191,6 +191,41 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
+// ─── PDF text extraction ─────────────────────────────────────────────
+
+function extractTextFromPdfBuffer(bytes: Uint8Array): string {
+  // Binary PDF text extraction — decode stream objects and extract readable text
+  const raw = new TextDecoder("latin1").decode(bytes);
+  const textChunks: string[] = [];
+
+  // Extract text from PDF stream objects using BT/ET markers
+  const btEtRegex = /BT\s([\s\S]*?)ET/g;
+  let match: RegExpExecArray | null;
+  while ((match = btEtRegex.exec(raw)) !== null) {
+    const block = match[1];
+    // Extract text from Tj and TJ operators
+    const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g);
+    if (tjMatches) {
+      for (const tj of tjMatches) {
+        const textMatch = tj.match(/\(([^)]*)\)/);
+        if (textMatch) textChunks.push(textMatch[1]);
+      }
+    }
+    // TJ array operator
+    const tjArrayMatches = block.match(/\[(.*?)\]\s*TJ/g);
+    if (tjArrayMatches) {
+      for (const tja of tjArrayMatches) {
+        const parts = tja.match(/\(([^)]*)\)/g);
+        if (parts) {
+          textChunks.push(parts.map(p => p.slice(1, -1)).join(""));
+        }
+      }
+    }
+  }
+
+  return textChunks.join(" ").replace(/\s+/g, " ").trim();
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function jsonResp(body: Record<string, unknown>, status = 200) {
@@ -268,14 +303,82 @@ serve(async (req) => {
     if (chapter_id) {
       const { data: chapter, error } = await serviceClient
         .from("module_chapters")
-        .select("title, pdf_text, pdf_url")
+        .select("title, pdf_text, pdf_url, module_id")
         .eq("id", chapter_id)
         .single();
       if (error || !chapter) return jsonError("NOT_FOUND", "Chapter not found", 404);
-      if (!chapter.pdf_text) return jsonError("NO_TEXT", "Chapter has no extracted PDF text. Upload a PDF first.", 400);
-      pdfText = chapter.pdf_text;
       sourceTitle = chapter.title;
       sourcePdfUrl = chapter.pdf_url || null;
+
+      if (chapter.pdf_text && chapter.pdf_text.length > 50) {
+        pdfText = chapter.pdf_text;
+        console.log(`[generate-mind-map] Using pdf_text from module_chapters (${pdfText.length} chars)`);
+      } else {
+        // Fallback: find an admin_document linked to this chapter
+        console.log("[generate-mind-map] No pdf_text in chapter, falling back to admin_documents...");
+        const { data: adminDoc } = await serviceClient
+          .from("admin_documents")
+          .select("storage_path, file_name")
+          .eq("chapter_id", chapter_id)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!adminDoc) {
+          // Try module-level document
+          const { data: moduleDoc } = await serviceClient
+            .from("admin_documents")
+            .select("storage_path, file_name")
+            .eq("module_id", chapter.module_id)
+            .eq("is_deleted", false)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (!moduleDoc) {
+            return jsonError("NO_TEXT", "No PDF content found. Upload a Content PDF for this chapter first.", 400);
+          }
+
+          // Download and extract text from module-level doc
+          const { data: signedData, error: signErr } = await serviceClient.storage
+            .from("admin-pdfs")
+            .createSignedUrl(moduleDoc.storage_path, 600);
+          if (signErr || !signedData?.signedUrl) {
+            return jsonError("STORAGE_ERROR", `Failed to get signed URL: ${signErr?.message || "unknown"}`, 500);
+          }
+
+          const pdfResponse = await fetch(signedData.signedUrl);
+          if (!pdfResponse.ok) {
+            return jsonError("DOWNLOAD_ERROR", `Failed to download PDF: ${pdfResponse.status}`, 500);
+          }
+          const pdfBuffer = await pdfResponse.arrayBuffer();
+          pdfText = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
+          sourcePdfUrl = signedData.signedUrl;
+          console.log(`[generate-mind-map] Extracted text from module doc "${moduleDoc.file_name}" (${pdfText.length} chars)`);
+        } else {
+          // Download and extract text from chapter-level doc
+          const { data: signedData, error: signErr } = await serviceClient.storage
+            .from("admin-pdfs")
+            .createSignedUrl(adminDoc.storage_path, 600);
+          if (signErr || !signedData?.signedUrl) {
+            return jsonError("STORAGE_ERROR", `Failed to get signed URL: ${signErr?.message || "unknown"}`, 500);
+          }
+
+          const pdfResponse = await fetch(signedData.signedUrl);
+          if (!pdfResponse.ok) {
+            return jsonError("DOWNLOAD_ERROR", `Failed to download PDF: ${pdfResponse.status}`, 500);
+          }
+          const pdfBuffer = await pdfResponse.arrayBuffer();
+          pdfText = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
+          sourcePdfUrl = signedData.signedUrl;
+          console.log(`[generate-mind-map] Extracted text from admin doc "${adminDoc.file_name}" (${pdfText.length} chars)`);
+        }
+
+        if (!pdfText || pdfText.length < 50) {
+          return jsonError("NO_TEXT", "PDF text extraction yielded insufficient content. The PDF may be image-based or empty.", 400);
+        }
+      }
     } else {
       const { data: topic, error } = await serviceClient
         .from("topics")

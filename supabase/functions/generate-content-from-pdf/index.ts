@@ -145,9 +145,14 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     section_number: "string (optional) - section number from the provided list",
   },
   mind_map: {
-    title: "string - topic title",
-    central_concept: "string - main concept at the center",
-    nodes: "array of objects - [{ id: string, label: string, parent_id: string | null, color: string }]",
+    title: "string - topic title for the mind map",
+    markdown_content: `string - Full Markmap-compatible markdown. MUST start with frontmatter:
+---
+markmap:
+  colorFreezeLevel: 2
+  initialExpandLevel: 2
+---
+Then a single root heading (#) followed by ##, ###, #### for hierarchy. No code blocks. No prose before headings.`,
     section_number: "string (optional) - section number from the provided list",
   },
   worked_case: {
@@ -547,10 +552,20 @@ function validateEssayItem(item: any, index: number): ValidationResult {
 
 function validateMindMapItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   if (!item.title || item.title.length < 3) errors.push(`Mind Map #${index + 1}: title is required`);
-  if (!item.central_concept || item.central_concept.length < 3) errors.push(`Mind Map #${index + 1}: central_concept is required`);
-  if (!Array.isArray(item.nodes) || item.nodes.length < 2) errors.push(`Mind Map #${index + 1}: nodes must be an array with at least 2 nodes`);
-  return { isValid: errors.length === 0, errors, warnings: [] };
+  if (!item.markdown_content || typeof item.markdown_content !== 'string') {
+    errors.push(`Mind Map #${index + 1}: markdown_content is required`);
+  } else {
+    const md = item.markdown_content;
+    if (!md.includes('---')) warnings.push(`Mind Map #${index + 1}: missing frontmatter`);
+    const rootHeadings = md.match(/^# [^\n]+/gm);
+    if (!rootHeadings || rootHeadings.length === 0) errors.push(`Mind Map #${index + 1}: no root heading (#) found`);
+    const subHeadings = md.match(/^## [^\n]+/gm);
+    if (!subHeadings || subHeadings.length === 0) errors.push(`Mind Map #${index + 1}: no ## headings found — map is flat`);
+    if (md.includes('```')) warnings.push(`Mind Map #${index + 1}: contains code blocks`);
+  }
+  return { isValid: errors.length === 0, errors, warnings };
 }
 
 function validatePathwayItem(item: any, index: number): ValidationResult {
