@@ -23,6 +23,7 @@ interface PresenceContextType {
   updatePresence: (pageState: Omit<PresenceUserState, 'user_id' | 'role'>) => void;
   onlineUsers: OnlineUser[];
   onlineCount: number;
+  wsCount: number;
 }
 
 const PresenceContext = createContext<PresenceContextType | undefined>(undefined);
@@ -35,6 +36,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   const baseStateRef = useRef<Pick<PresenceUserState, 'user_id' | 'role' | 'year_id'> | null>(null);
   const currentStateRef = useRef<PresenceUserState | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [wsCount, setWsCount] = useState(0);
 
   const updatePresence = useCallback((pageState: Omit<PresenceUserState, 'user_id' | 'role'>) => {
     if (!channelRef.current || !baseStateRef.current) return;
@@ -75,16 +77,15 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<PresenceUserState>();
         const users: OnlineUser[] = [];
+        let totalConnections = 0;
         for (const [, presences] of Object.entries(state)) {
-          for (const presence of presences) {
-            const p = presence as unknown as PresenceUserState & { presence_ref: string };
-            users.push({
-              presence_ref: p.presence_ref,
-              state: p,
-            });
-          }
+          totalConnections += presences.length;
+          // Use the most recent presence (last in array) to represent this user
+          const latest = presences[presences.length - 1] as unknown as PresenceUserState & { presence_ref: string };
+          users.push({ presence_ref: latest.presence_ref, state: latest });
         }
         setOnlineUsers(users);
+        setWsCount(totalConnections);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED' && currentStateRef.current) {
@@ -121,7 +122,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   }, [role, profile?.preferred_year_id]);
 
   return (
-    <PresenceContext.Provider value={{ updatePresence, onlineUsers, onlineCount: onlineUsers.length }}>
+    <PresenceContext.Provider value={{ updatePresence, onlineUsers, onlineCount: onlineUsers.length, wsCount }}>
       {children}
     </PresenceContext.Provider>
   );

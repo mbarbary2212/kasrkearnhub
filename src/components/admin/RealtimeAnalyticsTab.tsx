@@ -1,6 +1,8 @@
 import { Users, User, Monitor, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { usePresence, type PresenceUserState } from '@/contexts/PresenceContext';
+import { useYears } from '@/hooks/useYears';
 import { useMemo } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -44,6 +46,39 @@ const ACTIVITY_MAP: Record<string, Record<string, string>> = {
   },
 };
 
+// Short labels matching the app's UI tabs
+const TAB_SHORT: Record<string, Record<string, string>> = {
+  resources: {
+    lectures:            'Videos',
+    flashcards:          'Flashcards',
+    mind_maps:           'Mind Maps',
+    guided_explanations: 'Socrates',
+    reference_materials: 'Reference Materials',
+    clinical_tools:      'Clinical Tools',
+  },
+  interactive: {
+    cases:    'Cases',
+    pathways: 'Pathways',
+  },
+  practice: {
+    mcqs:       'MCQs',
+    sba:        'SBA',
+    true_false: 'True / False',
+    essays:     'Short Answer',
+    osce:       'OSCE',
+    practical:  'Practicals',
+    matching:   'Matching',
+    images:     'Image Questions',
+  },
+};
+
+const SECTION_SHORT: Record<string, string> = {
+  resources:   'Resources',
+  interactive: 'Interactive',
+  practice:    'Practice',
+  test:        'Test Yourself',
+};
+
 const PAGE_LABELS: Record<string, string> = {
   home:            'Home Page',
   year:            'Year Overview',
@@ -72,7 +107,73 @@ function getActivity(state: PresenceUserState): string {
   return PAGE_LABELS[state.page] ?? 'Browsing';
 }
 
+function getUserActivity(state: PresenceUserState): { section: string | null; tab: string | null } {
+  const isContentPage = state.page === 'topic' || state.page === 'chapter';
+  if (!isContentPage || !state.section_mode) return { section: null, tab: null };
+  const section = SECTION_SHORT[state.section_mode] ?? state.section_mode;
+  let tab: string | null = null;
+  if (state.section_mode === 'test') {
+    tab = null; // section label is enough
+  } else if (state.active_tab) {
+    tab = TAB_SHORT[state.section_mode]?.[state.active_tab] ?? null;
+  }
+  return { section, tab };
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function UserPresenceCard({
+  state,
+  yearName,
+}: {
+  state: PresenceUserState;
+  yearName?: string;
+}) {
+  const roleConfig = ROLE_CONFIG[state.role] ?? { label: state.role, className: 'bg-muted text-muted-foreground' };
+  const { section, tab } = getUserActivity(state);
+  const pageLabel = PAGE_LABELS[state.page] ?? 'Browsing';
+
+  return (
+    <Card className="hover:border-primary/40 transition-colors">
+      <CardContent className="p-4 space-y-2">
+        {/* Role badge */}
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${roleConfig.className}`}>
+          {roleConfig.label}
+        </span>
+
+        {/* Year + Module */}
+        <div className="space-y-0.5">
+          {yearName && (
+            <p className="text-xs text-muted-foreground">{yearName}</p>
+          )}
+          {state.module_name && (
+            <p className="text-sm font-medium truncate">{state.module_name}</p>
+          )}
+          {state.topic_name && (
+            <p className="text-xs text-muted-foreground truncate">{state.topic_name}</p>
+          )}
+        </div>
+
+        {/* Activity breadcrumb */}
+        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+          {section ? (
+            <>
+              <Badge variant="secondary" className="text-xs h-5 px-1.5">{section}</Badge>
+              {tab && (
+                <>
+                  <span className="text-muted-foreground text-xs">›</span>
+                  <Badge variant="outline" className="text-xs h-5 px-1.5 text-primary border-primary/30">{tab}</Badge>
+                </>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-primary/80 font-medium">{pageLabel}</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function StatCard({
   icon: Icon,
@@ -126,7 +227,14 @@ function BreakdownRow({ label, count, total }: { label: string; count: number; t
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function RealtimeAnalyticsTab() {
-  const { onlineUsers, onlineCount } = usePresence();
+  const { onlineUsers, onlineCount, wsCount } = usePresence();
+  const { data: years } = useYears();
+
+  const yearMap = useMemo(() => {
+    const map = new Map<string, string>();
+    years?.forEach(y => map.set(y.id, y.name));
+    return map;
+  }, [years]);
 
   const stats = useMemo(() => {
     const students = onlineUsers.filter(u => u.state.role === 'student').length;
@@ -212,6 +320,23 @@ export function RealtimeAnalyticsTab() {
         <span className="text-xs text-muted-foreground">Supabase Realtime · Updates live</span>
       </div>
 
+      {/* WebSocket connections bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">WebSocket Connections</span>
+            <span className="text-sm font-semibold">{wsCount} <span className="text-muted-foreground font-normal">/ 500</span></span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500 bg-primary/70"
+              style={{ width: `${Math.min((wsCount / 500) * 100, 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5">Each browser tab = 1 connection · Multi-tab users counted once in user total</p>
+        </CardContent>
+      </Card>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard icon={Users}    label="Total Online" value={onlineCount}      color="bg-primary/10 text-primary" />
@@ -293,6 +418,22 @@ export function RealtimeAnalyticsTab() {
               }
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Per-user cards */}
+      {onlineCount > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Who's Online</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {onlineUsers.map(u => (
+              <UserPresenceCard
+                key={u.presence_ref}
+                state={u.state}
+                yearName={u.state.year_id ? yearMap.get(u.state.year_id) : undefined}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
