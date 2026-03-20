@@ -432,6 +432,15 @@ Return ONLY the JSON array, no other text.`;
     const keyResult = await resolveApiKey(serviceClient, user.id, role, aiSettings);
     if (keyResult.error) return jsonError("AI_KEY_ERROR", keyResult.error, 500);
 
+    // Resolve the actual API key — when keySource is 'global', use GOOGLE_API_KEY from env
+    let geminiApiKey = keyResult.apiKey;
+    if (!geminiApiKey) {
+      geminiApiKey = Deno.env.get("GOOGLE_API_KEY");
+      if (!geminiApiKey) {
+        return jsonError("AI_KEY_ERROR", "No Google API key configured. Please set GOOGLE_API_KEY in Edge Function secrets.", 500);
+      }
+    }
+
     // ── Generate maps ─────────────────────────────────────────────
     const results: ResultItem[] = [];
     const pdfSize = pdfBytes.length;
@@ -440,7 +449,7 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "full" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating full chapter map via direct PDF-to-AI...");
       const userPrompt = `Create a full mind map for this chapter: "${sourceTitle}"`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, keyResult.apiKey);
+      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, geminiApiKey!);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
@@ -491,7 +500,7 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "sections" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating section maps via direct PDF-to-AI...");
       const userPrompt = `Analyze this PDF chapter "${sourceTitle}" and generate separate mind maps for each main section. Return the result as a JSON array as instructed.`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, keyResult.apiKey);
+      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, geminiApiKey!);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Section maps AI error:", aiResult.error);
