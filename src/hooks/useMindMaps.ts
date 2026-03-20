@@ -35,6 +35,7 @@ export interface GenerationResultItem {
   type: string;
   title: string;
   success: boolean;
+  status?: 'generated' | 'failed' | 'skipped';
   mapId?: string;
   errors?: string[];
 }
@@ -51,6 +52,7 @@ export interface GenerateMindMapResponse {
   results: GenerationResultItem[];
   total_generated: number;
   total_failed: number;
+  total_skipped: number;
 }
 
 const QUERY_KEY = ['mind-maps'];
