@@ -113,6 +113,7 @@ function SourceBadge({ source }: { source: string }) {
 export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<'full' | 'sections' | 'both'>('both');
+  const [selectedDocId, setSelectedDocId] = useState<string>('auto');
   const [previewMap, setPreviewMap] = useState<MindMap | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MindMap | null>(null);
   const [lastResult, setLastResult] = useState<GenerateMindMapResponse | null>(null);
@@ -123,10 +124,22 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
   const updateStatus = useUpdateMindMapStatus();
   const deleteMutation = useDeleteMindMap();
 
+  // Fetch available PDF documents for this chapter/module
+  const { data: availableDocs = [] } = useAdminDocuments({
+    chapter_id: chapterId,
+  });
+
+  // Filter to only PDF-type documents
+  const pdfDocs = useMemo(() =>
+    availableDocs.filter(d => d.mime_type?.includes('pdf')),
+    [availableDocs]
+  );
+
   const handleGenerate = () => {
     const req = { generation_mode: generationMode } as any;
     if (chapterId) req.chapter_id = chapterId;
     if (topicId) req.topic_id = topicId;
+    if (selectedDocId && selectedDocId !== 'auto') req.document_id = selectedDocId;
 
     generate.mutate(req, {
       onSuccess: (data) => {
