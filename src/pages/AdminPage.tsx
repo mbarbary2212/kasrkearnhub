@@ -1,4 +1,6 @@
 import { useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -21,8 +23,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
-import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
+import { AppRole } from '@/types/database';
+import type { Year, Module } from '@/types/curriculum';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
@@ -52,11 +54,7 @@ import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
 import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 
-interface UserWithRole extends Profile {
-  role: AppRole;
-  departmentAssignments?: DepartmentAdmin[];
-  moduleAssignments?: ModuleAdmin[];
-}
+
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
@@ -996,11 +994,6 @@ export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, role, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [years, setYears] = useState<Year[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [studentSearch, setStudentSearch] = useState('');
@@ -1024,6 +1017,13 @@ export default function AdminPage() {
   }>({ open: false, action: null, user: null });
 
   const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
+
+  const queryClient = useQueryClient();
+  const { data: adminData, isLoading: adminDataLoading } = useAdminData(!!isAdmin);
+  const users = adminData?.users ?? [];
+  const departments = adminData?.departments ?? [];
+  const years = adminData?.years ?? [];
+  const modules = adminData?.modules ?? [];
 
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
@@ -1093,81 +1093,6 @@ export default function AdminPage() {
     }
   }, [user, isAdmin, authLoading, navigate]);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!isAdmin) return;
-
-      try {
-        // Fetch all profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*');
-
-        if (profilesError) throw profilesError;
-
-        // Fetch all roles
-        const { data: roles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('*');
-
-        if (rolesError) throw rolesError;
-
-        // Fetch department assignments (legacy)
-        const { data: deptAssignments } = await supabase
-          .from('department_admins')
-          .select('*');
-
-        // Fetch module assignments
-        const { data: moduleAssignments } = await supabase
-          .from('module_admins')
-          .select('*');
-
-        // Fetch departments (for reference)
-        const { data: depts } = await supabase
-          .from('departments')
-          .select('*')
-          .order('display_order');
-
-        // Fetch years
-        const { data: yearsData } = await supabase
-          .from('years')
-          .select('*')
-          .order('display_order');
-
-        // Fetch modules
-        const { data: modulesData } = await supabase
-          .from('modules')
-          .select('*')
-          .order('display_order');
-
-        setDepartments((depts as Department[]) || []);
-        setYears((yearsData as Year[]) || []);
-        setModules((modulesData as Module[]) || []);
-
-        // Combine profiles with roles and assignments
-        const usersWithRoles = (profiles || []).map((profile) => {
-          const userRole = roles?.find(r => r.user_id === profile.id);
-          const userDeptAssignments = deptAssignments?.filter(a => a.user_id === profile.id) || [];
-          const userModuleAssignments = moduleAssignments?.filter(a => a.user_id === profile.id) || [];
-          return {
-            ...profile,
-            role: (userRole?.role as AppRole) || 'student',
-            departmentAssignments: userDeptAssignments as DepartmentAdmin[],
-            moduleAssignments: userModuleAssignments as ModuleAdmin[],
-          };
-        });
-
-        setUsers(usersWithRoles);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to load data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [isAdmin]);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
@@ -1193,13 +1118,7 @@ export default function AdminPage() {
         await supabase.from('topic_admins').delete().eq('user_id', userId);
       }
 
-      setUsers(prev =>
-        prev.map(u => 
-          u.id === userId 
-            ? { ...u, role: newRole, moduleAssignments: newRole === 'department_admin' ? u.moduleAssignments : [] } 
-            : u
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Role updated successfully');
     } catch (error) {
@@ -1231,24 +1150,7 @@ export default function AdminPage() {
         throw error;
       }
 
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === userId) {
-            const newAssignment: ModuleAdmin = {
-              id: crypto.randomUUID(),
-              user_id: userId,
-              module_id: moduleId,
-              assigned_by: user?.id || null,
-              created_at: new Date().toISOString(),
-            };
-            return {
-              ...u,
-              moduleAssignments: [...(u.moduleAssignments || []), newAssignment],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       setSelectedModule('');
       toast.success('Module assigned successfully');
@@ -1281,26 +1183,7 @@ export default function AdminPage() {
         if (error) throw error;
       }
 
-      // Update local state
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === maSelectedUserId) {
-            const newAssignments = newModuleIds.map(moduleId => ({
-              id: crypto.randomUUID(),
-              user_id: maSelectedUserId,
-              module_id: moduleId,
-              assigned_by: user?.id || null,
-              created_at: new Date().toISOString(),
-            }));
-            return {
-              ...u,
-              role: 'department_admin' as AppRole,
-              moduleAssignments: [...(u.moduleAssignments || []), ...newAssignments],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Module Admin assigned successfully');
       setModuleAdminAssignDialogOpen(false);
@@ -1327,17 +1210,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === userId) {
-            return {
-              ...u,
-              moduleAssignments: u.moduleAssignments?.filter(a => a.module_id !== moduleId) || [],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Module assignment removed');
     } catch (error) {
@@ -1390,7 +1263,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setModules(prev => [...prev, data as Module]);
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       resetModuleForm();
       toast.success('Module created successfully');
@@ -1421,7 +1294,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setModules(prev => prev.map(m => m.id === editingModule.id ? data as Module : m));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       setEditingModule(null);
       resetModuleForm();
@@ -1445,7 +1318,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setModules(prev => prev.filter(m => m.id !== moduleId));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       toast.success('Module deleted successfully');
     } catch (error) {
       console.error('Error deleting module:', error);
@@ -1482,7 +1355,7 @@ export default function AdminPage() {
   };
 
 
-  if (authLoading || isLoading) {
+  if (authLoading || adminDataLoading) {
 
     return (
       <MainLayout>
@@ -2244,7 +2117,6 @@ export default function AdminPage() {
               <CurriculumSourcesTab
                 modules={modules}
                 years={years}
-                setModules={setModules}
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
             </TabsContent>

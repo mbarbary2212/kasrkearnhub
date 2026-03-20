@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +19,10 @@ import { DeptAssignmentsSection } from './DeptAssignmentsSection';
 interface CurriculumTabProps {
   modules: Module[];
   years: Year[];
-  setModules: React.Dispatch<React.SetStateAction<Module[]>>;
 }
 
-export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps) {
+export function CurriculumTab({ modules, years }: CurriculumTabProps) {
+  const queryClient = useQueryClient();
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   
@@ -92,7 +93,7 @@ export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps
 
       if (error) throw error;
 
-      setModules(prev => [...prev, data as Module]);
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       resetModuleForm();
       toast.success('Module created successfully');
@@ -123,7 +124,7 @@ export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps
 
       if (error) throw error;
 
-      setModules(prev => prev.map(m => m.id === editingModule.id ? data as Module : m));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       setEditingModule(null);
       resetModuleForm();
@@ -147,7 +148,7 @@ export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps
 
       if (error) throw error;
 
-      setModules(prev => prev.filter(m => m.id !== moduleId));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       toast.success('Module deleted successfully');
     } catch (error) {
       console.error('Error deleting module:', error);

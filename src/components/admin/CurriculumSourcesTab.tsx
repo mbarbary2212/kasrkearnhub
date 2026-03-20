@@ -9,11 +9,10 @@ import type { Year, Module } from '@/types/curriculum';
 interface CurriculumSourcesTabProps {
   modules: Module[];
   years: Year[];
-  setModules: (m: Module[]) => void;
   moduleAdminModuleIds: string[];
 }
 
-export function CurriculumSourcesTab({ modules, years, setModules, moduleAdminModuleIds }: CurriculumSourcesTabProps) {
+export function CurriculumSourcesTab({ modules, years, moduleAdminModuleIds }: CurriculumSourcesTabProps) {
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin } = useAuthContext();
 
   const tabs = [
@@ -44,7 +43,7 @@ export function CurriculumSourcesTab({ modules, years, setModules, moduleAdminMo
         </TabsList>
 
         <TabsContent value="curriculum" className="mt-4">
-          <CurriculumTab modules={modules} years={years} setModules={setModules} />
+          <CurriculumTab modules={modules} years={years} />
         </TabsContent>
 
         <TabsContent value="pdf-library" className="mt-4">
