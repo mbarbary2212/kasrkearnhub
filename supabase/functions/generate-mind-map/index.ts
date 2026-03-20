@@ -303,7 +303,7 @@ serve(async (req) => {
     if (chapter_id) {
       const { data: chapter, error } = await serviceClient
         .from("module_chapters")
-        .select("title, pdf_text, pdf_url")
+        .select("title, pdf_text, pdf_url, module_id")
         .eq("id", chapter_id)
         .single();
       if (error || !chapter) return jsonError("NOT_FOUND", "Chapter not found", 404);
