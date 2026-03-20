@@ -1,46 +1,43 @@
 
 
+# Fix: Logo Invisible in Dark Mode and Smaller in Light Mode
 
-# Session 6: Link Mind Map Generation to Admin Documents PDF + Unify AI Content Factory
+## Problem
 
-## Summary
+The logo `<img>` tag has two conflicting style rules:
+- `style={{ mixBlendMode: 'multiply' }}` — always active, makes the logo invisible on dark backgrounds (multiply blends to black)
+- `dark:brightness-0 dark:invert` — sets brightness to 0 (all black) then inverts (all white), but multiply blend mode cancels it out on a dark card background
 
-Fixed two disconnects: (A) `generate-mind-map` now falls back to `admin_documents` when `module_chapters.pdf_text` is empty, (B) the AI Content Factory now generates Markmap markdown and saves to the `mind_maps` table instead of legacy JSON to `study_resources`.
+The result: logo disappears in dark mode, and pressing it shows a white rectangle (the inverted image before blend mode hides it).
 
----
+## Fix
 
-## Changes Made
+**File**: `src/components/layout/MainLayout.tsx` (line 122)
 
-### Part A — `generate-mind-map` PDF Fallback
-- After checking `module_chapters.pdf_text`, falls back to querying `admin_documents` by `chapter_id`, then by `module_id`
-- Downloads PDF via signed URL from `admin-pdfs` bucket
-- Extracts text using binary BT/ET PDF text extraction
-- Clear error message if no PDF found anywhere
+1. Remove the inline `style={{ mixBlendMode: 'multiply' }}` — it cannot be conditionally toggled per theme
+2. Add a CSS utility class in `src/index.css` that applies `mix-blend-mode: multiply` only in light mode:
+   ```css
+   .logo-blend-light {
+     mix-blend-mode: multiply;
+   }
+   .dark .logo-blend-light {
+     mix-blend-mode: normal;
+   }
+   ```
+3. Update the `<img>` classes:
+   - Light mode: `logo-blend-light` handles the blend, no filter needed
+   - Dark mode: `dark:invert` only (no `dark:brightness-0`) + `mix-blend-mode: normal` so the inverted logo is fully visible on the dark card background
 
-### Part B — AI Content Factory Unified to `mind_maps` Table
+Final tag:
+```tsx
+<img src={logo} alt="KALM Hub Logo" 
+  className="h-[72px] md:h-[80px] w-auto object-cover object-top logo-blend-light dark:invert" />
+```
 
-1. **`generate-content-from-pdf/index.ts`**: Updated `mind_map` schema to request Markmap markdown with frontmatter instead of JSON nodes. Updated `validateMindMapItem` to validate markdown format.
+## Files Modified
 
-2. **`approve-ai-content/index.ts`**: Mind map approval now inserts into `mind_maps` table with `markdown_content`, `source_type: "generated_markdown"`, `status: "draft"` instead of `study_resources`.
-
-3. **`AIContentFactoryModal.tsx`**: Added `mind-maps` query key invalidation on approval.
-
-### Part C — Improved Error Messaging, Logging & Source Transparency
-
-1. **Error messages**: Replaced "image-based" assumptions with accurate diagnosis about compressed/encoded PDF streams.
-2. **Source method tracking**: Response now includes `source_method` field (`chapter_pdf_text`, `selected_document`, `auto_detected_document`).
-3. **Dual character counts**: Response includes `chapter_pdf_text_length` alongside extraction length for comparison.
-4. **Enhanced logging**: Structured console.log entries show document title, char count, and source method used.
-5. **Result dialog**: Shows source method label and both character counts when available.
-
-### Files Modified
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-mind-map/index.ts` | Admin documents PDF fallback + text extraction + improved error msgs + source_method |
-| `supabase/functions/generate-content-from-pdf/index.ts` | Mind map schema → Markmap markdown |
-| `supabase/functions/approve-ai-content/index.ts` | Insert into `mind_maps` table |
-| `src/components/admin/AIContentFactoryModal.tsx` | Added `mind-maps` query invalidation |
-| `src/hooks/useMindMaps.ts` | Updated source_document type with source_method + chapter_pdf_text_length |
-| `src/components/admin/MindMapAdminPanel.tsx` | Enhanced result dialog with source method + dual counts |
+| `src/index.css` | Add `.logo-blend-light` / `.dark .logo-blend-light` utility |
+| `src/components/layout/MainLayout.tsx` | Remove inline style, update classes |
 
-### No new files. No database migrations needed.
