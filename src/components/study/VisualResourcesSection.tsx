@@ -13,6 +13,8 @@ import { MindMapViewer } from './MindMapViewer';
 import { InfographicViewer } from './InfographicViewer';
 import { VisualResourcesAdminTable } from './VisualResourcesAdminTable';
 import { MindMapAdminPanel } from '@/components/admin/MindMapAdminPanel';
+import { AIMindMapCards } from './AIMindMapCards';
+import { usePublishedMindMaps } from '@/hooks/useMindMaps';
 
 interface VisualResourcesSectionProps {
   mindMaps: StudyResource[];
@@ -52,6 +54,7 @@ export function VisualResourcesSection({
 
   const { starredIds, toggleStar, isStarred } = useFlashcardStars({ chapterId, topicId });
   const { data: sections = [] } = useChapterSections(chapterId);
+  const { data: publishedAIMaps = [], isLoading: aiMapsLoading } = usePublishedMindMaps(chapterId, topicId);
 
   const filterItems = (items: StudyResource[]) => {
     let filtered = filterBySection ? filterBySection(items) : items;
@@ -99,7 +102,9 @@ export function VisualResourcesSection({
       <Tabs defaultValue="mind_map" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
           {SUBTABS.map(({ type, label, icon: Icon, activeClass }) => {
-            const count = type === 'mind_map' ? mindMaps.length : infographics.length;
+            const count = type === 'mind_map'
+              ? mindMaps.length + publishedAIMaps.length
+              : infographics.length;
             return (
               <TabsTrigger key={type} value={type} className={`flex items-center gap-2 px-3 py-2 whitespace-nowrap ${activeClass}`}>
                 <Icon className="w-4 h-4" />
@@ -133,13 +138,20 @@ export function VisualResourcesSection({
               onDelete={onEdit ? (r) => requestResourceDelete(r.resource_type as any, r.id, r.title) : undefined}
             />
           ) : (
-            <MindMapViewer
-              resources={filteredMindMaps}
-              canManage={canManage}
-              onEdit={onEdit}
-              chapterId={chapterId}
-              topicId={topicId}
-            />
+            <div className="space-y-6">
+              {/* AI-generated published maps (student-facing) */}
+              {!canManage && (
+                <AIMindMapCards maps={publishedAIMaps} isLoading={aiMapsLoading} />
+              )}
+              {/* Legacy study_resources mind maps */}
+              <MindMapViewer
+                resources={filteredMindMaps}
+                canManage={canManage}
+                onEdit={onEdit}
+                chapterId={chapterId}
+                topicId={topicId}
+              />
+            </div>
           )}
         </TabsContent>
 
