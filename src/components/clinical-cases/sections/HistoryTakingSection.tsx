@@ -962,6 +962,26 @@ export function HistoryTakingSection({
                   جاري التفكير...
                 </div>
               )}
+
+              {/* Mic prompt — show after greeting, before student speaks */}
+              {!greetingPlaying && !isListening && !isSending && !isSpeaking && chatMessages.filter(m => m.role === 'user').length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                  <Mic className="w-4 h-4" />
+                  <span>🎤 اضغط على الميكروفون لبدء الأسئلة</span>
+                </div>
+              )}
+
+              {/* Patient speech bubble — enlarged, centered */}
+              <div
+                ref={voiceBubbleRef}
+                className={cn(
+                  'rounded-xl bg-card border px-4 py-3 text-base text-card-foreground max-w-sm w-full max-h-40 overflow-y-auto transition-opacity duration-500',
+                  displayedText ? 'opacity-100' : 'opacity-0'
+                )}
+                dir="rtl"
+              >
+                {displayedText || '\u00A0'}
+              </div>
             </div>
 
             {/* Right column: Student avatar */}
