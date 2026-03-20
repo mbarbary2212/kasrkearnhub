@@ -24,10 +24,19 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // If it's a chunk load error, don't set error state — componentDidCatch will reload
+    if (isChunkLoadError(error)) {
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (isChunkLoadError(error)) {
+      console.warn('[GlobalErrorBoundary] Detected chunk load error, reloading:', error.message);
+      window.location.reload();
+      return;
+    }
     // Log the error without exposing details to users
     logDiagnostic('runtime', 'Uncaught runtime error', {
       errorMessage: error.message,
