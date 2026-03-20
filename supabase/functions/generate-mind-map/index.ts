@@ -684,6 +684,8 @@ markmap:
         name: sourceDocumentName,
         id: sourceDocumentId,
         text_length: pdfText.length,
+        source_method: sourceMethod,
+        chapter_pdf_text_length: chapterPdfTextLength,
       },
       detection: {
         method: detection.method,
