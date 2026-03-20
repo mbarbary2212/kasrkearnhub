@@ -27,44 +27,34 @@ interface DetectionResult {
   rawCandidateCount: number;
 }
 
-/**
- * Universal section detection – tries multiple heading patterns.
- * Returns sections sorted by document order.
- */
 function detectSections(rawText: string): DetectionResult {
   const text = normalizeText(rawText);
 
-  // Patterns ordered by specificity
   const patterns: { name: string; regex: RegExp; extractNum: (m: RegExpMatchArray) => string; extractTitle: (m: RegExpMatchArray) => string }[] = [
-    // 1.1, 2.3, 10.4 style
     {
       name: "decimal_numbered",
       regex: /^(\d{1,3}\.\d{1,3})\s+([A-Z][^\n]{3,80})$/gm,
       extractNum: (m) => m[1],
       extractTitle: (m) => m[2].trim(),
     },
-    // 1.1.1 sub-sub style
     {
       name: "triple_decimal",
       regex: /^(\d{1,3}\.\d{1,3}\.\d{1,3})\s+([A-Z][^\n]{3,80})$/gm,
       extractNum: (m) => m[1],
       extractTitle: (m) => m[2].trim(),
     },
-    // Section 1, Section 2
     {
       name: "section_keyword",
       regex: /^Section\s+(\d+)[:\s]+([^\n]{3,80})$/gim,
       extractNum: (m) => m[1],
       extractTitle: (m) => m[2].trim(),
     },
-    // I., II., III. Roman numerals
     {
       name: "roman_numeral",
       regex: /^((?:I{1,3}|IV|V(?:I{0,3})|IX|X(?:I{0,3})))\.\s+([A-Z][^\n]{3,80})$/gm,
       extractNum: (m) => m[1],
       extractTitle: (m) => m[2].trim(),
     },
-    // ALL CAPS heading (heuristic fallback)
     {
       name: "caps_heading",
       regex: /^([A-Z][A-Z\s&,\-]{4,60})$/gm,
@@ -84,9 +74,7 @@ function detectSections(rawText: string): DetectionResult {
       const num = pattern.extractNum(match);
       const title = pattern.extractTitle(match);
 
-      // Skip very short or purely numeric titles
       if (title.length < 3 || /^\d+$/.test(title)) continue;
-      // Skip common false positives
       if (/^(TABLE|FIGURE|DIAGRAM|REFERENCES|BIBLIOGRAPHY|INDEX|CONTENTS)/i.test(title)) continue;
 
       candidates.push({
@@ -94,7 +82,7 @@ function detectSections(rawText: string): DetectionResult {
         title,
         number: num || null,
         startIndex: match.index,
-        endIndex: -1, // filled later
+        endIndex: -1,
         text: "",
         confidence: 0,
       });
@@ -102,18 +90,16 @@ function detectSections(rawText: string): DetectionResult {
 
     if (candidates.length < 2) continue;
 
-    // Assign end indices & extract section text
     for (let i = 0; i < candidates.length; i++) {
       candidates[i].endIndex = i < candidates.length - 1 ? candidates[i + 1].startIndex : text.length;
       candidates[i].text = text.slice(candidates[i].startIndex, candidates[i].endIndex).trim();
     }
 
-    // Score confidence
     const hasConsistentNumbering = candidates.every((c) => c.number !== null);
     const avgTextLen = candidates.reduce((s, c) => s + c.text.length, 0) / candidates.length;
     const reasonableSize = avgTextLen > 100 && avgTextLen < 50000;
 
-    let confidence = 0.3; // base
+    let confidence = 0.3;
     if (hasConsistentNumbering) confidence += 0.35;
     if (reasonableSize) confidence += 0.2;
     if (candidates.length >= 3 && candidates.length <= 30) confidence += 0.15;
@@ -152,6 +138,11 @@ interface ValidationResult {
 function validateMarkmapMarkdown(md: string): ValidationResult {
   const errors: string[] = [];
 
+  // Reject fenced code blocks
+  if (md.includes("```")) {
+    errors.push("Output contains fenced code blocks (```) — must be pure Markmap Markdown");
+  }
+
   // Check frontmatter
   if (!md.startsWith("---")) {
     errors.push("Missing Markmap frontmatter (must start with ---)");
@@ -164,10 +155,16 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
       if (!fm.includes("markmap")) {
         errors.push("Frontmatter missing 'markmap' key");
       }
+      if (!fm.includes("colorFreezeLevel")) {
+        errors.push("Frontmatter missing 'colorFreezeLevel' key");
+      }
+      if (!fm.includes("initialExpandLevel")) {
+        errors.push("Frontmatter missing 'initialExpandLevel' key");
+      }
     }
   }
 
-  // Count root headings (# at start of line, not ## or ###)
+  // Count root headings
   const rootHeadings = md.match(/^# [^\n]+/gm);
   if (!rootHeadings || rootHeadings.length === 0) {
     errors.push("No root heading (# Title) found");
@@ -175,7 +172,13 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
     errors.push(`Multiple root headings found (${rootHeadings.length}), expected exactly 1`);
   }
 
-  // Check for non-markdown prose before/after
+  // Must have at least one ## heading (not flat)
+  const subHeadings = md.match(/^## [^\n]+/gm);
+  if (!subHeadings || subHeadings.length === 0) {
+    errors.push("No secondary headings (##) found — map is flat/useless");
+  }
+
+  // Check for prose before first heading
   const afterFm = md.indexOf("---", 3);
   if (afterFm > -1) {
     const body = md.slice(afterFm + 3).trim();
@@ -200,6 +203,17 @@ function jsonResp(body: Record<string, unknown>, status = 200) {
 function jsonError(error: string, detail: string, status = 400) {
   console.error(`[generate-mind-map] ${error}: ${detail}`);
   return jsonResp({ error, detail }, status);
+}
+
+// ─── Result item type ────────────────────────────────────────────────
+
+interface ResultItem {
+  type: string;
+  title: string;
+  success: boolean;
+  status: "generated" | "failed" | "skipped";
+  mapId?: string;
+  errors?: string[];
 }
 
 // ─── Main handler ────────────────────────────────────────────────────
@@ -270,9 +284,10 @@ serve(async (req) => {
         .single();
       if (error || !topic) return jsonError("NOT_FOUND", "Topic not found", 404);
       sourceTitle = topic.name;
-      // Topics may not have pdf_text — allow but warn
       return jsonError("NOT_IMPLEMENTED", "Topic-based generation not yet supported (no pdf_text field on topics)", 400);
     }
+
+    const textLengthOriginal = pdfText.length;
 
     // ── Section detection ─────────────────────────────────────────
     const detection = detectSections(pdfText);
@@ -311,7 +326,8 @@ markmap:
 - Use ##, ###, #### for hierarchy
 - Focus on: classifications, mechanisms, indications, complications, clinical relationships
 - Keep nodes concise and exam-oriented
-- No explanatory text before or after the markdown`;
+- No explanatory text before or after the markdown
+- Do NOT wrap output in code blocks`;
 
     const defaultSectionPrompt = `Analyze the provided section content and create a focused hierarchical mind map in Markdown compatible with Markmap.
 
@@ -330,7 +346,8 @@ markmap:
 - Be detailed since this covers a single section
 - Focus on: key concepts, pathophysiology, diagnosis, management, clinical pearls
 - Keep nodes concise and exam-oriented
-- No explanatory text before or after the markdown`;
+- No explanatory text before or after the markdown
+- Do NOT wrap output in code blocks`;
 
     const fullSystemPrompt = fullPromptRow?.system_prompt || defaultFullPrompt;
     const sectionSystemPrompt = sectionPromptRow?.system_prompt || defaultSectionPrompt;
@@ -344,26 +361,29 @@ markmap:
     if (keyResult.error) return jsonError("AI_KEY_ERROR", keyResult.error, 500);
 
     // ── Generate maps ─────────────────────────────────────────────
-    const results: { type: string; title: string; success: boolean; mapId?: string; errors?: string[] }[] = [];
+    const results: ResultItem[] = [];
+    const FULL_TRUNCATE_LIMIT = 120000;
+    const SECTION_TRUNCATE_LIMIT = 80000;
+    const MIN_SECTION_LENGTH = 200;
 
     // Full map
     if (generation_mode === "full" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating full chapter map...");
-      const userPrompt = `Chapter: "${sourceTitle}"\n\nFull PDF content:\n\n${pdfText.slice(0, 120000)}`;
+      const textSent = pdfText.slice(0, FULL_TRUNCATE_LIMIT);
+      const userPrompt = `Chapter: "${sourceTitle}"\n\nFull PDF content:\n\n${textSent}`;
       const aiResult = await callAI(fullSystemPrompt, userPrompt, provider, keyResult.apiKey);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
-        results.push({ type: "full", title: sourceTitle, success: false, errors: [aiResult.error || "AI call failed"] });
+        results.push({ type: "full", title: sourceTitle, success: false, status: "failed", errors: [aiResult.error || "AI call failed"] });
       } else {
         const markdown = aiResult.content!.trim();
         const validation = validateMarkmapMarkdown(markdown);
 
         if (!validation.valid) {
           console.error("[generate-mind-map] Full map validation failed:", validation.errors);
-          results.push({ type: "full", title: sourceTitle, success: false, errors: validation.errors });
+          results.push({ type: "full", title: sourceTitle, success: false, status: "failed", errors: validation.errors });
         } else {
-          // Save as draft
           const { data: saved, error: saveErr } = await serviceClient
             .from("mind_maps")
             .insert({
@@ -378,6 +398,10 @@ markmap:
                 detection_method: detection.method,
                 detection_confidence: detection.overallConfidence,
                 sections_found: detection.sections.length,
+                text_length_original: textLengthOriginal,
+                text_length_sent_to_ai: textSent.length,
+                was_truncated: textLengthOriginal > FULL_TRUNCATE_LIMIT,
+                prompt_snapshot: fullSystemPrompt,
                 generated_at: new Date().toISOString(),
               },
               prompt_version: fullPromptVersion,
@@ -389,9 +413,9 @@ markmap:
 
           if (saveErr) {
             console.error("[generate-mind-map] Save error:", saveErr);
-            results.push({ type: "full", title: sourceTitle, success: false, errors: [saveErr.message] });
+            results.push({ type: "full", title: sourceTitle, success: false, status: "failed", errors: [saveErr.message] });
           } else {
-            results.push({ type: "full", title: sourceTitle, success: true, mapId: saved.id });
+            results.push({ type: "full", title: sourceTitle, success: true, status: "generated", mapId: saved.id });
           }
         }
       }
@@ -401,7 +425,6 @@ markmap:
     if ((generation_mode === "sections" || generation_mode === "both") && detection.sections.length >= 2) {
       console.log(`[generate-mind-map] Generating ${detection.sections.length} section maps...`);
 
-      // Try to match sections to existing DB sections
       let dbSections: { id: string; name: string; section_number: string | null }[] = [];
       if (chapter_id) {
         const { data } = await serviceClient
@@ -413,15 +436,30 @@ markmap:
       }
 
       for (const section of detection.sections) {
-        console.log(`[generate-mind-map] Generating map for section: ${section.number || ""} ${section.title}`);
-
         const sectionLabel = section.number ? `${section.number} ${section.title}` : section.title;
-        const userPrompt = `Section: "${sectionLabel}"\nFrom chapter: "${sourceTitle}"\n\nSection content:\n\n${section.text.slice(0, 80000)}`;
+
+        // Skip short sections
+        if (section.text.length < MIN_SECTION_LENGTH) {
+          console.log(`[generate-mind-map] Skipping short section "${sectionLabel}" (${section.text.length} chars)`);
+          results.push({
+            type: "section",
+            title: sectionLabel,
+            success: false,
+            status: "skipped",
+            errors: [`Section too short (${section.text.length} chars, minimum ${MIN_SECTION_LENGTH})`],
+          });
+          continue;
+        }
+
+        console.log(`[generate-mind-map] Generating map for section: ${sectionLabel}`);
+
+        const textSent = section.text.slice(0, SECTION_TRUNCATE_LIMIT);
+        const userPrompt = `Section: "${sectionLabel}"\nFrom chapter: "${sourceTitle}"\n\nSection content:\n\n${textSent}`;
         const aiResult = await callAI(sectionSystemPrompt, userPrompt, provider, keyResult.apiKey);
 
         if (!aiResult.success) {
           console.error(`[generate-mind-map] Section "${sectionLabel}" AI error:`, aiResult.error);
-          results.push({ type: "section", title: sectionLabel, success: false, errors: [aiResult.error || "AI call failed"] });
+          results.push({ type: "section", title: sectionLabel, success: false, status: "failed", errors: [aiResult.error || "AI call failed"] });
           continue;
         }
 
@@ -430,7 +468,7 @@ markmap:
 
         if (!validation.valid) {
           console.error(`[generate-mind-map] Section "${sectionLabel}" validation failed:`, validation.errors);
-          results.push({ type: "section", title: sectionLabel, success: false, errors: validation.errors });
+          results.push({ type: "section", title: sectionLabel, success: false, status: "failed", errors: validation.errors });
           continue;
         }
 
@@ -466,6 +504,10 @@ markmap:
               detection_confidence: section.confidence,
               section_text_length: section.text.length,
               matched_db_section_id: matchedSectionId,
+              text_length_original: section.text.length,
+              text_length_sent_to_ai: textSent.length,
+              was_truncated: section.text.length > SECTION_TRUNCATE_LIMIT,
+              prompt_snapshot: sectionSystemPrompt,
               generated_at: new Date().toISOString(),
             },
             prompt_version: sectionPromptVersion,
@@ -477,12 +519,12 @@ markmap:
 
         if (saveErr) {
           console.error(`[generate-mind-map] Section save error:`, saveErr);
-          results.push({ type: "section", title: sectionLabel, success: false, errors: [saveErr.message] });
+          results.push({ type: "section", title: sectionLabel, success: false, status: "failed", errors: [saveErr.message] });
         } else {
-          results.push({ type: "section", title: sectionLabel, success: true, mapId: saved.id });
+          results.push({ type: "section", title: sectionLabel, success: true, status: "generated", mapId: saved.id });
         }
 
-        // Small delay between AI calls to avoid rate limits
+        // Small delay between AI calls
         await new Promise((r) => setTimeout(r, 500));
       }
     } else if ((generation_mode === "sections" || generation_mode === "both") && detection.sections.length < 2) {
@@ -491,6 +533,7 @@ markmap:
         type: "section",
         title: "Section detection",
         success: false,
+        status: "failed",
         errors: [`Only ${detection.sections.length} section(s) detected (confidence: ${detection.overallConfidence}). Section maps require at least 2 sections.`],
       });
     }
@@ -509,8 +552,9 @@ markmap:
         })),
       },
       results,
-      total_generated: results.filter((r) => r.success).length,
-      total_failed: results.filter((r) => !r.success).length,
+      total_generated: results.filter((r) => r.status === "generated").length,
+      total_failed: results.filter((r) => r.status === "failed").length,
+      total_skipped: results.filter((r) => r.status === "skipped").length,
     });
   } catch (err) {
     console.error("[generate-mind-map] Unhandled error:", err);

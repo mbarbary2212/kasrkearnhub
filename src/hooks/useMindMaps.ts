@@ -100,12 +100,16 @@ export function useGenerateMindMap() {
       qc.invalidateQueries({ queryKey: [...QUERY_KEY, variables.chapter_id, variables.topic_id] });
       const ok = data.total_generated;
       const fail = data.total_failed;
-      if (ok > 0 && fail === 0) {
+      const skip = data.total_skipped || 0;
+      if (ok > 0 && fail === 0 && skip === 0) {
         toast.success(`Generated ${ok} mind map${ok > 1 ? 's' : ''} as drafts`);
-      } else if (ok > 0 && fail > 0) {
-        toast.warning(`Generated ${ok} map${ok > 1 ? 's' : ''}, ${fail} failed`);
+      } else if (ok > 0) {
+        const parts = [`${ok} generated`];
+        if (fail > 0) parts.push(`${fail} failed`);
+        if (skip > 0) parts.push(`${skip} skipped`);
+        toast.warning(parts.join(', '));
       } else {
-        toast.error(`All ${fail} generation${fail > 1 ? 's' : ''} failed`);
+        toast.error(`All ${fail + skip} generation${fail + skip > 1 ? 's' : ''} failed or skipped`);
       }
     },
     onError: (err: Error) => {
