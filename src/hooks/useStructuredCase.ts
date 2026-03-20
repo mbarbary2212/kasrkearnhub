@@ -28,7 +28,7 @@ export function useCreateStructuredCase() {
         is_ai_driven: true,
         is_published: false,
         is_deleted: false,
-        max_turns: 10,
+        max_turns: 5,
         created_by: user?.id,
         avatar_id: data.avatar_id,
         history_interaction_mode: data.history_interaction_mode || 'text',

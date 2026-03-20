@@ -167,6 +167,19 @@ export default function VirtualPatientRunner() {
   const activeSections = (vpCase as any).active_sections;
   const sectionCount = Array.isArray(activeSections) ? activeSections.length : 0;
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const attemptsToday = (pastAttempts ?? []).filter(a =>
+    new Date(a.started_at) >= todayStart
+  ).length;
+  const canStartToday = attemptsToday < 2;
+
+  const caseData = (vpCase as any)?.generated_case_data;
+  const patientName = caseData?.patient_name || caseData?.name;
+  const patientAge = caseData?.age;
+  const patientGender = caseData?.gender;
+  const presentingComplaint = caseData?.chief_complaint || caseData?.presenting_complaint;
+
   // Intro screen
   return (
     <MainLayout>
@@ -216,15 +229,22 @@ export default function VirtualPatientRunner() {
               </p>
             </div>
 
-            <Button 
-              onClick={() => setShowBriefing(true)}
-              className="w-full gap-2" 
-              size="lg"
-              disabled={startAttempt.isPending}
-            >
-              <Play className="w-5 h-5" />
-              {startAttempt.isPending ? 'Starting...' : 'Start Interactive Case'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={() => setShowBriefing(true)}
+                className="flex-1 gap-2" 
+                size="lg"
+                disabled={!canStartToday || startAttempt.isPending}
+              >
+                <Play className="w-5 h-5" />
+                {startAttempt.isPending ? 'Starting...' : 'Start Interactive Case'}
+              </Button>
+              {!canStartToday && (
+                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800 shrink-0">
+                  2/2 today
+                </Badge>
+              )}
+            </div>
 
             {/* Pre-case briefing dialog */}
             <AlertDialog open={showBriefing} onOpenChange={setShowBriefing}>
@@ -236,6 +256,24 @@ export default function VirtualPatientRunner() {
                   </AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-3 text-sm text-muted-foreground">
+                      {/* Patient intro card */}
+                      {(patientName || patientAge || patientGender || presentingComplaint) && (
+                        <div className="rounded-lg border bg-muted/50 p-3 text-sm space-y-1">
+                          {patientName && (
+                            <p><span className="font-medium text-foreground">Patient:</span> {patientName}</p>
+                          )}
+                          {(patientAge || patientGender) && (
+                            <p>
+                              <span className="font-medium text-foreground">Age / Gender:</span>{' '}
+                              {[patientAge, patientGender].filter(Boolean).join(' / ')}
+                            </p>
+                          )}
+                          {presentingComplaint && (
+                            <p><span className="font-medium text-foreground">Presenting complaint:</span> {presentingComplaint}</p>
+                          )}
+                        </div>
+                      )}
+
                       <p>This case has several sections. After each section you will submit your answers before moving on.</p>
                       
                       <div className="space-y-2.5">
@@ -283,25 +321,36 @@ export default function VirtualPatientRunner() {
                     </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={startAttempt.isPending}
-                    onClick={async () => {
-                      try {
-                        const result = await startAttempt.mutateAsync({
-                          caseId: vpCase.id,
-                        });
-                        setAttemptId(result.id);
-                        setStarted(true);
-                        saveSession(result.id);
-                      } catch {
-                        toast.error('Failed to start case. Please try again.');
-                      }
-                    }}
-                  >
-                    {startAttempt.isPending ? 'Starting...' : 'Begin Case'}
-                  </AlertDialogAction>
+                <AlertDialogFooter className="flex-col gap-2">
+                  <div className="flex gap-2 w-full">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={!canStartToday || startAttempt.isPending}
+                      onClick={async () => {
+                        try {
+                          const result = await startAttempt.mutateAsync({
+                            caseId: vpCase.id,
+                          });
+                          setAttemptId(result.id);
+                          setStarted(true);
+                          saveSession(result.id);
+                        } catch {
+                          toast.error('Failed to start case. Please try again.');
+                        }
+                      }}
+                    >
+                      {!canStartToday
+                        ? 'Daily limit reached (2/2)'
+                        : startAttempt.isPending
+                          ? 'Starting...'
+                          : 'Begin Case'}
+                    </AlertDialogAction>
+                  </div>
+                  {!canStartToday && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      You've used both attempts for today. Come back tomorrow to try again.
+                    </p>
+                  )}
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

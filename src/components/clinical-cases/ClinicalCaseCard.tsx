@@ -112,7 +112,7 @@ export function ClinicalCaseCard({ clinicalCase, onStart, isLoading }: ClinicalC
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5" />
-            {clinicalCase.max_turns || 10} turns
+            {clinicalCase.max_turns || 5} turns
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
