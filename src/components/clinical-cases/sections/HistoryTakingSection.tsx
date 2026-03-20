@@ -698,10 +698,8 @@ export function HistoryTakingSection({
             <Button
               size="lg"
               variant="outline"
-              className={`gap-2 ${ttsSettingsLoading ? 'opacity-50' : ''}`}
-              disabled={ttsSettingsLoading}
+              className="gap-2"
               onClick={() => {
-                if (ttsSettingsLoading) return;
                 // Pre-unlock audio in direct user gesture context (before any async)
                 const preAudio = createUnlockedAudio();
                 unlockedAudioRef.current = preAudio;
