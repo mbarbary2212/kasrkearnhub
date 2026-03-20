@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2 } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2, FilterX } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +47,10 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     }
 
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      toast.error('Could not open print window. Please allow popups for this site and try again.');
+      return;
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -78,13 +82,22 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     printWindow.document.close();
   }, [viewingMap]);
 
+  // Sync fullscreen state when user exits via Esc or system controls
+  useEffect(() => {
+    const onFsChange = () => setIsNativeFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
+
   const handleFullscreenToggle = useCallback(() => {
     if (!document.fullscreenElement) {
       dialogContentRef.current?.requestFullscreen?.();
-      setIsNativeFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsNativeFullscreen(false);
     }
   }, []);
 
@@ -96,7 +109,25 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     );
   }
 
-  if (filteredMaps.length === 0) return null;
+  // Nothing to show at all
+  if (maps.length === 0) return null;
+
+  // Maps exist but none match the active section filter
+  if (filteredMaps.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h4 className="text-sm font-medium">AI-Generated Mind Maps</h4>
+        </div>
+        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+          <FilterX className="w-6 h-6" />
+          <p className="text-sm">No AI mind maps match the selected section.</p>
+          <p className="text-xs">Try selecting a different section or clear the filter.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
