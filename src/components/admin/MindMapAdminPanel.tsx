@@ -328,14 +328,20 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
           {lastResult && (
             <div className="space-y-3 text-sm">
               <div className="flex gap-4">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <div className="flex items-center gap-1.5 text-emerald-600">
+                  <CheckCircle2 className="w-4 h-4" />
                   {lastResult.total_generated} generated
                 </div>
                 {lastResult.total_failed > 0 && (
                   <div className="flex items-center gap-1.5 text-destructive">
                     <AlertTriangle className="w-4 h-4" />
                     {lastResult.total_failed} failed
+                  </div>
+                )}
+                {(lastResult.total_skipped || 0) > 0 && (
+                  <div className="flex items-center gap-1.5 text-amber-600">
+                    <MinusCircle className="w-4 h-4" />
+                    {lastResult.total_skipped} skipped
                   </div>
                 )}
               </div>
@@ -349,14 +355,18 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
               <div className="space-y-1">
                 {lastResult.results.map((r, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
-                    {r.success ? (
+                    {r.status === 'generated' || (r.success && !r.status) ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    ) : r.status === 'skipped' ? (
+                      <MinusCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                     ) : (
                       <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
                     )}
                     <span className="truncate">{r.title}</span>
                     {r.errors && r.errors.length > 0 && (
-                      <span className="text-destructive truncate">— {r.errors[0]}</span>
+                      <span className={`truncate ${r.status === 'skipped' ? 'text-amber-600' : 'text-destructive'}`}>
+                        — {r.errors[0]}
+                      </span>
                     )}
                   </div>
                 ))}
