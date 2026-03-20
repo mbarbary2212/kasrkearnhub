@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -286,6 +287,17 @@ export default function ChapterPage() {
   const refetchFlashcards = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
   }, [queryClient, chapterId]);
+
+  // Add Sentry breadcrumb when chapter loads
+  useEffect(() => {
+    if (chapter?.title) {
+      Sentry.addBreadcrumb({
+        category: 'navigation',
+        message: `Opened chapter: ${chapter.title}`,
+        level: 'info',
+      });
+    }
+  }, [chapter?.title]);
 
   // Update Coach context when page loads or section changes
   useEffect(() => {

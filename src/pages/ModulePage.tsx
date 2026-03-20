@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,16 @@ export default function ModulePage() {
   const canManageBooks = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
+
+  useEffect(() => {
+    if (module?.name) {
+      Sentry.addBreadcrumb({
+        category: 'navigation',
+        message: `Opened module: ${module.name}`,
+        level: 'info',
+      });
+    }
+  }, [module?.name]);
 
   if (!moduleLoading && !module) {
     return (
