@@ -70,6 +70,7 @@ import {
   MindMap,
   GenerateMindMapResponse,
 } from '@/hooks/useMindMaps';
+import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 import { format } from 'date-fns';
 
 interface MindMapAdminPanelProps {
