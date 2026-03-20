@@ -67,6 +67,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Users } from 'lucide-react';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
+import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
 
@@ -74,6 +75,7 @@ export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [singleInviteOpen, setSingleInviteOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -226,8 +228,12 @@ export function AccountsTab() {
         </div>
         <div className="flex items-center gap-2">
           <EmailBouncesPopover />
-          <Button variant="outline" onClick={() => setSingleInviteOpen(true)} className="gap-2">
+          <Button variant="outline" onClick={() => setCreateUserOpen(true)} className="gap-2">
             <UserPlus className="h-4 w-4" />
+            Create User
+          </Button>
+          <Button variant="outline" onClick={() => setSingleInviteOpen(true)} className="gap-2">
+            <Mail className="h-4 w-4" />
             Invite User
           </Button>
           <Button onClick={() => setBulkUploadOpen(true)} className="gap-2">
@@ -588,6 +594,12 @@ export function AccountsTab() {
       <SingleUserInviteModal
         open={singleInviteOpen}
         onOpenChange={setSingleInviteOpen}
+      />
+
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={createUserOpen}
+        onOpenChange={setCreateUserOpen}
       />
 
       {/* Bulk Upload Modal */}
