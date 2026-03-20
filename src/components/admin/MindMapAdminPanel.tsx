@@ -14,6 +14,9 @@ import {
   Info,
   MinusCircle,
   FileText,
+  Gauge,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +72,8 @@ import {
   useDeleteMindMap,
   MindMap,
   GenerateMindMapResponse,
+  ExtractionMethod,
+  ExtractionScoreEntry,
 } from '@/hooks/useMindMaps';
 import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 import { format } from 'date-fns';
@@ -92,16 +97,6 @@ function StatusBadge({ status }: { status: 'draft' | 'published' }) {
   );
 }
 
-function TypeBadge({ type }: { type: string }) {
-  const labels: Record<string, { label: string; className: string }> = {
-    full: { label: 'Full', className: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
-    section: { label: 'Section', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' },
-    ultra: { label: 'Ultra', className: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' },
-  };
-  const config = labels[type] || { label: type, className: '' };
-  return <Badge className={`${config.className} border-0 text-xs`}>{config.label}</Badge>;
-}
-
 function SourceBadge({ source }: { source: string }) {
   return source === 'legacy_html' ? (
     <Badge variant="outline" className="text-xs">Legacy HTML</Badge>
@@ -110,10 +105,40 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
+function ScoreBadge({ score, label }: { score: number; label: string }) {
+  const color = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-destructive';
+  return (
+    <span className={`text-xs font-mono ${color}`}>
+      {label}: {score}
+    </span>
+  );
+}
+
+function ExtractionScoreRow({ name, entry }: { name: string; entry: ExtractionScoreEntry }) {
+  const scoreColor = entry.score >= 85 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : entry.score >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300';
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <Badge className={`${scoreColor} border-0 font-mono text-[11px] px-1.5`}>{entry.score}</Badge>
+      <span className="font-medium capitalize">{name.replace('_', ' ')}</span>
+      <span className="text-muted-foreground">
+        {(entry.breakdown.char_count / 1000).toFixed(1)}k chars · 
+        hdg {(entry.breakdown.heading_score * 100).toFixed(0)}% · 
+        noise {(entry.breakdown.noise_score * 100).toFixed(1)}%
+      </span>
+      {entry.time_ms > 0 && (
+        <span className="text-muted-foreground flex items-center gap-0.5">
+          <Clock className="w-3 h-3" />{entry.time_ms}ms
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<'full' | 'sections' | 'both'>('both');
   const [selectedDocId, setSelectedDocId] = useState<string>('auto');
+  const [extractionMethod, setExtractionMethod] = useState<ExtractionMethod>('auto');
   const [previewMap, setPreviewMap] = useState<MindMap | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MindMap | null>(null);
   const [lastResult, setLastResult] = useState<GenerateMindMapResponse | null>(null);
@@ -124,22 +149,21 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
   const updateStatus = useUpdateMindMapStatus();
   const deleteMutation = useDeleteMindMap();
 
-  // Fetch available PDF documents for this chapter/module
   const { data: availableDocs = [] } = useAdminDocuments({
     chapter_id: chapterId,
   });
 
-  // Filter to only PDF-type documents
   const pdfDocs = useMemo(() =>
     availableDocs.filter(d => d.mime_type?.includes('pdf')),
     [availableDocs]
   );
 
   const handleGenerate = () => {
-    const req = { generation_mode: generationMode } as any;
+    const req: any = { generation_mode: generationMode };
     if (chapterId) req.chapter_id = chapterId;
     if (topicId) req.topic_id = topicId;
     if (selectedDocId && selectedDocId !== 'auto') req.document_id = selectedDocId;
+    if (extractionMethod !== 'auto') req.extraction_method = extractionMethod;
 
     generate.mutate(req, {
       onSuccess: (data) => {
@@ -176,6 +200,9 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
   const sectionMaps = maps.filter((m) => m.map_type === 'section');
   const draftCount = maps.filter((m) => m.status === 'draft').length;
   const publishedCount = maps.filter((m) => m.status === 'published').length;
+
+  const srcDoc = lastResult?.source_document;
+  const scores = srcDoc?.extraction_scores;
 
   return (
     <TooltipProvider>
@@ -243,9 +270,10 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                     <TooltipTrigger asChild>
                       <Info className="w-4 h-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
-                   <TooltipContent className="max-w-xs text-xs">
-                      Generates Markmap mind maps from the chapter/topic PDF using Gemini. 
-                      New maps are always added as drafts. Existing maps are never overwritten.
+                    <TooltipContent className="max-w-xs text-xs">
+                      Generates Markmap mind maps from the chapter/topic PDF using Gemini.
+                      Text extraction uses a tiered pipeline (Direct → PDF.js) with quality scoring.
+                      New maps are always added as drafts.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -268,6 +296,23 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Extraction method override */}
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <Select value={extractionMethod} onValueChange={(v) => setExtractionMethod(v as ExtractionMethod)}>
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto (tiered pipeline)</SelectItem>
+                      <SelectItem value="direct">Force: Direct binary extraction</SelectItem>
+                      <SelectItem value="pdfjs">Force: PDF.js extraction</SelectItem>
+                      <SelectItem value="chapter_text">Force: Chapter stored text</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {pdfDocs.length === 0 && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
@@ -288,12 +333,9 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Full maps */}
                   {fullMaps.length > 0 && (
                     <MapGroup title="Full Chapter Maps" maps={fullMaps} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
                   )}
-
-                  {/* Section maps */}
                   {sectionMaps.length > 0 && (
                     <MapGroup title={`Section Maps (${sectionMaps.length})`} maps={sectionMaps} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
                   )}
@@ -313,7 +355,6 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
               {previewMap?.title}
             </DialogTitle>
             <DialogDescription className="flex items-center gap-2">
-              <TypeBadge type={previewMap?.map_type || ''} />
               <SourceBadge source={previewMap?.source_type || ''} />
               <StatusBadge status={previewMap?.status || 'draft'} />
               {previewMap?.section_title && (
@@ -363,12 +404,13 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
 
       {/* Generation result dialog */}
       <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Generation Results</DialogTitle>
           </DialogHeader>
           {lastResult && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-4 text-sm">
+              {/* Summary counts */}
               <div className="flex gap-4">
                 <div className="flex items-center gap-1.5 text-emerald-600">
                   <CheckCircle2 className="w-4 h-4" />
@@ -388,36 +430,88 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                 )}
               </div>
 
-              {/* Source document info */}
-              {lastResult.source_document?.name && (
-                <div className="text-xs p-2 bg-muted rounded space-y-1">
-                  <div className="flex items-center gap-1.5">
+              {/* Source document & extraction diagnostics */}
+              {srcDoc && (
+                <div className="p-3 bg-muted rounded-lg space-y-2.5">
+                  {/* Source info */}
+                  <div className="flex items-center gap-1.5 text-xs">
                     <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span className="text-muted-foreground">Source:</span>
-                    <span className="font-medium truncate">{lastResult.source_document.name}</span>
+                    <span className="font-medium truncate">{srcDoc.name || 'Unknown'}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-muted-foreground pl-5">
-                    <span>
-                      Method: <span className="text-foreground font-medium">
-                        {lastResult.source_document.source_method === 'chapter_pdf_text' ? 'Chapter text'
-                          : lastResult.source_document.source_method === 'selected_document' ? 'Selected document'
-                          : 'Auto-detected document'}
-                      </span>
-                    </span>
-                    <span>Extracted: <span className="text-foreground">{(lastResult.source_document.text_length / 1000).toFixed(1)}k chars</span></span>
-                    {lastResult.source_document.chapter_pdf_text_length != null && lastResult.source_document.source_method !== 'chapter_pdf_text' && (
-                      <span>Chapter text: <span className="text-foreground">{(lastResult.source_document.chapter_pdf_text_length / 1000).toFixed(1)}k chars</span></span>
+
+                  {/* Method badges */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">From:</span>
+                      <Badge variant="outline" className="text-[11px] px-1.5 capitalize">
+                        {srcDoc.source_method.replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">Extracted via:</span>
+                      <Badge variant="outline" className="text-[11px] px-1.5 capitalize border-primary/30 text-primary">
+                        {srcDoc.extraction_method_used === 'chapter_text' ? 'Chapter text' : srcDoc.extraction_method_used === 'pdfjs' ? 'PDF.js' : srcDoc.extraction_method_used === 'direct' ? 'Direct binary' : 'Auto'}
+                      </Badge>
+                    </div>
+                    {srcDoc.fallback_triggered && (
+                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-0 text-[11px]">
+                        Fallback triggered
+                      </Badge>
                     )}
                   </div>
+
+                  {/* Selection reason */}
+                  {srcDoc.selection_reason && (
+                    <p className="text-[11px] text-muted-foreground italic pl-5">
+                      {srcDoc.selection_reason}
+                    </p>
+                  )}
+
+                  {/* Character counts */}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground pl-5">
+                    <span>Selected: <span className="text-foreground font-medium">{(srcDoc.text_length / 1000).toFixed(1)}k chars</span></span>
+                    <span>Headings: <span className="text-foreground">{srcDoc.heading_count}</span></span>
+                    {srcDoc.chapter_pdf_text_length != null && (
+                      <span>Chapter text: <span className="text-foreground">{(srcDoc.chapter_pdf_text_length / 1000).toFixed(1)}k chars</span></span>
+                    )}
+                  </div>
+
+                  {/* Extraction scores comparison */}
+                  {scores && Object.keys(scores).length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-border/50">
+                      <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                        <Gauge className="w-3 h-3" /> Quality scores
+                      </span>
+                      {scores.direct && <ExtractionScoreRow name="direct" entry={scores.direct} />}
+                      {scores.pdfjs && <ExtractionScoreRow name="pdfjs" entry={scores.pdfjs} />}
+                      {scores.chapter_text && <ExtractionScoreRow name="chapter_text" entry={scores.chapter_text} />}
+                    </div>
+                  )}
+
+                  {/* Text preview */}
+                  {srcDoc.selected_text_preview && (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-[11px]">
+                        Text preview (first 500 chars)
+                      </summary>
+                      <pre className="mt-1 bg-background rounded p-2 overflow-auto max-h-32 text-[10px] whitespace-pre-wrap font-mono">
+                        {srcDoc.selected_text_preview}
+                      </pre>
+                    </details>
+                  )}
                 </div>
               )}
 
+              {/* Detection info */}
               {lastResult.detection && (
                 <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
                   Detection: {lastResult.detection.method} · Confidence: {Math.round(lastResult.detection.confidence * 100)}% · {lastResult.detection.sections_found} sections found
                 </div>
               )}
 
+              {/* Individual results */}
               <div className="space-y-1">
                 {lastResult.results.map((r, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
@@ -493,9 +587,7 @@ function MapGroup({
                   </div>
                 </TableCell>
                 <TableCell className="py-1.5">
-                  <div className="flex gap-1">
-                    <SourceBadge source={m.source_type} />
-                  </div>
+                  <SourceBadge source={m.source_type} />
                 </TableCell>
                 <TableCell className="py-1.5">
                   <StatusBadge status={m.status} />
