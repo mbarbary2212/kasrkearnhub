@@ -199,14 +199,8 @@ async function callGeminiWithPdf(
           return { success: false, error: `Gemini returned no content (finishReason: ${finishReason || "unknown"})` };
         }
 
-        // Strip markdown code fences if Gemini wraps the output
-        let cleaned = text.trim();
-        if (cleaned.startsWith("```markdown")) cleaned = cleaned.slice(11);
-        else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
-        if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-        cleaned = cleaned.trim();
-
-        return { success: true, content: cleaned, modelUsed: model };
+        // Return raw text — let callers handle format-specific cleanup
+        return { success: true, content: text.trim(), modelUsed: model };
       } catch (err) {
         if (attempt < MAX_RETRIES) {
           const delay = Math.pow(2, attempt) * 1000;
