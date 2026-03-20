@@ -23,8 +23,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Profile, AppRole, Department, DepartmentAdmin } from '@/types/database';
-import type { Year, Module, ModuleAdmin } from '@/types/curriculum';
+import { AppRole } from '@/types/database';
+import type { Year, Module } from '@/types/curriculum';
 import { HelpTemplatesTab } from '@/components/admin/HelpTemplatesTab';
 import { TopicAdminsTab } from '@/components/admin/TopicAdminsTab';
 import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
