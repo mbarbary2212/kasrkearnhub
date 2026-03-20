@@ -29,6 +29,8 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   voiceIdOverride?: string;
   historyTimeLimitMinutes?: number;
   patientGender?: string;
+  patientAge?: number | string;
+  chiefComplaint?: string;
 }
 
 const MAX_STUDENT_MESSAGES = 15;
@@ -53,6 +55,8 @@ export function HistoryTakingSection({
   voiceIdOverride,
   historyTimeLimitMinutes,
   patientGender,
+  patientAge,
+  chiefComplaint,
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
@@ -720,13 +724,27 @@ export function HistoryTakingSection({
               <AvatarFallback className="text-2xl">{avatarName?.charAt(0) || 'P'}</AvatarFallback>
             </Avatar>
           )}
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-lg font-semibold">{avatarName || 'Patient'}</p>
-            <Badge variant="outline" className="gap-1 mt-1">
+            <Badge variant="outline" className="gap-1">
               <Globe className="w-3 h-3" />
               {langInfo.label}
             </Badge>
-            <p className="text-sm text-muted-foreground mt-2">Choose how you want to take the history</p>
+            {(patientAge || patientGender || chiefComplaint) && (
+              <div className="bg-muted/50 rounded-lg px-4 py-2.5 text-sm space-y-1 max-w-xs mx-auto">
+                {(patientAge || patientGender) && (
+                  <p className="font-medium text-foreground">
+                    {[patientAge && `Age: ${patientAge}`, patientGender].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                {chiefComplaint && (
+                  <p className="text-muted-foreground line-clamp-2">
+                    <span className="font-medium text-foreground">CC:</span> {chiefComplaint}
+                  </p>
+                )}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground">Choose how you want to take the history</p>
           </div>
           <div className="flex gap-3">
             <Button
