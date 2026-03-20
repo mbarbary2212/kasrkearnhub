@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2 } from 'lucide-react';
+import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2, FilterX } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
