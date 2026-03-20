@@ -157,7 +157,7 @@ export async function speakArabic(
         });
         console.log('[TTS] Attempting audio.play()');
         audio.play().catch((err) => {
-          console.warn('[TTS] play() rejected:', err);
+          console.error('[TTS] Play failed:', err);
           if (currentAudio === audio) currentAudio = null;
           URL.revokeObjectURL(audioUrl);
           resolve();
