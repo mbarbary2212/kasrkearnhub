@@ -1,22 +1,15 @@
 
 
-## Plan: Add output_format to ElevenLabs TTS edge function
-
-### What
-Add `?output_format=mp3_22050_32` as a query parameter to the ElevenLabs API URL to reduce audio bitrate from 128kbps to 32kbps (~4× smaller downloads, same speech clarity).
+## Plan: Downsample Gemini TTS audio from 24kHz to 16kHz
 
 ### Change
 
-**File: `supabase/functions/elevenlabs-tts/index.ts` (line 98)**
+**File: `supabase/functions/gemini-tts/index.ts` (lines 10–35)**
 
-Change:
-```
-`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`
-```
-to:
-```
-`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`
-```
+Replace the existing `addWavHeader` function with the user-provided version that:
+- Accepts `inputSampleRate` (24000) and `outputSampleRate` (16000) parameters
+- Downsamples PCM audio using linear interpolation before WAV encoding
+- Reduces output size by ~33% with no perceptible quality loss for speech
 
-One line, one file. Nothing else modified.
+One function replacement, one file. Nothing else modified.
 
