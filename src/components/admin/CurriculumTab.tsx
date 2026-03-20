@@ -93,7 +93,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
 
       if (error) throw error;
 
-      setModules(prev => [...prev, data as Module]);
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       resetModuleForm();
       toast.success('Module created successfully');
