@@ -138,13 +138,20 @@ export function VisualResourcesSection({
               onDelete={onEdit ? (r) => requestResourceDelete(r.resource_type as any, r.id, r.title) : undefined}
             />
           ) : (
-            <MindMapViewer
-              resources={filteredMindMaps}
-              canManage={canManage}
-              onEdit={onEdit}
-              chapterId={chapterId}
-              topicId={topicId}
-            />
+            <div className="space-y-6">
+              {/* AI-generated published maps (student-facing) */}
+              {!canManage && (
+                <AIMindMapCards maps={publishedAIMaps} isLoading={aiMapsLoading} />
+              )}
+              {/* Legacy study_resources mind maps */}
+              <MindMapViewer
+                resources={filteredMindMaps}
+                canManage={canManage}
+                onEdit={onEdit}
+                chapterId={chapterId}
+                topicId={topicId}
+              />
+            </div>
           )}
         </TabsContent>
 
