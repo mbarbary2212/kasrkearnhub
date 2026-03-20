@@ -46,7 +46,10 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     }
 
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      toast.error('Could not open print window. Please allow popups for this site and try again.');
+      return;
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
