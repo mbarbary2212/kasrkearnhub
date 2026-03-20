@@ -310,7 +310,7 @@ interface MindMapViewerProps {
   hideEmptyState?: boolean;
 }
 
-export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId }: MindMapViewerProps) {
+export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId, hideEmptyState = false }: MindMapViewerProps) {
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
