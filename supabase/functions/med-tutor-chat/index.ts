@@ -35,7 +35,7 @@ Always remind students when discussing clinical scenarios: "This is a study aid.
 - If they write in Arabic, respond in Arabic
 - If they write in English, respond in English`;
 
-async function getGlobalAISettings(serviceClient: ReturnType<typeof createClient>): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
+async function getGlobalAISettings(serviceClient: any): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
   const { data } = await serviceClient
     .from('ai_settings')
     .select('key, value')
@@ -46,7 +46,7 @@ async function getGlobalAISettings(serviceClient: ReturnType<typeof createClient
   let lovableModel: string | null = null;
 
   if (data) {
-    for (const row of data) {
+    for (const row of (data as { key: string; value: string }[])) {
       let value = row.value;
       if (typeof value === 'string') {
         try { value = JSON.parse(value); } catch { /* keep as-is */ }

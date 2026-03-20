@@ -1,5 +1,6 @@
 import { Users, User, Monitor, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { usePresence, type PresenceUserState } from '@/contexts/PresenceContext';
 import { useMemo } from 'react';
 
