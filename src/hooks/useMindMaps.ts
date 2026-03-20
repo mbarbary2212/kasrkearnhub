@@ -29,6 +29,7 @@ export interface GenerateMindMapRequest {
   chapter_id?: string;
   topic_id?: string;
   generation_mode: 'full' | 'sections' | 'both';
+  document_id?: string;
 }
 
 export interface GenerationResultItem {
@@ -43,6 +44,11 @@ export interface GenerationResultItem {
 export interface GenerateMindMapResponse {
   success: boolean;
   generation_mode: string;
+  source_document?: {
+    name: string | null;
+    id: string | null;
+    text_length: number;
+  };
   detection: {
     method: string;
     confidence: number;

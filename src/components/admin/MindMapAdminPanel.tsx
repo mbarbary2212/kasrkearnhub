@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Network,
   Wand2,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Info,
   MinusCircle,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +70,7 @@ import {
   MindMap,
   GenerateMindMapResponse,
 } from '@/hooks/useMindMaps';
+import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 import { format } from 'date-fns';
 
 interface MindMapAdminPanelProps {
@@ -111,6 +113,7 @@ function SourceBadge({ source }: { source: string }) {
 export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<'full' | 'sections' | 'both'>('both');
+  const [selectedDocId, setSelectedDocId] = useState<string>('auto');
   const [previewMap, setPreviewMap] = useState<MindMap | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MindMap | null>(null);
   const [lastResult, setLastResult] = useState<GenerateMindMapResponse | null>(null);
@@ -121,10 +124,22 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
   const updateStatus = useUpdateMindMapStatus();
   const deleteMutation = useDeleteMindMap();
 
+  // Fetch available PDF documents for this chapter/module
+  const { data: availableDocs = [] } = useAdminDocuments({
+    chapter_id: chapterId,
+  });
+
+  // Filter to only PDF-type documents
+  const pdfDocs = useMemo(() =>
+    availableDocs.filter(d => d.mime_type?.includes('pdf')),
+    [availableDocs]
+  );
+
   const handleGenerate = () => {
     const req = { generation_mode: generationMode } as any;
     if (chapterId) req.chapter_id = chapterId;
     if (topicId) req.topic_id = topicId;
+    if (selectedDocId && selectedDocId !== 'auto') req.document_id = selectedDocId;
 
     generate.mutate(req, {
       onSuccess: (data) => {
@@ -197,41 +212,68 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-4">
               {/* Generation controls */}
-              <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-muted/50 border">
-                <Select value={generationMode} onValueChange={(v) => setGenerationMode(v as any)}>
-                  <SelectTrigger className="w-40 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full">Full Map Only</SelectItem>
-                    <SelectItem value="sections">Section Maps Only</SelectItem>
-                    <SelectItem value="both">Full + Sections</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/50 border">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={generationMode} onValueChange={(v) => setGenerationMode(v as any)}>
+                    <SelectTrigger className="w-40 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full">Full Map Only</SelectItem>
+                      <SelectItem value="sections">Section Maps Only</SelectItem>
+                      <SelectItem value="both">Full + Sections</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Button
-                  size="sm"
-                  onClick={handleGenerate}
-                  disabled={generate.isPending}
-                  className="gap-1.5"
-                >
-                  {generate.isPending ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Wand2 className="w-3.5 h-3.5" />
-                  )}
-                  {generate.isPending ? 'Generating…' : 'Generate Mind Maps'}
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleGenerate}
+                    disabled={generate.isPending}
+                    className="gap-1.5"
+                  >
+                    {generate.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-3.5 h-3.5" />
+                    )}
+                    {generate.isPending ? 'Generating…' : 'Generate Mind Maps'}
+                  </Button>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                 <TooltipContent className="max-w-xs text-xs">
-                    Generates Markmap mind maps from the chapter/topic PDF using Gemini. 
-                    New maps are always added as drafts. Existing maps are never overwritten.
-                  </TooltipContent>
-                </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                   <TooltipContent className="max-w-xs text-xs">
+                      Generates Markmap mind maps from the chapter/topic PDF using Gemini. 
+                      New maps are always added as drafts. Existing maps are never overwritten.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* PDF Document selector */}
+                <div className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <Select value={selectedDocId} onValueChange={setSelectedDocId}>
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue placeholder="Select PDF source…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-detect PDF</SelectItem>
+                      {pdfDocs.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          <span className="truncate">{doc.title}</span>
+                          <span className="text-muted-foreground ml-1">({doc.file_name})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {pdfDocs.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    No PDF documents found for this chapter. Upload one in Content PDFs first.
+                  </p>
+                )}
               </div>
 
               {/* Maps table */}
@@ -345,6 +387,16 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                   </div>
                 )}
               </div>
+
+              {/* Source document info */}
+              {lastResult.source_document?.name && (
+                <div className="text-xs p-2 bg-muted rounded flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-muted-foreground">PDF used:</span>
+                  <span className="font-medium truncate">{lastResult.source_document.name}</span>
+                  <span className="text-muted-foreground">({(lastResult.source_document.text_length / 1000).toFixed(1)}k chars extracted)</span>
+                </div>
+              )}
 
               {lastResult.detection && (
                 <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
