@@ -191,6 +191,41 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
+// ─── PDF text extraction ─────────────────────────────────────────────
+
+function extractTextFromPdfBuffer(bytes: Uint8Array): string {
+  // Binary PDF text extraction — decode stream objects and extract readable text
+  const raw = new TextDecoder("latin1").decode(bytes);
+  const textChunks: string[] = [];
+
+  // Extract text from PDF stream objects using BT/ET markers
+  const btEtRegex = /BT\s([\s\S]*?)ET/g;
+  let match: RegExpExecArray | null;
+  while ((match = btEtRegex.exec(raw)) !== null) {
+    const block = match[1];
+    // Extract text from Tj and TJ operators
+    const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g);
+    if (tjMatches) {
+      for (const tj of tjMatches) {
+        const textMatch = tj.match(/\(([^)]*)\)/);
+        if (textMatch) textChunks.push(textMatch[1]);
+      }
+    }
+    // TJ array operator
+    const tjArrayMatches = block.match(/\[(.*?)\]\s*TJ/g);
+    if (tjArrayMatches) {
+      for (const tja of tjArrayMatches) {
+        const parts = tja.match(/\(([^)]*)\)/g);
+        if (parts) {
+          textChunks.push(parts.map(p => p.slice(1, -1)).join(""));
+        }
+      }
+    }
+  }
+
+  return textChunks.join(" ").replace(/\s+/g, " ").trim();
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function jsonResp(body: Record<string, unknown>, status = 200) {
