@@ -109,7 +109,25 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     );
   }
 
-  if (filteredMaps.length === 0) return null;
+  // Nothing to show at all
+  if (maps.length === 0) return null;
+
+  // Maps exist but none match the active section filter
+  if (filteredMaps.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h4 className="text-sm font-medium">AI-Generated Mind Maps</h4>
+        </div>
+        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+          <FilterX className="w-6 h-6" />
+          <p className="text-sm">No AI mind maps match the selected section.</p>
+          <p className="text-xs">Try selecting a different section or clear the filter.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
