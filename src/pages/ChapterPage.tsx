@@ -46,6 +46,7 @@ import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
 import { VisualResourcesSection } from '@/components/study/VisualResourcesSection';
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
+import { usePublishedMindMaps } from '@/hooks/useMindMaps';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { useChapterMcqs, useChapterMcqCount, useChapterSbas, useChapterSbaCount } from '@/hooks/useMcqs';
@@ -193,6 +194,7 @@ export default function ChapterPage() {
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
+  const { data: publishedAIMaps = [] } = usePublishedMindMaps(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
@@ -346,12 +348,12 @@ export default function ChapterPage() {
     return createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
+      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0) + publishedAIMaps.length,
       guided_explanations: (studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0) + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
-  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length]);
+  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length, publishedAIMaps.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();

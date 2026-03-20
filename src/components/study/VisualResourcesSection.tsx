@@ -139,10 +139,8 @@ export function VisualResourcesSection({
             />
           ) : (
             <div className="space-y-6">
-              {/* AI-generated published maps (student-facing) */}
-              {!canManage && (
-                <AIMindMapCards maps={publishedAIMaps} isLoading={aiMapsLoading} filterBySection={filterBySection} />
-              )}
+              {/* AI-generated published maps (visible to all users) */}
+              <AIMindMapCards maps={publishedAIMaps} isLoading={aiMapsLoading} filterBySection={filterBySection} />
               {/* Legacy study_resources mind maps */}
               <MindMapViewer
                 resources={filteredMindMaps}
