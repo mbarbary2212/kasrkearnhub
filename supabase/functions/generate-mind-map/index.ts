@@ -332,8 +332,14 @@ serve(async (req) => {
       sourceTitle = chapter.title;
       sourcePdfUrl = chapter.pdf_url || null;
 
+      // Record chapter.pdf_text length if available (for comparison)
+      if (chapter.pdf_text && chapter.pdf_text.length > 0) {
+        chapterPdfTextLength = chapter.pdf_text.length;
+      }
+
       // If admin explicitly chose a document, use that
       if (document_id) {
+        sourceMethod = "selected_document";
         console.log(`[generate-mind-map] Admin selected document_id: ${document_id}`);
         const { data: chosenDoc, error: docErr } = await serviceClient
           .from("admin_documents")
@@ -352,20 +358,22 @@ serve(async (req) => {
           sourcePdfUrl = result.signedUrl;
           sourceDocumentName = result.docTitle;
           sourceDocumentId = chosenDoc.id;
-          console.log(`[generate-mind-map] Extracted text from chosen doc "${result.fileName}" (${pdfText.length} chars)`);
+          console.log(`[generate-mind-map] Source: selected document "${result.docTitle}" | Extracted: ${pdfText.length} chars | Chapter pdf_text: ${chapterPdfTextLength ?? 'none'}`);
         } catch (e) {
           return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
         }
 
         if (!pdfText || pdfText.length < 50) {
-          return jsonError("NO_TEXT", `PDF text extraction from "${chosenDoc.title}" yielded insufficient content (${pdfText.length} chars). The PDF may be image-based or empty.`, 400);
+          return jsonError("NO_TEXT", `PDF text extraction from "${chosenDoc.title}" yielded insufficient content (${pdfText.length} chars). The built-in text extractor may have failed on compressed or encoded PDF streams. Try a different PDF or pre-extract the text.`, 400);
         }
       } else if (chapter.pdf_text && chapter.pdf_text.length > 50) {
         pdfText = chapter.pdf_text;
         sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
-        console.log(`[generate-mind-map] Using pdf_text from module_chapters (${pdfText.length} chars)`);
+        sourceMethod = "chapter_pdf_text";
+        console.log(`[generate-mind-map] Source: chapter.pdf_text | ${pdfText.length} chars`);
       } else {
         // Fallback: find an admin_document linked to this chapter
+        sourceMethod = "auto_detected_document";
         console.log("[generate-mind-map] No pdf_text in chapter, falling back to admin_documents...");
         const { data: adminDoc } = await serviceClient
           .from("admin_documents")
@@ -398,13 +406,13 @@ serve(async (req) => {
           sourcePdfUrl = result.signedUrl;
           sourceDocumentName = result.docTitle;
           sourceDocumentId = docToUse.id;
-          console.log(`[generate-mind-map] Extracted text from auto-found doc "${result.fileName}" (${pdfText.length} chars)`);
+          console.log(`[generate-mind-map] Source: auto-detected document "${result.docTitle}" | Extracted: ${pdfText.length} chars | Chapter pdf_text: ${chapterPdfTextLength ?? 'none'}`);
         } catch (e) {
           return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
         }
 
         if (!pdfText || pdfText.length < 50) {
-          return jsonError("NO_TEXT", `PDF text extraction from "${docToUse.title}" yielded insufficient content (${pdfText.length} chars). The PDF may be image-based. Try selecting a different document.`, 400);
+          return jsonError("NO_TEXT", `PDF text extraction from "${docToUse.title}" yielded insufficient content (${pdfText.length} chars). The built-in text extractor may have failed on compressed or encoded PDF streams. Try selecting a different document or pre-extracting the text.`, 400);
         }
       }
     } else {
