@@ -1210,17 +1210,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === userId) {
-            return {
-              ...u,
-              moduleAssignments: u.moduleAssignments?.filter(a => a.module_id !== moduleId) || [],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Module assignment removed');
     } catch (error) {
