@@ -16,6 +16,7 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
   const svgRef = useRef<SVGSVGElement>(null);
   const mmRef = useRef<Markmap | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const isMobile = useIsMobile();
 
@@ -31,13 +32,13 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
     return md;
   }, [markdown]);
 
+  // Initialize and update markmap
   useEffect(() => {
     if (!svgRef.current) return;
 
     const md = cleanMarkdown();
     const { root } = transformer.transform(md);
 
-    // Create or update markmap
     if (!mmRef.current) {
       mmRef.current = Markmap.create(svgRef.current, {
         autoFit: true,
@@ -49,23 +50,27 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
     }
 
     mmRef.current.setData(root);
-    // Fit after data is set
-    setTimeout(() => mmRef.current?.fit(), 100);
-
-    return () => {
-      // Don't destroy on re-renders, only on unmount
-    };
+    setTimeout(() => mmRef.current?.fit(), 150);
   }, [cleanMarkdown, isMobile]);
 
   // Attach toolbar
   useEffect(() => {
     if (!ready || !mmRef.current || !toolbarRef.current) return;
-
-    // Clear previous toolbar content
     toolbarRef.current.innerHTML = '';
-
     const toolbar = Toolbar.create(mmRef.current);
     toolbarRef.current.appendChild(toolbar.el);
+  }, [ready]);
+
+  // Refit on container resize (handles fullscreen toggle, window resize, orientation change)
+  useEffect(() => {
+    if (!containerRef.current || !mmRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      setTimeout(() => mmRef.current?.fit(), 50);
+    });
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
   }, [ready]);
 
   // Cleanup on unmount
@@ -79,16 +84,16 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
   }, []);
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full h-full ${className}`}>
       <svg
         ref={svgRef}
         className="w-full h-full"
-        style={{ minHeight: isMobile ? '50vh' : '60vh' }}
+        style={{ minHeight: isMobile ? '50vh' : '60vh', touchAction: 'pan-x pan-y' }}
       />
       <div
         ref={toolbarRef}
-        className="absolute bottom-3 right-3 z-10"
-        style={{ fontSize: '14px' }}
+        className={`absolute z-10 ${isMobile ? 'bottom-2 right-2' : 'bottom-3 right-3'}`}
+        style={{ fontSize: isMobile ? '12px' : '14px' }}
       />
     </div>
   );
