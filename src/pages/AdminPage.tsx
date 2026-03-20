@@ -54,11 +54,7 @@ import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
 import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 
-interface UserWithRole extends Profile {
-  role: AppRole;
-  departmentAssignments?: DepartmentAdmin[];
-  moduleAssignments?: ModuleAdmin[];
-}
+
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
