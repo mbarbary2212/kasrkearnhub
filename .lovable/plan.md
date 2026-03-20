@@ -1,35 +1,63 @@
 
 
-## Plan: Improve Voice Mode UX — Mic Prompt + Larger Speech Bubble with Scroll Animation
+## Plan: Three changes to VirtualPatientPage + max turns default
 
-### Change 1: Add "Press the microphone to start" hint after greeting
+### Change 1: 2-attempts-per-day cap
 
-After `greetingPlaying` becomes false and the student hasn't spoken yet (`!isListening && !isSending && !isSpeaking && chatMessages.length <= 1`), show a subtle prompt:
+**File: `src/pages/VirtualPatientPage.tsx`**
 
-> 🎤 Press the microphone to start asking questions
+Add computed values after line 166 (`completedAttempts`):
 
-Fades out once the student starts. Added as a conditional block in the voice mode layout area (~line 900–929).
+```typescript
+const todayStart = new Date();
+todayStart.setHours(0, 0, 0, 0);
+const attemptsToday = (pastAttempts ?? []).filter(a =>
+  new Date(a.started_at) >= todayStart
+).length;
+const canStartToday = attemptsToday < 2;
+```
 
-### Change 2: Enlarge the patient speech bubble
+**Outer "Start Interactive Case" button (line 219-227):**
+- Add `disabled={!canStartToday || startAttempt.isPending}`
+- When `!canStartToday`, show an amber badge `2/2 today` next to the button
 
-- Move speech bubble out of the cramped left avatar column into the center column area, below the mic button/status indicators
-- Size: `max-w-sm w-full`, `max-h-40`, `overflow-y-auto`, `text-base`
-- Keep RTL direction and fade transition
+**Briefing dialog "Begin Case" button (line 288-304):**
+- Add `!canStartToday` to disabled condition
+- When `!canStartToday`, show text "Daily limit reached (2/2)" instead of "Begin Case"
+- Below the footer, when `!canStartToday`, add centered muted text: "You've used both attempts for today. Come back tomorrow to try again."
 
-### Change 3: Typewriter text reveal synced to TTS duration
+### Change 2: Patient intro card in briefing dialog
 
-Instead of showing full text instantly, animate character-by-character:
+**File: `src/pages/VirtualPatientPage.tsx`**
 
-- **Default speed**: 20ms per character
-- **Dynamic speed**: When TTS audio duration is available (from the `Audio` element's `loadedmetadata` or `durationchange` event), calculate `delay = (duration * 1000) / text.length` so text finishes exactly when audio ends
-- **Hard sync rule**: When `isSpeaking` transitions to `false`, immediately set `displayedText` to the full message — no lingering animation after audio stops
-- Auto-scroll bubble to bottom as text appears
+At the top of the dialog description content (before the existing "This case has several sections..." paragraph at line 239), add a compact card reading from `(vpCase as any).generated_case_data`:
 
-Implementation: ~20 lines of state + effect near existing voice bubble logic. The effect watches `lastAiMessage`, `isSpeaking`, and a `ttsDuration` value (exposed from the TTS playback path via a ref or state callback).
+```typescript
+const caseData = (vpCase as any)?.generated_case_data;
+```
+
+Card shows (each row only if value exists):
+- **Patient**: `caseData?.patient_name || caseData?.name`
+- **Age / Gender**: `caseData?.age`, `caseData?.gender`
+- **Presenting complaint**: `caseData?.chief_complaint || caseData?.presenting_complaint`
+
+Styled as `rounded-lg border bg-muted/50 p-3 text-sm`, compact 4-line max.
+
+### Change 3: Change default max turns from 10 to 5
+
+The `max_turns` value is not a constant in HistoryTakingSection. It lives in two client-side locations:
+
+**File: `src/hooks/useStructuredCase.ts` (line 31)**
+- Change `max_turns: 10` to `max_turns: 5` (default for newly created cases)
+
+**File: `src/components/clinical-cases/ClinicalCaseCard.tsx` (line 115)**
+- Change `clinicalCase.max_turns || 10` to `clinicalCase.max_turns || 5` (display fallback)
 
 ### Files modified
-- `src/components/clinical-cases/sections/HistoryTakingSection.tsx` only
+- `src/pages/VirtualPatientPage.tsx` — Changes 1 + 2
+- `src/hooks/useStructuredCase.ts` — Change 3 (default value)
+- `src/components/clinical-cases/ClinicalCaseCard.tsx` — Change 3 (display fallback)
 
 ### Files NOT modified
-- Edge functions, tts.ts, any other components
+- Edge functions, mutation logic, HistoryTakingSection, Scribe/TTS/chat logic
 
