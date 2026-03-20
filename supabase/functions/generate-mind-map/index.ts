@@ -302,6 +302,8 @@ serve(async (req) => {
     let sourcePdfUrl: string | null = null;
     let sourceDocumentName: string | null = null;
     let sourceDocumentId: string | null = null;
+    let sourceMethod: "chapter_pdf_text" | "selected_document" | "auto_detected_document" = "chapter_pdf_text";
+    let chapterPdfTextLength: number | null = null;
 
     // Helper: download admin doc PDF and extract text
     async function extractFromAdminDoc(doc: { storage_path: string; file_name: string; id?: string; title?: string }) {

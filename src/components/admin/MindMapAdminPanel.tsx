@@ -390,11 +390,25 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
 
               {/* Source document info */}
               {lastResult.source_document?.name && (
-                <div className="text-xs p-2 bg-muted rounded flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-muted-foreground">PDF used:</span>
-                  <span className="font-medium truncate">{lastResult.source_document.name}</span>
-                  <span className="text-muted-foreground">({(lastResult.source_document.text_length / 1000).toFixed(1)}k chars extracted)</span>
+                <div className="text-xs p-2 bg-muted rounded space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-muted-foreground">Source:</span>
+                    <span className="font-medium truncate">{lastResult.source_document.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-muted-foreground pl-5">
+                    <span>
+                      Method: <span className="text-foreground font-medium">
+                        {lastResult.source_document.source_method === 'chapter_pdf_text' ? 'Chapter text'
+                          : lastResult.source_document.source_method === 'selected_document' ? 'Selected document'
+                          : 'Auto-detected document'}
+                      </span>
+                    </span>
+                    <span>Extracted: <span className="text-foreground">{(lastResult.source_document.text_length / 1000).toFixed(1)}k chars</span></span>
+                    {lastResult.source_document.chapter_pdf_text_length != null && lastResult.source_document.source_method !== 'chapter_pdf_text' && (
+                      <span>Chapter text: <span className="text-foreground">{(lastResult.source_document.chapter_pdf_text_length / 1000).toFixed(1)}k chars</span></span>
+                    )}
+                  </div>
                 </div>
               )}
 
