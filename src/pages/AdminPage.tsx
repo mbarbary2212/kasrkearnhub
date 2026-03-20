@@ -1118,13 +1118,7 @@ export default function AdminPage() {
         await supabase.from('topic_admins').delete().eq('user_id', userId);
       }
 
-      setUsers(prev =>
-        prev.map(u => 
-          u.id === userId 
-            ? { ...u, role: newRole, moduleAssignments: newRole === 'department_admin' ? u.moduleAssignments : [] } 
-            : u
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Role updated successfully');
     } catch (error) {
