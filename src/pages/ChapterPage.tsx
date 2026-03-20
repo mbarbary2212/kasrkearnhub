@@ -348,7 +348,7 @@ export default function ChapterPage() {
     return createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
+      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0) + publishedAIMaps.length,
       guided_explanations: (studyResources?.filter(r => r.resource_type === 'guided_explanation')?.length || 0) + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
