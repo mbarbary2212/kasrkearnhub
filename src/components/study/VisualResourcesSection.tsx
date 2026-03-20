@@ -54,6 +54,7 @@ export function VisualResourcesSection({
 
   const { starredIds, toggleStar, isStarred } = useFlashcardStars({ chapterId, topicId });
   const { data: sections = [] } = useChapterSections(chapterId);
+  const { data: publishedAIMaps = [], isLoading: aiMapsLoading } = usePublishedMindMaps(chapterId, topicId);
 
   const filterItems = (items: StudyResource[]) => {
     let filtered = filterBySection ? filterBySection(items) : items;
