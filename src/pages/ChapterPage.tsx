@@ -194,6 +194,7 @@ export default function ChapterPage() {
   const { data: osceQuestions, isLoading: osceLoading } = useChapterOsceQuestions(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedOsceQuestions } = useChapterOsceQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: studyResources, isLoading: studyResourcesLoading } = useChapterStudyResources(chapterId);
+  const { data: publishedAIMaps = [] } = usePublishedMindMaps(chapterId);
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(chapterId);
   const { data: matchingQuestions, isLoading: matchingLoading } = useChapterMatchingQuestions(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
