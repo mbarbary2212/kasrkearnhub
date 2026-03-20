@@ -488,6 +488,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
   }, [localResources, resources, reorderMutation, chapterId, topicId, resolvedChapterId]);
 
   if (resources.length === 0) {
+    if (hideEmptyState) return null;
     return (
       <div className="text-center py-12 border rounded-lg">
         <Network className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

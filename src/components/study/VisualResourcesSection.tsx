@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Network, Image, Search, Star, Upload } from 'lucide-react';
+import { Plus, Network, Image, Search, Star, Upload, Wand2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
