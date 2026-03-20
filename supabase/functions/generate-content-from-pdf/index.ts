@@ -145,9 +145,14 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     section_number: "string (optional) - section number from the provided list",
   },
   mind_map: {
-    title: "string - topic title",
-    central_concept: "string - main concept at the center",
-    nodes: "array of objects - [{ id: string, label: string, parent_id: string | null, color: string }]",
+    title: "string - topic title for the mind map",
+    markdown_content: `string - Full Markmap-compatible markdown. MUST start with frontmatter:
+---
+markmap:
+  colorFreezeLevel: 2
+  initialExpandLevel: 2
+---
+Then a single root heading (#) followed by ##, ###, #### for hierarchy. No code blocks. No prose before headings.`,
     section_number: "string (optional) - section number from the provided list",
   },
   worked_case: {
