@@ -67,7 +67,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Users } from 'lucide-react';
 import { BulkUserUploadModal } from './BulkUserUploadModal';
 import { SingleUserInviteModal } from './SingleUserInviteModal';
+import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
+import { EmailInvitationsTable } from './EmailInvitationsTable';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
 
 export function AccountsTab() {
