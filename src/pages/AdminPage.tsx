@@ -1150,24 +1150,7 @@ export default function AdminPage() {
         throw error;
       }
 
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === userId) {
-            const newAssignment: ModuleAdmin = {
-              id: crypto.randomUUID(),
-              user_id: userId,
-              module_id: moduleId,
-              assigned_by: user?.id || null,
-              created_at: new Date().toISOString(),
-            };
-            return {
-              ...u,
-              moduleAssignments: [...(u.moduleAssignments || []), newAssignment],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       setSelectedModule('');
       toast.success('Module assigned successfully');
