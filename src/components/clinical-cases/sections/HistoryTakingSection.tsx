@@ -910,17 +910,6 @@ export function HistoryTakingSection({
                   </Avatar>
                 )}
               </div>
-              {/* Fading speech bubble — last AI response */}
-              <div
-                ref={voiceBubbleRef}
-                className={cn(
-                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground max-h-24 overflow-y-auto text-center w-full transition-opacity duration-500',
-                  lastAiMessage ? 'opacity-100' : 'opacity-0'
-                )}
-                dir="rtl"
-              >
-                {lastAiMessage || '\u00A0'}
-              </div>
             </div>
 
             {/* Center column: Mic button + status */}
