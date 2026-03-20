@@ -549,6 +549,7 @@ export function AIContentFactoryModal({
         queryClient.invalidateQueries({ queryKey: ['matching-questions'] }),
         queryClient.invalidateQueries({ queryKey: ['guided-explanations'] }),
         queryClient.invalidateQueries({ queryKey: ['resources'] }),
+        queryClient.invalidateQueries({ queryKey: ['mind-maps'] }),
       ]);
       toast.success('Content approved and saved!');
       handleClose();
