@@ -48,6 +48,8 @@ export interface GenerateMindMapResponse {
     name: string | null;
     id: string | null;
     text_length: number;
+    source_method: 'chapter_pdf_text' | 'selected_document' | 'auto_detected_document';
+    chapter_pdf_text_length: number | null;
   };
   detection: {
     method: string;
