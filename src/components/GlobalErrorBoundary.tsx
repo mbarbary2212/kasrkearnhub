@@ -3,6 +3,18 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDiagnostic } from '@/lib/stabilityGuards';
 
+function isChunkLoadError(error: Error): boolean {
+  const message = error.message || '';
+  return (
+    message.includes('text/html') ||
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('Importing a module script failed') ||
+    message.includes('Loading chunk') ||
+    message.includes('ChunkLoadError') ||
+    error.name === 'ChunkLoadError'
+  );
+}
+
 interface Props {
   children: ReactNode;
 }
@@ -24,10 +36,19 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // If it's a chunk load error, don't set error state — componentDidCatch will reload
+    if (isChunkLoadError(error)) {
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (isChunkLoadError(error)) {
+      console.warn('[GlobalErrorBoundary] Detected chunk load error, reloading:', error.message);
+      window.location.reload();
+      return;
+    }
     // Log the error without exposing details to users
     logDiagnostic('runtime', 'Uncaught runtime error', {
       errorMessage: error.message,

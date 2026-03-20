@@ -96,6 +96,7 @@ function isChunkLoadError(error: Error): boolean {
     message.includes('Loading chunk') ||
     message.includes('ChunkLoadError') ||
     message.includes('Loading CSS chunk') ||
+    message.includes("text/html") ||
     name === 'ChunkLoadError' ||
     // Safari-specific error patterns
     message.includes('Importing a module script failed') ||
