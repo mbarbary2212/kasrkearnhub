@@ -229,12 +229,58 @@ export function HistoryTakingSection({
     ? chatMessages[chatMessages.length - 1].content
     : '';
 
-  // Auto-scroll voice bubble to bottom when patient response changes
+  // Typewriter animation state — synced to TTS duration
+  const [displayedText, setDisplayedText] = useState('');
+  const ttsDurationRef = useRef<number>(0);
+  const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Clear any running typewriter
+    if (typewriterTimerRef.current) {
+      clearInterval(typewriterTimerRef.current);
+      typewriterTimerRef.current = null;
+    }
+
+    // Hard sync: when TTS stops, show full text immediately
+    if (!isSpeaking) {
+      setDisplayedText(lastAiMessage);
+      return;
+    }
+
+    // Start typewriter when speaking begins with new text
+    if (isSpeaking && lastAiMessage) {
+      const text = lastAiMessage;
+      const duration = ttsDurationRef.current;
+      const charDelay = duration > 0 ? (duration * 1000) / text.length : 20;
+      let idx = 0;
+      setDisplayedText('');
+
+      typewriterTimerRef.current = setInterval(() => {
+        idx++;
+        if (idx >= text.length) {
+          setDisplayedText(text);
+          if (typewriterTimerRef.current) clearInterval(typewriterTimerRef.current);
+          typewriterTimerRef.current = null;
+        } else {
+          setDisplayedText(text.slice(0, idx));
+        }
+      }, charDelay);
+    }
+
+    return () => {
+      if (typewriterTimerRef.current) {
+        clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
+      }
+    };
+  }, [lastAiMessage, isSpeaking]);
+
+  // Auto-scroll voice bubble to bottom as typewriter reveals text
   useEffect(() => {
     if (voiceBubbleRef.current) {
       voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [lastAiMessage]);
+  }, [displayedText]);
 
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
