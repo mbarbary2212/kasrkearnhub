@@ -94,8 +94,16 @@ export async function speakArabic(
   tone?: PatientTone,
   preUnlockedAudio?: HTMLAudioElement
 ): Promise<void> {
-  // Stop any ongoing playback
-  stopAllTTS();
+  // Stop previous audio without destroying the pre-unlocked element
+  if (currentAudio && currentAudio !== preUnlockedAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio.src = '';
+  } else if (currentAudio) {
+    currentAudio.pause();
+  }
+  currentAudio = null;
+  window.speechSynthesis?.cancel();
 
   if (provider === 'elevenlabs' && voiceId) {
     try {
