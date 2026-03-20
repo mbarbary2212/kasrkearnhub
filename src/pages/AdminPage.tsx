@@ -1318,7 +1318,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setModules(prev => prev.filter(m => m.id !== moduleId));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       toast.success('Module deleted successfully');
     } catch (error) {
       console.error('Error deleting module:', error);
