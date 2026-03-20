@@ -73,6 +73,15 @@ export function useAuth() {
         topicAssignments = (data as TopicAdmin[]) || [];
       }
 
+      // Set Sentry user context for error reporting
+      if (profile) {
+        Sentry.setUser({
+          id: profile.id,
+          email: profile.email || undefined,
+          username: profile.full_name || undefined,
+        });
+      }
+
       setState(prev => ({
         ...prev,
         profile,
