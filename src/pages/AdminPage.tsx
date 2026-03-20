@@ -994,11 +994,6 @@ export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, role, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [years, setYears] = useState<Year[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [studentSearch, setStudentSearch] = useState('');
