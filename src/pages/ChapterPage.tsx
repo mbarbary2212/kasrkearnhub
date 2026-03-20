@@ -46,6 +46,7 @@ import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
 import { VisualResourcesSection } from '@/components/study/VisualResourcesSection';
 import { MindMapBulkUploadModal } from '@/components/study/MindMapBulkUploadModal';
+import { usePublishedMindMaps } from '@/hooks/useMindMaps';
 import { GuidedExplanationList } from '@/components/study/GuidedExplanationList';
 import { useChapterStudyResources, useDeleteStudyResource, StudyResource, useHideEmptySelfAssessmentTabs, StudyResourceType, GuidedExplanationContent } from '@/hooks/useStudyResources';
 import { useChapterMcqs, useChapterMcqCount, useChapterSbas, useChapterSbaCount } from '@/hooks/useMcqs';
