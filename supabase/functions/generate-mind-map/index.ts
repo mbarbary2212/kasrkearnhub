@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getAISettings, getAIProvider, resolveApiKey } from "../_shared/ai-provider.ts";
+import { getAISettings, resolveApiKey } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,6 +85,37 @@ interface ResultItem {
   errors?: string[];
 }
 
+function normalizeGeminiModel(model?: string | null): string | null {
+  if (!model) return null;
+
+  let normalized = model.trim();
+  if (!normalized) return null;
+
+  if (normalized.startsWith("models/")) normalized = normalized.slice("models/".length);
+  if (normalized.startsWith("google/")) normalized = normalized.slice("google/".length);
+
+  const legacyMap: Record<string, string> = {
+    "gemini-2.5-flash-preview-05-20": "gemini-2.5-flash",
+    "gemini-2.5-pro-preview-05-06": "gemini-2.5-pro",
+    "gemini-2.5-flash-lite-preview-06-17": "gemini-2.5-flash-lite",
+  };
+
+  return legacyMap[normalized] || normalized;
+}
+
+function buildGeminiModelCandidates(configuredModel?: string | null): string[] {
+  const candidates = new Set<string>();
+  const normalized = normalizeGeminiModel(configuredModel);
+  if (normalized) candidates.add(normalized);
+
+  // Stable direct-Gemini fallbacks for PDF generateContent
+  candidates.add("gemini-2.5-flash");
+  candidates.add("gemini-2.5-pro");
+  candidates.add("gemini-2.5-flash-lite");
+
+  return Array.from(candidates);
+}
+
 // ─── Direct PDF-to-Gemini call ───────────────────────────────────────
 
 async function callGeminiWithPdf(
@@ -92,8 +123,8 @@ async function callGeminiWithPdf(
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
-  model = "gemini-2.5-flash-preview-05-20",
-): Promise<{ success: boolean; content?: string; error?: string }> {
+  modelCandidates: string[] = ["gemini-2.5-flash"],
+): Promise<{ success: boolean; content?: string; error?: string; modelUsed?: string }> {
   // Base64-encode the PDF for JSON transport
   let base64 = "";
   const CHUNK = 8192;
@@ -101,8 +132,6 @@ async function callGeminiWithPdf(
     base64 += String.fromCharCode(...pdfBytes.subarray(i, i + CHUNK));
   }
   base64 = btoa(base64);
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
     contents: [
@@ -128,58 +157,69 @@ async function callGeminiWithPdf(
     ],
   };
 
-  // Retry logic with exponential backoff
-  const MAX_RETRIES = 3;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+  const modelsToTry = modelCandidates.length > 0 ? modelCandidates : ["gemini-2.5-flash"];
+  let lastError = "Unknown Gemini API error";
 
-      if (resp.status === 429 || resp.status === 503) {
+  for (const model of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        const json = await resp.json();
+
+        if (!resp.ok) {
+          const errMsg = json?.error?.message || JSON.stringify(json).slice(0, 300);
+          lastError = `Gemini API error (${resp.status}): ${errMsg}`;
+
+          if (resp.status === 404 && attempt === 0) {
+            console.warn(`[callGeminiWithPdf] Model not found, trying next fallback model: ${model}`);
+            break;
+          }
+
+          if ((resp.status === 429 || resp.status === 503) && attempt < MAX_RETRIES) {
+            const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+            console.warn(`[callGeminiWithPdf] ${resp.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+
+          return { success: false, error: lastError };
+        }
+
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          const finishReason = json?.candidates?.[0]?.finishReason;
+          return { success: false, error: `Gemini returned no content (finishReason: ${finishReason || "unknown"})` };
+        }
+
+        // Strip markdown code fences if Gemini wraps the output
+        let cleaned = text.trim();
+        if (cleaned.startsWith("```markdown")) cleaned = cleaned.slice(11);
+        else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+        if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+        cleaned = cleaned.trim();
+
+        return { success: true, content: cleaned, modelUsed: model };
+      } catch (err) {
         if (attempt < MAX_RETRIES) {
-          const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
-          console.warn(`[callGeminiWithPdf] ${resp.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          const delay = Math.pow(2, attempt) * 1000;
+          console.warn(`[callGeminiWithPdf] Network error, retrying in ${delay}ms:`, err);
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
+        lastError = `Network error: ${err instanceof Error ? err.message : String(err)}`;
       }
-
-      const json = await resp.json();
-
-      if (!resp.ok) {
-        const errMsg = json?.error?.message || JSON.stringify(json).slice(0, 300);
-        return { success: false, error: `Gemini API error (${resp.status}): ${errMsg}` };
-      }
-
-      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        const finishReason = json?.candidates?.[0]?.finishReason;
-        return { success: false, error: `Gemini returned no content (finishReason: ${finishReason || "unknown"})` };
-      }
-
-      // Strip markdown code fences if Gemini wraps the output
-      let cleaned = text.trim();
-      if (cleaned.startsWith("```markdown")) cleaned = cleaned.slice(11);
-      else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
-      if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-      cleaned = cleaned.trim();
-
-      return { success: true, content: cleaned };
-    } catch (err) {
-      if (attempt < MAX_RETRIES) {
-        const delay = Math.pow(2, attempt) * 1000;
-        console.warn(`[callGeminiWithPdf] Network error, retrying in ${delay}ms:`, err);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      return { success: false, error: `Network error: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
-  return { success: false, error: "Max retries exceeded" };
+  return { success: false, error: lastError };
 }
 
 // ─── Section maps response parser ────────────────────────────────────
@@ -431,6 +471,8 @@ Return ONLY the JSON array, no other text.`;
     const aiSettings = await getAISettings(serviceClient);
     const keyResult = await resolveApiKey(serviceClient, user.id, role, aiSettings);
     if (keyResult.error) return jsonError("AI_KEY_ERROR", keyResult.error, 500);
+    const geminiModelCandidates = buildGeminiModelCandidates(aiSettings.gemini_model);
+    console.log("[generate-mind-map] Gemini model candidates:", geminiModelCandidates);
 
     // Resolve the actual API key — when keySource is 'global', use GOOGLE_API_KEY from env
     let geminiApiKey = keyResult.apiKey;
@@ -449,7 +491,7 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "full" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating full chapter map via direct PDF-to-AI...");
       const userPrompt = `Create a full mind map for this chapter: "${sourceTitle}"`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, geminiApiKey!);
+      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, geminiApiKey!, geminiModelCandidates);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
@@ -474,6 +516,7 @@ Return ONLY the JSON array, no other text.`;
               source_pdf_url: sourcePdfUrl,
               source_detection_metadata: {
                 method: "direct_pdf_to_ai",
+                  model_used: aiResult.modelUsed || geminiModelCandidates[0],
                 pdf_size: pdfSize,
                 source_document_id: sourceDocumentId,
                 prompt_snapshot: fullSystemPrompt,
@@ -500,7 +543,7 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "sections" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating section maps via direct PDF-to-AI...");
       const userPrompt = `Analyze this PDF chapter "${sourceTitle}" and generate separate mind maps for each main section. Return the result as a JSON array as instructed.`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, geminiApiKey!);
+      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, geminiApiKey!, geminiModelCandidates);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Section maps AI error:", aiResult.error);
@@ -575,6 +618,7 @@ Return ONLY the JSON array, no other text.`;
                 source_pdf_url: sourcePdfUrl,
                 source_detection_metadata: {
                   method: "direct_pdf_to_ai",
+                  model_used: aiResult.modelUsed || geminiModelCandidates[0],
                   pdf_size: pdfSize,
                   source_document_id: sourceDocumentId,
                   matched_db_section_id: matchedSectionId,
