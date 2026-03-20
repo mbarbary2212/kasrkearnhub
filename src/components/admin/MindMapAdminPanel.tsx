@@ -227,9 +227,9 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                   <TooltipTrigger asChild>
                     <Info className="w-4 h-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    Generates Markmap mind maps from the chapter/topic PDF using Gemini. New maps are saved as drafts.
-                    Existing maps are preserved — generation is additive.
+                 <TooltipContent className="max-w-xs text-xs">
+                    Generates Markmap mind maps from the chapter/topic PDF using Gemini. 
+                    New maps are always added as drafts. Existing maps are never overwritten.
                   </TooltipContent>
                 </Tooltip>
               </div>
