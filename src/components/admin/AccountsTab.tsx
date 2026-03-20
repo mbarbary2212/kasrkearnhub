@@ -70,7 +70,6 @@ import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
-import { EmailInvitationsTable } from './EmailInvitationsTable';
 
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
