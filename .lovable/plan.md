@@ -1,5 +1,6 @@
 
 
+
 # Session 6: Link Mind Map Generation to Admin Documents PDF + Unify AI Content Factory
 
 ## Summary
@@ -24,12 +25,22 @@ Fixed two disconnects: (A) `generate-mind-map` now falls back to `admin_document
 
 3. **`AIContentFactoryModal.tsx`**: Added `mind-maps` query key invalidation on approval.
 
+### Part C — Improved Error Messaging, Logging & Source Transparency
+
+1. **Error messages**: Replaced "image-based" assumptions with accurate diagnosis about compressed/encoded PDF streams.
+2. **Source method tracking**: Response now includes `source_method` field (`chapter_pdf_text`, `selected_document`, `auto_detected_document`).
+3. **Dual character counts**: Response includes `chapter_pdf_text_length` alongside extraction length for comparison.
+4. **Enhanced logging**: Structured console.log entries show document title, char count, and source method used.
+5. **Result dialog**: Shows source method label and both character counts when available.
+
 ### Files Modified
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-mind-map/index.ts` | Admin documents PDF fallback + text extraction |
+| `supabase/functions/generate-mind-map/index.ts` | Admin documents PDF fallback + text extraction + improved error msgs + source_method |
 | `supabase/functions/generate-content-from-pdf/index.ts` | Mind map schema → Markmap markdown |
 | `supabase/functions/approve-ai-content/index.ts` | Insert into `mind_maps` table |
 | `src/components/admin/AIContentFactoryModal.tsx` | Added `mind-maps` query invalidation |
+| `src/hooks/useMindMaps.ts` | Updated source_document type with source_method + chapter_pdf_text_length |
+| `src/components/admin/MindMapAdminPanel.tsx` | Enhanced result dialog with source method + dual counts |
 
 ### No new files. No database migrations needed.
