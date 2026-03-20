@@ -472,7 +472,88 @@ const { data: listData, error: listError } = await supabaseAdmin.auth.admin.list
       );
     }
 
-    throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", "set-password", "update-email", "reset-password", or "delete-user"');
+    if (action === 'create-user') {
+      if (!user || !user.email || !user.full_name) {
+        throw new Error('Missing required fields: email and full_name');
+      }
+
+      // Only super_admin can create users directly
+      const isSuperAdmin = roles.some((r: any) => r.role === 'super_admin');
+      if (!isSuperAdmin) {
+        throw new Error('Unauthorized: Only super admins can create users directly');
+      }
+
+      const email = user.email.trim().toLowerCase();
+      const fullName = user.full_name.trim();
+      const role = user.role || 'student';
+      const yearId = user.year_id || null;
+
+      // Generate a random temporary password
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+      let tempPassword = '';
+      const array = new Uint8Array(12);
+      crypto.getRandomValues(array);
+      for (let i = 0; i < 12; i++) {
+        tempPassword += chars[array[i] % chars.length];
+      }
+
+      // Check if user already exists
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const existingUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === email);
+      if (existingUser) {
+        throw new Error('A user with this email already exists');
+      }
+
+      // Create user in auth
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { full_name: fullName },
+      });
+
+      if (createError) {
+        console.error('Error creating user:', createError);
+        throw new Error(createError.message);
+      }
+
+      // Update profile
+      await supabaseAdmin.from('profiles').update({
+        full_name: fullName,
+        email,
+        year_id: yearId,
+      }).eq('id', newUser.user.id);
+
+      // Set role (trigger creates default 'student', update if different)
+      if (role !== 'student') {
+        await supabaseAdmin.from('user_roles')
+          .update({ role })
+          .eq('user_id', newUser.user.id);
+      }
+
+      // Audit log
+      await supabaseAdmin.from('audit_log').insert({
+        actor_id: caller.id,
+        action: 'USER_CREATED_BY_ADMIN',
+        entity_type: 'user',
+        entity_id: newUser.user.id,
+        metadata: { email, role, year_id: yearId, created_by: caller.id },
+      });
+
+      console.log(`User ${email} created by admin ${caller.id}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'User created successfully',
+          temp_password: tempPassword,
+          user_id: newUser.user.id,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    throw new Error('Invalid action. Use "invite-single", "invite-bulk", "check-invite-status", "set-password", "update-email", "reset-password", "delete-user", or "create-user"');
 
   } catch (error: any) {
     console.error('Error in provision-user:', error);
