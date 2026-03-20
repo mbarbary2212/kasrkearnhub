@@ -113,10 +113,13 @@ export function VisualResourcesSection({
         {/* Mind Maps */}
         <TabsContent value="mind_map" className="mt-4">
           {canManage && (
-            <div className="flex gap-2 mb-4">
-              <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
-                <Plus className="w-3 h-3 mr-1" /> Add Mind Map
-              </Button>
+            <div className="space-y-3 mb-4">
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
+                  <Plus className="w-3 h-3 mr-1" /> Add Mind Map
+                </Button>
+              </div>
+              <MindMapAdminPanel chapterId={chapterId} topicId={topicId} />
             </div>
           )}
           {canManage && viewMode === 'table' ? (
