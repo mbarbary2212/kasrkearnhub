@@ -12,6 +12,7 @@ import { requestResourceDelete } from '@/components/content/ResourcesDeleteManag
 import { MindMapViewer } from './MindMapViewer';
 import { InfographicViewer } from './InfographicViewer';
 import { VisualResourcesAdminTable } from './VisualResourcesAdminTable';
+import { MindMapAdminPanel } from '@/components/admin/MindMapAdminPanel';
 
 interface VisualResourcesSectionProps {
   mindMaps: StudyResource[];
