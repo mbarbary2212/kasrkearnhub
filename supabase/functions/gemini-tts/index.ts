@@ -111,7 +111,7 @@ serve(async (req) => {
         return { ok: true, status: 200, audioData, finishReason };
       } catch (err) {
         clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
+        if ((err as Error).name === 'AbortError') {
           console.error('[gemini-tts] Gemini API timed out after 15s');
           return { ok: false, status: 504, audioData: null, finishReason: 'TIMEOUT' };
         }

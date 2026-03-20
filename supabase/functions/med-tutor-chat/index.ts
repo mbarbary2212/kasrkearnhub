@@ -46,7 +46,7 @@ async function getGlobalAISettings(serviceClient: any): Promise<{ provider: 'lov
   let lovableModel: string | null = null;
 
   if (data) {
-    for (const row of data) {
+    for (const row of (data as { key: string; value: string }[])) {
       let value = row.value;
       if (typeof value === 'string') {
         try { value = JSON.parse(value); } catch { /* keep as-is */ }
