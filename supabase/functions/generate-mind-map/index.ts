@@ -449,7 +449,7 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "full" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating full chapter map via direct PDF-to-AI...");
       const userPrompt = `Create a full mind map for this chapter: "${sourceTitle}"`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, keyResult.apiKey);
+      const aiResult = await callGeminiWithPdf(pdfBytes, fullSystemPrompt, userPrompt, geminiApiKey!);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
