@@ -330,7 +330,7 @@ serve(async (req) => {
           const { data: moduleDoc } = await serviceClient
             .from("admin_documents")
             .select("storage_path, file_name")
-            .eq("module_id", chapter.module_id || (await serviceClient.from("module_chapters").select("module_id").eq("id", chapter_id).single()).data?.module_id)
+            .eq("module_id", chapter.module_id)
             .eq("is_deleted", false)
             .order("created_at", { ascending: false })
             .limit(1)
