@@ -13,6 +13,8 @@ import { MindMapViewer } from './MindMapViewer';
 import { InfographicViewer } from './InfographicViewer';
 import { VisualResourcesAdminTable } from './VisualResourcesAdminTable';
 import { MindMapAdminPanel } from '@/components/admin/MindMapAdminPanel';
+import { AIMindMapCards } from './AIMindMapCards';
+import { usePublishedMindMaps } from '@/hooks/useMindMaps';
 
 interface VisualResourcesSectionProps {
   mindMaps: StudyResource[];
