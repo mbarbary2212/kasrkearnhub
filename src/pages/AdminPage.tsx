@@ -1355,7 +1355,7 @@ export default function AdminPage() {
   };
 
 
-  if (authLoading || isLoading) {
+  if (authLoading || adminDataLoading) {
 
     return (
       <MainLayout>
