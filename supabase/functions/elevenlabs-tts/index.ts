@@ -95,7 +95,7 @@ serve(async (req) => {
     }
 
     const response = await fetchWithRetry(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
       {
         method: 'POST',
         headers: {
