@@ -1183,26 +1183,7 @@ export default function AdminPage() {
         if (error) throw error;
       }
 
-      // Update local state
-      setUsers(prev =>
-        prev.map(u => {
-          if (u.id === maSelectedUserId) {
-            const newAssignments = newModuleIds.map(moduleId => ({
-              id: crypto.randomUUID(),
-              user_id: maSelectedUserId,
-              module_id: moduleId,
-              assigned_by: user?.id || null,
-              created_at: new Date().toISOString(),
-            }));
-            return {
-              ...u,
-              role: 'department_admin' as AppRole,
-              moduleAssignments: [...(u.moduleAssignments || []), ...newAssignments],
-            };
-          }
-          return u;
-        })
-      );
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
 
       toast.success('Module Admin assigned successfully');
       setModuleAdminAssignDialogOpen(false);
