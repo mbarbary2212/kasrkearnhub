@@ -1,45 +1,34 @@
 
 
-## Plan: Refactor AdminPage to use useAdminData hook
+## Plan: Add Light/Dark/System Theme Switching
 
-Replace local state management (`useState` + `useEffect`) in `AdminPage.tsx` with the centralized `useAdminData` hook, and propagate the removal of `setModules` through `CurriculumSourcesTab` and `CurriculumTab`. All mutation handlers will use `queryClient.invalidateQueries({ queryKey: ['admin-data'] })` instead of manual state updates.
+### 1. Wrap app with ThemeProvider (`src/main.tsx`)
+Import `ThemeProvider` from `next-themes` and wrap `<App />` inside the error boundaries:
 
-### File 1 — `src/pages/AdminPage.tsx` (16 surgical edits)
+```tsx
+import { ThemeProvider } from 'next-themes';
 
-| Step | Line(s) | Change |
-|------|---------|--------|
-| A | 1 | Add two imports: `useQueryClient` from react-query, `useAdminData, UserWithRole` from hook |
-| B | 24 | Trim import to `import { AppRole } from '@/types/database'` |
-| C | 25 | Trim import to `import type { Year, Module } from '@/types/curriculum'` |
-| D | 55–59 | Delete local `UserWithRole` interface (now imported) |
-| E | 999–1003 | Delete 5 `useState` lines (users, departments, years, modules, isLoading) |
-| F | after 1026 | Add `queryClient`, `useAdminData` call, and derived `users/departments/years/modules` consts |
-| G | 1096–1170 | Delete entire `fetchData` useEffect |
-| H | 1196–1202 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
-| I | 1234–1251 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
-| J | 1284–1303 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
-| K | 1330–1340 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
-| L | 1393 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
-| M | 1424 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
-| N | 1448 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
-| O | 1485 | Change `isLoading` to `adminDataLoading` |
-| P | 2244–2249 | Remove `setModules={setModules}` prop from `<CurriculumSourcesTab>` |
+// In render:
+<ChunkLoadErrorBoundary>
+  <GlobalErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <App />
+    </ThemeProvider>
+  </GlobalErrorBoundary>
+</ChunkLoadErrorBoundary>
+```
 
-### File 2 — `src/components/admin/CurriculumSourcesTab.tsx`
+### 2. Create `src/components/ThemeToggle.tsx`
+A dropdown button using `useTheme` from `next-themes` with three options: Light (Sun icon), Dark (Moon icon), System (Monitor icon). Uses existing shadcn `DropdownMenu` and `Button` components. Styled consistently with the existing icon buttons in the header (ghost variant, `h-8 w-8`).
 
-- Remove `setModules` from interface and component signature
-- Remove `setModules={setModules}` from `<CurriculumTab>` passthrough
+### 3. Place toggle in header (`src/components/layout/MainLayout.tsx`)
+Insert `<ThemeToggle />` inside the `<div className="flex items-center gap-2">` block (line 189), right before the admin notifications / avatar — so it's visible to all users (logged in or not). Add the import at the top.
 
-### File 3 — `src/components/admin/CurriculumTab.tsx`
+### Files modified
+- `src/main.tsx` — add ThemeProvider import + wrapper
+- `src/components/ThemeToggle.tsx` — new file
+- `src/components/layout/MainLayout.tsx` — import + place ThemeToggle
 
-- Add `import { useQueryClient } from '@tanstack/react-query'`
-- Remove `setModules` from interface and component signature
-- Add `const queryClient = useQueryClient()` at top of function body
-- Replace 3 `setModules(prev=>...)` calls (lines 95, 126, 150) with `queryClient.invalidateQueries({ queryKey: ['admin-data'] })`
-
-### What stays untouched
-- URL tab sync useEffect (lines 1068–1073)
-- Module form state (showModuleDialog, editingModule, moduleForm)
-- All other files
-- All student-facing pages
+### Files NOT modified
+- `sonner.tsx`, `index.css`, `tailwind.config.ts`, page/feature components
 
