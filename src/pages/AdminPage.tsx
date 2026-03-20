@@ -1294,7 +1294,7 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setModules(prev => prev.map(m => m.id === editingModule.id ? data as Module : m));
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
       setShowModuleDialog(false);
       setEditingModule(null);
       resetModuleForm();
