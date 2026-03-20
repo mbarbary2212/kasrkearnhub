@@ -109,7 +109,7 @@ export function HistoryTakingSection({
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
   const [scribeConnecting, setScribeConnecting] = useState(false);
-  const [greetingPlaying, setGreetingPlaying] = useState(false);
+  
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
   });
@@ -938,7 +938,7 @@ export function HistoryTakingSection({
                   variant={isListening ? 'destructive' : 'default'}
                   className="gap-2 rounded-full w-14 h-14"
                   onClick={toggleVoice}
-                  disabled={isSending || shouldDisableInput || scribeConnecting || greetingPlaying || isSpeaking}
+                  disabled={isSending || shouldDisableInput || scribeConnecting || isSpeaking}
                 >
                   {scribeConnecting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -950,14 +950,8 @@ export function HistoryTakingSection({
                 </Button>
               </div>
 
-              {greetingPlaying && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Volume2 className="w-4 h-4 animate-pulse" />
-                  Patient is speaking...
-                </div>
-              )}
 
-              {isListening && !greetingPlaying && (
+              {isListening && (
                 <div className="flex items-center gap-2 text-sm text-primary">
                   <span className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
@@ -967,7 +961,7 @@ export function HistoryTakingSection({
                 </div>
               )}
 
-              {isSpeaking && !greetingPlaying && (
+              {isSpeaking && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Volume2 className="w-4 h-4 animate-pulse" />
                   Patient is speaking...
@@ -981,9 +975,9 @@ export function HistoryTakingSection({
                 </div>
               )}
 
-              {/* Mic prompt — show after greeting, before student speaks */}
-              {!greetingPlaying && !isListening && !isSending && !isSpeaking && chatMessages.filter(m => m.role === 'user').length === 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+              {/* Mic prompt — before student speaks */}
+              {!isListening && !isSending && !isSpeaking && chatMessages.filter(m => m.role === 'user').length === 0 && (
+                <div className="flex items-center gap-2 text-base text-foreground/70 dark:text-slate-300 animate-pulse">
                   <Mic className="w-4 h-4" />
                   <span>{selectedLanguage === 'ar' ? '🎤 اضغط على الميكروفون لبدء الأسئلة' : '🎤 Press the microphone to start asking questions'}</span>
                 </div>
@@ -1105,81 +1099,5 @@ export function HistoryTakingSection({
     // Show patient greeting locally — student sends the first real message
     setChatMessages([{ role: 'assistant', content: greeting }]);
 
-    // Speak the greeting aloud in voice mode
-    if (mode === 'voice' && lang === 'ar' && !isMuted) {
-      setGreetingPlaying(true);
-      try {
-        // ── Resolve TTS settings fresh from DB to avoid stale closure ──
-        let resolvedSettings = ttsSettings;
-        if (!resolvedSettings || ttsSettingsLoading) {
-          console.log('[Greeting] Settings not yet loaded, fetching directly...');
-          const { data: freshSettings } = await supabase
-            .from('ai_settings')
-            .select('*')
-            .order('key');
-          if (freshSettings) {
-            resolvedSettings = freshSettings;
-          }
-        }
-
-        const resolvedProvider = getSettingValue(resolvedSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini';
-        const resolvedGeminiVoice = patientGender === 'female'
-          ? getSettingValue(resolvedSettings, 'tts_gemini_female_voice', 'Aoede') as string
-          : getSettingValue(resolvedSettings, 'tts_gemini_male_voice', 'Kore') as string;
-
-        const gender = getSettingValue(resolvedSettings, 'tts_voice_gender', 'male') as string;
-        const voiceId = voiceIdOverride
-          || (gender === 'female'
-            ? getSettingValue(resolvedSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-            : getSettingValue(resolvedSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
-
-        console.log('[Greeting] ttsProvider resolved as:', resolvedProvider);
-        if (resolvedProvider === 'gemini') {
-          stopAllTTS();
-          const geminiVoiceToUse = voiceIdOverride || resolvedGeminiVoice;
-          const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-          const { data: { session } } = await supabase.auth.getSession();
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session?.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text: greeting, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
-          });
-          if (!res.ok) {
-            console.warn('[TTS] Gemini greeting failed:', res.status, '— skipping audio');
-          } else {
-            const blob = await res.blob();
-            if (blob.size < 100) {
-              console.warn('[TTS] Gemini greeting blob too small:', blob.size, '— skipping audio');
-            } else {
-              const blobUrl = URL.createObjectURL(blob);
-              const audio = preUnlockedAudio || new Audio();
-              audio.src = blobUrl;
-              registerCurrentAudio(audio);
-              console.log('[Greeting TTS] Playing audio, blob size:', blob.size, 'type:', blob.type);
-              await new Promise<void>((resolve) => {
-                audio.onended = () => { console.log('[Greeting TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
-                audio.onerror = (e) => { console.error('[Greeting TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
-                audio.play().then(() => {
-                  console.log('[Greeting TTS] Audio playing, duration:', audio.duration);
-                }).catch((err) => {
-                  console.error('[Greeting TTS] play() rejected:', err);
-                  URL.revokeObjectURL(blobUrl);
-                  resolve();
-                });
-              });
-            }
-          }
-        } else {
-          await speakArabic(greeting, resolvedProvider, voiceId, patientTone, preUnlockedAudio);
-        }
-      } catch (err) {
-        console.error('[Greeting TTS] Error:', err);
-      } finally {
-        setGreetingPlaying(false);
-      }
-    }
   }
 }
