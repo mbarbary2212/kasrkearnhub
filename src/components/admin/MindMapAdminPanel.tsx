@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Network,
   Wand2,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Info,
   MinusCircle,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
