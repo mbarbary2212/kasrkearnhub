@@ -1018,6 +1018,13 @@ export default function AdminPage() {
 
   const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
 
+  const queryClient = useQueryClient();
+  const { data: adminData, isLoading: adminDataLoading } = useAdminData(!!isAdmin);
+  const users = adminData?.users ?? [];
+  const departments = adminData?.departments ?? [];
+  const years = adminData?.years ?? [];
+  const modules = adminData?.modules ?? [];
+
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
     if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
