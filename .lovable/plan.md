@@ -1,49 +1,50 @@
 
 
-## Fix ttsProvider Race Condition
+## Plan: Fix Build Errors + Create useAdminData Hook
 
-### Problem
-`useAISettings()` is async. When the user clicks "Voice", settings may not be loaded yet, causing `ttsProvider` to default to `'browser'` instead of `'gemini'`.
+### Context
+There are 4 TypeScript build errors (Badge import missing in RealtimeAnalyticsTab) plus the previously identified edge function errors, and a new hook to create.
 
-### Changes (1 file: `HistoryTakingSection.tsx`)
+### 1. Create `src/hooks/useAdminData.ts` (new file)
+Create with the exact code previously provided by the user — a `useQuery`-based hook that fetches profiles, roles, department assignments, module assignments, departments, years, and modules in parallel via `Promise.all`.
 
-**1. Destructure `isLoading` from the hook (line 61)**
+### 2. Fix `src/components/admin/RealtimeAnalyticsTab.tsx` (Badge import)
+The last diff removed the `Badge` import but `Badge` is still used on lines 159 and 163.
 
-Change:
+**Line 1-2** — add back the Badge import:
 ```typescript
-const { data: ttsSettings } = useAISettings();
-```
-To:
-```typescript
-const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
-```
-
-**2. Guard the Voice button onClick (line 702)**
-
-Add at the top of the onClick handler:
-```typescript
-if (ttsSettingsLoading) return;
+import { Users, User, Monitor, BookOpen } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 ```
 
-**3. Disable the Voice button while loading (line 698)**
+### 3. Fix `supabase/functions/gemini-tts/index.ts` (2 fixes)
 
-Add `disabled={ttsSettingsLoading}` and apply a loading opacity class:
+**Line 84** — non-null assertion (guarded by early return above):
 ```typescript
-<Button
-  size="lg"
-  variant="outline"
-  className={cn("gap-2", ttsSettingsLoading && "opacity-50")}
-  disabled={ttsSettingsLoading}
-  onClick={() => { ... }}
->
+'X-Goog-Api-Key': GEMINI_API_KEY!,
 ```
 
-**4. Add debug log in greeting handler**
-
-At the start of `sendChatMessageInitial` (or the greeting TTS section), add:
+**Line 114** — cast unknown err:
 ```typescript
-console.log('[Greeting] ttsProvider resolved as:', ttsProvider);
+if ((err as Error).name === 'AbortError') {
 ```
 
-### No other files touched.
+### 4. Fix `supabase/functions/med-tutor-chat/index.ts` (2 fixes)
+
+**Line 38** — change parameter type to `any`:
+```typescript
+async function getGlobalAISettings(serviceClient: any): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
+```
+
+**Lines 48-49** — cast data array:
+```typescript
+for (const row of (data as { key: string; value: string }[])) {
+```
+
+### Files Changed
+- `src/hooks/useAdminData.ts` — new file
+- `src/components/admin/RealtimeAnalyticsTab.tsx` — 1 line (add Badge import)
+- `supabase/functions/gemini-tts/index.ts` — 2 line fixes
+- `supabase/functions/med-tutor-chat/index.ts` — 2 line fixes
 
