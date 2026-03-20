@@ -21,6 +21,7 @@ import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizonta
 import logo from '@/assets/kalm-hub-logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -187,6 +188,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
               <AdminNotificationsPopover 

@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "next-themes";
 import { initSentry } from "./lib/sentry";
 import App from "./App.tsx";
 import "./index.css";
@@ -54,7 +55,9 @@ createRoot(document.getElementById("root")!).render(
   // Both provide user-friendly fallback UI with recovery options
   <ChunkLoadErrorBoundary>
     <GlobalErrorBoundary>
-      <App />
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <App />
+      </ThemeProvider>
     </GlobalErrorBoundary>
   </ChunkLoadErrorBoundary>
 );
