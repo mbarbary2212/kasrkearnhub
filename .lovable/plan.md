@@ -1,50 +1,45 @@
 
 
-## Plan: Fix Build Errors + Create useAdminData Hook
+## Plan: Refactor AdminPage to use useAdminData hook
 
-### Context
-There are 4 TypeScript build errors (Badge import missing in RealtimeAnalyticsTab) plus the previously identified edge function errors, and a new hook to create.
+Replace local state management (`useState` + `useEffect`) in `AdminPage.tsx` with the centralized `useAdminData` hook, and propagate the removal of `setModules` through `CurriculumSourcesTab` and `CurriculumTab`. All mutation handlers will use `queryClient.invalidateQueries({ queryKey: ['admin-data'] })` instead of manual state updates.
 
-### 1. Create `src/hooks/useAdminData.ts` (new file)
-Create with the exact code previously provided by the user — a `useQuery`-based hook that fetches profiles, roles, department assignments, module assignments, departments, years, and modules in parallel via `Promise.all`.
+### File 1 — `src/pages/AdminPage.tsx` (16 surgical edits)
 
-### 2. Fix `src/components/admin/RealtimeAnalyticsTab.tsx` (Badge import)
-The last diff removed the `Badge` import but `Badge` is still used on lines 159 and 163.
+| Step | Line(s) | Change |
+|------|---------|--------|
+| A | 1 | Add two imports: `useQueryClient` from react-query, `useAdminData, UserWithRole` from hook |
+| B | 24 | Trim import to `import { AppRole } from '@/types/database'` |
+| C | 25 | Trim import to `import type { Year, Module } from '@/types/curriculum'` |
+| D | 55–59 | Delete local `UserWithRole` interface (now imported) |
+| E | 999–1003 | Delete 5 `useState` lines (users, departments, years, modules, isLoading) |
+| F | after 1026 | Add `queryClient`, `useAdminData` call, and derived `users/departments/years/modules` consts |
+| G | 1096–1170 | Delete entire `fetchData` useEffect |
+| H | 1196–1202 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
+| I | 1234–1251 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
+| J | 1284–1303 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
+| K | 1330–1340 | Replace `setUsers(prev=>...)` with `queryClient.invalidateQueries` |
+| L | 1393 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
+| M | 1424 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
+| N | 1448 | Replace `setModules(prev=>...)` with `queryClient.invalidateQueries` |
+| O | 1485 | Change `isLoading` to `adminDataLoading` |
+| P | 2244–2249 | Remove `setModules={setModules}` prop from `<CurriculumSourcesTab>` |
 
-**Line 1-2** — add back the Badge import:
-```typescript
-import { Users, User, Monitor, BookOpen } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-```
+### File 2 — `src/components/admin/CurriculumSourcesTab.tsx`
 
-### 3. Fix `supabase/functions/gemini-tts/index.ts` (2 fixes)
+- Remove `setModules` from interface and component signature
+- Remove `setModules={setModules}` from `<CurriculumTab>` passthrough
 
-**Line 84** — non-null assertion (guarded by early return above):
-```typescript
-'X-Goog-Api-Key': GEMINI_API_KEY!,
-```
+### File 3 — `src/components/admin/CurriculumTab.tsx`
 
-**Line 114** — cast unknown err:
-```typescript
-if ((err as Error).name === 'AbortError') {
-```
+- Add `import { useQueryClient } from '@tanstack/react-query'`
+- Remove `setModules` from interface and component signature
+- Add `const queryClient = useQueryClient()` at top of function body
+- Replace 3 `setModules(prev=>...)` calls (lines 95, 126, 150) with `queryClient.invalidateQueries({ queryKey: ['admin-data'] })`
 
-### 4. Fix `supabase/functions/med-tutor-chat/index.ts` (2 fixes)
-
-**Line 38** — change parameter type to `any`:
-```typescript
-async function getGlobalAISettings(serviceClient: any): Promise<{ provider: 'lovable' | 'gemini'; model: string }> {
-```
-
-**Lines 48-49** — cast data array:
-```typescript
-for (const row of (data as { key: string; value: string }[])) {
-```
-
-### Files Changed
-- `src/hooks/useAdminData.ts` — new file
-- `src/components/admin/RealtimeAnalyticsTab.tsx` — 1 line (add Badge import)
-- `supabase/functions/gemini-tts/index.ts` — 2 line fixes
-- `supabase/functions/med-tutor-chat/index.ts` — 2 line fixes
+### What stays untouched
+- URL tab sync useEffect (lines 1068–1073)
+- Module form state (showModuleDialog, editingModule, moduleForm)
+- All other files
+- All student-facing pages
 
