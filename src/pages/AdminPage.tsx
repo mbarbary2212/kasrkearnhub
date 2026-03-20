@@ -2117,7 +2117,6 @@ export default function AdminPage() {
               <CurriculumSourcesTab
                 modules={modules}
                 years={years}
-                setModules={setModules}
                 moduleAdminModuleIds={moduleAdminModuleIds}
               />
             </TabsContent>
