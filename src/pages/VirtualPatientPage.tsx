@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 import { CaseLeaderboard } from '@/components/clinical-cases/CaseLeaderboard';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const SESSION_KEY = 'ai_case_session';
 
