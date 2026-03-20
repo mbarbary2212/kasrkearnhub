@@ -229,8 +229,12 @@ export function AccountsTab() {
         </div>
         <div className="flex items-center gap-2">
           <EmailBouncesPopover />
-          <Button variant="outline" onClick={() => setSingleInviteOpen(true)} className="gap-2">
+          <Button variant="outline" onClick={() => setCreateUserOpen(true)} className="gap-2">
             <UserPlus className="h-4 w-4" />
+            Create User
+          </Button>
+          <Button variant="outline" onClick={() => setSingleInviteOpen(true)} className="gap-2">
+            <Mail className="h-4 w-4" />
             Invite User
           </Button>
           <Button onClick={() => setBulkUploadOpen(true)} className="gap-2">
