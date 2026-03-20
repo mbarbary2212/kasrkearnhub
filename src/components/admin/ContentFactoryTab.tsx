@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Layers, BookOpen } from 'lucide-react';
+import { Layers, BookOpen, Network } from 'lucide-react';
 import { AISettingsPanel } from './AISettingsPanel';
 import { AIBatchJobsList } from './AIBatchJobsList';
+import { MindMapPromptSettings } from './MindMapPromptSettings';
 import { Button } from '@/components/ui/button';
 
 // Lazy wrapper for AI Batch Generator Modal
@@ -29,7 +30,7 @@ export function ContentFactoryTab() {
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold">Content Factory</h2>
-        <p className="text-muted-foreground">Batch generation and content rules</p>
+        <p className="text-muted-foreground">Batch generation, content rules, and mind map prompts</p>
       </div>
 
       <Tabs defaultValue="batch" className="w-full">
@@ -41,6 +42,10 @@ export function ContentFactoryTab() {
           <TabsTrigger value="rules" className="gap-2">
             <BookOpen className="w-4 h-4" />
             AI Rules
+          </TabsTrigger>
+          <TabsTrigger value="mindmap-prompts" className="gap-2">
+            <Network className="w-4 h-4" />
+            Mind Map Prompts
           </TabsTrigger>
         </TabsList>
 
@@ -69,6 +74,18 @@ export function ContentFactoryTab() {
 
         <TabsContent value="rules" className="mt-4">
           <AISettingsPanel showRules="only" />
+        </TabsContent>
+
+        <TabsContent value="mindmap-prompts" className="mt-4">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold">Mind Map Prompt Presets</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure AI prompts used when generating Markmap mind maps from chapter/topic PDFs
+              </p>
+            </div>
+            <MindMapPromptSettings />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

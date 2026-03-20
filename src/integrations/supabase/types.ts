@@ -3211,6 +3211,130 @@ export type Database = {
           },
         ]
       }
+      mind_map_prompts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          name: string
+          prompt_type: string
+          system_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          prompt_type?: string
+          system_prompt: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          prompt_type?: string
+          system_prompt?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mind_maps: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          created_by: string | null
+          html_content: string | null
+          html_file_url: string | null
+          id: string
+          map_type: Database["public"]["Enums"]["mind_map_type"]
+          markdown_content: string | null
+          prompt_version: string | null
+          section_id: string | null
+          section_key: string | null
+          section_number: string | null
+          section_title: string | null
+          source_detection_metadata: Json | null
+          source_pdf_url: string | null
+          source_type: Database["public"]["Enums"]["mind_map_source_type"]
+          status: Database["public"]["Enums"]["mind_map_status"]
+          title: string
+          topic_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          html_content?: string | null
+          html_file_url?: string | null
+          id?: string
+          map_type?: Database["public"]["Enums"]["mind_map_type"]
+          markdown_content?: string | null
+          prompt_version?: string | null
+          section_id?: string | null
+          section_key?: string | null
+          section_number?: string | null
+          section_title?: string | null
+          source_detection_metadata?: Json | null
+          source_pdf_url?: string | null
+          source_type?: Database["public"]["Enums"]["mind_map_source_type"]
+          status?: Database["public"]["Enums"]["mind_map_status"]
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          html_content?: string | null
+          html_file_url?: string | null
+          id?: string
+          map_type?: Database["public"]["Enums"]["mind_map_type"]
+          markdown_content?: string | null
+          prompt_version?: string | null
+          section_id?: string | null
+          section_key?: string | null
+          section_number?: string | null
+          section_title?: string | null
+          source_detection_metadata?: Json | null
+          source_pdf_url?: string | null
+          source_type?: Database["public"]["Enums"]["mind_map_source_type"]
+          status?: Database["public"]["Enums"]["mind_map_status"]
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mind_maps_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mind_maps_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mind_maps_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mock_exam_attempts: {
         Row: {
           created_at: string
@@ -6190,6 +6314,9 @@ export type Database = {
       feedback_severity: "normal" | "urgent" | "extreme"
       feedback_status: "new" | "in_review" | "closed"
       mcq_difficulty: "easy" | "medium" | "hard"
+      mind_map_source_type: "generated_markdown" | "legacy_html"
+      mind_map_status: "draft" | "published"
+      mind_map_type: "full" | "section" | "ultra"
       practice_question_type: "mcq" | "osce" | "guided_explanation"
       question_attempt_status: "unseen" | "attempted" | "correct" | "incorrect"
       study_resource_type:
@@ -6361,6 +6488,9 @@ export const Constants = {
       feedback_severity: ["normal", "urgent", "extreme"],
       feedback_status: ["new", "in_review", "closed"],
       mcq_difficulty: ["easy", "medium", "hard"],
+      mind_map_source_type: ["generated_markdown", "legacy_html"],
+      mind_map_status: ["draft", "published"],
+      mind_map_type: ["full", "section", "ultra"],
       practice_question_type: ["mcq", "osce", "guided_explanation"],
       question_attempt_status: ["unseen", "attempted", "correct", "incorrect"],
       study_resource_type: [
