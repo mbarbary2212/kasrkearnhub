@@ -174,7 +174,7 @@ export default function VirtualPatientRunner() {
   const attemptsToday = (pastAttempts ?? []).filter(a =>
     new Date(a.started_at) >= todayStart
   ).length;
-  const canStartToday = attemptsToday < 2;
+  const canStartToday = isSuperAdmin || isPlatformAdmin || attemptsToday < 2;
 
   const caseData = (vpCase as any)?.generated_case_data;
   const patientName = caseData?.patient_name || caseData?.name;
