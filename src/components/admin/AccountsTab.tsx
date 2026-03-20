@@ -596,6 +596,12 @@ export function AccountsTab() {
         onOpenChange={setSingleInviteOpen}
       />
 
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={createUserOpen}
+        onOpenChange={setCreateUserOpen}
+      />
+
       {/* Bulk Upload Modal */}
       <BulkUserUploadModal
         open={bulkUploadOpen}
