@@ -432,6 +432,15 @@ Return ONLY the JSON array, no other text.`;
     const keyResult = await resolveApiKey(serviceClient, user.id, role, aiSettings);
     if (keyResult.error) return jsonError("AI_KEY_ERROR", keyResult.error, 500);
 
+    // Resolve the actual API key — when keySource is 'global', use GOOGLE_API_KEY from env
+    let geminiApiKey = keyResult.apiKey;
+    if (!geminiApiKey) {
+      geminiApiKey = Deno.env.get("GOOGLE_API_KEY");
+      if (!geminiApiKey) {
+        return jsonError("AI_KEY_ERROR", "No Google API key configured. Please set GOOGLE_API_KEY in Edge Function secrets.", 500);
+      }
+    }
+
     // ── Generate maps ─────────────────────────────────────────────
     const results: ResultItem[] = [];
     const pdfSize = pdfBytes.length;
