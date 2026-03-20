@@ -1,8 +1,6 @@
 import { Users, User, Monitor, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { usePresence, type PresenceUserState } from '@/contexts/PresenceContext';
-import { useYears } from '@/hooks/useYears';
 import { useMemo } from 'react';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -228,14 +226,6 @@ function BreakdownRow({ label, count, total }: { label: string; count: number; t
 
 export function RealtimeAnalyticsTab() {
   const { onlineUsers, onlineCount, wsCount } = usePresence();
-  const { data: years } = useYears();
-
-  const yearMap = useMemo(() => {
-    const map = new Map<string, string>();
-    years?.forEach(y => map.set(y.id, y.name));
-    return map;
-  }, [years]);
-
   const stats = useMemo(() => {
     const students = onlineUsers.filter(u => u.state.role === 'student').length;
     const staff    = onlineUsers.filter(u => ['teacher', 'module_admin', 'topic_admin', 'department_admin'].includes(u.state.role)).length;
@@ -421,21 +411,6 @@ export function RealtimeAnalyticsTab() {
         </div>
       )}
 
-      {/* Per-user cards */}
-      {onlineCount > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Who's Online</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {onlineUsers.map(u => (
-              <UserPresenceCard
-                key={u.presence_ref}
-                state={u.state}
-                yearName={u.state.year_id ? yearMap.get(u.state.year_id) : undefined}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
