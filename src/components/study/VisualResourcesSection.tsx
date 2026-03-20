@@ -119,12 +119,24 @@ export function VisualResourcesSection({
         <TabsContent value="mind_map" className="mt-4">
           {canManage && (
             <div className="space-y-3 mb-4">
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
-                  <Plus className="w-3 h-3 mr-1" /> Add Mind Map
-                </Button>
-              </div>
-              <MindMapAdminPanel chapterId={chapterId} topicId={topicId} />
+              <Tabs defaultValue="generate" className="w-full">
+                <TabsList className="h-9 p-1">
+                  <TabsTrigger value="generate" className="text-xs gap-1.5">
+                    <Wand2 className="w-3.5 h-3.5" /> Generate Mind Map
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs gap-1.5">
+                    <Upload className="w-3.5 h-3.5" /> Upload Mind Map
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="generate" className="mt-3">
+                  <MindMapAdminPanel chapterId={chapterId} topicId={topicId} />
+                </TabsContent>
+                <TabsContent value="upload" className="mt-3">
+                  <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Mind Map
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
           {canManage && viewMode === 'table' ? (
@@ -141,13 +153,14 @@ export function VisualResourcesSection({
             <div className="space-y-6">
               {/* AI-generated published maps (visible to all users) */}
               <AIMindMapCards maps={publishedAIMaps} isLoading={aiMapsLoading} filterBySection={filterBySection} />
-              {/* Legacy study_resources mind maps */}
+              {/* Legacy study_resources mind maps — hide empty state if AI maps exist */}
               <MindMapViewer
                 resources={filteredMindMaps}
                 canManage={canManage}
                 onEdit={onEdit}
                 chapterId={chapterId}
                 topicId={topicId}
+                hideEmptyState={publishedAIMaps.length > 0}
               />
             </div>
           )}
