@@ -198,7 +198,7 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
           </DialogHeader>
 
           <div
-            className="flex-1 min-h-0 overflow-hidden rounded-lg bg-background border"
+            className="flex-1 min-h-0 overflow-hidden rounded-lg bg-white border"
             style={{ minHeight: isMobile ? '50vh' : '60vh' }}
           >
             {viewingMap?.markdown_content && (

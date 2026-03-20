@@ -306,9 +306,11 @@ interface MindMapViewerProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
+  /** Hide the empty state placeholder (e.g. when AI maps exist above) */
+  hideEmptyState?: boolean;
 }
 
-export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId }: MindMapViewerProps) {
+export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId, hideEmptyState = false }: MindMapViewerProps) {
   const [fullscreenResource, setFullscreenResource] = useState<StudyResource | null>(null);
   const [zoom, setZoom] = useState(1);
   const [localResources, setLocalResources] = useState<StudyResource[]>(resources);
@@ -486,6 +488,7 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
   }, [localResources, resources, reorderMutation, chapterId, topicId, resolvedChapterId]);
 
   if (resources.length === 0) {
+    if (hideEmptyState) return null;
     return (
       <div className="text-center py-12 border rounded-lg">
         <Network className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
