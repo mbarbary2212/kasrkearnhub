@@ -6,15 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function addWavHeader(pcmBase64: string, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): ArrayBuffer {
-  const pcmBuffer = Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0));
-  const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+function addWavHeader(
+  pcmBase64: string,
+  inputSampleRate = 24000,
+  outputSampleRate = 16000,
+  numChannels = 1,
+  bitsPerSample = 16
+): ArrayBuffer {
+  const pcmBuffer = new Int16Array(
+    Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer
+  );
+
+  // Downsample using linear interpolation
+  const ratio = inputSampleRate / outputSampleRate;
+  const outputLength = Math.floor(pcmBuffer.length / ratio);
+  const downsampled = new Int16Array(outputLength);
+  for (let i = 0; i < outputLength; i++) {
+    const pos = i * ratio;
+    const index = Math.floor(pos);
+    const frac = pos - index;
+    const a = pcmBuffer[index] ?? 0;
+    const b = pcmBuffer[index + 1] ?? 0;
+    downsampled[i] = Math.round(a + frac * (b - a));
+  }
+
+  const dataSize = downsampled.byteLength;
+  const byteRate = outputSampleRate * numChannels * bitsPerSample / 8;
   const blockAlign = numChannels * bitsPerSample / 8;
-  const dataSize = pcmBuffer.length;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
   const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    for (let i = 0; i < str.length; i++)
+      view.setUint8(offset + i, str.charCodeAt(i));
   };
   writeString(0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
@@ -23,13 +46,13 @@ function addWavHeader(pcmBase64: string, sampleRate = 24000, numChannels = 1, bi
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
+  view.setUint32(24, outputSampleRate, true);
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
   view.setUint16(34, bitsPerSample, true);
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
-  new Uint8Array(buffer).set(pcmBuffer, 44);
+  new Uint8Array(buffer).set(new Uint8Array(downsampled.buffer), 44);
   return buffer;
 }
 
