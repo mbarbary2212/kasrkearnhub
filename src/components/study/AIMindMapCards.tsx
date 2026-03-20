@@ -78,13 +78,22 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     printWindow.document.close();
   }, [viewingMap]);
 
+  // Sync fullscreen state when user exits via Esc or system controls
+  useEffect(() => {
+    const onFsChange = () => setIsNativeFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
+
   const handleFullscreenToggle = useCallback(() => {
     if (!document.fullscreenElement) {
       dialogContentRef.current?.requestFullscreen?.();
-      setIsNativeFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsNativeFullscreen(false);
     }
   }, []);
 
