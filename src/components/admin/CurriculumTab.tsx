@@ -19,10 +19,10 @@ import { DeptAssignmentsSection } from './DeptAssignmentsSection';
 interface CurriculumTabProps {
   modules: Module[];
   years: Year[];
-  setModules: React.Dispatch<React.SetStateAction<Module[]>>;
 }
 
-export function CurriculumTab({ modules, years, setModules }: CurriculumTabProps) {
+export function CurriculumTab({ modules, years }: CurriculumTabProps) {
+  const queryClient = useQueryClient();
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   
