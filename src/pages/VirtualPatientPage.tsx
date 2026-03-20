@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 import { CaseLeaderboard } from '@/components/clinical-cases/CaseLeaderboard';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const SESSION_KEY = 'ai_case_session';
 
@@ -45,6 +46,7 @@ interface SavedSession {
 export default function VirtualPatientRunner() {
   const { caseId } = useParams();
   const navigate = useNavigate();
+  const { isSuperAdmin, isPlatformAdmin } = useAuthContext();
   
   const { data: vpCase, isLoading } = useVirtualPatientCase(caseId);
 
@@ -172,7 +174,7 @@ export default function VirtualPatientRunner() {
   const attemptsToday = (pastAttempts ?? []).filter(a =>
     new Date(a.started_at) >= todayStart
   ).length;
-  const canStartToday = attemptsToday < 2;
+  const canStartToday = isSuperAdmin || isPlatformAdmin || attemptsToday < 2;
 
   const caseData = (vpCase as any)?.generated_case_data;
   const patientName = caseData?.patient_name || caseData?.name;
