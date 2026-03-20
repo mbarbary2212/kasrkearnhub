@@ -105,3 +105,6 @@ verify_jwt = false
 
 [functions.gemini-tts]
 verify_jwt = false
+
+[functions.generate-mind-map]
+verify_jwt = false
