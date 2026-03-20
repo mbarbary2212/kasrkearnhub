@@ -306,6 +306,8 @@ interface MindMapViewerProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
+  /** Hide the empty state placeholder (e.g. when AI maps exist above) */
+  hideEmptyState?: boolean;
 }
 
 export function MindMapViewer({ resources, canManage = false, onEdit, chapterId, topicId }: MindMapViewerProps) {
