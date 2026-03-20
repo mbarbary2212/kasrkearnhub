@@ -73,6 +73,29 @@ export function useMindMaps(chapterId?: string, topicId?: string) {
   });
 }
 
+/** Student-facing: only published AI-generated maps */
+export function usePublishedMindMaps(chapterId?: string, topicId?: string) {
+  return useQuery({
+    queryKey: [...QUERY_KEY, 'published', chapterId, topicId],
+    enabled: !!(chapterId || topicId),
+    queryFn: async () => {
+      let query = supabase
+        .from('mind_maps' as any)
+        .select('*')
+        .eq('status', 'published');
+      if (chapterId) query = query.eq('chapter_id', chapterId);
+      else if (topicId) query = query.eq('topic_id', topicId);
+      query = query
+        .order('map_type')
+        .order('section_number', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false });
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data as unknown as MindMap[]) || [];
+    },
+  });
+}
+
 export function useGenerateMindMap() {
   const qc = useQueryClient();
   return useMutation({
