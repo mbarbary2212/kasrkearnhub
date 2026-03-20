@@ -3,6 +3,18 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDiagnostic } from '@/lib/stabilityGuards';
 
+function isChunkLoadError(error: Error): boolean {
+  const message = error.message || '';
+  return (
+    message.includes('text/html') ||
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('Importing a module script failed') ||
+    message.includes('Loading chunk') ||
+    message.includes('ChunkLoadError') ||
+    error.name === 'ChunkLoadError'
+  );
+}
+
 interface Props {
   children: ReactNode;
 }
