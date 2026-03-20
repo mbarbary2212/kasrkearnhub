@@ -76,6 +76,7 @@ export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [singleInviteOpen, setSingleInviteOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
