@@ -94,8 +94,16 @@ export async function speakArabic(
   tone?: PatientTone,
   preUnlockedAudio?: HTMLAudioElement
 ): Promise<void> {
-  // Stop any ongoing playback
-  stopAllTTS();
+  // Stop previous audio without destroying the pre-unlocked element
+  if (currentAudio && currentAudio !== preUnlockedAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio.src = '';
+  } else if (currentAudio) {
+    currentAudio.pause();
+  }
+  currentAudio = null;
+  window.speechSynthesis?.cancel();
 
   if (provider === 'elevenlabs' && voiceId) {
     try {
@@ -149,7 +157,7 @@ export async function speakArabic(
         });
         console.log('[TTS] Attempting audio.play()');
         audio.play().catch((err) => {
-          console.warn('[TTS] play() rejected:', err);
+          console.error('[TTS] Play failed:', err);
           if (currentAudio === audio) currentAudio = null;
           URL.revokeObjectURL(audioUrl);
           resolve();
