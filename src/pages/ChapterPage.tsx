@@ -353,7 +353,7 @@ export default function ChapterPage() {
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
-  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length]);
+  }, [lectures?.length, flashcards.length, mindMaps.length, studyResources, documentsCount, interactiveAlgorithms?.length, workedCases.length, publishedAIMaps.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
