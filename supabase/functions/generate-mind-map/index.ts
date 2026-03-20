@@ -518,7 +518,13 @@ Return ONLY the JSON array, no other text.`;
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
         results.push({ type: "full", title: sourceTitle, success: false, status: "failed", errors: [aiResult.error || "AI failed to process PDF"] });
       } else {
-        const markdown = aiResult.content!.trim();
+        // Strip code fences for markmap output
+        let markdown = aiResult.content!.trim();
+        if (markdown.startsWith("```")) {
+          const nl = markdown.indexOf("\n");
+          if (nl > -1) markdown = markdown.slice(nl + 1);
+        }
+        if (markdown.endsWith("```")) markdown = markdown.slice(0, -3).trim();
         const validation = validateMarkmapMarkdown(markdown);
 
         if (!validation.valid) {

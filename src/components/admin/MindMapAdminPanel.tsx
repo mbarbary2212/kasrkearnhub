@@ -391,22 +391,24 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
               )}
 
               {/* Individual results */}
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {lastResult.results.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
+                  <div key={i} className="flex items-start gap-2 text-xs">
                     {r.status === 'generated' || (r.success && !r.status) ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                     ) : r.status === 'skipped' ? (
-                      <MinusCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <MinusCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                     ) : (
-                      <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
                     )}
-                    <span className="truncate">{r.title}</span>
-                    {r.errors && r.errors.length > 0 && (
-                      <span className={`truncate ${r.status === 'skipped' ? 'text-amber-600' : 'text-destructive'}`}>
-                        — {r.errors[0]}
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <span className="font-medium">{r.title}</span>
+                      {r.errors && r.errors.length > 0 && (
+                        <p className={`mt-0.5 break-words ${r.status === 'skipped' ? 'text-amber-600' : 'text-destructive'}`}>
+                          {r.errors.join('; ')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
