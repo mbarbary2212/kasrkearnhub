@@ -55,7 +55,9 @@ createRoot(document.getElementById("root")!).render(
   // Both provide user-friendly fallback UI with recovery options
   <ChunkLoadErrorBoundary>
     <GlobalErrorBoundary>
-      <App />
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <App />
+      </ThemeProvider>
     </GlobalErrorBoundary>
   </ChunkLoadErrorBoundary>
 );

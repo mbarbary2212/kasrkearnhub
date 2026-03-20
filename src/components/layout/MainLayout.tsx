@@ -188,6 +188,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
               <AdminNotificationsPopover 
