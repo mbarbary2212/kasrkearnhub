@@ -670,6 +670,11 @@ markmap:
     return jsonResp({
       success: true,
       generation_mode,
+      source_document: {
+        name: sourceDocumentName,
+        id: sourceDocumentId,
+        text_length: pdfText.length,
+      },
       detection: {
         method: detection.method,
         confidence: detection.overallConfidence,
