@@ -229,12 +229,58 @@ export function HistoryTakingSection({
     ? chatMessages[chatMessages.length - 1].content
     : '';
 
-  // Auto-scroll voice bubble to bottom when patient response changes
+  // Typewriter animation state — synced to TTS duration
+  const [displayedText, setDisplayedText] = useState('');
+  const ttsDurationRef = useRef<number>(0);
+  const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Clear any running typewriter
+    if (typewriterTimerRef.current) {
+      clearInterval(typewriterTimerRef.current);
+      typewriterTimerRef.current = null;
+    }
+
+    // Hard sync: when TTS stops, show full text immediately
+    if (!isSpeaking) {
+      setDisplayedText(lastAiMessage);
+      return;
+    }
+
+    // Start typewriter when speaking begins with new text
+    if (isSpeaking && lastAiMessage) {
+      const text = lastAiMessage;
+      const duration = ttsDurationRef.current;
+      const charDelay = duration > 0 ? (duration * 1000) / text.length : 20;
+      let idx = 0;
+      setDisplayedText('');
+
+      typewriterTimerRef.current = setInterval(() => {
+        idx++;
+        if (idx >= text.length) {
+          setDisplayedText(text);
+          if (typewriterTimerRef.current) clearInterval(typewriterTimerRef.current);
+          typewriterTimerRef.current = null;
+        } else {
+          setDisplayedText(text.slice(0, idx));
+        }
+      }, charDelay);
+    }
+
+    return () => {
+      if (typewriterTimerRef.current) {
+        clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
+      }
+    };
+  }, [lastAiMessage, isSpeaking]);
+
+  // Auto-scroll voice bubble to bottom as typewriter reveals text
   useEffect(() => {
     if (voiceBubbleRef.current) {
       voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [lastAiMessage]);
+  }, [displayedText]);
 
   // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
@@ -864,17 +910,6 @@ export function HistoryTakingSection({
                   </Avatar>
                 )}
               </div>
-              {/* Fading speech bubble — last AI response */}
-              <div
-                ref={voiceBubbleRef}
-                className={cn(
-                  'mt-1.5 rounded-lg bg-card border px-2 py-1 text-sm text-card-foreground max-h-24 overflow-y-auto text-center w-full transition-opacity duration-500',
-                  lastAiMessage ? 'opacity-100' : 'opacity-0'
-                )}
-                dir="rtl"
-              >
-                {lastAiMessage || '\u00A0'}
-              </div>
             </div>
 
             {/* Center column: Mic button + status */}
@@ -927,6 +962,26 @@ export function HistoryTakingSection({
                   جاري التفكير...
                 </div>
               )}
+
+              {/* Mic prompt — show after greeting, before student speaks */}
+              {!greetingPlaying && !isListening && !isSending && !isSpeaking && chatMessages.filter(m => m.role === 'user').length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                  <Mic className="w-4 h-4" />
+                  <span>🎤 اضغط على الميكروفون لبدء الأسئلة</span>
+                </div>
+              )}
+
+              {/* Patient speech bubble — enlarged, centered */}
+              <div
+                ref={voiceBubbleRef}
+                className={cn(
+                  'rounded-xl bg-card border px-4 py-3 text-base text-card-foreground max-w-sm w-full max-h-40 overflow-y-auto transition-opacity duration-500',
+                  displayedText ? 'opacity-100' : 'opacity-0'
+                )}
+                dir="rtl"
+              >
+                {displayedText || '\u00A0'}
+              </div>
             </div>
 
             {/* Right column: Student avatar */}
