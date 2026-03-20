@@ -286,10 +286,11 @@ serve(async (req) => {
 
     // Parse request
     const body = await req.json();
-    const { chapter_id, topic_id, generation_mode } = body as {
+    const { chapter_id, topic_id, generation_mode, document_id } = body as {
       chapter_id?: string;
       topic_id?: string;
       generation_mode: "full" | "sections" | "both";
+      document_id?: string;
     };
 
     if (!chapter_id && !topic_id) return jsonError("BAD_REQUEST", "chapter_id or topic_id required");
@@ -299,6 +300,25 @@ serve(async (req) => {
     let pdfText = "";
     let sourceTitle = "";
     let sourcePdfUrl: string | null = null;
+    let sourceDocumentName: string | null = null;
+    let sourceDocumentId: string | null = null;
+
+    // Helper: download admin doc PDF and extract text
+    async function extractFromAdminDoc(doc: { storage_path: string; file_name: string; id?: string; title?: string }) {
+      const { data: signedData, error: signErr } = await serviceClient.storage
+        .from("admin-pdfs")
+        .createSignedUrl(doc.storage_path, 600);
+      if (signErr || !signedData?.signedUrl) {
+        throw new Error(`Failed to get signed URL: ${signErr?.message || "unknown"}`);
+      }
+      const pdfResponse = await fetch(signedData.signedUrl);
+      if (!pdfResponse.ok) {
+        throw new Error(`Failed to download PDF: ${pdfResponse.status}`);
+      }
+      const pdfBuffer = await pdfResponse.arrayBuffer();
+      const text = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
+      return { text, signedUrl: signedData.signedUrl, fileName: doc.file_name, docTitle: doc.title || doc.file_name };
+    }
 
     if (chapter_id) {
       const { data: chapter, error } = await serviceClient
@@ -310,73 +330,79 @@ serve(async (req) => {
       sourceTitle = chapter.title;
       sourcePdfUrl = chapter.pdf_url || null;
 
-      if (chapter.pdf_text && chapter.pdf_text.length > 50) {
+      // If admin explicitly chose a document, use that
+      if (document_id) {
+        console.log(`[generate-mind-map] Admin selected document_id: ${document_id}`);
+        const { data: chosenDoc, error: docErr } = await serviceClient
+          .from("admin_documents")
+          .select("id, title, storage_path, file_name")
+          .eq("id", document_id)
+          .eq("is_deleted", false)
+          .single();
+
+        if (docErr || !chosenDoc) {
+          return jsonError("NOT_FOUND", "Selected document not found or deleted.", 404);
+        }
+
+        try {
+          const result = await extractFromAdminDoc(chosenDoc);
+          pdfText = result.text;
+          sourcePdfUrl = result.signedUrl;
+          sourceDocumentName = result.docTitle;
+          sourceDocumentId = chosenDoc.id;
+          console.log(`[generate-mind-map] Extracted text from chosen doc "${result.fileName}" (${pdfText.length} chars)`);
+        } catch (e) {
+          return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
+        }
+
+        if (!pdfText || pdfText.length < 50) {
+          return jsonError("NO_TEXT", `PDF text extraction from "${chosenDoc.title}" yielded insufficient content (${pdfText.length} chars). The PDF may be image-based or empty.`, 400);
+        }
+      } else if (chapter.pdf_text && chapter.pdf_text.length > 50) {
         pdfText = chapter.pdf_text;
+        sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
         console.log(`[generate-mind-map] Using pdf_text from module_chapters (${pdfText.length} chars)`);
       } else {
         // Fallback: find an admin_document linked to this chapter
         console.log("[generate-mind-map] No pdf_text in chapter, falling back to admin_documents...");
         const { data: adminDoc } = await serviceClient
           .from("admin_documents")
-          .select("storage_path, file_name")
+          .select("id, title, storage_path, file_name")
           .eq("chapter_id", chapter_id)
           .eq("is_deleted", false)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (!adminDoc) {
-          // Try module-level document
+        const docToUse = adminDoc || await (async () => {
           const { data: moduleDoc } = await serviceClient
             .from("admin_documents")
-            .select("storage_path, file_name")
+            .select("id, title, storage_path, file_name")
             .eq("module_id", chapter.module_id)
             .eq("is_deleted", false)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
+          return moduleDoc;
+        })();
 
-          if (!moduleDoc) {
-            return jsonError("NO_TEXT", "No PDF content found. Upload a Content PDF for this chapter first.", 400);
-          }
+        if (!docToUse) {
+          return jsonError("NO_TEXT", "No PDF content found. Upload a Content PDF for this chapter, or select a document manually.", 400);
+        }
 
-          // Download and extract text from module-level doc
-          const { data: signedData, error: signErr } = await serviceClient.storage
-            .from("admin-pdfs")
-            .createSignedUrl(moduleDoc.storage_path, 600);
-          if (signErr || !signedData?.signedUrl) {
-            return jsonError("STORAGE_ERROR", `Failed to get signed URL: ${signErr?.message || "unknown"}`, 500);
-          }
-
-          const pdfResponse = await fetch(signedData.signedUrl);
-          if (!pdfResponse.ok) {
-            return jsonError("DOWNLOAD_ERROR", `Failed to download PDF: ${pdfResponse.status}`, 500);
-          }
-          const pdfBuffer = await pdfResponse.arrayBuffer();
-          pdfText = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
-          sourcePdfUrl = signedData.signedUrl;
-          console.log(`[generate-mind-map] Extracted text from module doc "${moduleDoc.file_name}" (${pdfText.length} chars)`);
-        } else {
-          // Download and extract text from chapter-level doc
-          const { data: signedData, error: signErr } = await serviceClient.storage
-            .from("admin-pdfs")
-            .createSignedUrl(adminDoc.storage_path, 600);
-          if (signErr || !signedData?.signedUrl) {
-            return jsonError("STORAGE_ERROR", `Failed to get signed URL: ${signErr?.message || "unknown"}`, 500);
-          }
-
-          const pdfResponse = await fetch(signedData.signedUrl);
-          if (!pdfResponse.ok) {
-            return jsonError("DOWNLOAD_ERROR", `Failed to download PDF: ${pdfResponse.status}`, 500);
-          }
-          const pdfBuffer = await pdfResponse.arrayBuffer();
-          pdfText = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
-          sourcePdfUrl = signedData.signedUrl;
-          console.log(`[generate-mind-map] Extracted text from admin doc "${adminDoc.file_name}" (${pdfText.length} chars)`);
+        try {
+          const result = await extractFromAdminDoc(docToUse);
+          pdfText = result.text;
+          sourcePdfUrl = result.signedUrl;
+          sourceDocumentName = result.docTitle;
+          sourceDocumentId = docToUse.id;
+          console.log(`[generate-mind-map] Extracted text from auto-found doc "${result.fileName}" (${pdfText.length} chars)`);
+        } catch (e) {
+          return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
         }
 
         if (!pdfText || pdfText.length < 50) {
-          return jsonError("NO_TEXT", "PDF text extraction yielded insufficient content. The PDF may be image-based or empty.", 400);
+          return jsonError("NO_TEXT", `PDF text extraction from "${docToUse.title}" yielded insufficient content (${pdfText.length} chars). The PDF may be image-based. Try selecting a different document.`, 400);
         }
       }
     } else {
