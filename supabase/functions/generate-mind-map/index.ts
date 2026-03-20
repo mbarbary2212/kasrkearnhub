@@ -138,12 +138,10 @@ interface ValidationResult {
 function validateMarkmapMarkdown(md: string): ValidationResult {
   const errors: string[] = [];
 
-  // Reject fenced code blocks
   if (md.includes("```")) {
     errors.push("Output contains fenced code blocks (```) — must be pure Markmap Markdown");
   }
 
-  // Check frontmatter
   if (!md.startsWith("---")) {
     errors.push("Missing Markmap frontmatter (must start with ---)");
   } else {
@@ -152,19 +150,12 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
       errors.push("Frontmatter not closed (missing second ---)");
     } else {
       const fm = md.slice(3, fmEnd);
-      if (!fm.includes("markmap")) {
-        errors.push("Frontmatter missing 'markmap' key");
-      }
-      if (!fm.includes("colorFreezeLevel")) {
-        errors.push("Frontmatter missing 'colorFreezeLevel' key");
-      }
-      if (!fm.includes("initialExpandLevel")) {
-        errors.push("Frontmatter missing 'initialExpandLevel' key");
-      }
+      if (!fm.includes("markmap")) errors.push("Frontmatter missing 'markmap' key");
+      if (!fm.includes("colorFreezeLevel")) errors.push("Frontmatter missing 'colorFreezeLevel' key");
+      if (!fm.includes("initialExpandLevel")) errors.push("Frontmatter missing 'initialExpandLevel' key");
     }
   }
 
-  // Count root headings
   const rootHeadings = md.match(/^# [^\n]+/gm);
   if (!rootHeadings || rootHeadings.length === 0) {
     errors.push("No root heading (# Title) found");
@@ -172,13 +163,11 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
     errors.push(`Multiple root headings found (${rootHeadings.length}), expected exactly 1`);
   }
 
-  // Must have at least one ## heading (not flat)
   const subHeadings = md.match(/^## [^\n]+/gm);
   if (!subHeadings || subHeadings.length === 0) {
     errors.push("No secondary headings (##) found — map is flat/useless");
   }
 
-  // Check for prose before first heading
   const afterFm = md.indexOf("---", 3);
   if (afterFm > -1) {
     const body = md.slice(afterFm + 3).trim();
@@ -191,19 +180,16 @@ function validateMarkmapMarkdown(md: string): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-// ─── PDF text extraction ─────────────────────────────────────────────
+// ─── PDF text extraction: Direct (binary) ────────────────────────────
 
 function extractTextFromPdfBuffer(bytes: Uint8Array): string {
-  // Binary PDF text extraction — decode stream objects and extract readable text
   const raw = new TextDecoder("latin1").decode(bytes);
   const textChunks: string[] = [];
 
-  // Extract text from PDF stream objects using BT/ET markers
   const btEtRegex = /BT\s([\s\S]*?)ET/g;
   let match: RegExpExecArray | null;
   while ((match = btEtRegex.exec(raw)) !== null) {
     const block = match[1];
-    // Extract text from Tj and TJ operators
     const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g);
     if (tjMatches) {
       for (const tj of tjMatches) {
@@ -211,7 +197,6 @@ function extractTextFromPdfBuffer(bytes: Uint8Array): string {
         if (textMatch) textChunks.push(textMatch[1]);
       }
     }
-    // TJ array operator
     const tjArrayMatches = block.match(/\[(.*?)\]\s*TJ/g);
     if (tjArrayMatches) {
       for (const tja of tjArrayMatches) {
@@ -224,6 +209,299 @@ function extractTextFromPdfBuffer(bytes: Uint8Array): string {
   }
 
   return textChunks.join(" ").replace(/\s+/g, " ").trim();
+}
+
+// ─── PDF text extraction: PDF.js ─────────────────────────────────────
+
+async function extractTextWithPdfJs(pdfBytes: Uint8Array): Promise<string> {
+  // Use pinned version of pdf.js from esm.sh (bundled for Deno)
+  const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs");
+
+  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes, useSystemFonts: true });
+  const pdfDoc = await loadingTask.promise;
+  const pageTexts: string[] = [];
+
+  for (let i = 1; i <= pdfDoc.numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    const content = await page.getTextContent();
+    const pageLines: string[] = [];
+    let lastY: number | null = null;
+
+    for (const item of content.items) {
+      if (!("str" in item)) continue;
+      const textItem = item as { str: string; transform: number[] };
+      const y = textItem.transform[5];
+      // Detect line break by Y-position change
+      if (lastY !== null && Math.abs(y - lastY) > 2) {
+        pageLines.push("\n");
+      }
+      pageLines.push(textItem.str);
+      lastY = y;
+    }
+    pageTexts.push(pageLines.join(""));
+  }
+
+  return pageTexts.join("\n\n").trim();
+}
+
+// ─── Text quality scoring ────────────────────────────────────────────
+
+interface QualityBreakdown {
+  char_count: number;
+  heading_score: number;
+  corrupted_char_ratio: number;
+  noise_score: number;
+  section_numbering_score: number;
+  avg_readable_line_length: number;
+}
+
+interface QualityResult {
+  score: number;
+  breakdown: QualityBreakdown;
+}
+
+function scoreTextQuality(text: string): QualityResult {
+  if (!text || text.length === 0) {
+    return { score: 0, breakdown: { char_count: 0, heading_score: 0, corrupted_char_ratio: 1, noise_score: 1, section_numbering_score: 0, avg_readable_line_length: 0 } };
+  }
+
+  const charCount = text.length;
+
+  // 1. Heading detection (0-20 points)
+  const headingPatterns = [
+    /^\d{1,3}\.\d{1,3}\s+[A-Z]/gm,
+    /^#{1,4}\s+/gm,
+    /^Section\s+\d/gim,
+    /^[A-Z][A-Z\s]{4,60}$/gm,
+    /^(?:I{1,3}|IV|V(?:I{0,3})|IX|X)\.\s+/gm,
+  ];
+  let headingMatches = 0;
+  for (const p of headingPatterns) {
+    p.lastIndex = 0;
+    const m = text.match(p);
+    if (m) headingMatches += m.length;
+  }
+  const headingScore = Math.min(headingMatches / 5, 1); // normalize: 5+ headings = perfect
+  const headingPoints = headingScore * 20;
+
+  // 2. Corrupted character ratio (0-25 points, inverted — fewer corrupted = higher score)
+  // Count replacement chars, control chars (except \n\r\t), and sequences of non-ASCII gibberish
+  const corruptedChars = (text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD\uFEFF]/g) || []).length;
+  // Also count high ratio of non-printable sequences
+  const weirdSequences = (text.match(/[^\x20-\x7E\n\r\t\u00A0-\u024F\u0600-\u06FF]{3,}/g) || []).length;
+  const corruptedRatio = (corruptedChars + weirdSequences * 10) / charCount;
+  const corruptedPoints = Math.max(0, (1 - corruptedRatio * 50)) * 25;
+
+  // 3. Noise detection — repeated header/footer lines (0-15 points)
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const lineCounts = new Map<string, number>();
+  for (const line of lines) {
+    if (line.length < 5 || line.length > 120) continue;
+    const key = line.toLowerCase();
+    lineCounts.set(key, (lineCounts.get(key) || 0) + 1);
+  }
+  const noiseLines = Array.from(lineCounts.values()).filter(c => c >= 4).reduce((s, c) => s + c, 0);
+  const noiseRatio = lines.length > 0 ? noiseLines / lines.length : 0;
+  const noiseScore = noiseRatio;
+  const noisePoints = Math.max(0, (1 - noiseRatio * 5)) * 15;
+
+  // 4. Section numbering preservation (0-15 points)
+  const numberedSections = (text.match(/^\d{1,3}\.\d{1,3}/gm) || []).length;
+  const sectionScore = Math.min(numberedSections / 3, 1);
+  const sectionPoints = sectionScore * 15;
+
+  // 5. Average readable line length (0-15 points) — ideal 40-120 chars
+  const nonEmptyLines = lines.filter(l => l.length > 3);
+  const avgLineLen = nonEmptyLines.length > 0
+    ? nonEmptyLines.reduce((s, l) => s + l.length, 0) / nonEmptyLines.length
+    : 0;
+  let lineLenPoints = 0;
+  if (avgLineLen >= 40 && avgLineLen <= 120) lineLenPoints = 15;
+  else if (avgLineLen >= 20 && avgLineLen <= 200) lineLenPoints = 10;
+  else if (avgLineLen > 5) lineLenPoints = 5;
+
+  // 6. Character count bonus (0-10 points) — more text generally better
+  let charPoints = 0;
+  if (charCount > 10000) charPoints = 10;
+  else if (charCount > 5000) charPoints = 8;
+  else if (charCount > 1000) charPoints = 5;
+  else if (charCount > 200) charPoints = 2;
+
+  const totalScore = Math.round(headingPoints + corruptedPoints + noisePoints + sectionPoints + lineLenPoints + charPoints);
+
+  return {
+    score: Math.min(100, Math.max(0, totalScore)),
+    breakdown: {
+      char_count: charCount,
+      heading_score: Math.round(headingScore * 100) / 100,
+      corrupted_char_ratio: Math.round(corruptedRatio * 10000) / 10000,
+      noise_score: Math.round(noiseScore * 10000) / 10000,
+      section_numbering_score: Math.round(sectionScore * 100) / 100,
+      avg_readable_line_length: Math.round(avgLineLen),
+    },
+  };
+}
+
+// ─── Tiered extraction orchestrator ──────────────────────────────────
+
+type ExtractionMethod = "auto" | "direct" | "pdfjs" | "chapter_text";
+
+interface ExtractionScoreEntry {
+  score: number;
+  breakdown: QualityBreakdown;
+  time_ms: number;
+}
+
+interface TieredExtractionResult {
+  text: string;
+  extraction_method_used: ExtractionMethod;
+  source_method: "chapter_pdf_text" | "selected_document" | "auto_detected_document";
+  selection_reason: string;
+  scores: {
+    direct?: ExtractionScoreEntry;
+    pdfjs?: ExtractionScoreEntry;
+    chapter_text?: ExtractionScoreEntry;
+  };
+  fallback_triggered: boolean;
+  heading_count: number;
+  selected_text_preview: string;
+}
+
+async function runTieredExtraction(
+  pdfBytes: Uint8Array | null,
+  chapterPdfText: string | null,
+  requestedMethod: ExtractionMethod,
+  sourceMethod: "chapter_pdf_text" | "selected_document" | "auto_detected_document",
+): Promise<TieredExtractionResult> {
+  const scores: TieredExtractionResult["scores"] = {};
+  let bestText = "";
+  let bestScore = -1;
+  let bestMethod: ExtractionMethod = "direct";
+  let selectionReason = "";
+  let fallbackTriggered = false;
+
+  // --- Score chapter.pdf_text if available ---
+  if (chapterPdfText && chapterPdfText.length > 50) {
+    const t0 = performance.now();
+    const q = scoreTextQuality(chapterPdfText);
+    scores.chapter_text = { score: q.score, breakdown: q.breakdown, time_ms: Math.round(performance.now() - t0) };
+    console.log(`[tiered-extraction] chapter_text: score=${q.score}, chars=${chapterPdfText.length}`);
+
+    if (requestedMethod === "chapter_text") {
+      return buildResult(chapterPdfText, "chapter_text", sourceMethod, `Forced by manual override: chapter_text`, scores, false);
+    }
+
+    if (q.score > bestScore) {
+      bestText = chapterPdfText;
+      bestScore = q.score;
+      bestMethod = "chapter_text";
+    }
+  }
+
+  // --- If forced method, run only that ---
+  if (requestedMethod === "direct" && pdfBytes) {
+    const t0 = performance.now();
+    const directText = extractTextFromPdfBuffer(pdfBytes);
+    const q = scoreTextQuality(directText);
+    scores.direct = { score: q.score, breakdown: q.breakdown, time_ms: Math.round(performance.now() - t0) };
+    return buildResult(directText, "direct", sourceMethod, `Forced by manual override: direct`, scores, false);
+  }
+  if (requestedMethod === "pdfjs" && pdfBytes) {
+    const t0 = performance.now();
+    const pdjsText = await extractTextWithPdfJs(pdfBytes);
+    const q = scoreTextQuality(pdjsText);
+    scores.pdfjs = { score: q.score, breakdown: q.breakdown, time_ms: Math.round(performance.now() - t0) };
+    return buildResult(pdjsText, "pdfjs", sourceMethod, `Forced by manual override: pdfjs`, scores, false);
+  }
+
+  // --- Auto mode: tiered pipeline ---
+  if (pdfBytes) {
+    // Step 1: Direct extraction
+    const t0 = performance.now();
+    const directText = extractTextFromPdfBuffer(pdfBytes);
+    const directQ = scoreTextQuality(directText);
+    scores.direct = { score: directQ.score, breakdown: directQ.breakdown, time_ms: Math.round(performance.now() - t0) };
+    console.log(`[tiered-extraction] direct: score=${directQ.score}, chars=${directText.length}`);
+
+    if (directQ.score > bestScore) {
+      bestText = directText;
+      bestScore = directQ.score;
+      bestMethod = "direct";
+    }
+
+    // Step 2: Decide whether to run PDF.js
+    // >=85: accept direct, skip PDF.js
+    // 60-84: run PDF.js too, compare
+    // <60: definitely run PDF.js
+    const shouldRunPdfJs = directQ.score < 85;
+
+    if (shouldRunPdfJs) {
+      fallbackTriggered = directQ.score < 60;
+      console.log(`[tiered-extraction] Direct score ${directQ.score} < 85, running PDF.js extraction...`);
+      try {
+        const t1 = performance.now();
+        const pdjsText = await extractTextWithPdfJs(pdfBytes);
+        const pdjsQ = scoreTextQuality(pdjsText);
+        scores.pdfjs = { score: pdjsQ.score, breakdown: pdjsQ.breakdown, time_ms: Math.round(performance.now() - t1) };
+        console.log(`[tiered-extraction] pdfjs: score=${pdjsQ.score}, chars=${pdjsText.length}`);
+
+        if (pdjsQ.score > bestScore) {
+          bestText = pdjsText;
+          bestScore = pdjsQ.score;
+          bestMethod = "pdfjs";
+        }
+      } catch (err) {
+        console.error("[tiered-extraction] PDF.js extraction failed:", err);
+        scores.pdfjs = { score: 0, breakdown: { char_count: 0, heading_score: 0, corrupted_char_ratio: 1, noise_score: 1, section_numbering_score: 0, avg_readable_line_length: 0 }, time_ms: 0 };
+      }
+    } else {
+      console.log(`[tiered-extraction] Direct score ${directQ.score} >= 85, skipping PDF.js`);
+    }
+  }
+
+  // Build selection reason
+  const scoreEntries = Object.entries(scores) as [string, ExtractionScoreEntry][];
+  if (scoreEntries.length === 1) {
+    selectionReason = `Only one method available (${bestMethod}), score: ${bestScore}`;
+  } else {
+    const ranked = scoreEntries.sort((a, b) => b[1].score - a[1].score);
+    const winner = ranked[0];
+    const runnerUp = ranked[1];
+    if (winner[0] === bestMethod) {
+      selectionReason = `${bestMethod} scored highest (${winner[1].score}) vs ${runnerUp[0]} (${runnerUp[1].score})`;
+    } else {
+      selectionReason = `Selected ${bestMethod} with score ${bestScore}`;
+    }
+    if (fallbackTriggered) {
+      selectionReason += " — PDF.js fallback was triggered due to low direct extraction score (<60)";
+    }
+  }
+
+  return buildResult(bestText, bestMethod, sourceMethod, selectionReason, scores, fallbackTriggered);
+}
+
+function buildResult(
+  text: string,
+  method: ExtractionMethod,
+  sourceMethod: "chapter_pdf_text" | "selected_document" | "auto_detected_document",
+  reason: string,
+  scores: TieredExtractionResult["scores"],
+  fallback: boolean,
+): TieredExtractionResult {
+  const headingCount = (text.match(/^\d{1,3}\.\d{1,3}\s+[A-Z]/gm) || []).length
+    + (text.match(/^#{1,4}\s+/gm) || []).length
+    + (text.match(/^[A-Z][A-Z\s]{4,60}$/gm) || []).length;
+
+  return {
+    text,
+    extraction_method_used: method,
+    source_method: sourceMethod,
+    selection_reason: reason,
+    scores,
+    fallback_triggered: fallback,
+    heading_count: headingCount,
+    selected_text_preview: text.slice(0, 500),
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -286,12 +564,15 @@ serve(async (req) => {
 
     // Parse request
     const body = await req.json();
-    const { chapter_id, topic_id, generation_mode, document_id } = body as {
+    const { chapter_id, topic_id, generation_mode, document_id, extraction_method: reqExtractionMethod } = body as {
       chapter_id?: string;
       topic_id?: string;
       generation_mode: "full" | "sections" | "both";
       document_id?: string;
+      extraction_method?: ExtractionMethod;
     };
+
+    const extractionMethod: ExtractionMethod = reqExtractionMethod || "auto";
 
     if (!chapter_id && !topic_id) return jsonError("BAD_REQUEST", "chapter_id or topic_id required");
     if (!generation_mode) return jsonError("BAD_REQUEST", "generation_mode required (full|sections|both)");
@@ -304,9 +585,12 @@ serve(async (req) => {
     let sourceDocumentId: string | null = null;
     let sourceMethod: "chapter_pdf_text" | "selected_document" | "auto_detected_document" = "chapter_pdf_text";
     let chapterPdfTextLength: number | null = null;
+    let chapterPdfTextRaw: string | null = null;
+    let pdfBytes: Uint8Array | null = null;
+    let extractionResult: TieredExtractionResult | null = null;
 
-    // Helper: download admin doc PDF and extract text
-    async function extractFromAdminDoc(doc: { storage_path: string; file_name: string; id?: string; title?: string }) {
+    // Helper: download admin doc PDF bytes
+    async function downloadAdminDocPdf(doc: { storage_path: string; file_name: string; id?: string; title?: string }): Promise<{ bytes: Uint8Array; signedUrl: string; docTitle: string }> {
       const { data: signedData, error: signErr } = await serviceClient.storage
         .from("admin-pdfs")
         .createSignedUrl(doc.storage_path, 600);
@@ -318,8 +602,7 @@ serve(async (req) => {
         throw new Error(`Failed to download PDF: ${pdfResponse.status}`);
       }
       const pdfBuffer = await pdfResponse.arrayBuffer();
-      const text = extractTextFromPdfBuffer(new Uint8Array(pdfBuffer));
-      return { text, signedUrl: signedData.signedUrl, fileName: doc.file_name, docTitle: doc.title || doc.file_name };
+      return { bytes: new Uint8Array(pdfBuffer), signedUrl: signedData.signedUrl, docTitle: doc.title || doc.file_name };
     }
 
     if (chapter_id) {
@@ -332,12 +615,13 @@ serve(async (req) => {
       sourceTitle = chapter.title;
       sourcePdfUrl = chapter.pdf_url || null;
 
-      // Record chapter.pdf_text length if available (for comparison)
+      // Record chapter.pdf_text
       if (chapter.pdf_text && chapter.pdf_text.length > 0) {
         chapterPdfTextLength = chapter.pdf_text.length;
+        chapterPdfTextRaw = chapter.pdf_text;
       }
 
-      // If admin explicitly chose a document, use that
+      // If admin explicitly chose a document, download it
       if (document_id) {
         sourceMethod = "selected_document";
         console.log(`[generate-mind-map] Admin selected document_id: ${document_id}`);
@@ -353,26 +637,80 @@ serve(async (req) => {
         }
 
         try {
-          const result = await extractFromAdminDoc(chosenDoc);
-          pdfText = result.text;
-          sourcePdfUrl = result.signedUrl;
-          sourceDocumentName = result.docTitle;
+          const dlResult = await downloadAdminDocPdf(chosenDoc);
+          pdfBytes = dlResult.bytes;
+          sourcePdfUrl = dlResult.signedUrl;
+          sourceDocumentName = dlResult.docTitle;
           sourceDocumentId = chosenDoc.id;
-          console.log(`[generate-mind-map] Source: selected document "${result.docTitle}" | Extracted: ${pdfText.length} chars | Chapter pdf_text: ${chapterPdfTextLength ?? 'none'}`);
+          console.log(`[generate-mind-map] Downloaded selected document "${dlResult.docTitle}" (${pdfBytes.length} bytes)`);
         } catch (e) {
           return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
         }
 
+        // Run tiered extraction
+        extractionResult = await runTieredExtraction(
+          pdfBytes,
+          extractionMethod === "chapter_text" ? chapterPdfTextRaw : chapterPdfTextRaw,
+          extractionMethod,
+          sourceMethod,
+        );
+        pdfText = extractionResult.text;
+
         if (!pdfText || pdfText.length < 50) {
           return jsonError("NO_TEXT", `PDF text extraction from "${chosenDoc.title}" yielded insufficient content (${pdfText.length} chars). The built-in text extractor may have failed on compressed or encoded PDF streams. Try a different PDF or pre-extract the text.`, 400);
         }
-      } else if (chapter.pdf_text && chapter.pdf_text.length > 50) {
-        pdfText = chapter.pdf_text;
-        sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
+      } else if (extractionMethod === "chapter_text" && chapterPdfTextRaw && chapterPdfTextRaw.length > 50) {
+        // Forced chapter_text
         sourceMethod = "chapter_pdf_text";
-        console.log(`[generate-mind-map] Source: chapter.pdf_text | ${pdfText.length} chars`);
+        extractionResult = await runTieredExtraction(null, chapterPdfTextRaw, "chapter_text", sourceMethod);
+        pdfText = extractionResult.text;
+        sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
+        console.log(`[generate-mind-map] Forced chapter_text: ${pdfText.length} chars`);
+      } else if (extractionMethod !== "chapter_text" && chapterPdfTextRaw && chapterPdfTextRaw.length > 50 && !document_id) {
+        // Auto mode: chapter has pdf_text — still try to find a document for comparison
+        sourceMethod = "chapter_pdf_text";
+
+        // Try to find an admin doc to potentially compare
+        const { data: adminDoc } = await serviceClient
+          .from("admin_documents")
+          .select("id, title, storage_path, file_name")
+          .eq("chapter_id", chapter_id)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (adminDoc && extractionMethod === "auto") {
+          // Download the PDF and run tiered extraction with both sources
+          try {
+            const dlResult = await downloadAdminDocPdf(adminDoc);
+            pdfBytes = dlResult.bytes;
+            sourceDocumentName = dlResult.docTitle;
+            sourceDocumentId = adminDoc.id;
+            extractionResult = await runTieredExtraction(pdfBytes, chapterPdfTextRaw, "auto", sourceMethod);
+            pdfText = extractionResult.text;
+            // Update source method based on what was actually chosen
+            if (extractionResult.extraction_method_used !== "chapter_text") {
+              sourceMethod = "auto_detected_document";
+              sourceDocumentName = dlResult.docTitle;
+            } else {
+              sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
+            }
+          } catch (e) {
+            console.warn("[generate-mind-map] Could not download admin doc for comparison, using chapter.pdf_text:", e);
+            extractionResult = await runTieredExtraction(null, chapterPdfTextRaw, "chapter_text", sourceMethod);
+            pdfText = extractionResult.text;
+            sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
+          }
+        } else {
+          // No admin doc available, just use chapter text
+          extractionResult = await runTieredExtraction(null, chapterPdfTextRaw, extractionMethod === "auto" ? "chapter_text" : extractionMethod, sourceMethod);
+          pdfText = extractionResult.text;
+          sourceDocumentName = "Chapter extracted text (module_chapters.pdf_text)";
+        }
+        console.log(`[generate-mind-map] Source: ${extractionResult.extraction_method_used} | ${pdfText.length} chars`);
       } else {
-        // Fallback: find an admin_document linked to this chapter
+        // No chapter.pdf_text — fallback to admin_documents
         sourceMethod = "auto_detected_document";
         console.log("[generate-mind-map] No pdf_text in chapter, falling back to admin_documents...");
         const { data: adminDoc } = await serviceClient
@@ -401,15 +739,18 @@ serve(async (req) => {
         }
 
         try {
-          const result = await extractFromAdminDoc(docToUse);
-          pdfText = result.text;
-          sourcePdfUrl = result.signedUrl;
-          sourceDocumentName = result.docTitle;
+          const dlResult = await downloadAdminDocPdf(docToUse);
+          pdfBytes = dlResult.bytes;
+          sourcePdfUrl = dlResult.signedUrl;
+          sourceDocumentName = dlResult.docTitle;
           sourceDocumentId = docToUse.id;
-          console.log(`[generate-mind-map] Source: auto-detected document "${result.docTitle}" | Extracted: ${pdfText.length} chars | Chapter pdf_text: ${chapterPdfTextLength ?? 'none'}`);
+          console.log(`[generate-mind-map] Downloaded auto-detected document "${dlResult.docTitle}" (${pdfBytes.length} bytes)`);
         } catch (e) {
           return jsonError("DOWNLOAD_ERROR", e instanceof Error ? e.message : "PDF download failed", 500);
         }
+
+        extractionResult = await runTieredExtraction(pdfBytes, chapterPdfTextRaw, extractionMethod, sourceMethod);
+        pdfText = extractionResult.text;
 
         if (!pdfText || pdfText.length < 50) {
           return jsonError("NO_TEXT", `PDF text extraction from "${docToUse.title}" yielded insufficient content (${pdfText.length} chars). The built-in text extractor may have failed on compressed or encoded PDF streams. Try selecting a different document or pre-extracting the text.`, 400);
@@ -540,6 +881,13 @@ markmap:
                 text_length_original: textLengthOriginal,
                 text_length_sent_to_ai: textSent.length,
                 was_truncated: textLengthOriginal > FULL_TRUNCATE_LIMIT,
+                extraction: extractionResult ? {
+                  method_used: extractionResult.extraction_method_used,
+                  selection_reason: extractionResult.selection_reason,
+                  scores: extractionResult.scores,
+                  fallback_triggered: extractionResult.fallback_triggered,
+                  heading_count: extractionResult.heading_count,
+                } : null,
                 prompt_snapshot: fullSystemPrompt,
                 generated_at: new Date().toISOString(),
               },
@@ -577,7 +925,6 @@ markmap:
       for (const section of detection.sections) {
         const sectionLabel = section.number ? `${section.number} ${section.title}` : section.title;
 
-        // Skip short sections
         if (section.text.length < MIN_SECTION_LENGTH) {
           console.log(`[generate-mind-map] Skipping short section "${sectionLabel}" (${section.text.length} chars)`);
           results.push({
@@ -611,7 +958,6 @@ markmap:
           continue;
         }
 
-        // Try to match to existing DB section
         let matchedSectionId: string | null = null;
         if (section.number) {
           const match = dbSections.find((s) => s.section_number === section.number);
@@ -646,6 +992,11 @@ markmap:
               text_length_original: section.text.length,
               text_length_sent_to_ai: textSent.length,
               was_truncated: section.text.length > SECTION_TRUNCATE_LIMIT,
+              extraction: extractionResult ? {
+                method_used: extractionResult.extraction_method_used,
+                selection_reason: extractionResult.selection_reason,
+                fallback_triggered: extractionResult.fallback_triggered,
+              } : null,
               prompt_snapshot: sectionSystemPrompt,
               generated_at: new Date().toISOString(),
             },
@@ -663,7 +1014,6 @@ markmap:
           results.push({ type: "section", title: sectionLabel, success: true, status: "generated", mapId: saved.id });
         }
 
-        // Small delay between AI calls
         await new Promise((r) => setTimeout(r, 500));
       }
     } else if ((generation_mode === "sections" || generation_mode === "both") && detection.sections.length < 2) {
@@ -684,8 +1034,14 @@ markmap:
         name: sourceDocumentName,
         id: sourceDocumentId,
         text_length: pdfText.length,
-        source_method: sourceMethod,
+        source_method: extractionResult?.source_method || sourceMethod,
+        extraction_method_used: extractionResult?.extraction_method_used || "direct",
         chapter_pdf_text_length: chapterPdfTextLength,
+        selection_reason: extractionResult?.selection_reason || "No tiered extraction performed",
+        selected_text_preview: extractionResult?.selected_text_preview || pdfText.slice(0, 500),
+        extraction_scores: extractionResult?.scores || {},
+        fallback_triggered: extractionResult?.fallback_triggered || false,
+        heading_count: extractionResult?.heading_count || 0,
       },
       detection: {
         method: detection.method,

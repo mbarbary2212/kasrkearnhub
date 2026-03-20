@@ -25,11 +25,27 @@ export interface MindMap {
   updated_at: string;
 }
 
+export type ExtractionMethod = 'auto' | 'direct' | 'pdfjs' | 'chapter_text';
+
 export interface GenerateMindMapRequest {
   chapter_id?: string;
   topic_id?: string;
   generation_mode: 'full' | 'sections' | 'both';
   document_id?: string;
+  extraction_method?: ExtractionMethod;
+}
+
+export interface ExtractionScoreEntry {
+  score: number;
+  breakdown: {
+    char_count: number;
+    heading_score: number;
+    corrupted_char_ratio: number;
+    noise_score: number;
+    section_numbering_score: number;
+    avg_readable_line_length: number;
+  };
+  time_ms: number;
 }
 
 export interface GenerationResultItem {
@@ -49,7 +65,17 @@ export interface GenerateMindMapResponse {
     id: string | null;
     text_length: number;
     source_method: 'chapter_pdf_text' | 'selected_document' | 'auto_detected_document';
+    extraction_method_used: ExtractionMethod;
     chapter_pdf_text_length: number | null;
+    selection_reason: string;
+    selected_text_preview: string;
+    extraction_scores: {
+      direct?: ExtractionScoreEntry;
+      pdfjs?: ExtractionScoreEntry;
+      chapter_text?: ExtractionScoreEntry;
+    };
+    fallback_triggered: boolean;
+    heading_count: number;
   };
   detection: {
     method: string;
