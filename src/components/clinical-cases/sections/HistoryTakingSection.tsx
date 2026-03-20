@@ -178,6 +178,12 @@ export function HistoryTakingSection({
       wsFailCountRef.current = 0;
       scribeDisabledRef.current = false;
       safeDisconnect();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+      stopAllTTS();
     };
   }, [safeDisconnect]);
 
