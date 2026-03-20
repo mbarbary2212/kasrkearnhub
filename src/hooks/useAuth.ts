@@ -118,6 +118,7 @@ export function useAuth() {
           }, 0);
         } else {
           queryClient.clear();
+          Sentry.setUser(null);
           setState(prev => ({
             ...prev,
             profile: null,

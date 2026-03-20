@@ -57,6 +57,16 @@ export default function ModulePage() {
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
 
+  useEffect(() => {
+    if (module?.name) {
+      Sentry.addBreadcrumb({
+        category: 'navigation',
+        message: `Opened module: ${module.name}`,
+        level: 'info',
+      });
+    }
+  }, [module?.name]);
+
   if (!moduleLoading && !module) {
     return (
       <MainLayout>

@@ -288,6 +288,17 @@ export default function ChapterPage() {
     await queryClient.invalidateQueries({ queryKey: ['study-resources', 'chapter', chapterId] });
   }, [queryClient, chapterId]);
 
+  // Add Sentry breadcrumb when chapter loads
+  useEffect(() => {
+    if (chapter?.title) {
+      Sentry.addBreadcrumb({
+        category: 'navigation',
+        message: `Opened chapter: ${chapter.title}`,
+        level: 'info',
+      });
+    }
+  }, [chapter?.title]);
+
   // Update Coach context when page loads or section changes
   useEffect(() => {
     if (module && chapter) {
