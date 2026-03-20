@@ -14,9 +14,6 @@ import {
   Info,
   MinusCircle,
   FileText,
-  Gauge,
-  Clock,
-  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,8 +69,6 @@ import {
   useDeleteMindMap,
   MindMap,
   GenerateMindMapResponse,
-  ExtractionMethod,
-  ExtractionScoreEntry,
 } from '@/hooks/useMindMaps';
 import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 import { format } from 'date-fns';
@@ -105,40 +100,10 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
-function ScoreBadge({ score, label }: { score: number; label: string }) {
-  const color = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-destructive';
-  return (
-    <span className={`text-xs font-mono ${color}`}>
-      {label}: {score}
-    </span>
-  );
-}
-
-function ExtractionScoreRow({ name, entry }: { name: string; entry: ExtractionScoreEntry }) {
-  const scoreColor = entry.score >= 85 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : entry.score >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300';
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <Badge className={`${scoreColor} border-0 font-mono text-[11px] px-1.5`}>{entry.score}</Badge>
-      <span className="font-medium capitalize">{name.replace('_', ' ')}</span>
-      <span className="text-muted-foreground">
-        {(entry.breakdown.char_count / 1000).toFixed(1)}k chars · 
-        hdg {(entry.breakdown.heading_score * 100).toFixed(0)}% · 
-        noise {(entry.breakdown.noise_score * 100).toFixed(1)}%
-      </span>
-      {entry.time_ms > 0 && (
-        <span className="text-muted-foreground flex items-center gap-0.5">
-          <Clock className="w-3 h-3" />{entry.time_ms}ms
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<'full' | 'sections' | 'both'>('both');
   const [selectedDocId, setSelectedDocId] = useState<string>('auto');
-  const [extractionMethod, setExtractionMethod] = useState<ExtractionMethod>('auto');
   const [previewMap, setPreviewMap] = useState<MindMap | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MindMap | null>(null);
   const [lastResult, setLastResult] = useState<GenerateMindMapResponse | null>(null);
@@ -163,7 +128,6 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
     if (chapterId) req.chapter_id = chapterId;
     if (topicId) req.topic_id = topicId;
     if (selectedDocId && selectedDocId !== 'auto') req.document_id = selectedDocId;
-    if (extractionMethod !== 'auto') req.extraction_method = extractionMethod;
 
     generate.mutate(req, {
       onSuccess: (data) => {
@@ -202,7 +166,6 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
   const publishedCount = maps.filter((m) => m.status === 'published').length;
 
   const srcDoc = lastResult?.source_document;
-  const scores = srcDoc?.extraction_scores;
 
   return (
     <TooltipProvider>
@@ -271,9 +234,7 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                       <Info className="w-4 h-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-xs">
-                      Generates Markmap mind maps from the chapter/topic PDF using Gemini.
-                      Text extraction uses a tiered pipeline (Direct → PDF.js) with quality scoring.
-                      New maps are always added as drafts.
+                      Sends the PDF directly to Gemini AI for analysis. The AI reads the PDF natively and generates Markmap mind maps. New maps are always added as drafts.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -293,22 +254,6 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                           <span className="text-muted-foreground ml-1">({doc.file_name})</span>
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Extraction method override */}
-                <div className="flex items-center gap-2">
-                  <Gauge className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <Select value={extractionMethod} onValueChange={(v) => setExtractionMethod(v as ExtractionMethod)}>
-                    <SelectTrigger className="h-8 text-xs flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto (tiered pipeline)</SelectItem>
-                      <SelectItem value="direct">Force: Direct binary extraction</SelectItem>
-                      <SelectItem value="pdfjs">Force: PDF.js extraction</SelectItem>
-                      <SelectItem value="chapter_text">Force: Chapter stored text</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -374,7 +319,7 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
           {previewMap?.source_detection_metadata && (
             <details className="text-xs">
               <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                Detection metadata
+                Generation metadata
               </summary>
               <pre className="mt-1 bg-muted rounded p-2 overflow-auto text-[10px]">
                 {JSON.stringify(previewMap.source_detection_metadata, null, 2)}
@@ -430,84 +375,18 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
                 )}
               </div>
 
-              {/* Source document & extraction diagnostics */}
+              {/* Source document info */}
               {srcDoc && (
-                <div className="p-3 bg-muted rounded-lg space-y-2.5">
-                  {/* Source info */}
+                <div className="p-3 bg-muted rounded-lg space-y-2">
                   <div className="flex items-center gap-1.5 text-xs">
                     <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span className="text-muted-foreground">Source:</span>
                     <span className="font-medium truncate">{srcDoc.name || 'Unknown'}</span>
                   </div>
-
-                  {/* Method badges */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">From:</span>
-                      <Badge variant="outline" className="text-[11px] px-1.5 capitalize">
-                        {srcDoc.source_method.replace(/_/g, ' ')}
-                      </Badge>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Extracted via:</span>
-                      <Badge variant="outline" className="text-[11px] px-1.5 capitalize border-primary/30 text-primary">
-                        {srcDoc.extraction_method_used === 'chapter_text' ? 'Chapter text' : srcDoc.extraction_method_used === 'pdfjs' ? 'PDF.js' : srcDoc.extraction_method_used === 'direct' ? 'Direct binary' : 'Auto'}
-                      </Badge>
-                    </div>
-                    {srcDoc.fallback_triggered && (
-                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-0 text-[11px]">
-                        Fallback triggered
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Selection reason */}
-                  {srcDoc.selection_reason && (
-                    <p className="text-[11px] text-muted-foreground italic pl-5">
-                      {srcDoc.selection_reason}
-                    </p>
-                  )}
-
-                  {/* Character counts */}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground pl-5">
-                    <span>Selected: <span className="text-foreground font-medium">{(srcDoc.text_length / 1000).toFixed(1)}k chars</span></span>
-                    <span>Headings: <span className="text-foreground">{srcDoc.heading_count}</span></span>
-                    {srcDoc.chapter_pdf_text_length != null && (
-                      <span>Chapter text: <span className="text-foreground">{(srcDoc.chapter_pdf_text_length / 1000).toFixed(1)}k chars</span></span>
-                    )}
+                    <span>PDF size: <span className="text-foreground font-medium">{((srcDoc.pdf_size || 0) / 1024).toFixed(0)} KB</span></span>
+                    <span>Method: <span className="text-foreground">Direct PDF-to-AI</span></span>
                   </div>
-
-                  {/* Extraction scores comparison */}
-                  {scores && Object.keys(scores).length > 0 && (
-                    <div className="space-y-1 pt-1 border-t border-border/50">
-                      <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                        <Gauge className="w-3 h-3" /> Quality scores
-                      </span>
-                      {scores.direct && <ExtractionScoreRow name="direct" entry={scores.direct} />}
-                      {scores.pdfjs && <ExtractionScoreRow name="pdfjs" entry={scores.pdfjs} />}
-                      {scores.chapter_text && <ExtractionScoreRow name="chapter_text" entry={scores.chapter_text} />}
-                    </div>
-                  )}
-
-                  {/* Text preview */}
-                  {srcDoc.selected_text_preview && (
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-[11px]">
-                        Text preview (first 500 chars)
-                      </summary>
-                      <pre className="mt-1 bg-background rounded p-2 overflow-auto max-h-32 text-[10px] whitespace-pre-wrap font-mono">
-                        {srcDoc.selected_text_preview}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              )}
-
-              {/* Detection info */}
-              {lastResult.detection && (
-                <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                  Detection: {lastResult.detection.method} · Confidence: {Math.round(lastResult.detection.confidence * 100)}% · {lastResult.detection.sections_found} sections found
                 </div>
               )}
 
