@@ -199,14 +199,8 @@ async function callGeminiWithPdf(
           return { success: false, error: `Gemini returned no content (finishReason: ${finishReason || "unknown"})` };
         }
 
-        // Strip markdown code fences if Gemini wraps the output
-        let cleaned = text.trim();
-        if (cleaned.startsWith("```markdown")) cleaned = cleaned.slice(11);
-        else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
-        if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-        cleaned = cleaned.trim();
-
-        return { success: true, content: cleaned, modelUsed: model };
+        // Return raw text — let callers handle format-specific cleanup
+        return { success: true, content: text.trim(), modelUsed: model };
       } catch (err) {
         if (attempt < MAX_RETRIES) {
           const delay = Math.pow(2, attempt) * 1000;
@@ -231,26 +225,53 @@ interface ParsedSection {
 }
 
 function parseSectionsResponse(raw: string): ParsedSection[] {
-  // Try to parse as JSON array
+  // Strip code fences (```json ... ```)
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    const firstNewline = cleaned.indexOf("\n");
+    if (firstNewline > -1) cleaned = cleaned.slice(firstNewline + 1);
+  }
+  if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3).trim();
+
+  // Try direct parse first
   try {
-    // Find JSON array in the response
-    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return normalizeSections(parsed);
+    }
+  } catch { /* not direct JSON */ }
+
+  // Try to find JSON array in the response
+  try {
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((s: any) => ({
-          section_number: s.section_number || null,
-          section_title: s.section_title || s.title || "Untitled Section",
-          markdown_content: (s.markdown_content || s.markdown || s.content || "").trim(),
-        })).filter((s: ParsedSection) => s.markdown_content.length > 20);
+        return normalizeSections(parsed);
       }
     }
   } catch {
-    // Not JSON, ignore
+    console.error("[parseSectionsResponse] Failed to parse JSON from response. First 500 chars:", cleaned.slice(0, 500));
   }
 
-  // Fallback: not parseable
   return [];
+}
+
+function normalizeSections(parsed: any[]): ParsedSection[] {
+  return parsed.map((s: any) => {
+    let md = (s.markdown_content || s.markdown || s.content || "").trim();
+    // Strip code fences within individual section markdown
+    if (md.startsWith("```")) {
+      const nl = md.indexOf("\n");
+      if (nl > -1) md = md.slice(nl + 1);
+    }
+    if (md.endsWith("```")) md = md.slice(0, -3).trim();
+    return {
+      section_number: s.section_number || null,
+      section_title: s.section_title || s.title || "Untitled Section",
+      markdown_content: md,
+    };
+  }).filter((s: ParsedSection) => s.markdown_content.length > 20);
 }
 
 // ─── Main handler ────────────────────────────────────────────────────
@@ -497,7 +518,13 @@ Return ONLY the JSON array, no other text.`;
         console.error("[generate-mind-map] Full map AI error:", aiResult.error);
         results.push({ type: "full", title: sourceTitle, success: false, status: "failed", errors: [aiResult.error || "AI failed to process PDF"] });
       } else {
-        const markdown = aiResult.content!.trim();
+        // Strip code fences for markmap output
+        let markdown = aiResult.content!.trim();
+        if (markdown.startsWith("```")) {
+          const nl = markdown.indexOf("\n");
+          if (nl > -1) markdown = markdown.slice(nl + 1);
+        }
+        if (markdown.endsWith("```")) markdown = markdown.slice(0, -3).trim();
         const validation = validateMarkmapMarkdown(markdown);
 
         if (!validation.valid) {
