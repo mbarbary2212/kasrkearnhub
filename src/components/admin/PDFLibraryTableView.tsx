@@ -323,6 +323,11 @@ export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource
           </CollapsibleContent>
         </Collapsible>
       )}
+      <EditDocumentDialog
+        document={editingDoc}
+        open={!!editingDoc}
+        onOpenChange={(open) => { if (!open) setEditingDoc(null); }}
+      />
     </div>
   );
 }
