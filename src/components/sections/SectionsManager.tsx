@@ -86,7 +86,25 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const reorderSections = useReorderSections();
   const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
   const { extractAndInsert, isExtracting } = useExtractSections();
-  const { syncPdfText, isSyncing: isSyncingPdf, progress: syncProgress } = useSyncPdfText();
+
+  // Check if a PDF is linked to this chapter
+  const { data: linkedDoc } = useQuery({
+    queryKey: ['admin-doc-linked', chapterId, topicId],
+    queryFn: async () => {
+      const col = chapterId ? 'chapter_id' : 'topic_id';
+      const val = chapterId || topicId;
+      if (!val) return null;
+      const { data } = await supabase
+        .from('admin_documents')
+        .select('id, title')
+        .eq(col, val)
+        .eq('is_deleted', false)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!(chapterId || topicId),
+  });
   
   // DnD sensors
   const sensors = useSensors(
