@@ -272,7 +272,7 @@ export function FlashcardClozeMode({
     <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-start pt-8 bg-background overflow-y-auto")}>
       {/* Topic selector */}
       {allTopicNames.length > 1 && (
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md md:max-w-lg">{/* Topic selector uses same width */}
           <Collapsible open={topicSectionOpen} onOpenChange={setTopicSectionOpen}>
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between" size="sm">
