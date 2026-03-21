@@ -2569,6 +2569,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           video_url: string | null
+          youtube_video_id: string | null
         }
         Insert: {
           chapter_id?: string | null
@@ -2593,6 +2594,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           video_url?: string | null
+          youtube_video_id?: string | null
         }
         Update: {
           chapter_id?: string | null
@@ -2617,6 +2619,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           video_url?: string | null
+          youtube_video_id?: string | null
         }
         Relationships: [
           {
@@ -3665,6 +3668,7 @@ export type Database = {
           updated_at: string | null
           workload_level: string | null
           year_id: string
+          youtube_playlist_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -3679,6 +3683,7 @@ export type Database = {
           updated_at?: string | null
           workload_level?: string | null
           year_id: string
+          youtube_playlist_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -3693,6 +3698,7 @@ export type Database = {
           updated_at?: string | null
           workload_level?: string | null
           year_id?: string
+          youtube_playlist_id?: string | null
         }
         Relationships: [
           {
@@ -6105,6 +6111,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      video_view_counts: {
+        Row: {
+          unique_viewers: number | null
+          video_id: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {

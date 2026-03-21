@@ -50,7 +50,15 @@ async function extractSectionsFromPdf(
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
-  const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+    const chunk = pdfBytes.subarray(i, i + chunkSize);
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  const pdfBase64 = btoa(binary);
 
   const systemPrompt = `You are a textbook section extractor. Given a PDF chapter, identify the main section headings and their numbers. Return ONLY a JSON array of objects with "section_number" and "name" fields. Example: [{"section_number":"7.1","name":"Classification of Hemorrhage"},{"section_number":"7.2","name":"Pathophysiology"}]. If there are no clear sections, return an empty array [].`;
 
