@@ -578,15 +578,12 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
             </div>
           ) : (
             <ScrollArea className="h-[calc(100vh-400px)] min-h-[400px]">
-              <div className="grid gap-4 md:grid-cols-2">
-                {documents?.map(doc => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={doc}
-                    onUseAsAISource={handleUseAsAISource}
-                  />
-                ))}
-              </div>
+              <PDFLibraryTableView
+                documents={documents || []}
+                years={years}
+                modules={(availableModules || []).map(m => ({ id: m.id, name: m.name, slug: m.slug || null, year_id: m.year_id || null }))}
+                onUseAsAISource={handleUseAsAISource}
+              />
             </ScrollArea>
           )}
         </CardContent>
