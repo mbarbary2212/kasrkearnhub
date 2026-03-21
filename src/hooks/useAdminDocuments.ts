@@ -20,7 +20,7 @@ export interface AdminDocument {
   created_by: string | null;
   created_at: string;
   is_deleted: boolean;
-  module?: { id: string; name: string; slug: string } | null;
+  module?: { id: string; name: string; slug: string; year_id?: string | null } | null;
   chapter?: { id: string; title: string } | null;
 }
 
@@ -51,7 +51,7 @@ export function useAdminDocuments(filters?: {
         .from('admin_documents')
         .select(`
           *,
-          module:modules(id, name, slug),
+          module:modules(id, name, slug, year_id),
           chapter:module_chapters(id, title)
         `)
         .eq('is_deleted', false)
