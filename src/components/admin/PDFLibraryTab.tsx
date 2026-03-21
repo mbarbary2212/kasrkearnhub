@@ -461,6 +461,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
     module_ids: moduleAdminModuleIds,
   });
   const { data: modules } = useModules();
+  const { data: years = [] } = useYears();
   
   // Filter modules for module admins
   const availableModules = moduleAdminModuleIds?.length 
