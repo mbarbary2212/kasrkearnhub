@@ -1,0 +1,1 @@
+ALTER TABLE public.topics ADD COLUMN IF NOT EXISTS pdf_text TEXT;
