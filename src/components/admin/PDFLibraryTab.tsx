@@ -26,6 +26,7 @@ import {
   Layers,
   RefreshCw,
 } from 'lucide-react';
+import { PDFLibraryTableView } from './PDFLibraryTableView';
 import { useAdminDocuments, useUploadAdminDocument, useDeleteAdminDocument, getSignedUrl, AdminDocument } from '@/hooks/useAdminDocuments';
 import { useModules } from '@/hooks/useModules';
 import { useYears } from '@/hooks/useYears';
