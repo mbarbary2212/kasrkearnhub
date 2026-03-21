@@ -106,14 +106,27 @@ serve(async (req: Request) => {
       );
     }
 
-    // Convert to base64 for AI processing
+    // Convert to base64 for AI processing - chunked to reduce peak memory
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce(
-        (data, byte) => data + String.fromCharCode(byte),
-        ""
-      )
-    );
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Use chunked approach: process in 3-byte aligned chunks for valid base64
+    const CHUNK = 3 * 8192; // must be multiple of 3 for base64 alignment
+    let base64 = "";
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+      let binary = "";
+      for (let j = 0; j < slice.length; j++) {
+        binary += String.fromCharCode(slice[j]);
+      }
+      if (i + CHUNK >= bytes.length) {
+        // Last chunk - use regular btoa (may have padding)
+        base64 += btoa(binary);
+      } else {
+        // Full chunk - exact multiple of 3, no padding needed
+        base64 += btoa(binary);
+      }
+    }
 
     // Get AI settings
     const aiSettings = await getAISettings(serviceClient);
