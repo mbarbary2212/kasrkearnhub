@@ -1051,7 +1051,7 @@ export default function AdminPage() {
         { value: 'sources', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'help', visible: true },
         { value: 'analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
-        { value: 'videos', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'videos', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', visible: isSuperAdmin },
       ],
       messaging: [
@@ -2141,9 +2141,11 @@ export default function AdminPage() {
           )}
 
           {/* Videos Management Tab */}
-          {(isSuperAdmin || isPlatformAdmin) && (
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="videos">
-              <VideosManagementTab />
+              <VideosManagementTab
+                allowedModuleIds={(isSuperAdmin || isPlatformAdmin) ? undefined : moduleAdminModuleIds}
+              />
             </TabsContent>
           )}
 

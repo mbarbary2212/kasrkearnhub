@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { extractYouTubeId } from '@/lib/video';
 import { useVideosHierarchy, YearNode, ModuleNode, ChapterNode, LectureNode } from '@/hooks/useVideosHierarchy';
@@ -11,6 +11,14 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
 import {
   Play,
   Eye,
@@ -31,85 +39,162 @@ function getModuleCode(name: string): string {
   return name.match(/^[A-Z]+-\d+/)?.[0] ?? name.split(':')[0].trim();
 }
 
-// ─── Inline URL Edit ─────────────────────────────────────────────────────────
+// ─── Lecture Edit Dialog ──────────────────────────────────────────────────────
 
-interface InlineUrlEditProps {
-  lectureId: string;
-  currentUrl: string | null;
-}
-
-function InlineUrlEdit({ lectureId, currentUrl }: InlineUrlEditProps) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(currentUrl || '');
+function LectureEditDialog({ lecture }: { lecture: LectureNode }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [doctor, setDoctor] = useState('');
+  const [doctorSelectVal, setDoctorSelectVal] = useState('');
+  const [yearId, setYearId] = useState('');
+  const [moduleId, setModuleId] = useState('');
+  const [chapterId, setChapterId] = useState('');
+  const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
+  const { data: hierarchy = [] } = useVideosHierarchy();
 
-  const mutation = useMutation({
-    mutationFn: async (url: string) => {
-      const ytId = extractYouTubeId(url) || null;
-      const { error } = await supabase
-        .from('lectures')
-        .update({ video_url: url || null, youtube_video_id: ytId })
-        .eq('id', lectureId);
+  const openDialog = () => {
+    setTitle(lecture.title);
+    setVideoUrl(lecture.video_url || '');
+    setChapterId(lecture.chapter_id);
+    setModuleId(lecture.module_id || '');
+    // Derive yearId from hierarchy
+    const year = hierarchy.find((y) => y.modules.some((m) => m.id === lecture.module_id));
+    setYearId(year?.id || '');
+    // Doctor select
+    const doc = lecture.doctor || '';
+    setDoctor(doc);
+    setDoctorSelectVal(!doc || doc === 'General' ? '__general' : doc);
+    setOpen(true);
+  };
+
+  // Collect existing doctors from selected module
+  const selectedYear = hierarchy.find((y) => y.id === yearId);
+  const selectedModule = selectedYear?.modules.find((m) => m.id === moduleId);
+  const moduleOptions = selectedYear?.modules ?? [];
+  const chapterOptions = selectedModule?.chapters ?? [];
+  const existingDoctors = useMemo(() => {
+    if (!selectedModule) return [];
+    return [...new Set(selectedModule.chapters.flatMap((c) => c.lectures.map((l) => l.doctor)).filter(Boolean))].sort();
+  }, [selectedModule]);
+
+  const handleSave = async () => {
+    if (!title.trim()) { toast.error('Title is required'); return; }
+    const normalizedUrl = normalizeVideoInput(videoUrl);
+    if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
+      toast.error('Invalid video URL. Use a YouTube or Google Drive link.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const ytId = extractYouTubeId(normalizedUrl || '') || null;
+      const doctorValue = doctor.trim() || null;
+      const { error } = await supabase.from('lectures').update({
+        title: title.trim(),
+        description: doctorValue,
+        video_url: normalizedUrl || null,
+        youtube_video_id: ytId,
+        chapter_id: chapterId || lecture.chapter_id,
+        module_id: moduleId || lecture.module_id,
+      }).eq('id', lecture.id);
       if (error) throw error;
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
-      toast.success('Video URL updated');
-      setEditing(false);
-    },
-    onError: (err: Error) => {
-      toast.error(`Failed to update: ${err.message}`);
-    },
-  });
-
-  if (!editing) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0"
-        onClick={() => {
-          setValue(currentUrl || '');
-          setEditing(true);
-        }}
-      >
-        <Edit2 className="w-3.5 h-3.5" />
-      </Button>
-    );
-  }
+      toast.success('Lecture updated');
+      setOpen(false);
+    } catch (err) {
+      toast.error(`Failed to update: ${(err as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-      <Input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Paste YouTube URL..."
-        className="h-7 text-xs flex-1 min-w-0"
-        autoFocus
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') mutation.mutate(value);
-          if (e.key === 'Escape') setEditing(false);
-        }}
-      />
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 text-green-600"
-        onClick={() => mutation.mutate(value)}
-        disabled={mutation.isPending}
-      >
-        <Check className="w-3.5 h-3.5" />
+    <>
+      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={openDialog}>
+        <Edit2 className="w-3.5 h-3.5" />
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 text-muted-foreground"
-        onClick={() => setEditing(false)}
-        disabled={mutation.isPending}
-      >
-        <X className="w-3.5 h-3.5" />
-      </Button>
-    </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Lecture</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* Title */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Lecture title" />
+            </div>
+
+            {/* Doctor */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Doctor <span className="font-normal">(optional)</span>
+              </label>
+              <Select
+                value={doctorSelectVal}
+                onValueChange={(v) => {
+                  setDoctorSelectVal(v);
+                  if (v === '__general') setDoctor('');
+                  else if (v !== '__custom') setDoctor(v);
+                  else setDoctor('');
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__general">General</SelectItem>
+                  {existingDoctors.filter((d) => d !== 'General').map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                  <SelectItem value="__custom">+ Add new doctor…</SelectItem>
+                </SelectContent>
+              </Select>
+              {doctorSelectVal === '__custom' && (
+                <Input value={doctor} onChange={(e) => setDoctor(e.target.value)} placeholder="e.g. Dr. Ahmed" className="mt-1.5" autoFocus />
+              )}
+            </div>
+
+            {/* Video URL */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video URL</label>
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
+            </div>
+
+            {/* Chapter — year → module → chapter selectors */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Move to Chapter</label>
+              <div className="space-y-1.5">
+                <Select value={yearId} onValueChange={(v) => { setYearId(v); setModuleId(''); setChapterId(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                  <SelectContent>
+                    {hierarchy.map((y) => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {yearId && (
+                  <Select value={moduleId} onValueChange={(v) => { setModuleId(v); setChapterId(''); }}>
+                    <SelectTrigger><SelectValue placeholder="Module" /></SelectTrigger>
+                    <SelectContent>
+                      {moduleOptions.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {moduleId && (
+                  <Select value={chapterId} onValueChange={setChapterId}>
+                    <SelectTrigger><SelectValue placeholder="Chapter" /></SelectTrigger>
+                    <SelectContent>
+                      {chapterOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -196,7 +281,7 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
 
       {/* Edit button */}
       <div className="shrink-0">
-        <InlineUrlEdit lectureId={lecture.id} currentUrl={lecture.video_url} />
+        <LectureEditDialog lecture={lecture} />
       </div>
 
       {/* Delete button / inline confirmation */}
@@ -305,46 +390,152 @@ function StatsCards({ totalVideos, totalViews, youtubeVideos, noSource }: StatsC
 
 interface CurriculumBrowserProps {
   hierarchy: YearNode[];
+  allowedModuleIds?: string[];
 }
 
-function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
+function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserProps) {
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('all');
 
+  // Doctor management state
+  const [editingDoctor, setEditingDoctor] = useState<string | null>(null);
+  const [editDoctorName, setEditDoctorName] = useState('');
+  const [removingDoctor, setRemovingDoctor] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
   // Auto-select first year on load (only if nothing selected yet)
   useEffect(() => {
-    if (!selectedYearId && hierarchy.length > 0) {
-      setSelectedYearId(hierarchy[0].id);
+    if (!selectedYearId && filteredHierarchy.length > 0) {
+      setSelectedYearId(filteredHierarchy[0].id);
     }
-  }, [hierarchy, selectedYearId]);
+  }, [filteredHierarchy, selectedYearId]);
 
   // Preserve module selection on refetch — only reset if current module no longer exists in selected year
   useEffect(() => {
     if (selectedYearId) {
-      const year = hierarchy.find((y) => y.id === selectedYearId);
+      const year = filteredHierarchy.find((y) => y.id === selectedYearId);
       if (!year) return;
       const moduleStillValid = year.modules.some((m) => m.id === selectedModuleId);
       if (!moduleStillValid) {
         setSelectedModuleId(year.modules[0]?.id ?? '');
       }
     }
-  }, [selectedYearId, hierarchy]);
+  }, [selectedYearId, filteredHierarchy]);
 
   // Reset doctor filter when module changes
   useEffect(() => {
     setSelectedDoctor('all');
   }, [selectedModuleId]);
 
-  const selectedYear = hierarchy.find((y) => y.id === selectedYearId);
+  // Filter hierarchy to allowed modules only (for module admins)
+  const filteredHierarchy = useMemo(() => {
+    if (!allowedModuleIds) return hierarchy;
+    return hierarchy
+      .map((year) => ({
+        ...year,
+        modules: year.modules.filter((m) => allowedModuleIds.includes(m.id)),
+      }))
+      .filter((year) => year.modules.length > 0);
+  }, [hierarchy, allowedModuleIds]);
+
+  const selectedYear = filteredHierarchy.find((y) => y.id === selectedYearId);
   const selectedModule = selectedYear?.modules.find((m) => m.id === selectedModuleId);
 
-  // Collect unique doctors from selected module's lectures
-  const doctors = selectedModule
-    ? [...new Set(
-        selectedModule.chapters.flatMap((c) => c.lectures.map((l) => l.doctor))
-      )].filter(Boolean).sort()
-    : [];
+  // Collect all youtube_video_ids from selected module for helpful votes query
+  const moduleVideoIds = useMemo(() => {
+    if (!selectedModule) return [];
+    return selectedModule.chapters
+      .flatMap((c) => c.lectures.map((l) => l.youtube_video_id))
+      .filter((id): id is string => !!id);
+  }, [selectedModule]);
+
+  const { data: moduleHelpfulVotes = [] } = useQuery({
+    queryKey: ['module-helpful-votes', selectedModuleId],
+    queryFn: async () => {
+      if (moduleVideoIds.length === 0) return [];
+      const { data } = await supabase
+        .from('video_ratings')
+        .select('video_id')
+        .eq('rating', 1)
+        .in('video_id', moduleVideoIds);
+      return (data || []) as { video_id: string }[];
+    },
+    enabled: moduleVideoIds.length > 0,
+  });
+
+  // Collect unique doctors sorted by helpful votes descending
+  const doctors = useMemo(() => {
+    if (!selectedModule) return [];
+    const helpMap = new Map<string, number>();
+    for (const v of moduleHelpfulVotes) {
+      helpMap.set(v.video_id, (helpMap.get(v.video_id) || 0) + 1);
+    }
+    const doctorVotes = new Map<string, number>();
+    for (const chapter of selectedModule.chapters) {
+      for (const lecture of chapter.lectures) {
+        const doc = lecture.doctor || 'General';
+        doctorVotes.set(doc, (doctorVotes.get(doc) || 0) + (helpMap.get(lecture.youtube_video_id || '') || 0));
+      }
+    }
+    return [...doctorVotes.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([doc]) => doc);
+  }, [selectedModule, moduleHelpfulVotes]);
+
+  // Doctor stats: lecture count + helpful votes per doctor in selected module
+  const doctorStats = useMemo(() => {
+    if (!selectedModule) return new Map<string, { count: number; votes: number }>();
+    const helpMap = new Map<string, number>();
+    for (const v of moduleHelpfulVotes) {
+      helpMap.set(v.video_id, (helpMap.get(v.video_id) || 0) + 1);
+    }
+    const stats = new Map<string, { count: number; votes: number }>();
+    for (const chapter of selectedModule.chapters) {
+      for (const lecture of chapter.lectures) {
+        const doc = lecture.doctor || 'General';
+        const existing = stats.get(doc) || { count: 0, votes: 0 };
+        stats.set(doc, {
+          count: existing.count + 1,
+          votes: existing.votes + (helpMap.get(lecture.youtube_video_id || '') || 0),
+        });
+      }
+    }
+    return stats;
+  }, [selectedModule, moduleHelpfulVotes]);
+
+  const renameDoctor = async (oldName: string, newName: string) => {
+    if (!selectedModule || !newName.trim() || newName.trim() === oldName) {
+      setEditingDoctor(null);
+      return;
+    }
+    const descValue = newName.trim() === 'General' ? null : newName.trim();
+    const { error } = await supabase
+      .from('lectures')
+      .update({ description: descValue })
+      .eq('module_id', selectedModule.id)
+      .eq('description', oldName === 'General' ? null : oldName);
+    if (error) { toast.error('Failed to rename doctor'); return; }
+    queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+    queryClient.invalidateQueries({ queryKey: ['module-helpful-votes'] });
+    toast.success(`Renamed to "${newName.trim()}"`);
+    setEditingDoctor(null);
+    setEditDoctorName('');
+  };
+
+  const removeDoctor = async (doctorName: string) => {
+    if (!selectedModule) return;
+    const { error } = await supabase
+      .from('lectures')
+      .update({ description: null })
+      .eq('module_id', selectedModule.id)
+      .eq('description', doctorName === 'General' ? null : doctorName);
+    if (error) { toast.error('Failed to remove doctor'); return; }
+    queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+    toast.success(`Removed doctor "${doctorName}"`);
+    setRemovingDoctor(null);
+    if (selectedDoctor === doctorName) setSelectedDoctor('all');
+  };
 
   const pillBase = 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer';
   const pillActive = `${pillBase} bg-primary text-primary-foreground`;
@@ -353,18 +544,19 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
   return (
     <div className="space-y-4">
       {/* Year pills — centered */}
-      {hierarchy.length > 0 && (
+      {filteredHierarchy.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 text-center">Year</p>
           <div className="flex flex-wrap gap-2 justify-center">
-            {hierarchy.map((year) => (
+            {filteredHierarchy.map((year) => (
               <button
                 key={year.id}
                 className={`${selectedYearId === year.id ? pillActive : pillInactive} flex items-center gap-1.5`}
                 onClick={() => setSelectedYearId(year.id)}
               >
                 {year.name}
-                <span className={`text-[10px] px-1 rounded-full ${selectedYearId === year.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background/60 text-muted-foreground'}`}>
+                <span className={`flex items-center gap-0.5 text-[10px] px-1.5 rounded-full ${selectedYearId === year.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background/60 text-muted-foreground'}`}>
+                  <Eye className="w-2.5 h-2.5" />
                   {year.total_views.toLocaleString()}
                 </span>
               </button>
@@ -443,6 +635,76 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
 
       {selectedYear && selectedYear.modules.length === 0 && (
         <p className="text-sm text-muted-foreground italic">No modules in this year.</p>
+      )}
+
+      {/* ── Doctor Management ── */}
+      {selectedModule && doctorStats.size > 0 && (
+        <div className="border rounded-lg overflow-hidden bg-card">
+          <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Doctors in this Module
+            </p>
+            <span className="text-xs text-muted-foreground">{doctorStats.size} doctor{doctorStats.size !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {[...doctorStats.entries()].sort((a, b) => b[1].votes - a[1].votes).map(([doc, { count, votes }]) => (
+              <div key={doc} className="flex items-center gap-3 px-4 py-2.5">
+                {editingDoctor === doc ? (
+                  <>
+                    <Input
+                      value={editDoctorName}
+                      onChange={(e) => setEditDoctorName(e.target.value)}
+                      className="h-7 text-sm flex-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') renameDoctor(doc, editDoctorName);
+                        if (e.key === 'Escape') { setEditingDoctor(null); setEditDoctorName(''); }
+                      }}
+                    />
+                    <Button size="sm" className="h-7 px-2" onClick={() => renameDoctor(doc, editDoctorName)}>
+                      <Check className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setEditingDoctor(null); setEditDoctorName(''); }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                ) : removingDoctor === doc ? (
+                  <>
+                    <span className="text-sm text-muted-foreground flex-1">Remove <span className="font-medium text-foreground">"{doc}"</span> from all {count} lecture{count !== 1 ? 's' : ''}?</span>
+                    <Button size="sm" variant="destructive" className="h-7 px-2 gap-1 text-xs" onClick={() => removeDoctor(doc)}>
+                      <Check className="w-3.5 h-3.5" />Yes
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setRemovingDoctor(null)}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm font-medium flex-1">{doc}</span>
+                    <span className="text-xs text-muted-foreground">{count} video{count !== 1 ? 's' : ''}</span>
+                    {votes > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        👍 {votes}
+                      </span>
+                    )}
+                    <Button
+                      size="sm" variant="ghost" className="h-7 w-7 p-0"
+                      onClick={() => { setEditingDoctor(doc); setEditDoctorName(doc); }}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setRemovingDoctor(doc)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -828,8 +1090,19 @@ function LoadingSkeleton() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function VideosManagementTab() {
-  const { data: hierarchy, isLoading, error } = useVideosHierarchy();
+export function VideosManagementTab({ allowedModuleIds }: { allowedModuleIds?: string[] }) {
+  const { data: rawHierarchy, isLoading, error } = useVideosHierarchy();
+
+  // Filter to allowed modules if scoped (module admin)
+  const hierarchy = useMemo(() => {
+    if (!rawHierarchy || !allowedModuleIds) return rawHierarchy;
+    return rawHierarchy
+      .map((year) => ({
+        ...year,
+        modules: year.modules.filter((m) => allowedModuleIds.includes(m.id)),
+      }))
+      .filter((year) => year.modules.length > 0);
+  }, [rawHierarchy, allowedModuleIds]);
 
   const totalVideos = hierarchy?.reduce((s, y) => s + y.total_videos, 0) ?? 0;
   const totalViews = hierarchy?.reduce((s, y) => s + y.total_views, 0) ?? 0;
@@ -899,7 +1172,7 @@ export function VideosManagementTab() {
               Curriculum Hierarchy
             </h3>
             {hierarchy && hierarchy.length > 0 ? (
-              <CurriculumBrowser hierarchy={hierarchy} />
+              <CurriculumBrowser hierarchy={hierarchy} allowedModuleIds={allowedModuleIds} />
             ) : (
               <Card>
                 <CardContent className="pt-6">

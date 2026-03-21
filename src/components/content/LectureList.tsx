@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X, CheckCircle, Bookmark, ThumbsUp, ThumbsDown, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
@@ -44,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { SectionSelector, BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
@@ -109,8 +108,6 @@ export function LectureList({
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editVideoUrl, setEditVideoUrl] = useState('');
-  const [editDuration, setEditDuration] = useState('');
-  const [editSectionId, setEditSectionId] = useState<string | null>(null);
   const [editDoctor, setEditDoctor] = useState('');
   const [editDoctorSelectVal, setEditDoctorSelectVal] = useState('');
 
@@ -156,11 +153,41 @@ export function LectureList({
   const canManage = canEdit || canDelete;
   const isStudent = !canManage;
 
-  // Unique doctors from all lectures in this chapter
+  // Fetch helpful votes for all lectures in this chapter to sort doctors
+  const chapterVideoIds = useMemo(
+    () => lectures.map((l) => l.youtube_video_id || extractYouTubeId(l.video_url || '') || l.id).filter(Boolean),
+    [lectures]
+  );
+  const { data: helpfulVotesRaw = [] } = useQuery({
+    queryKey: ['chapter-helpful-votes', chapterVideoIds],
+    queryFn: async () => {
+      if (chapterVideoIds.length === 0) return [];
+      const { data } = await supabase
+        .from('video_ratings')
+        .select('video_id')
+        .eq('rating', 1)
+        .in('video_id', chapterVideoIds);
+      return (data || []) as { video_id: string }[];
+    },
+    enabled: chapterVideoIds.length > 0,
+  });
+
+  // Unique doctors sorted by helpful votes descending
   const chapterDoctors = useMemo(() => {
-    const docs = [...new Set(lectures.map((l) => l.description || 'General').filter(Boolean))];
-    return docs.sort();
-  }, [lectures]);
+    const helpMap = new Map<string, number>();
+    for (const v of helpfulVotesRaw) {
+      helpMap.set(v.video_id, (helpMap.get(v.video_id) || 0) + 1);
+    }
+    const doctorVotes = new Map<string, number>();
+    for (const l of lectures) {
+      const doc = l.description || 'General';
+      const vid = l.youtube_video_id || extractYouTubeId(l.video_url || '') || l.id;
+      doctorVotes.set(doc, (doctorVotes.get(doc) || 0) + (helpMap.get(vid) || 0));
+    }
+    return [...doctorVotes.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([doc]) => doc);
+  }, [lectures, helpfulVotesRaw]);
 
   // Filter lectures — first by engagement filter, then by doctor
   const filteredLectures = useMemo(() => {
@@ -236,8 +263,6 @@ export function LectureList({
     setEditTitle(lecture.title);
     setEditDescription(lecture.description || '');
     setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
-    setEditDuration(lecture.duration || '');
-    setEditSectionId(lecture.section_id || null);
     // Doctor is stored in description field
     const doc = lecture.description || '';
     setEditDoctor(doc);
@@ -271,8 +296,6 @@ export function LectureList({
           title: editTitle.trim(),
           description: doctorValue,
           video_url: normalizedUrl || null,
-          duration: editDuration.trim() || null,
-          section_id: editSectionId,
         },
       });
       toast.success('Lecture updated successfully');
@@ -348,8 +371,6 @@ export function LectureList({
                 )}
               </div>
               <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
-              <div><Label htmlFor="edit-duration">Duration (optional)</Label><Input id="edit-duration" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} placeholder="e.g., 15:30" className="mt-1" /></div>
-              <SectionSelector chapterId={chapterId} value={editSectionId} onChange={setEditSectionId} />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>
@@ -801,8 +822,6 @@ export function LectureList({
               )}
             </div>
             <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
-            <div><Label htmlFor="edit-duration">Duration (optional)</Label><Input id="edit-duration" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} placeholder="e.g., 15:30" className="mt-1" /></div>
-            <SectionSelector chapterId={chapterId} value={editSectionId} onChange={setEditSectionId} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>

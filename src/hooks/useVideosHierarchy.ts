@@ -10,6 +10,8 @@ export interface LectureNode {
   duration: string | null;
   view_count: number;
   doctor: string;
+  chapter_id: string;
+  module_id: string | null;
 }
 
 export interface ChapterNode {
@@ -77,6 +79,8 @@ async function fetchVideosHierarchy(): Promise<YearNode[]> {
       duration: (raw.duration as string | null) ?? null,
       view_count: ytId ? (viewCountMap.get(ytId) ?? 0) : 0,
       doctor: (raw.description as string | null) || 'General',
+      chapter_id: lecture.chapter_id,
+      module_id: (raw.module_id as string | null) ?? null,
     };
     const list = lecturesByChapter.get(lecture.chapter_id) || [];
     list.push(node);
