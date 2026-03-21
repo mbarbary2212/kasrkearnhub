@@ -286,14 +286,15 @@ interface UploadCardProps {
 function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   const queryClient = useQueryClient();
 
-  // Selection state — three-level: year → module → lecture
+  // Selection state — three-level: year → module → chapter
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedModuleId, setSelectedModuleId] = useState('');
-  const [selectedLectureId, setSelectedLectureId] = useState('');
+  const [selectedChapterId, setSelectedChapterId] = useState('');
 
   // Upload metadata
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
+  const [doctor, setDoctor] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('unlisted');
 
@@ -305,30 +306,15 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
 
   // Derived options
   const yearOptions = hierarchy;
-
-  const moduleOptions =
-    hierarchy.find((y) => y.id === selectedYearId)?.modules ?? [];
-
-  // Flatten all lectures from the selected module across all chapters
-  const lectureOptions: { value: string; label: string }[] = [];
-  const selectedModule = moduleOptions.find((m) => m.id === selectedModuleId);
-  if (selectedModule) {
-    for (const chapter of selectedModule.chapters) {
-      for (const lecture of chapter.lectures) {
-        lectureOptions.push({
-          value: lecture.id,
-          label: `${chapter.title} › ${lecture.title}`,
-        });
-      }
-    }
-  }
+  const moduleOptions = hierarchy.find((y) => y.id === selectedYearId)?.modules ?? [];
+  const chapterOptions = moduleOptions.find((m) => m.id === selectedModuleId)?.chapters ?? [];
 
   const isUploading = ['initiating', 'uploading', 'finalizing'].includes(uploadStatus);
 
   const handleUpload = async () => {
     if (!file) { toast.error('Please select a video file.'); return; }
     if (!title.trim()) { toast.error('Please enter a video title.'); return; }
-    if (!selectedLectureId) { toast.error('Please select a lecture.'); return; }
+    if (!selectedChapterId) { toast.error('Please select a chapter.'); return; }
 
     setUploadStatus('initiating');
     setUploadProgress(0);
@@ -390,8 +376,10 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
           body: {
             action: 'finalize',
             youtube_video_id: youtubeVideoId,
-            lecture_id: selectedLectureId,
+            chapter_id: selectedChapterId,
             module_id: selectedModuleId || undefined,
+            title,
+            doctor: doctor.trim() || 'General',
           },
         }
       );
@@ -412,9 +400,10 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   const handleReset = () => {
     setFile(null);
     setTitle('');
+    setDoctor('');
     setDescription('');
     setPrivacy('unlisted');
-    setSelectedLectureId('');
+    setSelectedChapterId('');
     setUploadStatus('idle');
     setUploadProgress(0);
     setYoutubeUrl('');
@@ -526,10 +515,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Module</label>
                 <Select
                   value={selectedModuleId}
-                  onValueChange={(v) => {
-                    setSelectedModuleId(v);
-                    setSelectedLectureId('');
-                  }}
+                  onValueChange={(v) => { setSelectedModuleId(v); setSelectedChapterId(''); }}
                   disabled={isUploading}
                 >
                   <SelectTrigger>
@@ -544,24 +530,24 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
               </div>
             )}
 
-            {/* Lecture selector */}
+            {/* Chapter selector */}
             {selectedModuleId && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Lecture</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Chapter</label>
                 <Select
-                  value={selectedLectureId}
-                  onValueChange={setSelectedLectureId}
+                  value={selectedChapterId}
+                  onValueChange={setSelectedChapterId}
                   disabled={isUploading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a lecture…" />
+                    <SelectValue placeholder="Select a chapter…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {lectureOptions.length === 0 ? (
-                      <SelectItem value="__empty" disabled>No lectures found</SelectItem>
+                    {chapterOptions.length === 0 ? (
+                      <SelectItem value="__empty" disabled>No chapters found</SelectItem>
                     ) : (
-                      lectureOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      chapterOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
                       ))
                     )}
                   </SelectContent>
@@ -576,6 +562,19 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Video title…"
+                disabled={isUploading}
+              />
+            </div>
+
+            {/* Doctor (optional) */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Doctor <span className="text-muted-foreground/60 font-normal">(optional — defaults to General)</span>
+              </label>
+              <Input
+                value={doctor}
+                onChange={(e) => setDoctor(e.target.value)}
+                placeholder="e.g. Dr. Ahmed…"
                 disabled={isUploading}
               />
             </div>

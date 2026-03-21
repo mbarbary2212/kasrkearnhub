@@ -93,13 +93,13 @@ async function handleInitiate(
 
 async function handleFinalize(
   supabase: ReturnType<typeof createClient>,
-  body: { youtube_video_id: string; lecture_id: string; module_id?: string }
+  body: { youtube_video_id: string; chapter_id: string; module_id?: string; title: string; doctor?: string }
 ): Promise<Response> {
-  const { youtube_video_id, lecture_id, module_id } = body;
+  const { youtube_video_id, chapter_id, module_id, title, doctor } = body;
 
-  if (!youtube_video_id || !lecture_id) {
+  if (!youtube_video_id || !chapter_id) {
     return new Response(
-      JSON.stringify({ error: "Missing required fields: youtube_video_id, lecture_id" }),
+      JSON.stringify({ error: "Missing required fields: youtube_video_id, chapter_id" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -175,15 +175,21 @@ async function handleFinalize(
     }
   }
 
-  // ── Update lecture record ────────────────────────────────────────────────────
+  // ── Create new lecture in the chapter ───────────────────────────────────────
   const youtubeUrl = `https://www.youtube.com/watch?v=${youtube_video_id}`;
 
-  const { error: updateError } = await supabase
+  const { error: insertError } = await supabase
     .from("lectures")
-    .update({ video_url: youtubeUrl, youtube_video_id })
-    .eq("id", lecture_id);
+    .insert({
+      title: title ?? "Untitled",
+      description: doctor ?? "General",
+      video_url: youtubeUrl,
+      youtube_video_id,
+      chapter_id,
+      module_id: module_id ?? null,
+    });
 
-  if (updateError) throw updateError;
+  if (insertError) throw insertError;
 
   return new Response(
     JSON.stringify({ success: true, youtube_url: youtubeUrl }),
