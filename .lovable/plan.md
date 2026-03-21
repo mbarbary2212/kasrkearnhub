@@ -1,49 +1,34 @@
 
+Root cause (confirmed):
+- Section generation is failing because `generate-mind-map` expects the section AI response to be a JSON array, but the active default `mind_map_prompts` row for `prompt_type='section'` still uses the old “return markdown” instructions.
+- The function currently prioritizes DB prompt text over the built-in structured section prompt, so Gemini often returns plain Markmap markdown (or mixed prose), not strict JSON.
+- Logs confirm this path: full map succeeds, then section step logs “Could not parse section maps from AI response.”
 
-# Plan: Auto-activate Markmap Dark Mode & Revert Forced White Background
+Implementation plan to fix it permanently:
+1. Harden backend section output contract (`supabase/functions/generate-mind-map/index.ts`)
+- Keep prompts customizable for style/content, but make JSON structure non-optional in code.
+- Build section generation prompt as:
+  - mandatory schema wrapper (must return structured sections),
+  - plus admin-configurable style instructions appended.
+- Add Gemini JSON mode for sections (`responseMimeType: "application/json"` + strict schema) so output is machine-parseable by design.
 
-## Summary
+2. Add legacy-prompt compatibility guard
+- Detect legacy section prompts (old markdown-only style, missing structured keys).
+- If detected, auto-fallback to the new structured default wrapper and log a warning.
+- Prevent old prompt text from breaking generation again after future edits.
 
-Instead of forcing a white background on the mind map container, detect the app's current theme and automatically activate markmap's built-in dark mode toggle when the user is in dark mode. This gives proper dark-themed maps with correct text colors natively.
+3. Strengthen parser + diagnostics
+- Accept both:
+  - direct array `[...]`,
+  - wrapped object `{ sections: [...] }`.
+- Preserve current fence-stripping, but add better parse diagnostics (first chunk preview + model/finish reason in logs).
+- Return a clearer admin-facing error: “Section prompt is legacy/non-structured; update Section prompt format in Mind Map Prompts.”
 
-## How Markmap Dark Mode Works
+4. Data/config alignment
+- Add a migration to update the seeded default `section` prompt to the new structured contract (so fresh environments don’t inherit old behavior).
 
-The markmap toolbar's dark mode button toggles a `markmap-dark` class on the SVG element, which inverts text/line colors. We can programmatically trigger this after toolbar creation by detecting the current theme.
-
-## Changes
-
-### 1. `src/components/study/MarkmapRenderer.tsx`
-- Import `useTheme` from `next-themes`
-- After toolbar is attached, check if current theme is dark
-- If dark, programmatically click the dark mode toggle button in the toolbar (it's the last button with the half-circle icon), or directly add the `markmap-dark` class to the SVG
-- Watch for theme changes and toggle accordingly
-- Remove any forced white background styling
-
-### 2. `src/components/study/AIMindMapCards.tsx`
-- Revert the forced `bg-white` on the mind map container back to a theme-aware background (e.g., `bg-white dark:bg-gray-900` or just `bg-background`)
-- The markmap's own dark mode handling will now ensure text is readable
-
-## Technical Detail
-
-Markmap's dark mode is controlled by a CSS class `markmap-dark` on the SVG element. We can set this directly:
-
-```typescript
-// In MarkmapRenderer, after ready:
-useEffect(() => {
-  if (!svgRef.current || !ready) return;
-  const isDark = resolvedTheme === 'dark';
-  if (isDark) {
-    svgRef.current.classList.add('markmap-dark');
-  } else {
-    svgRef.current.classList.remove('markmap-dark');
-  }
-}, [resolvedTheme, ready]);
-```
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `src/components/study/MarkmapRenderer.tsx` | Add theme detection, auto-toggle `markmap-dark` class on SVG |
-| `src/components/study/AIMindMapCards.tsx` | Revert forced `bg-white` to theme-aware background |
-
+Validation after implementation:
+- Run `generation_mode=sections` and `both` on the same chapter.
+- Expect: 1 full + N section draft maps saved (instead of full-only).
+- Confirm result dialog no longer shows parse error for normal runs.
+- Confirm student/published flow remains unchanged.
