@@ -404,7 +404,7 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
   const [removingDoctor, setRemovingDoctor] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Filter hierarchy to allowed modules only (for module admins)
+  // Filter hierarchy to allowed modules only (for module admins) — must be before useEffects that use it
   const filteredHierarchy = useMemo(() => {
     if (!allowedModuleIds) return hierarchy;
     return hierarchy
