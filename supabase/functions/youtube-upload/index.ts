@@ -32,7 +32,7 @@ async function getAccessToken(): Promise<string> {
 // ─── Action: delete ────────────────────────────────────────────────────────────
 
 async function handleDelete(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   body: { youtube_video_id: string }
 ): Promise<Response> {
   const { youtube_video_id } = body;
@@ -74,7 +74,7 @@ const encodeDoctor = (d: string | undefined) =>
   (d || "general").toLowerCase().replace(/[^a-z0-9]/g, "_");
 
 async function handleUpload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   body: {
     storage_path: string;
     title: string;

@@ -13,6 +13,7 @@ interface Lecture {
   videoUrl?: string | null;
   duration?: string | null;
   section_id?: string | null;
+  youtube_video_id?: string | null;
 }
 
 interface LecturesAdminTableProps {
