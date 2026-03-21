@@ -1,28 +1,59 @@
 
 
-# Fix Build Error & Enable Sections for Surgery Module
+# Redesign PDF Library: Table View with Year/Module Grouping
 
-## 1. Fix Build Error in VideosManagementTab.tsx
+## Problem
+The current card-based layout shows all PDFs in a flat grid — overwhelming for super admins and platform admins who see every document across all modules. No clear organizational hierarchy.
 
-The `filteredHierarchy` variable (declared at line 432 with `useMemo`) is used in `useEffect` hooks at lines 409 and 417 — before its declaration. Block-scoped variables cannot be used before declaration.
+## Solution
+Replace the card grid with a **table view** that groups documents by **Year → Module** in collapsible folder-like sections. Documents sorted alphabetically within each group.
 
-**Fix**: Move the `useMemo` block (lines 431-440) to right after line 405 (after `queryClient`), before the `useEffect` hooks that depend on it.
+## Design
 
-## 2. Enable Sections for All Surgery 523 Chapters
-
-Run a database update to set `enable_sections = true` for all chapters in the surgery module that don't already have it enabled:
-
-```sql
-UPDATE module_chapters
-SET enable_sections = true
-WHERE module_id = '7f5167dd-b746-4ac6-94f3-109d637df861'
-  AND enable_sections = false;
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 📁 Year 1                                            [▾]   │
+│ ├── 📁 MOD-101: Anatomy                             [▾]   │
+│ │   ┌──────────────────────────────────────────────────┐   │
+│ │   │ Title          │ Chapter │ Type  │ Size │ Actions│   │
+│ │   │ Anatomy Ch1... │ Upper.. │ Ch PDF│ 2.1MB│ ⬇ 👁 🗑│   │
+│ │   │ Anatomy Ch2... │ Lower.. │ Ch PDF│ 3.4MB│ ⬇ 👁 🗑│   │
+│ │   └──────────────────────────────────────────────────┘   │
+│ ├── 📁 MOD-102: Physiology                          [▸]   │
+│                                                             │
+│ 📁 Year 2                                            [▸]   │
+│ 📁 Unlinked Documents                                [▸]   │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+## Changes
+
+### 1. New component: `PDFLibraryTableView.tsx`
+- Receives documents, years, and modules as props
+- Groups documents: `Year → Module → alphabetically sorted docs`
+- Documents without a module go into an "Unlinked Documents" section at the bottom
+- Each year is a collapsible section (Collapsible from shadcn)
+- Each module within a year is a collapsible sub-section
+- Shows document count badges on folder headers
+- Table columns: Title, Chapter, Type, Size, Date, Actions (Preview, Download, AI Source, Delete as icon buttons)
+- Compact row design — no cards
+
+### 2. Modify `PDFLibraryTab.tsx`
+- Replace the card grid rendering with `<PDFLibraryTableView>`
+- Keep existing filters (search, module, doc type) — they filter the data before grouping
+- Keep the Upload modal and AI factory modals unchanged
+- Pass years and modules data for grouping
+- The query already joins module data (including `module.name`) — also need `year_id` from the module to group by year
+
+### 3. Update `useAdminDocuments` hook
+- Expand the module select to include `year_id`: `module:modules(id, name, slug, year_id)`
+- This lets the table view group by year without an extra query
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/admin/VideosManagementTab.tsx` | Move `filteredHierarchy` useMemo before the useEffect hooks |
-| Database | Enable sections for remaining surgery chapters |
+| `src/components/admin/PDFLibraryTableView.tsx` | **New** — grouped table view component |
+| `src/components/admin/PDFLibraryTab.tsx` | Replace card grid with table view, pass years/modules |
+| `src/hooks/useAdminDocuments.ts` | Add `year_id` to module select join |
 
