@@ -360,7 +360,7 @@ export function FlashcardClozeMode({
 
                 {revealed && currentContent?.extra && (
                   <div className="mt-4">
-                    <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Clinical note</div>
+                    <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Extra</div>
                     <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-muted-foreground rounded-r-md">
                       {currentContent.extra}
                     </div>

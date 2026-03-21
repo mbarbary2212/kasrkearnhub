@@ -470,7 +470,16 @@ function parseLineByType(
     return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
   }
 
-  const title = values[0];
+  const titleIdx = headerMapping?.['title'] ?? 0;
+  let title = values[titleIdx]?.trim() || '';
+
+  // For cloze cards, generate title from cloze_text if title is missing
+  if (!title && cardSubtype === 'cloze') {
+    const clozeIdx = headerMapping?.['cloze_text'] ?? 1;
+    const clozeRaw = values[clozeIdx]?.trim() || '';
+    title = clozeRaw.replace(/\{\{c\d+::(.*?)\}\}/g, '$1').slice(0, 60).trim();
+  }
+
   if (!title) {
     return { title: '', content: { front: '', back: '' }, error: 'Title is required' };
   }
@@ -661,15 +670,14 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
     'clozetext': 'cloze_text',
     'text': 'cloze_text',
     'extra': 'extra',
-    'hint': 'extra',
-    'explanation': 'extra',
-    'context': 'extra',
+    // Tags column is recognized but silently skipped (not mapped to anything)
+    'tags': '__skip__',
   };
   
   headers.forEach((header, index) => {
     const normalized = header.toLowerCase().replace(/[\s_-]+/g, '_').replace(/[^a-z0-9_]/g, '');
     const target = columnMappings[normalized];
-    if (target && mapping[target] === undefined) {
+    if (target && target !== '__skip__' && mapping[target] === undefined) {
       mapping[target] = index;
     }
   });
@@ -680,6 +688,8 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
 // Check if line is a header
 function isHeaderLine(line: string): boolean {
   const lower = line.toLowerCase();
+  // Cloze CSVs may have Text,Extra,Tags without a title column
+  if (lower.includes('text') && (lower.includes('extra') || lower.includes('tags'))) return true;
   return lower.includes('title') && (
     lower.includes('front') || 
     lower.includes('headers') || 
@@ -687,6 +697,7 @@ function isHeaderLine(line: string): boolean {
     lower.includes('tips') ||
     lower.includes('topic') ||
     lower.includes('cloze_text') ||
-    lower.includes('card_type')
+    lower.includes('card_type') ||
+    lower.includes('text')
   );
 }
