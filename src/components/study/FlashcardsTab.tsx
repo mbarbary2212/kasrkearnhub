@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from 'react';
 import { FlashcardsStudentView } from './FlashcardsStudentView';
-import { FlashcardsSlideshowMode } from './FlashcardsSlideshowMode';
+import { FlashcardClozeMode } from './FlashcardClozeMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
 import { FlashcardsAdminTable } from './FlashcardsAdminTable';
 import { ScheduledReviewBanner } from './ScheduledReviewBanner';
@@ -11,7 +11,7 @@ import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Layers, Play, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
+import { Layers, PenLine, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -228,16 +228,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
           className="gap-2"
         >
           <Layers className="w-4 h-4" />
-          Interactive Mode
+          Flashcard
         </Button>
         <Button
-          variant={studentMode === 'slideshow' ? 'default' : 'outline'}
+          variant={studentMode === 'cloze' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setMode('slideshow')}
+          onClick={() => setMode('cloze')}
           className="gap-2"
         >
-          <Play className="w-4 h-4" />
-          Slideshow Mode
+          <PenLine className="w-4 h-4" />
+          Fill-in
         </Button>
 
         {/* Filter dropdown */}
@@ -297,10 +297,11 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               topicId={topicId}
             />
           ) : (
-            <FlashcardsSlideshowMode 
+            <FlashcardClozeMode
               cards={filteredResources}
               markedIds={starredIds}
               onToggleMark={handleToggleStar}
+              availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
             />

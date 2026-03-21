@@ -174,6 +174,17 @@ const COLUMN_MAPPINGS: Record<string, string> = {
   'sectionnumber': 'section_number',
   'section_num': 'section_number',
   'sectionnum': 'section_number',
+
+  // Flashcard cloze columns
+  'card_type': 'card_type',
+  'cardtype': 'card_type',
+  'type': 'card_type',
+  'cloze_text': 'cloze_text',
+  'clozetext': 'cloze_text',
+  'text': 'cloze_text',
+  'extra': 'extra',
+  'hint': 'extra',
+  'context': 'extra',
 };
 
 export interface ParseCorrection {

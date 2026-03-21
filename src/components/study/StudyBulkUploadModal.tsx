@@ -66,7 +66,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
-  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"',
+  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"\n\nFor cloze cards: title,front,back,card_type,cloze_text,extra,section_name,section_number\n"Burns Classification","","","cloze","Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Section Name","1"',
   table: 'title,headers,row1,row2,section_name,section_number\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6","",""',
   algorithm: 'title,steps,section_name,section_number\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc","",""',
   exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
@@ -457,12 +457,31 @@ function parseLineByType(
 
   switch (type) {
     case 'flashcard': {
-      if (values.length < 3) {
-        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back' };
+      // Support cloze cards via header mapping
+      const cardTypeIdx = headerMapping?.['card_type'];
+      const clozeTextIdx = headerMapping?.['cloze_text'];
+      const extraIdx = headerMapping?.['extra'];
+      
+      const cardTypeVal = cardTypeIdx !== undefined ? values[cardTypeIdx]?.trim().toLowerCase() : undefined;
+      const clozeTextVal = clozeTextIdx !== undefined ? values[clozeTextIdx]?.trim() : undefined;
+      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
+      
+      const isCloze = cardTypeVal === 'cloze' && !!clozeTextVal;
+      
+      if (!isCloze && values.length < 3) {
+        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back (or card_type=cloze with cloze_text)' };
       }
+      
+      const content: FlashcardContent = {
+        front: values[1] || '',
+        back: values[2] || '',
+        ...(isCloze && { card_type: 'cloze' as const, cloze_text: clozeTextVal }),
+        ...(extraVal && { extra: extraVal }),
+      };
+      
       return {
         title,
-        content: { front: values[1], back: values[2] } as FlashcardContent,
+        content,
         sectionName,
         sectionNumber,
       };
@@ -582,6 +601,17 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
     'section_number': 'section_number',
     'sectionnumber': 'section_number',
     'section_num': 'section_number',
+    // Flashcard cloze columns
+    'card_type': 'card_type',
+    'cardtype': 'card_type',
+    'type': 'card_type',
+    'cloze_text': 'cloze_text',
+    'clozetext': 'cloze_text',
+    'text': 'cloze_text',
+    'extra': 'extra',
+    'hint': 'extra',
+    'explanation': 'extra',
+    'context': 'extra',
   };
   
   headers.forEach((header, index) => {
@@ -603,6 +633,8 @@ function isHeaderLine(line: string): boolean {
     lower.includes('headers') || 
     lower.includes('steps') || 
     lower.includes('tips') ||
-    lower.includes('topic')
+    lower.includes('topic') ||
+    lower.includes('cloze_text') ||
+    lower.includes('card_type')
   );
 }
