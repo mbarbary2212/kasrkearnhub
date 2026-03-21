@@ -250,7 +250,7 @@ export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource
               {format(new Date(doc.created_at), 'MMM d, yyyy')}
             </TableCell>
             <TableCell className="py-2">
-              <DocumentActions doc={doc} onUseAsAISource={onUseAsAISource} />
+              <DocumentActions doc={doc} onUseAsAISource={onUseAsAISource} onEdit={setEditingDoc} />
             </TableCell>
           </TableRow>
         ))}
