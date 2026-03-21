@@ -1,59 +1,47 @@
 
 
-# Redesign PDF Library: Table View with Year/Module Grouping
+# Updated Plan: Fill-in (Cloze) Mode — Reveal-Based (Anki Style)
 
-## Problem
-The current card-based layout shows all PDFs in a flat grid — overwhelming for super admins and platform admins who see every document across all modules. No clear organizational hierarchy.
+## Summary
+Modify only `src/components/study/FlashcardClozeMode.tsx` to change the cloze interaction from "type the answer" to "reveal the answer" — matching Anki's behavior. No other files are touched.
 
-## Solution
-Replace the card grid with a **table view** that groups documents by **Year → Module** in collapsible folder-like sections. Documents sorted alphabetically within each group.
+## Cloze Card Behavior
 
-## Design
+**Before reveal:**
+- Parse `content.cloze_text` with `/\{\{c\d+::(.+?)\}\}/g`
+- Display sentence with each match replaced by a styled pill: `[...]` in muted color (`bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-sm`)
+- Show a "Reveal Answer" button with `Eye` icon below the sentence
+- No text input field
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 📁 Year 1                                            [▾]   │
-│ ├── 📁 MOD-101: Anatomy                             [▾]   │
-│ │   ┌──────────────────────────────────────────────────┐   │
-│ │   │ Title          │ Chapter │ Type  │ Size │ Actions│   │
-│ │   │ Anatomy Ch1... │ Upper.. │ Ch PDF│ 2.1MB│ ⬇ 👁 🗑│   │
-│ │   │ Anatomy Ch2... │ Lower.. │ Ch PDF│ 3.4MB│ ⬇ 👁 🗑│   │
-│ │   └──────────────────────────────────────────────────┘   │
-│ ├── 📁 MOD-102: Physiology                          [▸]   │
-│                                                             │
-│ 📁 Year 2                                            [▸]   │
-│ 📁 Unlinked Documents                                [▸]   │
-└─────────────────────────────────────────────────────────────┘
-```
+**After reveal:**
+- Re-render sentence with answers shown as green highlighted pills: `bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold`
+- "Reveal Answer" button disappears
+- If `content.extra` exists, show it automatically (no toggle) styled as: `border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm rounded-r-md` with a small "CLINICAL NOTE" label in `text-xs uppercase text-amber-600 tracking-wide font-medium`
+- Show `FSRSRatingButtons` with `visible={true}`
 
-## Changes
+**Non-cloze fallback:**
+- If `card_type !== 'cloze'` or no `cloze_text`, render as normal flip card (Question front / Answer back with flip animation), identical to `FlashcardsStudentView`
 
-### 1. New component: `PDFLibraryTableView.tsx`
-- Receives documents, years, and modules as props
-- Groups documents: `Year → Module → alphabetically sorted docs`
-- Documents without a module go into an "Unlinked Documents" section at the bottom
-- Each year is a collapsible section (Collapsible from shadcn)
-- Each module within a year is a collapsible sub-section
-- Shows document count badges on folder headers
-- Table columns: Title, Chapter, Type, Size, Date, Actions (Preview, Download, AI Source, Delete as icon buttons)
-- Compact row design — no cards
+**After rating:** advance to next card, reset `revealed` to false
 
-### 2. Modify `PDFLibraryTab.tsx`
-- Replace the card grid rendering with `<PDFLibraryTableView>`
-- Keep existing filters (search, module, doc type) — they filter the data before grouping
-- Keep the Upload modal and AI factory modals unchanged
-- Pass years and modules data for grouping
-- The query already joins module data (including `module.name`) — also need `year_id` from the module to group by year
+## Keyboard Shortcuts
+- `Space` or `Enter` → reveal answer (if not yet revealed)
+- `ArrowLeft` / `ArrowRight` → prev / next card
+- `M` → toggle star/mark
 
-### 3. Update `useAdminDocuments` hook
-- Expand the module select to include `year_id`: `module:modules(id, name, slug, year_id)`
-- This lets the table view group by year without an extra query
+## Preserved Features (copied from FlashcardsStudentView)
+- Same props interface (`cards`, `markedIds`, `onToggleMark`, `availableTopics`, `chapterId`, `topicId`)
+- Topic selector collapsible, shuffle, star/mark, reset
+- `useCardState` for FSRS state
+- `FlashcardProgressBar`
+- `useSwipeGesture` for mobile swipe
+- `useFullscreen` with floating exit button
+- Navigation prev/next buttons at bottom
+- Transition animation between cards
 
-## Files Modified
+## File Modified
 
 | File | Change |
 |------|--------|
-| `src/components/admin/PDFLibraryTableView.tsx` | **New** — grouped table view component |
-| `src/components/admin/PDFLibraryTab.tsx` | Replace card grid with table view, pass years/modules |
-| `src/hooks/useAdminDocuments.ts` | Add `year_id` to module select join |
+| `src/components/study/FlashcardClozeMode.tsx` | Rewrite — reveal-based cloze interaction replacing type-based |
 
