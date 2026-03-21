@@ -63,6 +63,17 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
     toolbarRef.current.appendChild(toolbar.el);
   }, [ready]);
 
+  // Sync markmap dark mode with app theme
+  useEffect(() => {
+    if (!svgRef.current || !ready) return;
+    const isDark = resolvedTheme === 'dark';
+    if (isDark) {
+      svgRef.current.classList.add('markmap-dark');
+    } else {
+      svgRef.current.classList.remove('markmap-dark');
+    }
+  }, [resolvedTheme, ready]);
+
   // Refit on container resize (handles fullscreen toggle, window resize, orientation change)
   useEffect(() => {
     if (!containerRef.current || !mmRef.current) return;
