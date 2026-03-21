@@ -29,6 +29,44 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+// ─── Action: delete ────────────────────────────────────────────────────────────
+
+async function handleDelete(
+  supabase: ReturnType<typeof createClient>,
+  body: { youtube_video_id: string }
+): Promise<Response> {
+  const { youtube_video_id } = body;
+
+  if (!youtube_video_id) {
+    return new Response(
+      JSON.stringify({ error: "Missing required field: youtube_video_id" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const accessToken = await getAccessToken();
+
+  const deleteRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(youtube_video_id)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!deleteRes.ok && deleteRes.status !== 404) {
+    const errText = await deleteRes.text();
+    throw new Error(`YouTube delete failed (${deleteRes.status}): ${errText}`);
+  }
+
+  console.log(`youtube-upload: deleted YouTube video ${youtube_video_id}`);
+
+  return new Response(
+    JSON.stringify({ success: true }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 // ─── Action: upload ────────────────────────────────────────────────────────────
 // Downloads file from Supabase Storage and uploads it to YouTube server-side
 
@@ -124,7 +162,8 @@ async function handleUpload(
 
   console.log(`youtube-upload: uploaded video ${youtubeVideoId}`);
 
-  // Step 4: Handle playlist — one playlist per module+chapter+doctor combination
+  // Step 4: Handle playlist — one playlist per chapter+doctor combination
+  // Playlist name format: Module › Doctor › Chapter
   const playlistKey = `yt_pl_${chapter_id}_${encodeDoctor(doctor)}`;
   let playlistId: string | null = null;
 
@@ -148,7 +187,8 @@ async function handleUpload(
       : (rawModules?.name ?? "Unnamed Module");
     const moduleCode = moduleName.split(":")[0].trim();
     const doctorLabel = doctor || "General";
-    const playlistTitle = `${moduleCode} › ${chapterTitle} › ${doctorLabel}`;
+    // Format: Module › Doctor › Chapter
+    const playlistTitle = `${moduleCode} \u203a ${doctorLabel} \u203a ${chapterTitle}`;
 
     const createRes = await fetch("https://www.googleapis.com/youtube/v3/playlists?part=snippet,status", {
       method: "POST",
@@ -223,6 +263,7 @@ Deno.serve(async (req) => {
     const action = body?.action;
 
     if (action === "upload") return await handleUpload(supabase, body);
+    if (action === "delete") return await handleDelete(supabase, body);
 
     return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -9,6 +9,7 @@ export interface LectureNode {
   youtube_video_id: string | null;
   duration: string | null;
   view_count: number;
+  doctor: string;
 }
 
 export interface ChapterNode {
@@ -45,7 +46,7 @@ async function fetchVideosHierarchy(): Promise<YearNode[]> {
     supabase.from('years').select('id, name').order('name'),
     supabase.from('modules').select('id, year_id, name, display_order, youtube_playlist_id').order('display_order'),
     supabase.from('module_chapters').select('id, module_id, title, order_index').order('order_index'),
-    supabase.from('lectures').select('id, chapter_id, title, video_url, youtube_video_id, duration').eq('is_deleted', false),
+    supabase.from('lectures').select('id, chapter_id, title, video_url, youtube_video_id, duration, description').eq('is_deleted', false),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from('video_view_counts').select('video_id, unique_viewers'),
   ]);
@@ -75,6 +76,7 @@ async function fetchVideosHierarchy(): Promise<YearNode[]> {
       youtube_video_id: ytId,
       duration: (raw.duration as string | null) ?? null,
       view_count: ytId ? (viewCountMap.get(ytId) ?? 0) : 0,
+      doctor: (raw.description as string | null) || 'General',
     };
     const list = lecturesByChapter.get(lecture.chapter_id) || [];
     list.push(node);

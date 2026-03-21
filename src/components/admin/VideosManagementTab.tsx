@@ -125,6 +125,14 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Delete from YouTube if we have a video ID
+      if (lecture.youtube_video_id) {
+        const { error: fnError } = await supabase.functions.invoke('youtube-upload', {
+          body: { action: 'delete', youtube_video_id: lecture.youtube_video_id },
+        });
+        // Log but don't block — DB record still gets soft-deleted
+        if (fnError) console.warn('YouTube delete warning:', fnError.message);
+      }
       const { error } = await supabase
         .from('lectures')
         .update({ is_deleted: true })
@@ -157,6 +165,13 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
 
       {/* Title */}
       <span className="text-sm flex-1 min-w-0 truncate">{lecture.title}</span>
+
+      {/* Doctor badge */}
+      {lecture.doctor && lecture.doctor !== 'General' && (
+        <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 text-muted-foreground">
+          {lecture.doctor}
+        </Badge>
+      )}
 
       {/* Duration */}
       {lecture.duration && (
@@ -196,7 +211,11 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
               onClick={() => deleteMutation.mutate(lecture.id)}
               disabled={deleteMutation.isPending}
             >
-              <Check className="w-3.5 h-3.5" />
+              {deleteMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -225,20 +244,21 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
 
 // ─── Chapter Section ──────────────────────────────────────────────────────────
 
-function ChapterSection({ chapter }: { chapter: ChapterNode }) {
+function ChapterSection({ chapter, filteredLectures }: { chapter: ChapterNode; filteredLectures?: LectureNode[] }) {
+  const lectures = filteredLectures ?? chapter.lectures;
   return (
     <div className="mb-2">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">
           {chapter.title}
         </span>
-        <Badge variant="secondary" className="text-[10px] px-1.5">{chapter.total_videos} videos</Badge>
+        <Badge variant="secondary" className="text-[10px] px-1.5">{lectures.length} videos</Badge>
       </div>
       <div className="divide-y divide-border/50">
-        {chapter.lectures.length === 0 ? (
+        {lectures.length === 0 ? (
           <p className="text-xs text-muted-foreground px-3 py-2 italic">No lectures</p>
         ) : (
-          chapter.lectures.map((lecture) => (
+          lectures.map((lecture) => (
             <LectureRow key={lecture.id} lecture={lecture} />
           ))
         )}
@@ -290,25 +310,41 @@ interface CurriculumBrowserProps {
 function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedModuleId, setSelectedModuleId] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState('all');
 
-  // Auto-select first year on load
+  // Auto-select first year on load (only if nothing selected yet)
   useEffect(() => {
     if (!selectedYearId && hierarchy.length > 0) {
       setSelectedYearId(hierarchy[0].id);
     }
   }, [hierarchy, selectedYearId]);
 
-  // Auto-select first module when year changes
+  // Preserve module selection on refetch — only reset if current module no longer exists in selected year
   useEffect(() => {
     if (selectedYearId) {
       const year = hierarchy.find((y) => y.id === selectedYearId);
-      const firstModule = year?.modules[0];
-      setSelectedModuleId(firstModule?.id ?? '');
+      if (!year) return;
+      const moduleStillValid = year.modules.some((m) => m.id === selectedModuleId);
+      if (!moduleStillValid) {
+        setSelectedModuleId(year.modules[0]?.id ?? '');
+      }
     }
   }, [selectedYearId, hierarchy]);
 
+  // Reset doctor filter when module changes
+  useEffect(() => {
+    setSelectedDoctor('all');
+  }, [selectedModuleId]);
+
   const selectedYear = hierarchy.find((y) => y.id === selectedYearId);
   const selectedModule = selectedYear?.modules.find((m) => m.id === selectedModuleId);
+
+  // Collect unique doctors from selected module's lectures
+  const doctors = selectedModule
+    ? [...new Set(
+        selectedModule.chapters.flatMap((c) => c.lectures.map((l) => l.doctor))
+      )].filter(Boolean).sort()
+    : [];
 
   const pillBase = 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer';
   const pillActive = `${pillBase} bg-primary text-primary-foreground`;
@@ -316,11 +352,11 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
 
   return (
     <div className="space-y-4">
-      {/* Year pills */}
+      {/* Year pills — centered */}
       {hierarchy.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Year</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 text-center">Year</p>
+          <div className="flex flex-wrap gap-2 justify-center">
             {hierarchy.map((year) => (
               <button
                 key={year.id}
@@ -356,6 +392,30 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
         </div>
       )}
 
+      {/* Doctor filter pills */}
+      {selectedModule && doctors.length > 1 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Doctor</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={selectedDoctor === 'all' ? pillActive : pillInactive}
+              onClick={() => setSelectedDoctor('all')}
+            >
+              All
+            </button>
+            {doctors.map((doc) => (
+              <button
+                key={doc}
+                className={selectedDoctor === doc ? pillActive : pillInactive}
+                onClick={() => setSelectedDoctor(doc)}
+              >
+                {doc}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Chapter sections */}
       {selectedModule && (
         <div className="border rounded-lg overflow-hidden bg-card">
@@ -363,9 +423,16 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
             <p className="text-sm text-muted-foreground px-4 py-6 italic">No chapters in this module.</p>
           ) : (
             <div className="divide-y divide-border/50">
-              {selectedModule.chapters.map((chapter) => (
-                <ChapterSection key={chapter.id} chapter={chapter} />
-              ))}
+              {selectedModule.chapters.map((chapter) => {
+                const filteredLectures = selectedDoctor === 'all'
+                  ? undefined
+                  : chapter.lectures.filter((l) => l.doctor === selectedDoctor);
+                // Hide chapter if filter active and no matching lectures
+                if (filteredLectures && filteredLectures.length === 0) return null;
+                return (
+                  <ChapterSection key={chapter.id} chapter={chapter} filteredLectures={filteredLectures} />
+                );
+              })}
             </div>
           )}
         </div>

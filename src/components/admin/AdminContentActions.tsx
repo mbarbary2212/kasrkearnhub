@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Plus, Upload, ShieldAlert, AlertTriangle, Copy, CheckCircle2 } from 'lucide-react';
+import { Plus, Upload, ShieldAlert, AlertTriangle, Copy, CheckCircle2, Link, Loader2, Check, ExternalLink } from 'lucide-react';
 import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ import { logActivity } from '@/lib/activityLog';
 import { SectionSelector } from '@/components/sections';
 import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { AudioUploadDialog } from '@/components/admin/AudioUploadDialog';
 import { resolveSectionId } from '@/lib/csvExport';
 import { useChapterSections } from '@/hooks/useSections';
@@ -107,6 +108,22 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
     enabled: !!chapterId,
   });
 
+  // Fetch existing doctors for this module (stored in lecture description field)
+  const { data: existingDoctors = [] } = useQuery({
+    queryKey: ['module-doctors', moduleId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lectures')
+        .select('description')
+        .eq('module_id', moduleId)
+        .eq('is_deleted', false)
+        .not('description', 'is', null);
+      const unique = [...new Set((data || []).map((l) => l.description).filter(Boolean))];
+      return unique.sort() as string[];
+    },
+    enabled: !!moduleId && contentType === 'lecture',
+  });
+
   const showAddControls = !!(
     auth.isTeacher ||
     auth.isAdmin ||
@@ -154,6 +171,18 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sectionId, setSectionId] = useState<string | null>(null);
+
+  // Lecture-specific: mode toggle + doctor + YouTube upload
+  const [videoMode, setVideoMode] = useState<'link' | 'upload'>('link');
+  const [doctor, setDoctor] = useState('');
+  const [doctorSelectVal, setDoctorSelectVal] = useState('');
+  const [ytFile, setYtFile] = useState<File | null>(null);
+  type YtStatus = 'idle' | 'uploading' | 'finalizing' | 'done' | 'error';
+  const [ytStatus, setYtStatus] = useState<YtStatus>('idle');
+  const [ytProgress, setYtProgress] = useState(0);
+  const [ytPrivacy, setYtPrivacy] = useState<'public' | 'unlisted' | 'private'>('unlisted');
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytError, setYtError] = useState('');
   const [parsedEssayRows, setParsedEssayRows] = useState<ParsedEssayRow[]>([]);
   const [essayParseErrors, setEssayParseErrors] = useState<string[]>([]);
   const [defaultMarking, setDefaultMarking] = useState<number>(10);
@@ -310,9 +339,10 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
       if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
         throw new Error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
       }
+      const doctorValue = doctor.trim() || 'General';
       const { error } = await supabase.from('lectures').insert({
         title,
-        description: description || null,
+        description: doctorValue,
         video_url: normalizedUrl || null,
         module_id: moduleId,
         chapter_id: chapterId || null,
@@ -640,6 +670,73 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
     setSectionId(null);
     setParsedEssayRows([]);
     setEssayParseErrors([]);
+    setVideoMode('link');
+    setDoctor('');
+    setDoctorSelectVal('');
+    setYtFile(null);
+    setYtStatus('idle');
+    setYtProgress(0);
+    setYtPrivacy('unlisted');
+    setYtUrl('');
+    setYtError('');
+  };
+
+  const handleYtUpload = async () => {
+    if (!ytFile) { toast.error('Please select a video file.'); return; }
+    if (!title.trim()) { toast.error('Please enter a video title.'); return; }
+    if (!chapterId) { toast.error('Chapter ID is missing.'); return; }
+
+    setYtStatus('uploading');
+    setYtProgress(0);
+    setYtError('');
+
+    try {
+      const storagePath = `${Date.now()}_${ytFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setYtProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.responseText}`));
+        xhr.onerror = () => reject(new Error('Network error uploading to storage.'));
+        xhr.open('POST', `${supabaseUrl}/storage/v1/object/video-uploads/${storagePath}`);
+        xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token ?? ''}`);
+        xhr.setRequestHeader('Content-Type', ytFile.type || 'video/mp4');
+        xhr.setRequestHeader('x-upsert', 'true');
+        xhr.send(ytFile);
+      });
+
+      setYtStatus('finalizing');
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('youtube-upload', {
+        body: {
+          action: 'upload',
+          storage_path: storagePath,
+          title,
+          description: description,
+          privacy: ytPrivacy,
+          chapter_id: chapterId,
+          module_id: moduleId,
+          doctor: doctor.trim() || 'General',
+        },
+      });
+      if (fnError) throw new Error(fnError.message);
+
+      setYtUrl(fnData?.youtube_url ?? '');
+      setYtStatus('done');
+      toast.success('Video uploaded to YouTube and linked!');
+      queryClient.invalidateQueries({ queryKey: ['chapter-lectures', chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['module-lectures', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+    } catch (err) {
+      const msg = (err as Error).message;
+      setYtError(msg);
+      setYtStatus('error');
+      toast.error(`Upload failed: ${msg}`);
+    }
   };
 
   const handleSubmit = () => {
@@ -699,36 +796,219 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
       )}
 
       {showAddControls && (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <Button size="sm" variant="outline" onClick={() => guard(() => setOpen(true))}>
             <Plus className="w-4 h-4 mr-1" />
             {label.title}
           </Button>
-          <DialogContent>
+          <DialogContent className={contentType === 'lecture' && videoMode === 'upload' ? 'max-w-lg' : undefined}>
             <DialogHeader>
               <DialogTitle>{label.title}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4 max-h-[calc(90vh-8rem)] overflow-y-auto">
-              <div>
-                <Label>{label.titleField}</Label>
-                <Input value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-              <div>
-                <Label>{label.descField}</Label>
-                <Textarea value={description} onChange={e => setDescription(e.target.value)} />
-              </div>
+
+              {/* Lecture mode toggle */}
+              {contentType === 'lecture' && (
+                <div className="flex rounded-lg border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setVideoMode('link')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+                      videoMode === 'link'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Link className="w-4 h-4" />
+                    Link Video
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVideoMode('upload')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+                      videoMode === 'upload'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload to YouTube
+                  </button>
+                </div>
+              )}
+
+              {/* Title field — shown for all except lecture upload in done state */}
+              {!(contentType === 'lecture' && videoMode === 'upload' && ytStatus === 'done') && (
+                <div>
+                  <Label>{label.titleField}</Label>
+                  <Input
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    disabled={contentType === 'lecture' && videoMode === 'upload' && ['uploading', 'finalizing'].includes(ytStatus)}
+                  />
+                </div>
+              )}
+
+              {/* Description — non-lecture types only (for lecture, description field replaced by Doctor) */}
+              {contentType !== 'lecture' && (
+                <div>
+                  <Label>{label.descField}</Label>
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} />
+                </div>
+              )}
+
+              {/* Doctor field — lecture only */}
+              {contentType === 'lecture' && !(videoMode === 'upload' && ytStatus === 'done') && (
+                <div className="space-y-1.5">
+                  <Label>Doctor <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                  <Select
+                    value={doctorSelectVal}
+                    onValueChange={(v) => {
+                      setDoctorSelectVal(v);
+                      if (v !== '__custom') setDoctor(v === '__general' ? '' : v);
+                      else setDoctor('');
+                    }}
+                    disabled={videoMode === 'upload' && ['uploading', 'finalizing'].includes(ytStatus)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="General (no doctor)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__general">General</SelectItem>
+                      {existingDoctors.filter(d => d !== 'General').map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                      <SelectItem value="__custom">+ Add new doctor…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {doctorSelectVal === '__custom' && (
+                    <Input
+                      value={doctor}
+                      onChange={e => setDoctor(e.target.value)}
+                      placeholder="e.g. Dr. Ahmed"
+                      autoFocus
+                      disabled={videoMode === 'upload' && ['uploading', 'finalizing'].includes(ytStatus)}
+                    />
+                  )}
+                </div>
+              )}
+
               {contentType === 'essay' && (
                 <div>
                   <Label>Model Answer (optional)</Label>
-                  <Textarea 
-                    value={modelAnswer} 
-                    onChange={e => setModelAnswer(e.target.value)} 
+                  <Textarea
+                    value={modelAnswer}
+                    onChange={e => setModelAnswer(e.target.value)}
                     placeholder="Enter the model answer that students can reveal"
                     rows={4}
                   />
                 </div>
               )}
-              {(contentType === 'lecture' || contentType === 'practical') && (
+
+              {/* Link mode: video URL */}
+              {contentType === 'lecture' && videoMode === 'link' && (
+                <div>
+                  <Label>Video URL</Label>
+                  <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
+                  </p>
+                </div>
+              )}
+
+              {/* Upload mode: YouTube upload flow */}
+              {contentType === 'lecture' && videoMode === 'upload' && (
+                <div className="space-y-3">
+                  {ytStatus === 'done' ? (
+                    <div className="rounded-md bg-green-50 border border-green-200 dark:bg-green-900/10 dark:border-green-800 px-4 py-3 space-y-2">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300 flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        Upload complete — lecture linked successfully!
+                      </p>
+                      {ytUrl && (
+                        <a href={ytUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-sm text-blue-600 dark:text-blue-400 underline flex items-center gap-1">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View on YouTube
+                        </a>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => { resetForm(); setOpen(false); }}>
+                        Done
+                      </Button>
+                    </div>
+                  ) : ytStatus === 'error' ? (
+                    <div className="rounded-md bg-red-50 border border-red-200 dark:bg-red-900/10 dark:border-red-800 px-4 py-3 space-y-2">
+                      <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                        Upload failed: {ytError}
+                      </p>
+                      <Button variant="outline" size="sm" onClick={() => { setYtStatus('idle'); setYtError(''); }}>
+                        Try Again
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <Label>Video File</Label>
+                        <Input
+                          type="file"
+                          accept="video/*"
+                          disabled={['uploading', 'finalizing'].includes(ytStatus)}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] ?? null;
+                            setYtFile(f);
+                            if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ''));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Description <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                        <Input
+                          value={description}
+                          onChange={e => setDescription(e.target.value)}
+                          placeholder="Video description…"
+                          disabled={['uploading', 'finalizing'].includes(ytStatus)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Privacy</Label>
+                        <Select value={ytPrivacy} onValueChange={(v) => setYtPrivacy(v as typeof ytPrivacy)} disabled={['uploading', 'finalizing'].includes(ytStatus)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unlisted">Unlisted</SelectItem>
+                            <SelectItem value="public">Public</SelectItem>
+                            <SelectItem value="private">Private</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {['uploading', 'finalizing'].includes(ytStatus) && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            {ytStatus === 'uploading' ? `Uploading to server… ${ytProgress}%` : 'Sending to YouTube & creating lecture…'}
+                          </p>
+                          <Progress
+                            value={ytStatus === 'uploading' ? ytProgress : undefined}
+                            className={ytStatus !== 'uploading' ? 'animate-pulse' : ''}
+                          />
+                        </div>
+                      )}
+                      <Button
+                        onClick={handleYtUpload}
+                        disabled={['uploading', 'finalizing'].includes(ytStatus) || !ytFile || !title.trim()}
+                        className="w-full gap-2"
+                      >
+                        {['uploading', 'finalizing'].includes(ytStatus) ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" />{ytStatus === 'uploading' ? `Uploading… ${ytProgress}%` : 'Finalizing…'}</>
+                        ) : (
+                          <><Upload className="w-4 h-4" />Upload to YouTube</>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Practical type video URL */}
+              {contentType === 'practical' && (
                 <div>
                   <Label>Video URL</Label>
                   <Input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link" />
@@ -792,19 +1072,23 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
                   </div>
                 </div>
               )}
-              <SectionSelector
-                chapterId={chapterId}
-                topicId={topicId}
-                value={sectionId}
-                onChange={setSectionId}
-              />
-              <Button 
-                onClick={handleSubmit} 
-                className="w-full"
-                disabled={uploading || addResource.isPending}
-              >
-                {uploading ? 'Uploading...' : 'Save'}
-              </Button>
+              {!(contentType === 'lecture' && videoMode === 'upload') && (
+                <SectionSelector
+                  chapterId={chapterId}
+                  topicId={topicId}
+                  value={sectionId}
+                  onChange={setSectionId}
+                />
+              )}
+              {(contentType !== 'lecture' || videoMode === 'link') && (
+                <Button
+                  onClick={handleSubmit}
+                  className="w-full"
+                  disabled={uploading || addResource.isPending}
+                >
+                  {uploading ? 'Uploading...' : 'Save'}
+                </Button>
+              )}
             </div>
           </DialogContent>
         </Dialog>

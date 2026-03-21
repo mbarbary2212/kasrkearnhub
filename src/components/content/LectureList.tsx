@@ -53,6 +53,7 @@ interface Lecture {
   description?: string | null;
   video_url?: string | null;
   videoUrl?: string | null;
+  youtube_video_id?: string | null;
   duration?: string | null;
   section_id?: string | null;
   created_at?: string | null;
@@ -270,7 +271,7 @@ export function LectureList({
           chapterId={chapterId}
           moduleId={moduleId}
           onEdit={handleOpenEdit}
-          onDelete={(lecture) => askDelete(lecture.id, lecture.title)}
+          onDelete={(lecture) => askDelete(lecture.id, lecture.title, lecture.youtube_video_id)}
         />
         
         {/* Edit Modal */}
@@ -569,7 +570,7 @@ export function LectureList({
                       </DropdownMenuItem>
                     )}
                     {canDelete && (
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); askDelete(lecture.id, lecture.title); }} className="gap-2 text-destructive focus:text-destructive">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); askDelete(lecture.id, lecture.title, lecture.youtube_video_id); }} className="gap-2 text-destructive focus:text-destructive">
                         <Trash2 className="h-4 w-4" />Delete
                       </DropdownMenuItem>
                     )}

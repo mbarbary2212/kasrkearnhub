@@ -6,6 +6,7 @@ import { toast } from "sonner";
 interface DeleteState {
   id: string;
   title: string;
+  youtubeVideoId?: string | null;
 }
 
 export function useVideoDelete(moduleId: string, chapterId?: string) {
@@ -14,8 +15,8 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
   const [pendingItem, setPendingItem] = useState<DeleteState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const askDelete = (id: string, title: string) => {
-    setPendingItem({ id, title });
+  const askDelete = (id: string, title: string, youtubeVideoId?: string | null) => {
+    setPendingItem({ id, title, youtubeVideoId });
     setConfirmOpen(true);
   };
 
@@ -29,6 +30,7 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
 
     const deletingId = pendingItem.id;
     const deletingTitle = pendingItem.title;
+    const youtubeVideoId = pendingItem.youtubeVideoId;
 
     setIsDeleting(true);
 
@@ -50,6 +52,15 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
     qc.setQueriesData({ queryKey: ["lectures"] }, removeFromList);
 
     try {
+      // Delete from YouTube if we have a video ID (fire-and-forget, don't block)
+      if (youtubeVideoId) {
+        supabase.functions.invoke('youtube-upload', {
+          body: { action: 'delete', youtube_video_id: youtubeVideoId },
+        }).then(({ error }) => {
+          if (error) console.warn('YouTube delete warning:', error.message);
+        });
+      }
+
       // Soft delete - set is_deleted to true
       const { error } = await supabase
         .from("lectures")
@@ -63,6 +74,7 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
         qc.invalidateQueries({ queryKey: ["chapter-lectures", chapterId] }),
         qc.invalidateQueries({ queryKey: ["module-lectures", moduleId] }),
         qc.invalidateQueries({ queryKey: ["lectures"] }),
+        qc.invalidateQueries({ queryKey: ["videos-hierarchy"] }),
       ]);
 
       toast.success(`"${deletingTitle}" deleted successfully`);
@@ -82,11 +94,11 @@ export function useVideoDelete(moduleId: string, chapterId?: string) {
     }
   };
 
-  return { 
-    askDelete, 
-    doDelete, 
-    cancelDelete, 
-    confirmOpen, 
+  return {
+    askDelete,
+    doDelete,
+    cancelDelete,
+    confirmOpen,
     isDeleting,
     pendingItem,
   };
