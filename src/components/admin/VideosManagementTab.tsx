@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { extractYouTubeId } from '@/lib/video';
 import { useVideosHierarchy, YearNode, ModuleNode, ChapterNode, LectureNode } from '@/hooks/useVideosHierarchy';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,14 @@ import {
   Video,
   ExternalLink,
   Loader2,
+  Trash2,
 } from 'lucide-react';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getModuleCode(name: string): string {
+  return name.match(/^[A-Z]+-\d+/)?.[0] ?? name.split(':')[0].trim();
+}
 
 // ─── Inline URL Edit ─────────────────────────────────────────────────────────
 
@@ -110,9 +116,33 @@ function InlineUrlEdit({ lectureId, currentUrl }: InlineUrlEditProps) {
 // ─── Lecture Row ──────────────────────────────────────────────────────────────
 
 function LectureRow({ lecture }: { lecture: LectureNode }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
   const thumb = lecture.youtube_video_id
     ? `https://img.youtube.com/vi/${lecture.youtube_video_id}/default.jpg`
     : null;
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('lectures')
+        .update({ is_deleted: true })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+      toast.success('Lecture deleted');
+      setDeletingId(null);
+    },
+    onError: (err: Error) => {
+      toast.error(`Failed to delete: ${err.message}`);
+      setDeletingId(null);
+    },
+  });
+
+  const isConfirming = deletingId === lecture.id;
 
   return (
     <div className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-muted/40 transition-colors group">
@@ -153,6 +183,42 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
       <div className="shrink-0">
         <InlineUrlEdit lectureId={lecture.id} currentUrl={lecture.video_url} />
       </div>
+
+      {/* Delete button / inline confirmation */}
+      <div className="shrink-0 flex items-center gap-1">
+        {isConfirming ? (
+          <>
+            <span className="text-xs text-muted-foreground">Delete?</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => deleteMutation.mutate(lecture.id)}
+              disabled={deleteMutation.isPending}
+            >
+              <Check className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground"
+              onClick={() => setDeletingId(null)}
+              disabled={deleteMutation.isPending}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => setDeletingId(lecture.id)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -178,66 +244,6 @@ function ChapterSection({ chapter }: { chapter: ChapterNode }) {
         )}
       </div>
     </div>
-  );
-}
-
-// ─── Module Accordion ─────────────────────────────────────────────────────────
-
-function ModuleAccordionItem({ module }: { module: ModuleNode }) {
-  return (
-    <AccordionItem value={module.id} className="border rounded-md mb-1.5 overflow-hidden">
-      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40 [&[data-state=open]]:bg-muted/30">
-        <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
-          <span className="font-medium text-sm truncate">{module.name}</span>
-          <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">{module.total_videos} videos</Badge>
-          <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
-            <Eye className="w-3 h-3 mr-1" />
-            {module.total_views}
-          </Badge>
-        </div>
-      </AccordionTrigger>
-      <AccordionContent className="px-0 pb-0">
-        <div className="border-t divide-y divide-border/30">
-          {module.chapters.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-4 py-3 italic">No chapters</p>
-          ) : (
-            module.chapters.map((chapter) => (
-              <ChapterSection key={chapter.id} chapter={chapter} />
-            ))
-          )}
-        </div>
-      </AccordionContent>
-    </AccordionItem>
-  );
-}
-
-// ─── Year Accordion ───────────────────────────────────────────────────────────
-
-function YearAccordionItem({ year }: { year: YearNode }) {
-  return (
-    <AccordionItem value={year.id} className="border rounded-lg mb-3 overflow-hidden bg-card">
-      <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
-        <div className="flex items-center gap-3 flex-1 min-w-0 mr-2">
-          <span className="font-semibold text-base">{year.name}</span>
-          <Badge className="text-[11px] px-2">{year.total_videos} videos</Badge>
-          <Badge variant="secondary" className="text-[11px] px-2 gap-1">
-            <Eye className="w-3 h-3" />
-            {year.total_views} views
-          </Badge>
-        </div>
-      </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4 pt-0">
-        {year.modules.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No modules</p>
-        ) : (
-          <Accordion type="multiple" className="w-full">
-            {year.modules.map((module) => (
-              <ModuleAccordionItem key={module.id} module={module} />
-            ))}
-          </Accordion>
-        )}
-      </AccordionContent>
-    </AccordionItem>
   );
 }
 
@@ -271,6 +277,103 @@ function StatsCards({ totalVideos, totalViews, youtubeVideos, noSource }: StatsC
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// ─── Curriculum Browser ───────────────────────────────────────────────────────
+
+interface CurriculumBrowserProps {
+  hierarchy: YearNode[];
+}
+
+function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
+  const [selectedYearId, setSelectedYearId] = useState('');
+  const [selectedModuleId, setSelectedModuleId] = useState('');
+
+  // Auto-select first year on load
+  useEffect(() => {
+    if (!selectedYearId && hierarchy.length > 0) {
+      setSelectedYearId(hierarchy[0].id);
+    }
+  }, [hierarchy, selectedYearId]);
+
+  // Auto-select first module when year changes
+  useEffect(() => {
+    if (selectedYearId) {
+      const year = hierarchy.find((y) => y.id === selectedYearId);
+      const firstModule = year?.modules[0];
+      setSelectedModuleId(firstModule?.id ?? '');
+    }
+  }, [selectedYearId, hierarchy]);
+
+  const selectedYear = hierarchy.find((y) => y.id === selectedYearId);
+  const selectedModule = selectedYear?.modules.find((m) => m.id === selectedModuleId);
+
+  const pillBase = 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer';
+  const pillActive = `${pillBase} bg-primary text-primary-foreground`;
+  const pillInactive = `${pillBase} bg-muted hover:bg-muted/80 text-foreground`;
+
+  return (
+    <div className="space-y-4">
+      {/* Year pills */}
+      {hierarchy.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Year</p>
+          <div className="flex flex-wrap gap-2">
+            {hierarchy.map((year) => (
+              <button
+                key={year.id}
+                className={selectedYearId === year.id ? pillActive : pillInactive}
+                onClick={() => setSelectedYearId(year.id)}
+              >
+                {year.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Module pills */}
+      {selectedYear && selectedYear.modules.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Module</p>
+          <div className="flex flex-wrap gap-2">
+            {selectedYear.modules.map((module) => (
+              <button
+                key={module.id}
+                title={module.name}
+                className={`${selectedModuleId === module.id ? pillActive : pillInactive} flex items-center gap-1.5`}
+                onClick={() => setSelectedModuleId(module.id)}
+              >
+                {getModuleCode(module.name)}
+                <span className={`text-[10px] px-1 rounded-full ${selectedModuleId === module.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background/60 text-muted-foreground'}`}>
+                  {module.total_videos}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chapter sections */}
+      {selectedModule && (
+        <div className="border rounded-lg overflow-hidden bg-card">
+          {selectedModule.chapters.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-4 py-6 italic">No chapters in this module.</p>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {selectedModule.chapters.map((chapter) => (
+                <ChapterSection key={chapter.id} chapter={chapter} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedYear && selectedYear.modules.length === 0 && (
+        <p className="text-sm text-muted-foreground italic">No modules in this year.</p>
+      )}
     </div>
   );
 }
@@ -321,7 +424,6 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
     setErrorMessage('');
 
     try {
-      // Step 1: Initiate resumable upload
       // Step 1: Upload file to Supabase Storage (supports CORS, shows progress)
       setUploadStatus('uploading');
 
@@ -476,7 +578,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                 onValueChange={(v) => {
                   setSelectedYearId(v);
                   setSelectedModuleId('');
-                  setSelectedLectureId('');
+                  setSelectedChapterId('');
                 }}
                 disabled={isUploading}
               >
@@ -721,17 +823,13 @@ export function VideosManagementTab() {
             noSource={noSource}
           />
 
-          {/* Hierarchy Tree */}
+          {/* Curriculum Browser */}
           <div>
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Curriculum Hierarchy
             </h3>
             {hierarchy && hierarchy.length > 0 ? (
-              <Accordion type="multiple" className="w-full">
-                {hierarchy.map((year) => (
-                  <YearAccordionItem key={year.id} year={year} />
-                ))}
-              </Accordion>
+              <CurriculumBrowser hierarchy={hierarchy} />
             ) : (
               <Card>
                 <CardContent className="pt-6">

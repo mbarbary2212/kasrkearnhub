@@ -32,6 +32,9 @@ async function getAccessToken(): Promise<string> {
 // ─── Action: upload ────────────────────────────────────────────────────────────
 // Downloads file from Supabase Storage and uploads it to YouTube server-side
 
+const encodeDoctor = (d: string | undefined) =>
+  (d || "general").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
 async function handleUpload(
   supabase: ReturnType<typeof createClient>,
   body: {
@@ -121,45 +124,56 @@ async function handleUpload(
 
   console.log(`youtube-upload: uploaded video ${youtubeVideoId}`);
 
-  // Step 4: Handle playlist
-  if (module_id) {
-    const playlistKey = `youtube_playlist_${module_id}`;
-    let playlistId: string | null = null;
+  // Step 4: Handle playlist — one playlist per module+chapter+doctor combination
+  const playlistKey = `yt_pl_${chapter_id}_${encodeDoctor(doctor)}`;
+  let playlistId: string | null = null;
 
-    const { data: settingRow } = await supabase
-      .from("platform_settings").select("value").eq("key", playlistKey).maybeSingle();
-    playlistId = settingRow?.value ?? null;
+  const { data: settingRow } = await supabase
+    .from("platform_settings").select("value").eq("key", playlistKey).maybeSingle();
+  playlistId = settingRow?.value ?? null;
 
-    if (!playlistId) {
-      const { data: moduleData } = await supabase.from("modules").select("name").eq("id", module_id).single();
-      const moduleName = moduleData?.name ?? "Unnamed Module";
+  if (!playlistId) {
+    // Fetch chapter title and module name from DB
+    const { data: chapterData } = await supabase
+      .from("module_chapters")
+      .select("title, module_id, modules(name)")
+      .eq("id", chapter_id)
+      .single();
 
-      const createRes = await fetch("https://www.googleapis.com/youtube/v3/playlists?part=snippet,status", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ snippet: { title: moduleName }, status: { privacyStatus: "unlisted" } }),
-      });
+    const chapterTitle = chapterData?.title ?? "Unnamed Chapter";
+    // modules may be an array or object depending on Supabase join shape
+    const rawModules = (chapterData as { modules?: { name: string } | { name: string }[] } | null)?.modules;
+    const moduleName: string = Array.isArray(rawModules)
+      ? (rawModules[0]?.name ?? "Unnamed Module")
+      : (rawModules?.name ?? "Unnamed Module");
+    const moduleCode = moduleName.split(":")[0].trim();
+    const doctorLabel = doctor || "General";
+    const playlistTitle = `${moduleCode} › ${chapterTitle} › ${doctorLabel}`;
 
-      if (createRes.ok) {
-        const playlistData = await createRes.json();
-        playlistId = playlistData.id;
-        await supabase.from("platform_settings").upsert(
-          [{ key: playlistKey, value: playlistId, updated_at: new Date().toISOString() }],
-          { onConflict: "key" }
-        );
-        await supabase.from("modules").update({ youtube_playlist_id: playlistId }).eq("id", module_id);
-      }
+    const createRes = await fetch("https://www.googleapis.com/youtube/v3/playlists?part=snippet,status", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ snippet: { title: playlistTitle }, status: { privacyStatus: "unlisted" } }),
+    });
+
+    if (createRes.ok) {
+      const playlistData = await createRes.json();
+      playlistId = playlistData.id;
+      await supabase.from("platform_settings").upsert(
+        [{ key: playlistKey, value: playlistId, updated_at: new Date().toISOString() }],
+        { onConflict: "key" }
+      );
     }
+  }
 
-    if (playlistId) {
-      await fetch("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          snippet: { playlistId, resourceId: { kind: "youtube#video", videoId: youtubeVideoId } },
-        }),
-      });
-    }
+  if (playlistId) {
+    await fetch("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        snippet: { playlistId, resourceId: { kind: "youtube#video", videoId: youtubeVideoId } },
+      }),
+    });
   }
 
   // Step 5: Create lecture record
