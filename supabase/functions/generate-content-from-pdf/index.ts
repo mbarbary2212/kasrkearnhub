@@ -550,6 +550,19 @@ function validateFlashcardItem(item: any, index: number): ValidationResult {
   return { isValid: errors.length === 0, errors, warnings: [] };
 }
 
+function validateClozeFlashcardItem(item: any, index: number): ValidationResult {
+  const errors: string[] = [];
+  if (!item.cloze_text || typeof item.cloze_text !== 'string' || item.cloze_text.trim().length < 10) {
+    errors.push(`Cloze #${index + 1}: cloze_text must be at least 10 characters`);
+  } else if (!/\{\{c\d+::.+?\}\}/.test(item.cloze_text)) {
+    errors.push(`Cloze #${index + 1}: cloze_text must contain at least one {{c1::answer}} marker`);
+  }
+  if (!item.extra || typeof item.extra !== 'string' || item.extra.trim().length < 3) {
+    errors.push(`Cloze #${index + 1}: extra (clinical note) is required`);
+  }
+  return { isValid: errors.length === 0, errors, warnings: [] };
+}
+
 function validateCaseScenarioItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
   if (!item.title || item.title.length < 5) errors.push(`Case #${index + 1}: title must be at least 5 characters`);

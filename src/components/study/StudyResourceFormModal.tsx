@@ -382,26 +382,79 @@ function FlashcardForm({
   content: FlashcardContent;
   onChange: (c: FlashcardContent) => void;
 }) {
+  const isCloze = content.card_type === 'cloze';
+
   return (
     <div className="space-y-4">
+      {/* Card Type Toggle */}
       <div className="space-y-2">
-        <Label>Front (Question)</Label>
-        <Textarea
-          value={content.front}
-          onChange={(e) => onChange({ ...content, front: e.target.value })}
-          placeholder="Enter the question or term"
-          rows={3}
-        />
+        <Label>Card Type</Label>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={!isCloze ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange({ ...content, card_type: 'normal', cloze_text: undefined, extra: undefined })}
+          >
+            Normal
+          </Button>
+          <Button
+            type="button"
+            variant={isCloze ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onChange({ ...content, card_type: 'cloze', cloze_text: content.cloze_text || '' })}
+          >
+            Cloze
+          </Button>
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label>Back (Answer)</Label>
-        <Textarea
-          value={content.back}
-          onChange={(e) => onChange({ ...content, back: e.target.value })}
-          placeholder="Enter the answer or definition"
-          rows={3}
-        />
-      </div>
+
+      {isCloze ? (
+        <>
+          <div className="space-y-2">
+            <Label>Cloze Text</Label>
+            <Textarea
+              value={content.cloze_text || ''}
+              onChange={(e) => onChange({ ...content, cloze_text: e.target.value })}
+              placeholder='e.g. Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.'
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              Wrap answers in <code className="bg-muted px-1 rounded">{'{{c1::answer}}'}</code> syntax
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Extra / Clinical Note (Optional)</Label>
+            <Textarea
+              value={content.extra || ''}
+              onChange={(e) => onChange({ ...content, extra: e.target.value })}
+              placeholder="Optional clinical context or explanation"
+              rows={2}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label>Front (Question)</Label>
+            <Textarea
+              value={content.front}
+              onChange={(e) => onChange({ ...content, front: e.target.value })}
+              placeholder="Enter the question or term"
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Back (Answer)</Label>
+            <Textarea
+              value={content.back}
+              onChange={(e) => onChange({ ...content, back: e.target.value })}
+              placeholder="Enter the answer or definition"
+              rows={3}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

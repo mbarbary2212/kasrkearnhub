@@ -100,6 +100,15 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Basics', '1'],
     ],
   },
+  cloze_flashcard: {
+    columns: ['title', 'front', 'back', 'card_type', 'cloze_text', 'extra', 'section_name', 'section_number'],
+    required: ['title', 'card_type', 'cloze_text'],
+    optional: ['front', 'back', 'extra', 'section_name', 'section_number'],
+    examples: [
+      ['Burns Classification', '', '', 'cloze', 'Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.', 'Blisters are a common clinical sign.', 'Burns', '1'],
+      ['MI Diagnosis', '', '', 'cloze', 'The gold standard biomarker for myocardial infarction is {{c1::troponin}}.', 'Troponin I or T; rises 3-6 hours after onset.', 'Cardiology', '2'],
+    ],
+  },
   table: {
     columns: ['title', 'headers', 'row1', 'row2', 'row3', 'section_name', 'section_number'],
     required: ['title', 'headers', 'row1'],
