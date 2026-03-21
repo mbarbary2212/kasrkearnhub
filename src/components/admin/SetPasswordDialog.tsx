@@ -15,15 +15,32 @@ interface SetPasswordDialogProps {
   user: { id: string; email: string; full_name: string | null } | null;
 }
 
-function generatePassword(length = 12): string {
-  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
-  let password = '';
-  const array = new Uint8Array(length);
+function generatePassword(length = 14): string {
+  const lower = 'abcdefghijkmnpqrstuvwxyz';
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const digits = '23456789';
+  const symbols = '!@#$%&*';
+  const all = lower + upper + digits + symbols;
+  
+  // Guarantee at least one of each type
+  const mandatory = [
+    lower[Math.floor(Math.random() * lower.length)],
+    upper[Math.floor(Math.random() * upper.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)],
+  ];
+  
+  const array = new Uint8Array(length - mandatory.length);
   crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    password += chars[array[i] % chars.length];
+  const rest = Array.from(array).map(b => all[b % all.length]);
+  
+  // Shuffle all characters
+  const combined = [...mandatory, ...rest];
+  for (let i = combined.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [combined[i], combined[j]] = [combined[j], combined[i]];
   }
-  return password;
+  return combined.join('');
 }
 
 export function SetPasswordDialog({ open, onOpenChange, user }: SetPasswordDialogProps) {

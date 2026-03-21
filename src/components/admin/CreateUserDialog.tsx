@@ -141,6 +141,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
             <p className="text-xs text-muted-foreground text-center">
               Share these credentials securely. The user should change their password after first login.
+              Password must be 8–64 characters and include a lowercase letter, uppercase letter, number, and symbol.
             </p>
           </div>
         ) : (
