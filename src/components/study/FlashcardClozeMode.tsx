@@ -59,7 +59,7 @@ function renderClozeText(clozeText: string, revealed: boolean): React.ReactNode[
     }
     if (revealed) {
       parts.push(
-        <span key={key++} className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+        <span key={key++} className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold animate-fade-in">
           {match[1]}
         </span>
       );
