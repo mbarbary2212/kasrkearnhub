@@ -18,7 +18,7 @@ import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckC
 import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
-import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { PasswordRequirements, isPasswordValid } from '@/components/auth/PasswordRequirements';
 import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
 
 export default function AccountPage() {
@@ -199,13 +199,8 @@ export default function AccountPage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-
-    if (newPassword.length > 64) {
-      toast.error('Password must be 64 characters or less');
+    if (!isPasswordValid(newPassword)) {
+      toast.error('Password must be 8–64 characters and include a lowercase letter, uppercase letter, number, and symbol');
       return;
     }
 
