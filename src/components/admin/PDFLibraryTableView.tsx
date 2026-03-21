@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw, Pencil, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +8,16 @@ import { AdminDocument, useDeleteAdminDocument, getSignedUrl } from '@/hooks/use
 import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import { EditDocumentDialog } from './EditDocumentDialog';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 
 interface Year {
@@ -78,11 +88,18 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
     } else toast.error('Failed to generate download link');
   };
 
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+
   const handleSync = async () => {
     if (!doc.chapter_id && !doc.topic_id) {
       toast.info('This document is not linked to a chapter or topic');
       return;
     }
+    setShowSyncConfirm(true);
+  };
+
+  const confirmSync = async () => {
+    setShowSyncConfirm(false);
     const params = doc.chapter_id ? { chapter_id: doc.chapter_id } : { topic_id: doc.topic_id! };
     await syncPdfText(params);
   };
@@ -93,8 +110,44 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
     }
   };
 
+  const targetName = doc.chapter?.title || doc.topic_id || 'Unknown';
+
   return (
     <div className="flex items-center gap-1">
+      <AlertDialog open={showSyncConfirm} onOpenChange={setShowSyncConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-emerald-600" />
+              Confirm PDF Sync
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>You are about to sync the following PDF to a chapter:</p>
+                <div className="rounded-md border bg-muted/50 p-3 space-y-2">
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-muted-foreground font-medium min-w-[70px]">PDF:</span>
+                    <span className="text-foreground font-semibold">{doc.title}</span>
+                  </div>
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-muted-foreground font-medium min-w-[70px]">Target:</span>
+                    <span className="text-foreground font-semibold">{targetName}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Please confirm the chapter name matches the PDF content before syncing.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSync} className="bg-emerald-600 hover:bg-emerald-700">
+              Confirm & Sync
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(doc)} title="Edit">
         <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
       </Button>
