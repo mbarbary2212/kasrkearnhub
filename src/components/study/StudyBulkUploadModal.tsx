@@ -633,6 +633,8 @@ function isHeaderLine(line: string): boolean {
     lower.includes('headers') || 
     lower.includes('steps') || 
     lower.includes('tips') ||
-    lower.includes('topic')
+    lower.includes('topic') ||
+    lower.includes('cloze_text') ||
+    lower.includes('card_type')
   );
 }
