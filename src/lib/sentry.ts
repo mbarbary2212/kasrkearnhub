@@ -33,7 +33,9 @@ export function initSentry() {
           msg.includes('Loading chunk') ||
           msg.includes('ChunkLoadError') ||
           msg.includes('Importing a module script failed') ||
-          msg.includes('error loading dynamically imported module')
+          msg.includes('error loading dynamically imported module') ||
+          msg.includes('is not a valid JavaScript MIME type') ||
+          (msg.includes('text/html') && msg.includes('MIME'))
         ) return null;
         return event;
       },

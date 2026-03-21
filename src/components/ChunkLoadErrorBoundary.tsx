@@ -97,6 +97,7 @@ function isChunkLoadError(error: Error): boolean {
     message.includes('ChunkLoadError') ||
     message.includes('Loading CSS chunk') ||
     message.includes("text/html") ||
+    message.includes('is not a valid JavaScript MIME type') ||
     name === 'ChunkLoadError' ||
     // Safari-specific error patterns
     message.includes('Importing a module script failed') ||
