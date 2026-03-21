@@ -108,3 +108,6 @@ verify_jwt = false
 
 [functions.generate-mind-map]
 verify_jwt = false
+
+[functions.extract-pdf-sections]
+verify_jwt = false
