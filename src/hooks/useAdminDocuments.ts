@@ -20,7 +20,7 @@ export interface AdminDocument {
   created_by: string | null;
   created_at: string;
   is_deleted: boolean;
-  module?: { id: string; name: string; slug: string } | null;
+  module?: { id: string; name: string; slug: string; year_id?: string | null } | null;
   chapter?: { id: string; title: string } | null;
 }
 
