@@ -1,38 +1,44 @@
 
 
-# Fix: "Maximum call stack size exceeded" in PDF Section Extraction
+# Fix Build Errors & Ensure Auto-Detect Sections Works
 
-## Root Cause
+## Problem
+Multiple build errors across 4 files prevent edge function deployment, blocking the auto-detect sections feature. The `extract-pdf-sections` function logic is already correct (chunked base64, PDF download from storage, AI extraction).
 
-Line 53 of `extract-pdf-sections/index.ts`:
-```typescript
-const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
-```
+## Build Errors to Fix
 
-The spread operator (`...pdfBytes`) pushes every byte as a separate argument to `String.fromCharCode()`. For a 1MB PDF (1,075,000 bytes), that's over 1 million function arguments — exceeding the JavaScript call stack limit.
+### 1. `supabase/functions/approve-ai-content/index.ts` (line 550)
+`topicId` is never declared. The code extracts `chapterId` from `inputMetadata` but not `topicId`.
 
-## Fix
+**Fix**: Add `const topicId = (inputMetadata.topic_id as string | null | undefined) ?? null;` next to the `chapterId` declaration (around line 188).
 
-Replace line 53 with a chunked base64 encoder that processes the `Uint8Array` in small batches (e.g., 8KB chunks), then calls `btoa()` on the resulting string.
+### 2. `supabase/functions/sync-pdf-text/index.ts` (line 176)
+`err` is typed as `unknown`. Need to cast before accessing `.message`.
 
-```typescript
-// Convert Uint8Array to base64 without stack overflow
-let binary = "";
-const chunkSize = 8192;
-for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-  const chunk = pdfBytes.subarray(i, i + chunkSize);
-  for (let j = 0; j < chunk.length; j++) {
-    binary += String.fromCharCode(chunk[j]);
-  }
-}
-const pdfBase64 = btoa(binary);
-```
+**Fix**: Change `err.message` to `(err instanceof Error ? err.message : "Internal server error")`.
 
-## File Changed
+### 3. `supabase/functions/youtube-upload/index.ts` (multiple lines)
+Type inference failures because `createClient` is untyped. The Supabase client returns `never` for table operations.
+
+**Fix**: Add `as any` type assertions on the Supabase client parameter and on query results where needed, or type the `createClient` call.
+
+### 4. `src/components/content/LectureList.tsx` (line 317)
+`youtube_video_id` exists on the local `Lecture` interface but NOT on `LecturesAdminTable`'s `Lecture` interface. The `onDelete` callback parameter is typed by the table's interface.
+
+**Fix**: Add `youtube_video_id?: string | null` to the `Lecture` interface in `LecturesAdminTable.tsx`.
+
+## After Fixes
+- All build errors resolved
+- Edge functions deploy successfully
+- `extract-pdf-sections` already has correct logic: download PDF from storage via `admin_documents.chapter_id` link, chunked base64 encode, send to Gemini/Claude
+- Auto-detect button in SectionsManager calls the function correctly
+
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `supabase/functions/extract-pdf-sections/index.ts` | Replace line 53 with chunked base64 encoding |
-
-One-line fix, then redeploy the function.
+| `supabase/functions/approve-ai-content/index.ts` | Add `topicId` variable from `inputMetadata` |
+| `supabase/functions/sync-pdf-text/index.ts` | Fix `unknown` type error on catch block |
+| `supabase/functions/youtube-upload/index.ts` | Fix type inference issues with Supabase client |
+| `src/components/content/LecturesAdminTable.tsx` | Add `youtube_video_id` to Lecture interface |
 
