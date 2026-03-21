@@ -360,10 +360,13 @@ function CurriculumBrowser({ hierarchy }: CurriculumBrowserProps) {
             {hierarchy.map((year) => (
               <button
                 key={year.id}
-                className={selectedYearId === year.id ? pillActive : pillInactive}
+                className={`${selectedYearId === year.id ? pillActive : pillInactive} flex items-center gap-1.5`}
                 onClick={() => setSelectedYearId(year.id)}
               >
                 {year.name}
+                <span className={`text-[10px] px-1 rounded-full ${selectedYearId === year.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background/60 text-muted-foreground'}`}>
+                  {year.total_views.toLocaleString()}
+                </span>
               </button>
             ))}
           </div>

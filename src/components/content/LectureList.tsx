@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X, CheckCircle, Bookmark, ThumbsUp, ThumbsDown, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +45,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SectionSelector, BulkSectionAssignment } from '@/components/sections';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
@@ -108,6 +111,25 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDuration, setEditDuration] = useState('');
   const [editSectionId, setEditSectionId] = useState<string | null>(null);
+  const [editDoctor, setEditDoctor] = useState('');
+  const [editDoctorSelectVal, setEditDoctorSelectVal] = useState('');
+
+  // Fetch existing doctors for this module
+  const { data: existingDoctors = [] } = useQuery({
+    queryKey: ['module-doctors', moduleId],
+    queryFn: async () => {
+      if (!moduleId) return [];
+      const { data } = await supabase
+        .from('lectures')
+        .select('description')
+        .eq('module_id', moduleId)
+        .eq('is_deleted', false)
+        .not('description', 'is', null);
+      const unique = [...new Set((data || []).map((l) => l.description).filter(Boolean))];
+      return unique.sort() as string[];
+    },
+    enabled: !!moduleId,
+  });
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
@@ -115,6 +137,7 @@ export function LectureList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [selectedDoctor, setSelectedDoctor] = useState('all');
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesLecture, setNotesLecture] = useState<Lecture | null>(null);
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
@@ -133,23 +156,31 @@ export function LectureList({
   const canManage = canEdit || canDelete;
   const isStudent = !canManage;
 
-  // Filter lectures
+  // Unique doctors from all lectures in this chapter
+  const chapterDoctors = useMemo(() => {
+    const docs = [...new Set(lectures.map((l) => l.description || 'General').filter(Boolean))];
+    return docs.sort();
+  }, [lectures]);
+
+  // Filter lectures — first by engagement filter, then by doctor
   const filteredLectures = useMemo(() => {
-    if (activeFilter === 'all') return lectures;
-    return lectures.filter((lecture) => {
-      const vid = getVideoIdForLecture(lecture);
-      switch (activeFilter) {
-        case 'watch-later':
-          return bookmarkedIds.has(vid);
-        case 'watched':
-          return watchedIds.has(vid);
-        case 'recently-added':
-          return isRecentlyAdded(lecture.created_at);
-        default:
-          return true;
-      }
-    });
-  }, [lectures, activeFilter, bookmarkedIds, watchedIds]);
+    let result = lectures;
+    if (activeFilter !== 'all') {
+      result = result.filter((lecture) => {
+        const vid = getVideoIdForLecture(lecture);
+        switch (activeFilter) {
+          case 'watch-later': return bookmarkedIds.has(vid);
+          case 'watched': return watchedIds.has(vid);
+          case 'recently-added': return isRecentlyAdded(lecture.created_at);
+          default: return true;
+        }
+      });
+    }
+    if (selectedDoctor !== 'all') {
+      result = result.filter((l) => (l.description || 'General') === selectedDoctor);
+    }
+    return result;
+  }, [lectures, activeFilter, bookmarkedIds, watchedIds, selectedDoctor]);
 
   const handleSelectLecture = useCallback((lecture: Lecture) => {
     setSelectedLecture(lecture);
@@ -207,6 +238,17 @@ export function LectureList({
     setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
     setEditDuration(lecture.duration || '');
     setEditSectionId(lecture.section_id || null);
+    // Doctor is stored in description field
+    const doc = lecture.description || '';
+    setEditDoctor(doc);
+    // Determine select value: 'none', known doctor, or '__custom'
+    if (!doc || doc === 'General') {
+      setEditDoctorSelectVal('none');
+    } else if (existingDoctors.includes(doc)) {
+      setEditDoctorSelectVal(doc);
+    } else {
+      setEditDoctorSelectVal('__custom');
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -222,11 +264,12 @@ export function LectureList({
     }
     setIsEditSaving(true);
     try {
+      const doctorValue = editDoctor.trim() || null;
       await updateContent.mutateAsync({
         id: editLecture.id,
         data: {
           title: editTitle.trim(),
-          description: editDescription.trim() || null,
+          description: doctorValue,
           video_url: normalizedUrl || null,
           duration: editDuration.trim() || null,
           section_id: editSectionId,
@@ -280,7 +323,30 @@ export function LectureList({
             <DialogHeader><DialogTitle>Edit Lecture</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
               <div><Label htmlFor="edit-title">Title</Label><Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Lecture title" className="mt-1" /></div>
-              <div><Label htmlFor="edit-description">Description (optional)</Label><Textarea id="edit-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Lecture description" className="mt-1" rows={3} /></div>
+              <div className="space-y-1.5">
+                <Label>Doctor <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                <Select
+                  value={editDoctorSelectVal}
+                  onValueChange={(v) => {
+                    setEditDoctorSelectVal(v);
+                    if (v === 'none') setEditDoctor('');
+                    else if (v !== '__custom') setEditDoctor(v);
+                    else setEditDoctor('');
+                  }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {existingDoctors.filter(d => d !== 'General').map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                    <SelectItem value="__custom">+ Add new doctor…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editDoctorSelectVal === '__custom' && (
+                  <Input value={editDoctor} onChange={(e) => setEditDoctor(e.target.value)} placeholder="e.g. Dr. Ahmed" autoFocus className="mt-1" />
+                )}
+              </div>
               <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
               <div><Label htmlFor="edit-duration">Duration (optional)</Label><Input id="edit-duration" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} placeholder="e.g., 15:30" className="mt-1" /></div>
               <SectionSelector chapterId={chapterId} value={editSectionId} onChange={setEditSectionId} />
@@ -333,6 +399,36 @@ export function LectureList({
             >
               {pill.icon}
               {pill.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Doctor filter pills — shown to everyone when chapter has multiple doctors */}
+      {chapterDoctors.length > 1 && (
+        <div className="flex gap-2 mb-4 flex-wrap items-center">
+          <span className="text-xs text-muted-foreground font-medium">Doctor:</span>
+          <button
+            onClick={() => setSelectedDoctor('all')}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              selectedDoctor === 'all'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            All
+          </button>
+          {chapterDoctors.map((doc) => (
+            <button
+              key={doc}
+              onClick={() => setSelectedDoctor(doc)}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                selectedDoctor === doc
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {doc}
             </button>
           ))}
         </div>
@@ -680,7 +776,30 @@ export function LectureList({
           <DialogHeader><DialogTitle>Edit Lecture</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div><Label htmlFor="edit-title">Title</Label><Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Lecture title" className="mt-1" /></div>
-            <div><Label htmlFor="edit-description">Description (optional)</Label><Textarea id="edit-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Lecture description" className="mt-1" rows={3} /></div>
+            <div className="space-y-1.5">
+              <Label>Doctor <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+              <Select
+                value={editDoctorSelectVal}
+                onValueChange={(v) => {
+                  setEditDoctorSelectVal(v);
+                  if (v === 'none') setEditDoctor('');
+                  else if (v !== '__custom') setEditDoctor(v);
+                  else setEditDoctor('');
+                }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {existingDoctors.filter(d => d !== 'General').map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                  <SelectItem value="__custom">+ Add new doctor…</SelectItem>
+                </SelectContent>
+              </Select>
+              {editDoctorSelectVal === '__custom' && (
+                <Input value={editDoctor} onChange={(e) => setEditDoctor(e.target.value)} placeholder="e.g. Dr. Ahmed" autoFocus className="mt-1" />
+              )}
+            </div>
             <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
             <div><Label htmlFor="edit-duration">Duration (optional)</Label><Input id="edit-duration" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} placeholder="e.g., 15:30" className="mt-1" /></div>
             <SectionSelector chapterId={chapterId} value={editSectionId} onChange={setEditSectionId} />
