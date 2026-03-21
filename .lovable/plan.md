@@ -1,44 +1,28 @@
 
 
-# Fix Build Errors & Ensure Auto-Detect Sections Works
+# Fix Build Error & Enable Sections for Surgery Module
 
-## Problem
-Multiple build errors across 4 files prevent edge function deployment, blocking the auto-detect sections feature. The `extract-pdf-sections` function logic is already correct (chunked base64, PDF download from storage, AI extraction).
+## 1. Fix Build Error in VideosManagementTab.tsx
 
-## Build Errors to Fix
+The `filteredHierarchy` variable (declared at line 432 with `useMemo`) is used in `useEffect` hooks at lines 409 and 417 — before its declaration. Block-scoped variables cannot be used before declaration.
 
-### 1. `supabase/functions/approve-ai-content/index.ts` (line 550)
-`topicId` is never declared. The code extracts `chapterId` from `inputMetadata` but not `topicId`.
+**Fix**: Move the `useMemo` block (lines 431-440) to right after line 405 (after `queryClient`), before the `useEffect` hooks that depend on it.
 
-**Fix**: Add `const topicId = (inputMetadata.topic_id as string | null | undefined) ?? null;` next to the `chapterId` declaration (around line 188).
+## 2. Enable Sections for All Surgery 523 Chapters
 
-### 2. `supabase/functions/sync-pdf-text/index.ts` (line 176)
-`err` is typed as `unknown`. Need to cast before accessing `.message`.
+Run a database update to set `enable_sections = true` for all chapters in the surgery module that don't already have it enabled:
 
-**Fix**: Change `err.message` to `(err instanceof Error ? err.message : "Internal server error")`.
-
-### 3. `supabase/functions/youtube-upload/index.ts` (multiple lines)
-Type inference failures because `createClient` is untyped. The Supabase client returns `never` for table operations.
-
-**Fix**: Add `as any` type assertions on the Supabase client parameter and on query results where needed, or type the `createClient` call.
-
-### 4. `src/components/content/LectureList.tsx` (line 317)
-`youtube_video_id` exists on the local `Lecture` interface but NOT on `LecturesAdminTable`'s `Lecture` interface. The `onDelete` callback parameter is typed by the table's interface.
-
-**Fix**: Add `youtube_video_id?: string | null` to the `Lecture` interface in `LecturesAdminTable.tsx`.
-
-## After Fixes
-- All build errors resolved
-- Edge functions deploy successfully
-- `extract-pdf-sections` already has correct logic: download PDF from storage via `admin_documents.chapter_id` link, chunked base64 encode, send to Gemini/Claude
-- Auto-detect button in SectionsManager calls the function correctly
+```sql
+UPDATE module_chapters
+SET enable_sections = true
+WHERE module_id = '7f5167dd-b746-4ac6-94f3-109d637df861'
+  AND enable_sections = false;
+```
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `supabase/functions/approve-ai-content/index.ts` | Add `topicId` variable from `inputMetadata` |
-| `supabase/functions/sync-pdf-text/index.ts` | Fix `unknown` type error on catch block |
-| `supabase/functions/youtube-upload/index.ts` | Fix type inference issues with Supabase client |
-| `src/components/content/LecturesAdminTable.tsx` | Add `youtube_video_id` to Lecture interface |
+| `src/components/admin/VideosManagementTab.tsx` | Move `filteredHierarchy` useMemo before the useEffect hooks |
+| Database | Enable sections for remaining surgery chapters |
 
