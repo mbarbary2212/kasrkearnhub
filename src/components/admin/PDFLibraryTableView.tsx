@@ -258,7 +258,7 @@ export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource
                     <Collapsible key={mod.moduleId} open={isModOpen} onOpenChange={() => toggleModule(mod.moduleId)}>
                       <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-left">
                         {isModOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                        {isModOpen ? <FolderOpen className="h-3.5 w-3.5 text-amber-500" /> : <Folder className="h-3.5 w-3.5 text-amber-500" />}
+                        {isModOpen ? <FolderOpen className="h-3.5 w-3.5 text-accent-foreground" /> : <Folder className="h-3.5 w-3.5 text-accent-foreground" />}
                         <span className="text-sm font-medium">
                           {mod.moduleSlug ? `${mod.moduleSlug.toUpperCase()}: ` : ''}{mod.moduleName}
                         </span>
