@@ -670,9 +670,8 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
     'clozetext': 'cloze_text',
     'text': 'cloze_text',
     'extra': 'extra',
-    'hint': 'extra',
-    'explanation': 'extra',
-    'context': 'extra',
+    // Tags column is recognized but silently skipped (not mapped to anything)
+    'tags': '__skip__',
   };
   
   headers.forEach((header, index) => {
