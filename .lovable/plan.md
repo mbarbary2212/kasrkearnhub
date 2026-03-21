@@ -1,47 +1,51 @@
 
 
-# Updated Plan: Fill-in (Cloze) Mode — Reveal-Based (Anki Style)
+# Plan: Add Card Type Selector to Flashcard Bulk Upload
 
-## Summary
-Modify only `src/components/study/FlashcardClozeMode.tsx` to change the cloze interaction from "type the answer" to "reveal the answer" — matching Anki's behavior. No other files are touched.
+## Problem
+When uploading flashcard CSVs, the modal shows one combined format hint for both normal and cloze cards, but there's no way for the admin to tell the system which type they're uploading. The parser tries to auto-detect via a `card_type` column, but this is fragile and confusing. The admin needs a clear toggle to select the target type.
 
-## Cloze Card Behavior
+## Solution
+Add a "Flashcard" / "Cloze" toggle inside `StudyBulkUploadModal.tsx` that appears **only when `resourceType === 'flashcard'`**. This toggle:
+1. Switches the CSV format hint to show the relevant format only
+2. Tells the parser how to interpret the CSV (normal flashcard columns vs cloze columns)
+3. Auto-sets `card_type` on all parsed items based on the selection
 
-**Before reveal:**
-- Parse `content.cloze_text` with `/\{\{c\d+::(.+?)\}\}/g`
-- Display sentence with each match replaced by a styled pill: `[...]` in muted color (`bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-sm`)
-- Show a "Reveal Answer" button with `Eye` icon below the sentence
-- No text input field
+## Changes (single file: `StudyBulkUploadModal.tsx`)
 
-**After reveal:**
-- Re-render sentence with answers shown as green highlighted pills: `bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold`
-- "Reveal Answer" button disappears
-- If `content.extra` exists, show it automatically (no toggle) styled as: `border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm rounded-r-md` with a small "CLINICAL NOTE" label in `text-xs uppercase text-amber-600 tracking-wide font-medium`
-- Show `FSRSRatingButtons` with `visible={true}`
+### 1. Add state for card subtype
+Add a `cardSubtype` state: `'normal' | 'cloze'`, defaulting to `'normal'`. Reset it in `resetState()`.
 
-**Non-cloze fallback:**
-- If `card_type !== 'cloze'` or no `cloze_text`, render as normal flip card (Question front / Answer back with flip animation), identical to `FlashcardsStudentView`
+### 2. Add toggle UI
+Below the dialog title, when `resourceType === 'flashcard'`, render two toggle buttons side by side:
+- **Flashcard** (default) — standard front/back cards
+- **Cloze** — cards with `{{c1::answer}}` syntax
 
-**After rating:** advance to next card, reset `revealed` to false
+Style: same pattern as the mode buttons in FlashcardsTab (variant default/outline toggle).
 
-## Keyboard Shortcuts
-- `Space` or `Enter` → reveal answer (if not yet revealed)
-- `ArrowLeft` / `ArrowRight` → prev / next card
-- `M` → toggle star/mark
+### 3. Split CSV format hints
+Replace the single `flashcard` entry in `CSV_FORMATS` display with conditional rendering:
+- When `cardSubtype === 'normal'`: show `title,front,back,section_name,section_number`
+- When `cardSubtype === 'cloze'`: show `title,cloze_text,extra,section_name,section_number` (no need for front/back/card_type columns — the toggle already tells us)
 
-## Preserved Features (copied from FlashcardsStudentView)
-- Same props interface (`cards`, `markedIds`, `onToggleMark`, `availableTopics`, `chapterId`, `topicId`)
-- Topic selector collapsible, shuffle, star/mark, reset
-- `useCardState` for FSRS state
-- `FlashcardProgressBar`
-- `useSwipeGesture` for mobile swipe
-- `useFullscreen` with floating exit button
-- Navigation prev/next buttons at bottom
-- Transition animation between cards
+### 4. Update parser behavior
+Pass `cardSubtype` into `processCSV`. When `cardSubtype === 'cloze'`:
+- Expect columns: `title`, `cloze_text`, `extra`, `section_name`, `section_number`
+- Auto-set `card_type: 'cloze'` on every parsed item's content
+- Validate that `cloze_text` contains at least one `{{c1::...}}` pattern
+
+When `cardSubtype === 'normal'`:
+- Use existing parsing (title, front, back)
+- Set `card_type: 'normal'`
+
+This also means the CSV for cloze is simpler — admins don't need to include a `card_type` column or leave `front`/`back` empty.
+
+### 5. Update dialog title
+Show "Import Flashcards" or "Import Cloze Flashcards" based on selection.
 
 ## File Modified
 
 | File | Change |
 |------|--------|
-| `src/components/study/FlashcardClozeMode.tsx` | Rewrite — reveal-based cloze interaction replacing type-based |
+| `src/components/study/StudyBulkUploadModal.tsx` | Add card subtype toggle, split format hints, update parser routing |
 
