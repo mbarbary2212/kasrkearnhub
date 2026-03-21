@@ -315,7 +315,7 @@ export function FlashcardClozeMode({
 
       {/* Main card area */}
       {currentCard && (
-        <div className="w-full max-w-md">
+        <div className={cn("w-full max-w-md", isFullscreen && "md:max-w-2xl")}>
           <div className="perspective-1000 relative">
             {/* Star + fullscreen buttons */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
