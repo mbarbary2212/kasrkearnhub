@@ -269,7 +269,7 @@ export function FlashcardClozeMode({
   }
 
   return (
-    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-center bg-background")}>
+    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-start pt-8 bg-background overflow-y-auto")}>
       {/* Topic selector */}
       {allTopicNames.length > 1 && (
         <div className="w-full max-w-md">
