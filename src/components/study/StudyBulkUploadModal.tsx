@@ -495,34 +495,48 @@ function parseLineByType(
 
   switch (type) {
     case 'flashcard': {
-      // Support cloze cards via header mapping
-      const cardTypeIdx = headerMapping?.['card_type'];
-      const clozeTextIdx = headerMapping?.['cloze_text'];
-      const extraIdx = headerMapping?.['extra'];
-      
-      const cardTypeVal = cardTypeIdx !== undefined ? values[cardTypeIdx]?.trim().toLowerCase() : undefined;
-      const clozeTextVal = clozeTextIdx !== undefined ? values[clozeTextIdx]?.trim() : undefined;
-      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
-      
-      const isCloze = cardTypeVal === 'cloze' && !!clozeTextVal;
-      
-      if (!isCloze && values.length < 3) {
-        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back (or card_type=cloze with cloze_text)' };
+      if (cardSubtype === 'cloze') {
+        // Cloze mode: expect title, cloze_text, extra, section_name, section_number
+        const clozeTextIdx = headerMapping?.['cloze_text'] ?? 1;
+        const extraIdx = headerMapping?.['extra'] ?? 2;
+        
+        const clozeText = values[clozeTextIdx]?.trim() || '';
+        const extra = values[extraIdx]?.trim() || '';
+        
+        if (!clozeText) {
+          return { title, content: { front: '', back: '' }, error: 'Cloze card requires cloze_text' };
+        }
+        
+        if (!/\{\{c\d+::.*?\}\}/.test(clozeText)) {
+          return { title, content: { front: '', back: '' }, error: 'Cloze text must contain at least one {{c1::answer}} pattern' };
+        }
+        
+        const content: FlashcardContent = {
+          front: '',
+          back: '',
+          card_type: 'cloze' as const,
+          cloze_text: clozeText,
+          ...(extra && { extra }),
+        };
+        
+        return { title, content, sectionName, sectionNumber };
       }
+      
+      // Normal mode: title, front, back
+      if (values.length < 3) {
+        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back' };
+      }
+      
+      const extraIdx = headerMapping?.['extra'];
+      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
       
       const content: FlashcardContent = {
         front: values[1] || '',
         back: values[2] || '',
-        ...(isCloze && { card_type: 'cloze' as const, cloze_text: clozeTextVal }),
         ...(extraVal && { extra: extraVal }),
       };
       
-      return {
-        title,
-        content,
-        sectionName,
-        sectionNumber,
-      };
+      return { title, content, sectionName, sectionNumber };
     }
     case 'table': {
       if (values.length < 3) {
