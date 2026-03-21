@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { extractYouTubeId } from '@/lib/video';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -19,11 +20,10 @@ import {
   Check,
   X,
   Upload,
-  Wifi,
-  WifiOff,
   Video,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
 
 // ─── Inline URL Edit ─────────────────────────────────────────────────────────
 
@@ -255,7 +255,7 @@ function StatsCards({ totalVideos, totalViews, youtubeVideos, noSource }: StatsC
     { label: 'Total Videos', value: totalVideos, icon: <Video className="w-4 h-4" />, color: 'text-blue-600' },
     { label: 'Total Views', value: totalViews, icon: <Eye className="w-4 h-4" />, color: 'text-green-600' },
     { label: 'YouTube Videos', value: youtubeVideos, icon: <Youtube className="w-4 h-4" />, color: 'text-red-600' },
-    { label: 'No Source', value: noSource, icon: <WifiOff className="w-4 h-4" />, color: 'text-amber-600' },
+    { label: 'No Source', value: noSource, icon: <X className="w-4 h-4" />, color: 'text-amber-600' },
   ];
 
   return (
@@ -275,107 +275,160 @@ function StatsCards({ totalVideos, totalViews, youtubeVideos, noSource }: StatsC
   );
 }
 
-// ─── YouTube Connect Card ─────────────────────────────────────────────────────
-
-function YouTubeConnectCard() {
-  const [searchParams] = useSearchParams();
-  const isCallback = searchParams.get('youtube_callback') === '1';
-  const code = searchParams.get('code');
-
-  const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=1003356147365-inbtnn60riahbu6b4kec33letj8k3u36.apps.googleusercontent.com&redirect_uri=${encodeURIComponent(window.location.origin + '/admin?youtube_callback=1')}&response_type=code&scope=https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube&access_type=offline&prompt=consent`;
-
-  if (isCallback && code) {
-    return (
-      <Card className="border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Wifi className="w-5 h-5 text-green-600" />
-            <CardTitle className="text-base">Authorization Received</CardTitle>
-          </div>
-          <CardDescription>
-            Authorization code received — saving credentials...
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Copy this authorization code and store it securely. It will be used to obtain refresh tokens via the <code className="text-xs bg-muted px-1 py-0.5 rounded">youtube-oauth-callback</code> edge function.
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              readOnly
-              value={code}
-              className="font-mono text-xs"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText(code);
-                toast.success('Code copied to clipboard');
-              }}
-            >
-              Copy
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Youtube className="w-5 h-5 text-red-600" />
-            <CardTitle className="text-base">YouTube Channel</CardTitle>
-          </div>
-          <Badge variant="secondary" className="gap-1">
-            <WifiOff className="w-3 h-3" />
-            Not connected
-          </Badge>
-        </div>
-        <CardDescription>
-          Connect your YouTube channel to enable direct video uploads from the admin panel.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => window.open(oauthUrl, '_blank')}
-        >
-          <Wifi className="w-4 h-4" />
-          Connect YouTube Channel
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ─── YouTube Upload Card ──────────────────────────────────────────────────────
+
+type UploadStatus = 'idle' | 'initiating' | 'uploading' | 'finalizing' | 'done' | 'error';
 
 interface UploadCardProps {
   hierarchy: YearNode[];
 }
 
 function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
-  const [selectedChapter, setSelectedChapter] = useState<string>('');
+  const queryClient = useQueryClient();
+
+  // Selection state — three-level: year → module → lecture
+  const [selectedYearId, setSelectedYearId] = useState('');
+  const [selectedModuleId, setSelectedModuleId] = useState('');
+  const [selectedLectureId, setSelectedLectureId] = useState('');
+
+  // Upload metadata
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('unlisted');
 
-  // Flatten chapters for the select dropdown
-  const chapterOptions: { value: string; label: string }[] = [];
-  for (const year of hierarchy) {
-    for (const module of year.modules) {
-      for (const chapter of module.chapters) {
-        chapterOptions.push({
-          value: chapter.id,
-          label: `${year.name} › ${module.name} › ${chapter.title}`,
+  // Upload state
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Derived options
+  const yearOptions = hierarchy;
+
+  const moduleOptions =
+    hierarchy.find((y) => y.id === selectedYearId)?.modules ?? [];
+
+  // Flatten all lectures from the selected module across all chapters
+  const lectureOptions: { value: string; label: string }[] = [];
+  const selectedModule = moduleOptions.find((m) => m.id === selectedModuleId);
+  if (selectedModule) {
+    for (const chapter of selectedModule.chapters) {
+      for (const lecture of chapter.lectures) {
+        lectureOptions.push({
+          value: lecture.id,
+          label: `${chapter.title} › ${lecture.title}`,
         });
       }
     }
   }
+
+  const isUploading = ['initiating', 'uploading', 'finalizing'].includes(uploadStatus);
+
+  const handleUpload = async () => {
+    if (!file) { toast.error('Please select a video file.'); return; }
+    if (!title.trim()) { toast.error('Please enter a video title.'); return; }
+    if (!selectedLectureId) { toast.error('Please select a lecture.'); return; }
+
+    setUploadStatus('initiating');
+    setUploadProgress(0);
+    setErrorMessage('');
+
+    try {
+      // Step 1: Initiate resumable upload
+      const { data: initiateData, error: initiateError } = await supabase.functions.invoke(
+        'youtube-upload',
+        { body: { action: 'initiate', title, description, privacy } }
+      );
+      if (initiateError) throw new Error(initiateError.message);
+
+      const uploadUrl: string = initiateData?.upload_url;
+      if (!uploadUrl) throw new Error('No upload URL returned from server.');
+
+      // Step 2: Upload file directly to YouTube resumable URL via XHR for progress
+      setUploadStatus('uploading');
+
+      const videoResource = await new Promise<{ id: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const json = JSON.parse(xhr.responseText);
+              resolve(json);
+            } catch {
+              reject(new Error('Failed to parse YouTube upload response.'));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload.'));
+        xhr.onabort = () => reject(new Error('Upload aborted.'));
+
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'video/*');
+        xhr.send(file);
+      });
+
+      const youtubeVideoId = videoResource?.id;
+      if (!youtubeVideoId) throw new Error('YouTube did not return a video ID after upload.');
+
+      // Step 3: Finalize — update DB and add to playlist
+      setUploadStatus('finalizing');
+
+      const { data: finalizeData, error: finalizeError } = await supabase.functions.invoke(
+        'youtube-upload',
+        {
+          body: {
+            action: 'finalize',
+            youtube_video_id: youtubeVideoId,
+            lecture_id: selectedLectureId,
+            module_id: selectedModuleId || undefined,
+          },
+        }
+      );
+      if (finalizeError) throw new Error(finalizeError.message);
+
+      setYoutubeUrl(finalizeData?.youtube_url ?? `https://www.youtube.com/watch?v=${youtubeVideoId}`);
+      setUploadStatus('done');
+      toast.success('Video uploaded and linked to lecture!');
+      queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+    } catch (err) {
+      const msg = (err as Error).message;
+      setErrorMessage(msg);
+      setUploadStatus('error');
+      toast.error(`Upload failed: ${msg}`);
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setTitle('');
+    setDescription('');
+    setPrivacy('unlisted');
+    setSelectedLectureId('');
+    setUploadStatus('idle');
+    setUploadProgress(0);
+    setYoutubeUrl('');
+    setErrorMessage('');
+  };
+
+  const statusLabel: Record<UploadStatus, string> = {
+    idle: '',
+    initiating: 'Initiating upload…',
+    uploading: `Uploading… ${uploadProgress}%`,
+    finalizing: 'Finalizing and linking lecture…',
+    done: 'Upload complete!',
+    error: 'Upload failed',
+  };
 
   return (
     <Card>
@@ -389,57 +442,208 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/10 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          Coming soon — requires YouTube OAuth setup. Connect your YouTube channel above to enable uploads.
-        </div>
 
-        <div className="space-y-3 opacity-50 pointer-events-none select-none">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video File</label>
-            <Input type="file" accept="video/*" disabled />
+        {/* Done state */}
+        {uploadStatus === 'done' && (
+          <div className="rounded-md bg-green-50 border border-green-200 dark:bg-green-900/10 dark:border-green-800 px-4 py-3 space-y-2">
+            <p className="text-sm font-medium text-green-800 dark:text-green-300 flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              Upload complete — lecture linked successfully!
+            </p>
+            {youtubeUrl && (
+              <a
+                href={youtubeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 dark:text-blue-400 underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View on YouTube
+              </a>
+            )}
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              Upload Another
+            </Button>
           </div>
+        )}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Chapter</label>
-            <Select value={selectedChapter} onValueChange={setSelectedChapter} disabled>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a chapter..." />
-              </SelectTrigger>
-              <SelectContent>
-                {chapterOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Error state */}
+        {uploadStatus === 'error' && (
+          <div className="rounded-md bg-red-50 border border-red-200 dark:bg-red-900/10 dark:border-red-800 px-4 py-3 space-y-2">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">
+              Upload failed: {errorMessage}
+            </p>
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              Try Again
+            </Button>
           </div>
+        )}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Video title..."
-              disabled
-            />
+        {/* Upload form — hidden after done/error */}
+        {uploadStatus !== 'done' && uploadStatus !== 'error' && (
+          <div className="space-y-3">
+            {/* Video file */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video File</label>
+              <Input
+                type="file"
+                accept="video/*"
+                disabled={isUploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setFile(f);
+                  if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ''));
+                }}
+              />
+            </div>
+
+            {/* Year selector */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Year</label>
+              <Select
+                value={selectedYearId}
+                onValueChange={(v) => {
+                  setSelectedYearId(v);
+                  setSelectedModuleId('');
+                  setSelectedLectureId('');
+                }}
+                disabled={isUploading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a year…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Module selector */}
+            {selectedYearId && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Module</label>
+                <Select
+                  value={selectedModuleId}
+                  onValueChange={(v) => {
+                    setSelectedModuleId(v);
+                    setSelectedLectureId('');
+                  }}
+                  disabled={isUploading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a module…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {moduleOptions.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Lecture selector */}
+            {selectedModuleId && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Lecture</label>
+                <Select
+                  value={selectedLectureId}
+                  onValueChange={setSelectedLectureId}
+                  disabled={isUploading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a lecture…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lectureOptions.length === 0 ? (
+                      <SelectItem value="__empty" disabled>No lectures found</SelectItem>
+                    ) : (
+                      lectureOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Title */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Video title…"
+                disabled={isUploading}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Video description (optional)…"
+                disabled={isUploading}
+              />
+            </div>
+
+            {/* Privacy */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Privacy</label>
+              <Select
+                value={privacy}
+                onValueChange={(v) => setPrivacy(v as typeof privacy)}
+                disabled={isUploading}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Progress bar */}
+            {isUploading && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{statusLabel[uploadStatus]}</span>
+                  {uploadStatus === 'uploading' && <span>{uploadProgress}%</span>}
+                </div>
+                <Progress
+                  value={uploadStatus === 'uploading' ? uploadProgress : undefined}
+                  className={uploadStatus !== 'uploading' ? 'animate-pulse' : ''}
+                />
+              </div>
+            )}
+
+            {/* Upload button */}
+            <Button
+              onClick={handleUpload}
+              disabled={isUploading || !file || !title.trim() || !selectedLectureId}
+              className="gap-2 w-full sm:w-auto"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {statusLabel[uploadStatus]}
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload to YouTube
+                </>
+              )}
+            </Button>
           </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Video description..."
-              disabled
-            />
-          </div>
-
-          <Button disabled className="gap-2 w-full sm:w-auto">
-            <Upload className="w-4 h-4" />
-            Upload to YouTube
-          </Button>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -517,9 +721,6 @@ export function VideosManagementTab() {
           </Badge>
         </div>
       </div>
-
-      {/* YouTube Connect */}
-      <YouTubeConnectCard />
 
       {/* Stats */}
       {isLoading ? (
