@@ -297,10 +297,11 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               topicId={topicId}
             />
           ) : (
-            <FlashcardsSlideshowMode 
+            <FlashcardClozeMode
               cards={filteredResources}
               markedIds={starredIds}
               onToggleMark={handleToggleStar}
+              availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
             />
