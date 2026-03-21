@@ -22,6 +22,8 @@ interface FlashcardClozeModeProps {
   availableTopics?: string[];
   chapterId?: string;
   topicId?: string;
+  /** When true, only show cloze cards and display empty state if none exist */
+  clozeOnly?: boolean;
 }
 
 interface TopicGroup {
