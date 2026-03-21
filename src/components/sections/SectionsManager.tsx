@@ -134,6 +134,19 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
       toast.error('Failed to update sections setting');
     }
   };
+
+  const handleAutoDetectSections = async () => {
+    if (!chapterId) {
+      toast.error('Auto-detect is available for chapter PDFs only');
+      return;
+    }
+
+    try {
+      await extractAndInsert(chapterId);
+    } catch {
+      toast.error('Failed to auto-detect sections');
+    }
+  };
   
   const handleAddSection = async () => {
     if (!newSectionName.trim()) {
@@ -232,6 +245,17 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </div>
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {isChapterScope && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoDetectSections}
+                    disabled={!sectionsEnabled || isExtracting}
+                  >
+                    <Wand2 className="h-4 w-4 mr-1" />
+                    {isExtracting ? 'Detecting...' : 'Auto Detect'}
+                  </Button>
+                )}
                 <Label htmlFor="enable-sections" className="text-sm text-muted-foreground">
                   Enable
                 </Label>
