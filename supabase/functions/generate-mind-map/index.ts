@@ -464,12 +464,13 @@ markmap:
 - No explanatory text before or after the markdown
 - Do NOT wrap output in code blocks`;
 
-    const defaultSectionPrompt = `You are a Professor of Surgery teaching undergraduate medical students.
+    // ── Built-in structured section prompt (mandatory JSON contract) ──
+    const SECTION_JSON_CONTRACT = `You are an expert medical educator.
 Analyze the provided PDF document. Identify the true main sections of this chapter (ignore page headers, footers, figures, captions, tables, and reference lists unless educationally central).
 
 For EACH main section, generate a separate focused Markmap mind map.
 
-Return your response as a JSON array where each element has:
+You MUST return your response as a JSON array where each element has:
 - "section_number": the section number if detectable (e.g. "1.1", "2.3"), or null
 - "section_title": the section heading/title
 - "markdown_content": a complete valid Markmap markdown string for that section
@@ -490,8 +491,24 @@ markmap:
 
 Return ONLY the JSON array, no other text.`;
 
+    // For sections: always enforce the structured JSON contract.
+    // If admin has a custom section prompt, check if it's structured or legacy.
+    const adminSectionStyle = sectionPromptRow?.system_prompt || "";
+    const isLegacySectionPrompt = adminSectionStyle.length > 0 &&
+      !adminSectionStyle.includes("JSON array") && !adminSectionStyle.includes("json array") &&
+      !adminSectionStyle.includes("section_title") && !adminSectionStyle.includes("markdown_content");
+
+    let effectiveSectionPrompt: string;
+    if (!adminSectionStyle || isLegacySectionPrompt) {
+      if (isLegacySectionPrompt) {
+        console.warn("[generate-mind-map] Section prompt is legacy/non-structured — using built-in JSON contract instead. Update Section prompt in Mind Map Prompts settings.");
+      }
+      effectiveSectionPrompt = SECTION_JSON_CONTRACT;
+    } else {
+      effectiveSectionPrompt = adminSectionStyle;
+    }
+
     const fullSystemPrompt = fullPromptRow?.system_prompt || defaultFullPrompt;
-    const sectionSystemPrompt = sectionPromptRow?.system_prompt || defaultSectionPrompt;
     const fullPromptVersion = fullPromptRow?.id || "built-in-default";
     const sectionPromptVersion = sectionPromptRow?.id || "built-in-default";
 
