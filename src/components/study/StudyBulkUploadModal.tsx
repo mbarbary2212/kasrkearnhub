@@ -65,8 +65,11 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
   guided_explanation: 'Guided Explanations',
 };
 
+const CSV_FORMAT_FLASHCARD_NORMAL = 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"';
+const CSV_FORMAT_FLASHCARD_CLOZE = 'title,cloze_text,extra,section_name,section_number\n"Burns Classification","Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Section Name","1"';
+
 const CSV_FORMATS: Record<StudyResourceType, string> = {
-  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"\n\nFor cloze cards: title,front,back,card_type,cloze_text,extra,section_name,section_number\n"Burns Classification","","","cloze","Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Section Name","1"',
+  flashcard: CSV_FORMAT_FLASHCARD_NORMAL,
   table: 'title,headers,row1,row2,section_name,section_number\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6","",""',
   algorithm: 'title,steps,section_name,section_number\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc","",""',
   exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
@@ -78,6 +81,8 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
 };
 
 const SIMILARITY_THRESHOLD = 0.85;
+
+type CardSubtype = 'normal' | 'cloze';
 
 export function StudyBulkUploadModal({
   open,
@@ -95,11 +100,13 @@ export function StudyBulkUploadModal({
   const [parsedData, setParsedData] = useState<DuplicateResult<ParsedItem>[]>([]);
   const [errors, setErrors] = useState<ParseError[]>([]);
   const [fileName, setFileName] = useState<string>('');
+  const [cardSubtype, setCardSubtype] = useState<CardSubtype>('normal');
 
   const resetState = () => {
     setParsedData([]);
     setErrors([]);
     setFileName('');
+    setCardSubtype('normal');
   };
 
   const detectDuplicates = useCallback((parsed: ParsedItem[]): DuplicateResult<ParsedItem>[] => {
@@ -152,11 +159,13 @@ export function StudyBulkUploadModal({
       const parsed: ParsedItem[] = [];
       const parseErrors: ParseError[] = [];
       
-      // Check if first line is a header and build mapping
       const firstLine = lines[0];
       const hasHeader = isHeaderLine(firstLine);
       const headerMapping = hasHeader ? buildHeaderMapping(firstLine) : undefined;
       const startIndex = hasHeader ? 1 : 0;
+
+      // Determine effective type for parsing
+      const effectiveSubtype = resourceType === 'flashcard' ? cardSubtype : undefined;
 
       for (let i = startIndex; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -164,7 +173,7 @@ export function StudyBulkUploadModal({
 
         try {
           const values = parseCSVLine(line);
-          const item = parseLineByType(values, resourceType, i + 1, headerMapping);
+          const item = parseLineByType(values, resourceType, i + 1, headerMapping, effectiveSubtype);
           if (item.error) {
             parseErrors.push({ row: i + 1, reason: item.error });
           } else {
@@ -179,7 +188,7 @@ export function StudyBulkUploadModal({
       setParsedData(withDuplicates);
       setErrors(parseErrors);
     },
-    [resourceType, detectDuplicates]
+    [resourceType, cardSubtype, detectDuplicates]
   );
 
   const handleFileSelect = useCallback((file: File) => {
@@ -260,17 +269,45 @@ export function StudyBulkUploadModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Bulk Upload {TYPE_LABELS[resourceType]}</DialogTitle>
+          <DialogTitle>
+            {resourceType === 'flashcard'
+              ? `Import ${cardSubtype === 'cloze' ? 'Cloze ' : ''}Flashcards`
+              : `Bulk Upload ${TYPE_LABELS[resourceType]}`}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
+          {/* Card subtype toggle for flashcards */}
+          {resourceType === 'flashcard' && (
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              <Button
+                size="sm"
+                variant={cardSubtype === 'normal' ? 'default' : 'outline'}
+                onClick={() => { setCardSubtype('normal'); setParsedData([]); setErrors([]); setFileName(''); }}
+                className="text-xs"
+              >
+                Flashcard
+              </Button>
+              <Button
+                size="sm"
+                variant={cardSubtype === 'cloze' ? 'default' : 'outline'}
+                onClick={() => { setCardSubtype('cloze'); setParsedData([]); setErrors([]); setFileName(''); }}
+                className="text-xs"
+              >
+                Cloze
+              </Button>
+            </div>
+          )}
+
           {/* Section Warning */}
           <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* CSV Format Example */}
           <div className="bg-muted p-3 rounded-lg">
             <p className="text-sm font-medium mb-2">CSV Format:</p>
             <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-              {CSV_FORMATS[resourceType]}
+              {resourceType === 'flashcard'
+                ? (cardSubtype === 'cloze' ? CSV_FORMAT_FLASHCARD_CLOZE : CSV_FORMAT_FLASHCARD_NORMAL)
+                : CSV_FORMATS[resourceType]}
             </pre>
           </div>
 
@@ -426,7 +463,8 @@ function parseLineByType(
   values: string[],
   type: StudyResourceType,
   rowNum: number,
-  headerMapping?: Record<string, number>
+  headerMapping?: Record<string, number>,
+  cardSubtype?: 'normal' | 'cloze'
 ): ParsedItem {
   if (values.length < 2) {
     return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
@@ -457,34 +495,48 @@ function parseLineByType(
 
   switch (type) {
     case 'flashcard': {
-      // Support cloze cards via header mapping
-      const cardTypeIdx = headerMapping?.['card_type'];
-      const clozeTextIdx = headerMapping?.['cloze_text'];
-      const extraIdx = headerMapping?.['extra'];
-      
-      const cardTypeVal = cardTypeIdx !== undefined ? values[cardTypeIdx]?.trim().toLowerCase() : undefined;
-      const clozeTextVal = clozeTextIdx !== undefined ? values[clozeTextIdx]?.trim() : undefined;
-      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
-      
-      const isCloze = cardTypeVal === 'cloze' && !!clozeTextVal;
-      
-      if (!isCloze && values.length < 3) {
-        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back (or card_type=cloze with cloze_text)' };
+      if (cardSubtype === 'cloze') {
+        // Cloze mode: expect title, cloze_text, extra, section_name, section_number
+        const clozeTextIdx = headerMapping?.['cloze_text'] ?? 1;
+        const extraIdx = headerMapping?.['extra'] ?? 2;
+        
+        const clozeText = values[clozeTextIdx]?.trim() || '';
+        const extra = values[extraIdx]?.trim() || '';
+        
+        if (!clozeText) {
+          return { title, content: { front: '', back: '' }, error: 'Cloze card requires cloze_text' };
+        }
+        
+        if (!/\{\{c\d+::.*?\}\}/.test(clozeText)) {
+          return { title, content: { front: '', back: '' }, error: 'Cloze text must contain at least one {{c1::answer}} pattern' };
+        }
+        
+        const content: FlashcardContent = {
+          front: '',
+          back: '',
+          card_type: 'cloze' as const,
+          cloze_text: clozeText,
+          ...(extra && { extra }),
+        };
+        
+        return { title, content, sectionName, sectionNumber };
       }
+      
+      // Normal mode: title, front, back
+      if (values.length < 3) {
+        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back' };
+      }
+      
+      const extraIdx = headerMapping?.['extra'];
+      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
       
       const content: FlashcardContent = {
         front: values[1] || '',
         back: values[2] || '',
-        ...(isCloze && { card_type: 'cloze' as const, cloze_text: clozeTextVal }),
         ...(extraVal && { extra: extraVal }),
       };
       
-      return {
-        title,
-        content,
-        sectionName,
-        sectionNumber,
-      };
+      return { title, content, sectionName, sectionNumber };
     }
     case 'table': {
       if (values.length < 3) {
