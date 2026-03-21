@@ -491,6 +491,29 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!documents?.length) {
+                    toast.info('No documents to sync');
+                    return;
+                  }
+                  const docsWithTarget = documents.filter(d => d.chapter_id || d.topic_id);
+                  if (!docsWithTarget.length) {
+                    toast.info('No documents linked to chapters or topics');
+                    return;
+                  }
+                  bulkSync(docsWithTarget.map(d => ({
+                    id: d.id,
+                    chapter_id: d.chapter_id,
+                    topic_id: d.topic_id,
+                  })));
+                }}
+                disabled={isBulkSyncing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isBulkSyncing ? 'animate-spin' : ''}`} />
+                {isBulkSyncing ? (bulkSyncProgress || 'Syncing...') : 'Sync All PDFs'}
+              </Button>
               <Button onClick={() => setUploadOpen(true)}>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload PDF
