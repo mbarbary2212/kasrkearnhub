@@ -339,7 +339,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
       if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
         throw new Error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
       }
-      const doctorValue = doctor.trim() || 'General';
+      const doctorValue = doctor.trim() || null;
       const { error } = await supabase.from('lectures').insert({
         title,
         description: doctorValue,
@@ -720,7 +720,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
           privacy: ytPrivacy,
           chapter_id: chapterId,
           module_id: moduleId,
-          doctor: doctor.trim() || 'General',
+          doctor: doctor.trim() || null,
         },
       });
       if (fnError) throw new Error(fnError.message);
@@ -865,17 +865,17 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
                     value={doctorSelectVal}
                     onValueChange={(v) => {
                       setDoctorSelectVal(v);
-                      if (v !== '__custom') setDoctor(v === '__general' ? '' : v);
+                      if (v !== '__custom') setDoctor(v === '__none' ? '' : v);
                       else setDoctor('');
                     }}
                     disabled={videoMode === 'upload' && ['uploading', 'finalizing'].includes(ytStatus)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="General (no doctor)" />
+                      <SelectValue placeholder="No doctor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__general">General</SelectItem>
-                      {existingDoctors.filter(d => d !== 'General').map((d) => (
+                      <SelectItem value="__none">No doctor</SelectItem>
+                      {existingDoctors.map((d) => (
                         <SelectItem key={d} value={d}>{d}</SelectItem>
                       ))}
                       <SelectItem value="__custom">+ Add new doctor…</SelectItem>

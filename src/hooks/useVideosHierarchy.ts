@@ -78,7 +78,7 @@ async function fetchVideosHierarchy(): Promise<YearNode[]> {
       youtube_video_id: ytId,
       duration: (raw.duration as string | null) ?? null,
       view_count: ytId ? (viewCountMap.get(ytId) ?? 0) : 0,
-      doctor: (raw.description as string | null) || 'General',
+      doctor: (raw.description as string | null) || '',
       chapter_id: lecture.chapter_id,
       module_id: (raw.module_id as string | null) ?? null,
     };

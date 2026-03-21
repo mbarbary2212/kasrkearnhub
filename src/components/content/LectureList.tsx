@@ -180,7 +180,8 @@ export function LectureList({
     }
     const doctorVotes = new Map<string, number>();
     for (const l of lectures) {
-      const doc = l.description || 'General';
+      const doc = l.description;
+      if (!doc) continue;
       const vid = l.youtube_video_id || extractYouTubeId(l.video_url || '') || l.id;
       doctorVotes.set(doc, (doctorVotes.get(doc) || 0) + (helpMap.get(vid) || 0));
     }
@@ -204,7 +205,7 @@ export function LectureList({
       });
     }
     if (selectedDoctor !== 'all') {
-      result = result.filter((l) => (l.description || 'General') === selectedDoctor);
+      result = result.filter((l) => l.description === selectedDoctor);
     }
     return result;
   }, [lectures, activeFilter, bookmarkedIds, watchedIds, selectedDoctor]);
@@ -267,7 +268,7 @@ export function LectureList({
     const doc = lecture.description || '';
     setEditDoctor(doc);
     // Determine select value: 'none', known doctor, or '__custom'
-    if (!doc || doc === 'General') {
+    if (!doc) {
       setEditDoctorSelectVal('none');
     } else if (existingDoctors.includes(doc)) {
       setEditDoctorSelectVal(doc);
@@ -360,7 +361,7 @@ export function LectureList({
                   <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {existingDoctors.filter(d => d !== 'General').map((d) => (
+                    {existingDoctors.map((d) => (
                       <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
                     <SelectItem value="__custom">+ Add new doctor…</SelectItem>
@@ -811,7 +812,7 @@ export function LectureList({
                 <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {existingDoctors.filter(d => d !== 'General').map((d) => (
+                  {existingDoctors.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
                   <SelectItem value="__custom">+ Add new doctor…</SelectItem>

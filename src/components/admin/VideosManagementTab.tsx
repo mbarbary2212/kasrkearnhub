@@ -58,14 +58,25 @@ function LectureEditDialog({ lecture }: { lecture: LectureNode }) {
     setTitle(lecture.title);
     setVideoUrl(lecture.video_url || '');
     setChapterId(lecture.chapter_id);
-    setModuleId(lecture.module_id || '');
-    // Derive yearId from hierarchy
-    const year = hierarchy.find((y) => y.modules.some((m) => m.id === lecture.module_id));
-    setYearId(year?.id || '');
+    // Derive module and year from chapter_id (lecture.module_id is not always populated)
+    let derivedModuleId = '';
+    let derivedYearId = '';
+    for (const year of hierarchy) {
+      for (const mod of year.modules) {
+        if (mod.chapters.some((c) => c.id === lecture.chapter_id)) {
+          derivedModuleId = mod.id;
+          derivedYearId = year.id;
+          break;
+        }
+      }
+      if (derivedYearId) break;
+    }
+    setModuleId(derivedModuleId);
+    setYearId(derivedYearId);
     // Doctor select
     const doc = lecture.doctor || '';
     setDoctor(doc);
-    setDoctorSelectVal(!doc || doc === 'General' ? '__general' : doc);
+    setDoctorSelectVal(doc || '__none');
     setOpen(true);
   };
 
@@ -134,15 +145,15 @@ function LectureEditDialog({ lecture }: { lecture: LectureNode }) {
                 value={doctorSelectVal}
                 onValueChange={(v) => {
                   setDoctorSelectVal(v);
-                  if (v === '__general') setDoctor('');
+                  if (v === '__none') setDoctor('');
                   else if (v !== '__custom') setDoctor(v);
                   else setDoctor('');
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="No doctor" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__general">General</SelectItem>
-                  {existingDoctors.filter((d) => d !== 'General').map((d) => (
+                  <SelectItem value="__none">No doctor</SelectItem>
+                  {existingDoctors.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
                   <SelectItem value="__custom">+ Add new doctor…</SelectItem>
@@ -252,7 +263,7 @@ function LectureRow({ lecture }: { lecture: LectureNode }) {
       <span className="text-sm flex-1 min-w-0 truncate">{lecture.title}</span>
 
       {/* Doctor badge */}
-      {lecture.doctor && lecture.doctor !== 'General' && (
+      {!!lecture.doctor && (
         <Badge variant="outline" className="text-[10px] px-1.5 shrink-0 text-muted-foreground">
           {lecture.doctor}
         </Badge>
@@ -474,7 +485,8 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
     const doctorVotes = new Map<string, number>();
     for (const chapter of selectedModule.chapters) {
       for (const lecture of chapter.lectures) {
-        const doc = lecture.doctor || 'General';
+        const doc = lecture.doctor;
+        if (!doc) continue;
         doctorVotes.set(doc, (doctorVotes.get(doc) || 0) + (helpMap.get(lecture.youtube_video_id || '') || 0));
       }
     }
@@ -493,7 +505,8 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
     const stats = new Map<string, { count: number; votes: number }>();
     for (const chapter of selectedModule.chapters) {
       for (const lecture of chapter.lectures) {
-        const doc = lecture.doctor || 'General';
+        const doc = lecture.doctor;
+        if (!doc) continue;
         const existing = stats.get(doc) || { count: 0, votes: 0 };
         stats.set(doc, {
           count: existing.count + 1,
@@ -509,12 +522,11 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
       setEditingDoctor(null);
       return;
     }
-    const descValue = newName.trim() === 'General' ? null : newName.trim();
     const { error } = await supabase
       .from('lectures')
-      .update({ description: descValue })
+      .update({ description: newName.trim() })
       .eq('module_id', selectedModule.id)
-      .eq('description', oldName === 'General' ? null : oldName);
+      .eq('description', oldName);
     if (error) { toast.error('Failed to rename doctor'); return; }
     queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
     queryClient.invalidateQueries({ queryKey: ['module-helpful-votes'] });
@@ -529,7 +541,7 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
       .from('lectures')
       .update({ description: null })
       .eq('module_id', selectedModule.id)
-      .eq('description', doctorName === 'General' ? null : doctorName);
+      .eq('description', doctorName);
     if (error) { toast.error('Failed to remove doctor'); return; }
     queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
     toast.success(`Removed doctor "${doctorName}"`);
@@ -795,7 +807,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
             privacy,
             chapter_id: selectedChapterId,
             module_id: selectedModuleId || undefined,
-            doctor: doctor.trim() || 'General',
+            doctor: doctor.trim() || null,
           },
         }
       );
@@ -985,7 +997,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
             {/* Doctor (optional) */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Doctor <span className="text-muted-foreground/60 font-normal">(optional — defaults to General)</span>
+                Doctor <span className="text-muted-foreground/60 font-normal">(optional)</span>
               </label>
               <Input
                 value={doctor}
