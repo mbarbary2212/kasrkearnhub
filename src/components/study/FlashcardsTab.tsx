@@ -115,6 +115,22 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
     return safeResources.filter(r => starredIds.has(r.id));
   }, [resources, showMarkedOnly, starredIds]);
 
+  // Count cards by type
+  const cardCounts = useMemo(() => {
+    const safeResources = filteredResources ?? [];
+    let cloze = 0;
+    let normal = 0;
+    for (const r of safeResources) {
+      const fc = r.content as FlashcardContent;
+      if (fc.card_type === 'cloze' && fc.cloze_text && /\{\{c\d+::(.+?)\}\}/.test(fc.cloze_text)) {
+        cloze++;
+      } else {
+        normal++;
+      }
+    }
+    return { cloze, normal, all: safeResources.length };
+  }, [filteredResources]);
+
   // Get all available topics for the current filter state
   const availableTopics = useMemo(() => {
     const safeResources = resources ?? [];
