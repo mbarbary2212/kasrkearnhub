@@ -626,7 +626,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
             {/* Upload button */}
             <Button
               onClick={handleUpload}
-              disabled={isUploading || !file || !title.trim() || !selectedLectureId}
+              disabled={isUploading || !file || !title.trim() || !selectedChapterId}
               className="gap-2 w-full sm:w-auto"
             >
               {isUploading ? (
