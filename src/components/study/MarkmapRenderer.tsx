@@ -4,6 +4,7 @@ import { Markmap } from 'markmap-view';
 import { Toolbar } from 'markmap-toolbar';
 import 'markmap-toolbar/dist/style.css';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTheme } from 'next-themes';
 
 const transformer = new Transformer();
 
