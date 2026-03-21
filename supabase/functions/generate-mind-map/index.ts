@@ -677,7 +677,7 @@ Return ONLY the JSON array, no other text.`;
                   pdf_size: pdfSize,
                   source_document_id: sourceDocumentId,
                   matched_db_section_id: matchedSectionId,
-                  prompt_snapshot: sectionSystemPrompt,
+                  prompt_snapshot: effectiveSectionPrompt,
                   generated_at: new Date().toISOString(),
                 },
                 prompt_version: sectionPromptVersion,
