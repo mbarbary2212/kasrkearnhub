@@ -372,7 +372,7 @@ export function FlashcardClozeMode({
               /* ========== NON-CLOZE FLIP CARD ========== */
               <div
                 onClick={() => setFlipped(v => !v)}
-                className={`relative w-full min-h-56 transform-style-3d cursor-pointer ${transitioning ? 'invisible' : 'visible'} ${flipped ? 'rotate-y-180' : ''}`}
+                className={cn(`relative w-full transform-style-3d cursor-pointer`, isFullscreen ? 'min-h-72 md:min-h-80' : 'min-h-56', transitioning ? 'invisible' : 'visible', flipped && 'rotate-y-180')}
                 style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
               >
                 <div className={cn("absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-start text-center overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]", isFullscreen && "min-h-72 md:min-h-80")}>
