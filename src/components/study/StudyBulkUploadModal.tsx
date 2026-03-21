@@ -677,7 +677,7 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
   headers.forEach((header, index) => {
     const normalized = header.toLowerCase().replace(/[\s_-]+/g, '_').replace(/[^a-z0-9_]/g, '');
     const target = columnMappings[normalized];
-    if (target && mapping[target] === undefined) {
+    if (target && target !== '__skip__' && mapping[target] === undefined) {
       mapping[target] = index;
     }
   });
