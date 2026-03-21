@@ -134,6 +134,7 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
 export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource }: PDFLibraryTableViewProps) {
   const [openYears, setOpenYears] = useState<Set<string>>(new Set(years.map(y => y.id).concat(['unlinked'])));
   const [openModules, setOpenModules] = useState<Set<string>>(new Set());
+  const [editingDoc, setEditingDoc] = useState<AdminDocument | null>(null);
 
   const grouped = useMemo((): { yearGroups: GroupedData[]; unlinked: AdminDocument[] } => {
     const yearMap = new Map<string, Year>();
