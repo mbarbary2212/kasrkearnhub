@@ -20,6 +20,7 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
   const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
 
   // Strip markmap frontmatter before transforming
   const cleanMarkdown = useCallback(() => {
