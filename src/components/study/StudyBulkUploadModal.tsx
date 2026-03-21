@@ -159,11 +159,13 @@ export function StudyBulkUploadModal({
       const parsed: ParsedItem[] = [];
       const parseErrors: ParseError[] = [];
       
-      // Check if first line is a header and build mapping
       const firstLine = lines[0];
       const hasHeader = isHeaderLine(firstLine);
       const headerMapping = hasHeader ? buildHeaderMapping(firstLine) : undefined;
       const startIndex = hasHeader ? 1 : 0;
+
+      // Determine effective type for parsing
+      const effectiveSubtype = resourceType === 'flashcard' ? cardSubtype : undefined;
 
       for (let i = startIndex; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -171,7 +173,7 @@ export function StudyBulkUploadModal({
 
         try {
           const values = parseCSVLine(line);
-          const item = parseLineByType(values, resourceType, i + 1, headerMapping);
+          const item = parseLineByType(values, resourceType, i + 1, headerMapping, effectiveSubtype);
           if (item.error) {
             parseErrors.push({ row: i + 1, reason: item.error });
           } else {
@@ -186,7 +188,7 @@ export function StudyBulkUploadModal({
       setParsedData(withDuplicates);
       setErrors(parseErrors);
     },
-    [resourceType, detectDuplicates]
+    [resourceType, cardSubtype, detectDuplicates]
   );
 
   const handleFileSelect = useCallback((file: File) => {
