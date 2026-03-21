@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminDocument, useUpdateAdminDocument } from '@/hooks/useAdminDocuments';
 import { useModules } from '@/hooks/useModules';
-import { useModuleChapters } from '@/hooks/useModuleChapters';
+import { useModuleChapters } from '@/hooks/useChapters';
 
 const DOC_TYPES = [
   { value: 'book_pdf', label: 'Book PDF' },
