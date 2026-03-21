@@ -16,9 +16,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2, Loader2, RefreshCw } from 'lucide-react';
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
+import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import {
   DndContext,
   closestCenter,
