@@ -1,51 +1,33 @@
 
 
-# Plan: Add Card Type Selector to Flashcard Bulk Upload
+# Fix: Cloze Card Flipping to "Question" + Fade-In Reveal
 
-## Problem
-When uploading flashcard CSVs, the modal shows one combined format hint for both normal and cloze cards, but there's no way for the admin to tell the system which type they're uploading. The parser tries to auto-detect via a `card_type` column, but this is fragile and confusing. The admin needs a clear toggle to select the target type.
+## Root Cause
 
-## Solution
-Add a "Flashcard" / "Cloze" toggle inside `StudyBulkUploadModal.tsx` that appears **only when `resourceType === 'flashcard'`**. This toggle:
-1. Switches the CSV format hint to show the relevant format only
-2. Tells the parser how to interpret the CSV (normal flashcard columns vs cloze columns)
-3. Auto-sets `card_type` on all parsed items based on the selection
+**The bug is a classic JavaScript global regex pitfall.** Line 34 defines:
+```
+const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/g;
+```
 
-## Changes (single file: `StudyBulkUploadModal.tsx`)
+The `g` (global) flag causes `.test()` to maintain internal state (`lastIndex`). Each call to `isClozeCard` advances the cursor, so on alternating renders it returns `true` then `false`. When the student clicks "Reveal Answer", the component re-renders, `isClozeCard` returns `false` this time, and the card switches to the non-cloze "Question" flip card view. Clicking again re-renders, `isClozeCard` returns `true` again, showing the cloze card with the answer revealed.
 
-### 1. Add state for card subtype
-Add a `cardSubtype` state: `'normal' | 'cloze'`, defaulting to `'normal'`. Reset it in `resetState()`.
+## Changes (single file: `FlashcardClozeMode.tsx`)
 
-### 2. Add toggle UI
-Below the dialog title, when `resourceType === 'flashcard'`, render two toggle buttons side by side:
-- **Flashcard** (default) — standard front/back cards
-- **Cloze** — cards with `{{c1::answer}}` syntax
+### 1. Fix the regex bug
+Remove the `g` flag from `CLOZE_REGEX` (line 34) since it's only used for `.test()` in `isClozeCard`. The `renderClozeText` function already creates its own local regex, so it's unaffected.
 
-Style: same pattern as the mode buttons in FlashcardsTab (variant default/outline toggle).
+### 2. Replace flip/swivel with fade-in for cloze reveal
+Currently the cloze card just swaps content inline. The "swivel" feel comes from the transition overlay (lines 343-344) which briefly blanks the card during navigation. For the actual cloze reveal (blanks to answers + extra), change it to a smooth fade-in:
+- Wrap the revealed answer pills and the Extra section in a CSS transition (`opacity 0→1, transform translateY(4px)→0`) using Tailwind's `animate-fade-in` class
+- The `[...]` pills smoothly transition to the green answer pills
+- The Extra section fades in below
 
-### 3. Split CSV format hints
-Replace the single `flashcard` entry in `CSV_FORMATS` display with conditional rendering:
-- When `cardSubtype === 'normal'`: show `title,front,back,section_name,section_number`
-- When `cardSubtype === 'cloze'`: show `title,cloze_text,extra,section_name,section_number` (no need for front/back/card_type columns — the toggle already tells us)
-
-### 4. Update parser behavior
-Pass `cardSubtype` into `processCSV`. When `cardSubtype === 'cloze'`:
-- Expect columns: `title`, `cloze_text`, `extra`, `section_name`, `section_number`
-- Auto-set `card_type: 'cloze'` on every parsed item's content
-- Validate that `cloze_text` contains at least one `{{c1::...}}` pattern
-
-When `cardSubtype === 'normal'`:
-- Use existing parsing (title, front, back)
-- Set `card_type: 'normal'`
-
-This also means the CSV for cloze is simpler — admins don't need to include a `card_type` column or leave `front`/`back` empty.
-
-### 5. Update dialog title
-Show "Import Flashcards" or "Import Cloze Flashcards" based on selection.
+### 3. Remove transition overlay interference on reveal
+The transition overlay (line 344) should only activate during card navigation (prev/next), not during reveal. Currently `transitioning` is only set in `handlePrev`/`handleNext` so this is already correct, but we should verify the card doesn't get the `invisible` class applied to cloze cards (it's only on the non-cloze flip div, so this is fine).
 
 ## File Modified
 
 | File | Change |
 |------|--------|
-| `src/components/study/StudyBulkUploadModal.tsx` | Add card subtype toggle, split format hints, update parser routing |
+| `src/components/study/FlashcardClozeMode.tsx` | Remove `g` flag from `CLOZE_REGEX`; add fade-in animation to revealed cloze answers and Extra section |
 
