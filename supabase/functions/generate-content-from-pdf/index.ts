@@ -75,6 +75,11 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     back: "string - the answer or definition",
     section_number: "string (optional) - section number from the provided list",
   },
+  cloze_flashcard: {
+    cloze_text: "string - the full sentence with blanks marked using {{c1::answer}} syntax. Example: 'Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.'",
+    extra: "string - a concise clinical note or explanation (1-2 sentences) providing context for the answer",
+    section_number: "string (optional) - section number from the provided list",
+  },
   case_scenario: {
     title: "string - case title",
     case_history: "string - patient history and presentation",
