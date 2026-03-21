@@ -101,12 +101,12 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   cloze_flashcard: {
-    columns: ['title', 'front', 'back', 'card_type', 'cloze_text', 'extra', 'section_name', 'section_number'],
-    required: ['title', 'card_type', 'cloze_text'],
-    optional: ['front', 'back', 'extra', 'section_name', 'section_number'],
+    columns: ['text', 'extra', 'tags', 'section_name', 'section_number'],
+    required: ['text'],
+    optional: ['extra', 'tags', 'section_name', 'section_number'],
     examples: [
-      ['Burns Classification', '', '', 'cloze', 'Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.', 'Blisters are a common clinical sign.', 'Burns', '1'],
-      ['MI Diagnosis', '', '', 'cloze', 'The gold standard biomarker for myocardial infarction is {{c1::troponin}}.', 'Troponin I or T; rises 3-6 hours after onset.', 'Cardiology', '2'],
+      ['Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.', 'Blisters are a common clinical sign.', 'Burns Classification', 'Burns', '1'],
+      ['The gold standard biomarker for myocardial infarction is {{c1::troponin}}.', 'Troponin I or T; rises 3-6 hours after onset.', 'MI Diagnosis', 'Cardiology', '2'],
     ],
   },
   table: {

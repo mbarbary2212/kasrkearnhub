@@ -66,7 +66,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
 };
 
 const CSV_FORMAT_FLASHCARD_NORMAL = 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"';
-const CSV_FORMAT_FLASHCARD_CLOZE = 'text,extra,tags\n"Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Burns Classification"';
+const CSV_FORMAT_FLASHCARD_CLOZE = 'text,extra,tags,section_name,section_number\n"Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Burns Classification","Burns","1"';
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
   flashcard: CSV_FORMAT_FLASHCARD_NORMAL,
