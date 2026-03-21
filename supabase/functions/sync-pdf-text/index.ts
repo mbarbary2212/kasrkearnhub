@@ -106,14 +106,28 @@ serve(async (req: Request) => {
       );
     }
 
-    // Convert to base64 for AI processing
+    // Convert to base64 for AI processing using chunked approach to avoid memory spikes
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce(
-        (data, byte) => data + String.fromCharCode(byte),
-        ""
-      )
-    );
+    const bytes = new Uint8Array(arrayBuffer);
+    const chunkSize = 8192;
+    let base64 = "";
+    {
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        for (let j = 0; j < chunk.length; j++) {
+          binary += String.fromCharCode(chunk[j]);
+        }
+        // Periodically convert and reset to limit peak memory
+        if (binary.length > 65536) {
+          base64 += btoa(binary);
+          binary = "";
+        }
+      }
+      if (binary.length > 0) {
+        base64 += btoa(binary);
+      }
+    }
 
     // Get AI settings
     const aiSettings = await getAISettings(serviceClient);
