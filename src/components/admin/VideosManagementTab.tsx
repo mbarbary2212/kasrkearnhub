@@ -322,70 +322,52 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
 
     try {
       // Step 1: Initiate resumable upload
-      const { data: initiateData, error: initiateError } = await supabase.functions.invoke(
-        'youtube-upload',
-        { body: { action: 'initiate', title, description, privacy } }
-      );
-      if (initiateError) throw new Error(initiateError.message);
-
-      const uploadUrl: string = initiateData?.upload_url;
-      if (!uploadUrl) throw new Error('No upload URL returned from server.');
-
-      // Step 2: Upload file directly to YouTube resumable URL via XHR for progress
+      // Step 1: Upload file to Supabase Storage (supports CORS, shows progress)
       setUploadStatus('uploading');
 
-      const videoResource = await new Promise<{ id: string }>((resolve, reject) => {
+      const storagePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        const uploadEndpoint = `${supabaseUrl}/storage/v1/object/video-uploads/${storagePath}`;
+        const accessToken = session?.access_token ?? '';
 
         xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 100));
-          }
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
         };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const json = JSON.parse(xhr.responseText);
-              resolve(json);
-            } catch {
-              reject(new Error('Failed to parse YouTube upload response.'));
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during upload.'));
-        xhr.onabort = () => reject(new Error('Upload aborted.'));
-
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type || 'video/*');
+        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.responseText}`));
+        xhr.onerror = () => reject(new Error('Network error uploading to storage.'));
+        xhr.open('POST', uploadEndpoint);
+        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+        xhr.setRequestHeader('x-upsert', 'true');
         xhr.send(file);
       });
 
-      const youtubeVideoId = videoResource?.id;
-      if (!youtubeVideoId) throw new Error('YouTube did not return a video ID after upload.');
-
-      // Step 3: Finalize — update DB and add to playlist
+      // Step 2: Call edge function to upload from storage → YouTube → create lecture
       setUploadStatus('finalizing');
 
       const { data: finalizeData, error: finalizeError } = await supabase.functions.invoke(
         'youtube-upload',
         {
           body: {
-            action: 'finalize',
-            youtube_video_id: youtubeVideoId,
+            action: 'upload',
+            storage_path: storagePath,
+            title,
+            description,
+            privacy,
             chapter_id: selectedChapterId,
             module_id: selectedModuleId || undefined,
-            title,
             doctor: doctor.trim() || 'General',
           },
         }
       );
       if (finalizeError) throw new Error(finalizeError.message);
 
-      setYoutubeUrl(finalizeData?.youtube_url ?? `https://www.youtube.com/watch?v=${youtubeVideoId}`);
+      setYoutubeUrl(finalizeData?.youtube_url ?? '');
       setUploadStatus('done');
       toast.success('Video uploaded and linked to lecture!');
       queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
@@ -412,9 +394,9 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
 
   const statusLabel: Record<UploadStatus, string> = {
     idle: '',
-    initiating: 'Initiating upload…',
-    uploading: `Uploading… ${uploadProgress}%`,
-    finalizing: 'Finalizing and linking lecture…',
+    initiating: 'Preparing…',
+    uploading: `Uploading to server… ${uploadProgress}%`,
+    finalizing: 'Sending to YouTube & creating lecture…',
     done: 'Upload complete!',
     error: 'Upload failed',
   };
