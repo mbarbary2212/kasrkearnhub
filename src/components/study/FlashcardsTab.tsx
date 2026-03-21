@@ -11,7 +11,7 @@ import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Layers, PenLine, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
+import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -237,7 +237,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
           className="gap-2"
         >
           <PenLine className="w-4 h-4" />
-          Fill-in
+          Cloze
+        </Button>
+        <Button
+          variant={studentMode === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setMode('all')}
+          className="gap-2"
+        >
+          <LayoutGrid className="w-4 h-4" />
+          All
         </Button>
 
         {/* Filter dropdown */}
@@ -295,6 +304,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
+            />
+          ) : studentMode === 'cloze' ? (
+            <FlashcardClozeMode
+              cards={filteredResources}
+              markedIds={starredIds}
+              onToggleMark={handleToggleStar}
+              availableTopics={availableTopics}
+              chapterId={chapterId}
+              topicId={topicId}
+              clozeOnly
             />
           ) : (
             <FlashcardClozeMode
