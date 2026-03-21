@@ -63,30 +63,21 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
     toolbarRef.current.appendChild(toolbar.el);
   }, [ready]);
 
-  // Sync markmap dark mode with app theme
+  // Sync markmap dark mode with app theme by toggling class on <html>
   useEffect(() => {
-    if (!svgRef.current || !ready) return;
-    // resolvedTheme can be undefined during hydration; also check DOM
+    if (!ready) return;
     const isDark = resolvedTheme === 'dark' || 
       document.documentElement.classList.contains('dark');
     if (isDark) {
-      svgRef.current.classList.add('markmap-dark');
+      document.documentElement.classList.add('markmap-dark');
     } else {
-      svgRef.current.classList.remove('markmap-dark');
+      document.documentElement.classList.remove('markmap-dark');
     }
+    // Cleanup: remove markmap-dark when component unmounts
+    return () => {
+      document.documentElement.classList.remove('markmap-dark');
+    };
   }, [resolvedTheme, ready]);
-
-  // Also apply on mount after a short delay to handle hydration timing
-  useEffect(() => {
-    if (!svgRef.current || !ready) return;
-    const timer = setTimeout(() => {
-      const isDark = document.documentElement.classList.contains('dark');
-      if (isDark && svgRef.current) {
-        svgRef.current.classList.add('markmap-dark');
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [ready]);
 
   // Refit on container resize (handles fullscreen toggle, window resize, orientation change)
   useEffect(() => {
