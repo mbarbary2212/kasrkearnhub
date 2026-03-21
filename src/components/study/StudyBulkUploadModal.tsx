@@ -457,12 +457,31 @@ function parseLineByType(
 
   switch (type) {
     case 'flashcard': {
-      if (values.length < 3) {
-        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back' };
+      // Support cloze cards via header mapping
+      const cardTypeIdx = headerMapping?.['card_type'];
+      const clozeTextIdx = headerMapping?.['cloze_text'];
+      const extraIdx = headerMapping?.['extra'];
+      
+      const cardTypeVal = cardTypeIdx !== undefined ? values[cardTypeIdx]?.trim().toLowerCase() : undefined;
+      const clozeTextVal = clozeTextIdx !== undefined ? values[clozeTextIdx]?.trim() : undefined;
+      const extraVal = extraIdx !== undefined ? values[extraIdx]?.trim() : undefined;
+      
+      const isCloze = cardTypeVal === 'cloze' && !!clozeTextVal;
+      
+      if (!isCloze && values.length < 3) {
+        return { title, content: { front: '', back: '' }, error: 'Flashcard requires title, front, and back (or card_type=cloze with cloze_text)' };
       }
+      
+      const content: FlashcardContent = {
+        front: values[1] || '',
+        back: values[2] || '',
+        ...(isCloze && { card_type: 'cloze' as const, cloze_text: clozeTextVal }),
+        ...(extraVal && { extra: extraVal }),
+      };
+      
       return {
         title,
-        content: { front: values[1], back: values[2] } as FlashcardContent,
+        content,
         sectionName,
         sectionNumber,
       };
