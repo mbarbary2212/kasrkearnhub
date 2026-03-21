@@ -23,7 +23,8 @@ import {
   ExternalLink,
   X,
   Plus,
-  Layers
+  Layers,
+  RefreshCw,
 } from 'lucide-react';
 import { useAdminDocuments, useUploadAdminDocument, useDeleteAdminDocument, getSignedUrl, AdminDocument } from '@/hooks/useAdminDocuments';
 import { useModules } from '@/hooks/useModules';

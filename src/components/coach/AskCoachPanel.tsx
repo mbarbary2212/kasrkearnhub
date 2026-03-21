@@ -65,24 +65,41 @@ export function AskCoachPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasInjectedContext = useRef(false);
 
-  // Fetch chapter pdf_text for grounding
+  // Fetch chapter or topic pdf_text for grounding
   useEffect(() => {
-    if (!askCoachOpen || !studyContext?.chapterId) {
+    if (!askCoachOpen) {
       setChapterPdfText(null);
       return;
     }
+    
     const fetchPdfText = async () => {
-      const { data } = await supabase
-        .from('module_chapters')
-        .select('pdf_text')
-        .eq('id', studyContext.chapterId!)
-        .maybeSingle();
-      if (data?.pdf_text) {
-        setChapterPdfText(data.pdf_text);
+      // Try chapter first
+      if (studyContext?.chapterId) {
+        const { data } = await supabase
+          .from('module_chapters')
+          .select('pdf_text')
+          .eq('id', studyContext.chapterId!)
+          .maybeSingle();
+        if (data?.pdf_text) {
+          setChapterPdfText(data.pdf_text);
+          return;
+        }
+      }
+      // Fallback: try topic
+      if (studyContext?.topicId) {
+        const { data } = await supabase
+          .from('topics')
+          .select('pdf_text')
+          .eq('id', studyContext.topicId!)
+          .maybeSingle();
+        if ((data as any)?.pdf_text) {
+          setChapterPdfText((data as any).pdf_text);
+          return;
+        }
       }
     };
     fetchPdfText();
-  }, [askCoachOpen, studyContext?.chapterId]);
+  }, [askCoachOpen, studyContext?.chapterId, studyContext?.topicId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
