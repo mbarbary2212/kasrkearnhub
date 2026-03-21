@@ -53,6 +53,7 @@ import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSe
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 
 import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
+import { VideosManagementTab } from '@/components/admin/VideosManagementTab';
 
 
 
@@ -1028,7 +1029,7 @@ export default function AdminPage() {
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
     if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
-    if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases'].includes(tab)) return 'content';
+    if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';
   };
@@ -1050,6 +1051,7 @@ export default function AdminPage() {
         { value: 'sources', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'help', visible: true },
         { value: 'analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+        { value: 'videos', visible: isSuperAdmin || isPlatformAdmin },
         { value: 'ai-settings', visible: isSuperAdmin },
       ],
       messaging: [
@@ -2135,6 +2137,13 @@ export default function AdminPage() {
                   </>
                 }
               />
+            </TabsContent>
+          )}
+
+          {/* Videos Management Tab */}
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="videos">
+              <VideosManagementTab />
             </TabsContent>
           )}
 
