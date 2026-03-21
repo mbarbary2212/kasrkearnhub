@@ -158,6 +158,7 @@ export function validateInputLimits(
 type ContentType = 
   | 'mcq' 
   | 'flashcard' 
+  | 'cloze_flashcard'
   | 'essay' 
   | 'osce' 
   | 'matching' 
@@ -172,6 +173,7 @@ type ContentType =
 const ALLOWED_KEYS: Record<ContentType, string[]> = {
   mcq: ['stem', 'choices', 'correct_key', 'explanation', 'difficulty', 'section_number'],
   flashcard: ['front', 'back', 'section_number'],
+  cloze_flashcard: ['cloze_text', 'extra', 'section_number'],
   essay: ['title', 'question', 'model_answer', 'keywords', 'section_number'],
   osce: [
     'history_text', 

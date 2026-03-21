@@ -17,6 +17,7 @@ type ContentType =
   | "mcq"
   | "sba"
   | "flashcard"
+  | "cloze_flashcard"
   | "case_scenario"
   | "essay"
   | "osce"
@@ -73,6 +74,11 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
   flashcard: {
     front: "string - the question or term",
     back: "string - the answer or definition",
+    section_number: "string (optional) - section number from the provided list",
+  },
+  cloze_flashcard: {
+    cloze_text: "string - the full sentence with blanks marked using {{c1::answer}} syntax. Example: 'Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.'",
+    extra: "string - a concise clinical note or explanation (1-2 sentences) providing context for the answer",
     section_number: "string (optional) - section number from the provided list",
   },
   case_scenario: {
@@ -279,6 +285,18 @@ PEDAGOGICAL GUIDELINES:
 - Vary difficulty across the set
 - Front should be a clear, focused question or prompt
 - Back should be concise but complete`;
+
+    case 'cloze_flashcard':
+      return `
+PEDAGOGICAL GUIDELINES (Cloze / Fill-in-the-blank):
+- Each item is a factual sentence with ONE key term replaced by {{c1::answer}}
+- The blanked term should test a specific, important fact (drug name, structure, mechanism, value)
+- The surrounding sentence must provide enough context to recall the answer
+- The "extra" field should give a brief clinical note or explanation (1-2 sentences)
+- Vary which part of the sentence is blanked (subject, object, value, etc.)
+- Avoid blanking trivial words — blank the most high-yield term
+- Example: "The most common cause of community-acquired pneumonia is {{c1::Streptococcus pneumoniae}}."`;
+
 
     case 'guided_explanation':
       return `
@@ -533,6 +551,19 @@ function validateFlashcardItem(item: any, index: number): ValidationResult {
   return { isValid: errors.length === 0, errors, warnings: [] };
 }
 
+function validateClozeFlashcardItem(item: any, index: number): ValidationResult {
+  const errors: string[] = [];
+  if (!item.cloze_text || typeof item.cloze_text !== 'string' || item.cloze_text.trim().length < 10) {
+    errors.push(`Cloze #${index + 1}: cloze_text must be at least 10 characters`);
+  } else if (!/\{\{c\d+::.+?\}\}/.test(item.cloze_text)) {
+    errors.push(`Cloze #${index + 1}: cloze_text must contain at least one {{c1::answer}} marker`);
+  }
+  if (!item.extra || typeof item.extra !== 'string' || item.extra.trim().length < 3) {
+    errors.push(`Cloze #${index + 1}: extra (clinical note) is required`);
+  }
+  return { isValid: errors.length === 0, errors, warnings: [] };
+}
+
 function validateCaseScenarioItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
   if (!item.title || item.title.length < 5) errors.push(`Case #${index + 1}: title must be at least 5 characters`);
@@ -747,6 +778,7 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
       case 'virtual_patient':
       case 'clinical_case': items[i] = normalizeClinicalCaseItem(items[i]); result = validateVirtualPatientItem(items[i], i); break;
       case 'flashcard': result = validateFlashcardItem(items[i], i); break;
+      case 'cloze_flashcard': result = validateClozeFlashcardItem(items[i], i); break;
       case 'case_scenario': result = validateCaseScenarioItem(items[i], i); break;
       case 'essay': result = validateEssayItem(items[i], i); break;
       case 'mind_map': result = validateMindMapItem(items[i], i); break;
@@ -802,6 +834,11 @@ function buildItemFingerprint(item: any, contentType: ContentType): string {
       const front = (item.front || '').substring(0, 80);
       const concept = extractKeyConcept(item.front || '');
       return `key_concept="${concept}" | front_prefix="${front}"`;
+    }
+    case 'cloze_flashcard': {
+      const clozeText = (item.cloze_text || '').substring(0, 80);
+      const concept = extractKeyConcept(item.cloze_text || '');
+      return `key_concept="${concept}" | cloze_prefix="${clozeText}"`;
     }
     case 'essay': {
       const q = (item.question || '').substring(0, 80);

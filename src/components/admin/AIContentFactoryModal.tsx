@@ -80,6 +80,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
   { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
+  { value: 'cloze_flashcard', label: 'Cloze Flashcards', icon: Layers, description: 'Fill-in-the-blank cloze cards from PDF', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },
   { value: 'pathway', label: 'Pathways', icon: GitBranch, description: 'Interactive clinical decision trees', category: 'resources', requiresChapter: true },
   { value: 'guided_explanation', label: 'Guided Explanations', icon: MessageCircleQuestion, description: 'Socratic-style Q&A that guides students through reasoning', category: 'resources', requiresChapter: true },
@@ -112,6 +113,7 @@ function getPrimaryText(item: any, contentType: string): string {
   switch (contentType) {
     case 'mcq': return item.stem || '';
     case 'flashcard': return item.front || '';
+    case 'cloze_flashcard': return item.cloze_text || '';
     case 'essay': return item.question || '';
     case 'osce': return item.history_text || '';
     case 'matching': return item.instruction || '';

@@ -8,6 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 type ContentType = 
   | 'mcq' 
   | 'flashcard' 
+  | 'cloze_flashcard'
   | 'essay' 
   | 'osce' 
   | 'matching';
@@ -54,6 +55,10 @@ export function generateContentHash(item: any, contentType: ContentType): string
       
     case 'flashcard':
       hashInput = `${normalizeText(item.front || '')}|${normalizeText(item.back || '')}`;
+      break;
+      
+    case 'cloze_flashcard':
+      hashInput = normalizeText(item.cloze_text || '');
       break;
       
     case 'essay':
@@ -163,6 +168,11 @@ export function calculateContentSimilarity(
       const front1 = normalizeText(item1.front || '');
       const front2 = normalizeText(item2.front || '');
       return calculateStringSimilarity(front1, front2);
+      
+    case 'cloze_flashcard':
+      const cloze1 = normalizeText(item1.cloze_text || '');
+      const cloze2 = normalizeText(item2.cloze_text || '');
+      return calculateStringSimilarity(cloze1, cloze2);
       
     case 'essay':
       const q1 = normalizeText(item1.question || '');
