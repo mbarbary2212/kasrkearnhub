@@ -281,6 +281,11 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                     </div>
                   </SortableContext>
                 </DndContext>
+              ) : isExtracting ? (
+                <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Extracting sections from PDF...
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-2">
                   No sections yet. Add your first section below.
