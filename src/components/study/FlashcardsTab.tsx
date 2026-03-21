@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from 'react';
+import { FlashcardContent } from '@/hooks/useStudyResources';
 import { FlashcardsStudentView } from './FlashcardsStudentView';
 import { FlashcardClozeMode } from './FlashcardClozeMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
