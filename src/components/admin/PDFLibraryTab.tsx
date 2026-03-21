@@ -451,6 +451,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
   const [aiFactoryOpen, setAiFactoryOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
   const [selectedDocForAI, setSelectedDocForAI] = useState<AdminDocument | null>(null);
+  const { bulkSync, isSyncing: isBulkSyncing, progress: bulkSyncProgress } = useSyncPdfText();
 
   const { data: documents, isLoading } = useAdminDocuments({
     search: search || undefined,
