@@ -17,6 +17,7 @@ type ContentType =
   | "mcq"
   | "sba"
   | "flashcard"
+  | "cloze_flashcard"
   | "case_scenario"
   | "essay"
   | "osce"

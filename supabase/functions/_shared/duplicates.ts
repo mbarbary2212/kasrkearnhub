@@ -8,6 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 type ContentType = 
   | 'mcq' 
   | 'flashcard' 
+  | 'cloze_flashcard'
   | 'essay' 
   | 'osce' 
   | 'matching';

@@ -158,6 +158,7 @@ export function validateInputLimits(
 type ContentType = 
   | 'mcq' 
   | 'flashcard' 
+  | 'cloze_flashcard'
   | 'essay' 
   | 'osce' 
   | 'matching' 
