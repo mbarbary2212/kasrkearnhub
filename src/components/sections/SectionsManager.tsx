@@ -85,6 +85,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const reorderSections = useReorderSections();
   const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
   const { extractAndInsert, isExtracting } = useExtractSections();
+  const { syncPdfText, isSyncing: isSyncingPdf, progress: syncProgress } = useSyncPdfText();
   
   // DnD sensors
   const sensors = useSensors(
