@@ -463,7 +463,8 @@ function parseLineByType(
   values: string[],
   type: StudyResourceType,
   rowNum: number,
-  headerMapping?: Record<string, number>
+  headerMapping?: Record<string, number>,
+  cardSubtype?: 'normal' | 'cloze'
 ): ParsedItem {
   if (values.length < 2) {
     return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
