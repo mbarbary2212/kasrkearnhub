@@ -66,7 +66,7 @@ const TYPE_LABELS: Record<StudyResourceType, string> = {
 };
 
 const CSV_FORMATS: Record<StudyResourceType, string> = {
-  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"',
+  flashcard: 'title,front,back,section_name,section_number\n"Card Title","Question text","Answer text","Section Name","1"\n\nFor cloze cards: title,front,back,card_type,cloze_text,extra,section_name,section_number\n"Burns Classification","","","cloze","Second degree burns involve the epidermis and a portion of the {{c1::dermis}}.","Blisters are a common clinical sign.","Section Name","1"',
   table: 'title,headers,row1,row2,section_name,section_number\n"Table Title","Col1|Col2|Col3","Val1|Val2|Val3","Val4|Val5|Val6","",""',
   algorithm: 'title,steps,section_name,section_number\n"Algorithm Title","Step 1 title::Step 1 desc|Step 2 title::Step 2 desc","",""',
   exam_tip: 'title,tips,section_name,section_number\n"Tips Title","Tip 1|Tip 2|Tip 3","",""',
