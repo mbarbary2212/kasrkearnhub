@@ -192,6 +192,7 @@ export function SetPasswordDialog({ open, onOpenChange, user }: SetPasswordDialo
                   </Button>
                 </div>
                 <PasswordRequirements password={password} mode="live" />
+              </div>
             )}
 
             <DialogFooter>
