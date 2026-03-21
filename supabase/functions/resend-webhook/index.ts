@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Webhook } from "https://esm.sh/svix@1.15.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,8 +27,46 @@ serve(async (req: Request) => {
   }
 
   try {
-    const event: ResendWebhookEvent = await req.json();
-    
+    // Verify Svix signature
+    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      console.error('RESEND_WEBHOOK_SECRET not configured');
+      return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const svixId = req.headers.get('svix-id');
+    const svixTimestamp = req.headers.get('svix-timestamp');
+    const svixSignature = req.headers.get('svix-signature');
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      console.error('Missing Svix headers');
+      return new Response(JSON.stringify({ error: 'Missing webhook signature headers' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.text();
+    const wh = new Webhook(webhookSecret);
+
+    let event: ResendWebhookEvent;
+    try {
+      event = wh.verify(body, {
+        'svix-id': svixId,
+        'svix-timestamp': svixTimestamp,
+        'svix-signature': svixSignature,
+      }) as ResendWebhookEvent;
+    } catch (verifyError) {
+      console.error('Webhook signature verification failed:', verifyError);
+      return new Response(JSON.stringify({ error: 'Invalid webhook signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Use service role to insert (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -69,7 +108,7 @@ serve(async (req: Request) => {
     });
   } catch (error: any) {
     console.error('Webhook error:', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
