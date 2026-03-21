@@ -61,45 +61,8 @@ export function AskCoachPanel() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<CoachError | null>(null);
-  const [chapterPdfText, setChapterPdfText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasInjectedContext = useRef(false);
-
-  // Fetch chapter or topic pdf_text for grounding
-  useEffect(() => {
-    if (!askCoachOpen) {
-      setChapterPdfText(null);
-      return;
-    }
-    
-    const fetchPdfText = async () => {
-      // Try chapter first
-      if (studyContext?.chapterId) {
-        const { data } = await supabase
-          .from('module_chapters')
-          .select('pdf_text')
-          .eq('id', studyContext.chapterId!)
-          .maybeSingle();
-        if (data?.pdf_text) {
-          setChapterPdfText(data.pdf_text);
-          return;
-        }
-      }
-      // Fallback: try topic
-      if (studyContext?.topicId) {
-        const { data } = await supabase
-          .from('topics')
-          .select('pdf_text')
-          .eq('id', studyContext.topicId!)
-          .maybeSingle();
-        if ((data as any)?.pdf_text) {
-          setChapterPdfText((data as any).pdf_text);
-          return;
-        }
-      }
-    };
-    fetchPdfText();
-  }, [askCoachOpen, studyContext?.chapterId, studyContext?.topicId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -127,13 +90,7 @@ export function AskCoachPanel() {
   }, [askCoachOpen, initialCoachMessage]);
 
   const streamChat = useCallback(async (userMessages: Message[], contextPrompt: string | null) => {
-    let systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
-    
-    // Append chapter content for grounding (truncate to ~8000 chars)
-    if (chapterPdfText) {
-      const truncated = chapterPdfText.slice(0, 8000);
-      systemContext += `\n\n[CHAPTER CONTENT]\n${truncated}`;
-    }
+    const systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
     
     // Get auth token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
@@ -152,6 +109,8 @@ export function AskCoachPanel() {
       body: JSON.stringify({ 
         messages: userMessages,
         context: systemContext,
+        chapterId: studyContext?.chapterId || null,
+        topicId: studyContext?.topicId || null,
       }),
     });
 
@@ -247,7 +206,7 @@ export function AskCoachPanel() {
         }
       }
     }
-  }, [chapterPdfText]);
+  }, [studyContext?.chapterId, studyContext?.topicId]);
 
   const handleSend = useCallback(async (text?: string) => {
     const messageText = text || input.trim();

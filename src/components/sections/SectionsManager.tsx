@@ -16,10 +16,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown, Wand2, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2, Loader2, FileCheck, FileX } from 'lucide-react';
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
-import { useSyncPdfText } from '@/hooks/useSyncPdfText';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   DndContext,
   closestCenter,
@@ -85,7 +86,25 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const reorderSections = useReorderSections();
   const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
   const { extractAndInsert, isExtracting } = useExtractSections();
-  const { syncPdfText, isSyncing: isSyncingPdf, progress: syncProgress } = useSyncPdfText();
+
+  // Check if a PDF is linked to this chapter
+  const { data: linkedDoc } = useQuery({
+    queryKey: ['admin-doc-linked', chapterId, topicId],
+    queryFn: async () => {
+      const col = chapterId ? 'chapter_id' : 'topic_id';
+      const val = chapterId || topicId;
+      if (!val) return null;
+      const { data } = await supabase
+        .from('admin_documents')
+        .select('id, title')
+        .eq(col, val)
+        .eq('is_deleted', false)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!(chapterId || topicId),
+  });
   
   // DnD sensors
   const sensors = useSensors(
@@ -249,26 +268,23 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 {isChapterScope && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        if (chapterId) {
-                          await syncPdfText({ chapter_id: chapterId });
-                        } else if (topicId) {
-                          await syncPdfText({ topic_id: topicId });
-                        }
-                      }}
-                      disabled={!sectionsEnabled || isSyncingPdf}
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-1 ${isSyncingPdf ? 'animate-spin' : ''}`} />
-                      {isSyncingPdf ? (syncProgress || 'Syncing...') : 'Sync PDF'}
-                    </Button>
+                    {linkedDoc ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                        <FileCheck className="h-3.5 w-3.5" />
+                        PDF linked
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <FileX className="h-3.5 w-3.5" />
+                        No PDF
+                      </span>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleAutoDetectSections}
-                      disabled={!sectionsEnabled || isExtracting}
+                      disabled={!sectionsEnabled || isExtracting || !linkedDoc}
+                      title={!linkedDoc ? 'Upload a PDF first' : undefined}
                     >
                       <Wand2 className="h-4 w-4 mr-1" />
                       {isExtracting ? 'Detecting...' : 'Auto Detect'}
