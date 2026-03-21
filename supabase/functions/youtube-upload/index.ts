@@ -74,7 +74,7 @@ const encodeDoctor = (d: string | undefined) =>
   (d || "general").toLowerCase().replace(/[^a-z0-9]/g, "_");
 
 async function handleUpload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   body: {
     storage_path: string;
     title: string;

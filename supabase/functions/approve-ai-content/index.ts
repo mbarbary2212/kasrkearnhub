@@ -186,6 +186,7 @@ serve(async (req) => {
 
   const moduleId = inputMetadata.module_id as string | undefined;
   const chapterId = (inputMetadata.chapter_id as string | null | undefined) ?? null;
+  const topicId = (inputMetadata.topic_id as string | null | undefined) ?? null;
   const testMode = inputMetadata.test_mode || output.test_mode || false;
 
   if (!moduleId) {
