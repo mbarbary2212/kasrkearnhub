@@ -95,6 +95,9 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
 
   return (
     <div className="flex items-center gap-1">
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(doc)} title="Edit">
+        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+      </Button>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handlePreview} title="Preview">
         <ExternalLink className="h-3.5 w-3.5" />
       </Button>
