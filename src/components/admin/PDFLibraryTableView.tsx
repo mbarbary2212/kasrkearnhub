@@ -75,6 +75,19 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
     else toast.error('Failed to generate preview link');
   };
 
+  const handleDownload = async () => {
+    const url = await getSignedUrl(doc.storage_path);
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.file_name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else toast.error('Failed to generate download link');
+  };
+
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
 
   const handleSync = async () => {
