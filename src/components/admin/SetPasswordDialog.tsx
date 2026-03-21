@@ -55,8 +55,8 @@ export function SetPasswordDialog({ open, onOpenChange, user }: SetPasswordDialo
     if (!user) return;
     const finalPassword = mode === 'auto' ? generatedPassword : password;
     
-    if (finalPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (!isPasswordValid(finalPassword)) {
+      toast.error('Password must be 8–64 chars with lowercase, uppercase, number, and symbol');
       return;
     }
 
