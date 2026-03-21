@@ -90,7 +90,7 @@ function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAs
         <Download className="h-3.5 w-3.5" />
       </Button>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onUseAsAISource(doc)} title="Use as AI Source">
-        <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
       </Button>
       <Button
         size="icon"
