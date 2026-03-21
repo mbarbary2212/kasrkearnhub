@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AdminDocument, useDeleteAdminDocument, getSignedUrl } from '@/hooks/useAdminDocuments';
+import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
