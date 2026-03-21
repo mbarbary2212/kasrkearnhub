@@ -32,7 +32,7 @@ async function getAccessToken(): Promise<string> {
 // ─── Action: delete ────────────────────────────────────────────────────────────
 
 async function handleDelete(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   body: { youtube_video_id: string }
 ): Promise<Response> {
   const { youtube_video_id } = body;
