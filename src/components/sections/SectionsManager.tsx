@@ -124,7 +124,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
         await toggleChapterSections.mutateAsync({ chapterId, enabled });
         // Auto-extract sections from PDF if enabling and no sections exist yet
         if (enabled && (!sections || sections.length === 0)) {
-          extractAndInsert(chapterId);
+          await extractAndInsert(chapterId);
         }
       } else if (topicId) {
         await toggleTopicSections.mutateAsync({ topicId, enabled });
