@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw, Pencil, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +8,16 @@ import { AdminDocument, useDeleteAdminDocument, getSignedUrl } from '@/hooks/use
 import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import { EditDocumentDialog } from './EditDocumentDialog';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 
 interface Year {
