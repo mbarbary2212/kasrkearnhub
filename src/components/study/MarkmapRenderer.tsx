@@ -4,6 +4,7 @@ import { Markmap } from 'markmap-view';
 import { Toolbar } from 'markmap-toolbar';
 import 'markmap-toolbar/dist/style.css';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTheme } from 'next-themes';
 
 const transformer = new Transformer();
 
@@ -19,6 +20,7 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
   const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
 
   // Strip markmap frontmatter before transforming
   const cleanMarkdown = useCallback(() => {
@@ -60,6 +62,17 @@ export function MarkmapRenderer({ markdown, className = '' }: MarkmapRendererPro
     const toolbar = Toolbar.create(mmRef.current);
     toolbarRef.current.appendChild(toolbar.el);
   }, [ready]);
+
+  // Sync markmap dark mode with app theme
+  useEffect(() => {
+    if (!svgRef.current || !ready) return;
+    const isDark = resolvedTheme === 'dark';
+    if (isDark) {
+      svgRef.current.classList.add('markmap-dark');
+    } else {
+      svgRef.current.classList.remove('markmap-dark');
+    }
+  }, [resolvedTheme, ready]);
 
   // Refit on container resize (handles fullscreen toggle, window resize, orientation change)
   useEffect(() => {
