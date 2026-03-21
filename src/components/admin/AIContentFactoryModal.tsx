@@ -113,6 +113,7 @@ function getPrimaryText(item: any, contentType: string): string {
   switch (contentType) {
     case 'mcq': return item.stem || '';
     case 'flashcard': return item.front || '';
+    case 'cloze_flashcard': return item.cloze_text || '';
     case 'essay': return item.question || '';
     case 'osce': return item.history_text || '';
     case 'matching': return item.instruction || '';
