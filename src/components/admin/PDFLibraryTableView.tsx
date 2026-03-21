@@ -55,7 +55,7 @@ interface GroupedData {
   }[];
 }
 
-function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAsAISource: (doc: AdminDocument) => void }) {
+function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument; onUseAsAISource: (doc: AdminDocument) => void; onEdit: (doc: AdminDocument) => void }) {
   const deleteMutation = useDeleteAdminDocument();
   const { syncPdfText, isSyncing } = useSyncPdfText();
 
