@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from 'react';
+import { FlashcardContent } from '@/hooks/useStudyResources';
 import { FlashcardsStudentView } from './FlashcardsStudentView';
 import { FlashcardClozeMode } from './FlashcardClozeMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
@@ -113,6 +114,22 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
     if (!showMarkedOnly) return safeResources;
     return safeResources.filter(r => starredIds.has(r.id));
   }, [resources, showMarkedOnly, starredIds]);
+
+  // Count cards by type
+  const cardCounts = useMemo(() => {
+    const safeResources = filteredResources ?? [];
+    let cloze = 0;
+    let normal = 0;
+    for (const r of safeResources) {
+      const fc = r.content as FlashcardContent;
+      if (fc.card_type === 'cloze' && fc.cloze_text && /\{\{c\d+::(.+?)\}\}/.test(fc.cloze_text)) {
+        cloze++;
+      } else {
+        normal++;
+      }
+    }
+    return { cloze, normal, all: safeResources.length };
+  }, [filteredResources]);
 
   // Get all available topics for the current filter state
   const availableTopics = useMemo(() => {
@@ -229,6 +246,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <Layers className="w-4 h-4" />
           Flashcard
+          <span className="text-xs opacity-70">({cardCounts.normal})</span>
         </Button>
         <Button
           variant={studentMode === 'cloze' ? 'default' : 'outline'}
@@ -238,6 +256,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <PenLine className="w-4 h-4" />
           Cloze
+          <span className="text-xs opacity-70">({cardCounts.cloze})</span>
         </Button>
         <Button
           variant={studentMode === 'all' ? 'default' : 'outline'}
@@ -247,6 +266,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <LayoutGrid className="w-4 h-4" />
           All
+          <span className="text-xs opacity-70">({cardCounts.all})</span>
         </Button>
 
         {/* Filter dropdown */}
