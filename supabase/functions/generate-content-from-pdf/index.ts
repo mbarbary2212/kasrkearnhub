@@ -285,6 +285,18 @@ PEDAGOGICAL GUIDELINES:
 - Front should be a clear, focused question or prompt
 - Back should be concise but complete`;
 
+    case 'cloze_flashcard':
+      return `
+PEDAGOGICAL GUIDELINES (Cloze / Fill-in-the-blank):
+- Each item is a factual sentence with ONE key term replaced by {{c1::answer}}
+- The blanked term should test a specific, important fact (drug name, structure, mechanism, value)
+- The surrounding sentence must provide enough context to recall the answer
+- The "extra" field should give a brief clinical note or explanation (1-2 sentences)
+- Vary which part of the sentence is blanked (subject, object, value, etc.)
+- Avoid blanking trivial words — blank the most high-yield term
+- Example: "The most common cause of community-acquired pneumonia is {{c1::Streptococcus pneumoniae}}."`;
+
+
     case 'guided_explanation':
       return `
 PEDAGOGICAL GUIDELINES (Socratic Method):
