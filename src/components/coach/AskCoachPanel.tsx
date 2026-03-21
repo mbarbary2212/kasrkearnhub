@@ -90,13 +90,7 @@ export function AskCoachPanel() {
   }, [askCoachOpen, initialCoachMessage]);
 
   const streamChat = useCallback(async (userMessages: Message[], contextPrompt: string | null) => {
-    let systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
-    
-    // Append chapter content for grounding (truncate to ~8000 chars)
-    if (chapterPdfText) {
-      const truncated = chapterPdfText.slice(0, 8000);
-      systemContext += `\n\n[CHAPTER CONTENT]\n${truncated}`;
-    }
+    const systemContext = contextPrompt ? `\n\n[STUDY CONTEXT]\n${contextPrompt}` : '';
     
     // Get auth token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
@@ -115,6 +109,8 @@ export function AskCoachPanel() {
       body: JSON.stringify({ 
         messages: userMessages,
         context: systemContext,
+        chapterId: studyContext?.chapterId || null,
+        topicId: studyContext?.topicId || null,
       }),
     });
 
