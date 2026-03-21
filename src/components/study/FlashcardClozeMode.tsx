@@ -345,29 +345,31 @@ export function FlashcardClozeMode({
 
             {isCurrentCloze ? (
               /* ========== CLOZE CARD ========== */
-              <div className={cn("rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col", isFullscreen ? "min-h-72 md:min-h-80" : "min-h-56")}>
-                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-3 text-center shrink-0">Fill in the blank</div>
-                <div className={cn("font-medium text-foreground leading-relaxed flex-1 whitespace-pre-wrap", isFullscreen ? "text-lg md:text-xl" : "text-base")}>
-                  {renderClozeText(currentContent!.cloze_text!, revealed)}
-                </div>
-
-                {!revealed && (
-                  <Button onClick={handleReveal} className="mt-4 gap-2 self-center" variant="default">
-                    <Eye className="w-4 h-4" />
-                    Reveal Answer
-                  </Button>
-                )}
-              </div>
-
-              {/* Extra section - outside the card for variable length */}
-              {revealed && currentContent?.extra && (
-                <div className="mt-3 animate-fade-in">
-                  <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Extra</div>
-                  <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-muted-foreground rounded-r-md">
-                    {currentContent.extra}
+              <>
+                <div className={cn("rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col", isFullscreen ? "min-h-72 md:min-h-80" : "min-h-56")}>
+                  <div className="text-xs uppercase text-muted-foreground tracking-wider mb-3 text-center shrink-0">Fill in the blank</div>
+                  <div className={cn("font-medium text-foreground leading-relaxed flex-1 whitespace-pre-wrap", isFullscreen ? "text-lg md:text-xl" : "text-base")}>
+                    {renderClozeText(currentContent!.cloze_text!, revealed)}
                   </div>
+
+                  {!revealed && (
+                    <Button onClick={handleReveal} className="mt-4 gap-2 self-center" variant="default">
+                      <Eye className="w-4 h-4" />
+                      Reveal Answer
+                    </Button>
+                  )}
                 </div>
-              )
+
+                {/* Extra section - outside the card for variable length */}
+                {revealed && currentContent?.extra && (
+                  <div className="mt-3 animate-fade-in">
+                    <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Extra</div>
+                    <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-muted-foreground rounded-r-md">
+                      {currentContent.extra}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               /* ========== NON-CLOZE FLIP CARD ========== */
               <div
