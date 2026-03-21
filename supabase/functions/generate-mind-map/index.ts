@@ -594,7 +594,10 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "sections" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating section maps via direct PDF-to-AI...");
       const userPrompt = `Analyze this PDF chapter "${sourceTitle}" and generate separate mind maps for each main section. Return the result as a JSON array as instructed.`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, geminiApiKey!, geminiModelCandidates);
+
+      // Use Gemini JSON mode for reliable structured output
+      const sectionGenConfig = { responseMimeType: "application/json" };
+      const aiResult = await callGeminiWithPdf(pdfBytes, effectiveSectionPrompt, userPrompt, geminiApiKey!, geminiModelCandidates, sectionGenConfig);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Section maps AI error:", aiResult.error);
