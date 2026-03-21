@@ -238,8 +238,12 @@ function parseSectionsResponse(raw: string): ParsedSection[] {
   // Try direct parse first
   try {
     const parsed = JSON.parse(cleaned);
+    // Accept both array and { sections: [...] } wrapper
     if (Array.isArray(parsed) && parsed.length > 0) {
       return normalizeSections(parsed);
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+      return normalizeSections(parsed.sections);
     }
   } catch { /* not direct JSON */ }
 
@@ -253,9 +257,10 @@ function parseSectionsResponse(raw: string): ParsedSection[] {
       }
     }
   } catch {
-    console.error("[parseSectionsResponse] Failed to parse JSON from response. First 500 chars:", cleaned.slice(0, 500));
+    // fall through
   }
 
+  console.error("[parseSectionsResponse] Failed to parse JSON from response. First 500 chars:", cleaned.slice(0, 500));
   return [];
 }
 
