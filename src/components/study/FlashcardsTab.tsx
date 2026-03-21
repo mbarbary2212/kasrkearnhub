@@ -246,6 +246,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <Layers className="w-4 h-4" />
           Flashcard
+          <span className="text-xs opacity-70">({cardCounts.normal})</span>
         </Button>
         <Button
           variant={studentMode === 'cloze' ? 'default' : 'outline'}
@@ -255,6 +256,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <PenLine className="w-4 h-4" />
           Cloze
+          <span className="text-xs opacity-70">({cardCounts.cloze})</span>
         </Button>
         <Button
           variant={studentMode === 'all' ? 'default' : 'outline'}
@@ -264,6 +266,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
         >
           <LayoutGrid className="w-4 h-4" />
           All
+          <span className="text-xs opacity-70">({cardCounts.all})</span>
         </Button>
 
         {/* Filter dropdown */}
