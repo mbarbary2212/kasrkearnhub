@@ -52,15 +52,16 @@ async function extractSectionsFromPdf(
 
   // Chunked base64 encoding to avoid memory spikes
   const CHUNK = 3 * 8192; // must be multiple of 3 for base64 alignment
-  let pdfBase64 = "";
+  const base64Chunks: string[] = [];
   for (let i = 0; i < pdfBytes.length; i += CHUNK) {
     const slice = pdfBytes.subarray(i, Math.min(i + CHUNK, pdfBytes.length));
     let binary = "";
     for (let j = 0; j < slice.length; j++) {
       binary += String.fromCharCode(slice[j]);
     }
-    pdfBase64 += btoa(binary);
+    base64Chunks.push(btoa(binary));
   }
+  const pdfBase64 = base64Chunks.join("");
 
   const systemPrompt = `You are a textbook section extractor. Given a PDF chapter, identify the main section headings and their numbers. Return ONLY a JSON array of objects with "section_number" and "name" fields. Example: [{"section_number":"7.1","name":"Classification of Hemorrhage"},{"section_number":"7.2","name":"Pathophysiology"}]. If there are no clear sections, return an empty array [].`;
 
