@@ -5155,6 +5155,7 @@ export type Database = {
           module_id: string | null
           name: string
           name_ar: string | null
+          pdf_text: string | null
           slug: string
         }
         Insert: {
@@ -5167,6 +5168,7 @@ export type Database = {
           module_id?: string | null
           name: string
           name_ar?: string | null
+          pdf_text?: string | null
           slug: string
         }
         Update: {
@@ -5179,6 +5181,7 @@ export type Database = {
           module_id?: string | null
           name?: string
           name_ar?: string | null
+          pdf_text?: string | null
           slug?: string
         }
         Relationships: [

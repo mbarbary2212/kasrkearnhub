@@ -16,9 +16,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2, Loader2, RefreshCw } from 'lucide-react';
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
+import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import {
   DndContext,
   closestCenter,
@@ -84,6 +85,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const reorderSections = useReorderSections();
   const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
   const { extractAndInsert, isExtracting } = useExtractSections();
+  const { syncPdfText, isSyncing: isSyncingPdf, progress: syncProgress } = useSyncPdfText();
   
   // DnD sensors
   const sensors = useSensors(
@@ -246,15 +248,32 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
               </div>
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 {isChapterScope && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAutoDetectSections}
-                    disabled={!sectionsEnabled || isExtracting}
-                  >
-                    <Wand2 className="h-4 w-4 mr-1" />
-                    {isExtracting ? 'Detecting...' : 'Auto Detect'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (chapterId) {
+                          await syncPdfText({ chapter_id: chapterId });
+                        } else if (topicId) {
+                          await syncPdfText({ topic_id: topicId });
+                        }
+                      }}
+                      disabled={!sectionsEnabled || isSyncingPdf}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-1 ${isSyncingPdf ? 'animate-spin' : ''}`} />
+                      {isSyncingPdf ? (syncProgress || 'Syncing...') : 'Sync PDF'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoDetectSections}
+                      disabled={!sectionsEnabled || isExtracting}
+                    >
+                      <Wand2 className="h-4 w-4 mr-1" />
+                      {isExtracting ? 'Detecting...' : 'Auto Detect'}
+                    </Button>
+                  </>
                 )}
                 <Label htmlFor="enable-sections" className="text-sm text-muted-foreground">
                   Enable

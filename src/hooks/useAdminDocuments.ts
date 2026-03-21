@@ -146,9 +146,29 @@ export function useUploadAdminDocument() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-documents'] });
       toast.success('Document uploaded successfully');
+      
+      // Auto-trigger PDF text sync for chapters and topics
+      const targetId = variables.chapter_id || variables.topic_id;
+      if (targetId) {
+        const params = variables.chapter_id 
+          ? { chapter_id: variables.chapter_id }
+          : { topic_id: variables.topic_id };
+        
+        supabase.functions.invoke('sync-pdf-text', { body: params })
+          .then(({ data: syncData, error: syncError }) => {
+            if (syncError || syncData?.error) {
+              console.warn('Auto PDF sync failed:', syncError || syncData?.error);
+            } else {
+              console.log(`Auto-synced PDF text: ${syncData?.characters} chars`);
+              if (variables.chapter_id) {
+                queryClient.invalidateQueries({ queryKey: ['chapter', variables.chapter_id] });
+              }
+            }
+          });
+      }
     },
     onError: (error: Error) => {
       console.error('Upload error:', error);
