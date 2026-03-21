@@ -268,26 +268,23 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 {isChapterScope && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        if (chapterId) {
-                          await syncPdfText({ chapter_id: chapterId });
-                        } else if (topicId) {
-                          await syncPdfText({ topic_id: topicId });
-                        }
-                      }}
-                      disabled={!sectionsEnabled || isSyncingPdf}
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-1 ${isSyncingPdf ? 'animate-spin' : ''}`} />
-                      {isSyncingPdf ? (syncProgress || 'Syncing...') : 'Sync PDF'}
-                    </Button>
+                    {linkedDoc ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                        <FileCheck className="h-3.5 w-3.5" />
+                        PDF linked
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <FileX className="h-3.5 w-3.5" />
+                        No PDF
+                      </span>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleAutoDetectSections}
-                      disabled={!sectionsEnabled || isExtracting}
+                      disabled={!sectionsEnabled || isExtracting || !linkedDoc}
+                      title={!linkedDoc ? 'Upload a PDF first' : undefined}
                     >
                       <Wand2 className="h-4 w-4 mr-1" />
                       {isExtracting ? 'Detecting...' : 'Auto Detect'}
