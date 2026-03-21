@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-export type FlashcardMode = 'interactive' | 'cloze';
+export type FlashcardMode = 'interactive' | 'cloze' | 'all';
 
 export interface FlashcardSettings {
   mode: FlashcardMode;

@@ -305,6 +305,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               chapterId={chapterId}
               topicId={topicId}
             />
+          ) : studentMode === 'cloze' ? (
+            <FlashcardClozeMode
+              cards={filteredResources}
+              markedIds={starredIds}
+              onToggleMark={handleToggleStar}
+              availableTopics={availableTopics}
+              chapterId={chapterId}
+              topicId={topicId}
+              clozeOnly
+            />
           ) : (
             <FlashcardClozeMode
               cards={filteredResources}
