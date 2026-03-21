@@ -124,6 +124,7 @@ async function callGeminiWithPdf(
   userPrompt: string,
   apiKey: string,
   modelCandidates: string[] = ["gemini-2.5-flash"],
+  extraGenConfig?: Record<string, unknown>,
 ): Promise<{ success: boolean; content?: string; error?: string; modelUsed?: string }> {
   // Base64-encode the PDF for JSON transport
   let base64 = "";
@@ -148,6 +149,7 @@ async function callGeminiWithPdf(
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 65536,
+      ...(extraGenConfig || {}),
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -236,8 +238,12 @@ function parseSectionsResponse(raw: string): ParsedSection[] {
   // Try direct parse first
   try {
     const parsed = JSON.parse(cleaned);
+    // Accept both array and { sections: [...] } wrapper
     if (Array.isArray(parsed) && parsed.length > 0) {
       return normalizeSections(parsed);
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+      return normalizeSections(parsed.sections);
     }
   } catch { /* not direct JSON */ }
 
@@ -251,9 +257,10 @@ function parseSectionsResponse(raw: string): ParsedSection[] {
       }
     }
   } catch {
-    console.error("[parseSectionsResponse] Failed to parse JSON from response. First 500 chars:", cleaned.slice(0, 500));
+    // fall through
   }
 
+  console.error("[parseSectionsResponse] Failed to parse JSON from response. First 500 chars:", cleaned.slice(0, 500));
   return [];
 }
 
@@ -457,12 +464,13 @@ markmap:
 - No explanatory text before or after the markdown
 - Do NOT wrap output in code blocks`;
 
-    const defaultSectionPrompt = `You are a Professor of Surgery teaching undergraduate medical students.
+    // ── Built-in structured section prompt (mandatory JSON contract) ──
+    const SECTION_JSON_CONTRACT = `You are an expert medical educator.
 Analyze the provided PDF document. Identify the true main sections of this chapter (ignore page headers, footers, figures, captions, tables, and reference lists unless educationally central).
 
 For EACH main section, generate a separate focused Markmap mind map.
 
-Return your response as a JSON array where each element has:
+You MUST return your response as a JSON array where each element has:
 - "section_number": the section number if detectable (e.g. "1.1", "2.3"), or null
 - "section_title": the section heading/title
 - "markdown_content": a complete valid Markmap markdown string for that section
@@ -483,8 +491,24 @@ markmap:
 
 Return ONLY the JSON array, no other text.`;
 
+    // For sections: always enforce the structured JSON contract.
+    // If admin has a custom section prompt, check if it's structured or legacy.
+    const adminSectionStyle = sectionPromptRow?.system_prompt || "";
+    const isLegacySectionPrompt = adminSectionStyle.length > 0 &&
+      !adminSectionStyle.includes("JSON array") && !adminSectionStyle.includes("json array") &&
+      !adminSectionStyle.includes("section_title") && !adminSectionStyle.includes("markdown_content");
+
+    let effectiveSectionPrompt: string;
+    if (!adminSectionStyle || isLegacySectionPrompt) {
+      if (isLegacySectionPrompt) {
+        console.warn("[generate-mind-map] Section prompt is legacy/non-structured — using built-in JSON contract instead. Update Section prompt in Mind Map Prompts settings.");
+      }
+      effectiveSectionPrompt = SECTION_JSON_CONTRACT;
+    } else {
+      effectiveSectionPrompt = adminSectionStyle;
+    }
+
     const fullSystemPrompt = fullPromptRow?.system_prompt || defaultFullPrompt;
-    const sectionSystemPrompt = sectionPromptRow?.system_prompt || defaultSectionPrompt;
     const fullPromptVersion = fullPromptRow?.id || "built-in-default";
     const sectionPromptVersion = sectionPromptRow?.id || "built-in-default";
 
@@ -570,22 +594,26 @@ Return ONLY the JSON array, no other text.`;
     if (generation_mode === "sections" || generation_mode === "both") {
       console.log("[generate-mind-map] Generating section maps via direct PDF-to-AI...");
       const userPrompt = `Analyze this PDF chapter "${sourceTitle}" and generate separate mind maps for each main section. Return the result as a JSON array as instructed.`;
-      const aiResult = await callGeminiWithPdf(pdfBytes, sectionSystemPrompt, userPrompt, geminiApiKey!, geminiModelCandidates);
+
+      // Use Gemini JSON mode for reliable structured output
+      const sectionGenConfig = { responseMimeType: "application/json" };
+      const aiResult = await callGeminiWithPdf(pdfBytes, effectiveSectionPrompt, userPrompt, geminiApiKey!, geminiModelCandidates, sectionGenConfig);
 
       if (!aiResult.success) {
         console.error("[generate-mind-map] Section maps AI error:", aiResult.error);
         results.push({ type: "section", title: "Section generation", success: false, status: "failed", errors: [aiResult.error || "AI failed to process PDF"] });
       } else {
+        console.log("[generate-mind-map] Section AI response length:", aiResult.content!.length, "preview:", aiResult.content!.slice(0, 200));
         const sections = parseSectionsResponse(aiResult.content!);
 
         if (sections.length === 0) {
-          console.warn("[generate-mind-map] Could not parse section maps from AI response");
+          console.warn("[generate-mind-map] Could not parse section maps from AI response. Full response length:", aiResult.content!.length);
           results.push({
             type: "section",
             title: "Section generation",
             success: false,
             status: "failed",
-            errors: ["AI response could not be parsed into section maps. The AI may not have returned valid JSON."],
+            errors: ["AI response could not be parsed into section maps. Check Edge Function logs for details."],
           });
         } else {
           console.log(`[generate-mind-map] Parsed ${sections.length} sections from AI response`);
