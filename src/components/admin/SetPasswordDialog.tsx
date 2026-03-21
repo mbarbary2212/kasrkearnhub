@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Eye, EyeOff, RefreshCw, Loader2, KeyRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PasswordRequirements, isPasswordValid } from '@/components/auth/PasswordRequirements';
 
 interface SetPasswordDialogProps {
   open: boolean;

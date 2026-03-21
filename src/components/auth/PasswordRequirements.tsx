@@ -7,29 +7,43 @@ interface PasswordRequirementsProps {
   className?: string;
 }
 
+export function validatePasswordStrength(password: string) {
+  return {
+    hasMinLength: password.length >= 8,
+    hasMaxLength: password.length <= 64,
+    hasLowercase: /[a-z]/.test(password),
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSymbol: /[^A-Za-z0-9]/.test(password),
+  };
+}
+
+export function isPasswordValid(password: string) {
+  const v = validatePasswordStrength(password);
+  return v.hasMinLength && v.hasMaxLength && v.hasLowercase && v.hasUppercase && v.hasNumber && v.hasSymbol;
+}
+
 export function PasswordRequirements({ 
   password = '', 
   mode = 'static',
   className 
 }: PasswordRequirementsProps) {
-  const hasMinLength = password.length >= 8;
-  const hasMaxLength = password.length <= 64;
-  const hasNumber = /[0-9]/.test(password);
-  const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const v = validatePasswordStrength(password);
   
   if (mode === 'static') {
     return (
       <p className={cn("text-xs text-muted-foreground", className)}>
-        Recommended: 8–64 characters. Using a number and symbol can improve strength.
+        Must be 8–64 characters and include a lowercase letter, uppercase letter, number, and symbol.
       </p>
     );
   }
   
-  // Live mode - show recommendations with checkmarks
-  const recommendations = [
-    { label: '8–64 characters', met: hasMinLength && hasMaxLength, required: true },
-    { label: 'Contains a number', met: hasNumber, required: false },
-    { label: 'Contains a symbol', met: hasSymbol, required: false },
+  const requirements = [
+    { label: '8–64 characters', met: v.hasMinLength && v.hasMaxLength },
+    { label: 'Contains a lowercase letter', met: v.hasLowercase },
+    { label: 'Contains an uppercase letter', met: v.hasUppercase },
+    { label: 'Contains a number', met: v.hasNumber },
+    { label: 'Contains a symbol', met: v.hasSymbol },
   ];
   
   return (
@@ -37,18 +51,17 @@ export function PasswordRequirements({
       <p className="text-xs text-muted-foreground mb-1">
         Password requirements:
       </p>
-      {recommendations.map((rec, i) => (
+      {requirements.map((req, i) => (
         <div key={i} className="flex items-center gap-1.5 text-xs">
-          {rec.met ? (
+          {req.met ? (
             <Check className="h-3 w-3 text-green-500" />
           ) : (
             <Circle className="h-3 w-3 text-muted-foreground" />
           )}
           <span className={cn(
-            rec.met ? "text-green-600" : "text-muted-foreground"
+            req.met ? "text-green-600" : "text-muted-foreground"
           )}>
-            {rec.label}
-            {!rec.required && <span className="text-muted-foreground/70"> (recommended)</span>}
+            {req.label}
           </span>
         </div>
       ))}
