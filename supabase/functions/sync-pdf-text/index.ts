@@ -106,25 +106,24 @@ serve(async (req: Request) => {
       );
     }
 
-    // Convert to base64 for AI processing using chunked approach to avoid memory spikes
+    // Convert to base64 for AI processing - chunked to reduce peak memory
     const arrayBuffer = await fileData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    const chunkSize = 8192;
+    
+    // Use chunked approach: process in 3-byte aligned chunks for valid base64
+    const CHUNK = 3 * 8192; // must be multiple of 3 for base64 alignment
     let base64 = "";
-    {
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
       let binary = "";
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const chunk = bytes.subarray(i, i + chunkSize);
-        for (let j = 0; j < chunk.length; j++) {
-          binary += String.fromCharCode(chunk[j]);
-        }
-        // Periodically convert and reset to limit peak memory
-        if (binary.length > 65536) {
-          base64 += btoa(binary);
-          binary = "";
-        }
+      for (let j = 0; j < slice.length; j++) {
+        binary += String.fromCharCode(slice[j]);
       }
-      if (binary.length > 0) {
+      if (i + CHUNK >= bytes.length) {
+        // Last chunk - use regular btoa (may have padding)
+        base64 += btoa(binary);
+      } else {
+        // Full chunk - exact multiple of 3, no padding needed
         base64 += btoa(binary);
       }
     }
