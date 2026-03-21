@@ -29,6 +29,7 @@ import { useAdminDocuments, useUploadAdminDocument, useDeleteAdminDocument, getS
 import { useModules } from '@/hooks/useModules';
 import { useYears } from '@/hooks/useYears';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { useSyncPdfText } from '@/hooks/useSyncPdfText';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
