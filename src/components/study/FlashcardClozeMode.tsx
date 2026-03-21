@@ -379,7 +379,7 @@ export function FlashcardClozeMode({
                   <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Question</div>
                   <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.front}</div>
                 </div>
-                <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+                <div className={cn("absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]", isFullscreen && "min-h-72 md:min-h-80")}>
                   <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Answer</div>
                   <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.back}</div>
                 </div>
