@@ -56,6 +56,10 @@ export function generateContentHash(item: any, contentType: ContentType): string
       hashInput = `${normalizeText(item.front || '')}|${normalizeText(item.back || '')}`;
       break;
       
+    case 'cloze_flashcard':
+      hashInput = normalizeText(item.cloze_text || '');
+      break;
+      
     case 'essay':
       // Hash question (title can vary)
       hashInput = normalizeText(item.question || '');

@@ -834,6 +834,11 @@ function buildItemFingerprint(item: any, contentType: ContentType): string {
       const concept = extractKeyConcept(item.front || '');
       return `key_concept="${concept}" | front_prefix="${front}"`;
     }
+    case 'cloze_flashcard': {
+      const clozeText = (item.cloze_text || '').substring(0, 80);
+      const concept = extractKeyConcept(item.cloze_text || '');
+      return `key_concept="${concept}" | cloze_prefix="${clozeText}"`;
+    }
     case 'essay': {
       const q = (item.question || '').substring(0, 80);
       const concept = extractKeyConcept(item.question || '');
