@@ -1,0 +1,1 @@
+UPDATE module_chapters SET enable_sections = true WHERE module_id = '7f5167dd-b746-4ac6-94f3-109d637df861' AND enable_sections = false;

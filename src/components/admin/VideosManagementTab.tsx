@@ -404,6 +404,17 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
   const [removingDoctor, setRemovingDoctor] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
+  // Filter hierarchy to allowed modules only (for module admins)
+  const filteredHierarchy = useMemo(() => {
+    if (!allowedModuleIds) return hierarchy;
+    return hierarchy
+      .map((year) => ({
+        ...year,
+        modules: year.modules.filter((m) => allowedModuleIds.includes(m.id)),
+      }))
+      .filter((year) => year.modules.length > 0);
+  }, [hierarchy, allowedModuleIds]);
+
   // Auto-select first year on load (only if nothing selected yet)
   useEffect(() => {
     if (!selectedYearId && filteredHierarchy.length > 0) {
@@ -427,17 +438,6 @@ function CurriculumBrowser({ hierarchy, allowedModuleIds }: CurriculumBrowserPro
   useEffect(() => {
     setSelectedDoctor('all');
   }, [selectedModuleId]);
-
-  // Filter hierarchy to allowed modules only (for module admins)
-  const filteredHierarchy = useMemo(() => {
-    if (!allowedModuleIds) return hierarchy;
-    return hierarchy
-      .map((year) => ({
-        ...year,
-        modules: year.modules.filter((m) => allowedModuleIds.includes(m.id)),
-      }))
-      .filter((year) => year.modules.length > 0);
-  }, [hierarchy, allowedModuleIds]);
 
   const selectedYear = filteredHierarchy.find((y) => y.id === selectedYearId);
   const selectedModule = selectedYear?.modules.find((m) => m.id === selectedModuleId);
