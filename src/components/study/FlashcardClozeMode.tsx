@@ -248,7 +248,15 @@ export function FlashcardClozeMode({
   });
 
   if (safeCards.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">No flashcards available</div>;
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <PenLine className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+        <p>{clozeOnly ? 'No cloze cards available in this chapter.' : 'No flashcards available'}</p>
+        {clozeOnly && (
+          <p className="text-sm mt-1">Cloze cards use the <code className="bg-muted px-1 rounded text-xs">{'{{c1::answer}}'}</code> syntax. Upload them via Bulk Upload.</p>
+        )}
+      </div>
+    );
   }
 
   if (filteredCards.length === 0) {
