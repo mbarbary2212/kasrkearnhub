@@ -269,17 +269,45 @@ export function StudyBulkUploadModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Bulk Upload {TYPE_LABELS[resourceType]}</DialogTitle>
+          <DialogTitle>
+            {resourceType === 'flashcard'
+              ? `Import ${cardSubtype === 'cloze' ? 'Cloze ' : ''}Flashcards`
+              : `Bulk Upload ${TYPE_LABELS[resourceType]}`}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
+          {/* Card subtype toggle for flashcards */}
+          {resourceType === 'flashcard' && (
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              <Button
+                size="sm"
+                variant={cardSubtype === 'normal' ? 'default' : 'outline'}
+                onClick={() => { setCardSubtype('normal'); setParsedData([]); setErrors([]); setFileName(''); }}
+                className="text-xs"
+              >
+                Flashcard
+              </Button>
+              <Button
+                size="sm"
+                variant={cardSubtype === 'cloze' ? 'default' : 'outline'}
+                onClick={() => { setCardSubtype('cloze'); setParsedData([]); setErrors([]); setFileName(''); }}
+                className="text-xs"
+              >
+                Cloze
+              </Button>
+            </div>
+          )}
+
           {/* Section Warning */}
           <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* CSV Format Example */}
           <div className="bg-muted p-3 rounded-lg">
             <p className="text-sm font-medium mb-2">CSV Format:</p>
             <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-              {CSV_FORMATS[resourceType]}
+              {resourceType === 'flashcard'
+                ? (cardSubtype === 'cloze' ? CSV_FORMAT_FLASHCARD_CLOZE : CSV_FORMAT_FLASHCARD_NORMAL)
+                : CSV_FORMATS[resourceType]}
             </pre>
           </div>
 
