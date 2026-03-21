@@ -83,6 +83,7 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
   const deleteSection = useDeleteSection();
   const reorderSections = useReorderSections();
   const { autoTag, isRunning: isAutoTagging, progress: autoTagProgress } = useAutoTagSections();
+  const { extractAndInsert, isExtracting } = useExtractSections();
   
   // DnD sensors
   const sensors = useSensors(
