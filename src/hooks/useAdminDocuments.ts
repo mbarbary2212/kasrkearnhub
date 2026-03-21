@@ -51,7 +51,7 @@ export function useAdminDocuments(filters?: {
         .from('admin_documents')
         .select(`
           *,
-          module:modules(id, name, slug),
+          module:modules(id, name, slug, year_id),
           chapter:module_chapters(id, title)
         `)
         .eq('is_deleted', false)
