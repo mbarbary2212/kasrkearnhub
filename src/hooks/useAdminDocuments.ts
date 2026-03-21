@@ -204,7 +204,7 @@ export function useUpdateAdminDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { id: string; title?: string; description?: string; tags?: string[] }) => {
+    mutationFn: async (params: { id: string; title?: string; description?: string; doc_type?: string; module_id?: string | null; chapter_id?: string | null; topic_id?: string | null; tags?: string[] }) => {
       const { id, ...updates } = params;
       const { error } = await supabase
         .from('admin_documents')

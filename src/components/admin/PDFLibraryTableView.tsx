@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, ExternalLink, Download, Sparkles, Trash2, RefreshCw, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AdminDocument, useDeleteAdminDocument, getSignedUrl } from '@/hooks/useAdminDocuments';
 import { useSyncPdfText } from '@/hooks/useSyncPdfText';
+import { EditDocumentDialog } from './EditDocumentDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -54,7 +55,7 @@ interface GroupedData {
   }[];
 }
 
-function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAsAISource: (doc: AdminDocument) => void }) {
+function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument; onUseAsAISource: (doc: AdminDocument) => void; onEdit: (doc: AdminDocument) => void }) {
   const deleteMutation = useDeleteAdminDocument();
   const { syncPdfText, isSyncing } = useSyncPdfText();
 
@@ -94,6 +95,9 @@ function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAs
 
   return (
     <div className="flex items-center gap-1">
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(doc)} title="Edit">
+        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+      </Button>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handlePreview} title="Preview">
         <ExternalLink className="h-3.5 w-3.5" />
       </Button>
@@ -130,6 +134,7 @@ function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAs
 export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource }: PDFLibraryTableViewProps) {
   const [openYears, setOpenYears] = useState<Set<string>>(new Set(years.map(y => y.id).concat(['unlinked'])));
   const [openModules, setOpenModules] = useState<Set<string>>(new Set());
+  const [editingDoc, setEditingDoc] = useState<AdminDocument | null>(null);
 
   const grouped = useMemo((): { yearGroups: GroupedData[]; unlinked: AdminDocument[] } => {
     const yearMap = new Map<string, Year>();
@@ -245,7 +250,7 @@ export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource
               {format(new Date(doc.created_at), 'MMM d, yyyy')}
             </TableCell>
             <TableCell className="py-2">
-              <DocumentActions doc={doc} onUseAsAISource={onUseAsAISource} />
+              <DocumentActions doc={doc} onUseAsAISource={onUseAsAISource} onEdit={setEditingDoc} />
             </TableCell>
           </TableRow>
         ))}
@@ -318,6 +323,11 @@ export function PDFLibraryTableView({ documents, years, modules, onUseAsAISource
           </CollapsibleContent>
         </Collapsible>
       )}
+      <EditDocumentDialog
+        document={editingDoc}
+        open={!!editingDoc}
+        onOpenChange={(open) => { if (!open) setEditingDoc(null); }}
+      />
     </div>
   );
 }
