@@ -5,7 +5,7 @@ import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts"
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req: Request) => {
@@ -112,21 +112,16 @@ serve(async (req: Request) => {
     
     // Use chunked approach: process in 3-byte aligned chunks for valid base64
     const CHUNK = 3 * 8192; // must be multiple of 3 for base64 alignment
-    let base64 = "";
+    const base64Chunks: string[] = [];
     for (let i = 0; i < bytes.length; i += CHUNK) {
       const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
       let binary = "";
       for (let j = 0; j < slice.length; j++) {
         binary += String.fromCharCode(slice[j]);
       }
-      if (i + CHUNK >= bytes.length) {
-        // Last chunk - use regular btoa (may have padding)
-        base64 += btoa(binary);
-      } else {
-        // Full chunk - exact multiple of 3, no padding needed
-        base64 += btoa(binary);
-      }
+      base64Chunks.push(btoa(binary));
     }
+    const base64 = base64Chunks.join("");
 
     // Get AI settings
     const aiSettings = await getAISettings(serviceClient);
