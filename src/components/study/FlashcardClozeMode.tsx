@@ -31,7 +31,7 @@ interface TopicGroup {
   cards: { front: string; back: string; resource: StudyResource }[];
 }
 
-const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/g;
+const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/;
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -59,7 +59,7 @@ function renderClozeText(clozeText: string, revealed: boolean): React.ReactNode[
     }
     if (revealed) {
       parts.push(
-        <span key={key++} className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+        <span key={key++} className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-semibold animate-fade-in">
           {match[1]}
         </span>
       );
@@ -359,7 +359,7 @@ export function FlashcardClozeMode({
                 )}
 
                 {revealed && currentContent?.extra && (
-                  <div className="mt-4">
+                  <div className="mt-4 animate-fade-in">
                     <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Extra</div>
                     <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-muted-foreground rounded-r-md">
                       {currentContent.extra}
