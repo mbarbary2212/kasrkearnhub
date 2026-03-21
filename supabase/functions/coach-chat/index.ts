@@ -113,7 +113,6 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
 
   if (error || !data) return defaults;
 
-  // Track feature-specific vs global settings separately
   let featureProvider: string | null = null;
   let featureModel: string | null = null;
   let globalProvider: string | null = null;
@@ -153,11 +152,9 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
     }
   }
 
-  // Resolve provider: feature-specific > global > default
   const resolvedProvider = featureProvider ?? globalProvider ?? 'gemini';
   defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : 'gemini';
 
-  // Resolve model: feature-specific > global (based on provider) > default
   if (featureModel) {
     defaults.model = featureModel;
   } else if (defaults.provider === 'gemini' && globalGeminiModel) {
@@ -183,8 +180,7 @@ async function getUserRole(supabase: any, userId: string): Promise<string | null
 async function checkAndIncrementQuota(supabase: any, userId: string, limit: number): Promise<{ allowed: boolean; count: number }> {
   const today = new Date().toISOString().split('T')[0];
 
-  // Get current usage
-  const { data: usage, error: fetchError } = await supabase
+  const { data: usage } = await supabase
     .from('coach_usage')
     .select('question_count')
     .eq('user_id', userId)
@@ -198,8 +194,7 @@ async function checkAndIncrementQuota(supabase: any, userId: string, limit: numb
     return { allowed: false, count: currentCount };
   }
 
-  // Increment or insert usage
-  const { error: upsertError } = await supabase
+  await supabase
     .from('coach_usage')
     .upsert(
       { 
@@ -212,11 +207,51 @@ async function checkAndIncrementQuota(supabase: any, userId: string, limit: numb
       { onConflict: 'user_id,question_date,feature' }
     );
 
-  if (upsertError) {
-    console.error('Failed to update quota:', upsertError);
+  return { allowed: true, count: currentCount + 1 };
+}
+
+/**
+ * Find and download the linked PDF for a chapter or topic.
+ * Returns base64-encoded PDF data or null if no PDF is linked.
+ */
+async function fetchLinkedPdf(
+  supabase: any,
+  chapterId?: string,
+  topicId?: string
+): Promise<{ base64: string; title: string } | null> {
+  // Try chapter first, then topic
+  const filters = [];
+  if (chapterId) filters.push({ column: "chapter_id", value: chapterId });
+  if (topicId) filters.push({ column: "topic_id", value: topicId });
+
+  for (const filter of filters) {
+    const { data: doc } = await supabase
+      .from("admin_documents")
+      .select("storage_path, storage_bucket, title")
+      .eq(filter.column, filter.value)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!doc) continue;
+
+    const { data: fileData, error } = await supabase.storage
+      .from(doc.storage_bucket)
+      .download(doc.storage_path);
+
+    if (error || !fileData) {
+      console.error(`Failed to download PDF: ${error?.message}`);
+      continue;
+    }
+
+    const bytes = new Uint8Array(await fileData.arrayBuffer());
+    const base64 = btoa(String.fromCharCode(...bytes));
+    console.log(`Loaded PDF for grounding: ${doc.title} (${bytes.length} bytes)`);
+    return { base64, title: doc.title };
   }
 
-  return { allowed: true, count: currentCount + 1 };
+  return null;
 }
 
 function jsonError(code: string, title: string, message: string, status: number) {
@@ -239,18 +274,15 @@ serve(async (req) => {
   }
 
   try {
-    // Extract JWT token
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return jsonError('AUTH_REQUIRED', 'Authentication Required', 'Please sign in to use the Study Coach.', 401);
     }
     const token = authHeader.replace('Bearer ', '');
 
-    // Create Supabase client with user's token
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Verify the user
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
@@ -260,29 +292,19 @@ serve(async (req) => {
       return jsonError('AUTH_REQUIRED', 'Authentication Required', 'Please sign in to use the Study Coach.', 401);
     }
 
-    // Service client for database operations
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get coach settings
     const coachSettings = await getCoachSettings(serviceClient);
 
-    // Check if coach is enabled
     if (!coachSettings.enabled) {
-      return jsonError(
-        'COACH_DISABLED',
-        'Coach is temporarily unavailable',
-        coachSettings.disabledMessage,
-        503
-      );
+      return jsonError('COACH_DISABLED', 'Coach is temporarily unavailable', coachSettings.disabledMessage, 503);
     }
 
-    // Get user role
     const userRole = await getUserRole(serviceClient, user.id);
     const isAdmin = userRole && ADMIN_ROLES.includes(userRole);
 
-    // Check quota for students only
     if (!isAdmin) {
-      const { allowed, count } = await checkAndIncrementQuota(serviceClient, user.id, coachSettings.dailyLimit);
+      const { allowed } = await checkAndIncrementQuota(serviceClient, user.id, coachSettings.dailyLimit);
       if (!allowed) {
         return jsonError(
           'QUOTA_EXCEEDED',
@@ -293,25 +315,18 @@ serve(async (req) => {
       }
     }
 
-    // Parse request body
-    const { messages, context } = await req.json();
+    const { messages, context, chapterId, topicId } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return jsonError('INVALID_REQUEST', 'Invalid Request', 'No messages provided.', 400);
     }
 
-    // Get the latest user message for injection scanning
     const latestUserMessage = messages.filter((m: any) => m.role === 'user').pop();
     if (latestUserMessage) {
       const hasInjection = detectPromptInjection(latestUserMessage.content);
       if (hasInjection) {
         console.warn(`Prompt injection detected for user ${user.id}`);
-        return jsonError(
-          'INJECTION_DETECTED',
-          'Invalid request',
-          'I cannot process this request. Please rephrase your question in an academic context.',
-          400
-        );
+        return jsonError('INJECTION_DETECTED', 'Invalid request', 'I cannot process this request. Please rephrase your question in an academic context.', 400);
       }
     }
 
@@ -321,23 +336,38 @@ serve(async (req) => {
       fullSystemPrompt += `\n\n${context}`;
     }
 
-    // Use the configured provider
+    // Fetch linked PDF for grounding (backend-side)
+    let pdfData: { base64: string; title: string } | null = null;
+    if (chapterId || topicId) {
+      try {
+        pdfData = await fetchLinkedPdf(serviceClient, chapterId, topicId);
+      } catch (e) {
+        console.error("Failed to fetch PDF for grounding:", e);
+      }
+    }
+
     const provider = {
       name: coachSettings.provider,
       model: coachSettings.model,
     };
 
-    // For streaming, we need to call the AI gateway directly
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
 
     if (provider.name === 'gemini') {
       if (!GOOGLE_API_KEY) {
-        console.error('GOOGLE_API_KEY not configured');
         return jsonError('CONFIG_ERROR', 'Configuration Error', 'AI service is not properly configured. Please contact support.', 500);
       }
 
-      // Gemini direct call with streaming
+      // Build contents with PDF attachment if available
+      const systemParts: any[] = [{ text: fullSystemPrompt }];
+      if (pdfData) {
+        systemParts.unshift({
+          inline_data: { mime_type: "application/pdf", data: pdfData.base64 },
+        });
+        systemParts[1] = { text: fullSystemPrompt + `\n\n[CHAPTER CONTENT] The attached PDF "${pdfData.title}" is the chapter material. Use it as your primary source of truth.` };
+      }
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${coachSettings.model}:streamGenerateContent?alt=sse`,
         {
@@ -348,7 +378,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             contents: [
-              { role: 'user', parts: [{ text: fullSystemPrompt }] },
+              { role: 'user', parts: systemParts },
               ...messages.map((m: any) => ({
                 role: m.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: m.content }],
@@ -371,40 +401,31 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Gemini API error:', response.status, errorText);
-        
         if (response.status === 429) {
           return new Response(
             JSON.stringify({ error: 'AI service is busy. Please try again in a moment.' }),
             { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
         return new Response(
           JSON.stringify({ error: 'AI service temporarily unavailable' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Transform Gemini SSE to OpenAI-compatible SSE
       const transformStream = new TransformStream({
         transform(chunk, controller) {
           const text = new TextDecoder().decode(chunk);
           const lines = text.split('\n');
-          
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
                 const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (content) {
-                  const openAIFormat = {
-                    choices: [{ delta: { content } }],
-                  };
-                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openAIFormat)}\n\n`));
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`));
                 }
-              } catch {
-                // Skip malformed JSON
-              }
+              } catch { /* skip */ }
             }
           }
         },
@@ -418,10 +439,14 @@ serve(async (req) => {
       });
 
     } else {
-      // Lovable AI Gateway (default)
+      // Lovable AI Gateway — no PDF attachment support, use text context only
       if (!LOVABLE_API_KEY) {
-        console.error('LOVABLE_API_KEY not configured');
         return jsonError('CONFIG_ERROR', 'Configuration Error', 'AI service is not properly configured. Please contact support.', 500);
+      }
+
+      // If we have a PDF but are using Lovable gateway (no PDF support), note it
+      if (pdfData) {
+        fullSystemPrompt += `\n\n[NOTE] A chapter PDF "${pdfData.title}" is linked but cannot be attached via this provider. The student may need to refer to their textbook directly.`;
       }
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

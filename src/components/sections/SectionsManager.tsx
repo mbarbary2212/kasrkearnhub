@@ -16,10 +16,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown, Wand2, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2, Loader2, FileCheck, FileX } from 'lucide-react';
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
-import { useSyncPdfText } from '@/hooks/useSyncPdfText';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import {
   DndContext,
   closestCenter,
