@@ -82,6 +82,8 @@ const CSV_FORMATS: Record<StudyResourceType, string> = {
 
 const SIMILARITY_THRESHOLD = 0.85;
 
+type CardSubtype = 'normal' | 'cloze';
+
 export function StudyBulkUploadModal({
   open,
   onOpenChange,
