@@ -777,6 +777,7 @@ function validateItems(items: any[], contentType: ContentType): ValidationResult
       case 'virtual_patient':
       case 'clinical_case': items[i] = normalizeClinicalCaseItem(items[i]); result = validateVirtualPatientItem(items[i], i); break;
       case 'flashcard': result = validateFlashcardItem(items[i], i); break;
+      case 'cloze_flashcard': result = validateClozeFlashcardItem(items[i], i); break;
       case 'case_scenario': result = validateCaseScenarioItem(items[i], i); break;
       case 'essay': result = validateEssayItem(items[i], i); break;
       case 'mind_map': result = validateMindMapItem(items[i], i); break;
