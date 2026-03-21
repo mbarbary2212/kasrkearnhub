@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from 'react';
 import { FlashcardsStudentView } from './FlashcardsStudentView';
-import { FlashcardsSlideshowMode } from './FlashcardsSlideshowMode';
+import { FlashcardClozeMode } from './FlashcardClozeMode';
 import { FlashcardsAdminGrid } from './FlashcardsAdminGrid';
 import { FlashcardsAdminTable } from './FlashcardsAdminTable';
 import { ScheduledReviewBanner } from './ScheduledReviewBanner';
