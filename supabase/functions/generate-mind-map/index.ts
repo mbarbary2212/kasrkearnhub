@@ -603,16 +603,17 @@ Return ONLY the JSON array, no other text.`;
         console.error("[generate-mind-map] Section maps AI error:", aiResult.error);
         results.push({ type: "section", title: "Section generation", success: false, status: "failed", errors: [aiResult.error || "AI failed to process PDF"] });
       } else {
+        console.log("[generate-mind-map] Section AI response length:", aiResult.content!.length, "preview:", aiResult.content!.slice(0, 200));
         const sections = parseSectionsResponse(aiResult.content!);
 
         if (sections.length === 0) {
-          console.warn("[generate-mind-map] Could not parse section maps from AI response");
+          console.warn("[generate-mind-map] Could not parse section maps from AI response. Full response length:", aiResult.content!.length);
           results.push({
             type: "section",
             title: "Section generation",
             success: false,
             status: "failed",
-            errors: ["AI response could not be parsed into section maps. The AI may not have returned valid JSON."],
+            errors: ["AI response could not be parsed into section maps. Check Edge Function logs for details."],
           });
         } else {
           console.log(`[generate-mind-map] Parsed ${sections.length} sections from AI response`);
