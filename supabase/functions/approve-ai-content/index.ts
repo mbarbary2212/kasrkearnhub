@@ -324,6 +324,43 @@ serve(async (req) => {
         console.error(`[${jobId}] Flashcard insert error:`, error.message);
         throw new Error(`Failed to insert flashcards: ${error.message}`);
       }
+    } else if (contentType === "cloze_flashcard") {
+      if (!chapterId) {
+        return jsonResponse(
+          { error: "Chapter is required for cloze flashcards", step: "validation", items: [], warnings: [] },
+          400
+        );
+      }
+
+      const clozeToInsert = items.map((item: any, idx: number) => {
+        // Extract the answer from the cloze marker for the title
+        const answerMatch = (item.cloze_text || '').match(/\{\{c\d+::(.+?)\}\}/);
+        const titleHint = answerMatch ? answerMatch[1] : 'Cloze';
+        return {
+          module_id: moduleId,
+          chapter_id: chapterId,
+          resource_type: "flashcard",
+          title: (titleHint.substring(0, 50) || "Cloze") as string,
+          content: {
+            front: '',
+            back: '',
+            card_type: 'cloze',
+            cloze_text: item.cloze_text,
+            extra: item.extra || '',
+          },
+          display_order: idx,
+          created_by: user.id,
+          is_deleted: false,
+        };
+      });
+
+      const { error } = await serviceClient
+        .from("study_resources")
+        .insert(clozeToInsert);
+      if (error) {
+        console.error(`[${jobId}] Cloze flashcard insert error:`, error.message);
+        throw new Error(`Failed to insert cloze flashcards: ${error.message}`);
+      }
     } else if (contentType === "case_scenario") {
       // Case scenarios now go into virtual_patient_cases as read_case
       const casesToInsert = items.map((item: any, idx: number) => ({

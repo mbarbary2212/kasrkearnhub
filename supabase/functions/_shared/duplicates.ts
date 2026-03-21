@@ -168,6 +168,11 @@ export function calculateContentSimilarity(
       const front2 = normalizeText(item2.front || '');
       return calculateStringSimilarity(front1, front2);
       
+    case 'cloze_flashcard':
+      const cloze1 = normalizeText(item1.cloze_text || '');
+      const cloze2 = normalizeText(item2.cloze_text || '');
+      return calculateStringSimilarity(cloze1, cloze2);
+      
     case 'essay':
       const q1 = normalizeText(item1.question || '');
       const q2 = normalizeText(item2.question || '');
