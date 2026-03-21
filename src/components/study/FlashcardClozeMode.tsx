@@ -31,7 +31,7 @@ interface TopicGroup {
   cards: { front: string; back: string; resource: StudyResource }[];
 }
 
-const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/g;
+const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/;
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
