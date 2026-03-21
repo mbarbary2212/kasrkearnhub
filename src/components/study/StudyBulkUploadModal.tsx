@@ -100,11 +100,13 @@ export function StudyBulkUploadModal({
   const [parsedData, setParsedData] = useState<DuplicateResult<ParsedItem>[]>([]);
   const [errors, setErrors] = useState<ParseError[]>([]);
   const [fileName, setFileName] = useState<string>('');
+  const [cardSubtype, setCardSubtype] = useState<CardSubtype>('normal');
 
   const resetState = () => {
     setParsedData([]);
     setErrors([]);
     setFileName('');
+    setCardSubtype('normal');
   };
 
   const detectDuplicates = useCallback((parsed: ParsedItem[]): DuplicateResult<ParsedItem>[] => {
