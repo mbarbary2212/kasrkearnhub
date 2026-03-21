@@ -11,7 +11,7 @@ import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Layers, PenLine, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
+import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
