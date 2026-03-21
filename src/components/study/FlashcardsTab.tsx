@@ -228,16 +228,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
           className="gap-2"
         >
           <Layers className="w-4 h-4" />
-          Interactive Mode
+          Flashcard
         </Button>
         <Button
-          variant={studentMode === 'slideshow' ? 'default' : 'outline'}
+          variant={studentMode === 'cloze' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setMode('slideshow')}
+          onClick={() => setMode('cloze')}
           className="gap-2"
         >
-          <Play className="w-4 h-4" />
-          Slideshow Mode
+          <PenLine className="w-4 h-4" />
+          Fill-in
         </Button>
 
         {/* Filter dropdown */}
