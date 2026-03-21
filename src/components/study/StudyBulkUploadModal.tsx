@@ -470,7 +470,16 @@ function parseLineByType(
     return { title: '', content: { front: '', back: '' }, error: 'Not enough columns' };
   }
 
-  const title = values[0];
+  const titleIdx = headerMapping?.['title'] ?? 0;
+  let title = values[titleIdx]?.trim() || '';
+
+  // For cloze cards, generate title from cloze_text if title is missing
+  if (!title && cardSubtype === 'cloze') {
+    const clozeIdx = headerMapping?.['cloze_text'] ?? 1;
+    const clozeRaw = values[clozeIdx]?.trim() || '';
+    title = clozeRaw.replace(/\{\{c\d+::(.*?)\}\}/g, '$1').slice(0, 60).trim();
+  }
+
   if (!title) {
     return { title: '', content: { front: '', back: '' }, error: 'Title is required' };
   }
