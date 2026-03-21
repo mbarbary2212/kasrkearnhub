@@ -11,6 +11,7 @@ function isChunkLoadError(error: Error): boolean {
     message.includes('Importing a module script failed') ||
     message.includes('Loading chunk') ||
     message.includes('ChunkLoadError') ||
+    message.includes('is not a valid JavaScript MIME type') ||
     error.name === 'ChunkLoadError'
   );
 }
