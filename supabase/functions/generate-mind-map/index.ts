@@ -124,6 +124,7 @@ async function callGeminiWithPdf(
   userPrompt: string,
   apiKey: string,
   modelCandidates: string[] = ["gemini-2.5-flash"],
+  extraGenConfig?: Record<string, unknown>,
 ): Promise<{ success: boolean; content?: string; error?: string; modelUsed?: string }> {
   // Base64-encode the PDF for JSON transport
   let base64 = "";
@@ -148,6 +149,7 @@ async function callGeminiWithPdf(
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 65536,
+      ...(extraGenConfig || {}),
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
