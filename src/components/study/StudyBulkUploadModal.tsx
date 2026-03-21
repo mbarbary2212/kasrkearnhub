@@ -688,6 +688,8 @@ function buildHeaderMapping(headerLine: string): Record<string, number> {
 // Check if line is a header
 function isHeaderLine(line: string): boolean {
   const lower = line.toLowerCase();
+  // Cloze CSVs may have Text,Extra,Tags without a title column
+  if (lower.includes('text') && (lower.includes('extra') || lower.includes('tags'))) return true;
   return lower.includes('title') && (
     lower.includes('front') || 
     lower.includes('headers') || 
@@ -695,6 +697,7 @@ function isHeaderLine(line: string): boolean {
     lower.includes('tips') ||
     lower.includes('topic') ||
     lower.includes('cloze_text') ||
-    lower.includes('card_type')
+    lower.includes('card_type') ||
+    lower.includes('text')
   );
 }
