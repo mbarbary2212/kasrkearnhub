@@ -269,10 +269,10 @@ export function FlashcardClozeMode({
   }
 
   return (
-    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-center bg-background")}>
+    <div ref={cardContainerRef} className={cn("flex flex-col items-center gap-6 py-4", isFullscreen && "min-h-screen justify-start pt-8 bg-background overflow-y-auto")}>
       {/* Topic selector */}
       {allTopicNames.length > 1 && (
-        <div className="w-full max-w-md">
+        <div className={cn("w-full max-w-md", isFullscreen && "md:max-w-2xl")}>
           <Collapsible open={topicSectionOpen} onOpenChange={setTopicSectionOpen}>
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between" size="sm">
@@ -315,7 +315,7 @@ export function FlashcardClozeMode({
 
       {/* Main card area */}
       {currentCard && (
-        <div className="w-full max-w-md">
+        <div className={cn("w-full max-w-md", isFullscreen && "md:max-w-2xl")}>
           <div className="perspective-1000 relative">
             {/* Star + fullscreen buttons */}
             <div className="absolute -top-2 -right-2 z-20 flex items-center gap-1">
@@ -345,40 +345,43 @@ export function FlashcardClozeMode({
 
             {isCurrentCloze ? (
               /* ========== CLOZE CARD ========== */
-              <div className="rounded-xl border-2 bg-card shadow-lg p-6 min-h-56 flex flex-col">
-                <div className="text-xs uppercase text-muted-foreground tracking-wider mb-3 text-center shrink-0">Fill in the blank</div>
-                <div className="text-base font-medium text-foreground leading-relaxed flex-1 whitespace-pre-wrap">
-                  {renderClozeText(currentContent!.cloze_text!, revealed)}
+              <>
+                <div className={cn("rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col", isFullscreen ? "min-h-72 md:min-h-80" : "min-h-56")}>
+                  <div className="text-xs uppercase text-muted-foreground tracking-wider mb-3 text-center shrink-0">Fill in the blank</div>
+                  <div className={cn("font-medium text-foreground leading-relaxed flex-1 whitespace-pre-wrap", isFullscreen ? "text-lg md:text-xl" : "text-base")}>
+                    {renderClozeText(currentContent!.cloze_text!, revealed)}
+                  </div>
+
+                  {!revealed && (
+                    <Button onClick={handleReveal} className="mt-4 gap-2 self-center" variant="default">
+                      <Eye className="w-4 h-4" />
+                      Reveal Answer
+                    </Button>
+                  )}
                 </div>
 
-                {!revealed && (
-                  <Button onClick={handleReveal} className="mt-4 gap-2 self-center" variant="default">
-                    <Eye className="w-4 h-4" />
-                    Reveal Answer
-                  </Button>
-                )}
-
+                {/* Extra section - outside the card for variable length */}
                 {revealed && currentContent?.extra && (
-                  <div className="mt-4 animate-fade-in">
+                  <div className="mt-3 animate-fade-in">
                     <div className="text-xs uppercase text-amber-600 dark:text-amber-400 tracking-wide font-medium mb-1">Extra</div>
                     <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-muted-foreground rounded-r-md">
                       {currentContent.extra}
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
               /* ========== NON-CLOZE FLIP CARD ========== */
               <div
                 onClick={() => setFlipped(v => !v)}
-                className={`relative w-full min-h-56 transform-style-3d cursor-pointer ${transitioning ? 'invisible' : 'visible'} ${flipped ? 'rotate-y-180' : ''}`}
+                className={cn(`relative w-full transform-style-3d cursor-pointer`, isFullscreen ? 'min-h-72 md:min-h-80' : 'min-h-56', transitioning ? 'invisible' : 'visible', flipped && 'rotate-y-180')}
                 style={{ transition: transitioning ? 'none' : 'transform 500ms' }}
               >
-                <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-start text-center overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+                <div className={cn("absolute inset-0 backface-hidden rounded-xl border-2 bg-card shadow-lg p-6 flex flex-col items-center justify-start text-center overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]", isFullscreen && "min-h-72 md:min-h-80")}>
                   <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Question</div>
                   <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.front}</div>
                 </div>
-                <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+                <div className={cn("absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]", isFullscreen && "min-h-72 md:min-h-80")}>
                   <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Answer</div>
                   <div className="text-base font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.back}</div>
                 </div>
