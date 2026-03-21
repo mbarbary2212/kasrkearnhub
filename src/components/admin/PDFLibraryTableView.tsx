@@ -56,6 +56,7 @@ interface GroupedData {
 
 function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAsAISource: (doc: AdminDocument) => void }) {
   const deleteMutation = useDeleteAdminDocument();
+  const { syncPdfText, isSyncing } = useSyncPdfText();
 
   const handlePreview = async () => {
     const url = await getSignedUrl(doc.storage_path);
@@ -76,6 +77,15 @@ function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAs
     } else toast.error('Failed to generate download link');
   };
 
+  const handleSync = async () => {
+    if (!doc.chapter_id && !doc.topic_id) {
+      toast.info('This document is not linked to a chapter or topic');
+      return;
+    }
+    const params = doc.chapter_id ? { chapter_id: doc.chapter_id } : { topic_id: doc.topic_id! };
+    await syncPdfText(params);
+  };
+
   const handleDelete = () => {
     if (confirm('Are you sure you want to delete this document?')) {
       deleteMutation.mutate(doc.id);
@@ -89,6 +99,16 @@ function DocumentActions({ doc, onUseAsAISource }: { doc: AdminDocument; onUseAs
       </Button>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleDownload} title="Download">
         <Download className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7"
+        onClick={handleSync}
+        disabled={isSyncing || (!doc.chapter_id && !doc.topic_id)}
+        title={doc.chapter_id || doc.topic_id ? 'Sync PDF Text' : 'No chapter/topic linked'}
+      >
+        <RefreshCw className={`h-3.5 w-3.5 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
       </Button>
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onUseAsAISource(doc)} title="Use as AI Source">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
