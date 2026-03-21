@@ -19,6 +19,9 @@ export type StudyResourceType =
 export interface FlashcardContent {
   front: string;
   back: string;
+  card_type?: 'normal' | 'cloze';
+  cloze_text?: string;
+  extra?: string;
 }
 
 export interface TableContent {
