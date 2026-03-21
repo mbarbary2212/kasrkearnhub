@@ -237,7 +237,16 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
           className="gap-2"
         >
           <PenLine className="w-4 h-4" />
-          Fill-in
+          Cloze
+        </Button>
+        <Button
+          variant={studentMode === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setMode('all')}
+          className="gap-2"
+        >
+          <LayoutGrid className="w-4 h-4" />
+          All
         </Button>
 
         {/* Filter dropdown */}
