@@ -206,7 +206,7 @@ export function AskCoachPanel() {
         }
       }
     }
-  }, [chapterPdfText]);
+  }, [studyContext?.chapterId, studyContext?.topicId]);
 
   const handleSend = useCallback(async (text?: string) => {
     const messageText = text || input.trim();
