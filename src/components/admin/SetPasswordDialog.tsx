@@ -191,10 +191,7 @@ export function SetPasswordDialog({ open, onOpenChange, user }: SetPasswordDialo
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                {password.length > 0 && password.length < 8 && (
-                  <p className="text-xs text-destructive">Password must be at least 8 characters</p>
-                )}
-              </div>
+                <PasswordRequirements password={password} mode="live" />
             )}
 
             <DialogFooter>

@@ -18,7 +18,7 @@ import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckC
 import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
-import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { PasswordRequirements, isPasswordValid } from '@/components/auth/PasswordRequirements';
 import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
 
 export default function AccountPage() {
