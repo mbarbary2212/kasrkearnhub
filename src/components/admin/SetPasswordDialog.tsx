@@ -199,7 +199,7 @@ export function SetPasswordDialog({ open, onOpenChange, user }: SetPasswordDialo
               <Button variant="outline" onClick={() => handleOpen(false)}>Cancel</Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || (mode === 'manual' && password.length < 8) || (mode === 'auto' && !generatedPassword)}
+                disabled={isSubmitting || (mode === 'manual' && !isPasswordValid(password)) || (mode === 'auto' && !generatedPassword)}
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Set Password
