@@ -181,3 +181,23 @@ export function useDeleteMindMap() {
     },
   });
 }
+
+export function useUpdateMindMapMarkdown() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, markdown_content }: { id: string; markdown_content: string }) => {
+      const { error } = await supabase
+        .from('mind_maps' as any)
+        .update({ markdown_content, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success('Mind map updated');
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to save: ' + err.message);
+    },
+  });
+}

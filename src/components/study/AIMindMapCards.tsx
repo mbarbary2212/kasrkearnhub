@@ -1,33 +1,38 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2, FilterX } from 'lucide-react';
+import { Network, Maximize2, Sparkles, Loader2, Printer, Minimize2, FilterX, Code, Eye, Save, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { MindMap } from '@/hooks/useMindMaps';
+import { MindMap, useUpdateMindMapMarkdown } from '@/hooks/useMindMaps';
 import { MarkmapRenderer } from './MarkmapRenderer';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface AIMindMapCardsProps {
   maps: MindMap[];
   isLoading?: boolean;
-  /** Optional section filter — works with the existing filterBySection pattern */
   filterBySection?: <T>(items: T[]) => T[];
 }
 
 export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCardsProps) {
   const [viewingMap, setViewingMap] = useState<MindMap | null>(null);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedMarkdown, setEditedMarkdown] = useState('');
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { isAdmin, isTeacher } = useAuthContext();
+  const canEdit = isAdmin || isTeacher;
+  const updateMarkdown = useUpdateMindMapMarkdown();
 
-  // Apply section filter if provided
   const filteredMaps = useMemo(() => {
     if (!filterBySection) return maps;
     return filterBySection(maps);
@@ -36,15 +41,48 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
   const fullMaps = useMemo(() => filteredMaps.filter(m => m.map_type === 'full'), [filteredMaps]);
   const sectionMaps = useMemo(() => filteredMaps.filter(m => m.map_type === 'section'), [filteredMaps]);
 
-  const handlePrint = useCallback(() => {
-    if (!viewingMap?.markdown_content) return;
-
-    // Strip frontmatter for the print renderer
-    let md = viewingMap.markdown_content;
+  // Strip frontmatter helper
+  const stripFrontmatter = useCallback((md: string) => {
     if (md.startsWith('---')) {
       const end = md.indexOf('---', 3);
-      if (end !== -1) md = md.slice(end + 3).trim();
+      if (end !== -1) return md.slice(end + 3).trim();
     }
+    return md;
+  }, []);
+
+  const handleOpenMap = useCallback((map: MindMap) => {
+    setViewingMap(map);
+    setIsEditMode(false);
+    setEditedMarkdown(map.markdown_content || '');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setViewingMap(null);
+    setIsNativeFullscreen(false);
+    setIsEditMode(false);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (!viewingMap) return;
+    updateMarkdown.mutate(
+      { id: viewingMap.id, markdown_content: editedMarkdown },
+      {
+        onSuccess: () => {
+          setViewingMap({ ...viewingMap, markdown_content: editedMarkdown });
+        },
+      }
+    );
+  }, [viewingMap, editedMarkdown, updateMarkdown]);
+
+  const handleDiscard = useCallback(() => {
+    setEditedMarkdown(viewingMap?.markdown_content || '');
+  }, [viewingMap]);
+
+  const hasChanges = editedMarkdown !== (viewingMap?.markdown_content || '');
+
+  const handlePrint = useCallback(() => {
+    if (!viewingMap?.markdown_content) return;
+    let md = stripFrontmatter(viewingMap.markdown_content);
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -80,9 +118,8 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
       </html>
     `);
     printWindow.document.close();
-  }, [viewingMap]);
+  }, [viewingMap, stripFrontmatter]);
 
-  // Sync fullscreen state when user exits via Esc or system controls
   useEffect(() => {
     const onFsChange = () => setIsNativeFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFsChange);
@@ -109,10 +146,8 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     );
   }
 
-  // Nothing to show at all
   if (maps.length === 0) return null;
 
-  // Maps exist but none match the active section filter
   if (filteredMaps.length === 0) {
     return (
       <div className="space-y-3">
@@ -129,6 +164,9 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
     );
   }
 
+  // The markdown to render in preview (use edited version in edit mode)
+  const previewMarkdown = isEditMode ? editedMarkdown : (viewingMap?.markdown_content || '');
+
   return (
     <>
       <div className="space-y-3">
@@ -140,16 +178,15 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
 
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {fullMaps.map(map => (
-            <AIMindMapCard key={map.id} map={map} onClick={() => setViewingMap(map)} />
+            <AIMindMapCard key={map.id} map={map} onClick={() => handleOpenMap(map)} />
           ))}
           {sectionMaps.map(map => (
-            <AIMindMapCard key={map.id} map={map} onClick={() => setViewingMap(map)} />
+            <AIMindMapCard key={map.id} map={map} onClick={() => handleOpenMap(map)} />
           ))}
         </div>
       </div>
 
-      {/* Fullscreen interactive viewer */}
-      <Dialog open={!!viewingMap} onOpenChange={() => { setViewingMap(null); setIsNativeFullscreen(false); }}>
+      <Dialog open={!!viewingMap} onOpenChange={handleClose}>
         <DialogContent
           ref={dialogContentRef}
           className="max-w-[95vw] max-h-[95vh] flex flex-col p-2 sm:p-4"
@@ -162,6 +199,17 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
                 <span className="truncate">{viewingMap?.title}</span>
               </DialogTitle>
               <div className="flex items-center gap-1 shrink-0">
+                {canEdit && (
+                  <Button
+                    size="icon"
+                    variant={isEditMode ? 'default' : 'outline'}
+                    className="h-8 w-8"
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    title={isEditMode ? 'Switch to view' : 'Edit markdown'}
+                  >
+                    {isEditMode ? <Eye className="w-4 h-4" /> : <Code className="w-4 h-4" />}
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="outline"
@@ -195,17 +243,45 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
                 </span>
               )}
             </div>
+            {/* Save / Discard bar */}
+            {isEditMode && hasChanges && (
+              <div className="flex items-center gap-2 mt-2">
+                <Button size="sm" onClick={handleSave} disabled={updateMarkdown.isPending}>
+                  {updateMarkdown.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleDiscard}>
+                  <Undo2 className="w-3.5 h-3.5 mr-1" /> Discard
+                </Button>
+              </div>
+            )}
           </DialogHeader>
 
           <div
-            className="flex-1 min-h-0 overflow-hidden rounded-lg bg-background border"
+            className="flex-1 min-h-0 overflow-hidden rounded-lg"
             style={{ minHeight: isMobile ? '50vh' : '60vh' }}
           >
-            {viewingMap?.markdown_content && (
-              <MarkmapRenderer
-                markdown={viewingMap.markdown_content}
-                className="rounded-lg"
-              />
+            {isEditMode ? (
+              <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-2 h-full`}>
+                <Textarea
+                  value={editedMarkdown}
+                  onChange={(e) => setEditedMarkdown(e.target.value)}
+                  className="flex-1 min-h-0 font-mono text-xs resize-none bg-muted/50 border"
+                  style={{ minHeight: isMobile ? '30vh' : undefined }}
+                  spellCheck={false}
+                />
+                <div className="flex-1 min-h-0 overflow-hidden border rounded-lg bg-background" style={{ minHeight: isMobile ? '30vh' : undefined }}>
+                  {previewMarkdown && (
+                    <MarkmapRenderer markdown={previewMarkdown} className="rounded-lg" />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full border rounded-lg bg-background">
+                {previewMarkdown && (
+                  <MarkmapRenderer markdown={previewMarkdown} className="rounded-lg" />
+                )}
+              </div>
             )}
           </div>
         </DialogContent>
