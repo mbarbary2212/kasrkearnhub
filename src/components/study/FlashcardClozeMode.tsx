@@ -87,6 +87,7 @@ export function FlashcardClozeMode({
   availableTopics = [],
   chapterId,
   topicId,
+  clozeOnly = false,
 }: FlashcardClozeModeProps) {
   const { settings, setSelectedTopics, setShuffle } = useFlashcardSettings({ chapterId, topicId });
 
@@ -99,7 +100,16 @@ export function FlashcardClozeMode({
 
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen(cardContainerRef);
-  const safeCards = cards ?? [];
+  
+  // Filter to cloze-only cards when clozeOnly is true
+  const safeCards = useMemo(() => {
+    const base = cards ?? [];
+    if (!clozeOnly) return base;
+    return base.filter(r => {
+      const content = r.content as FlashcardContent;
+      return content.card_type === 'cloze' && !!content.cloze_text && /\{\{c\d+::(.+?)\}\}/.test(content.cloze_text);
+    });
+  }, [cards, clozeOnly]);
 
   const topicGroups = useMemo<TopicGroup[]>(() => {
     const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
