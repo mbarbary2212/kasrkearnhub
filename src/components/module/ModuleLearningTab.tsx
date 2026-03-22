@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { type SortMode } from '@/hooks/useChapterSort';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
