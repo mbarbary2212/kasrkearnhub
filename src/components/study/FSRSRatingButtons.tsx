@@ -56,19 +56,36 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
   };
 
   return (
-    <div className="grid grid-cols-4 gap-2 mt-4">
-      {intervals.map(r => (
-        <Button
-          key={r.key}
-          variant="outline"
-          className={`flex flex-col items-center gap-0.5 h-auto py-2 px-1 ${r.color}`}
-          disabled={rateCard.isPending}
-          onClick={() => handleRate(r.key)}
-        >
-          <span className="text-sm font-medium">{r.emoji} {r.key}</span>
-          <span className="text-[10px] opacity-70">{r.interval}</span>
-        </Button>
-      ))}
-    </div>
+    <TooltipProvider>
+      <div className="grid grid-cols-4 gap-2 mt-4">
+        {intervals.map(r => {
+          const btn = (
+            <Button
+              key={r.key}
+              variant="outline"
+              className={`flex flex-col items-center gap-0.5 h-auto py-2 px-1 ${r.color}`}
+              disabled={rateCard.isPending}
+              onClick={() => handleRate(r.key)}
+            >
+              <span className="text-sm font-medium">{r.emoji} {r.key}</span>
+              <span className="text-[10px] opacity-70">{r.interval}</span>
+            </Button>
+          );
+
+          if (r.tooltip) {
+            return (
+              <Tooltip key={r.key}>
+                <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                <TooltipContent className="max-w-[200px] text-center text-xs">
+                  {r.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return btn;
+        })}
+      </div>
+    </TooltipProvider>
   );
 }
