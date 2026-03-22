@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { type SortMode } from '@/hooks/useChapterSort';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -189,6 +190,7 @@ function BookLecturesView({
   onBack: () => void;
 }) {
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const [chapterModalOpen, setChapterModalOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<ModuleChapter | null>(null);
   const [deleteChapterDialog, setDeleteChapterDialog] = useState<ModuleChapter | null>(null);
@@ -290,11 +292,20 @@ function BookLecturesView({
         <LectureListSkeleton count={5} />
       ) : chapters && chapters.length > 0 ? (
         <div className="border rounded-lg divide-y">
-          {chapters.map((chapter, index) => (
+          {chapters.map((chapter, index) => {
+            const isAssigned = auth.isTopicAdmin && !auth.isTeacher
+              ? auth.canManageChapter(chapter.id)
+              : true;
+
+            return (
             <div
               key={chapter.id}
-              className="flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors group"
+              className={cn(
+                "flex items-center gap-3 py-3 px-4 transition-colors group",
+                isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
+              )}
             >
+              {isAssigned ? (
               <button
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left"
@@ -313,8 +324,25 @@ function BookLecturesView({
                   {chapter.title}
                 </span>
               </button>
+              ) : (
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                  {index + 1}
+                </span>
+                {chapter.icon_url && (
+                  <img 
+                    src={chapter.icon_url} 
+                    alt="" 
+                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
+                  />
+                )}
+                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                  {chapter.title}
+                </span>
+              </div>
+              )}
               
-              {canManage ? (
+              {canManage && isAssigned ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
@@ -338,11 +366,12 @@ function BookLecturesView({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
+              ) : isAssigned ? (
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              )}
+              ) : null}
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 border rounded-lg">
@@ -410,6 +439,7 @@ export function ModuleLearningTab({
   selectedDepartmentId,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   
   // Fetch books with metadata
@@ -579,11 +609,20 @@ export function ModuleLearningTab({
           </Button>
         )}
         <div className="border rounded-lg divide-y">
-          {chaptersToRender.map((chapter) => (
+          {chaptersToRender.map((chapter) => {
+            const isAssigned = auth.isTopicAdmin && !auth.isTeacher
+              ? auth.canManageChapter(chapter.id)
+              : true;
+
+            return (
             <div
               key={chapter.id}
-              className="flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors group"
+              className={cn(
+                "flex items-center gap-3 py-3 px-4 transition-colors group",
+                isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
+              )}
             >
+              {isAssigned ? (
               <button
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left"
@@ -595,8 +634,18 @@ export function ModuleLearningTab({
                   {chapter.title}
                 </span>
               </button>
+              ) : (
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
+                  {prefix} {chapter.chapter_number}
+                </span>
+                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                  {chapter.title}
+                </span>
+              </div>
+              )}
               
-              {canManageChapters ? (
+              {canManageChapters && isAssigned ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
@@ -617,11 +666,12 @@ export function ModuleLearningTab({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
+              ) : isAssigned ? (
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              )}
+              ) : null}
             </div>
-          ))}
+          );
+          })}
           {chaptersToRender.length === 0 && (
             <div className="py-8 text-center text-muted-foreground text-sm">
               No chapters yet. {canManageChapters && `Click "Add ${prefix}" to create one.`}

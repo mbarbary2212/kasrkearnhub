@@ -128,6 +128,14 @@ export default function ChapterPage() {
     (moduleId && auth.canManageModule(moduleId))
   );
 
+  // Redirect topic admins who are not assigned to this chapter
+  useEffect(() => {
+    if (auth.isTopicAdmin && !auth.isTeacher && chapterId && !auth.canManageChapter(chapterId)) {
+      toast.error('Access denied: you are not assigned to this chapter');
+      navigate(moduleId ? `/module/${moduleId}?section=learning` : '/');
+    }
+  }, [auth.isTopicAdmin, auth.isTeacher, chapterId, moduleId, navigate, auth]);
+
   // State for section mode and active tabs within sections
   const [searchParams] = useSearchParams();
   const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
