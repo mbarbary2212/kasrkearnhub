@@ -580,7 +580,8 @@ export function LectureList({
                       <Clock className="w-3 h-3" />{lecture.duration}
                     </span>
                   )}
-                  <span>Tap to play</span>
+                  <span className="hidden md:inline">Click to play</span>
+                  <span className="md:hidden">Tap to play</span>
                 </div>
               </button>
 
