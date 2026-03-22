@@ -118,7 +118,7 @@ function LoggedInHome() {
   const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
-  const [mindMapOpen, setMindMapOpen] = useState(false);
+  const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
 
   // Color mapping for year accent borders
   const getYearColor = (color: string | null): string => {
