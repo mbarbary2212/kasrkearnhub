@@ -540,7 +540,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
                 <SelectValue placeholder="All Modules" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Modules</SelectItem>
+                {!moduleAdminModuleIds?.length && <SelectItem value="all">All Modules</SelectItem>}
                 <YearGroupedModuleOptions modules={availableModules} />
               </SelectContent>
             </Select>
