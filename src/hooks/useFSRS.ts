@@ -114,10 +114,11 @@ export function useRateCard() {
             scheduled_days: newCard.scheduled_days,
             reps: newCard.reps,
             lapses: newCard.lapses,
-            state: String(newCard.state),
+            state: STATE_NAMES[newCard.state as number] ?? 'New',
             last_review: newCard.last_review
               ? newCard.last_review.toISOString()
               : now.toISOString(),
+            learning_steps: newCard.learning_steps ?? 0,
           } as any,
           { onConflict: 'user_id,card_id' }
         );
