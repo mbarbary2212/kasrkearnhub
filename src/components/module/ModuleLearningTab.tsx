@@ -609,11 +609,20 @@ export function ModuleLearningTab({
           </Button>
         )}
         <div className="border rounded-lg divide-y">
-          {chaptersToRender.map((chapter) => (
+          {chaptersToRender.map((chapter) => {
+            const isAssigned = auth.isTopicAdmin && !auth.isTeacher
+              ? auth.canManageChapter(chapter.id)
+              : true;
+
+            return (
             <div
               key={chapter.id}
-              className="flex items-center gap-3 py-3 px-4 hover:bg-muted/50 transition-colors group"
+              className={cn(
+                "flex items-center gap-3 py-3 px-4 transition-colors group",
+                isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
+              )}
             >
+              {isAssigned ? (
               <button
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left"
@@ -625,8 +634,18 @@ export function ModuleLearningTab({
                   {chapter.title}
                 </span>
               </button>
+              ) : (
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
+                  {prefix} {chapter.chapter_number}
+                </span>
+                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                  {chapter.title}
+                </span>
+              </div>
+              )}
               
-              {canManageChapters ? (
+              {canManageChapters && isAssigned ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
@@ -647,11 +666,12 @@ export function ModuleLearningTab({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
+              ) : isAssigned ? (
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              )}
+              ) : null}
             </div>
-          ))}
+          );
+          })}
           {chaptersToRender.length === 0 && (
             <div className="py-8 text-center text-muted-foreground text-sm">
               No chapters yet. {canManageChapters && `Click "Add ${prefix}" to create one.`}
