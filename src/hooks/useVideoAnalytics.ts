@@ -16,15 +16,22 @@ export interface VideoAnalyticsRow {
 }
 
 export function useVideoAnalytics() {
-  const { isSuperAdmin, isPlatformAdmin, isModuleAdmin } = useAuthContext();
+  const { isSuperAdmin, isPlatformAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
   const enabled = isSuperAdmin || isPlatformAdmin || isModuleAdmin;
 
   return useQuery({
-    queryKey: ['video-analytics'],
+    queryKey: ['video-analytics', moduleAdminModuleIds],
     enabled,
     queryFn: async (): Promise<VideoAnalyticsRow[]> => {
+      let lecturesQuery = supabase.from('lectures').select('id, title, video_url, created_at').eq('is_deleted', false);
+      
+      // Scope to assigned modules for module admins
+      if (isModuleAdmin && !isSuperAdmin && !isPlatformAdmin && moduleAdminModuleIds.length > 0) {
+        lecturesQuery = lecturesQuery.in('module_id', moduleAdminModuleIds);
+      }
+
       const [lecturesRes, progressRes, bookmarksRes, ratingsRes] = await Promise.all([
-        supabase.from('lectures').select('id, title, video_url, created_at').eq('is_deleted', false),
+        lecturesQuery,
         supabase.from('video_progress').select('video_id, user_id, percent_watched'),
         supabase.from('user_bookmarks').select('item_id, user_id').eq('item_type', 'video'),
         supabase.from('video_ratings').select('video_id, user_id, rating'),
