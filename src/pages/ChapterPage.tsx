@@ -373,7 +373,7 @@ export default function ChapterPage() {
     if (showAllTabs) return allResourcesTabs;
     const filtered = filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
-  }, [canManageContent, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
+  }, [showAllTabs, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset resources tab if current tab becomes hidden
   useEffect(() => {
