@@ -420,7 +420,7 @@ export default function ChapterPage() {
     if (showAllTabs) return allPracticeTabs;
     const filtered = filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
-  }, [canManageContent, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
+  }, [showAllTabs, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset practice tab if current tab becomes hidden
   useEffect(() => {
