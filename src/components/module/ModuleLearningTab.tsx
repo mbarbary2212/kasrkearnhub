@@ -439,6 +439,7 @@ export function ModuleLearningTab({
   selectedDepartmentId,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   
   // Fetch books with metadata
