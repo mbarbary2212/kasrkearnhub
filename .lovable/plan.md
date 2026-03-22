@@ -1,43 +1,29 @@
 
 
-# Fix: Topic Admin Access Control for Chapters
+# Fix Module Admin Access Control (4 Changes)
 
-## Problem
-1. Topic admins can navigate to any chapter URL even if they're not assigned to it
-2. In the module's chapter list, topic admins see all chapters as fully clickable — no visual distinction between assigned and unassigned
+## 1. `src/hooks/useAuth.ts` — `canManageModule()` (line 278-280)
+Remove `'department_admin'` from the blanket return-true check so department admins fall through to the `moduleAssignments` check below.
 
-## Changes
+Change: `if (state.role === 'department_admin' || state.role === 'admin' || state.role === 'teacher')` → `if (state.role === 'admin' || state.role === 'teacher')`
 
-### 1. ChapterPage.tsx — Redirect unassigned topic admins (line ~129)
+## 2. `src/hooks/useModuleAdmin.ts` — `useIsModuleAdmin()` (line 14)
+Remove `isTeacher` from the early-return so department_admin/teacher users go through the `module_admins` table lookup.
 
-After the `canManageContent` calculation, add a redirect effect:
+Change: `if (isSuperAdmin || isPlatformAdmin || isTeacher) return true` → `if (isSuperAdmin || isPlatformAdmin) return true`
 
-```tsx
-useEffect(() => {
-  if (auth.isTopicAdmin && !auth.isTeacher && chapterId && !auth.canManageChapter(chapterId)) {
-    toast.error('Access denied: you are not assigned to this chapter');
-    navigate(moduleId ? `/module/${moduleId}?section=learning` : '/');
-  }
-}, [auth.isTopicAdmin, auth.isTeacher, chapterId, moduleId]);
-```
+## 3. `src/components/admin/AdminTabsNavigation.tsx` — Users tab (line 42)
+Restrict the Users tab visibility to super/platform admins only.
 
-This checks client-side `topicAssignments` (already loaded in `useAuth`) — if the topic admin has no assignment for this chapter, they're redirected back to the module page with a toast.
+Change: `visible: true` → `visible: isSuperAdmin || isPlatformAdmin`
 
-### 2. ModuleLearningTab.tsx — Grey out unassigned chapters for topic admins
-
-In `renderChapterList` (~line 582), pass `useAuthContext` into the component and check assignment:
-
-- Import `useAuthContext` in ModuleLearningTab
-- In the chapter row rendering, determine `isAssigned`:
-  - If `auth.isTopicAdmin && !auth.isTeacher`: check `auth.canManageChapter(chapter.id)`
-  - Otherwise: always true
-- If `!isAssigned`: render the row with `opacity-50 cursor-default` classes, no `onClick`/navigation, and no chevron — just the greyed-out title
-- If `isAssigned`: render normally (clickable, with navigation)
-
-### Files Modified
+## 4. `src/pages/YearPage.tsx` — Module list (lines 84-104)
+Import `useAuthContext`, check `auth.isModuleAdmin`. For module admin users, grey out and disable clicking on modules not in `auth.moduleAdminModuleIds`. Apply `opacity-50 cursor-default` and remove `onClick`/chevron for non-assigned modules.
 
 | File | Change |
 |------|--------|
-| `src/pages/ChapterPage.tsx` | Add `useEffect` redirect after `canManageContent` for unassigned topic admins |
-| `src/components/module/ModuleLearningTab.tsx` | Import `useAuthContext`, conditionally grey out and disable unassigned chapter rows for topic admins |
+| `src/hooks/useAuth.ts` | Remove `department_admin` from `canManageModule` blanket check |
+| `src/hooks/useModuleAdmin.ts` | Remove `isTeacher` from early return in `useIsModuleAdmin` |
+| `src/components/admin/AdminTabsNavigation.tsx` | Gate Users tab behind `isSuperAdmin \|\| isPlatformAdmin` |
+| `src/pages/YearPage.tsx` | Import auth context, grey out unassigned modules for module admins |
 
