@@ -54,6 +54,7 @@ export function useScheduleCard() {
               lapses: empty.lapses,
               state: 'New',
               last_review: null,
+              learning_steps: 0,
             } as any,
             { onConflict: 'user_id,card_id' }
           );
