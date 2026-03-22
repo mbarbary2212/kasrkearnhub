@@ -122,10 +122,12 @@ export default function ChapterPage() {
   // 2. They can manage this specific chapter (topic admins assigned to this chapter)
   // 3. They can manage the parent module (module admins assigned to this module)
   const canManageContent = !!(
-    auth.isTeacher ||
     (chapterId && auth.canManageChapter(chapterId)) ||
     (moduleId && auth.canManageModule(moduleId))
   );
+
+  // Teachers see all tabs (including empty) but no action buttons
+  const showAllTabs = canManageContent || auth.isTeacher;
 
   // Redirect topic admins who are not assigned to this chapter
   useEffect(() => {
