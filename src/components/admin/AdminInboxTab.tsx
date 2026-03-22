@@ -34,7 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AdminInboxTab() {
-  const { isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isDepartmentAdmin, topicAssignments } = useAuthContext();
+  const { isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isDepartmentAdmin, isModuleAdmin, moduleAdminModuleIds, topicAssignments } = useAuthContext();
   const [selectedModule, setSelectedModule] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedFeedback, setSelectedFeedback] = useState<ItemFeedback | null>(null);
