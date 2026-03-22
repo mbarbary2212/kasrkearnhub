@@ -64,7 +64,7 @@ export function AdminTabsNavigation({
       icon: MessageSquare,
       tabs: [
         { value: 'announcements', label: 'Announcements', icon: Megaphone, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
-        { value: 'inbox', label: 'Feedback & Inquiries', icon: MessageSquare, visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'inbox', label: 'Feedback & Inquiries', icon: MessageSquare, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
     },
   ];

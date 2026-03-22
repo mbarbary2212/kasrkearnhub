@@ -2187,7 +2187,7 @@ export default function AdminPage() {
           )}
 
           {/* Inbox Tab - Feedback & Inquiries */}
-          {(isSuperAdmin || isPlatformAdmin) && (
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="inbox">
               <AdminInboxTab />
             </TabsContent>

@@ -102,6 +102,12 @@ export function AdminInboxTab() {
       if (selectedModule !== 'all') {
         filters.moduleId = selectedModule;
       }
+    } else if (isModuleAdmin) {
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      } else if (moduleAdminModuleIds.length > 0) {
+        filters.moduleIds = moduleAdminModuleIds;
+      }
     } else if (isDepartmentAdmin) {
       const moduleIds = modules?.map((m: { id: string }) => m.id) || [];
       if (selectedModule !== 'all') {
