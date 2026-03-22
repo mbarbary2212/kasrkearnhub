@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber } from '@/hooks/useModules';
-import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { ArrowLeft, BookOpen, ChevronRight, Lock } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
+import { cn } from '@/lib/utils';
 
 export default function YearPage() {
   const { yearId } = useParams();
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const yearNumber = parseInt(yearId || '1', 10);
 
   const handleGoHome = () => {
@@ -82,26 +85,47 @@ export default function YearPage() {
             </div>
           ) : modules && modules.length > 0 ? (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-              {modules.map((module, index) => (
-                <div
-                  key={module.id}
-                  className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group"
-                  onClick={() => navigate(`/module/${module.id}`)}
-                >
-                  <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-foreground truncate">
-                      {module.slug?.toUpperCase()} — {module.name}
-                    </p>
-                    {module.description && (
-                      <p className="text-sm text-muted-foreground truncate">{module.description}</p>
-                    )}
+              {modules.map((module, index) => {
+                const isAssigned = auth.isModuleAdmin && !auth.isTeacher
+                  ? auth.moduleAdminModuleIds.includes(module.id)
+                  : true;
+
+                return isAssigned ? (
+                  <button
+                    key={module.id}
+                    className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group w-full text-left"
+                    onClick={() => navigate(`/module/${module.id}`)}
+                  >
+                    <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-medium text-foreground truncate">
+                        {module.slug?.toUpperCase()} — {module.name}
+                      </p>
+                      {module.description && (
+                        <p className="text-sm text-muted-foreground truncate">{module.description}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                  </button>
+                ) : (
+                  <div
+                    key={module.id}
+                    className="flex items-center gap-4 py-4 px-4 opacity-50 cursor-default"
+                  >
+                    <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-medium text-muted-foreground truncate">
+                        {module.slug?.toUpperCase()} — {module.name}
+                      </p>
+                    </div>
+                    <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

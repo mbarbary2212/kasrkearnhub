@@ -11,7 +11,7 @@ export function useIsModuleAdmin(moduleId: string | undefined) {
       if (!moduleId || !user?.id) return false;
       
       // Super admin and platform admin have access to all modules
-      if (isSuperAdmin || isPlatformAdmin || isTeacher) return true;
+      if (isSuperAdmin || isPlatformAdmin) return true;
       
       // Check if user is a module admin
       const { data } = await supabase
