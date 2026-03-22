@@ -787,7 +787,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
         </Tooltip>
       )}
 
-      {showAddControls && contentType === 'resource' && !hideAudio && (
+      {showAddControls && canManageContent && contentType === 'resource' && !hideAudio && (
         <AudioUploadDialog
           moduleId={moduleId}
           chapterId={chapterId}
