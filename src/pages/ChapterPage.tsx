@@ -370,7 +370,7 @@ export default function ChapterPage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const resourcesTabs = useMemo(() => {
-    if (canManageContent) return allResourcesTabs;
+    if (showAllTabs) return allResourcesTabs;
     const filtered = filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
   }, [canManageContent, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
