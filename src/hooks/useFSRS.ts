@@ -13,6 +13,14 @@ const RATING_MAP: Record<string, Grade> = {
   Easy: Rating.Easy,
 };
 
+// ─── Numeric State → DB string name ──────────────────────────
+const STATE_NAMES: Record<number, string> = {
+  0: 'New',
+  1: 'Learning',
+  2: 'Review',
+  3: 'Relearning',
+};
+
 // ─── useScheduleCard ───────────────────────────────────────────
 export function useScheduleCard() {
   const { user } = useAuthContext();
