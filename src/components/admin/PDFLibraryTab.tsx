@@ -447,7 +447,7 @@ interface PDFLibraryTabProps {
 export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibraryTabProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterModule, setFilterModule] = useState<string>('');
+  const [filterModule, setFilterModule] = useState<string>(moduleAdminModuleIds?.length ? moduleAdminModuleIds[0] : '');
   const [filterDocType, setFilterDocType] = useState<string>('');
   const [aiFactoryOpen, setAiFactoryOpen] = useState(false);
   const [batchGeneratorOpen, setBatchGeneratorOpen] = useState(false);
@@ -540,7 +540,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
                 <SelectValue placeholder="All Modules" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Modules</SelectItem>
+                {!moduleAdminModuleIds?.length && <SelectItem value="all">All Modules</SelectItem>}
                 <YearGroupedModuleOptions modules={availableModules} />
               </SelectContent>
             </Select>
