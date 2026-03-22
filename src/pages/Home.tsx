@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { useUnreadAnnouncementDetails } from '@/hooks/useUnreadAnnouncementDetails';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 import { AppMindMap } from '@/components/dashboard/AppMindMap';
+import { formatDistanceToNow } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -115,6 +118,7 @@ function LoggedInHome() {
   const { profile } = useAuthContext();
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
+  const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
   // Color mapping for year accent borders
@@ -221,8 +225,51 @@ function LoggedInHome() {
                   )}
                 </span>
               </PopoverTrigger>
-              <PopoverContent side="bottom" className="w-auto px-4 py-2 text-sm">
-                <p className="text-popover-foreground">Go to your module to check your messages</p>
+              <PopoverContent side="bottom" align="center" className="w-80 p-0">
+                <div className="px-4 py-3 border-b">
+                  <h4 className="font-semibold text-sm text-foreground">Unread Messages</h4>
+                </div>
+                <ScrollArea className="max-h-[300px]">
+                  {unreadAnnouncements && unreadAnnouncements.length > 0 ? (
+                    <div className="divide-y">
+                      {unreadAnnouncements.map((ann) => (
+                        <button
+                          key={ann.id}
+                          className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                          onClick={() => {
+                            if (ann.module_id) {
+                              navigate(`/module/${ann.module_id}?tab=connect`);
+                            }
+                          }}
+                        >
+                          <Megaphone className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground line-clamp-1">{ann.title}</p>
+                            {ann.module_name && (
+                              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" />
+                                {ann.module_name}
+                              </p>
+                            )}
+                            {!ann.module_id && (
+                              <p className="text-xs text-muted-foreground mt-0.5">General announcement</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatDistanceToNow(new Date(ann.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                          {ann.module_id && (
+                            <ChevronRight className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-muted-foreground">
+                      <p className="text-sm">No unread messages</p>
+                    </div>
+                  )}
+                </ScrollArea>
               </PopoverContent>
             </Popover>
           )}
