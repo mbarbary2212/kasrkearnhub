@@ -314,7 +314,7 @@ export function useAuth() {
     isTopicAdmin: state.role === 'topic_admin',
     isModuleAdmin: isModuleAdminRole,
     isAdmin: state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin' || state.role === 'topic_admin',
-    isTeacher: state.role === 'teacher' || state.role === 'admin' || state.role === 'department_admin' || state.role === 'platform_admin' || state.role === 'super_admin',
+    isTeacher: state.role === 'teacher',
     isStudent: !!state.role,
   };
 }

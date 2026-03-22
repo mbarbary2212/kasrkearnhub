@@ -109,7 +109,6 @@ export default function ChapterPage() {
   const { setStudyContext } = useCoachContext();
 
   const showAddControls = !!(
-    auth.isTeacher ||
     auth.isAdmin ||
     auth.isModuleAdmin ||
     auth.isTopicAdmin ||
@@ -123,10 +122,12 @@ export default function ChapterPage() {
   // 2. They can manage this specific chapter (topic admins assigned to this chapter)
   // 3. They can manage the parent module (module admins assigned to this module)
   const canManageContent = !!(
-    auth.isTeacher ||
     (chapterId && auth.canManageChapter(chapterId)) ||
     (moduleId && auth.canManageModule(moduleId))
   );
+
+  // Teachers see all tabs (including empty) but no action buttons
+  const showAllTabs = canManageContent || auth.isTeacher;
 
   // Redirect topic admins who are not assigned to this chapter
   useEffect(() => {
@@ -369,10 +370,10 @@ export default function ChapterPage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const resourcesTabs = useMemo(() => {
-    if (canManageContent) return allResourcesTabs;
+    if (showAllTabs) return allResourcesTabs;
     const filtered = filterTabsForStudent(allResourcesTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
-  }, [canManageContent, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
+  }, [showAllTabs, allResourcesTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset resources tab if current tab becomes hidden
   useEffect(() => {
@@ -389,10 +390,10 @@ export default function ChapterPage() {
   }, [clinicalCaseCount, interactiveAlgorithms?.length]);
 
   const interactiveTabs = useMemo(() => {
-    if (canManageContent) return allInteractiveTabs;
+    if (showAllTabs) return allInteractiveTabs;
     const filtered = filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
-  }, [canManageContent, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
+  }, [showAllTabs, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
@@ -416,10 +417,10 @@ export default function ChapterPage() {
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
-    if (canManageContent) return allPracticeTabs;
+    if (showAllTabs) return allPracticeTabs;
     const filtered = filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
-  }, [canManageContent, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
+  }, [showAllTabs, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
   // Reset practice tab if current tab becomes hidden
   useEffect(() => {
