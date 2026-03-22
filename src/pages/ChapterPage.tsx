@@ -390,7 +390,7 @@ export default function ChapterPage() {
   }, [clinicalCaseCount, interactiveAlgorithms?.length]);
 
   const interactiveTabs = useMemo(() => {
-    if (canManageContent) return allInteractiveTabs;
+    if (showAllTabs) return allInteractiveTabs;
     const filtered = filterTabsForStudent(allInteractiveTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
   }, [canManageContent, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
