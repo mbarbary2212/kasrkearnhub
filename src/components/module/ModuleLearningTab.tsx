@@ -341,7 +341,7 @@ function BookLecturesView({
               </div>
               )}
               
-              {canManage ? (
+              {canManage && isAssigned ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
@@ -365,11 +365,12 @@ function BookLecturesView({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
+              ) : isAssigned ? (
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              )}
+              ) : null}
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 border rounded-lg">
