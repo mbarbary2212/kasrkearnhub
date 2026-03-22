@@ -35,6 +35,15 @@ export default function Home() {
       return;
     }
 
+    // Only auto-redirect on initial app load (first visit in this session)
+    // If user already visited home this session, don't redirect them away
+    const hasVisitedHome = sessionStorage.getItem('kalmhub:hasVisitedHome');
+    if (hasVisitedHome) {
+      setHasCheckedAutoLogin(true);
+      return;
+    }
+    sessionStorage.setItem('kalmhub:hasVisitedHome', 'true');
+
     const checkAutoRedirect = async () => {
       try {
         // Priority 1: Check for stored lastPath (resume functionality)
