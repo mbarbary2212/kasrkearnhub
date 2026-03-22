@@ -66,8 +66,8 @@ export function AnnouncementsTab({ modules, years, moduleAdminModuleIds = [] }: 
   
   // Use admin announcements for platform/super admins, module announcements for module admins
   const { data: adminAnnouncements, isLoading: adminLoading } = useAdminAnnouncements();
-  const { data: moduleAnnouncements, isLoading: moduleLoading } = useModuleAnnouncements(
-    isModuleAdminOnly ? moduleAdminModuleIds[0] : ''
+  const { data: moduleAnnouncements, isLoading: moduleLoading } = useModuleAdminAnnouncements(
+    isModuleAdminOnly ? moduleAdminModuleIds : []
   );
   
   // For module admins with multiple modules, we need to fetch all their module announcements

@@ -126,7 +126,47 @@ export function useAdminAnnouncements() {
   });
 }
 
-// Fetch module-specific announcements for module admin
+// Fetch module-specific announcements for module admin (supports multiple modules)
+export function useModuleAdminAnnouncements(moduleIds: string[]) {
+  const { user } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['module-admin-announcements', moduleIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .in('module_id', moduleIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch creator profiles separately
+      const creatorIds = [...new Set((data || []).map(a => a.created_by).filter(Boolean))];
+      let profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+      
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', creatorIds);
+        
+        profilesMap = (profiles || []).reduce((acc, p) => {
+          acc[p.id] = { full_name: p.full_name, email: p.email };
+          return acc;
+        }, {} as Record<string, { full_name: string | null; email: string }>);
+      }
+
+      return (data || []).map(a => ({
+        ...a,
+        profiles: a.created_by ? profilesMap[a.created_by] || null : null,
+      })) as Announcement[];
+    },
+    enabled: !!user?.id && moduleIds.length > 0,
+  });
+}
+
+// Fetch module-specific announcements for module admin (single module - kept for backwards compat)
 export function useModuleAnnouncements(moduleId: string) {
   const { user } = useAuthContext();
 
