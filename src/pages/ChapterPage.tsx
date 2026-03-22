@@ -109,7 +109,6 @@ export default function ChapterPage() {
   const { setStudyContext } = useCoachContext();
 
   const showAddControls = !!(
-    auth.isTeacher ||
     auth.isAdmin ||
     auth.isModuleAdmin ||
     auth.isTopicAdmin ||
