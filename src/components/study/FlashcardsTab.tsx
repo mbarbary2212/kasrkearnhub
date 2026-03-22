@@ -139,8 +139,8 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
     return Array.from(topics).sort();
   }, [resources]);
 
-  // Admin/Teacher view shows the grid with edit/delete controls
-  const showAdminView = (isAdmin || isTeacher) && canManage;
+  // Admin view shows the grid with edit/delete controls (teachers are view-only)
+  const showAdminView = isAdmin && canManage;
 
   if (showAdminView) {
     return (

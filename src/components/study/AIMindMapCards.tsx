@@ -29,8 +29,8 @@ export function AIMindMapCards({ maps, isLoading, filterBySection }: AIMindMapCa
   const [editedMarkdown, setEditedMarkdown] = useState('');
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const { isAdmin, isTeacher } = useAuthContext();
-  const canEdit = isAdmin || isTeacher;
+  const { isAdmin } = useAuthContext();
+  const canEdit = isAdmin;
   const updateMarkdown = useUpdateMindMapMarkdown();
 
   const filteredMaps = useMemo(() => {

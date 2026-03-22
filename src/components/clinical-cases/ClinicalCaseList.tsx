@@ -17,8 +17,8 @@ const LEVEL_ORDER: Record<string, number> = { beginner: 0, intermediate: 1, adva
 
 export function ClinicalCaseList({ moduleId, chapterId, topicId }: ClinicalCaseListProps) {
   const navigate = useNavigate();
-  const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
-  const canSeeUnpublished = isAdmin || isTeacher || isPlatformAdmin || isSuperAdmin;
+  const { isAdmin, isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const canSeeUnpublished = isAdmin || isPlatformAdmin || isSuperAdmin;
   
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');

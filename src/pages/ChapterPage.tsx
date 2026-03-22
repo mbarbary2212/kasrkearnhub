@@ -417,7 +417,7 @@ export default function ChapterPage() {
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
-    if (canManageContent) return allPracticeTabs;
+    if (showAllTabs) return allPracticeTabs;
     const filtered = filterTabsForStudent(allPracticeTabs, hideEmptyTabs ?? false);
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
   }, [canManageContent, allPracticeTabs, hideEmptyTabs, pinSettings, studentPrefs]);
