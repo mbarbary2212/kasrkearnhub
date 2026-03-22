@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { useUnreadAnnouncementDetails } from '@/hooks/useUnreadAnnouncementDetails';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
 import { AppMindMap } from '@/components/dashboard/AppMindMap';
+import { formatDistanceToNow } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
