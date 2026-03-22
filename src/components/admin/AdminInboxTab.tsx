@@ -34,7 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AdminInboxTab() {
-  const { isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isDepartmentAdmin, topicAssignments } = useAuthContext();
+  const { isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isDepartmentAdmin, isModuleAdmin, moduleAdminModuleIds, topicAssignments } = useAuthContext();
   const [selectedModule, setSelectedModule] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedFeedback, setSelectedFeedback] = useState<ItemFeedback | null>(null);
@@ -60,6 +60,12 @@ export function AdminInboxTab() {
     if (isSuperAdmin || isPlatformAdmin) {
       if (selectedModule !== 'all') {
         filters.moduleId = selectedModule;
+      }
+    } else if (isModuleAdmin) {
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      } else if (moduleAdminModuleIds.length > 0) {
+        filters.moduleIds = moduleAdminModuleIds;
       }
     } else if (isDepartmentAdmin) {
       const moduleIds = modules?.map((m: { id: string }) => m.id) || [];
@@ -95,6 +101,12 @@ export function AdminInboxTab() {
     if (isSuperAdmin || isPlatformAdmin) {
       if (selectedModule !== 'all') {
         filters.moduleId = selectedModule;
+      }
+    } else if (isModuleAdmin) {
+      if (selectedModule !== 'all') {
+        filters.moduleId = selectedModule;
+      } else if (moduleAdminModuleIds.length > 0) {
+        filters.moduleIds = moduleAdminModuleIds;
       }
     } else if (isDepartmentAdmin) {
       const moduleIds = modules?.map((m: { id: string }) => m.id) || [];

@@ -1056,7 +1056,7 @@ export default function AdminPage() {
       ],
       messaging: [
         { value: 'announcements', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
-        { value: 'inbox', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'inbox', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
     };
     return groupTabs[group]?.find(t => t.visible)?.value || 'users';
@@ -2187,7 +2187,7 @@ export default function AdminPage() {
           )}
 
           {/* Inbox Tab - Feedback & Inquiries */}
-          {(isSuperAdmin || isPlatformAdmin) && (
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="inbox">
               <AdminInboxTab />
             </TabsContent>
