@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 export default function YearPage() {
   const { yearId } = useParams();
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const yearNumber = parseInt(yearId || '1', 10);
 
   const handleGoHome = () => {
