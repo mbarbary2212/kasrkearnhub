@@ -795,7 +795,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
         />
       )}
 
-      {showAddControls && (
+      {showAddControls && canManageContent && (
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <Button size="sm" variant="outline" onClick={() => guard(() => setOpen(true))}>
             <Plus className="w-4 h-4 mr-1" />
