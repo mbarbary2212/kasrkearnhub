@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Loader2,
   Trash2,
+  Link,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -733,19 +734,26 @@ interface UploadCardProps {
 function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   const queryClient = useQueryClient();
 
+  // Mode toggle
+  const [mode, setMode] = useState<'link' | 'upload'>('link');
+
   // Selection state — three-level: year → module → chapter
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [selectedChapterId, setSelectedChapterId] = useState('');
 
-  // Upload metadata
-  const [file, setFile] = useState<File | null>(null);
+  // Shared metadata
   const [title, setTitle] = useState('');
   const [doctor, setDoctor] = useState('');
+
+  // Link mode
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
+
+  // Upload mode
+  const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('unlisted');
-
-  // Upload state
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -757,6 +765,34 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   const chapterOptions = moduleOptions.find((m) => m.id === selectedModuleId)?.chapters ?? [];
 
   const isUploading = ['initiating', 'uploading', 'finalizing'].includes(uploadStatus);
+
+  const handleLinkSave = async () => {
+    if (!title.trim()) { toast.error('Please enter a video title.'); return; }
+    if (!selectedChapterId) { toast.error('Please select a chapter.'); return; }
+    const normalizedUrl = normalizeVideoInput(linkUrl);
+    if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
+      toast.error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
+      return;
+    }
+    setLinkSaving(true);
+    try {
+      const { error } = await supabase.from('lectures').insert({
+        title: title.trim(),
+        description: doctor.trim() || null,
+        video_url: normalizedUrl || null,
+        chapter_id: selectedChapterId,
+        module_id: selectedModuleId || null,
+      });
+      if (error) throw error;
+      toast.success('Lecture linked successfully!');
+      queryClient.invalidateQueries({ queryKey: ['videos-hierarchy'] });
+      handleReset();
+    } catch (err) {
+      toast.error(`Failed to save: ${(err as Error).message}`);
+    } finally {
+      setLinkSaving(false);
+    }
+  };
 
   const handleUpload = async () => {
     if (!file) { toast.error('Please select a video file.'); return; }
@@ -829,6 +865,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
     setFile(null);
     setTitle('');
     setDoctor('');
+    setLinkUrl('');
     setDescription('');
     setPrivacy('unlisted');
     setSelectedChapterId('');
@@ -850,15 +887,31 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Upload className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base">Upload Video to YouTube</CardTitle>
-        </div>
-        <CardDescription>
-          Upload a video file directly to your YouTube channel. After upload, the video will be embedded from YouTube on your site.
-        </CardDescription>
+        <CardTitle className="text-base">Add Video</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+
+        {/* Mode toggle */}
+        <div className="flex rounded-lg border p-1 gap-1">
+          <button
+            onClick={() => setMode('link')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === 'link' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Link className="w-4 h-4" />
+            Link Video
+          </button>
+          <button
+            onClick={() => setMode('upload')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === 'upload' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Upload className="w-4 h-4" />
+            Upload to YouTube
+          </button>
+        </div>
 
         {/* Done state */}
         {uploadStatus === 'done' && (
@@ -896,23 +949,25 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
           </div>
         )}
 
-        {/* Upload form — hidden after done/error */}
-        {uploadStatus !== 'done' && uploadStatus !== 'error' && (
+        {/* Form — hidden after upload done/error */}
+        {(mode === 'link' || (uploadStatus !== 'done' && uploadStatus !== 'error')) && (
           <div className="space-y-3">
-            {/* Video file */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video File</label>
-              <Input
-                type="file"
-                accept="video/*"
-                disabled={isUploading}
-                onChange={(e) => {
-                  const f = e.target.files?.[0] ?? null;
-                  setFile(f);
-                  if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ''));
-                }}
-              />
-            </div>
+            {/* Video file — upload mode only */}
+            {mode === 'upload' && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video File</label>
+                <Input
+                  type="file"
+                  accept="video/*"
+                  disabled={isUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setFile(f);
+                    if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ''));
+                  }}
+                />
+              </div>
+            )}
 
             {/* Year selector */}
             <div>
@@ -1007,68 +1062,96 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
               />
             </div>
 
-            {/* Description */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Video description (optional)…"
-                disabled={isUploading}
-              />
-            </div>
-
-            {/* Privacy */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Privacy</label>
-              <Select
-                value={privacy}
-                onValueChange={(v) => setPrivacy(v as typeof privacy)}
-                disabled={isUploading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unlisted">Unlisted</SelectItem>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Progress bar */}
-            {isUploading && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{statusLabel[uploadStatus]}</span>
-                  {uploadStatus === 'uploading' && <span>{uploadProgress}%</span>}
-                </div>
-                <Progress
-                  value={uploadStatus === 'uploading' ? uploadProgress : undefined}
-                  className={uploadStatus !== 'uploading' ? 'animate-pulse' : ''}
+            {/* Link mode: Video URL */}
+            {mode === 'link' && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video URL</label>
+                <Input
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="YouTube or Google Drive link"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
+                </p>
               </div>
             )}
 
-            {/* Upload button */}
-            <Button
-              onClick={handleUpload}
-              disabled={isUploading || !file || !title.trim() || !selectedChapterId}
-              className="gap-2 w-full sm:w-auto"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {statusLabel[uploadStatus]}
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4" />
-                  Upload to YouTube
-                </>
-              )}
-            </Button>
+            {/* Upload mode: Description + Privacy + Progress */}
+            {mode === 'upload' && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+                  <Input
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Video description (optional)…"
+                    disabled={isUploading}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Privacy</label>
+                  <Select
+                    value={privacy}
+                    onValueChange={(v) => setPrivacy(v as typeof privacy)}
+                    disabled={isUploading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unlisted">Unlisted</SelectItem>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isUploading && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{statusLabel[uploadStatus]}</span>
+                      {uploadStatus === 'uploading' && <span>{uploadProgress}%</span>}
+                    </div>
+                    <Progress
+                      value={uploadStatus === 'uploading' ? uploadProgress : undefined}
+                      className={uploadStatus !== 'uploading' ? 'animate-pulse' : ''}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Action button */}
+            {mode === 'link' ? (
+              <Button
+                onClick={handleLinkSave}
+                disabled={linkSaving || !title.trim() || !selectedChapterId}
+                className="gap-2 w-full sm:w-auto"
+              >
+                {linkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link className="w-4 h-4" />}
+                Save
+              </Button>
+            ) : (
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading || !file || !title.trim() || !selectedChapterId}
+                className="gap-2 w-full sm:w-auto"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {statusLabel[uploadStatus]}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload to YouTube
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

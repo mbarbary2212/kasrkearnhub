@@ -82,6 +82,8 @@ const PAGE_LABELS: Record<string, string> = {
   home:            'Home Page',
   year:            'Year Overview',
   module:          'Module Browser',
+  topic:           'Topic Page',
+  chapter:         'Chapter Page',
   exam:            'Taking an Exam',
   practice:        'Flashcard Review',
   virtual_patient: 'Virtual Patient',
@@ -286,6 +288,18 @@ export function RealtimeAnalyticsTab() {
     return Object.entries(sections).sort((a, b) => b[1].total - a[1].total);
   }, [onlineUsers]);
 
+  const byResourceTab = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const u of onlineUsers) {
+      const s = u.state;
+      if ((s.page === 'topic' || s.page === 'chapter') && s.section_mode === 'resources' && s.active_tab) {
+        const label = TAB_SHORT.resources[s.active_tab] ?? s.active_tab;
+        counts[label] = (counts[label] ?? 0) + 1;
+      }
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [onlineUsers]);
+
   const byRole = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const u of onlineUsers) {
@@ -335,6 +349,24 @@ export function RealtimeAnalyticsTab() {
         <StatCard icon={BookOpen} label="Staff"        value={stats.staff}      color="bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400" />
         <StatCard icon={Monitor}  label="Admins"       value={stats.admins}     color="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" />
       </div>
+
+      {/* Live Resource Usage */}
+      {byResourceTab.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              Live Resource Usage
+              <span className="ml-auto text-xs font-normal text-muted-foreground">{byResourceTab.reduce((s, [, c]) => s + c, 0)} in resources now</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {byResourceTab.map(([label, count]) => (
+              <BreakdownRow key={label} label={label} count={count} total={byResourceTab.reduce((s, [, c]) => s + c, 0)} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Breakdowns */}
       {onlineCount === 0 ? (

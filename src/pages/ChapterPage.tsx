@@ -75,6 +75,7 @@ import { InteractiveAlgorithm, AlgorithmJson } from '@/types/algorithm';
 import { ChapterMockExamSection } from '@/components/exam';
 import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
+import { usePresence } from '@/contexts/PresenceContext';
 import { 
   ArrowLeft, 
   FileText, 
@@ -107,6 +108,7 @@ export default function ChapterPage() {
   const { guard: guardAdd, dialog: permissionDialog } = useAddPermissionGuard({ moduleId, chapterId });
   const deleteStudyResource = useDeleteStudyResource();
   const { setStudyContext } = useCoachContext();
+  const { updatePresence } = usePresence();
 
   const showAddControls = !!(
     auth.isAdmin ||
@@ -322,6 +324,24 @@ export default function ChapterPage() {
       });
     }
   }, [module, chapter, activeSection, setStudyContext]);
+
+  // Update presence so admins can see which resource tab users are on
+  useEffect(() => {
+    if (!module || !chapter) return;
+    const activeTab =
+      activeSection === 'resources' ? resourcesTab
+      : activeSection === 'interactive' ? interactiveTab
+      : activeSection === 'practice' ? practiceTab
+      : undefined;
+    updatePresence({
+      year_id: module.year_id,
+      module_name: module.name,
+      topic_name: chapter.title,
+      page: 'chapter',
+      section_mode: activeSection,
+      active_tab: activeTab,
+    });
+  }, [module, chapter, activeSection, resourcesTab, interactiveTab, practiceTab, updatePresence]);
 
   if (!chapterLoading && !chapter) {
     return (
