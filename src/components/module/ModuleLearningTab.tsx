@@ -190,6 +190,7 @@ function BookLecturesView({
   onBack: () => void;
 }) {
   const navigate = useNavigate();
+  const auth = useAuthContext();
   const [chapterModalOpen, setChapterModalOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<ModuleChapter | null>(null);
   const [deleteChapterDialog, setDeleteChapterDialog] = useState<ModuleChapter | null>(null);
