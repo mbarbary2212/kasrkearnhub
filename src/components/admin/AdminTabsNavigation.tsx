@@ -37,7 +37,7 @@ export function AdminTabsNavigation({
       description: 'Users, roles & settings',
       icon: Shield,
       tabs: [
-        { value: 'users', label: 'Users', icon: Users, visible: true },
+        { value: 'users', label: 'Users', icon: Users, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'accounts', label: 'Accounts', icon: UserPlus, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'activity-log', label: 'Activity Log', icon: Activity, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'live', label: 'Live', icon: Radio, visible: isSuperAdmin || isPlatformAdmin },

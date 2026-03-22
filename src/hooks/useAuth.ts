@@ -275,8 +275,8 @@ export function useAuth() {
       return true;
     }
     
-    // Department admin, legacy admin and teacher can manage content
-    if (state.role === 'department_admin' || state.role === 'admin' || state.role === 'teacher') {
+    // Legacy admin and teacher can manage content
+    if (state.role === 'admin' || state.role === 'teacher') {
       return true;
     }
     

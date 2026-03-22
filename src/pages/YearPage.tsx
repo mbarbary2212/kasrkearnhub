@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber } from '@/hooks/useModules';
-import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { ArrowLeft, BookOpen, ChevronRight, Lock } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
+import { cn } from '@/lib/utils';
 
 export default function YearPage() {
   const { yearId } = useParams();
