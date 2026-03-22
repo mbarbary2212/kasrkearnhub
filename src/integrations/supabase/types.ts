@@ -2118,6 +2118,7 @@ export type Database = {
           id: string
           lapses: number
           last_review: string | null
+          learning_steps: number
           reps: number
           scheduled_days: number
           stability: number
@@ -2133,6 +2134,7 @@ export type Database = {
           id?: string
           lapses?: number
           last_review?: string | null
+          learning_steps?: number
           reps?: number
           scheduled_days?: number
           stability?: number
@@ -2148,6 +2150,7 @@ export type Database = {
           id?: string
           lapses?: number
           last_review?: string | null
+          learning_steps?: number
           reps?: number
           scheduled_days?: number
           stability?: number

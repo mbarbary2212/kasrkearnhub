@@ -12,6 +12,19 @@ export const scheduler = fsrs(params);
 /**
  * Convert a Supabase `flashcard_states` row back into a ts-fsrs Card object.
  */
+/**
+ * Calculate retrievability (probability of recall) using the FSRS forgetting curve.
+ */
+export function calcRetrievability(stability: number, daysSinceReview: number): number {
+  const DECAY = -0.5;
+  const FACTOR = 19 / 81;
+  if (stability <= 0) return 0;
+  return Math.pow(1 + FACTOR * daysSinceReview / stability, DECAY);
+}
+
+/**
+ * Convert a Supabase `flashcard_states` row back into a ts-fsrs Card object.
+ */
 export function rowToCard(row: {
   due: string;
   stability: number;
@@ -22,6 +35,7 @@ export function rowToCard(row: {
   lapses: number;
   state: string;
   last_review: string | null;
+  learning_steps: number;
 }): Card {
   const stateMap: Record<string, State> = {
     New: State.New,
@@ -40,6 +54,6 @@ export function rowToCard(row: {
     lapses: row.lapses,
     state: stateMap[row.state] ?? State.New,
     last_review: row.last_review ? new Date(row.last_review) : undefined,
-    learning_steps: 0,
+    learning_steps: row.learning_steps ?? 0,
   };
 }

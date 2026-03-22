@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { scheduler, rowToCard } from '@/lib/fsrs';
 import { Rating, createEmptyCard } from 'ts-fsrs';
 import { useRateCard } from '@/hooks/useFSRS';
@@ -12,10 +13,10 @@ interface FSRSRatingButtonsProps {
 }
 
 const RATINGS = [
-  { key: 'Again', grade: Rating.Again, emoji: '🔴', color: 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30' },
-  { key: 'Hard', grade: Rating.Hard, emoji: '🟠', color: 'border-orange-300 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30' },
-  { key: 'Good', grade: Rating.Good, emoji: '🟢', color: 'border-green-300 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30' },
-  { key: 'Easy', grade: Rating.Easy, emoji: '⭐', color: 'border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30' },
+  { key: 'Again', grade: Rating.Again, emoji: '🔴', color: 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30', tooltip: '' },
+  { key: 'Hard', grade: Rating.Hard, emoji: '🟠', color: 'border-orange-300 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30', tooltip: 'Use only when you DID remember but it was difficult. If you forgot, press Again.' },
+  { key: 'Good', grade: Rating.Good, emoji: '🟢', color: 'border-green-300 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30', tooltip: '' },
+  { key: 'Easy', grade: Rating.Easy, emoji: '⭐', color: 'border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30', tooltip: '' },
 ] as const;
 
 function formatInterval(days: number): string {
@@ -55,19 +56,36 @@ export default function FSRSRatingButtons({ cardId, fsrsState, visible, onRated 
   };
 
   return (
-    <div className="grid grid-cols-4 gap-2 mt-4">
-      {intervals.map(r => (
-        <Button
-          key={r.key}
-          variant="outline"
-          className={`flex flex-col items-center gap-0.5 h-auto py-2 px-1 ${r.color}`}
-          disabled={rateCard.isPending}
-          onClick={() => handleRate(r.key)}
-        >
-          <span className="text-sm font-medium">{r.emoji} {r.key}</span>
-          <span className="text-[10px] opacity-70">{r.interval}</span>
-        </Button>
-      ))}
-    </div>
+    <TooltipProvider>
+      <div className="grid grid-cols-4 gap-2 mt-4">
+        {intervals.map(r => {
+          const btn = (
+            <Button
+              key={r.key}
+              variant="outline"
+              className={`flex flex-col items-center gap-0.5 h-auto py-2 px-1 ${r.color}`}
+              disabled={rateCard.isPending}
+              onClick={() => handleRate(r.key)}
+            >
+              <span className="text-sm font-medium">{r.emoji} {r.key}</span>
+              <span className="text-[10px] opacity-70">{r.interval}</span>
+            </Button>
+          );
+
+          if (r.tooltip) {
+            return (
+              <Tooltip key={r.key}>
+                <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                <TooltipContent className="max-w-[200px] text-center text-xs">
+                  {r.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return btn;
+        })}
+      </div>
+    </TooltipProvider>
   );
 }

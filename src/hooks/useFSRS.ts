@@ -13,6 +13,14 @@ const RATING_MAP: Record<string, Grade> = {
   Easy: Rating.Easy,
 };
 
+// ─── Numeric State → DB string name ──────────────────────────
+const STATE_NAMES: Record<number, string> = {
+  0: 'New',
+  1: 'Learning',
+  2: 'Review',
+  3: 'Relearning',
+};
+
 // ─── useScheduleCard ───────────────────────────────────────────
 export function useScheduleCard() {
   const { user } = useAuthContext();
@@ -46,6 +54,7 @@ export function useScheduleCard() {
               lapses: empty.lapses,
               state: 'New',
               last_review: null,
+              learning_steps: 0,
             } as any,
             { onConflict: 'user_id,card_id' }
           );
@@ -105,10 +114,11 @@ export function useRateCard() {
             scheduled_days: newCard.scheduled_days,
             reps: newCard.reps,
             lapses: newCard.lapses,
-            state: String(newCard.state),
+            state: STATE_NAMES[newCard.state as number] ?? 'New',
             last_review: newCard.last_review
               ? newCard.last_review.toISOString()
               : now.toISOString(),
+            learning_steps: newCard.learning_steps ?? 0,
           } as any,
           { onConflict: 'user_id,card_id' }
         );
