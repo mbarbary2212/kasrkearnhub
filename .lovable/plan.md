@@ -1,52 +1,26 @@
 
 
-## Problem
+## Generate Progress Tracking System PDF Report
 
-When the user clicks "Abort Case" in `StructuredCaseRunner`, the browser microphone indicator stays on. The abort handler calls `stopAllTTS()` and navigates away, but it does **not** stop:
-1. The native `SpeechRecognition` instance (`recognitionRef` inside `HistoryTakingSection`)
-2. The ElevenLabs Scribe WebSocket connection (`useScribe` inside `HistoryTakingSection`)
+The PDF report documenting KALM Hub's progress tracking system has been written as a Python script at `/tmp/generate_report.py`. It needs to be executed to produce the final PDF.
 
-The `HistoryTakingSection` has cleanup in a `useEffect` return that handles both, but React's unmount during navigation may not reliably close the mic before the browser processes the route change (especially on mobile).
+### What the report covers (8 pages)
 
-## Solution
+1. **System Overview** — Two-level architecture (chapter vs. module)
+2. **Chapter Progress** — 60/40 practice/video weighting, 80% video threshold, weight redistribution
+3. **Exam Readiness Formula** — 0.40 Coverage + 0.30 Performance + 0.20 Improvement + 0.10 Consistency
+4. **Hard Caps** — Coverage <40% caps at 50%, Performance <50% caps at 65%, Improvement <40% caps at 75%
+5. **Performance Calculation** — MCQ 50%, OSCE 30%, Concept Check 20% with redistribution
+6. **Improvement Tracking** — Attempt-based (last 10 MCQ, last 5 OSCE vs prior windows)
+7. **Consistency Score** — 7-day and 14-day active-day scoring
+8. **Mastery Indicators** — MCQ ≥70% AND OSCE ≥3.5/5 thresholds
+9. **Study Streak** — Consecutive-day calculation logic
+10. **Dashboard UI Components** — Table of all display components
+11. **Data Architecture** — Tables, RPC, data flow
+12. **Caching Strategy** — Client (React Query) and server (readiness cache with 5-min TTL)
+13. **Key Files Reference** — All relevant source files
 
-Add a **global speech-recognition cleanup registry** in `src/utils/tts.ts` (where `stopAllTTS` already lives), so `HistoryTakingSection` can register its recognition instance and scribe disconnect function, and `stopAllTTS()` — already called by the abort handler — will clean them up.
+### Implementation
 
-### Changes
-
-**1. `src/utils/tts.ts`** — Add a registry for active SpeechRecognition and cleanup callbacks:
-
-```typescript
-let activeSpeechRecognition: any = null;
-const cleanupCallbacks: Set<() => void> = new Set();
-
-export function registerSpeechRecognition(recognition: any) {
-  activeSpeechRecognition = recognition;
-}
-
-export function registerCleanupCallback(cb: () => void) {
-  cleanupCallbacks.add(cb);
-  return () => cleanupCallbacks.delete(cb);
-}
-
-// In stopAllTTS(), add:
-if (activeSpeechRecognition) {
-  activeSpeechRecognition.stop();
-  activeSpeechRecognition = null;
-}
-cleanupCallbacks.forEach(cb => { try { cb(); } catch {} });
-cleanupCallbacks.clear();
-```
-
-**2. `src/components/clinical-cases/sections/HistoryTakingSection.tsx`** — Register the recognition ref and scribe disconnect with the global registry:
-
-- After creating `recognitionRef.current`, call `registerSpeechRecognition(recognition)`
-- After nulling it, call `registerSpeechRecognition(null)`
-- On mount, register the `safeDisconnect` function via `registerCleanupCallback` and unregister on unmount
-
-This way, when the abort handler calls `stopAllTTS()`, it will also stop the microphone and disconnect the scribe — before React's unmount cycle even begins.
-
-### Files to modify
-- `src/utils/tts.ts` (add registry functions, extend `stopAllTTS`)
-- `src/components/clinical-cases/sections/HistoryTakingSection.tsx` (register/unregister recognition and scribe)
+Run the already-written script at `/tmp/generate_report.py` using reportlab. Output goes to `/mnt/documents/KALM_Hub_Progress_Tracking_System.pdf`. Then QA by converting pages to images and inspecting for layout issues.
 
