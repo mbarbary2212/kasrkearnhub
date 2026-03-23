@@ -20,6 +20,7 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Loader2 } from "lucide-react";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
@@ -101,26 +102,26 @@ const App = () => {
               <ScrollToTop />
               <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin mr-2" />Loading...</div>}>
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/progress" element={<RouteErrorBoundary><ProgressPage /></RouteErrorBoundary>} />
-                <Route path="/account" element={<RouteErrorBoundary><AccountPage /></RouteErrorBoundary>} />
-                <Route path="/year/:yearId" element={<RouteErrorBoundary><YearPage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId" element={<RouteErrorBoundary><ModulePage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId/mock-exam" element={<RouteErrorBoundary><MockExamPage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<RouteErrorBoundary><BlueprintExamPage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId/exam-results/:attemptId" element={<RouteErrorBoundary><ExamResultsPage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId/chapter/:chapterId" element={<RouteErrorBoundary><ChapterPage /></RouteErrorBoundary>} />
-                <Route path="/module/:moduleId/topic/:topicId" element={<RouteErrorBoundary><TopicDetailPage /></RouteErrorBoundary>} />
-                <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />
-                <Route path="/admin/inbox" element={<RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary>} />
-                <Route path="/admin/integrity-report" element={<RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary>} />
-                <Route path="/admin/activity-log" element={<RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary>} />
-                <Route path="/feedback" element={<RouteErrorBoundary><FeedbackPage /></RouteErrorBoundary>} />
-                <Route path="/virtual-patient/:caseId" element={<RouteErrorBoundary><VirtualPatientPage /></RouteErrorBoundary>} />
-                <Route path="/structured-case/:caseId/edit" element={<RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary>} />
-                <Route path="/case-summary/:attemptId" element={<RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary>} />
-                <Route path="/review/flashcards" element={<RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary>} />
+                <Route path="/progress" element={<ProtectedRoute><RouteErrorBoundary><ProgressPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/account" element={<ProtectedRoute><RouteErrorBoundary><AccountPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/year/:yearId" element={<ProtectedRoute><RouteErrorBoundary><YearPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId" element={<ProtectedRoute><RouteErrorBoundary><ModulePage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId/mock-exam" element={<ProtectedRoute><RouteErrorBoundary><MockExamPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<ProtectedRoute><RouteErrorBoundary><BlueprintExamPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId/exam-results/:attemptId" element={<ProtectedRoute><RouteErrorBoundary><ExamResultsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId/chapter/:chapterId" element={<ProtectedRoute><RouteErrorBoundary><ChapterPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/module/:moduleId/topic/:topicId" element={<ProtectedRoute><RouteErrorBoundary><TopicDetailPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/inbox" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/integrity-report" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/activity-log" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/feedback" element={<ProtectedRoute><RouteErrorBoundary><FeedbackPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/virtual-patient/:caseId" element={<ProtectedRoute><RouteErrorBoundary><VirtualPatientPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/structured-case/:caseId/edit" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/case-summary/:attemptId" element={<ProtectedRoute><RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
               </Suspense>
