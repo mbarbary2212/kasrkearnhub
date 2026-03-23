@@ -72,9 +72,9 @@ export default function YearPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          {getYearIcon(yearNumber) && (
+          {((year as any)?.image_url || getYearIcon(yearNumber)) && (
             <img 
-              src={getYearIcon(yearNumber)} 
+              src={(year as any)?.image_url || getYearIcon(yearNumber)} 
               alt={`Year ${yearNumber}`}
               className="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover shadow-md
                          animate-scale-in

@@ -185,9 +185,9 @@ function LoggedInHome() {
         </div>
         
         {/* Year Icon */}
-        {getYearIcon(year.number) ? (
+        {((year as any).image_url || getYearIcon(year.number)) ? (
           <img 
-            src={getYearIcon(year.number)} 
+            src={(year as any).image_url || getYearIcon(year.number)} 
             alt={`Year ${year.number}`}
             className="w-16 h-16 md:w-20 md:h-20 object-contain flex-shrink-0
                        transition-transform duration-300 
