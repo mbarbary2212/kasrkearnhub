@@ -583,6 +583,7 @@ export function UsersTab() {
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
+                </div>
                 </TabsContent>
               )}
 
