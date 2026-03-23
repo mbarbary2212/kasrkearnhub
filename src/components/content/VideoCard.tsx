@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getVideoInfo, isValidVideoUrl, isVimeoUrl, normalizeVideoInput } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 import VideoPlayerModal from './VideoPlayerModal';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 
