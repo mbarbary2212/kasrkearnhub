@@ -215,7 +215,7 @@ function LoggedInHome() {
       <section className="text-center py-3 md:py-4">
         <h1 className="text-lg md:text-xl font-heading font-bold mb-1 md:mb-2 inline-flex items-center justify-center gap-2 flex-wrap">
           <span>Welcome back,</span>
-          <span className="text-gradient-medical">{profile?.full_name || 'Student'}</span>
+          <span className="text-sky-400">{profile?.full_name || 'Student'}</span>
           {hasMessages && (
             <Popover>
               <PopoverTrigger asChild>
