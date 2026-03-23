@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layers, FileText } from 'lucide-react';
 import { CurriculumTab } from './CurriculumTab';
@@ -15,8 +15,21 @@ interface CurriculumSourcesTabProps {
 export function CurriculumSourcesTab({ modules, years, moduleAdminModuleIds }: CurriculumSourcesTabProps) {
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin } = useAuthContext();
 
+  const isModuleAdminOnly = isModuleAdmin && !isSuperAdmin && !isPlatformAdmin;
+
+  const scopedModules = useMemo(() => {
+    if (!isModuleAdminOnly) return modules;
+    return modules.filter((module) => moduleAdminModuleIds.includes(module.id));
+  }, [isModuleAdminOnly, moduleAdminModuleIds, modules]);
+
+  const scopedYears = useMemo(() => {
+    if (!isModuleAdminOnly) return years;
+    const yearIds = new Set(scopedModules.map((module) => module.year_id));
+    return years.filter((year) => yearIds.has(year.id));
+  }, [isModuleAdminOnly, scopedModules, years]);
+
   const tabs = [
-    { value: 'curriculum', label: 'Curriculum', icon: Layers, visible: isSuperAdmin || isPlatformAdmin },
+    { value: 'curriculum', label: 'Curriculum', icon: Layers, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'pdf-library', label: 'PDF Library', icon: FileText, visible: isPlatformAdmin || isModuleAdmin },
   ].filter(t => t.visible);
 
@@ -43,7 +56,7 @@ export function CurriculumSourcesTab({ modules, years, moduleAdminModuleIds }: C
         </TabsList>
 
         <TabsContent value="curriculum" className="mt-4">
-          <CurriculumTab modules={modules} years={years} />
+          <CurriculumTab modules={scopedModules} years={scopedYears} />
         </TabsContent>
 
         <TabsContent value="pdf-library" className="mt-4">
