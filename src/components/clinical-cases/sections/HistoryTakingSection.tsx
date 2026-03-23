@@ -474,6 +474,7 @@ export function HistoryTakingSection({
     };
 
     recognitionRef.current = recognition;
+    registerSpeechRecognition(recognition);
     recognition.start();
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
