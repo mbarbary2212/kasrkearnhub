@@ -220,7 +220,8 @@ function LoggedInHome() {
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
