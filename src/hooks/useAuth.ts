@@ -109,6 +109,7 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
+          isLoading: !!session?.user,
         }));
 
         // Defer Supabase calls with setTimeout
