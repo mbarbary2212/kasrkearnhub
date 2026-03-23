@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
-import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
+import { useModulesByYearNumber } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
