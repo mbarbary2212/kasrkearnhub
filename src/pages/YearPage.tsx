@@ -3,7 +3,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
-import { useModulesByYearNumber } from '@/hooks/useModules';
+import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, BookOpen, ChevronRight, Lock } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
@@ -20,10 +20,23 @@ export default function YearPage() {
     navigate('/');
   };
 
+  const CROSS_LISTED_IDS = [
+    'a6c13735-4299-4c40-8a41-500c6edcf723', // MED-422
+    '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', // SUR-423
+  ];
+
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
+  const { data: crossListedModules, isLoading: crossListedLoading } = useModulesByIds(
+    yearNumber === 5 ? CROSS_LISTED_IDS : []
+  );
 
-  const isLoading = yearLoading || modulesLoading;
+  const isLoading = yearLoading || modulesLoading || (yearNumber === 5 && crossListedLoading);
+
+  // For Year 5, prepend cross-listed modules to the list
+  const allModules = yearNumber === 5 && crossListedModules && modules
+    ? [...crossListedModules, ...modules]
+    : modules;
 
   if (!yearLoading && !year) {
     return (
@@ -83,12 +96,13 @@ export default function YearPage() {
                 <Skeleton key={i} className="h-[68px] w-full" />
               ))}
             </div>
-          ) : modules && modules.length > 0 ? (
+          ) : allModules && allModules.length > 0 ? (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-              {modules.map((module, index) => {
+              {allModules.map((module, index) => {
                 const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                   ? auth.moduleAdminModuleIds.includes(module.id)
                   : true;
+                const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
 
                 return isAssigned ? (
                   <button
@@ -105,6 +119,9 @@ export default function YearPage() {
                       </p>
                       {module.description && (
                         <p className="text-sm text-muted-foreground truncate">{module.description}</p>
+                      )}
+                      {isYear4CrossListed && (
+                        <p className="text-xs text-muted-foreground italic mt-0.5">Also available in Year 5 this year</p>
                       )}
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />

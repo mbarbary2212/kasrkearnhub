@@ -97,6 +97,22 @@ export function useModuleWithDepartments(moduleId: string) {
   });
 }
 
+export function useModulesByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ['modules-by-ids', ids],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('modules')
+        .select('*')
+        .in('id', ids);
+
+      if (error) throw error;
+      return data as Module[];
+    },
+    enabled: ids.length > 0,
+  });
+}
+
 // Admin mutations
 export function useCreateModule() {
   const queryClient = useQueryClient();
