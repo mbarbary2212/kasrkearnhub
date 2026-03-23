@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { YearGroupedModuleOptions } from '@/components/admin/YearGroupedModuleOptions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -315,6 +316,7 @@ interface DocumentCardProps {
 
 function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
   const deleteMutation = useDeleteAdminDocument();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const handlePreview = async () => {
     const url = await getSignedUrl(doc.storage_path);
@@ -351,9 +353,12 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
   };
 
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this document?')) {
-      deleteMutation.mutate(doc.id);
-    }
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate(doc.id);
+    setIsDeleteConfirmOpen(false);
   };
 
   return (
@@ -435,6 +440,26 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
           </Button>
         </div>
       </CardContent>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{doc.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

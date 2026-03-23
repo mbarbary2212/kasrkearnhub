@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1078,6 +1079,7 @@ export default function AdminPage() {
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
   const [moduleForm, setModuleForm] = useState({
     year_id: '',
     name: '',
@@ -1307,16 +1309,17 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm('Are you sure you want to delete this module? This will also delete all content within it.')) {
-      return;
-    }
+  const handleDeleteModule = (moduleId: string) => {
+    setDeletingModuleId(moduleId);
+  };
 
+  const confirmDeleteModule = async () => {
+    if (!deletingModuleId) return;
     try {
       const { error } = await supabase
         .from('modules')
         .delete()
-        .eq('id', moduleId);
+        .eq('id', deletingModuleId);
 
       if (error) throw error;
 
@@ -1325,6 +1328,8 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Error deleting module:', error);
       toast.error('Failed to delete module');
+    } finally {
+      setDeletingModuleId(null);
     }
   };
 
@@ -2242,6 +2247,25 @@ export default function AdminPage() {
         }}
         isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
       />
+      <AlertDialog open={!!deletingModuleId} onOpenChange={(open) => !open && setDeletingModuleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Module?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this module? This will also delete all content within it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteModule}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

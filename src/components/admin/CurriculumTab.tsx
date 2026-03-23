@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Building2, Link2, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
   const queryClient = useQueryClient();
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
+  const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
   
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
@@ -135,16 +137,17 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm('Are you sure you want to delete this module? This will also delete all content within it.')) {
-      return;
-    }
+  const handleDeleteModule = (moduleId: string) => {
+    setDeletingModuleId(moduleId);
+  };
 
+  const confirmDeleteModule = async () => {
+    if (!deletingModuleId) return;
     try {
       const { error } = await supabase
         .from('modules')
         .delete()
-        .eq('id', moduleId);
+        .eq('id', deletingModuleId);
 
       if (error) throw error;
 
@@ -153,6 +156,8 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     } catch (error) {
       console.error('Error deleting module:', error);
       toast.error('Failed to delete module');
+    } finally {
+      setDeletingModuleId(null);
     }
   };
 
@@ -447,6 +452,26 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!deletingModuleId} onOpenChange={(open) => !open && setDeletingModuleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Module?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this module? This will also delete all content within it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteModule}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

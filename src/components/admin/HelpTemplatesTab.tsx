@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   FileText, 
   Download, 
@@ -938,6 +939,7 @@ export function HelpTemplatesTab() {
   const queryClient = useQueryClient();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingFile, setDeletingFile] = useState<AdminHelpFile | null>(null);
   const [uploadForm, setUploadForm] = useState({
     title: '',
     description: '',
@@ -1122,11 +1124,7 @@ export function HelpTemplatesTab() {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this file?')) {
-                            deleteMutation.mutate(file);
-                          }
-                        }}
+                        onClick={() => setDeletingFile(file)}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -1257,6 +1255,31 @@ export function HelpTemplatesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingFile} onOpenChange={(open) => !open && setDeletingFile(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete File?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingFile?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingFile) {
+                  deleteMutation.mutate(deletingFile);
+                  setDeletingFile(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
