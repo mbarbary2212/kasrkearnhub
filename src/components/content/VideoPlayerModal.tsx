@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play, AlertCircle } from 'lucide-react';
-import { getVideoInfo, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
+import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
