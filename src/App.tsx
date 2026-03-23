@@ -21,6 +21,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { Loader2 } from "lucide-react";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DisclaimerDialog, DISCLAIMER_KEY } from "@/components/DisclaimerDialog";
+import { useDisclaimerEnabled } from "@/hooks/useDisclaimerSetting";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
