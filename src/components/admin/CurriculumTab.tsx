@@ -137,16 +137,17 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     }
   };
 
-  const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm('Are you sure you want to delete this module? This will also delete all content within it.')) {
-      return;
-    }
+  const handleDeleteModule = (moduleId: string) => {
+    setDeletingModuleId(moduleId);
+  };
 
+  const confirmDeleteModule = async () => {
+    if (!deletingModuleId) return;
     try {
       const { error } = await supabase
         .from('modules')
         .delete()
-        .eq('id', moduleId);
+        .eq('id', deletingModuleId);
 
       if (error) throw error;
 
@@ -155,6 +156,8 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     } catch (error) {
       console.error('Error deleting module:', error);
       toast.error('Failed to delete module');
+    } finally {
+      setDeletingModuleId(null);
     }
   };
 
