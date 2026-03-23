@@ -455,10 +455,16 @@ export function ModuleLearningTab({
   // Fetch topics count for Pharmacology (filtered by moduleId)
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
+  // Cross-module book mapping (same as in BookLecturesView)
+  const CROSS_MODULE_BOOKS: Record<string, Record<string, string>> = {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
+  };
+  
   // Fetch chapter (lecture) counts per book
   const { data: lectureCounts } = useQuery({
     queryKey: ['book-chapter-counts', moduleId],
     queryFn: async () => {
+      // Fetch chapters for this module
       const { data, error } = await supabase
         .from('module_chapters')
         .select('book_label')
@@ -472,6 +478,23 @@ export function ModuleLearningTab({
         const label = chapter.book_label || 'General';
         counts[label] = (counts[label] || 0) + 1;
       }
+      
+      // For cross-module books, fetch counts from the source module
+      const crossBooks = CROSS_MODULE_BOOKS[moduleId];
+      if (crossBooks) {
+        for (const [bookLabel, sourceModuleId] of Object.entries(crossBooks)) {
+          const { data: crossData, error: crossError } = await supabase
+            .from('module_chapters')
+            .select('book_label')
+            .eq('module_id', sourceModuleId)
+            .eq('book_label', bookLabel);
+          
+          if (!crossError && crossData) {
+            counts[bookLabel] = crossData.length;
+          }
+        }
+      }
+      
       return counts;
     },
   });
