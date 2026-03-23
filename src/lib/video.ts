@@ -87,18 +87,7 @@ export function extractGoogleDriveId(url: string | null | undefined): string | n
 }
 
 /**
- * Check if URL is a Vimeo URL (for detection only, playback disabled)
- * Used to show "unsupported" message instead of treating as unknown
- */
-export function isVimeoUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  const u = url.trim().toLowerCase();
-  return u.includes('vimeo.com') || u.includes('player.vimeo.com');
-}
-
-/**
  * Detect the video source from URL
- * Note: Vimeo URLs return 'unknown' (playback temporarily disabled)
  */
 export function detectVideoSource(url: string | null | undefined): VideoSource {
   if (!url) return "unknown";
