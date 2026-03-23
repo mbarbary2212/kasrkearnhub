@@ -515,6 +515,28 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Year Image Edit Dialog */}
+      <Dialog open={!!editingYearImage} onOpenChange={(open) => !open && setEditingYearImage(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Year Image</DialogTitle>
+            <DialogDescription>
+              Upload or change the cover image for {editingYearImage?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <CurriculumImageUpload
+            currentImageUrl={yearImageUrl}
+            onImageChange={setYearImageUrl}
+            folder="years"
+            entityId={editingYearImage?.id}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingYearImage(null)}>Cancel</Button>
+            <Button onClick={handleSaveYearImage}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
