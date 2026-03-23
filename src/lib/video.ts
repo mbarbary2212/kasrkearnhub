@@ -139,7 +139,6 @@ export function getGoogleDriveThumbnail(fileId: string): string {
 
 /**
  * Get complete video info from URL or iframe embed code
- * Returns source 'unknown' for Vimeo and other unsupported sources
  */
 export function getVideoInfo(input: string | null | undefined): VideoInfo {
   // Normalize input first to handle iframe embed codes
