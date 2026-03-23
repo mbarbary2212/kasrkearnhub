@@ -351,6 +351,12 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
                           </SelectContent>
                         </Select>
                       </div>
+                      <CurriculumImageUpload
+                        currentImageUrl={moduleForm.image_url}
+                        onImageChange={(url) => setModuleForm(prev => ({ ...prev, image_url: url }))}
+                        folder="modules"
+                        entityId={editingModule?.id}
+                      />
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={moduleForm.is_published}
