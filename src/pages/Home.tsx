@@ -62,7 +62,7 @@ export default function Home() {
           .eq('id', user.id)
           .single();
 
-        if (data?.auto_login_to_year && data?.preferred_year_id) {
+        if (data?.preferred_year_id) {
           const { data: yearData } = await supabase
             .from('years')
             .select('number')
