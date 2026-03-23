@@ -10,7 +10,7 @@ interface VideoProgress {
   updated_at: string;
 }
 
-const LOCAL_STORAGE_PREFIX = 'vimeo_progress:';
+const LOCAL_STORAGE_PREFIX = 'video_progress:';
 const COMPLETION_THRESHOLD = 95; // percent
 const PROGRESS_INVALIDATION_THRESHOLD = 10; // percent change to trigger invalidation
 

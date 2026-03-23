@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X, Play, AlertCircle } from 'lucide-react';
-import { getVideoInfo, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
+import { getVideoInfo, normalizeVideoInput } from '@/lib/video';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -20,9 +20,6 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   const normalizedUrl = normalizeVideoInput(videoUrl);
   const videoInfo = getVideoInfo(normalizedUrl);
   
-  // Check if this is a Vimeo URL (unsupported for now)
-  const isVimeo = isVimeoUrl(normalizedUrl);
-
   // Reset states when modal closes or video changes
   useEffect(() => {
     if (!isOpen) {
@@ -68,24 +65,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
 
           {/* Video container with 16:9 aspect ratio */}
           <div className="w-full bg-muted">
-            {/* Vimeo - show unsupported message */}
-            {isVimeo ? (
-              <div className="w-full aspect-video flex items-center justify-center">
-                <div className="text-center space-y-4 p-6 max-w-sm">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">
-                      Vimeo Not Supported
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Vimeo video playback is temporarily unavailable. Please use YouTube or Google Drive links.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : videoInfo.embedUrl ? (
+            {videoInfo.embedUrl ? (
               isPlaying ? (
                 <IframePlayer
                   key={playerKey}

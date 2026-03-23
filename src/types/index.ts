@@ -33,7 +33,7 @@ export interface VideoLesson {
   topicId: string;
   title: string;
   description: string;
-  videoUrl: string; // YouTube or Vimeo URL
+  videoUrl: string; // YouTube or Google Drive URL
   duration: string;
   order: number;
 }

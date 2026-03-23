@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
+import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
 
 /**
  * Unified Content Progress Hook
@@ -47,7 +47,6 @@ interface RpcProgressResult {
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
   if (!videoUrl) return null;
-  if (isVimeoUrl(videoUrl)) return null;
   const normalized = normalizeVideoInput(videoUrl);
   return extractYouTubeId(normalized) || extractGoogleDriveId(normalized);
 }

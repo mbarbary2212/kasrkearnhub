@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getVideoInfo, isValidVideoUrl, isVimeoUrl, normalizeVideoInput } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl } from '@/lib/video';
 import VideoPlayerModal from './VideoPlayerModal';
 import ItemFeedbackModal from '@/components/feedback/ItemFeedbackModal';
 
@@ -99,11 +99,6 @@ export default function VideoCard({
               {videoInfo.source === 'googledrive' && (
                 <div className="absolute top-2 left-2 px-2 py-0.5 bg-background/80 rounded text-xs text-muted-foreground">
                   Google Drive
-                </div>
-              )}
-              {isVimeoUrl(normalizeVideoInput(videoUrl)) && (
-                <div className="absolute top-2 left-2 px-2 py-0.5 bg-background/80 rounded text-xs text-muted-foreground">
-                  Vimeo (Unsupported)
                 </div>
               )}
             </>

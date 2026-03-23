@@ -1,6 +1,5 @@
 /**
  * Video utility functions for YouTube and Google Drive
- * Note: Vimeo support temporarily disabled - will be rewritten
  */
 
 export type VideoSource = "youtube" | "googledrive" | "unknown";
@@ -88,18 +87,7 @@ export function extractGoogleDriveId(url: string | null | undefined): string | n
 }
 
 /**
- * Check if URL is a Vimeo URL (for detection only, playback disabled)
- * Used to show "unsupported" message instead of treating as unknown
- */
-export function isVimeoUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  const u = url.trim().toLowerCase();
-  return u.includes('vimeo.com') || u.includes('player.vimeo.com');
-}
-
-/**
  * Detect the video source from URL
- * Note: Vimeo URLs return 'unknown' (playback temporarily disabled)
  */
 export function detectVideoSource(url: string | null | undefined): VideoSource {
   if (!url) return "unknown";
@@ -151,7 +139,6 @@ export function getGoogleDriveThumbnail(fileId: string): string {
 
 /**
  * Get complete video info from URL or iframe embed code
- * Returns source 'unknown' for Vimeo and other unsupported sources
  */
 export function getVideoInfo(input: string | null | undefined): VideoInfo {
   // Normalize input first to handle iframe embed codes
@@ -189,17 +176,11 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
 /**
  * Check if a URL is a valid supported video URL (YouTube or Google Drive)
  * Also handles iframe embed codes
- * Note: Returns true for Vimeo URLs to allow saving (playback shows unsupported message)
  */
 export function isValidVideoUrl(input: string | null | undefined): boolean {
   const url = normalizeVideoInput(input);
   const source = detectVideoSource(url);
-  // Allow YouTube, Google Drive, and Vimeo URLs to be saved
-  // Vimeo will show "unsupported" message during playback
-  if (source !== "unknown") return true;
-  // Also allow Vimeo URLs to be saved
-  if (isVimeoUrl(url)) return true;
-  return false;
+  return source !== "unknown";
 }
 
 /**

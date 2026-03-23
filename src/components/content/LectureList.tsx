@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, isVimeoUrl, extractYouTubeId } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractYouTubeId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
 import { useVideoBookmarks } from '@/hooks/useVideoBookmarks';
@@ -319,7 +319,7 @@ export function LectureList({
 
   const videoUrl = selectedLecture?.video_url || selectedLecture?.videoUrl;
   const normalizedVideoUrl = normalizeVideoInput(videoUrl);
-  const isVimeoVideo = isVimeoUrl(normalizedVideoUrl);
+  
   const selectedYouTubeId = extractYouTubeId(normalizedVideoUrl);
 
   // For Google Drive, keep plain iframe
@@ -744,19 +744,7 @@ export function LectureList({
             </div>
           </DialogHeader>
           <div className="w-full bg-black">
-            {isVimeoVideo ? (
-              <div className="w-full aspect-video flex items-center justify-center bg-muted">
-                <div className="text-center space-y-4 p-6 max-w-sm">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-background flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">Vimeo Not Supported</h3>
-                    <p className="text-sm text-muted-foreground">Vimeo video playback is temporarily unavailable. Please use YouTube or Google Drive links.</p>
-                  </div>
-                </div>
-              </div>
-            ) : selectedYouTubeId ? (
+            {selectedYouTubeId ? (
               <YouTubePlayer
                 key={playerKey}
                 videoId={selectedYouTubeId}
