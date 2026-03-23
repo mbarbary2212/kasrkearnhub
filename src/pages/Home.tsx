@@ -130,80 +130,80 @@ function LoggedInHome() {
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const [mindMapOpen, setMindMapOpen] = useState(false);
 
-  // Color mapping for year accent borders
-  const getYearColor = (color: string | null): string => {
-    const colorMap: Record<string, string> = {
-      'bg-blue-500': '#3b82f6',
-      'bg-green-500': '#22c55e',
-      'bg-yellow-500': '#eab308',
-      'bg-orange-500': '#f97316',
-      'bg-red-500': '#ef4444',
-      'bg-purple-500': '#a855f7',
-      'bg-pink-500': '#ec4899',
-      'bg-teal-500': '#14b8a6',
-      'bg-indigo-500': '#6366f1',
-      'bg-primary': 'hsl(var(--primary))',
-    };
-    return color && colorMap[color] ? colorMap[color] : '#3b82f6';
+  // Glow color mapping per year
+  const YEAR_GLOW: Record<number, { base: string; hover: string; iconBg: string }> = {
+    1: { base: '0 0 25px rgba(59,130,246,0.12)', hover: '0 0 40px rgba(59,130,246,0.28)', iconBg: 'rgba(59,130,246,0.15)' },
+    2: { base: '0 0 25px rgba(34,197,94,0.12)', hover: '0 0 40px rgba(34,197,94,0.28)', iconBg: 'rgba(34,197,94,0.15)' },
+    3: { base: '0 0 25px rgba(234,179,8,0.12)', hover: '0 0 40px rgba(234,179,8,0.28)', iconBg: 'rgba(234,179,8,0.15)' },
+    4: { base: '0 0 25px rgba(249,115,22,0.12)', hover: '0 0 40px rgba(249,115,22,0.28)', iconBg: 'rgba(249,115,22,0.15)' },
+    5: { base: '0 0 25px rgba(239,68,68,0.12)', hover: '0 0 40px rgba(239,68,68,0.28)', iconBg: 'rgba(239,68,68,0.15)' },
   };
 
   // Year Card Component
-  const YearCard = ({ year }: { year: typeof years[0] }) => (
-    <div
-      className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
-                 transition-all duration-300 ease-out 
-                 hover:shadow-xl hover:-translate-y-1 group"
-      onClick={() => navigate(`/year/${year.number}`)}
-    >
-      {/* Colored Left Accent Border */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-1.5 md:w-2"
-        style={{ backgroundColor: getYearColor(year.color) }}
-      />
-      
-      {/* Card Content */}
-      <div className="flex items-center justify-between p-4 md:p-5 pl-5 md:pl-6">
-        <div className="flex-1 min-w-0 pr-4">
-          <h3 className="text-lg md:text-xl font-heading font-semibold text-foreground">
-            Year {year.number}
-          </h3>
-          <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
-            {year.subtitle || year.name}
-          </p>
-          {year.number <= 3 && (
-            <p className="text-xs italic text-muted-foreground mt-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              Content coming soon — you can still see the structure
+  const YearCard = ({ year }: { year: typeof years[0] }) => {
+    const glow = YEAR_GLOW[year.number] || YEAR_GLOW[1];
+
+    return (
+      <div
+        className="relative rounded-xl overflow-hidden cursor-pointer
+                   transition-all duration-300 ease-out group
+                   hover:scale-[1.02]
+                   dark:bg-white/[0.05] dark:backdrop-blur-xl dark:border dark:border-white/10
+                   bg-card shadow-md hover:shadow-xl hover:-translate-y-1"
+        style={{ boxShadow: glow.base }}
+        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = glow.hover; }}
+        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = glow.base; }}
+        onClick={() => navigate(`/year/${year.number}`)}
+      >
+        {/* Card Content */}
+        <div className="flex items-center justify-between p-4 md:p-5">
+          <div className="flex-1 min-w-0 pr-4">
+            <h3 className="text-lg md:text-xl font-heading font-semibold text-foreground">
+              Year {year.number}
+            </h3>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 line-clamp-2">
+              {year.subtitle || year.name}
             </p>
-          )}
-          {year.number === 4 && (
-            <p className="text-xs italic text-muted-foreground mt-1">SUR-423: Surgery 1</p>
-          )}
-          {year.number === 5 && (
-            <p className="text-xs italic text-muted-foreground mt-1">SUR-523: Surgery 2</p>
+            {year.number <= 3 && (
+              <p className="text-xs italic text-muted-foreground mt-1 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Content coming soon — you can still see the structure
+              </p>
+            )}
+            {year.number === 4 && (
+              <p className="text-xs italic text-muted-foreground mt-1">SUR-423: Surgery 1</p>
+            )}
+            {year.number === 5 && (
+              <p className="text-xs italic text-muted-foreground mt-1">SUR-523: Surgery 2</p>
+            )}
+          </div>
+          
+          {/* Year Icon with inner-glow container */}
+          {((year as any).image_url || getYearIcon(year.number)) ? (
+            <div
+              className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center flex-shrink-0
+                         transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2"
+              style={{ backgroundColor: glow.iconBg, boxShadow: `inset 0 0 20px ${glow.iconBg}` }}
+            >
+              <img 
+                src={(year as any).image_url || getYearIcon(year.number)} 
+                alt={`Year ${year.number}`}
+                className="w-12 h-12 md:w-14 md:h-14 object-contain"
+              />
+            </div>
+          ) : (
+            <div 
+              className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center flex-shrink-0
+                         transition-transform duration-300 group-hover:scale-110"
+              style={{ backgroundColor: glow.iconBg, boxShadow: `inset 0 0 20px ${glow.iconBg}` }}
+            >
+              <span className="text-2xl font-bold text-foreground">{year.number}</span>
+            </div>
           )}
         </div>
-        
-        {/* Year Icon */}
-        {((year as any).image_url || getYearIcon(year.number)) ? (
-          <img 
-            src={(year as any).image_url || getYearIcon(year.number)} 
-            alt={`Year ${year.number}`}
-            className="w-16 h-16 md:w-20 md:h-20 object-contain flex-shrink-0
-                       transition-transform duration-300 
-                       group-hover:scale-110 group-hover:rotate-3"
-          />
-        ) : (
-          <div 
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: getYearColor(year.color) }}
-          >
-            <span className="text-2xl font-bold text-white">{year.number}</span>
-          </div>
-        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
