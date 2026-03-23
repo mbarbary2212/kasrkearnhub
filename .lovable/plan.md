@@ -1,26 +1,41 @@
 
 
-## Generate Progress Tracking System PDF Report
+## Fix: Invite Email Links Pointing to Wrong/Broken URL
 
-The PDF report documenting KALM Hub's progress tracking system has been written as a Python script at `/tmp/generate_report.py`. It needs to be executed to produce the final PDF.
+### Root Cause
 
-### What the report covers (8 pages)
+The invite emails contain a Supabase Auth verification link that redirects students to `https://www.kalmhub.com/auth?view=change-password`. If that domain has intermittent 522 errors (host connection timeout on Cloudflare), students see the error page instead of the password-set form.
 
-1. **System Overview** — Two-level architecture (chapter vs. module)
-2. **Chapter Progress** — 60/40 practice/video weighting, 80% video threshold, weight redistribution
-3. **Exam Readiness Formula** — 0.40 Coverage + 0.30 Performance + 0.20 Improvement + 0.10 Consistency
-4. **Hard Caps** — Coverage <40% caps at 50%, Performance <50% caps at 65%, Improvement <40% caps at 75%
-5. **Performance Calculation** — MCQ 50%, OSCE 30%, Concept Check 20% with redistribution
-6. **Improvement Tracking** — Attempt-based (last 10 MCQ, last 5 OSCE vs prior windows)
-7. **Consistency Score** — 7-day and 14-day active-day scoring
-8. **Mastery Indicators** — MCQ ≥70% AND OSCE ≥3.5/5 thresholds
-9. **Study Streak** — Consecutive-day calculation logic
-10. **Dashboard UI Components** — Table of all display components
-11. **Data Architecture** — Tables, RPC, data flow
-12. **Caching Strategy** — Client (React Query) and server (readiness cache with 5-min TTL)
-13. **Key Files Reference** — All relevant source files
+Three things need fixing:
 
-### Implementation
+1. **`PUBLIC_APP_URL` Supabase secret** — may be set to `https://www.kalmhub.com` (with www) or the old lovable.app URL. Must be `https://kalmhub.com`.
+2. **Hardcoded fallback URLs in edge functions** — `provision-user` falls back to `https://www.kalmhub.com`, `send-admin-email` and `check-elevenlabs-quota` fall back to `https://kasrkearnhub.lovable.app`.
+3. **Supabase Auth Site URL & Redirect URLs** — must include `https://kalmhub.com` so Supabase allows the redirect after token verification.
 
-Run the already-written script at `/tmp/generate_report.py` using reportlab. Output goes to `/mnt/documents/KALM_Hub_Progress_Tracking_System.pdf`. Then QA by converting pages to images and inspecting for layout issues.
+### Changes
+
+**1. Update `PUBLIC_APP_URL` Supabase secret**
+- Set value to `https://kalmhub.com` (no trailing slash, no www)
+
+**2. Update fallback URLs in three edge functions:**
+
+- `supabase/functions/provision-user/index.ts` line 103: change fallback from `'https://www.kalmhub.com'` to `'https://kalmhub.com'`
+- `supabase/functions/send-admin-email/index.ts` line 144: change fallback from `'https://kasrkearnhub.lovable.app'` to `'https://kalmhub.com'`
+- `supabase/functions/check-elevenlabs-quota/index.ts` line 84: change fallback from `'https://kasrkearnhub.lovable.app'` to `'https://kalmhub.com'`
+
+**3. Redeploy all three edge functions**
+
+**4. Supabase Auth URL Configuration (manual step)**
+- You need to go to Supabase Dashboard > Authentication > URL Configuration
+- Set **Site URL** to `https://kalmhub.com`
+- Add `https://kalmhub.com/**` to **Redirect URLs** (if not already there)
+- Also keep `https://www.kalmhub.com/**` as a redirect URL for backward compatibility
+
+### After the fix
+
+- Resume approving pending requests — new invite links will use the correct `https://kalmhub.com` domain
+- For students who already received broken links: use the **Resend** button in Admin > Accounts > All Requests to send them fresh invite emails with the corrected URL
+
+### No code changes needed in the frontend
+The Auth page (`src/pages/Auth.tsx`) already uses `window.location.origin` for its own password reset flow, so it adapts to whatever domain serves it.
 
