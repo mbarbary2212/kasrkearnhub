@@ -3,7 +3,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
-import { useModulesByYearNumber } from '@/hooks/useModules';
+import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, BookOpen, ChevronRight, Lock } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
