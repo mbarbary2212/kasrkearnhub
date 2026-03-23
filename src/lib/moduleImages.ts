@@ -14,7 +14,9 @@ const MODULE_IMAGES: Record<string, string> = {
   'mpc-526': mpc526Asset.url,
 };
 
-export function getModuleImage(slug: string | null | undefined): string | undefined {
+export function getModuleImage(slug: string | null | undefined, dbImageUrl?: string | null): string | undefined {
+  // Priority: DB image_url > static asset map
+  if (dbImageUrl) return dbImageUrl;
   if (!slug) return undefined;
   return MODULE_IMAGES[slug.toLowerCase()];
 }
