@@ -104,8 +104,14 @@
   }
 
   body {
-    @apply bg-background text-foreground font-body;
+    @apply text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background: hsl(var(--background));
+  }
+
+  .dark body,
+  body.dark {
+    background: radial-gradient(ellipse at 50% 40%, hsl(170 25% 11%) 0%, hsl(0 0% 4%) 70%);
   }
 
   h1, h2, h3, h4, h5, h6 {
