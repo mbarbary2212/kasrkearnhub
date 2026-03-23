@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ArrowLeft, BookOpen, ChevronRight, Lock, Stethoscope } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
