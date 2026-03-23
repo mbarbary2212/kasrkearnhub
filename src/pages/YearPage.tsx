@@ -191,9 +191,6 @@ export default function YearPage() {
                             {module.description && (
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
                             )}
-                            {isYear4CrossListed && (
-                              <p className="text-xs text-muted-foreground italic mt-1">Also available in Year 5 this year</p>
-                            )}
                           </div>
                           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                         </div>
