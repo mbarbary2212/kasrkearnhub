@@ -1,12 +1,7 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput, isVimeoUrl } from '@/lib/video';
-
-// Re-export extractVimeoId as a no-op for backward compatibility (Vimeo disabled)
-export function extractVimeoId(_url: string | null | undefined): string | null {
-  return null;
-}
+import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
 
 /**
  * Progress Tracking System
