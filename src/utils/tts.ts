@@ -29,6 +29,20 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 /** Module-level reference to the currently playing audio (ElevenLabs or Gemini) */
 let currentAudio: HTMLAudioElement | null = null;
 
+/** Global registry for active SpeechRecognition so stopAllTTS() can kill the mic */
+let activeSpeechRecognition: any = null;
+const cleanupCallbacks: Set<() => void> = new Set();
+
+export function registerSpeechRecognition(recognition: any) {
+  activeSpeechRecognition = recognition;
+}
+
+/** Register a callback that stopAllTTS() will invoke. Returns an unregister function. */
+export function registerCleanupCallback(cb: () => void): () => void {
+  cleanupCallbacks.add(cb);
+  return () => { cleanupCallbacks.delete(cb); };
+}
+
 /** Register an externally-created Audio element so stopAllTTS() can manage it */
 export function registerCurrentAudio(audio: HTMLAudioElement) {
   // Stop any previous audio first
