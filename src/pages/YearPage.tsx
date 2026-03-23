@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ArrowLeft, BookOpen, ChevronRight, Lock } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, Lock, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
+import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 
 export default function YearPage() {
@@ -33,7 +36,6 @@ export default function YearPage() {
 
   const isLoading = yearLoading || modulesLoading || (yearNumber === 5 && crossListedLoading);
 
-  // For Year 5, prepend cross-listed modules to the list
   const allModules = yearNumber === 5 && crossListedModules && modules
     ? [...crossListedModules, ...modules]
     : modules;
@@ -60,7 +62,6 @@ export default function YearPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          {/* Year Icon */}
           {getYearIcon(yearNumber) && (
             <img 
               src={getYearIcon(yearNumber)} 
@@ -86,61 +87,112 @@ export default function YearPage() {
           </div>
         </div>
 
-        {/* Modules List */}
+        {/* Modules Grid */}
         <section>
           <h2 className="text-xl font-heading font-semibold mb-4">Modules</h2>
 
           {isLoading ? (
-            <div className="flex flex-col gap-2">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-[68px] w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="w-full aspect-video" />
+                  <div className="p-4 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </Card>
               ))}
             </div>
           ) : allModules && allModules.length > 0 ? (
-            <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-              {allModules.map((module, index) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {allModules.map((module) => {
                 const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                   ? auth.moduleAdminModuleIds.includes(module.id)
                   : true;
                 const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
+                const image = getModuleImage(module.slug);
+                const gradient = getModuleGradient(module.slug);
 
-                return isAssigned ? (
-                  <button
+                if (!isAssigned) {
+                  return (
+                    <Card
+                      key={module.id}
+                      className="overflow-hidden opacity-50 cursor-default"
+                    >
+                      <AspectRatio ratio={16 / 9}>
+                        {image ? (
+                          <img
+                            src={image}
+                            alt={module.name}
+                            className="w-full h-full object-cover grayscale"
+                          />
+                        ) : (
+                          <div className={cn(
+                            'w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative',
+                            gradient
+                          )}>
+                            <Stethoscope className="absolute bottom-3 right-3 w-10 h-10 text-white/10" />
+                            <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">
+                              {module.slug?.toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Lock className="w-8 h-8 text-white/70" />
+                        </div>
+                      </AspectRatio>
+                      <div className="p-4">
+                        <p className="font-heading font-semibold text-muted-foreground truncate">
+                          {module.slug?.toUpperCase()} — {module.name}
+                        </p>
+                      </div>
+                    </Card>
+                  );
+                }
+
+                return (
+                  <Card
                     key={module.id}
-                    className="flex items-center gap-4 py-4 px-4 cursor-pointer transition-colors hover:bg-muted/50 group w-full text-left"
+                    className="overflow-hidden cursor-pointer transition-all duration-300
+                               hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 group"
                     onClick={() => navigate(`/module/${module.id}`)}
                   >
-                    <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-foreground truncate">
-                        {module.slug?.toUpperCase()} — {module.name}
-                      </p>
-                      {module.description && (
-                        <p className="text-sm text-muted-foreground truncate">{module.description}</p>
+                    <AspectRatio ratio={16 / 9}>
+                      {image ? (
+                        <img
+                          src={image}
+                          alt={module.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className={cn(
+                          'w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative',
+                          gradient
+                        )}>
+                          <Stethoscope className="absolute bottom-3 right-3 w-10 h-10 text-white/10" />
+                          <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">
+                            {module.slug?.toUpperCase()}
+                          </span>
+                        </div>
                       )}
-                      {isYear4CrossListed && (
-                        <p className="text-xs text-muted-foreground italic mt-0.5">Also available in Year 5 this year</p>
-                      )}
+                    </AspectRatio>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-heading font-semibold text-foreground truncate">
+                            {module.slug?.toUpperCase()} — {module.name}
+                          </p>
+                          {module.description && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
+                          )}
+                          {isYear4CrossListed && (
+                            <p className="text-xs text-muted-foreground italic mt-1">Also available in Year 5 this year</p>
+                          )}
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
+                      </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                  </button>
-                ) : (
-                  <div
-                    key={module.id}
-                    className="flex items-center gap-4 py-4 px-4 opacity-50 cursor-default"
-                  >
-                    <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground text-sm font-medium flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-muted-foreground truncate">
-                        {module.slug?.toUpperCase()} — {module.name}
-                      </p>
-                    </div>
-                    <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </div>
+                  </Card>
                 );
               })}
             </div>
