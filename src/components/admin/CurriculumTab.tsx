@@ -26,6 +26,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
   const queryClient = useQueryClient();
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
+  const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
   
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
