@@ -1,30 +1,19 @@
 
 
-# Remove Legacy Scheduled Reviews System
+# Fix Cloudflare Deployment — Vite Version Conflict
 
-## What's Happening
-The old fixed-interval review system (`scheduled_reviews` table + two hook files) is fully orphaned. All UI components already use the FSRS system. This is a clean removal with zero risk of breaking anything.
+## Status: DONE
 
-## Changes
+Upgraded Vite from v5 to v6 to resolve `@cloudflare/vite-plugin` peer dependency conflict.
 
-### 1. Delete two files
-- `src/hooks/useScheduledReviews.ts`
-- `src/hooks/useScheduledReviewTotalCount.ts`
+### Changes Made
+| Package | Before | After |
+|---------|--------|-------|
+| `vite` | `^5.4.19` | `^6.1.0` (installed 6.4.1) |
+| `@vitejs/plugin-react-swc` | `^3.11.0` | `^4.0.0` |
+| `vite-plugin-pwa` | `^1.2.0` | latest compatible |
 
-Neither is imported anywhere in the codebase.
-
-### 2. DB Migration
-```sql
-DROP TABLE IF EXISTS scheduled_reviews;
-```
-
-### 3. No other files touched
-All review UI components (`ScheduledReviewAlert`, `ScheduledReviewBanner`, `FlashcardsTab`) already use `useFSRS.ts` hooks. No imports to update.
-
-## Files Modified
-| Action | Target |
-|--------|--------|
-| Delete | `src/hooks/useScheduledReviews.ts` |
-| Delete | `src/hooks/useScheduledReviewTotalCount.ts` |
-| Migration | `DROP TABLE IF EXISTS scheduled_reviews;` |
-
+### Notes
+- `vite.config.ts` required no changes — Vite 6 is backward-compatible for this config
+- Vercel deployments will also use Vite 6 — verify with a test deploy
+- Cloudflare's injected `@cloudflare/vite-plugin@1.30.0` now has its peer satisfied
