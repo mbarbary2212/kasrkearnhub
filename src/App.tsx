@@ -20,6 +20,7 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Loader2 } from "lucide-react";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
