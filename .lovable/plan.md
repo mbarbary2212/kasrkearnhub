@@ -1,45 +1,49 @@
 
 
-## Refactor Year Pages to Card Grid with Module Images
+# Plan: Remove Cross-Listing & Add SUR-423 Book 1 to SUR-523
 
-### Overview
-Replace the vertical list on all year pages with a responsive 2-column card grid (1 column on mobile). Year 5 modules (including cross-listed MED-422 and SUR-423) get the 6 uploaded images. Other year modules get colored gradient placeholders with the module title overlaid.
+## Summary
+Remove the Year 4 cross-listing (MED-422 & SUR-423) from the Year 5 dashboard, and instead make SUR-423's Book 1 accessible through SUR-523 as a third book. Students will see 3 books in SUR-523 without knowing the data originates from SUR-423.
 
-### Image Mapping (upload order)
-1. `Gemini_Generated_Image_ytu22kytu22kytu2.png` → MED-422 (med-422)
-2. `Gemini_Generated_Image_ytu22kytu22kytu2_1.png` → SUR-423 (sur-423)
-3. `Gemini_Generated_Image_ytu22kytu22kytu2_2.png` → MED-522 (med-522)
-4. `Gemini_Generated_Image_ytu22kytu22kytu2_3.png` → SUR-523 (sur-523)
-5. `Gemini_Generated_Image_ytu22kytu22kytu2_4.png` → FML-520 (fml-520)
-6. `Gemini_Generated_Image_ytu22kytu22kytu2_5.png` → MPC-526 (mpc-526)
+## Changes
 
-### Changes
+### 1. Remove Cross-Listing from Year 5 Page
+**File: `src/pages/YearPage.tsx`**
+- Remove the `CROSS_LISTED_IDS` array and all related logic (the `useModulesByIds` hook call, the `crossListedLoading` state, the `allModules` merge, and all `isYear4CrossListed` references)
+- Year 5 will only show its own modules natively
 
-**1. Upload 6 images as CDN assets**
-- Use `create_asset` for each uploaded image into `src/assets/modules/`
+### 2. Remove Cross-Listing Note from Home Page
+**File: `src/pages/Home.tsx`**
+- Remove the `SUR-523: Surgery 2` note shown on Year 5 card (line ~177) if it was related to cross-listing
 
-**2. Create `src/lib/moduleImages.ts`**
-- Map module slugs to asset URLs: `med-422`, `sur-423`, `med-522`, `sur-523`, `fml-520`, `mpc-526`
-- Export `getModuleImage(slug: string): string | undefined`
-- Returns CDN URL for matched slugs, `undefined` for others
+### 3. Add Book 1 Record to SUR-523
+**Database migration**: Insert a `module_books` row for SUR-523 (`7f5167dd-b746-4ac6-94f3-109d637df861`) with `book_label = 'Book 1'`, `display_order = 0`, and `chapter_prefix = 'Ch'` — pushing existing Book 2 and Book 3 to orders 1 and 2
 
-**3. Refactor `src/pages/YearPage.tsx` — modules section**
-- Replace the `divide-y` vertical list with `grid grid-cols-1 md:grid-cols-2 gap-4`
-- Each module renders as a `Card` with:
-  - **Header**: `AspectRatio` (16/9) containing either the mapped image (`object-cover`) or a colored gradient placeholder with the module code displayed large and centered
-  - **Body**: Module code + name as bold heading, description as muted subtitle
-  - Hover effect: `hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all duration-300`
-- Locked modules: same card but with reduced opacity and lock icon overlay
-- Year 4 cross-listed note remains as italic text on relevant cards
-- Loading skeleton: grid of card-shaped skeletons (image area + text lines)
+### 4. Cross-Module Chapter Fetching for Book 1
+**File: `src/components/module/ModuleLearningTab.tsx`**
+- In the `BookLecturesView` component's chapter query (lines 211-224), add logic: when `moduleId` is SUR-523 and `bookLabel` is `'Book 1'`, fetch chapters from SUR-423's module_id instead
+- Define a constant mapping:
+```text
+CROSS_MODULE_BOOKS = {
+  '7f5167dd-...': { 'Book 1': '153318ba-...' }
+}
+// SUR-523's Book 1 → fetch from SUR-423
+```
+- This keeps all chapter data in SUR-423; SUR-523 just displays it
+- Chapter navigation (clicking a chapter) will route to `/module/SUR-523-id/chapter/:chapterId` — need to verify this works since the chapter's `module_id` is actually SUR-423
 
-**4. Placeholder design for modules without images (Years 1-4 except 422/423)**
-- Gradient background using a hash of the module slug to pick from a set of 6-8 medical-themed gradients (deep blues, teals, purples, warm reds)
-- Module code (e.g. "ANT-211") displayed large and centered in white text
-- Subtle medical icon (Stethoscope) at low opacity in the corner
+### 5. Fix Chapter Navigation
+**File: `src/components/module/ModuleLearningTab.tsx`**  
+- In `BookLecturesView`, the navigate call uses `moduleId` prop (SUR-523), but the chapter belongs to SUR-423. The chapter page loads content by `chapterId`, so it should work. However, back-navigation from the chapter page uses `module_id` from the chapter record — need to override the navigation to use SUR-523's ID
+- Pass the "display module ID" through the route so back-navigation returns to SUR-523
 
-### Technical details
-- Uses existing `Card`, `AspectRatio` components
-- No database changes
-- Easy to add more images later — just upload and add to the slug map
+### 6. Update Chapter Count Query
+**File: `src/components/module/ModuleLearningTab.tsx`**  
+- The `book-chapter-counts` query (lines 452-470) counts chapters per book for the current module. For SUR-523's Book 1, also count from SUR-423's Book 1 to show correct counts on the book cards
+
+## Technical Details
+
+- **Cross-module mapping** is defined as a simple constant object — easy to remove later when the user wants to separate Book 1 back to only SUR-423
+- **No data duplication** — chapters stay in SUR-423's module_chapters rows
+- **Navigation concern**: Chapter pages typically use the chapter's own `module_id` for back-navigation. Since the chapter belongs to SUR-423, we may need to pass an override via query param (e.g., `?from=SUR-523-id`) so back-nav returns to SUR-523
 
