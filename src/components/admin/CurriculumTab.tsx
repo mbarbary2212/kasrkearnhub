@@ -28,6 +28,31 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
+  const [editingYearImage, setEditingYearImage] = useState<Year | null>(null);
+  const [yearImageUrl, setYearImageUrl] = useState<string | null>(null);
+  
+  const openYearImageEdit = (year: Year) => {
+    setEditingYearImage(year);
+    setYearImageUrl((year as any).image_url || null);
+  };
+
+  const handleSaveYearImage = async () => {
+    if (!editingYearImage) return;
+    try {
+      const { error } = await supabase
+        .from('years')
+        .update({ image_url: yearImageUrl } as any)
+        .eq('id', editingYearImage.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
+      queryClient.invalidateQueries({ queryKey: ['years'] });
+      setEditingYearImage(null);
+      toast.success('Year image updated');
+    } catch (err) {
+      console.error('Error updating year image:', err);
+      toast.error('Failed to update year image');
+    }
+  };
   
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
