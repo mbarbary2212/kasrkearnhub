@@ -1123,11 +1123,7 @@ export function HelpTemplatesTab() {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this file?')) {
-                            deleteMutation.mutate(file);
-                          }
-                        }}
+                        onClick={() => setDeletingFile(file)}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
