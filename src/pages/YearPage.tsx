@@ -72,9 +72,9 @@ export default function YearPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          {getYearIcon(yearNumber) && (
+          {((year as any)?.image_url || getYearIcon(yearNumber)) && (
             <img 
-              src={getYearIcon(yearNumber)} 
+              src={(year as any)?.image_url || getYearIcon(yearNumber)} 
               alt={`Year ${yearNumber}`}
               className="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover shadow-md
                          animate-scale-in
@@ -155,7 +155,7 @@ export default function YearPage() {
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
                   const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
-                  const image = getModuleImage(module.slug);
+                  const image = getModuleImage(module.slug, (module as any).image_url);
                   const gradient = getModuleGradient(module.slug);
 
                   if (!isAssigned) {

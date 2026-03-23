@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Building2, Link2, Plus, Edit, Trash2 } from 'lucide-react';
+import { BookOpen, Building2, Link2, Plus, Edit, Trash2, ImagePlus } from 'lucide-react';
+import { CurriculumImageUpload } from './CurriculumImageUpload';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { Module, Year } from '@/types/curriculum';
@@ -27,6 +28,31 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
   const [curriculumSubTab, setCurriculumSubTab] = useState<'modules' | 'departments' | 'assignments'>('modules');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('all');
   const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
+  const [editingYearImage, setEditingYearImage] = useState<Year | null>(null);
+  const [yearImageUrl, setYearImageUrl] = useState<string | null>(null);
+  
+  const openYearImageEdit = (year: Year) => {
+    setEditingYearImage(year);
+    setYearImageUrl((year as any).image_url || null);
+  };
+
+  const handleSaveYearImage = async () => {
+    if (!editingYearImage) return;
+    try {
+      const { error } = await supabase
+        .from('years')
+        .update({ image_url: yearImageUrl } as any)
+        .eq('id', editingYearImage.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['admin-data'] });
+      queryClient.invalidateQueries({ queryKey: ['years'] });
+      setEditingYearImage(null);
+      toast.success('Year image updated');
+    } catch (err) {
+      console.error('Error updating year image:', err);
+      toast.error('Failed to update year image');
+    }
+  };
   
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
@@ -40,6 +66,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     is_published: false,
     workload_level: '' as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus',
     page_count: '' as string,
+    image_url: null as string | null,
   });
 
   const resetModuleForm = () => {
@@ -52,6 +79,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
       is_published: false,
       workload_level: '',
       page_count: '',
+      image_url: null,
     });
   };
 
@@ -66,6 +94,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
       is_published: module.is_published ?? false,
       workload_level: (module.workload_level as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus') || '',
       page_count: module.page_count?.toString() || '',
+      image_url: (module as any).image_url || null,
     });
     setShowModuleDialog(true);
   };
@@ -88,8 +117,9 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           is_published: moduleForm.is_published,
           workload_level: moduleForm.workload_level || null,
           page_count: moduleForm.page_count ? parseInt(moduleForm.page_count, 10) : null,
+          image_url: moduleForm.image_url,
           display_order: modules.filter(m => m.year_id === moduleForm.year_id).length,
-        })
+        } as any)
         .select()
         .single();
 
@@ -119,7 +149,8 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           is_published: moduleForm.is_published,
           workload_level: moduleForm.workload_level || null,
           page_count: moduleForm.page_count ? parseInt(moduleForm.page_count, 10) : null,
-        })
+          image_url: moduleForm.image_url,
+        } as any)
         .eq('id', editingModule.id)
         .select()
         .single();
@@ -345,6 +376,12 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
                           </SelectContent>
                         </Select>
                       </div>
+                      <CurriculumImageUpload
+                        currentImageUrl={moduleForm.image_url}
+                        onImageChange={(url) => setModuleForm(prev => ({ ...prev, image_url: url }))}
+                        folder="modules"
+                        entityId={editingModule?.id}
+                      />
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={moduleForm.is_published}
@@ -370,7 +407,13 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
                 
                 return (
                   <div key={year.id} className="mb-6 last:mb-0">
-                    <h3 className="font-medium text-sm text-muted-foreground mb-3">{year.name}</h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="font-medium text-sm text-muted-foreground">{year.name}</h3>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 gap-1" onClick={() => openYearImageEdit(year)}>
+                        <ImagePlus className="w-3.5 h-3.5" />
+                        <span className="text-xs">Image</span>
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       {yearModules.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-2">No modules in this year.</p>
@@ -472,6 +515,28 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Year Image Edit Dialog */}
+      <Dialog open={!!editingYearImage} onOpenChange={(open) => !open && setEditingYearImage(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Year Image</DialogTitle>
+            <DialogDescription>
+              Upload or change the cover image for {editingYearImage?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <CurriculumImageUpload
+            currentImageUrl={yearImageUrl}
+            onImageChange={setYearImageUrl}
+            folder="years"
+            entityId={editingYearImage?.id}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingYearImage(null)}>Cancel</Button>
+            <Button onClick={handleSaveYearImage}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
