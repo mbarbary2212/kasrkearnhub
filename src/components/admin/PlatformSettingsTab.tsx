@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Settings, ChevronRight, Trash2, Mail } from 'lucide-react';
+import { Loader2, Settings, ChevronRight, Trash2, Mail, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
@@ -16,6 +16,7 @@ import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
+import { useDisclaimerEnabled } from '@/hooks/useDisclaimerSetting';
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
   icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
