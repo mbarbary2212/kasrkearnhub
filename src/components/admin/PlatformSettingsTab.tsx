@@ -233,6 +233,29 @@ export function PlatformSettingsTab() {
         </div>
       </CollapsibleSettingsCard>
 
+      <CollapsibleSettingsCard
+        icon={<ShieldCheck className="w-5 h-5" />}
+        title="Platform Disclaimer"
+        description="Show a one-time disclaimer agreement dialog when students open the app."
+      >
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="disclaimer-toggle" className="text-base font-medium">
+              Publish Disclaimer to Students
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When enabled, students must accept the disclaimer before using the platform. They only see it once per browser.
+            </p>
+          </div>
+          <Switch
+            id="disclaimer-toggle"
+            checked={disclaimerEnabled ?? false}
+            onCheckedChange={handleDisclaimerToggle}
+            disabled={disclaimerLoading || upsertSetting.isPending}
+          />
+        </div>
+      </CollapsibleSettingsCard>
+
       <ModulePinSettings />
       <HomeMindMapSettings />
       <ExaminerAvatarsCard />
