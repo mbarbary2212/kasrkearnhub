@@ -177,6 +177,7 @@ function EmailNotificationPreferences() {
 
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
+  const { data: disclaimerEnabled, isLoading: disclaimerLoading } = useDisclaimerEnabled();
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
 
@@ -189,6 +190,19 @@ export function PlatformSettingsTab() {
       toast.success('Setting updated successfully');
     } catch (error) {
       console.error('Error updating setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
+  const handleDisclaimerToggle = async (checked: boolean) => {
+    try {
+      await upsertSetting.mutateAsync({
+        key: 'platform_disclaimer_enabled',
+        value: checked ? 'true' : 'false',
+      });
+      toast.success(checked ? 'Disclaimer enabled for students' : 'Disclaimer disabled');
+    } catch (error) {
+      console.error('Error updating disclaimer setting:', error);
       toast.error('Failed to update setting');
     }
   };
