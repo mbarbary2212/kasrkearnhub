@@ -202,11 +202,10 @@ export default function YearPage() {
             ) : (
               /* List view — compact rows */
               <div className="border rounded-lg divide-y">
-                {allModules.map((module) => {
+                {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
-                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
 
                   if (!isAssigned) {
                     return (
