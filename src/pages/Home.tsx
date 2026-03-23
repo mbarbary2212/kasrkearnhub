@@ -148,7 +148,7 @@ function LoggedInHome() {
         className="relative rounded-xl overflow-hidden cursor-pointer
                    transition-all duration-300 ease-out group
                    hover:scale-[1.02]
-                   dark:bg-white/[0.05] dark:backdrop-blur-xl dark:border dark:border-white/10
+                   dark:bg-white/[0.03] dark:backdrop-blur-[16px] dark:border dark:border-white/[0.08]
                    bg-card shadow-md hover:shadow-xl hover:-translate-y-1"
         style={{ boxShadow: glow.base }}
         onMouseEnter={(e) => { e.currentTarget.style.boxShadow = glow.hover; }}
