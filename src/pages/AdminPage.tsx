@@ -1078,6 +1078,7 @@ export default function AdminPage() {
   // Module form state
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
   const [moduleForm, setModuleForm] = useState({
     year_id: '',
     name: '',

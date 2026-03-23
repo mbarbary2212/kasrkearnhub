@@ -939,6 +939,7 @@ export function HelpTemplatesTab() {
   const queryClient = useQueryClient();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingFile, setDeletingFile] = useState<AdminHelpFile | null>(null);
   const [uploadForm, setUploadForm] = useState({
     title: '',
     description: '',
