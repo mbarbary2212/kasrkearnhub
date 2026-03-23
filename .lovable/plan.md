@@ -1,41 +1,22 @@
 
 
-## Fix: Invite Email Links Pointing to Wrong/Broken URL
+## Cross-List MED-422 & SUR-423 in Year 5 — Seamless UI
 
-### Root Cause
+### Approach
 
-The invite emails contain a Supabase Auth verification link that redirects students to `https://www.kalmhub.com/auth?view=change-password`. If that domain has intermittent 522 errors (host connection timeout on Cloudflare), students see the error page instead of the password-set form.
-
-Three things need fixing:
-
-1. **`PUBLIC_APP_URL` Supabase secret** — may be set to `https://www.kalmhub.com` (with www) or the old lovable.app URL. Must be `https://kalmhub.com`.
-2. **Hardcoded fallback URLs in edge functions** — `provision-user` falls back to `https://www.kalmhub.com`, `send-admin-email` and `check-elevenlabs-quota` fall back to `https://kasrkearnhub.lovable.app`.
-3. **Supabase Auth Site URL & Redirect URLs** — must include `https://kalmhub.com` so Supabase allows the redirect after token verification.
+On the Year 5 page, fetch MED-422 and SUR-423 by ID and prepend them to the module list so they appear naturally before the 500-level modules. No "shared" labels, no separate sections — students see a single unified list. On Year 4, add a small subtle note under those two modules.
 
 ### Changes
 
-**1. Update `PUBLIC_APP_URL` Supabase secret**
-- Set value to `https://kalmhub.com` (no trailing slash, no www)
+**1. `src/hooks/useModules.ts`** — Add `useModulesByIds(ids: string[])` hook
+- Simple query: `supabase.from('modules').select('*').in('id', ids)`
 
-**2. Update fallback URLs in three edge functions:**
+**2. `src/pages/YearPage.tsx`**
+- For Year 5: import `useModulesByIds`, fetch the two modules, merge them at the top of the modules array before rendering (cross-listed first, then regular Year 5 modules). The list renders as one unified block — no visual distinction.
+- For Year 4: when rendering MED-422 or SUR-423, add a small muted italic line below the module name: *"Also available in Year 5 this year"*
+- Module IDs:
+  - MED-422: `a6c13735-4299-4c40-8a41-500c6edcf723`
+  - SUR-423: `153318ba-32b9-4f8e-9cbc-bdd8df9b9b10`
 
-- `supabase/functions/provision-user/index.ts` line 103: change fallback from `'https://www.kalmhub.com'` to `'https://kalmhub.com'`
-- `supabase/functions/send-admin-email/index.ts` line 144: change fallback from `'https://kasrkearnhub.lovable.app'` to `'https://kalmhub.com'`
-- `supabase/functions/check-elevenlabs-quota/index.ts` line 84: change fallback from `'https://kasrkearnhub.lovable.app'` to `'https://kalmhub.com'`
-
-**3. Redeploy all three edge functions**
-
-**4. Supabase Auth URL Configuration (manual step)**
-- You need to go to Supabase Dashboard > Authentication > URL Configuration
-- Set **Site URL** to `https://kalmhub.com`
-- Add `https://kalmhub.com/**` to **Redirect URLs** (if not already there)
-- Also keep `https://www.kalmhub.com/**` as a redirect URL for backward compatibility
-
-### After the fix
-
-- Resume approving pending requests — new invite links will use the correct `https://kalmhub.com` domain
-- For students who already received broken links: use the **Resend** button in Admin > Accounts > All Requests to send them fresh invite emails with the corrected URL
-
-### No code changes needed in the frontend
-The Auth page (`src/pages/Auth.tsx`) already uses `window.location.origin` for its own password reset flow, so it adapts to whatever domain serves it.
+No database changes. Progress tracking works automatically since it's keyed by module ID. Easy to remove next year — just delete the hook call and merge logic.
 
