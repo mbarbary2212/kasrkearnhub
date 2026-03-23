@@ -43,6 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
+  const { data: years } = useYears();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
