@@ -352,9 +352,12 @@ function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
   };
 
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this document?')) {
-      deleteMutation.mutate(doc.id);
-    }
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate(doc.id);
+    setIsDeleteConfirmOpen(false);
   };
 
   return (
