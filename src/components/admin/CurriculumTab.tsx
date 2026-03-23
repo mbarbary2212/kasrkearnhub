@@ -124,7 +124,8 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
           is_published: moduleForm.is_published,
           workload_level: moduleForm.workload_level || null,
           page_count: moduleForm.page_count ? parseInt(moduleForm.page_count, 10) : null,
-        })
+          image_url: moduleForm.image_url,
+        } as any)
         .eq('id', editingModule.id)
         .select()
         .single();
