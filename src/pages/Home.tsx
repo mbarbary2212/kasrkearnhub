@@ -147,12 +147,29 @@ function LoggedInHome() {
     return color && colorMap[color] ? colorMap[color] : '#3b82f6';
   };
 
+  // Glow colors per year number
+  const YEAR_GLOWS: Record<number, { base: string; hover: string }> = {
+    1: { base: '0 0 30px rgba(59,130,246,0.15)', hover: '0 0 40px rgba(59,130,246,0.35)' },
+    2: { base: '0 0 30px rgba(34,197,94,0.15)', hover: '0 0 40px rgba(34,197,94,0.35)' },
+    3: { base: '0 0 30px rgba(234,179,8,0.15)', hover: '0 0 40px rgba(234,179,8,0.35)' },
+    4: { base: '0 0 30px rgba(249,115,22,0.15)', hover: '0 0 40px rgba(249,115,22,0.35)' },
+    5: { base: '0 0 30px rgba(239,68,68,0.15)', hover: '0 0 40px rgba(239,68,68,0.35)' },
+  };
+
   // Year Card Component
-  const YearCard = ({ year }: { year: typeof years[0] }) => (
+  const YearCard = ({ year }: { year: typeof years[0] }) => {
+    const glow = YEAR_GLOWS[year.number] || YEAR_GLOWS[1];
+    const [hovered, setHovered] = useState(false);
+
+    return (
     <div
-      className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
+      className="relative rounded-xl overflow-hidden cursor-pointer 
                  transition-all duration-300 ease-out 
-                 hover:shadow-xl hover:-translate-y-1 group"
+                 hover:scale-[1.03] group
+                 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10"
+      style={{ boxShadow: hovered ? glow.hover : glow.base }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={() => navigate(`/year/${year.number}`)}
     >
       {/* Colored Left Accent Border */}
@@ -203,13 +220,14 @@ function LoggedInHome() {
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in -mx-4 md:-mx-6 px-4 md:px-6 py-6 min-h-[80vh] rounded-2xl bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900">
       
       {/* Welcome Section */}
       <section className="text-center py-3 md:py-4">
