@@ -157,11 +157,19 @@ function LoggedInHome() {
   };
 
   // Year Card Component
-  const YearCard = ({ year }: { year: typeof years[0] }) => (
+  const YearCard = ({ year }: { year: typeof years[0] }) => {
+    const glow = YEAR_GLOWS[year.number] || YEAR_GLOWS[1];
+    const [hovered, setHovered] = useState(false);
+
+    return (
     <div
-      className="relative bg-card rounded-xl shadow-md overflow-hidden cursor-pointer 
+      className="relative rounded-xl overflow-hidden cursor-pointer 
                  transition-all duration-300 ease-out 
-                 hover:shadow-xl hover:-translate-y-1 group"
+                 hover:scale-[1.03] group
+                 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10"
+      style={{ boxShadow: hovered ? glow.hover : glow.base }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={() => navigate(`/year/${year.number}`)}
     >
       {/* Colored Left Accent Border */}
