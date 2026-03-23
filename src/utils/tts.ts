@@ -54,7 +54,7 @@ export function registerCurrentAudio(audio: HTMLAudioElement) {
   currentAudio = audio;
 }
 
-/** Stop all TTS playback immediately (ElevenLabs + Gemini + browser) */
+/** Stop all TTS playback, active SpeechRecognition, and registered cleanup callbacks */
 export function stopAllTTS() {
   if (currentAudio) {
     currentAudio.pause();
@@ -63,6 +63,16 @@ export function stopAllTTS() {
     currentAudio = null;
   }
   window.speechSynthesis?.cancel();
+
+  // Kill any active SpeechRecognition (mic)
+  if (activeSpeechRecognition) {
+    try { activeSpeechRecognition.stop(); } catch {}
+    activeSpeechRecognition = null;
+  }
+
+  // Run registered cleanup callbacks (e.g. scribe disconnect)
+  cleanupCallbacks.forEach(cb => { try { cb(); } catch {} });
+  cleanupCallbacks.clear();
 }
 
 /**
