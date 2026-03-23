@@ -99,113 +99,163 @@ export default function YearPage() {
 
         {/* Modules Grid */}
         <section>
-          <h2 className="text-xl font-heading font-semibold mb-4">Modules</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-heading font-semibold">Modules</h2>
+            <div className="flex items-center gap-1 border rounded-md p-0.5">
+              <Button
+                variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 gap-1.5"
+                onClick={() => toggleViewMode('cards')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Cards</span>
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 gap-1.5"
+                onClick={() => toggleViewMode('list')}
+              >
+                <List className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">List</span>
+              </Button>
+            </div>
+          </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <Skeleton className="w-full aspect-video" />
-                  <div className="p-4 space-y-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="w-full aspect-[2.5]" />
+                    <div className="p-3 space-y-1.5">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="border rounded-lg divide-y">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-3 px-4">
+                    <Skeleton className="h-4 w-20 rounded" />
+                    <Skeleton className="h-4 flex-1 max-w-xs" />
+                    <Skeleton className="h-4 w-4 rounded flex-shrink-0" />
                   </div>
-                </Card>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           ) : allModules && allModules.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {allModules.map((module) => {
-                const isAssigned = auth.isModuleAdmin && !auth.isTeacher
-                  ? auth.moduleAdminModuleIds.includes(module.id)
-                  : true;
-                const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
-                const image = getModuleImage(module.slug);
-                const gradient = getModuleGradient(module.slug);
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allModules.map((module) => {
+                  const isAssigned = auth.isModuleAdmin && !auth.isTeacher
+                    ? auth.moduleAdminModuleIds.includes(module.id)
+                    : true;
+                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
+                  const image = getModuleImage(module.slug);
+                  const gradient = getModuleGradient(module.slug);
 
-                if (!isAssigned) {
+                  if (!isAssigned) {
+                    return (
+                      <Card key={module.id} className="overflow-hidden opacity-50 cursor-default">
+                        <AspectRatio ratio={16 / 9}>
+                          {image ? (
+                            <img src={image} alt={module.name} className="w-full h-full object-cover grayscale" />
+                          ) : (
+                            <div className={cn('w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative', gradient)}>
+                              <Stethoscope className="absolute bottom-3 right-3 w-10 h-10 text-white/10" />
+                              <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">{module.slug?.toUpperCase()}</span>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Lock className="w-8 h-8 text-white/70" />
+                          </div>
+                        </AspectRatio>
+                        <div className="p-4">
+                          <p className="font-heading font-semibold text-muted-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                        </div>
+                      </Card>
+                    );
+                  }
+
                   return (
                     <Card
                       key={module.id}
-                      className="overflow-hidden opacity-50 cursor-default"
+                      className="overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 group"
+                      onClick={() => navigate(`/module/${module.id}`)}
                     >
                       <AspectRatio ratio={16 / 9}>
                         {image ? (
-                          <img
-                            src={image}
-                            alt={module.name}
-                            className="w-full h-full object-cover grayscale"
-                          />
+                          <img src={image} alt={module.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         ) : (
-                          <div className={cn(
-                            'w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative',
-                            gradient
-                          )}>
+                          <div className={cn('w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative', gradient)}>
                             <Stethoscope className="absolute bottom-3 right-3 w-10 h-10 text-white/10" />
-                            <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">
-                              {module.slug?.toUpperCase()}
-                            </span>
+                            <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">{module.slug?.toUpperCase()}</span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <Lock className="w-8 h-8 text-white/70" />
-                        </div>
                       </AspectRatio>
                       <div className="p-4">
-                        <p className="font-heading font-semibold text-muted-foreground truncate">
-                          {module.slug?.toUpperCase()} — {module.name}
-                        </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-heading font-semibold text-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                            {module.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
+                            )}
+                            {isYear4CrossListed && (
+                              <p className="text-xs text-muted-foreground italic mt-1">Also available in Year 5 this year</p>
+                            )}
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
+                        </div>
                       </div>
                     </Card>
                   );
-                }
+                })}
+              </div>
+            ) : (
+              /* List view — compact rows */
+              <div className="border rounded-lg divide-y">
+                {allModules.map((module) => {
+                  const isAssigned = auth.isModuleAdmin && !auth.isTeacher
+                    ? auth.moduleAdminModuleIds.includes(module.id)
+                    : true;
+                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
 
-                return (
-                  <Card
-                    key={module.id}
-                    className="overflow-hidden cursor-pointer transition-all duration-300
-                               hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 group"
-                    onClick={() => navigate(`/module/${module.id}`)}
-                  >
-                    <AspectRatio ratio={16 / 9}>
-                      {image ? (
-                        <img
-                          src={image}
-                          alt={module.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className={cn(
-                          'w-full h-full bg-gradient-to-br flex flex-col items-center justify-center relative',
-                          gradient
-                        )}>
-                          <Stethoscope className="absolute bottom-3 right-3 w-10 h-10 text-white/10" />
-                          <span className="text-2xl font-heading font-bold text-white/80 tracking-wider">
-                            {module.slug?.toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                    </AspectRatio>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-heading font-semibold text-foreground truncate">
-                            {module.slug?.toUpperCase()} — {module.name}
-                          </p>
-                          {module.description && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
-                          )}
-                          {isYear4CrossListed && (
-                            <p className="text-xs text-muted-foreground italic mt-1">Also available in Year 5 this year</p>
-                          )}
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
+                  if (!isAssigned) {
+                    return (
+                      <div key={module.id} className="flex items-center gap-3 py-3 px-4 opacity-50">
+                        <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm font-medium text-muted-foreground truncate">
+                          {module.slug?.toUpperCase()} — {module.name}
+                        </span>
                       </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={module.id}
+                      className="flex items-center gap-3 py-3 px-4 cursor-pointer hover:bg-muted/50 transition-colors group"
+                      onClick={() => navigate(`/module/${module.id}`)}
+                    >
+                      <span className="text-xs font-mono font-semibold text-primary min-w-[4.5rem]">
+                        {module.slug?.toUpperCase()}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
+                        {isYear4CrossListed && (
+                          <span className="text-xs text-muted-foreground italic">Also in Year 5</span>
+                        )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                     </div>
-                  </Card>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
             <div className="text-center py-12">
               <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
