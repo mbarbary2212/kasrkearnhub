@@ -41,6 +41,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
     is_published: false,
     workload_level: '' as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus',
     page_count: '' as string,
+    image_url: null as string | null,
   });
 
   const resetModuleForm = () => {
