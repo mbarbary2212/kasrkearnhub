@@ -21,6 +21,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { Loader2 } from "lucide-react";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DisclaimerDialog, DISCLAIMER_KEY } from "@/components/DisclaimerDialog";
+import { useDisclaimerEnabled } from "@/hooks/useDisclaimerSetting";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
@@ -52,6 +54,24 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function DisclaimerGate({ children }: { children: React.ReactNode }) {
+  const [accepted, setAccepted] = useState(() => localStorage.getItem(DISCLAIMER_KEY) === 'true');
+  const { data: enabled, isLoading } = useDisclaimerEnabled();
+
+  if (isLoading || (!accepted && enabled)) {
+    return (
+      <>
+        {children}
+        {!isLoading && enabled && !accepted && (
+          <DisclaimerDialog onAccept={() => setAccepted(true)} />
+        )}
+      </>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {
@@ -85,6 +105,7 @@ const App = () => {
       {showSplash && <SplashScreen onDismiss={handleDismissSplash} />}
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <DisclaimerGate>
       <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
@@ -131,6 +152,7 @@ const App = () => {
         </CoachProvider>
       </BadgeCelebrationProvider>
       </PresenceProvider>
+      </DisclaimerGate>
     </AuthProvider>
       </QueryClientProvider>
     </Sentry.ErrorBoundary>

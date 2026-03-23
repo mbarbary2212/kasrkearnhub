@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Settings, ChevronRight, Trash2, Mail } from 'lucide-react';
+import { Loader2, Settings, ChevronRight, Trash2, Mail, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
@@ -16,6 +16,7 @@ import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
+import { useDisclaimerEnabled } from '@/hooks/useDisclaimerSetting';
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
   icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
@@ -176,6 +177,7 @@ function EmailNotificationPreferences() {
 
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
+  const { data: disclaimerEnabled, isLoading: disclaimerLoading } = useDisclaimerEnabled();
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
 
@@ -188,6 +190,19 @@ export function PlatformSettingsTab() {
       toast.success('Setting updated successfully');
     } catch (error) {
       console.error('Error updating setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
+  const handleDisclaimerToggle = async (checked: boolean) => {
+    try {
+      await upsertSetting.mutateAsync({
+        key: 'platform_disclaimer_enabled',
+        value: checked ? 'true' : 'false',
+      });
+      toast.success(checked ? 'Disclaimer enabled for students' : 'Disclaimer disabled');
+    } catch (error) {
+      console.error('Error updating disclaimer setting:', error);
       toast.error('Failed to update setting');
     }
   };
@@ -214,6 +229,29 @@ export function PlatformSettingsTab() {
             checked={hideEmptyTabs ?? false}
             onCheckedChange={handleToggle}
             disabled={isLoading || upsertSetting.isPending}
+          />
+        </div>
+      </CollapsibleSettingsCard>
+
+      <CollapsibleSettingsCard
+        icon={<ShieldCheck className="w-5 h-5" />}
+        title="Platform Disclaimer"
+        description="Show a one-time disclaimer agreement dialog when students open the app."
+      >
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="disclaimer-toggle" className="text-base font-medium">
+              Publish Disclaimer to Students
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When enabled, students must accept the disclaimer before using the platform. They only see it once per browser.
+            </p>
+          </div>
+          <Switch
+            id="disclaimer-toggle"
+            checked={disclaimerEnabled ?? false}
+            onCheckedChange={handleDisclaimerToggle}
+            disabled={disclaimerLoading || upsertSetting.isPending}
           />
         </div>
       </CollapsibleSettingsCard>

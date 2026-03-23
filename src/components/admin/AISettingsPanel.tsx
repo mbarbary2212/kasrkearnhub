@@ -358,7 +358,6 @@ function VoiceProviderSection({
   const [voiceOpen, setVoiceOpen] = useState(false);
 
   return (
-    <>
     <Card>
       <Collapsible open={voiceOpen} onOpenChange={setVoiceOpen}>
         <CollapsibleTrigger asChild>
@@ -400,21 +399,23 @@ function VoiceProviderSection({
               </Button>
             )}
 
+            {/* Voice Registry — nested inside the collapsible */}
+            {ttsProvider === 'elevenlabs' && (
+              <div className="pt-4 border-t">
+                <TTSVoicesCard />
+              </div>
+            )}
+
+            {ttsProvider === 'gemini' && (
+              <div className="pt-4 border-t">
+                <GeminiVoicesCard />
+              </div>
+            )}
+
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
     </Card>
-
-    {/* ElevenLabs Voice Registry — shown only when provider is elevenlabs */}
-    {ttsProvider === 'elevenlabs' && (
-      <TTSVoicesCard />
-    )}
-
-    {/* Gemini Voice Registry — shown only when provider is gemini */}
-    {ttsProvider === 'gemini' && (
-      <GeminiVoicesCard />
-    )}
-    </>
   );
 }
 
