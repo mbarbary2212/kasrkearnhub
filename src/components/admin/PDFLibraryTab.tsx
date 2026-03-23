@@ -562,7 +562,7 @@ export function PDFLibraryTab({ onOpenAIFactory, moduleAdminModuleIds }: PDFLibr
             </div>
             <Select value={filterModule || 'all'} onValueChange={(v) => setFilterModule(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Modules" />
+                <SelectValue placeholder={moduleAdminModuleIds?.length ? "My Modules" : "All Modules"} />
               </SelectTrigger>
               <SelectContent>
                 {!moduleAdminModuleIds?.length && <SelectItem value="all">All Modules</SelectItem>}
