@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
-import { useModulesByYearNumber, useModulesByIds } from '@/hooks/useModules';
+import { useModulesByYearNumber } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
@@ -24,16 +24,8 @@ export default function YearPage() {
     navigate('/');
   };
 
-  const CROSS_LISTED_IDS = [
-    'a6c13735-4299-4c40-8a41-500c6edcf723', // MED-422
-    '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', // SUR-423
-  ];
-
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
-  const { data: crossListedModules, isLoading: crossListedLoading } = useModulesByIds(
-    yearNumber === 5 ? CROSS_LISTED_IDS : []
-  );
 
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
     return (localStorage.getItem('yearPageViewMode') as 'cards' | 'list') || 'cards';
@@ -44,11 +36,7 @@ export default function YearPage() {
     localStorage.setItem('yearPageViewMode', mode);
   };
 
-  const isLoading = yearLoading || modulesLoading || (yearNumber === 5 && crossListedLoading);
-
-  const allModules = yearNumber === 5 && crossListedModules && modules
-    ? [...crossListedModules, ...modules]
-    : modules;
+  const isLoading = yearLoading || modulesLoading;
 
   if (!yearLoading && !year) {
     return (
@@ -147,14 +135,13 @@ export default function YearPage() {
                 ))}
               </div>
             )
-          ) : allModules && allModules.length > 0 ? (
+          ) : modules && modules.length > 0 ? (
             viewMode === 'cards' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {allModules.map((module) => {
+                {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
-                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
                   const image = getModuleImage(module.slug, (module as any).image_url);
                   const gradient = getModuleGradient(module.slug);
 
@@ -204,9 +191,6 @@ export default function YearPage() {
                             {module.description && (
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
                             )}
-                            {isYear4CrossListed && (
-                              <p className="text-xs text-muted-foreground italic mt-1">Also available in Year 5 this year</p>
-                            )}
                           </div>
                           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                         </div>
@@ -218,11 +202,10 @@ export default function YearPage() {
             ) : (
               /* List view — compact rows */
               <div className="border rounded-lg divide-y">
-                {allModules.map((module) => {
+                {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
-                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
 
                   if (!isAssigned) {
                     return (
@@ -246,9 +229,6 @@ export default function YearPage() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
-                        {isYear4CrossListed && (
-                          <span className="text-xs text-muted-foreground italic">Also in Year 5</span>
-                        )}
                       </div>
                       <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                     </div>
