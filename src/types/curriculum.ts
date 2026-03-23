@@ -10,7 +10,7 @@ export interface Year {
   color: string | null;
   display_order: number | null;
   is_active: boolean | null;
-  image_url: string | null;
+  image_url?: string | null;
   created_at: string | null;
 }
 
