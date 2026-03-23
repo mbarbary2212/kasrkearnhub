@@ -35,6 +35,15 @@ export default function YearPage() {
     yearNumber === 5 ? CROSS_LISTED_IDS : []
   );
 
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
+    return (localStorage.getItem('yearPageViewMode') as 'cards' | 'list') || 'cards';
+  });
+
+  const toggleViewMode = (mode: 'cards' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('yearPageViewMode', mode);
+  };
+
   const isLoading = yearLoading || modulesLoading || (yearNumber === 5 && crossListedLoading);
 
   const allModules = yearNumber === 5 && crossListedModules && modules
