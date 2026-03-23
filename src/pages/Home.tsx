@@ -147,6 +147,15 @@ function LoggedInHome() {
     return color && colorMap[color] ? colorMap[color] : '#3b82f6';
   };
 
+  // Glow colors per year number
+  const YEAR_GLOWS: Record<number, { base: string; hover: string }> = {
+    1: { base: '0 0 30px rgba(59,130,246,0.15)', hover: '0 0 40px rgba(59,130,246,0.35)' },
+    2: { base: '0 0 30px rgba(34,197,94,0.15)', hover: '0 0 40px rgba(34,197,94,0.35)' },
+    3: { base: '0 0 30px rgba(234,179,8,0.15)', hover: '0 0 40px rgba(234,179,8,0.35)' },
+    4: { base: '0 0 30px rgba(249,115,22,0.15)', hover: '0 0 40px rgba(249,115,22,0.35)' },
+    5: { base: '0 0 30px rgba(239,68,68,0.15)', hover: '0 0 40px rgba(239,68,68,0.35)' },
+  };
+
   // Year Card Component
   const YearCard = ({ year }: { year: typeof years[0] }) => (
     <div
