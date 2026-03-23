@@ -27,6 +27,7 @@ export interface Module {
   is_published: boolean | null;
   workload_level: WorkloadLevel | null;
   page_count: number | null;
+  image_url: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
