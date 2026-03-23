@@ -106,6 +106,7 @@ const App = () => {
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <DisclaimerGate>
+      <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
           <AudioPlayerProvider>
