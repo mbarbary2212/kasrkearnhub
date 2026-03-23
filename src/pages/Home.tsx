@@ -226,7 +226,7 @@ function LoggedInHome() {
   const hasMessages = totalMessages > 0;
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in -mx-4 md:-mx-6 px-4 md:px-6 py-6 min-h-[80vh] rounded-2xl bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900">
       
       {/* Welcome Section */}
       <section className="text-center py-3 md:py-4">
