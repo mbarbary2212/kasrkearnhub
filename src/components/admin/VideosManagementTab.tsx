@@ -771,7 +771,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
     if (!selectedChapterId) { toast.error('Please select a chapter.'); return; }
     const normalizedUrl = normalizeVideoInput(linkUrl);
     if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
-      toast.error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
+      toast.error('Invalid video URL. Please use a YouTube or Google Drive link.');
       return;
     }
     setLinkSaving(true);

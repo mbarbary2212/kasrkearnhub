@@ -46,7 +46,6 @@ interface ChapterProgressData {
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
   if (!videoUrl) return null;
-  if (isVimeoUrl(videoUrl)) return null;
   const normalized = normalizeVideoInput(videoUrl);
   return extractYouTubeId(normalized) || extractGoogleDriveId(normalized);
 }

@@ -176,17 +176,11 @@ export function getVideoInfo(input: string | null | undefined): VideoInfo {
 /**
  * Check if a URL is a valid supported video URL (YouTube or Google Drive)
  * Also handles iframe embed codes
- * Note: Returns true for Vimeo URLs to allow saving (playback shows unsupported message)
  */
 export function isValidVideoUrl(input: string | null | undefined): boolean {
   const url = normalizeVideoInput(input);
   const source = detectVideoSource(url);
-  // Allow YouTube, Google Drive, and Vimeo URLs to be saved
-  // Vimeo will show "unsupported" message during playback
-  if (source !== "unknown") return true;
-  // Also allow Vimeo URLs to be saved
-  if (isVimeoUrl(url)) return true;
-  return false;
+  return source !== "unknown";
 }
 
 /**

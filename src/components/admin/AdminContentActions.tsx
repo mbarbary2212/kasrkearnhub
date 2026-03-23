@@ -337,7 +337,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
       
       // Validate video URL if provided
       if (normalizedUrl && !isValidVideoUrl(normalizedUrl)) {
-        throw new Error('Invalid video URL. Please use a YouTube, Vimeo, or Google Drive link.');
+        throw new Error('Invalid video URL. Please use a YouTube or Google Drive link.');
       }
       const doctorValue = doctor.trim() || null;
       const { error } = await supabase.from('lectures').insert({

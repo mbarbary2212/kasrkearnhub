@@ -381,7 +381,7 @@ export default function ContentItemActions({
                 <Input 
                   value={editVideoUrl} 
                   onChange={(e) => setEditVideoUrl(e.target.value)} 
-                  placeholder="YouTube, Vimeo, or Google Drive link (or paste iframe code)" 
+                  placeholder="YouTube or Google Drive link (or paste iframe code)" 
                   className="mt-1" 
                 />
                 <p className="text-xs text-muted-foreground mt-1">

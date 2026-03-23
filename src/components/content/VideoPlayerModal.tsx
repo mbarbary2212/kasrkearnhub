@@ -65,24 +65,7 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
 
           {/* Video container with 16:9 aspect ratio */}
           <div className="w-full bg-muted">
-            {/* Vimeo - show unsupported message */}
-            {isVimeo ? (
-              <div className="w-full aspect-video flex items-center justify-center">
-                <div className="text-center space-y-4 p-6 max-w-sm">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">
-                      Vimeo Not Supported
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Vimeo video playback is temporarily unavailable. Please use YouTube or Google Drive links.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : videoInfo.embedUrl ? (
+            {videoInfo.embedUrl ? (
               isPlaying ? (
                 <IframePlayer
                   key={playerKey}
