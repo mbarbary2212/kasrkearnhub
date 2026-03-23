@@ -407,7 +407,13 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
                 
                 return (
                   <div key={year.id} className="mb-6 last:mb-0">
-                    <h3 className="font-medium text-sm text-muted-foreground mb-3">{year.name}</h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="font-medium text-sm text-muted-foreground">{year.name}</h3>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 gap-1" onClick={() => openYearImageEdit(year)}>
+                        <ImagePlus className="w-3.5 h-3.5" />
+                        <span className="text-xs">Image</span>
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       {yearModules.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-2">No modules in this year.</p>
