@@ -315,6 +315,7 @@ interface DocumentCardProps {
 
 function DocumentCard({ doc, onUseAsAISource }: DocumentCardProps) {
   const deleteMutation = useDeleteAdminDocument();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const handlePreview = async () => {
     const url = await getSignedUrl(doc.storage_path);
