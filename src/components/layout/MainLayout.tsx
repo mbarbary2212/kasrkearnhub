@@ -58,6 +58,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleGoHome = () => {
     sessionStorage.setItem('skipAutoLogin', 'true');
+    if (profile?.preferred_year_id && years) {
+      const preferredYear = years.find(y => y.id === profile.preferred_year_id);
+      if (preferredYear) {
+        navigate(`/year/${preferredYear.number}`);
+        return;
+      }
+    }
     navigate('/');
   };
 
