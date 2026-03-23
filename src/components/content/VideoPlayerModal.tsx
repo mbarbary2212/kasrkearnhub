@@ -20,9 +20,6 @@ export default function VideoPlayerModal({ isOpen, onClose, videoUrl, title }: V
   const normalizedUrl = normalizeVideoInput(videoUrl);
   const videoInfo = getVideoInfo(normalizedUrl);
   
-  // Check if this is a Vimeo URL (unsupported for now)
-  const isVimeo = isVimeoUrl(normalizedUrl);
-
   // Reset states when modal closes or video changes
   useEffect(() => {
     if (!isOpen) {
