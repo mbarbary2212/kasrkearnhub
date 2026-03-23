@@ -36,11 +36,7 @@ export default function YearPage() {
     localStorage.setItem('yearPageViewMode', mode);
   };
 
-  const isLoading = yearLoading || modulesLoading || (yearNumber === 5 && crossListedLoading);
-
-  const allModules = yearNumber === 5 && crossListedModules && modules
-    ? [...crossListedModules, ...modules]
-    : modules;
+  const isLoading = yearLoading || modulesLoading;
 
   if (!yearLoading && !year) {
     return (
