@@ -55,6 +55,24 @@ const queryClient = new QueryClient({
   },
 });
 
+function DisclaimerGate({ children }: { children: React.ReactNode }) {
+  const [accepted, setAccepted] = useState(() => localStorage.getItem(DISCLAIMER_KEY) === 'true');
+  const { data: enabled, isLoading } = useDisclaimerEnabled();
+
+  if (isLoading || (!accepted && enabled)) {
+    return (
+      <>
+        {children}
+        {!isLoading && enabled && !accepted && (
+          <DisclaimerDialog onAccept={() => setAccepted(true)} />
+        )}
+      </>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 const App = () => {
   const [showSplash, setShowSplash] = useState(() => {
     if (window.location.pathname.startsWith('/auth')) return false;
