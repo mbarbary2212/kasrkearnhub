@@ -152,7 +152,7 @@ export default function ContentItemActions({
     const normalizedVideoUrl = normalizeVideoInput(editVideoUrl);
     
     if ((contentType === 'lecture' || contentType === 'practical') && normalizedVideoUrl && !isValidVideoUrl(normalizedVideoUrl)) {
-      toast.error('Invalid video URL. Use YouTube, Vimeo, or Google Drive links.');
+      toast.error('Invalid video URL. Use YouTube or Google Drive links.');
       return;
     }
 
