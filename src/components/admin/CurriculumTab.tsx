@@ -54,6 +54,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
       is_published: false,
       workload_level: '',
       page_count: '',
+      image_url: null,
     });
   };
 
