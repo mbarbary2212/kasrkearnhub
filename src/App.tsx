@@ -105,7 +105,7 @@ const App = () => {
       {showSplash && <SplashScreen onDismiss={handleDismissSplash} />}
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <PresenceProvider>
+      <DisclaimerGate>
       <BadgeCelebrationProvider>
         <CoachProvider>
           <AudioPlayerProvider>
