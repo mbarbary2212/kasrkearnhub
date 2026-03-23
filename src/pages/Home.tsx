@@ -173,9 +173,6 @@ function LoggedInHome() {
             {year.number === 4 && (
               <p className="text-xs italic text-muted-foreground mt-1">SUR-423: Surgery 1</p>
             )}
-            {year.number === 5 && (
-              <p className="text-xs italic text-muted-foreground mt-1">SUR-523: Surgery 2</p>
-            )}
           </div>
           
           {/* Year Icon with inner-glow container */}
