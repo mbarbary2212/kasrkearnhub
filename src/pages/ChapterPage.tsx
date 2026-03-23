@@ -182,6 +182,7 @@ export default function ChapterPage() {
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapter, isLoading: chapterLoading } = useChapter(chapterId);
+  const contentModuleId = chapter?.module_id ?? moduleId;
   const { data: lectures, isLoading: lecturesLoading } = useChapterLectures(chapterId);
   const { data: resources, isLoading: resourcesLoading } = useChapterResources(chapterId);
   
@@ -211,7 +212,7 @@ export default function ChapterPage() {
   const { data: deletedMatchingQuestions } = useChapterMatchingQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
   const { data: trueFalseQuestions, isLoading: trueFalseLoading } = useChapterTrueFalseQuestions(chapterId, false, { enabled: isPracticeActive });
   const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true, { enabled: isPracticeActive && canManageContent });
-  const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(moduleId, canManageContent);
+  const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(contentModuleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
@@ -947,14 +948,14 @@ export default function ChapterPage() {
                 </div>
 
                 {/* Cases Content */}
-                {interactiveTab === 'cases' && moduleId && chapterId && (
+                {interactiveTab === 'cases' && contentModuleId && chapterId && (
                   <div>
                     {canManageContent ? (
-                      <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
+                      <ClinicalCaseAdminList moduleId={contentModuleId} chapterId={chapterId} />
                     ) : clinicalCasesLoading ? (
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
+                      <ClinicalCaseList moduleId={contentModuleId} chapterId={chapterId} />
                     )}
                   </div>
                 )}
