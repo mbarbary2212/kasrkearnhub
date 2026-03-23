@@ -151,6 +151,7 @@ const App = () => {
           </AudioPlayerProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
+      </PresenceProvider>
       </DisclaimerGate>
     </AuthProvider>
       </QueryClientProvider>
