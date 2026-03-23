@@ -14,7 +14,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
@@ -173,14 +173,20 @@ export function HistoryTakingSection({
     }
   }, []);
 
+  // Register scribe disconnect with global cleanup so stopAllTTS() kills the mic
   useEffect(() => {
+    const unregister = registerCleanupCallback(() => {
+      safeDisconnect();
+    });
     return () => {
+      unregister();
       wsFailCountRef.current = 0;
       scribeDisabledRef.current = false;
       safeDisconnect();
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
+        registerSpeechRecognition(null);
       }
       setIsListening(false);
       stopAllTTS();
@@ -468,6 +474,7 @@ export function HistoryTakingSection({
     };
 
     recognitionRef.current = recognition;
+    registerSpeechRecognition(recognition);
     recognition.start();
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);

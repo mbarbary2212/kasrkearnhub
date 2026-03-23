@@ -29,6 +29,20 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 /** Module-level reference to the currently playing audio (ElevenLabs or Gemini) */
 let currentAudio: HTMLAudioElement | null = null;
 
+/** Global registry for active SpeechRecognition so stopAllTTS() can kill the mic */
+let activeSpeechRecognition: any = null;
+const cleanupCallbacks: Set<() => void> = new Set();
+
+export function registerSpeechRecognition(recognition: any) {
+  activeSpeechRecognition = recognition;
+}
+
+/** Register a callback that stopAllTTS() will invoke. Returns an unregister function. */
+export function registerCleanupCallback(cb: () => void): () => void {
+  cleanupCallbacks.add(cb);
+  return () => { cleanupCallbacks.delete(cb); };
+}
+
 /** Register an externally-created Audio element so stopAllTTS() can manage it */
 export function registerCurrentAudio(audio: HTMLAudioElement) {
   // Stop any previous audio first
@@ -40,7 +54,7 @@ export function registerCurrentAudio(audio: HTMLAudioElement) {
   currentAudio = audio;
 }
 
-/** Stop all TTS playback immediately (ElevenLabs + Gemini + browser) */
+/** Stop all TTS playback, active SpeechRecognition, and registered cleanup callbacks */
 export function stopAllTTS() {
   if (currentAudio) {
     currentAudio.pause();
@@ -49,6 +63,16 @@ export function stopAllTTS() {
     currentAudio = null;
   }
   window.speechSynthesis?.cancel();
+
+  // Kill any active SpeechRecognition (mic)
+  if (activeSpeechRecognition) {
+    try { activeSpeechRecognition.stop(); } catch {}
+    activeSpeechRecognition = null;
+  }
+
+  // Run registered cleanup callbacks (e.g. scribe disconnect)
+  cleanupCallbacks.forEach(cb => { try { cb(); } catch {} });
+  cleanupCallbacks.clear();
 }
 
 /**
