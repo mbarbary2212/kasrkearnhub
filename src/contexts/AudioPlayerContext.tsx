@@ -64,7 +64,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
 
       const response = await fetch(
-        `https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/get-audio-signed-url`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-audio-signed-url`,
         {
           method: 'POST',
           headers: {

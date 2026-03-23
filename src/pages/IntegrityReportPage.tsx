@@ -41,7 +41,7 @@ export default function IntegrityReportPage() {
       }
 
       const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot`,
         {
           method: 'POST',
           headers: {

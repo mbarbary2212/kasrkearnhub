@@ -520,7 +520,7 @@ function IntegrityCheckTab() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-orphaned-all',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-orphaned-all`,
         {
           method: 'POST',
           headers: {
@@ -556,7 +556,7 @@ function IntegrityCheckTab() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot-v2',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot-v2`,
         {
           method: 'POST',
           headers: {
