@@ -62,10 +62,10 @@
     --background: 168 20% 8%;
     --foreground: 210 33% 96%;
 
-    --card: 168 20% 8%;
+    --card: 0 0% 0% / 0;
     --card-foreground: 210 40% 97%;
 
-    --popover: 168 20% 10%;
+    --popover: 170 20% 12%;
     --popover-foreground: 210 40% 97%;
 
     --primary: 199 89% 48%;
@@ -87,7 +87,7 @@
     --input: 170 10% 16%;
     --ring: 199 89% 48%;
 
-    --sidebar-background: 170 15% 9%;
+    --sidebar-background: 0 0% 0% / 0;
     --sidebar-foreground: 210 40% 97%;
     --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -111,7 +111,7 @@
 
   .dark body,
   body.dark {
-    background: linear-gradient(315deg, #0a0f0f 0%, #1e3a3a 100%);
+    background: linear-gradient(135deg, #1e3a3a 0%, #0a0f0f 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
