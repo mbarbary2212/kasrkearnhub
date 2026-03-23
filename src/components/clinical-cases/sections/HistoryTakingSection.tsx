@@ -173,14 +173,20 @@ export function HistoryTakingSection({
     }
   }, []);
 
+  // Register scribe disconnect with global cleanup so stopAllTTS() kills the mic
   useEffect(() => {
+    const unregister = registerCleanupCallback(() => {
+      safeDisconnect();
+    });
     return () => {
+      unregister();
       wsFailCountRef.current = 0;
       scribeDisabledRef.current = false;
       safeDisconnect();
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
+        registerSpeechRecognition(null);
       }
       setIsListening(false);
       stopAllTTS();
