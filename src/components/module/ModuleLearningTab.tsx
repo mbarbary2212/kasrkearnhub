@@ -199,7 +199,7 @@ function BookLecturesView({
   
   // Cross-module book mapping: SUR-523's Book 1 fetches from SUR-423
   const CROSS_MODULE_BOOKS: Record<string, Record<string, string>> = {
-    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General surgery Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
   };
   const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[bookLabel] || moduleId;
   
