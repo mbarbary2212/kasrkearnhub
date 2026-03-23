@@ -27,7 +27,7 @@ export function useIsModuleAdmin(moduleId: string | undefined) {
   });
 
   return {
-    canManageContent: isModuleAdmin || isSuperAdmin || isPlatformAdmin || isTeacher,
+    canManageContent: isModuleAdmin || isSuperAdmin || isPlatformAdmin,
     isModuleAdmin: isModuleAdmin ?? false,
     isLoading,
   };

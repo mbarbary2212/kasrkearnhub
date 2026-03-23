@@ -52,7 +52,7 @@ export function AdminTabsNavigation({
       tabs: [
         { value: 'sources', label: 'Curriculum & Sources', icon: Layers, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'help', label: 'Help & Templates', icon: HelpCircle, visible: true },
-        { value: 'analytics', label: 'Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
+        { value: 'analytics', label: 'Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
         { value: 'videos', label: 'Videos', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
       ],
@@ -63,8 +63,8 @@ export function AdminTabsNavigation({
       description: 'Announcements & feedback',
       icon: MessageSquare,
       tabs: [
-        { value: 'announcements', label: 'Announcements', icon: Megaphone, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
-        { value: 'inbox', label: 'Feedback & Inquiries', icon: MessageSquare, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+        { value: 'announcements', label: 'Announcements', icon: Megaphone, visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'inbox', label: 'Feedback & Inquiries', icon: MessageSquare, visible: isSuperAdmin || isPlatformAdmin },
       ],
     },
   ];
