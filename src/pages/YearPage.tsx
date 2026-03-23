@@ -24,16 +24,8 @@ export default function YearPage() {
     navigate('/');
   };
 
-  const CROSS_LISTED_IDS = [
-    'a6c13735-4299-4c40-8a41-500c6edcf723', // MED-422
-    '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', // SUR-423
-  ];
-
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
-  const { data: crossListedModules, isLoading: crossListedLoading } = useModulesByIds(
-    yearNumber === 5 ? CROSS_LISTED_IDS : []
-  );
 
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
     return (localStorage.getItem('yearPageViewMode') as 'cards' | 'list') || 'cards';
