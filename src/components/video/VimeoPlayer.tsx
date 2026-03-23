@@ -338,7 +338,7 @@ export function VimeoPlayer({
             }
           }}
           className="absolute inset-0 flex items-center justify-center bg-black/40 transition-colors hover:bg-black/50"
-          aria-label="Tap to play video"
+          aria-label={isMobile ? "Tap to play video" : "Click to play video"}
         >
           <div className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center transition-colors shadow-lg">
             <Play className="w-10 h-10 text-primary-foreground ml-1" fill="currentColor" />
