@@ -69,6 +69,7 @@ export function CurriculumTab({ modules, years }: CurriculumTabProps) {
       is_published: module.is_published ?? false,
       workload_level: (module.workload_level as '' | 'light' | 'medium' | 'heavy' | 'heavy_plus') || '',
       page_count: module.page_count?.toString() || '',
+      image_url: (module as any).image_url || null,
     });
     setShowModuleDialog(true);
   };
