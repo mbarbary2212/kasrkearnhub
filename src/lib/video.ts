@@ -1,6 +1,5 @@
 /**
  * Video utility functions for YouTube and Google Drive
- * Note: Vimeo support temporarily disabled - will be rewritten
  */
 
 export type VideoSource = "youtube" | "googledrive" | "unknown";
