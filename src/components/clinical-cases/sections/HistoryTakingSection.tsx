@@ -14,7 +14,7 @@ import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
