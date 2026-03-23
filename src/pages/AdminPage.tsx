@@ -556,7 +556,7 @@ function IntegrityCheckTab() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        'https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/integrity-pilot-v2',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot-v2`,
         {
           method: 'POST',
           headers: {

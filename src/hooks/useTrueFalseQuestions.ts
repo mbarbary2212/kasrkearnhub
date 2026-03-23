@@ -341,7 +341,7 @@ export function useBulkCreateTrueFalseQuestions() {
       }
 
       const response = await fetch(
-        `https://dwmxnokprfiwmvzksyjg.supabase.co/functions/v1/bulk-import-true-false`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-true-false`,
         {
           method: 'POST',
           headers: {
