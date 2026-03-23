@@ -135,14 +135,13 @@ export default function YearPage() {
                 ))}
               </div>
             )
-          ) : allModules && allModules.length > 0 ? (
+          ) : modules && modules.length > 0 ? (
             viewMode === 'cards' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {allModules.map((module) => {
+                {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
-                  const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
                   const image = getModuleImage(module.slug, (module as any).image_url);
                   const gradient = getModuleGradient(module.slug);
 
