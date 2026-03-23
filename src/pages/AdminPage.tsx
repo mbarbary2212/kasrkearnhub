@@ -2246,6 +2246,25 @@ export default function AdminPage() {
         }}
         isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
       />
+      <AlertDialog open={!!deletingModuleId} onOpenChange={(open) => !open && setDeletingModuleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Module?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this module? This will also delete all content within it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteModule}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
