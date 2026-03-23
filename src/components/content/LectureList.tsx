@@ -319,7 +319,7 @@ export function LectureList({
 
   const videoUrl = selectedLecture?.video_url || selectedLecture?.videoUrl;
   const normalizedVideoUrl = normalizeVideoInput(videoUrl);
-  const isVimeoVideo = isVimeoUrl(normalizedVideoUrl);
+  
   const selectedYouTubeId = extractYouTubeId(normalizedVideoUrl);
 
   // For Google Drive, keep plain iframe
