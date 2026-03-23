@@ -948,14 +948,14 @@ export default function ChapterPage() {
                 </div>
 
                 {/* Cases Content */}
-                {interactiveTab === 'cases' && moduleId && chapterId && (
+                {interactiveTab === 'cases' && contentModuleId && chapterId && (
                   <div>
                     {canManageContent ? (
-                      <ClinicalCaseAdminList moduleId={moduleId} chapterId={chapterId} />
+                      <ClinicalCaseAdminList moduleId={contentModuleId} chapterId={chapterId} />
                     ) : clinicalCasesLoading ? (
                       <QuestionListSkeleton count={2} type="mcq" />
                     ) : (
-                      <ClinicalCaseList moduleId={moduleId} chapterId={chapterId} />
+                      <ClinicalCaseList moduleId={contentModuleId} chapterId={chapterId} />
                     )}
                   </div>
                 )}
