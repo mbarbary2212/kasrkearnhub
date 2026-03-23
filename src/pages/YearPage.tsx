@@ -96,12 +96,13 @@ export default function YearPage() {
                 <Skeleton key={i} className="h-[68px] w-full" />
               ))}
             </div>
-          ) : modules && modules.length > 0 ? (
+          ) : allModules && allModules.length > 0 ? (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-              {modules.map((module, index) => {
+              {allModules.map((module, index) => {
                 const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                   ? auth.moduleAdminModuleIds.includes(module.id)
                   : true;
+                const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
 
                 return isAssigned ? (
                   <button
@@ -118,6 +119,9 @@ export default function YearPage() {
                       </p>
                       {module.description && (
                         <p className="text-sm text-muted-foreground truncate">{module.description}</p>
+                      )}
+                      {isYear4CrossListed && (
+                        <p className="text-xs text-muted-foreground italic mt-0.5">Also available in Year 5 this year</p>
                       )}
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
