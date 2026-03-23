@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, isVimeoUrl, extractYouTubeId } from '@/lib/video';
+import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractYouTubeId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
 import { useVideoBookmarks } from '@/hooks/useVideoBookmarks';
