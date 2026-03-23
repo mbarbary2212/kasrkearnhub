@@ -59,8 +59,8 @@
   }
 
   .dark {
-    --background: 170 25% 7%;
-    --foreground: 210 40% 97%;
+    --background: 168 20% 8%;
+    --foreground: 210 33% 96%;
 
     --card: 170 15% 9%;
     --card-foreground: 210 40% 97%;
@@ -75,7 +75,7 @@
     --secondary-foreground: 210 40% 97%;
 
     --muted: 170 10% 14%;
-    --muted-foreground: 213 18% 58%;
+    --muted-foreground: 215 16% 65%;
 
     --accent: 158 64% 38%;
     --accent-foreground: 0 0% 100%;
@@ -111,7 +111,9 @@
 
   .dark body,
   body.dark {
-    background: radial-gradient(ellipse at 50% 40%, hsl(170 25% 11%) 0%, hsl(0 0% 4%) 70%);
+    background: linear-gradient(135deg, #1e3a3a 0%, #0a0a0a 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
