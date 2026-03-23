@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizontal } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizontal, BookOpen } from 'lucide-react';
 import logo from '@/assets/kalm-hub-logo.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -27,6 +27,7 @@ import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useDueCards } from '@/hooks/useFSRS';
+import { useYears } from '@/hooks/useYears';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -42,6 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
+  const { data: years } = useYears();
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
@@ -56,6 +58,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleGoHome = () => {
     sessionStorage.setItem('skipAutoLogin', 'true');
+    if (profile?.preferred_year_id && years) {
+      const preferredYear = years.find(y => y.id === profile.preferred_year_id);
+      if (preferredYear) {
+        navigate(`/year/${preferredYear.number}`);
+        return;
+      }
+    }
     navigate('/');
   };
 
@@ -232,6 +241,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuItem onClick={handleGoHome}>
                   <Home className="mr-2 h-4 w-4" />
                   Home
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  sessionStorage.setItem('skipAutoLogin', 'true');
+                  navigate('/');
+                }}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  All Years
                 </DropdownMenuItem>
                 {/* Only show Study Coach for non-admins */}
                 {!isAdmin && (
