@@ -155,7 +155,7 @@ export default function YearPage() {
                     ? auth.moduleAdminModuleIds.includes(module.id)
                     : true;
                   const isYear4CrossListed = yearNumber === 4 && CROSS_LISTED_IDS.includes(module.id);
-                  const image = getModuleImage(module.slug);
+                  const image = getModuleImage(module.slug, (module as any).image_url);
                   const gradient = getModuleGradient(module.slug);
 
                   if (!isAssigned) {
