@@ -88,6 +88,7 @@ export function VimeoPlayer({
   onError,
   onLoadError,
 }: VimeoPlayerProps) {
+  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<VimeoPlayerInstance | null>(null);
   const [isReady, setIsReady] = useState(false);
