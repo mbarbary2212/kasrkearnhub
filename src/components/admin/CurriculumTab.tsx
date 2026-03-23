@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Building2, Link2, Plus, Edit, Trash2 } from 'lucide-react';
+import { CurriculumImageUpload } from './CurriculumImageUpload';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { Module, Year } from '@/types/curriculum';
