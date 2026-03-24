@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { AiConfidenceBadge } from '@/components/content/AiConfidenceBadge';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { Mcq } from '@/hooks/useMcqs';
 import type { Section } from '@/hooks/useSections';
@@ -65,6 +66,14 @@ export function McqAdminTable({
         <Badge variant="outline" className={difficultyColors[mcq.difficulty || 'medium']}>
           {mcq.difficulty || 'medium'}
         </Badge>
+      ),
+    },
+    {
+      key: 'ai_confidence',
+      header: 'AI',
+      className: 'w-16',
+      render: (mcq) => (
+        <AiConfidenceBadge confidence={mcq.ai_confidence} isAdmin={true} />
       ),
     },
     {
