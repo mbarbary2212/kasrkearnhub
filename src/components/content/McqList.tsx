@@ -44,7 +44,7 @@ import {
   filterByStatus,
   countByStatus,
 } from './PracticeFilters';
-import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, useBulkUpdateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
@@ -231,6 +231,7 @@ export function McqList({
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+  const bulkUpdateMutation = useBulkUpdateMcqs();
   
   // AI Analyzer for bulk upload
   const { isAnalyzing, analysis, analyzeError, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
@@ -1177,16 +1178,40 @@ The AI will parse and extract the questions automatically.`}
                   </div>
                 </ScrollArea>
 
-                <Button 
-                  onClick={handleBulkImport} 
-                  className="w-full"
-                  disabled={bulkCreateMutation.isPending || itemsToImportCount === 0}
-                >
-                  {bulkCreateMutation.isPending 
-                    ? 'Importing...' 
-                    : `Import ${itemsToImportCount} Question${itemsToImportCount !== 1 ? 's' : ''}`
-                  }
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleBulkImport} 
+                    className="flex-1"
+                    disabled={bulkCreateMutation.isPending || bulkUpdateMutation.isPending || itemsToImportCount === 0}
+                  >
+                    {bulkCreateMutation.isPending 
+                      ? 'Importing...' 
+                      : `Import ${itemsToImportCount} New Question${itemsToImportCount !== 1 ? 's' : ''}`
+                    }
+                  </Button>
+                  {(exactDuplicates > 0 || possibleDuplicates > 0) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!previewData) return;
+                        const allItems = previewData.map(item => item.item);
+                        bulkUpdateMutation.mutate(
+                          { mcqs: allItems, moduleId, chapterId, topicId },
+                          {
+                            onSuccess: () => {
+                              setShowBulkModal(false);
+                              resetBulkModal();
+                            },
+                          }
+                        );
+                      }}
+                      disabled={bulkUpdateMutation.isPending || bulkCreateMutation.isPending}
+                      className="whitespace-nowrap"
+                    >
+                      {bulkUpdateMutation.isPending ? 'Updating...' : `Update ${exactDuplicates + possibleDuplicates} Existing`}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
