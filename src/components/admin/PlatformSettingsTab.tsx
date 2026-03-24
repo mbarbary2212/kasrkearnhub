@@ -17,7 +17,7 @@ import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
-import { useDisclaimerEnabled } from '@/hooks/useDisclaimerSetting';
+import { supabase } from '@/integrations/supabase/client';
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
   icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
