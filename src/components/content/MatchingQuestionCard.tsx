@@ -7,6 +7,7 @@ import { Pencil, Trash2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react
 import { cn } from '@/lib/utils';
 import type { MatchingQuestion, MatchItem } from '@/hooks/useMatchingQuestions';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { AiConfidenceBadge } from './AiConfidenceBadge';
 
 interface MatchingQuestionCardProps {
   question: MatchingQuestion;
