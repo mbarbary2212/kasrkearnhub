@@ -177,6 +177,8 @@ export function MatchingQuestionCard({
               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-300 border-purple-200">
                 Matching
               </Badge>
+              {/* AI Confidence badge - admin only */}
+              <AiConfidenceBadge confidence={question.ai_confidence} isAdmin={isAdmin} />
             </div>
             <p className="text-base font-medium leading-relaxed">{question.instruction}</p>
           </div>

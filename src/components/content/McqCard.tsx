@@ -268,7 +268,7 @@ export function McqCard({
       <CardContent className="space-y-3">
         {/* Choices */}
         <div className="space-y-2">
-          {choices.map((choice) => (
+          {shuffledChoices.map((choice) => (
             <button
               key={choice.key}
               onClick={() => handleChoiceClick(choice.key)}
