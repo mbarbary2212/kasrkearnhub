@@ -178,7 +178,7 @@ export default function YearPage() {
                       className="overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 group"
                       onClick={() => navigate(`/module/${module.id}`)}
                     >
-                      <AspectRatio ratio={16 / 9}>
+                      <AspectRatio ratio={3}>
                         {image ? (
                           <img src={image} alt={module.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         ) : (
