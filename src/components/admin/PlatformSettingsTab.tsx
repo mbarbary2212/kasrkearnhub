@@ -177,8 +177,18 @@ function EmailNotificationPreferences() {
 
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
-  const { data: disclaimerData, isLoading: disclaimerLoading } = useDisclaimerEnabled();
-  const disclaimerEnabled = disclaimerData?.show !== undefined ? !!disclaimerData : false;
+  const { data: disclaimerSetting, isLoading: disclaimerLoading } = useQuery({
+    queryKey: ['study-settings', 'platform_disclaimer_enabled_admin'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('study_settings')
+        .select('value')
+        .eq('key', 'platform_disclaimer_enabled')
+        .maybeSingle();
+      return data?.value === 'true';
+    },
+  });
+  const disclaimerEnabled = disclaimerSetting ?? false;
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
 
