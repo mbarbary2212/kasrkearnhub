@@ -214,6 +214,8 @@ export function McqCard({
                   {mcq.difficulty}
                 </Badge>
               )}
+              {/* AI Confidence badge - only visible to admins */}
+              <AiConfidenceBadge confidence={mcq.ai_confidence} isAdmin={isAdmin} />
             </div>
             <p className="text-base font-medium leading-relaxed">{mcq.stem}</p>
           </div>
