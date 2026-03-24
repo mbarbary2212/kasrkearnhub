@@ -26,6 +26,10 @@ Replace the vertically-stacked card layout with a tablet-first 60/40 split-scree
 └──────────────────────────────────────────────────────────────┘
 ```
 
+## Answer Display
+- **No randomization** — choices render in their original database order (A, B, C, D, E)
+- Shuffling was removed to avoid conflicts with explanations that reference specific option letters
+
 ## Left Panel — Post-Submission Answer Feedback
 After submission, highlight the user's selected answer and clearly mark the correct answer directly in the choice list:
 - Green border/bg on correct answer
@@ -88,7 +92,18 @@ Simple label/value pairs with percentages + counts:
 - If user returns to a skipped question, they can still answer normally
 - QuestionStatsCard reflects "You skipped this question" in the user donut (gray)
 
-## Components to Create
+## Screen Fitting
+- **Tablet/PC**: `h-[calc(100vh-4rem)]`, compact padding (`p-3 md:p-4`), `text-sm` choices, `max-w-7xl mx-auto`
+- **Mobile**: Single column stack, right panel below
+- One question + 5 choices + Submit must fit on screen without scrolling
+
+## AI Confidence Backfill
+- Edge function: `backfill-ai-confidence` — rates MCQs against linked PDF via Gemini
+- Admin button "Rate AI Confidence" in McqList toolbar (chapter-level)
+- Batches of 10 MCQs per AI call
+- Uses PDF from `admin_documents` → `admin-pdfs` storage bucket as source of truth
+
+## Components
 
 | Component | File |
 |-----------|------|
@@ -129,3 +144,4 @@ Simple label/value pairs with percentages + counts:
 5. Left panel shows answer feedback (green/red) after submission
 6. Both panels scroll independently — no whole-page scroll
 7. Responsive: `grid-cols-1 md:grid-cols-[3fr_2fr]`; mobile stacks vertically
+8. No answer randomization — choices in original order
