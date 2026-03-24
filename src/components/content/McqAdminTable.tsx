@@ -68,6 +68,14 @@ export function McqAdminTable({
       ),
     },
     {
+      key: 'ai_confidence',
+      header: 'AI',
+      className: 'w-16',
+      render: (mcq) => (
+        <AiConfidenceBadge confidence={mcq.ai_confidence} isAdmin={true} />
+      ),
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-40',
