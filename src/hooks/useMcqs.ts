@@ -497,7 +497,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
     }
     parts.push(current.trim());
 
-    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty] = parts;
+    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty, _sectionName, _sectionNumber, aiConfidence] = parts;
 
     // Build choices array and filter out empty choice E
     const allChoices = [
