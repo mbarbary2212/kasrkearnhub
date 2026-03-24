@@ -1,56 +1,41 @@
 
 
-# Fix: Tab Switch Causes Page Reset
+# Fix: AI Confidence Not Displaying + Loading Performance
 
-## Problem
-When you switch browser tabs and return, the entire page resets to the beginning. This happens because:
+## Problem Summary
 
-1. Supabase refreshes the auth token when the tab regains focus
-2. The auth hook sets `isLoading: true` during token refresh
-3. `ProtectedRoute` unmounts your entire page (ChapterPage, TopicDetailPage, etc.) and shows a loading spinner
-4. When auth finishes, the page remounts from scratch — all your tab selections, scroll position, and practice progress are lost
+Three issues identified:
 
-## Solution
-Distinguish between **initial auth loading** (user not yet known) and **background token refresh** (user already known). Only show the full-screen spinner for the initial load.
+1. **AI confidence data is `null` in the database** — Your friend uploaded the Esophagus MCQs (which have `ai_confidence: 10` in the CSV) **before** the CSV parser fix was deployed. The old parser didn't extract `ai_confidence`, so all 94 MCQs were saved with `null`. The code fix we made to `csvParser.ts` only affects future uploads.
 
-### Change in `src/hooks/useAuth.ts`
-- Add a new state flag `initialLoading` (starts `true`, set to `false` after first session check completes, never goes back to `true`)
-- Expose `initialLoading` instead of `isLoading` for route protection purposes
-- Keep `isLoading` for components that need to know about data refresh, but don't let token refreshes set it to `true` when we already have a user
+2. **Card view shows nothing because the badge returns `null` for non-admins** — The `AiConfidenceBadge` component only renders when `isAdmin={true}`. If you're logged in as a student, you won't see it (by design). But even for admins, the data is `null` so nothing shows.
 
-Specifically, in the `onAuthStateChange` handler (line 108-113), change:
-```typescript
-// BEFORE: sets isLoading true on every auth event
-isLoading: !!session?.user,
+3. **Slow loading** — 94 MCQs with `select('*')` is fine for data size, but the issue is likely the chapter page making many parallel queries (MCQs, sections, attempts, progress, etc.) on mount. We can improve this with targeted optimizations.
 
-// AFTER: only set isLoading true if we don't already have a user
-isLoading: !!session?.user && !prev.user,
-```
+## Plan
 
-And add `initialLoading` tracking:
-```typescript
-// After first getSession() completes, set initialLoading = false
-// This flag never goes back to true
-```
+### 1. Redeploy the edge function
+The `bulk-import-mcqs` edge function needs redeployment so future uploads correctly save `ai_confidence`. The code is already correct — it just needs to be deployed.
 
-### Change in `src/components/ProtectedRoute.tsx`
-- Use the new `initialLoading` flag for the full-screen spinner gate instead of `isLoading`
-- This means token refreshes won't unmount children
+### 2. Backfill existing MCQ data via SQL migration
+Create a migration that updates the Esophagus chapter MCQs (and any others uploaded with the CSV `ai_confidence` column but stored as `null`). Since we can't retroactively parse the CSV, we'll need to either:
+- Ask the friend to re-upload (simplest), OR
+- Create a small admin UI action to "re-import with overwrite" for a chapter
 
-### Change in `src/contexts/AuthContext.tsx`
-- Expose `initialLoading` from the auth context
+**Recommended approach**: Add a "Re-import (update existing)" option to the bulk import modal. This matches existing MCQs by stem text and updates fields like `ai_confidence` that were previously missing, without creating duplicates.
+
+### 3. Optimize loading performance
+- Add `staleTime` and `gcTime` to heavy queries to reduce refetching
+- Consider selecting only needed columns instead of `select('*')` for the MCQ list view (the `choices` JSON array is the heaviest field)
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAuth.ts` | Add `initialLoading` flag; don't set `isLoading: true` on token refresh when user already exists |
-| `src/contexts/AuthContext.tsx` | Expose `initialLoading` in context |
-| `src/components/ProtectedRoute.tsx` | Use `initialLoading` instead of `isLoading` for the spinner gate |
+| `supabase/functions/bulk-import-mcqs/index.ts` | Redeploy (no code change needed) |
+| `src/components/content/McqList.tsx` | Add "Update existing" option to bulk import that matches by stem and updates `ai_confidence`, `difficulty`, `explanation` |
+| `src/hooks/useMcqs.ts` | Increase `staleTime` on chapter MCQ queries; add `gcTime` |
 
-## Impact
-- No more page resets on tab switch
-- Initial app load still shows spinner until auth is resolved
-- Role checks still work correctly after token refresh
-- All existing behavior preserved for first-time load and logout flows
+## Important Note
+The AI confidence badge is **admin-only by design**. When testing, make sure you're logged in with an admin or teacher account, not the student account (`elbarbarystudent@kasralainy.edu.eg` which is currently active).
 
