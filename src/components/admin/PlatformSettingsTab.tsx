@@ -177,7 +177,8 @@ function EmailNotificationPreferences() {
 
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
-  const { data: disclaimerEnabled, isLoading: disclaimerLoading } = useDisclaimerEnabled();
+  const { data: disclaimerData, isLoading: disclaimerLoading } = useDisclaimerEnabled();
+  const disclaimerEnabled = disclaimerData?.show !== undefined ? !!disclaimerData : false;
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
 
