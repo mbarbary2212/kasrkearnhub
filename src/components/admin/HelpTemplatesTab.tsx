@@ -89,7 +89,8 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'FALSE',
         'The findings are more consistent with COPD/emphysema.',
         'Radiology',
-        '2'
+        '2',
+        '7'
       ],
     ],
   },
