@@ -70,6 +70,7 @@ import {
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { McqAdminTable } from './McqAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
+import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -639,6 +640,34 @@ export function McqList({
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>No {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} available yet.</p>
+      </div>
+    );
+  }
+
+  // Student session view — split-screen layout
+  if (!isAdmin && filteredMcqs.length > 0 && chapterId) {
+    return (
+      <div className="space-y-4">
+        {/* Practice Filters for students */}
+        {totalQuestions > 0 && (
+          <PracticeFilters
+            filters={practiceFilters}
+            onFiltersChange={setPracticeFilters}
+            onResetProgress={handleResetAttempt}
+            counts={statusCounts}
+            totalCount={totalQuestions}
+            filteredCount={filteredMcqs.length}
+            questionType="MCQ"
+          />
+        )}
+        <QuestionSessionShell
+          questions={filteredMcqs}
+          questionType={questionFormat === 'sba' ? 'sba' : 'mcq'}
+          moduleId={moduleId}
+          chapterId={chapterId}
+          attemptMap={attemptMap}
+          allAttempts={allAttempts}
+        />
       </div>
     );
   }
