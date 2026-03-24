@@ -451,6 +451,68 @@ export function useBulkCreateMcqs() {
   });
 }
 
+// Bulk update existing MCQs (match by stem, update ai_confidence/difficulty/explanation)
+export function useBulkUpdateMcqs() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      mcqs, 
+      moduleId, 
+      chapterId,
+      topicId,
+    }: { 
+      mcqs: McqFormData[]; 
+      moduleId: string; 
+      chapterId?: string | null;
+      topicId?: string | null;
+    }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to update MCQs');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ mcqs, moduleId, chapterId, topicId, mode: 'update' }),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update MCQs');
+      }
+
+      return { moduleId, chapterId, topicId, count: result.count };
+    },
+    onSuccess: (result) => {
+      toast({ title: `${result.count} question(s) updated successfully` });
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
+      }
+      logActivity({
+        action: 'bulk_update_mcq',
+        entity_type: 'mcq',
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId, topic_id: result.topicId },
+        metadata: { count: result.count, source: 'csv_reimport' },
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error updating questions', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 // Parse CSV text into MCQ data
 export function parseMcqCsv(csvText: string): McqFormData[] {
   const lines = csvText.trim().split('\n').filter(line => line.trim());
