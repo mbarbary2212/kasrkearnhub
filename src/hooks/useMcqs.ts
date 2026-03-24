@@ -28,6 +28,7 @@ export interface Mcq {
   updated_by: string | null;
   created_at: string;
   question_format: QuestionFormat;
+  ai_confidence: number | null;
 }
 
 export interface McqFormData {
