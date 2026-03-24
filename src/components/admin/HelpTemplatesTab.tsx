@@ -60,7 +60,8 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
         'medium',
         'Cardiac Emergencies',
-        '1'
+        '1',
+        '8'
       ],
     ],
   },
