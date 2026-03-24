@@ -155,9 +155,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   matching: {
-    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     required: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2'],
-    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'Heart Sounds',
