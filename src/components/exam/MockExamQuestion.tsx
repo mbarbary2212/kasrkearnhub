@@ -30,6 +30,17 @@ export function MockExamQuestion({
 }: MockExamQuestionProps) {
   const choices = question.choices || [];
 
+  // Shuffle choices deterministically for students
+  const shuffledChoices = useMemo(() => {
+    const arr = [...choices];
+    const seed = question.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = ((seed * (i + 1) * 2654435761) >>> 0) % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [choices, question.id]);
+
   return (
     <div className="space-y-4">
       {/* Question header */}
