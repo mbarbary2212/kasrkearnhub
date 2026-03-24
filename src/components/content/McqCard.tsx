@@ -57,6 +57,18 @@ export function McqCard({
   }, [previousAttempt]);
 
   const [selectedKey, setSelectedKey] = useState<string | null>(initialSelectedKey);
+
+  // Shuffle choices for students (deterministic based on question id)
+  const shuffledChoices = useMemo(() => {
+    if (isAdmin) return choices;
+    const arr = [...choices];
+    const seed = mcq.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = ((seed * (i + 1) * 2654435761) >>> 0) % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [choices, mcq.id, isAdmin]);
   // If there was a previous attempt, start with answer revealed
   const [isSubmitted, setIsSubmitted] = useState<boolean>(!!previousAttempt);
   const hasMarkedComplete = useRef(false);
