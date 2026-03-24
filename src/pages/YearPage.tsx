@@ -161,8 +161,8 @@ export default function YearPage() {
                             <Lock className="w-8 h-8 text-white/70" />
                           </div>
                         </AspectRatio>
-                        <div className="p-4">
-                          <p className="font-heading font-semibold text-muted-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                        <div className="p-2.5">
+                          <p className="font-heading font-semibold text-muted-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                         </div>
                       </Card>
                     );
