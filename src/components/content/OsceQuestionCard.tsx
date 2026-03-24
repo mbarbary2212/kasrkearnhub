@@ -18,6 +18,7 @@ import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt, type QuestionAttemptSummary } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
 import { AttachOsceImageModal } from './AttachOsceImageModal';
+import { AiConfidenceBadge } from './AiConfidenceBadge';
 
 interface OsceQuestionCardProps {
   question: OsceQuestion;
@@ -223,6 +224,8 @@ export function OsceQuestionCard({
                   <Star className={cn('h-4 w-4', isStarred && 'fill-current')} />
                 </button>
               )}
+              {/* AI Confidence badge - admin only */}
+              <AiConfidenceBadge confidence={(question as any).ai_confidence} isAdmin={isAdmin} />
             </div>
             {isDeleted && (
               <Badge variant="destructive">Deleted</Badge>

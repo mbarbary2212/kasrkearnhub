@@ -45,9 +45,9 @@ interface TemplateSchema {
 
 export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
   mcq: {
-    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
-    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
@@ -60,14 +60,15 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
         'medium',
         'Cardiac Emergencies',
-        '1'
+        '1',
+        '8'
       ],
     ],
   },
   osce: {
-    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number', 'ai_confidence'],
     required: ['image_filename', 'history_text', 'statement_1', 'answer_1'],
-    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'chest_xray_001.jpg',
@@ -88,7 +89,8 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'FALSE',
         'The findings are more consistent with COPD/emphysema.',
         'Radiology',
-        '2'
+        '2',
+        '7'
       ],
     ],
   },
@@ -153,9 +155,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   matching: {
-    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     required: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2'],
-    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'Heart Sounds',
@@ -173,9 +175,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   essay: {
-    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     required: ['title', 'question'],
-    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     examples: [
       [
         'Stages of Wound Healing',
@@ -204,9 +206,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   true_false: {
-    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['statement', 'correct_answer'],
-    optional: ['explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'The left recurrent laryngeal nerve loops around the aortic arch before ascending to the larynx.',

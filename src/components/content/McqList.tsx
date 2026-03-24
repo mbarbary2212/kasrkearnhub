@@ -627,13 +627,7 @@ export function McqList({
   };
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mcq_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    window.open('/admin?tab=help-templates', '_blank');
   };
 
   const exactDuplicates = previewData?.filter(p => p.isExactDuplicate).length || 0;
@@ -911,7 +905,7 @@ export function McqList({
             <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">
                 <Download className="h-3 w-3" />
-                Download Template
+                Get Template
               </Button>
             </div>
 

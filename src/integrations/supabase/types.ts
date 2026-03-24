@@ -1562,6 +1562,7 @@ export type Database = {
       }
       essays: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
@@ -1592,6 +1593,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
@@ -1622,6 +1624,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
@@ -2671,6 +2674,7 @@ export type Database = {
       }
       matching_questions: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           column_a_items: Json
           column_b_items: Json
@@ -2696,6 +2700,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
@@ -2721,6 +2726,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
@@ -3111,6 +3117,7 @@ export type Database = {
       }
       mcqs: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           choices: Json
           concept_ai_confidence: number | null
@@ -3134,6 +3141,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           choices?: Json
           concept_ai_confidence?: number | null
@@ -3157,6 +3165,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           choices?: Json
           concept_ai_confidence?: number | null
@@ -3718,6 +3727,7 @@ export type Database = {
       }
       osce_questions: {
         Row: {
+          ai_confidence: number | null
           answer_1: boolean
           answer_2: boolean
           answer_3: boolean
@@ -3754,6 +3764,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           answer_1: boolean
           answer_2: boolean
           answer_3: boolean
@@ -3790,6 +3801,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           answer_1?: boolean
           answer_2?: boolean
           answer_3?: boolean
@@ -5692,6 +5704,7 @@ export type Database = {
         Row: {
           active_sections: string[] | null
           additional_instructions: string | null
+          ai_confidence: number | null
           avatar_id: number | null
           case_mode: string | null
           case_type: string
@@ -5736,6 +5749,7 @@ export type Database = {
         Insert: {
           active_sections?: string[] | null
           additional_instructions?: string | null
+          ai_confidence?: number | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
@@ -5780,6 +5794,7 @@ export type Database = {
         Update: {
           active_sections?: string[] | null
           additional_instructions?: string | null
+          ai_confidence?: number | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string

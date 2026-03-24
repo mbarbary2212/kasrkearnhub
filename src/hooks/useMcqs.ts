@@ -28,6 +28,7 @@ export interface Mcq {
   updated_by: string | null;
   created_at: string;
   question_format: QuestionFormat;
+  ai_confidence: number | null;
 }
 
 export interface McqFormData {
@@ -40,6 +41,7 @@ export interface McqFormData {
   question_format?: QuestionFormat;
   original_section_name?: string | null;
   original_section_number?: string | null;
+  ai_confidence?: number | null;
 }
 
 // Helper to convert DB row to Mcq type
@@ -60,6 +62,7 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     updated_by: row.updated_by as string | null,
     created_at: row.created_at as string,
     question_format: (row.question_format as QuestionFormat) ?? 'mcq',
+    ai_confidence: (row.ai_confidence as number | null) ?? null,
   };
 }
 
@@ -494,7 +497,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
     }
     parts.push(current.trim());
 
-    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty] = parts;
+    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty, _sectionName, _sectionNumber, aiConfidence] = parts;
 
     // Build choices array and filter out empty choice E
     const allChoices = [
@@ -518,6 +521,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
         : null),
+      ai_confidence: aiConfidence ? Math.min(10, Math.max(0, parseInt(aiConfidence, 10))) || null : null,
     };
   });
 }

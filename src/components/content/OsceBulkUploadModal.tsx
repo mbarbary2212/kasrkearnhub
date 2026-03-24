@@ -498,9 +498,9 @@ export function OsceBulkUploadModal({
               </AlertDescription>
             </Alert>
 
-            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+            <Button variant="outline" size="sm" onClick={() => window.open('/admin?tab=help-templates', '_blank')}>
               <Download className="w-4 h-4 mr-2" />
-              Download Excel Template (.xlsx)
+              Get Template
             </Button>
 
             <DragDropZone

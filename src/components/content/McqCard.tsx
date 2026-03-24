@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Star, RotateCcw, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
+import { AiConfidenceBadge } from './AiConfidenceBadge';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
@@ -63,6 +64,18 @@ export function McqCard({
   const saveAttempt = useSaveQuestionAttempt();
 
   const choices = mcq.choices as McqChoice[];
+
+  // Shuffle choices for students (deterministic based on question id)
+  const shuffledChoices = useMemo(() => {
+    if (isAdmin) return choices;
+    const arr = [...choices];
+    const seed = mcq.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = ((seed * (i + 1) * 2654435761) >>> 0) % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [choices, mcq.id, isAdmin]);
   
   // Calculate correctness
   const isCorrect = selectedKey === mcq.correct_key;
@@ -201,6 +214,8 @@ export function McqCard({
                   {mcq.difficulty}
                 </Badge>
               )}
+              {/* AI Confidence badge - only visible to admins */}
+              <AiConfidenceBadge confidence={mcq.ai_confidence} isAdmin={isAdmin} />
             </div>
             <p className="text-base font-medium leading-relaxed">{mcq.stem}</p>
           </div>
@@ -253,7 +268,7 @@ export function McqCard({
       <CardContent className="space-y-3">
         {/* Choices */}
         <div className="space-y-2">
-          {choices.map((choice) => (
+          {shuffledChoices.map((choice) => (
             <button
               key={choice.key}
               onClick={() => handleChoiceClick(choice.key)}
