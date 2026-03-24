@@ -8,7 +8,7 @@ export function useDisclaimerEnabled() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('study_settings')
-        .select('value')
+        .select('key, value')
         .in('key', ['platform_disclaimer_enabled', 'platform_disclaimer_version']);
 
       if (error) {
