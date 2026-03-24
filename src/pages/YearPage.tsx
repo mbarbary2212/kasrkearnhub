@@ -113,12 +113,12 @@ export default function YearPage() {
 
           {isLoading ? (
             viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {[...Array(4)].map((_, i) => (
                   <Card key={i} className="overflow-hidden">
                     <Skeleton className="w-full aspect-[2.5]" />
-                    <div className="p-3 space-y-1.5">
-                      <Skeleton className="h-4 w-3/4" />
+                    <div className="p-2 space-y-1">
+                      <Skeleton className="h-3.5 w-3/4" />
                       <Skeleton className="h-3 w-full" />
                     </div>
                   </Card>
