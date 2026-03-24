@@ -47,7 +47,7 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
   mcq: {
     columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
-    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
