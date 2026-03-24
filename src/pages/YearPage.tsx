@@ -184,15 +184,15 @@ export default function YearPage() {
                           </div>
                         )}
                       </AspectRatio>
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-2">
+                      <div className="p-2.5">
+                        <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0 flex-1">
-                            <p className="font-heading font-semibold text-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                            <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                             {module.description && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">{module.description}</p>
                             )}
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                         </div>
                       </div>
                     </Card>
