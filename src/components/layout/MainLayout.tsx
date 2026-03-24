@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizontal, BookOpen } from 'lucide-react';
-import logo from '@/assets/kalm-hub-logo.png';
+import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { ThemeToggle } from '@/components/ThemeToggle';
