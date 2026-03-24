@@ -128,7 +128,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
-              <img src={logo} alt="KALM Hub Logo" className="h-[24px] md:h-[26px] w-auto object-contain" />
+              <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
             </button>
             {/* Achievements Trophy Icon - Right of logo (students only) */}
             {user && !isAdmin && (
