@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,17 +29,6 @@ export function MockExamQuestion({
 }: MockExamQuestionProps) {
   const choices = question.choices || [];
 
-  // Shuffle choices deterministically for students
-  const shuffledChoices = useMemo(() => {
-    const arr = [...choices];
-    const seed = question.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = ((seed * (i + 1) * 2654435761) >>> 0) % (i + 1);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }, [choices, question.id]);
-
   return (
     <div className="space-y-4">
       {/* Question header */}
@@ -63,7 +51,7 @@ export function MockExamQuestion({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {shuffledChoices.map((choice: McqChoice) => (
+          {choices.map((choice: McqChoice) => (
             <Button
               key={choice.key}
               variant={selectedAnswer === choice.key ? "default" : "outline"}

@@ -48,7 +48,7 @@ export function RightInsightPanel({
   }
 
   return (
-    <div className="overflow-y-auto h-full p-4 md:p-5 space-y-4 bg-muted/20">
+    <div className="overflow-y-auto h-full p-3 md:p-4 space-y-3 bg-muted/20">
       <ExplanationCard
         questionType={questionType}
         question={question}

@@ -171,10 +171,10 @@ export function QuestionSessionShell({
   }, [allAttempts, questionType]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] h-[calc(100vh-8rem)] gap-0">
+    <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] h-[calc(100vh-4rem)] gap-0 max-w-7xl mx-auto">
       {/* LEFT PANEL */}
       <div className="flex flex-col overflow-hidden border-r border-border">
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
           {/* Question header */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="font-mono text-sm">
