@@ -57,6 +57,13 @@ export function McqCard({
   }, [previousAttempt]);
 
   const [selectedKey, setSelectedKey] = useState<string | null>(initialSelectedKey);
+  // If there was a previous attempt, start with answer revealed
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(!!previousAttempt);
+  const hasMarkedComplete = useRef(false);
+  const { markComplete } = useMarkItemComplete();
+  const saveAttempt = useSaveQuestionAttempt();
+
+  const choices = mcq.choices as McqChoice[];
 
   // Shuffle choices for students (deterministic based on question id)
   const shuffledChoices = useMemo(() => {
@@ -69,13 +76,6 @@ export function McqCard({
     }
     return arr;
   }, [choices, mcq.id, isAdmin]);
-  // If there was a previous attempt, start with answer revealed
-  const [isSubmitted, setIsSubmitted] = useState<boolean>(!!previousAttempt);
-  const hasMarkedComplete = useRef(false);
-  const { markComplete } = useMarkItemComplete();
-  const saveAttempt = useSaveQuestionAttempt();
-
-  const choices = mcq.choices as McqChoice[];
   
   // Calculate correctness
   const isCorrect = selectedKey === mcq.correct_key;
