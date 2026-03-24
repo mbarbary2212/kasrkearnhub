@@ -200,7 +200,14 @@ export function PlatformSettingsTab() {
         key: 'platform_disclaimer_enabled',
         value: checked ? 'true' : 'false',
       });
-      toast.success(checked ? 'Disclaimer enabled for students' : 'Disclaimer disabled');
+      // When re-enabling, update the version so all students see it again
+      if (checked) {
+        await upsertSetting.mutateAsync({
+          key: 'platform_disclaimer_version',
+          value: Date.now().toString(),
+        });
+      }
+      toast.success(checked ? 'Disclaimer enabled for all students' : 'Disclaimer disabled');
     } catch (error) {
       console.error('Error updating disclaimer setting:', error);
       toast.error('Failed to update setting');
