@@ -1,131 +1,71 @@
 
-# Student QuestionSession — Split-Screen Redesign (Final Approved)
 
-## Overview
-Replace the vertically-stacked card layout with a tablet-first 60/40 split-screen, one-question-per-screen experience for MCQ, SBA, and OSCE. Admin views unchanged.
+# Three-Step Plan: Revert Shuffling, Fix Display Size, AI Confidence Backfill
 
-## Layout
+These are three independent changes, implemented as separate steps so each can be reverted individually.
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  QuestionSessionShell (grid-cols-[3fr_2fr], full height)     │
-│ ┌──────────────────────┐ ┌─────────────────────────────────┐ │
-│ │   LEFT PANEL (60%)   │ │     RIGHT PANEL (40%)           │ │
-│ │                      │ │                                 │ │
-│ │  Q3 / 94             │ │  Pre-submit:                    │ │
-│ │  Stem / Vignette     │ │   Empty placeholder message     │ │
-│ │  Image (OSCE)        │ │                                 │ │
-│ │  Choices A–E / T-F   │ │  Post-submit (5 cards):         │ │
-│ │                      │ │                                 │ │
-│ │  [Skip]   [Submit]   │ │   1. ExplanationCard            │ │
-│ │                      │ │   2. ConfidenceCard             │ │
-│ │  ← Prev    Next →    │ │   3. QuestionStatsCard          │ │
-│ │  (3/94)              │ │   4. PerformanceStatsCard       │ │
-│ └──────────────────────┘ │   5. ActionsCard                │ │
-│                          └─────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
+---
 
-## Left Panel — Post-Submission Answer Feedback
-After submission, highlight the user's selected answer and clearly mark the correct answer directly in the choice list:
-- Green border/bg on correct answer
-- Red border/bg on user's wrong selection
-- This provides immediate visual feedback without requiring the right panel
+## Step 1: Remove All Answer Randomization
 
-## Right Panel Cards (All Hidden Until Submission)
+Remove the shuffle logic entirely from both files. Choices render in their original database order (A, B, C, D, E).
 
-### 1. ExplanationCard (top, visually dominant)
-- Green/red banner showing Correct/Incorrect
-- Correct answer key and label
-- Full explanation text from `mcq.explanation`
-- If explanation contains per-option reasoning, render structured sections
-- For OSCE: per-statement correctness + overall score (not A–E distribution)
+### Files to modify
 
-### 2. ConfidenceCard
-- Three pill buttons: Low / Medium / High (using shadcn ToggleGroup)
-- Stored in `localStorage` keyed by question ID for v1
-- Shown after submission, persists if pre-selected
+**`src/components/question-session/McqAnswerArea.tsx`** (lines 26-35)
+- Delete the `shuffledChoices` useMemo block
+- Replace `shuffledChoices` with plain `choices` in the render
 
-### 3. QuestionStatsCard
+**`src/components/exam/MockExamQuestion.tsx`** (lines 33-42)
+- Delete the `shuffledChoices` useMemo block
+- Replace `shuffledChoices` with plain `choices` in the render
 
-**Section A — Donut Comparison (side-by-side)**
+No database changes. No admin toggle. Just remove shuffling completely.
 
-| "You" donut | "Students" donut |
-|---|---|
-| Single state: Correct / Wrong / Skipped | Proportional: Correct vs Wrong |
+---
 
-Key distinctions:
-- **User "Skipped"** = explicit skip action by current user. Shown in user donut only.
-- **Cohort donut** = shows Correct vs Wrong proportions only. Do NOT derive "skipped" from distractor data — only include if reliable data exists.
-- Each donut has centered text label (e.g. "You: Incorrect") and small legend underneath
-- Colors: green (correct), red (wrong), gray (skipped)
+## Step 2: Fit One Question Per Screen (Tablet, PC, Mobile)
 
-**Section B — Option Distribution (below donuts, MCQ/SBA only)**
-- Simple horizontal bars for A–E with percentage labels
-- Highlight: correct answer (green), user's answer (outline), most selected (bold)
-- Source: `distractor_analysis` from `mcq_analytics`
-- Fallback: "Response statistics not yet available"
-- **OSCE**: Do NOT use A–E distribution. Use score-based feedback instead (average score, score distribution 0-5).
+Adjust spacing and sizing so a typical question with 5 choices and the Submit button fits on one screen without scrolling.
 
-### 4. PerformanceStatsCard (text-based, no charts for v1)
-Simple label/value pairs with percentages + counts:
-- **This question**: Correct ✓ / Wrong ✗ / Skipped
-- **Your chapter accuracy**: 68% (34/50)
-- **Your module accuracy**: derived from existing data
-- **Cohort chapter average**: from `useChapterAnalyticsSummary(chapterId)` → `avgFacility`
-- **Cohort module average**: from `useModuleAnalyticsSummary(moduleId)` → `avgFacility`
-- Keep layout minimal
+### Files to modify
 
-### 5. ActionsCard
-- "Repeat Question" button — resets local UI state (selectedKey, isSubmitted)
-- On repeat + re-submit: saves as a **new attempt** (increment `attempt_number`) rather than overwriting
+**`src/components/question-session/QuestionSessionShell.tsx`**
+- Reduce outer padding from `p-4 md:p-6` to `p-3 md:p-4`
+- Add `max-w-5xl mx-auto` wrapper for desktop so layout doesn't stretch too wide on large monitors
+- Constrain height to viewport: `h-[calc(100vh-4rem)]` (tighter than current `8rem`)
 
-## Skip Behavior
-- Left panel shows both **[Skip]** and **[Submit]** buttons
-- **User skip** = explicit action, advances to next question without answering
-- Track skipped questions in session state: `skippedQuestions: Set<string>`
-- **Cohort unanswered** = derived from total enrolled minus attempted — this is a different concept, NOT treated the same as user skip
-- If user returns to a skipped question, they can still answer normally
-- QuestionStatsCard reflects "You skipped this question" in the user donut (gray)
+**`src/components/question-session/McqAnswerArea.tsx`**
+- Reduce choice button padding from `p-3` to `p-2.5`
+- Reduce spacing between choices from `space-y-2` to `space-y-1.5`
+- Use `text-sm` consistently for choice text
+- Reduce stem text from `text-base md:text-lg` to `text-sm md:text-base`
 
-## Components to Create
+**`src/components/question-session/RightInsightPanel.tsx`**
+- Reduce card spacing from `space-y-4` to `space-y-3`
+- Reduce padding from `p-4 md:p-5` to `p-3 md:p-4`
 
-| Component | File |
-|-----------|------|
-| `QuestionSessionShell` | `src/components/question-session/QuestionSessionShell.tsx` |
-| `RightInsightPanel` | `src/components/question-session/RightInsightPanel.tsx` |
-| `ExplanationCard` | `src/components/question-session/ExplanationCard.tsx` |
-| `ConfidenceCard` | `src/components/question-session/ConfidenceCard.tsx` |
-| `QuestionStatsCard` | `src/components/question-session/QuestionStatsCard.tsx` |
-| `PerformanceStatsCard` | `src/components/question-session/PerformanceStatsCard.tsx` |
-| `ActionsCard` | `src/components/question-session/ActionsCard.tsx` |
-| `McqAnswerArea` | `src/components/question-session/McqAnswerArea.tsx` |
-| `OsceAnswerArea` | `src/components/question-session/OsceAnswerArea.tsx` |
+**Mobile responsive** (in QuestionSessionShell):
+- On `< md`: single column, right panel stacks below
+- Compact choice sizing for small screens
 
-## Files to Modify
+---
 
-| File | Change |
-|------|--------|
-| `src/components/content/McqList.tsx` | When `!isAdmin`, render `QuestionSessionShell` instead of card list |
-| `src/components/content/OsceList.tsx` | When `!isAdmin`, render `QuestionSessionShell` instead of card list |
+## Step 3: AI Confidence Backfill via Edge Function
 
-## Data Sources (All Existing — No New Tables)
+Create an edge function that uses AI to rate existing MCQs against linked PDF source material.
 
-| Data | Source |
-|------|--------|
-| Questions | `mcqs[]` / `osceQuestions[]` already fetched |
-| Previous attempts | `useAllChapterQuestionAttempts` → `attemptMap` |
-| Per-question analytics | `useMcqAnalyticsById(mcqId)` → `distractor_analysis`, `facility_index`, `total_attempts` |
-| Chapter cohort stats | `useChapterAnalyticsSummary(chapterId)` → `avgFacility` |
-| Module cohort stats | `useModuleAnalyticsSummary(moduleId)` → `avgFacility` |
-| Save attempt | `useSaveQuestionAttempt` (RPC `save_question_attempt`) |
-| Confidence | `localStorage` keyed `confidence_${questionId}` |
+### New file: `supabase/functions/backfill-ai-confidence/index.ts`
+- Accepts `chapter_id` parameter
+- Fetches MCQs where `ai_confidence IS NULL` for that chapter
+- Finds linked PDF via `admin_documents` table for the chapter
+- Downloads PDF from Supabase storage
+- Sends batches of MCQs (10 at a time) to AI with the PDF content
+- AI rates each MCQ 0-10 for accuracy against the source
+- Updates `mcqs.ai_confidence` for each question
 
-## Core Rules
-1. Explanation and statistics hidden before submission — no peer data before answering
-2. Tablet-first split layout (10" landscape primary target)
-3. One-question-per-screen
-4. Shared architecture across MCQ, SBA, OSCE
-5. Left panel shows answer feedback (green/red) after submission
-6. Both panels scroll independently — no whole-page scroll
-7. Responsive: `grid-cols-1 md:grid-cols-[3fr_2fr]`; mobile stacks vertically
+### Modified file: `src/components/content/McqList.tsx`
+- Add an admin-only "Rate AI Confidence" button in the toolbar
+- Calls the edge function for the current chapter
+- Shows progress via toast notifications
+
