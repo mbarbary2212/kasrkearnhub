@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) {
-  const { isLoading, user, hasRole } = useAuthContext();
+  const { initialLoading, user, hasRole, isLoading } = useAuthContext();
   const hasShownToast = useRef(false);
 
   const shouldDeny = !isLoading && user && requiredRole && !hasRole(requiredRole);
@@ -23,7 +23,7 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
     }
   }, [shouldDeny]);
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
