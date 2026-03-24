@@ -287,6 +287,7 @@ Deno.serve(async (req) => {
       original_section_number: mcq.original_section_number || null,
       question_format: questionFormat,
       section_id: sectionIdMap.get(index) || null,
+      ai_confidence: (mcq.ai_confidence !== null && mcq.ai_confidence !== undefined) ? Math.min(10, Math.max(0, mcq.ai_confidence)) : null,
     }));
 
     console.log(`Inserting ${records.length} MCQs for module ${moduleId}, chapter ${chapterId}`);
