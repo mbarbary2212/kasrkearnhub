@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,16 +23,6 @@ export function McqAnswerArea({
 
   const choices = question.choices as McqChoice[];
 
-  // Shuffle choices deterministically for students
-  const shuffledChoices = useMemo(() => {
-    const arr = [...choices];
-    const seed = question.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = ((seed * (i + 1) * 2654435761) >>> 0) % (i + 1);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }, [choices, question.id]);
 
   const getChoiceStyle = (choice: McqChoice) => {
     if (!isSubmitted) {
@@ -72,7 +62,7 @@ export function McqAnswerArea({
 
       {/* Choices */}
       <div className="space-y-2">
-        {shuffledChoices.map((choice) => (
+        {choices.map((choice) => (
           <button
             key={choice.key}
             onClick={() => !isSubmitted && setSelectedKey(choice.key)}
