@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Star, RotateCcw, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mcq, McqChoice, QuestionFormat } from '@/hooks/useMcqs';
+import { AiConfidenceBadge } from './AiConfidenceBadge';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
