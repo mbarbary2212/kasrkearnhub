@@ -231,6 +231,7 @@ export function McqList({
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+  const bulkUpdateMutation = useBulkUpdateMcqs();
   
   // AI Analyzer for bulk upload
   const { isAnalyzing, analysis, analyzeError, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
