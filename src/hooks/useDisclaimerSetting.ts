@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export function useDisclaimerEnabled() {
   return useQuery({
     queryKey: ['study-settings', 'platform_disclaimer_enabled'],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ show: boolean; version: string }> => {
       const { data, error } = await supabase
         .from('study_settings')
         .select('key, value')
@@ -13,26 +13,24 @@ export function useDisclaimerEnabled() {
 
       if (error) {
         console.warn('[DisclaimerSetting] Error fetching setting:', error.message);
-        return false;
+        return { show: false, version: '0' };
       }
 
       const enabledRow = data?.find(r => r.key === 'platform_disclaimer_enabled');
       const versionRow = data?.find(r => r.key === 'platform_disclaimer_version');
 
       const enabled = enabledRow?.value?.toString().trim().toLowerCase() === 'true';
-      if (!enabled) return false;
-
-      // Check if user accepted the current version
       const serverVersion = versionRow?.value || '0';
-      const acceptedVersion = localStorage.getItem('kalm_disclaimer_version');
 
-      // If server version differs from what user accepted, they need to re-accept
-      if (acceptedVersion !== serverVersion) {
-        localStorage.removeItem('kalm_disclaimer_accepted');
-        return true;
+      if (!enabled) return { show: false, version: serverVersion };
+
+      // Check if user already accepted this specific version
+      const acceptedVersion = localStorage.getItem('kalm_disclaimer_version');
+      if (acceptedVersion === serverVersion) {
+        return { show: false, version: serverVersion };
       }
 
-      return true;
+      return { show: true, version: serverVersion };
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,
