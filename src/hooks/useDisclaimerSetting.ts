@@ -12,9 +12,14 @@ export function useDisclaimerEnabled() {
         .eq('key', 'platform_disclaimer_enabled')
         .maybeSingle();
 
-      if (error) throw error;
-      return data?.value === 'true';
+      if (error) {
+        console.warn('[DisclaimerSetting] Error fetching setting:', error.message);
+        return false;
+      }
+      const val = data?.value?.toString().trim().toLowerCase();
+      return val === 'true';
     },
     staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 }

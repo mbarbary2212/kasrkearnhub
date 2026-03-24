@@ -59,18 +59,16 @@ function DisclaimerGate({ children }: { children: React.ReactNode }) {
   const [accepted, setAccepted] = useState(() => localStorage.getItem(DISCLAIMER_KEY) === 'true');
   const { data: enabled, isLoading } = useDisclaimerEnabled();
 
-  if (isLoading || (!accepted && enabled)) {
-    return (
-      <>
-        {children}
-        {!isLoading && enabled && !accepted && (
-          <DisclaimerDialog onAccept={() => setAccepted(true)} />
-        )}
-      </>
-    );
-  }
+  const showDialog = !isLoading && enabled === true && !accepted;
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {showDialog && (
+        <DisclaimerDialog onAccept={() => setAccepted(true)} />
+      )}
+    </>
+  );
 }
 
 const App = () => {
