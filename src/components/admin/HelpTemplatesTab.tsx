@@ -175,9 +175,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   essay: {
-    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     required: ['title', 'question'],
-    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     examples: [
       [
         'Stages of Wound Healing',
