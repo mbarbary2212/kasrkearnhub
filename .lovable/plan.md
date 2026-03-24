@@ -1,18 +1,26 @@
 
 
-# Make Module Cards Smaller (Fit 4 Visible on Screen)
+# Dynamic Module Grid Columns
 
-## What
-Keep the current dynamic column logic unchanged. Add a `max-w` constraint to the grid container so cards don't stretch too wide on PC/tablet, ensuring a 2×2 block of 4 cards is fully visible without scrolling.
+## Idea
+Instead of a fixed grid, the number of columns adapts to the module count for a balanced layout:
 
-## How
+| Module Count | Mobile | Tablet/PC |
+|---|---|---|
+| 1-4 | 2 cols | 2 cols |
+| 5-6 | 2 cols | 3 cols |
+| 7+ | 2 cols | 4 cols |
+
+This way, when you have 4 modules they appear in a nice 2×2 grid on desktop (all visible at once), and with 6 modules you get a balanced 3×2 grid. Mobile stays at 2 columns always.
+
+## Implementation
 
 **File: `src/pages/YearPage.tsx`**
 
-- Wrap the cards grid `<div>` with a max-width so on wide screens the cards stay compact: `max-w-2xl` (~672px). This keeps 2-col cards small enough that 4 fit in the viewport vertically.
-- Alternatively (and more reliably), constrain card height by switching the AspectRatio from `16/9` to a tighter ratio like `2.5/1` or `3/1`, which shrinks each card's image area and ensures 4 cards fit vertically.
-
-**Recommended approach**: Change the `AspectRatio ratio` from `16/9` to `3/1` on the card images. This alone will make each card ~40% shorter, guaranteeing 4 cards (2 rows) are visible on tablet/PC without scrolling while keeping the 2-column layout and current gap/padding.
-
-Changes limited to the AspectRatio ratio value in the cards view (applied to both assigned and locked module cards). No other changes.
+- Compute grid class dynamically based on `modules.length`:
+  - ≤4: `grid-cols-2` (same everywhere)
+  - 5-6: `grid-cols-2 sm:grid-cols-3`
+  - 7+: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`
+- Apply this to both the module cards grid and the skeleton loader grid
+- No other changes needed
 
