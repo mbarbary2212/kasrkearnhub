@@ -18,6 +18,7 @@ import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import { useSaveQuestionAttempt, type QuestionAttemptSummary } from '@/hooks/useQuestionAttempts';
 import type { Json } from '@/integrations/supabase/types';
 import { AttachOsceImageModal } from './AttachOsceImageModal';
+import { AiConfidenceBadge } from './AiConfidenceBadge';
 
 interface OsceQuestionCardProps {
   question: OsceQuestion;
