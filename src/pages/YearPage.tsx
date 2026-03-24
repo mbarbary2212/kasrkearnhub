@@ -137,7 +137,11 @@ export default function YearPage() {
             )
           ) : modules && modules.length > 0 ? (
             viewMode === 'cards' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className={cn("grid gap-3", 
+                modules.length <= 4 ? "grid-cols-2" 
+                : modules.length <= 6 ? "grid-cols-2 sm:grid-cols-3" 
+                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+              )}>
                 {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
