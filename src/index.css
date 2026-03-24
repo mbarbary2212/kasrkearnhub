@@ -168,12 +168,6 @@
     @apply overflow-y-auto overscroll-contain;
     -webkit-overflow-scrolling: touch;
   }
-  .logo-blend-light {
-    mix-blend-mode: multiply;
-  }
-  .dark .logo-blend-light {
-    mix-blend-mode: screen;
-  }
 }
 
 @keyframes blink {
