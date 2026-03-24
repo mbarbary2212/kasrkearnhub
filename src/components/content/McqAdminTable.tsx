@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { AiConfidenceBadge } from '@/components/content/AiConfidenceBadge';
 import { ContentAdminTable, ColumnConfig } from '@/components/admin/ContentAdminTable';
 import type { Mcq } from '@/hooks/useMcqs';
 import type { Section } from '@/hooks/useSections';
