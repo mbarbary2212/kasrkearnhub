@@ -152,7 +152,7 @@ export default function YearPage() {
                   if (!isAssigned) {
                     return (
                       <Card key={module.id} className="overflow-hidden opacity-50 cursor-default">
-                        <AspectRatio ratio={16 / 9}>
+                        <AspectRatio ratio={3}>
                           {image ? (
                             <img src={image} alt={module.name} className="w-full h-full object-cover grayscale" />
                           ) : (
