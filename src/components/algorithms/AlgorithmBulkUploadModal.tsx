@@ -90,7 +90,6 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
           <Button variant="outline" size="sm" onClick={() => window.open('/admin?tab=help-templates', '_blank')}>
             <Download className="w-3 h-3 mr-1" /> Get Template
           </Button>
-          </Button>
 
           <DragDropZone
             id="algorithm-bulk-upload"

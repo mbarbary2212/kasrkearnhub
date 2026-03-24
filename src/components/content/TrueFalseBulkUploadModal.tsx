@@ -52,7 +52,6 @@ export function TrueFalseBulkUploadModal({
   const handleDownloadTemplate = () => {
     window.open('/admin?tab=help-templates', '_blank');
   };
-  };
 
   const handlePreview = () => {
     if (!csvText.trim()) return;
