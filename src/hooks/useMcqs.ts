@@ -521,6 +521,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
         : null),
+      ai_confidence: aiConfidence ? Math.min(10, Math.max(0, parseInt(aiConfidence, 10))) || null : null,
     };
   });
 }
