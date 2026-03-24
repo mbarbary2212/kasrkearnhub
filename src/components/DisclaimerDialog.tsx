@@ -20,7 +20,6 @@ export function DisclaimerDialog({ onAccept }: DisclaimerDialogProps) {
   const [agreed, setAgreed] = useState(false);
 
   const handleAccept = () => {
-    localStorage.setItem(DISCLAIMER_KEY, 'true');
     onAccept();
   };
 

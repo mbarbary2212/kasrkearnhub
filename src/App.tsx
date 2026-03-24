@@ -56,16 +56,24 @@ const queryClient = new QueryClient({
 });
 
 function DisclaimerGate({ children }: { children: React.ReactNode }) {
-  const [accepted, setAccepted] = useState(() => localStorage.getItem(DISCLAIMER_KEY) === 'true');
-  const { data: enabled, isLoading } = useDisclaimerEnabled();
+  const [accepted, setAccepted] = useState(false);
+  const { data, isLoading } = useDisclaimerEnabled();
 
-  const showDialog = !isLoading && enabled === true && !accepted;
+  const showDialog = !isLoading && data?.show === true && !accepted;
+
+  const handleAccept = () => {
+    localStorage.setItem(DISCLAIMER_KEY, 'true');
+    if (data?.version) {
+      localStorage.setItem('kalm_disclaimer_version', data.version);
+    }
+    setAccepted(true);
+  };
 
   return (
     <>
       {children}
       {showDialog && (
-        <DisclaimerDialog onAccept={() => setAccepted(true)} />
+        <DisclaimerDialog onAccept={handleAccept} />
       )}
     </>
   );

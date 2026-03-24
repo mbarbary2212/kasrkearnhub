@@ -1,4 +1,5 @@
 import { useState, ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -16,7 +17,7 @@ import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
-import { useDisclaimerEnabled } from '@/hooks/useDisclaimerSetting';
+import { supabase } from '@/integrations/supabase/client';
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
   icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
@@ -177,7 +178,18 @@ function EmailNotificationPreferences() {
 
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
-  const { data: disclaimerEnabled, isLoading: disclaimerLoading } = useDisclaimerEnabled();
+  const { data: disclaimerSetting, isLoading: disclaimerLoading } = useQuery({
+    queryKey: ['study-settings', 'platform_disclaimer_enabled_admin'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('study_settings')
+        .select('value')
+        .eq('key', 'platform_disclaimer_enabled')
+        .maybeSingle();
+      return data?.value === 'true';
+    },
+  });
+  const disclaimerEnabled = disclaimerSetting ?? false;
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
 
@@ -200,7 +212,14 @@ export function PlatformSettingsTab() {
         key: 'platform_disclaimer_enabled',
         value: checked ? 'true' : 'false',
       });
-      toast.success(checked ? 'Disclaimer enabled for students' : 'Disclaimer disabled');
+      // When re-enabling, update the version so all students see it again
+      if (checked) {
+        await upsertSetting.mutateAsync({
+          key: 'platform_disclaimer_version',
+          value: Date.now().toString(),
+        });
+      }
+      toast.success(checked ? 'Disclaimer enabled for all students' : 'Disclaimer disabled');
     } catch (error) {
       console.error('Error updating disclaimer setting:', error);
       toast.error('Failed to update setting');
