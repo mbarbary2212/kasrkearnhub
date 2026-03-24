@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen, Sparkles } from 'lucide-react';
 import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -744,6 +744,31 @@ export function McqList({
               <Upload className="h-4 w-4" />
               Bulk Import
             </Button>
+            {isAdmin && chapterId && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  toast.info('Rating AI confidence... This may take a moment.');
+                  try {
+                    const { data, error } = await supabase.functions.invoke('backfill-ai-confidence', {
+                      body: { chapter_id: chapterId },
+                    });
+                    if (error) throw error;
+                    if (data?.processed > 0) {
+                      toast.success(`Rated ${data.processed} of ${data.total} MCQs${data.hadPdf ? ' (using linked PDF)' : ' (no PDF found, used general knowledge)'}`);
+                    } else {
+                      toast.info(data?.message || 'All MCQs already have confidence ratings');
+                    }
+                  } catch (err: any) {
+                    toast.error(`Failed to rate confidence: ${err.message}`);
+                  }
+                }}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Rate AI Confidence
+              </Button>
+            )}
             <Button onClick={() => guard(() => setShowAddModal(true))} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Question
