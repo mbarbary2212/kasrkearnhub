@@ -165,7 +165,7 @@ export function TrueFalseBulkUploadModal({
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2">
               <Download className="h-4 w-4" />
-              Download Template
+              Get Template
             </Button>
           </div>
 

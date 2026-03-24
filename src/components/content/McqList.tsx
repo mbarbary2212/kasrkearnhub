@@ -905,7 +905,7 @@ export function McqList({
             <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">
                 <Download className="h-3 w-3" />
-                Download Template
+                Get Template
               </Button>
             </div>
 

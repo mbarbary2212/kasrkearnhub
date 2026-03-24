@@ -87,16 +87,9 @@ export function AlgorithmBulkUploadModal({ open, onClose, onImport, importing }:
             Each row represents a node in the decision tree. Wrap content containing commas in quotes.
           </p>
 
-          <Button variant="outline" size="sm" onClick={() => {
-            const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'pathways_template.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-          }}>
-            <Download className="w-3 h-3 mr-1" /> Download Template
+          <Button variant="outline" size="sm" onClick={() => window.open('/admin?tab=help-templates', '_blank')}>
+            <Download className="w-3 h-3 mr-1" /> Get Template
+          </Button>
           </Button>
 
           <DragDropZone
