@@ -45,7 +45,7 @@ interface TemplateSchema {
 
 export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
   mcq: {
-    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
     optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
     examples: [
