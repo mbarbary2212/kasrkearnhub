@@ -23,6 +23,7 @@ interface McqFormData {
   difficulty: 'easy' | 'medium' | 'hard' | null;
   original_section_name?: string | null;
   original_section_number?: string | null;
+  ai_confidence?: number | null;
 }
 
 interface RequestBody {
