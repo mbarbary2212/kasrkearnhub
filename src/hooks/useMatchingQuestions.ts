@@ -28,6 +28,7 @@ export interface MatchingQuestion {
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
+  ai_confidence: number | null;
 }
 
 export interface MatchingQuestionFormData {
