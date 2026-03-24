@@ -41,6 +41,7 @@ export interface McqFormData {
   question_format?: QuestionFormat;
   original_section_name?: string | null;
   original_section_number?: string | null;
+  ai_confidence?: number | null;
 }
 
 // Helper to convert DB row to Mcq type
