@@ -1,27 +1,26 @@
 
 
-# Fix: Year Image Upload Failing
+# Dynamic Module Grid Columns
 
-## Root Cause
-The `curriculum-images` storage bucket is missing an **INSERT** RLS policy. There are policies for SELECT (public), UPDATE (admins), and DELETE (admins), but no INSERT policy -- so file uploads are silently rejected by Supabase.
+## Idea
+Instead of a fixed grid, the number of columns adapts to the module count for a balanced layout:
 
-## Fix
-Create a migration that adds an INSERT policy for authenticated admins on the `curriculum-images` bucket:
+| Module Count | Mobile | Tablet/PC |
+|---|---|---|
+| 1-4 | 2 cols | 2 cols |
+| 5-6 | 2 cols | 3 cols |
+| 7+ | 2 cols | 4 cols |
 
-**New migration file:**
-```sql
-CREATE POLICY "Admins can upload curriculum images"
-ON storage.objects
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'curriculum-images'
-  AND (
-    has_role(auth.uid(), 'admin'::app_role)
-    OR has_role(auth.uid(), 'super_admin'::app_role)
-  )
-);
-```
+This way, when you have 4 modules they appear in a nice 2×2 grid on desktop (all visible at once), and with 6 modules you get a balanced 3×2 grid. Mobile stays at 2 columns always.
 
-This single migration is the only change needed. The upload code and UI are already correct.
+## Implementation
+
+**File: `src/pages/YearPage.tsx`**
+
+- Compute grid class dynamically based on `modules.length`:
+  - ≤4: `grid-cols-2` (same everywhere)
+  - 5-6: `grid-cols-2 sm:grid-cols-3`
+  - 7+: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`
+- Apply this to both the module cards grid and the skeleton loader grid
+- No other changes needed
 
