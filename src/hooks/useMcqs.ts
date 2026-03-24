@@ -87,6 +87,8 @@ export function useModuleMcqs(moduleId?: string, includeDeleted = false, format:
       return (data || []).map(mapDbRowToMcq);
     },
     enabled: !!moduleId,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -168,6 +170,8 @@ export function useTopicMcqs(topicId?: string, includeDeleted = false, format: Q
       return (data || []).map(mapDbRowToMcq);
     },
     enabled: !!topicId,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
