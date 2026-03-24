@@ -172,7 +172,7 @@
     mix-blend-mode: multiply;
   }
   .dark .logo-blend-light {
-    mix-blend-mode: normal;
+    mix-blend-mode: screen;
   }
 }
 
