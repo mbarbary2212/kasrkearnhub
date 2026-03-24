@@ -47,7 +47,7 @@ export function McqAnswerArea({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Question stem */}
       <div className="space-y-2">
         {questionType === 'sba' && (
@@ -55,26 +55,26 @@ export function McqAnswerArea({
             Select the BEST answer
           </p>
         )}
-        <p className="text-base md:text-lg font-medium leading-relaxed text-foreground">
+        <p className="text-sm md:text-base font-medium leading-relaxed text-foreground">
           {question.stem}
         </p>
       </div>
 
       {/* Choices */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {choices.map((choice) => (
           <button
             key={choice.key}
             onClick={() => !isSubmitted && setSelectedKey(choice.key)}
             disabled={isSubmitted}
             className={cn(
-              'w-full flex items-start gap-3 p-3 rounded-lg border-2 transition-all text-left',
+              'w-full flex items-start gap-3 p-2.5 rounded-lg border-2 transition-all text-left',
               getChoiceStyle(choice),
               !isSubmitted && 'cursor-pointer'
             )}
           >
             <span className={cn(
-              'flex items-center justify-center w-7 h-7 rounded-full border-2 font-semibold text-sm shrink-0',
+              'flex items-center justify-center w-6 h-6 rounded-full border-2 font-semibold text-xs shrink-0',
               isSubmitted && choice.key === question.correct_key
                 ? 'border-green-500 bg-green-500 text-white'
                 : isSubmitted && selectedKey === choice.key && choice.key !== question.correct_key
@@ -91,7 +91,7 @@ export function McqAnswerArea({
                 choice.key
               )}
             </span>
-            <span className="flex-1 pt-0.5 text-sm md:text-base">{choice.text}</span>
+            <span className="flex-1 pt-0.5 text-sm">{choice.text}</span>
           </button>
         ))}
       </div>
