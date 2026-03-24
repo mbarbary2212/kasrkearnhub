@@ -50,15 +50,8 @@ export function TrueFalseBulkUploadModal({
   const bulkCreateMutation = useBulkCreateTrueFalseQuestions();
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'true_false_template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    window.open('/admin?tab=help-templates', '_blank');
+  };
   };
 
   const handlePreview = () => {
