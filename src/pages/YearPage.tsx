@@ -113,12 +113,12 @@ export default function YearPage() {
 
           {isLoading ? (
             viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {[...Array(4)].map((_, i) => (
                   <Card key={i} className="overflow-hidden">
                     <Skeleton className="w-full aspect-[2.5]" />
-                    <div className="p-3 space-y-1.5">
-                      <Skeleton className="h-4 w-3/4" />
+                    <div className="p-2 space-y-1">
+                      <Skeleton className="h-3.5 w-3/4" />
                       <Skeleton className="h-3 w-full" />
                     </div>
                   </Card>
@@ -137,7 +137,7 @@ export default function YearPage() {
             )
           ) : modules && modules.length > 0 ? (
             viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
                     ? auth.moduleAdminModuleIds.includes(module.id)
@@ -161,8 +161,8 @@ export default function YearPage() {
                             <Lock className="w-8 h-8 text-white/70" />
                           </div>
                         </AspectRatio>
-                        <div className="p-4">
-                          <p className="font-heading font-semibold text-muted-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                        <div className="p-2.5">
+                          <p className="font-heading font-semibold text-muted-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                         </div>
                       </Card>
                     );
@@ -184,15 +184,15 @@ export default function YearPage() {
                           </div>
                         )}
                       </AspectRatio>
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-2">
+                      <div className="p-2.5">
+                        <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0 flex-1">
-                            <p className="font-heading font-semibold text-foreground truncate">{module.slug?.toUpperCase()} — {module.name}</p>
+                            <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                             {module.description && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{module.description}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">{module.description}</p>
                             )}
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                         </div>
                       </div>
                     </Card>
