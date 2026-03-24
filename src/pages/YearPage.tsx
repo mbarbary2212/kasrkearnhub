@@ -137,10 +137,10 @@ export default function YearPage() {
             )
           ) : modules && modules.length > 0 ? (
             viewMode === 'cards' ? (
-              <div className={cn("grid gap-3", 
-                modules.length <= 4 ? "grid-cols-2" 
-                : modules.length <= 6 ? "grid-cols-2 sm:grid-cols-3" 
-                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+              <div className={cn("grid gap-3 mx-auto w-full", 
+                modules.length <= 4 ? "grid-cols-2 max-w-xl" 
+                : modules.length <= 6 ? "grid-cols-2 sm:grid-cols-3 max-w-xl sm:max-w-3xl" 
+                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 max-w-xl sm:max-w-3xl lg:max-w-5xl"
               )}>
                 {modules.map((module) => {
                   const isAssigned = auth.isModuleAdmin && !auth.isTeacher
