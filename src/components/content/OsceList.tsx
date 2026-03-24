@@ -26,6 +26,7 @@ import {
 } from '@/hooks/useOsceQuestions';
 import { isOsceDuplicate } from '@/lib/duplicateDetection';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
+import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -308,6 +309,46 @@ export function OsceList({
           <AlertCircle className="w-6 h-6 text-muted-foreground" />
         </div>
         <p className="text-muted-foreground">No OSCE questions available yet.</p>
+      </div>
+    );
+  }
+
+  // Student session view — split-screen layout
+  if (!isAdmin && filteredQuestions.length > 0 && chapterId) {
+    // Build attempt map compatible with QuestionSessionShell
+    const osceAttemptMapForShell = new Map<string, { is_correct: boolean | null; selected_answer?: any }>();
+    fullAttemptMap.forEach((attempt, id) => {
+      osceAttemptMapForShell.set(id, {
+        is_correct: attempt.is_correct,
+        selected_answer: attempt.selected_answer,
+      });
+    });
+
+    return (
+      <div className="space-y-4">
+        {/* Filter bar */}
+        {questions.length > 0 && (
+          <UnifiedQuestionFilter
+            filters={filters}
+            onFiltersChange={setFilters}
+            totalCount={questions.length}
+            filteredCount={filteredQuestions.length}
+            questionType="OSCE"
+            searchPlaceholder="Search OSCE questions..."
+            showDifficultyFilter={false}
+            showStatusFilter={!!chapterId}
+            statusCounts={statusCounts}
+            onResetProgress={handleResetProgress}
+          />
+        )}
+        <QuestionSessionShell
+          questions={filteredQuestions}
+          questionType="osce"
+          moduleId={moduleId}
+          chapterId={chapterId}
+          attemptMap={osceAttemptMapForShell}
+          allAttempts={osceAttempts}
+        />
       </div>
     );
   }
