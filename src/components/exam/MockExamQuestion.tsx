@@ -63,7 +63,7 @@ export function MockExamQuestion({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {choices.map((choice: McqChoice) => (
+          {shuffledChoices.map((choice: McqChoice) => (
             <Button
               key={choice.key}
               variant={selectedAnswer === choice.key ? "default" : "outline"}

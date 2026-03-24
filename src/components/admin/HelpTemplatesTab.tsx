@@ -206,9 +206,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   true_false: {
-    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['statement', 'correct_answer'],
-    optional: ['explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'The left recurrent laryngeal nerve loops around the aortic arch before ascending to the larynx.',
