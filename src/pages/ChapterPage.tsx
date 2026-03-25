@@ -76,6 +76,7 @@ import { InteractiveAlgorithm, AlgorithmJson } from '@/types/algorithm';
 import { ChapterMockExamSection } from '@/components/exam';
 import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
+import { ChapterQASection } from '@/components/questions/ChapterQASection';
 import { usePresence } from '@/contexts/PresenceContext';
 import { 
   ArrowLeft, 
@@ -1234,6 +1235,15 @@ export default function ChapterPage() {
               <ChapterMockExamSection moduleId={moduleId} chapterId={chapterId} />
             )}
           </div>
+
+          {/* Q&A Section - visible on all sections */}
+          {chapterId && contentModuleId && (
+            <ChapterQASection
+              chapterId={chapterId}
+              moduleId={contentModuleId}
+              canManage={canManageContent}
+            />
+          )}
         </div>
 
         {/* Flashcard Modals */}
