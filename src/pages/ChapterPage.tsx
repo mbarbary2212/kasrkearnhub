@@ -142,9 +142,20 @@ export default function ChapterPage() {
 
   // State for section mode and active tabs within sections
   const [searchParams] = useSearchParams();
-  const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
+  const getSection = (): SectionMode => {
+    const s = searchParams.get('section') as SectionMode;
+    return s && ['resources', 'interactive', 'practice', 'test'].includes(s) ? s : 'resources';
+  };
   const initialSubTab = searchParams.get('subtab');
-  const [activeSection, setActiveSection] = useState<SectionMode>(initialSection);
+  const [activeSection, setActiveSection] = useState<SectionMode>(getSection);
+
+  // Sync activeSection when URL search params change (sidebar clicks)
+  useEffect(() => {
+    const s = searchParams.get('section') as SectionMode;
+    if (s && ['resources', 'interactive', 'practice', 'test'].includes(s)) {
+      setActiveSection(s);
+    }
+  }, [searchParams]);
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>(
     initialSection === 'resources' && initialSubTab ? initialSubTab as ResourceTabId : 'lectures'
@@ -621,36 +632,6 @@ export default function ChapterPage() {
             </nav>
           </div>
 
-          {/* Desktop: Fixed Vertical Navigation Rail */}
-          <div className="hidden md:block w-[180px] flex-shrink-0">
-            <nav className="sticky top-4 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
-              <div className="flex flex-col gap-0.5">
-                {sectionNav.map((section) => {
-                  const Icon = section.icon;
-                  const isActive = activeSection === section.id;
-                  const colors = sectionColors[section.id];
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left",
-                        isActive 
-                          ? cn("font-semibold border-l-4", colors.activeBg, colors.activeBgDark, colors.border, colors.text)
-                          : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5 hover:translate-y-[-1px]"
-                      )}
-                    >
-                      <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
-                      <span className="whitespace-nowrap">{section.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          </div>
-
-          {/* Vertical Divider (hidden on mobile) */}
-          <div className="hidden md:block w-px bg-transparent mx-4 self-stretch min-h-[200px] shadow-[2px_0_12px_-2px_rgba(0,0,0,0.08)]" />
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
