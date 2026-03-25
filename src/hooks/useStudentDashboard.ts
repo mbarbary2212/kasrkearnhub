@@ -402,6 +402,15 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         ? moduleMap.get(filters.moduleId) 
         : undefined;
 
+      // Build activity dates for streak calendar
+      const activityDates = allActivityDates;
+
+      // Build readiness trend (simple: use per-chapter readiness scores as proxy)
+      // In production this would come from a time-series table
+      const readinessTrend = realMetrics.length > 0
+        ? realMetrics.slice(-14).map(m => m.readiness_score)
+        : [];
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -425,10 +434,14 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         confidenceInsight: studyPlan.confidenceInsight ?? null,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
+        chapterMetrics: realMetrics,
+        chapterTitleMap,
+        activityDates,
+        readinessTrend,
       };
     },
     enabled: !!user?.id,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 60000,
   });
 }
 
@@ -454,6 +467,10 @@ function getEmptyDashboard(): DashboardData {
     studyPlan: null,
     weakChapters: [],
     confidenceInsight: null,
+    chapterMetrics: [],
+    chapterTitleMap: new Map(),
+    activityDates: [],
+    readinessTrend: [],
   };
 }
 
