@@ -1,57 +1,67 @@
 
 
-# Session 1: Fix Suggestion Logic & Weak Labeling
+## Student Q&A System — Plan
 
-## Problem
-- `generateSuggestions()` uses flat scoring — not-started chapters get MCQ suggestions (wrong: should learn first)
-- `detectWeakChapters()` uses `progress < 40` as proxy for weakness — falsely labels chapters as "weak" when they're simply not studied yet
-- Returns 5 suggestions (too many, unfocused)
-- No deduplication (can show multiple MCQs, multiple videos)
+### What It Is
+A lightweight Q&A feature where students can ask questions about chapter content. The system surfaces the **most frequently asked questions** (aggregated across all students) and lets students submit new questions. Think of it as a "community FAQ" that builds itself.
 
-## Changes — Single File: `src/hooks/useStudentDashboard.ts`
+### Where It Lives
 
-### A. Add `classifyChapter` helper (new function)
+1. **Chapter Page** — A new **"Q&A"** subtab inside both the **Resources** and **Practice** sections (or as a floating widget at the bottom of each section). Since Q&A applies to the whole chapter rather than a specific subtab, a cleaner approach is to add it as a **collapsible card at the bottom of the chapter page**, visible across all sections — similar to how the Discussion section works.
 
-Classifies each chapter into one of: `not_started`, `early`, `weak`, `unstable`, `strong`, `in_progress`.
+2. **Home Dashboard** — A small card in the right column showing "Top unanswered questions" or "Trending questions this week" to drive engagement.
 
-- `not_started`: coverage === 0 and completedItems < 3
-- `early`: coverage < 40 and completedItems < 5
-- `weak`: completedItems >= 5 AND overall MCQ accuracy < 60% (from testProgress)
-- `unstable`: completedItems >= 5 AND accuracy < 75%
-- `strong`: coverage >= 70 AND accuracy >= 75%
-- else: `in_progress`
+### Database
 
-Note: Per-chapter accuracy isn't available without schema changes, so we use module-level `testProgress.mcq.accuracy` combined with per-chapter coverage/completion counts to approximate.
+New table: `chapter_questions`
+- `id` (uuid, PK)
+- `chapter_id` (uuid, FK to module_chapters)
+- `module_id` (uuid, FK to modules)
+- `user_id` (uuid, FK to auth.users)
+- `question_text` (text, max 500 chars)
+- `is_answered` (boolean, default false)
+- `answer_text` (text, nullable — admin/teacher answer)
+- `answered_by` (uuid, nullable)
+- `answered_at` (timestamptz, nullable)
+- `upvote_count` (integer, default 0)
+- `is_pinned` (boolean, default false)
+- `is_hidden` (boolean, default false)
+- `created_at` (timestamptz)
 
-### B. Rewrite `generateSuggestions()`
+New table: `chapter_question_upvotes`
+- `id` (uuid, PK)
+- `question_id` (uuid, FK to chapter_questions)
+- `user_id` (uuid, FK to auth.users)
+- unique constraint on (question_id, user_id)
 
-Replace flat scoring with rule-based priority:
+RLS: Students can read all non-hidden questions for their chapters, insert their own, and upvote. Admins/teachers can answer, pin, and hide.
 
-1. For each non-completed chapter, call `classifyChapter`
-2. Based on state, add suggestions with appropriate types and reasons:
-   - `not_started` / `early` → video (priority 80, "Not covered yet") + read (70, "Build core understanding"). MCQ is NOT suggested.
-   - `weak` → mcq (priority 90, "Low recent accuracy") + video (60, "Review explanation")
-   - `unstable` → mcq (priority 75, "Needs reinforcement")
-   - `in_progress` → mcq (priority 65, "Continue where you left")
-3. Collect all scored items, sort by priority descending
-4. **Deduplication before slicing**: max 1 per type (1 mcq, 1 video, 1 read, 1 flashcard)
-5. **Slice to 3** (not 5)
-6. Mark top item as `isPrimary: true`
+### Core Features
 
-### C. Rewrite `detectWeakChapters()`
+1. **Ask a Question** — Simple text input at the top of the Q&A section. Students type a short question (max 500 chars). Profanity filter applied before submission.
 
-Remove the false-positive logic:
-- Remove `c.progress < 40` condition (confuses "not studied" with "weak")
-- Only flag weak if: `testProgress.mcq.attempts >= 5 AND testProgress.mcq.accuracy < 60`
-- When flagging, attach the first in-progress chapter with the most completedItems (most studied = most meaningful weak signal)
-- Stop using `c.progress` as `accuracy` proxy — use `testProgress.mcq.accuracy` directly
+2. **Most Frequently Asked** — Questions sorted by `upvote_count` descending. The top question gets a "Most Asked" badge. Students can upvote (like "I have this question too") instead of duplicating.
 
-### D. No interface changes needed
-`SuggestedItem` already has `reason`, `isPrimary`, `subtab` from Phase 1. `WeakChapter` interface unchanged.
+3. **Answer Flow** — Admins/teachers see unanswered questions and can provide an official answer. Answered questions show the answer inline with the responder's name.
 
-## Result
-- Not-started chapters get learning suggestions (video/read), not practice
-- "Weak" label only appears with real accuracy data (>=5 attempts, <60%)
-- Dashboard shows 3 focused actions instead of 5
-- No duplicate suggestion types
+4. **Dashboard Widget** — A small "Trending Questions" card showing the top 2-3 unanswered questions across the student's active module, with a link to the relevant chapter.
+
+### Files to Create/Modify
+
+| Action | File |
+|--------|------|
+| Create | `supabase/migrations/..._chapter_questions.sql` |
+| Create | `src/hooks/useChapterQuestions.ts` |
+| Create | `src/components/questions/ChapterQASection.tsx` |
+| Create | `src/components/questions/QuestionCard.tsx` |
+| Create | `src/components/questions/AskQuestionInput.tsx` |
+| Create | `src/components/dashboard/TrendingQuestionsCard.tsx` |
+| Edit | `src/pages/ChapterPage.tsx` — Add Q&A section at bottom of content area |
+| Edit | `src/components/dashboard/LearningHubOverview.tsx` — Add trending questions card |
+
+### UI Behavior
+
+- **Chapter Page**: Collapsible "Questions & Answers" card below the active section content. Shows question count badge. Expands to reveal the ask input + sorted question list.
+- **Question Card**: Shows question text, upvote button with count, "Most Asked" badge for #1, answer (if answered), timestamp.
+- **Dashboard**: Compact card with 2-3 top unanswered questions, each linking to the chapter.
 
