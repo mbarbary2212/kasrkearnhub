@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useSaveLastPosition } from '@/hooks/useLastPosition';
+import { useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface TrackPositionProps {
@@ -14,38 +14,90 @@ interface TrackPositionProps {
   activity_position?: Record<string, unknown> | null;
 }
 
+// Global ref so multiple instances share one latest position
+let globalPosition: (TrackPositionProps & { userId: string }) | null = null;
+let listenerAttached = false;
+
+function flushGlobalPosition() {
+  const pos = globalPosition;
+  if (!pos || (!pos.module_id && !pos.year_number)) return;
+
+  const payload = {
+    user_id: pos.userId,
+    year_number: pos.year_number ?? null,
+    module_id: pos.module_id ?? null,
+    module_name: pos.module_name ?? null,
+    module_slug: pos.module_slug ?? null,
+    book_label: pos.book_label ?? null,
+    chapter_id: pos.chapter_id ?? null,
+    chapter_title: pos.chapter_title ?? null,
+    tab: pos.tab ?? null,
+    activity_position: pos.activity_position ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const token = globalAccessToken || anonKey;
+
+  fetch(url, {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+      'Prefer': 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {/* best-effort */});
+}
+
+let globalAccessToken: string | null = null;
+
 /**
- * Hook that auto-saves student navigation position when deps change.
- * Only fires for students (non-admin/non-teacher).
+ * Tracks student navigation position in memory and only persists to DB
+ * on tab/browser close (beforeunload) or logout — NOT on every navigation.
  */
 export function useTrackPosition(props: TrackPositionProps) {
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, user } = useAuthContext();
-  const save = useSaveLastPosition();
   const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
-  const lastSaved = useRef('');
 
+  // Update global position whenever props change (in-memory only, no DB call)
   useEffect(() => {
-    if (!isStudent) return;
-
-    // Build a fingerprint to avoid duplicate saves
-    const fingerprint = JSON.stringify(props);
-    if (fingerprint === lastSaved.current) return;
-    lastSaved.current = fingerprint;
-
-    // Only save if we have at least a module or year
+    if (!isStudent || !user?.id) return;
     if (!props.module_id && !props.year_number) return;
+    globalPosition = { ...props, userId: user.id };
+  }, [isStudent, user?.id, JSON.stringify(props)]);
 
-    save.mutate({
-      year_number: props.year_number ?? null,
-      module_id: props.module_id ?? null,
-      module_name: props.module_name ?? null,
-      module_slug: props.module_slug ?? null,
-      book_label: props.book_label ?? null,
-      chapter_id: props.chapter_id ?? null,
-      chapter_title: props.chapter_title ?? null,
-      tab: props.tab ?? null,
-      activity_position: props.activity_position ?? null,
+  // Attach global listeners once
+  useEffect(() => {
+    if (!isStudent || listenerAttached) return;
+    listenerAttached = true;
+
+    // Keep access token in sync for beforeunload
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      globalAccessToken = session?.access_token ?? null;
+      if (_event === 'SIGNED_OUT') {
+        flushGlobalPosition();
+        globalPosition = null;
+      }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStudent, JSON.stringify(props)]);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      globalAccessToken = session?.access_token ?? null;
+    });
+
+    const handleBeforeUnload = () => {
+      flushGlobalPosition();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      subscription.unsubscribe();
+      listenerAttached = false;
+    };
+  }, [isStudent]);
 }
