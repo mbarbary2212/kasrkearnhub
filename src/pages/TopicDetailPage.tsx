@@ -112,7 +112,20 @@ export default function TopicDetailPage() {
 
   const canManageContent = !!(auth.isTeacher || (topicId && auth.canManageTopic(topicId)));
 
-  const [activeSection, setActiveSection] = useState<SectionMode>('resources');
+  const [searchParams] = useSearchParams();
+  const getSection = (): SectionMode => {
+    const s = searchParams.get('section') as SectionMode;
+    return s && ['resources', 'interactive', 'practice', 'test'].includes(s) ? s : 'resources';
+  };
+  const [activeSection, setActiveSection] = useState<SectionMode>(getSection);
+
+  // Sync activeSection when URL search params change (sidebar clicks)
+  useEffect(() => {
+    const s = searchParams.get('section') as SectionMode;
+    if (s && ['resources', 'interactive', 'practice', 'test'].includes(s)) {
+      setActiveSection(s);
+    }
+  }, [searchParams]);
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
@@ -501,35 +514,6 @@ export default function TopicDetailPage() {
             </nav>
           </div>
 
-          {/* Desktop: Fixed Vertical Navigation Rail */}
-          <div className="hidden md:block w-[180px] flex-shrink-0">
-            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
-              <div className="flex flex-col gap-1">
-                {sectionNav.map((section) => {
-                  const Icon = section.icon;
-                  const isActive = activeSection === section.id;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
-                        isActive 
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="whitespace-nowrap">{section.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
