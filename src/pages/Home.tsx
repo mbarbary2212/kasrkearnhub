@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, Settings } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useUnreadAnnouncementDetails } from '@/hooks/useUnreadAnnouncementDetails';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,11 @@ import { useModules } from '@/hooks/useModules';
 import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
+import { cn } from '@/lib/utils';
+import { usePresence } from '@/contexts/PresenceContext';
+import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
