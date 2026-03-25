@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -75,7 +76,7 @@ export function StudentSidebar() {
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, sectionId: 'dashboard', globalPath: '/' },
     {
-      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '/', skipAutoLogin: true,
+      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '__learning__',
       children: isChapterOrTopicPage ? learningSubItems : undefined,
     },
     { label: 'Connect', icon: MessageCircle, sectionId: 'connect', globalPath: '/connect' },
@@ -110,7 +111,6 @@ export function StudentSidebar() {
 
   const handleNav = (item: NavItem) => {
     if (isModulePage && moduleId) {
-      // If on chapter/topic and clicking Learning, go back to module learning
       if (isChapterOrTopicPage && item.sectionId === 'learning') {
         navigate(`/module/${moduleId}?section=learning`);
         return;
@@ -118,8 +118,10 @@ export function StudentSidebar() {
       navigate(`/module/${moduleId}?section=${item.sectionId}`);
       return;
     }
-    if (item.skipAutoLogin) {
-      sessionStorage.setItem('skipAutoLogin', 'true');
+    // Global context: Learning should not navigate anywhere — show a hint
+    if (item.globalPath === '__learning__') {
+      toast.info('Select a module from the Dashboard to start learning.');
+      return;
     }
     navigate(item.globalPath);
   };
