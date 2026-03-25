@@ -470,23 +470,25 @@ function StudentBookPillView({
 
   return (
     <div className="space-y-3">
-      {/* Pill filter row */}
-      <div className="flex flex-wrap gap-2">
-        {sortedBooks.map((book) => (
-          <button
-            key={book.book_label}
-            onClick={() => onSelectPill(book.book_label)}
-            className={cn(
-              "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-              activeBookLabel === book.book_label
-                ? "bg-accent text-accent-foreground"
-                : "border border-border text-muted-foreground hover:bg-muted"
-            )}
-          >
-            {book.book_label}
-          </button>
-        ))}
-      </div>
+      {/* Pill filter row - only render if books provided (not externally controlled) */}
+      {sortedBooks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sortedBooks.map((book) => (
+            <button
+              key={book.book_label}
+              onClick={() => onSelectPill(book.book_label)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                activeBookLabel === book.book_label
+                  ? "bg-accent text-accent-foreground"
+                  : "border border-border text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {book.description || book.book_label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Chapter list */}
       {isLoading ? (
