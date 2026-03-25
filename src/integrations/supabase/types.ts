@@ -1178,6 +1178,98 @@ export type Database = {
           },
         ]
       }
+      chapter_question_upvotes: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_question_upvotes_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "chapter_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_questions: {
+        Row: {
+          answer_text: string | null
+          answered_at: string | null
+          answered_by: string | null
+          chapter_id: string
+          created_at: string
+          id: string
+          is_answered: boolean
+          is_hidden: boolean
+          is_pinned: boolean
+          module_id: string
+          question_text: string
+          upvote_count: number
+          user_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          chapter_id: string
+          created_at?: string
+          id?: string
+          is_answered?: boolean
+          is_hidden?: boolean
+          is_pinned?: boolean
+          module_id: string
+          question_text: string
+          upvote_count?: number
+          user_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          is_answered?: boolean
+          is_hidden?: boolean
+          is_pinned?: boolean
+          module_id?: string
+          question_text?: string
+          upvote_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_usage: {
         Row: {
           created_at: string
