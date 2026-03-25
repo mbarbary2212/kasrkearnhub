@@ -291,7 +291,7 @@ function LoggedInHome() {
           )}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Select your academic year to continue
+          Your learning hub — pick up where you left off
         </p>
       </section>
 
