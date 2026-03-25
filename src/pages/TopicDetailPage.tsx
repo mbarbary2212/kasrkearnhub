@@ -81,7 +81,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
-import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
+
 import { usePresence } from '@/contexts/PresenceContext';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
@@ -332,7 +332,7 @@ export default function TopicDetailPage() {
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
   const { data: studentPrefs } = useStudentModulePreferences();
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  
 
   const resourcesTabs = useMemo(() => {
     if (canManageContent) return allResourcesTabs;

@@ -95,7 +95,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
-import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
+
 import { cn } from '@/lib/utils';
 
 
@@ -425,7 +425,7 @@ export default function ChapterPage() {
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
   const { data: studentPrefs } = useStudentModulePreferences();
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  
 
   const resourcesTabs = useMemo(() => {
     if (showAllTabs) return allResourcesTabs;
