@@ -46,8 +46,8 @@ export default function ModulePage() {
   const isStudentEarly = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
   const getSection = (): ModuleSection => {
     const param = searchParams.get('section');
-    if (param === 'dashboard' || param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
-    return isStudentEarly ? 'dashboard' : 'learning';
+    if (param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
+    return 'learning';
   };
   const [activeSection, setActiveSection] = useState<ModuleSection>(getSection);
 
@@ -157,7 +157,6 @@ export default function ModulePage() {
 
   // Section navigation items
   const sectionNav = [
-    ...(isStudent ? [{ id: 'dashboard' as ModuleSection, label: 'Dashboard', mobileLabel: 'Home', icon: Home }] : []),
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
     { id: 'connect' as ModuleSection, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
     { id: 'formative' as ModuleSection, label: 'Formative Assessment', mobileLabel: 'Formative', icon: ClipboardCheck },
@@ -297,15 +296,6 @@ export default function ModulePage() {
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
-            {/* Dashboard Section */}
-            {activeSection === 'dashboard' && actualModuleId && (
-              <ModuleDashboard
-                lastPosition={lastPos ?? null}
-                dashboard={coachDashboard ?? null}
-                moduleId={actualModuleId}
-              />
-            )}
-
             {/* Learning Section */}
             {activeSection === 'learning' && actualModuleId && (
               <ModuleLearningTab
