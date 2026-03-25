@@ -31,6 +31,11 @@ export interface StudentChapterMetric {
   last_mcq_attempt_at: string | null;
   last_flashcard_review_at: string | null;
   readiness_score: number;
+  // Confidence-derived fields
+  confidence_avg: number;
+  confidence_mismatch_rate: number;
+  overconfident_error_rate: number;
+  underconfident_correct_rate: number;
   created_at: string;
   updated_at: string;
 }
