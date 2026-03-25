@@ -4,3 +4,5 @@ export { buildDashboardSuggestions, getWeakTopics, calculateAggregateReadiness }
 export type { DashboardAction, WeakTopic } from './buildDashboardSuggestions';
 export { classifyLearningPattern, getPatternPriorityBoost, generateConfidenceInsight } from './classifyLearningPattern';
 export type { LearningPattern, LearningPatternResult } from './classifyLearningPattern';
+export { getRevisionState, calculateReviewStrength, getReviewType, getDueReviewChapters } from './reviewScheduling';
+export type { RevisionState } from './reviewScheduling';
