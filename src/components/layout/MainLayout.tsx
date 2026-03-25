@@ -57,9 +57,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   const handleYearClick = () => {
-    sessionStorage.setItem('skipAutoLogin', 'true');
-    navigate('/');
-    // Navigate to home with no preferred year — shows all years
+    if (activeYear) {
+      navigate(`/year/${activeYear.yearNumber}`);
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
