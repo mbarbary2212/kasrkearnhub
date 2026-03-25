@@ -69,7 +69,7 @@ export default function ConnectPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Messages Card */}
-          <MessagesCard />
+          <MessagesCard moduleId="" />
 
           {/* Questions Card */}
           <Card

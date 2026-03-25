@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useModules } from '@/hooks/useModules';
-import { useChapters } from '@/hooks/useChapters';
+import { useModuleChapters } from '@/hooks/useChapters';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import type { Module } from '@/types/curriculum';
 
@@ -16,7 +16,7 @@ export default function FormativePage() {
 
   // Fetch all modules (filtered by preferred year if set)
   const { data: modules, isLoading } = useModules(profile?.preferred_year_id || undefined);
-  const { data: chapters } = useChapters(selectedModule?.id);
+  const { data: chapters } = useModuleChapters(selectedModule?.id);
 
   if (selectedModule) {
     return (
@@ -70,8 +70,8 @@ export default function FormativePage() {
                     <ClipboardCheck className="w-6 h-6 text-primary" />
                   </div>
                   <CardTitle className="text-lg">{mod.name}</CardTitle>
-                  {mod.code && (
-                    <CardDescription>{mod.code}</CardDescription>
+                  {mod.module_code && (
+                    <CardDescription>{mod.module_code}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent>

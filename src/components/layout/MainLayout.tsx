@@ -282,7 +282,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       <div className="flex flex-1">
         {/* Student Sidebar - desktop only */}
-        {isStudent && <StudentSidebar onBadgesOpen={() => setBadgesOpen(true)} />}
+        {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
         <main className={cn("flex-1 px-4 py-8 pb-24", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
