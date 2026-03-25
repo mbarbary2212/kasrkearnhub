@@ -116,7 +116,7 @@ export function StudentSidebar() {
     }
     if (isModulePage && moduleId) {
       if (isChapterOrTopicPage && item.sectionId === 'learning') {
-        toast.info('Choose a chapter to start learning.', { duration: 3000 });
+        navigate(`/module/${moduleId}?section=learning`);
         return;
       }
       navigate(`/module/${moduleId}?section=${item.sectionId}`);
