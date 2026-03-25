@@ -470,7 +470,12 @@ function StudentBookPillView({
 
   return (
     <div className="space-y-3">
-      {/* Pill filter row - only render if books provided (not externally controlled) */}
+      {/* Hint banner */}
+      <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+        <BookOpen className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-sm text-muted-foreground">Choose a chapter to start learning</p>
+      </div>
+
       {sortedBooks.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {sortedBooks.map((book) => (
@@ -876,7 +881,9 @@ export function ModuleLearningTab({
     );
   }
 
-  // ─── STUDENT VIEW: pill filters handled externally via ModulePage ───
+  // Hint banner for students
+  const showStudentHint = hasChapters && !canManageBooks && !canManageChapters;
+
   if (externalActiveBookLabel && !canManageBooks) {
     // Pharmacology special case
     if (externalActiveBookLabel.toLowerCase() === 'pharmacology') {
