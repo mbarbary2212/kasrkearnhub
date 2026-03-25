@@ -23,6 +23,7 @@ import {
   BookOpen,
   CalendarDays,
   ClipboardCheck,
+  Home,
   MessageCircle,
   Megaphone,
   Mail,
@@ -30,11 +31,12 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react';
+import { ModuleDashboard } from '@/components/module/ModuleDashboard';
 import { cn } from '@/lib/utils';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
 import { formatDistanceToNow } from 'date-fns';
 
-type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
+type ModuleSection = 'dashboard' | 'learning' | 'formative' | 'connect' | 'coach';
 
 export default function ModulePage() {
   const { moduleId } = useParams();
@@ -43,7 +45,7 @@ export default function ModulePage() {
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const [activeSection, setActiveSection] = useState<ModuleSection>(() => {
     const param = searchParams.get('section');
-    if (param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
+    if (param === 'dashboard' || param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
     return 'learning';
   });
 
@@ -129,6 +131,20 @@ export default function ModulePage() {
   // Fetch last position for Continue card (students only)
   const { data: lastPos } = useLastPosition();
   const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
+  const hasVisitedModule = isStudent && lastPos && lastPos.module_id === actualModuleId && lastPos.chapter_id;
+
+  // Auto-switch to dashboard when student has visited this module (only on initial load)
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false);
+  useEffect(() => {
+    if (hasAutoSwitched) return;
+    if (!hasVisitedModule) return;
+    // Only auto-switch if no explicit section was requested
+    const param = searchParams.get('section');
+    if (!param) {
+      setActiveSection('dashboard');
+    }
+    setHasAutoSwitched(true);
+  }, [hasVisitedModule, hasAutoSwitched, searchParams]);
 
   // Dashboard data for Study Coach tabs (Overview & Unlocks)
   const { data: coachDashboard } = useStudentDashboard({
@@ -137,15 +153,18 @@ export default function ModulePage() {
   });
 
   // Per-section color map
-  const sectionColors: Record<ModuleSection, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
+  const sectionColorEntries: Record<string, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
+    dashboard: { activeBg: 'bg-primary/5',  activeBgDark: 'dark:bg-primary/10',    border: 'border-l-primary',    text: 'text-primary',                       icon: 'text-primary',                       mobileBg: 'bg-primary/10 text-primary' },
     learning:  { activeBg: 'bg-blue-50',   activeBgDark: 'dark:bg-blue-950/30',   border: 'border-l-blue-600',   text: 'text-blue-700 dark:text-blue-300',   icon: 'text-blue-600 dark:text-blue-400',   mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
     connect:   { activeBg: 'bg-teal-50',   activeBgDark: 'dark:bg-teal-950/30',   border: 'border-l-teal-500',   text: 'text-teal-700 dark:text-teal-300',   icon: 'text-teal-500 dark:text-teal-400',   mobileBg: 'bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300' },
     formative: { activeBg: 'bg-violet-50', activeBgDark: 'dark:bg-violet-950/30', border: 'border-l-violet-500', text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500 dark:text-violet-400', mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
     coach:     { activeBg: 'bg-amber-50',  activeBgDark: 'dark:bg-amber-950/30',  border: 'border-l-amber-500',  text: 'text-amber-700 dark:text-amber-300',  icon: 'text-amber-500 dark:text-amber-400',  mobileBg: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
   };
+  const sectionColors = sectionColorEntries as Record<ModuleSection, typeof sectionColorEntries[string]>;
 
   // Section navigation items
   const sectionNav = [
+    ...(isStudent && hasVisitedModule ? [{ id: 'dashboard' as ModuleSection, label: 'Dashboard', mobileLabel: 'Home', icon: Home }] : []),
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
     { id: 'connect' as ModuleSection, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
     { id: 'formative' as ModuleSection, label: 'Formative Assessment', mobileLabel: 'Formative', icon: ClipboardCheck },
@@ -354,6 +373,15 @@ export default function ModulePage() {
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
+            {/* Dashboard Section */}
+            {activeSection === 'dashboard' && actualModuleId && (
+              <ModuleDashboard
+                lastPosition={lastPos ?? null}
+                dashboard={coachDashboard ?? null}
+                moduleId={actualModuleId}
+              />
+            )}
+
             {/* Learning Section */}
             {activeSection === 'learning' && actualModuleId && (
               <ModuleLearningTab
