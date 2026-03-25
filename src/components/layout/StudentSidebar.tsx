@@ -185,8 +185,36 @@ export function StudentSidebar() {
               </Tooltip>
             ) : btn;
 
-            // Render sub-items under Learning when on chapter/topic page
-            if (hasChildren && active && !collapsed) {
+            if (hasChildren && active) {
+              if (collapsed) {
+                // Show sub-items as tooltips in collapsed mode
+                return (
+                  <div key={item.label} className="flex flex-col gap-0.5">
+                    {wrappedBtn}
+                    {item.children!.map((sub) => {
+                      const subActive = isSubActive(sub);
+                      const colors = learningSubColors[sub.sectionId];
+                      return (
+                        <Tooltip key={sub.sectionId}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleSubNav(sub)}
+                              className={cn(
+                                'flex items-center justify-center rounded-md p-1.5 transition-colors',
+                                'hover:bg-muted hover:text-foreground',
+                                subActive ? cn(colors?.active, 'font-semibold') : 'text-muted-foreground'
+                              )}
+                            >
+                              <sub.icon className={cn("h-3.5 w-3.5 shrink-0", subActive ? colors?.icon : '')} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{sub.label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                );
+              }
               return (
                 <div key={item.label} className="flex flex-col">
                   {wrappedBtn}

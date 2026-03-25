@@ -147,26 +147,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </span>
               </div>
             )}
-            {/* Achievements Trophy Icon - Right of logo (students only) */}
-            {user && !isAdmin && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => setBadgesOpen(true)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
-                    >
-                      <Trophy className="h-4 w-4 text-yellow-500" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    Achievements
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
 
           {/* Admin Panel button - prominent header placement */}

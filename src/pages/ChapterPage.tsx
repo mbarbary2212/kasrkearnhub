@@ -561,28 +561,6 @@ export default function ChapterPage() {
               }}
             />
           )}
-          {/* Customize View button for students */}
-          {!canManageContent && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCustomizeOpen(true)}
-                className="md:hidden text-muted-foreground hover:text-foreground"
-                title="Customize View"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCustomizeOpen(true)}
-                className="hidden md:inline-flex gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                Customize View
-              </Button>
-            </>
-          )}
         </div>
         <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
