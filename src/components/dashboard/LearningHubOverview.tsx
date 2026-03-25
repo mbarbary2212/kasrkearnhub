@@ -69,6 +69,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
       {/* Today's Suggested Plan */}
       <DashboardTodayPlan 
         suggestions={dashboard.suggestions}
+        confidenceInsight={dashboard.confidenceInsight}
         onNavigate={(moduleId, chapterId, tab, subtab) => {
           if (chapterId && moduleId) {
             const subtabParam = subtab ? `&subtab=${subtab}` : '';
