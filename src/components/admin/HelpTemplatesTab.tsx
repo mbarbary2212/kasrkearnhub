@@ -885,6 +885,9 @@ Return a single JSON object with this exact structure. Do NOT wrap in markdown c
 9. All IDs must be unique strings (use prefixes like hx_, mm_, sm_, conc_)
 10. For full_conversation mode, include both arabic_reference and english_reference
 11. Physical examination findings MUST use ONLY these 8 region keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment, abdomen_palpation, or chest_auscultation — map them to the closest fixed key. Use "extra" with a custom "label" for special exams (e.g., DRE, Wound, Fundoscopy). CRITICAL: Combine ALL examination components (inspection, palpation, percussion, auscultation, special tests) into a SINGLE "text" field per region. Use **bold** markdown sub-headings within the text to separate components, e.g.: "**Inspection:** Distended abdomen.\\n**Palpation:** Tender in RIF with guarding.\\n**Auscultation:** Reduced bowel sounds." Never create separate keys like abdomen_inspection and abdomen_palpation.
+
+## TIP
+If the output is long, you can copy the text directly from the chat and paste it into the KALM Hub Import Modal (click "Import JSON" → "Paste Text"). The app automatically fixes missing outer braces and code fences.
 `;
 
   downloadTxt('interactive_cases_ai_prompt.md', content);
