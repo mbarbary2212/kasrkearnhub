@@ -146,12 +146,12 @@ function LoggedInHome() {
   const [selectedYearId, setSelectedYearId] = useState<string>('');
 
   useEffect(() => {
-    if (preferredYearId && !selectedYearId) {
+    if (preferredYearId) {
       setSelectedYearId(preferredYearId);
     } else if (years && years.length > 0 && !selectedYearId) {
       setSelectedYearId(years[0].id);
     }
-  }, [preferredYearId, years, selectedYearId]);
+  }, [preferredYearId, years]);
 
   // Sync active year to header context
   useEffect(() => {
