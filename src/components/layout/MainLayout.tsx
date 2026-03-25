@@ -28,6 +28,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useDueCards } from '@/hooks/useFSRS';
 import { useYears } from '@/hooks/useYears';
+import { StudentSidebar } from '@/components/layout/StudentSidebar';
 
 interface MainLayoutProps {
   children: ReactNode;
