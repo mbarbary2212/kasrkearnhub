@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import type { Json, Database } from '@/integrations/supabase/types';
+import { updateChapterMetrics } from '@/lib/updateChapterMetrics';
 
 // Types matching the database schema
 export type QuestionAttemptStatus = 'unseen' | 'attempted' | 'correct' | 'incorrect';
@@ -285,7 +286,7 @@ export function useSaveQuestionAttempt() {
         attemptNumber: (data as { attempt_number: number })?.attempt_number,
       };
     },
-    onSuccess: (result) => {
+    onSuccess: (result, params) => {
       // Invalidate queries to refresh UI
       if (result.chapterId) {
         queryClient.invalidateQueries({ 
@@ -294,6 +295,20 @@ export function useSaveQuestionAttempt() {
         queryClient.invalidateQueries({ 
           queryKey: ['chapter-attempts', result.chapterId] 
         });
+        queryClient.invalidateQueries({
+          queryKey: ['student-chapter-metrics']
+        });
+
+        // Fire-and-forget: update chapter metrics
+        if (params.moduleId && (params.questionType === 'mcq' || params.questionType === 'true_false')) {
+          updateChapterMetrics({
+            type: 'mcq',
+            studentId: user!.id,
+            moduleId: params.moduleId,
+            chapterId: result.chapterId,
+            isCorrect: params.isCorrect,
+          });
+        }
       }
       if (result.topicId) {
         queryClient.invalidateQueries({ 
