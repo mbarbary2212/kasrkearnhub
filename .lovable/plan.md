@@ -1,26 +1,28 @@
 
 
-## Fix: Dashboard Button Should Navigate Home When Inside a Module
+## Back Button → Dashboard + Remove Year Page
 
-### Problem
-When a student is inside a module page and clicks "Dashboard" in the sidebar, it navigates to `/module/:id?section=dashboard` (the now-removed module dashboard) instead of going back to the Home page (`/`).
+### Changes
 
-### Solution
-In `src/components/layout/StudentSidebar.tsx`, update `handleNav` (~line 112-119): when the clicked item is "Dashboard" (sectionId `'dashboard'`), always navigate to `/` regardless of whether the user is on a module page.
-
-### Change
+**1. Module back button → Home (`/`)**
+In `src/pages/ModulePage.tsx` line 172, change:
 ```typescript
-// src/components/layout/StudentSidebar.tsx — handleNav function
-const handleNav = (item: NavItem) => {
-  // Dashboard always goes home
-  if (item.sectionId === 'dashboard') {
-    navigate('/');
-    return;
-  }
-  // Rest of existing logic unchanged...
-};
+onClick={() => navigate(`/year/${year?.number || 1}`)}
+```
+to:
+```typescript
+onClick={() => navigate('/')}
 ```
 
-### File
-- **`src/components/layout/StudentSidebar.tsx`** — one small change in `handleNav`
+**2. Add "Browse All Years" option to the year dropdown on Home page**
+In the year selector on `src/pages/Home.tsx`, add an extra option like "Browse All Years" that opens a small dialog or navigates to a dedicated simple view showing all years as cards. Alternatively, just keep the dropdown — students can already switch years from the Home dashboard dropdown, so the Year page is redundant.
+
+**3. Remove Year page route (optional cleanup)**
+In `src/App.tsx` line 140, remove or keep the `/year/:yearId` route. Keeping it won't hurt (direct links still work), but it's no longer part of the main flow.
+
+### Summary
+- Back button from module → `/` (dashboard)
+- Year page is bypassed — the Home dashboard dropdown already lets students switch years
+- The year dropdown on Home is the "way to see all years" the student occasionally needs
+- No new pages needed
 
