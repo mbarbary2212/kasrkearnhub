@@ -255,6 +255,12 @@ export default function ChapterPage() {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
 
+  // Track position for resume functionality
+  const currentSubTab = activeSection === 'resources' ? resourcesTab
+    : activeSection === 'interactive' ? interactiveTab
+    : activeSection === 'practice' ? practiceTab
+    : null;
+
   // Active item tracking for deep resume
   const [activeItem, setActiveItem] = useState<{ item_id: string; item_label: string; item_index: number } | null>(null);
 
