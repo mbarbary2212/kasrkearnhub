@@ -1,44 +1,64 @@
 
 
-## Problem
+## Restructure Student Global Sidebar
 
-The module Dashboard tab only appears for the ONE module matching the student's `student_last_position` row. Since this table stores only the latest position, the Dashboard is invisible for all other modules, even if the student has visited them before.
+### Current State
+The student sidebar has: Home, All Years, Study Coach, Flashcards, Achievements, Settings.
+The header has a flashcard icon button.
 
-## Solution
-
-Remove the dependency on `lastPosition` matching the current module. Instead, always show the Dashboard tab for students, making it the default landing section for any module.
-
-### Changes
-
-**File: `src/pages/ModulePage.tsx`**
-
-1. **Always show Dashboard tab for students** -- Remove the `hasVisitedModule` guard from the `sectionNav` array. Every student sees Dashboard / Learning / Connect / Formative / Coach.
-
-2. **Default to Dashboard for students** -- Change the initial `activeSection` from `'learning'` to `'dashboard'` when the user is a student (and no explicit `?section=` param is in the URL). Remove the `hasAutoSwitched` useEffect entirely since it's no longer needed.
-
-3. **Keep the "Continue where you left off" card** -- The existing `showContinueCard` check (`lastPos.module_id === actualModuleId`) stays so the Continue card only shows when the student's last position is in THIS module.
-
-**File: `src/components/module/ModuleDashboard.tsx`**
-
-4. **No changes needed** -- The component already handles `lastPosition` being null gracefully (the Continue button simply hides). The greeting, stat cards, flashcard widget, and study plan all work independently.
-
-### Key Logic Change
+### New Sidebar Structure
 
 ```text
-Before:
-  sectionNav includes Dashboard only if lastPos.module_id === currentModuleId
-  Default section = 'learning', auto-switch via useEffect if lastPos matches
-
-After:
-  sectionNav always includes Dashboard for students
-  Default section = 'dashboard' for students (no explicit param)
-  No auto-switch effect needed
+Dashboard        (Home icon)        → "/" (renamed from Home)
+Learning         (BookOpen icon)    → "/" with skipAutoLogin (renamed from All Years)
+Connect          (MessageCircle)    → new route "/connect"
+Formative        (ClipboardCheck)   → new route "/formative"
+Study Coach      (GraduationCap)    → "/progress" (unchanged)
+─── bottom ───
+Settings         (Settings icon)    → "/student-settings" (unchanged)
 ```
 
+Removed from sidebar: Flashcards, Achievements.
+Removed from header: Flashcard icon button.
+
+Flashcards widget and Achievements section will be added to the Dashboard (Home page).
+
+### Changes by File
+
+**1. `src/components/layout/StudentSidebar.tsx`**
+- Rename "Home" → "Dashboard", "All Years" → "Learning"
+- Add "Connect" (`/connect`) and "Formative" (`/formative`) nav items
+- Remove Flashcards item and Achievements button
+- Remove `useDueCards` import, `onBadgesOpen` prop
+
+**2. `src/components/layout/MainLayout.tsx`**
+- Remove flashcard icon button from header (lines 157-183)
+- Remove `GalleryHorizontal` import and `useDueCards`/`dueCount` if only used there
+- Remove `onBadgesOpen` prop from `StudentSidebar` (achievements now on dashboard)
+
+**3. `src/pages/Home.tsx` (Dashboard)**
+- Add Flashcards widget card (due count + link to `/review/flashcards`)
+- Add Achievements section (trigger `HeaderBadgesPanel` or inline badge stats)
+- Update subtitle text from "Select your academic year" to something dashboard-appropriate
+
+**4. New page: `src/pages/ConnectPage.tsx`**
+- Global Connect page (not module-specific)
+- Shows: Messages/Announcements (global), Ask a Question, Give Feedback, Discussion Forum, Study Groups
+- Reuses existing `MessagesCard`, `InquiryModal`, `FeedbackModal`, `DiscussionSection` components without requiring a moduleId
+- Q&A can be added per-module later as mentioned
+
+**5. New page: `src/pages/FormativePage.tsx`**
+- Shows a module selector (dropdown or card grid) listing all modules the student has access to
+- On selecting a module, renders `ModuleFormativeTab` for that module
+- Uses `useModules` to fetch modules across the student's preferred year
+
+**6. `src/App.tsx`**
+- Add routes: `/connect` → `ConnectPage`, `/formative` → `FormativePage`
+
 ### What Does NOT Change
-- No colours or fonts change
-- No new database tables or migrations
-- Mobile sidebar behaviour unchanged
-- The "Continue" card still only shows when lastPos matches this module
-- Admin/teacher view unchanged (they still default to Learning)
+- Module-level sidebar (Dashboard/Learning/Connect/Formative/Coach inside `/module/:id`)
+- Colors, fonts, design system
+- Admin/teacher views
+- Settings at bottom of sidebar
+- Mobile bottom nav behavior
 
