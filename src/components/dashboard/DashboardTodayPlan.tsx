@@ -16,6 +16,12 @@ const iconMap: Record<string, React.ElementType> = {
   flashcard: GalleryHorizontal,
 };
 
+const trendIndicator: Record<string, { icon: string; className: string }> = {
+  declining: { icon: '↓', className: 'text-destructive' },
+  improving: { icon: '↑', className: 'text-emerald-600 dark:text-emerald-400' },
+  stable: { icon: '', className: '' },
+};
+
 export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
@@ -65,7 +71,13 @@ export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPl
               <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">▶ Start Here</p>
               <p className="font-medium truncate text-foreground">{primarySuggestion.title}</p>
               {primarySuggestion.reason && (
-                <p className="text-xs text-muted-foreground">{primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
+                <p className="text-xs text-muted-foreground">
+                  {primarySuggestion.trend && primarySuggestion.trend !== 'stable' && (
+                    <span className={`font-medium ${trendIndicator[primarySuggestion.trend]?.className || ''} mr-1`}>
+                      {trendIndicator[primarySuggestion.trend]?.icon}
+                    </span>
+                  )}
+                  {primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
               )}
             </div>
             <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
@@ -92,7 +104,13 @@ export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPl
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
                     {item.reason && (
-                      <p className="text-xs text-muted-foreground truncate">{item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.trend && item.trend !== 'stable' && (
+                          <span className={`font-medium ${trendIndicator[item.trend]?.className || ''} mr-1`}>
+                            {trendIndicator[item.trend]?.icon}
+                          </span>
+                        )}
+                        {item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}</p>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />

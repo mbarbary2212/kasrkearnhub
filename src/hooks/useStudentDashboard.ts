@@ -46,6 +46,7 @@ export interface SuggestedItem {
   reason?: string;
   isPrimary?: boolean;
   subtab?: string;
+  trend?: 'declining' | 'stable' | 'improving';
 }
 
 export interface WeakChapter {
@@ -372,6 +373,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         reason: a.reason,
         isPrimary: a.isPrimary,
         subtab: a.subtab,
+        trend: a.trend,
       }));
 
       // Get weak chapters from real metrics
