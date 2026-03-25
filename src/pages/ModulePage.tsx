@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTrackPosition } from '@/hooks/useTrackPosition';
 
 type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 
@@ -56,6 +57,14 @@ export default function ModulePage() {
   const canManageBooks = isPlatformAdmin || isSuperAdmin || isModuleAdmin;
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
+
+  // Track position for resume functionality
+  useTrackPosition({
+    year_number: year?.number ?? null,
+    module_id: actualModuleId ?? null,
+    module_name: module?.name ?? null,
+    module_slug: module?.slug ?? null,
+  });
 
   useEffect(() => {
     if (module?.name) {
