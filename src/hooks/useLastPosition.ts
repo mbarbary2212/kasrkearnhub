@@ -89,7 +89,12 @@ export function buildResumeUrl(pos: LastPosition): string {
   // If we have a chapter, go to the chapter with the right tab
   if (pos.chapter_id && pos.module_id) {
     const tab = pos.tab || 'resources';
-    return `/module/${pos.module_id}/chapter/${pos.chapter_id}?section=${tab}`;
+    let url = `/module/${pos.module_id}/chapter/${pos.chapter_id}?section=${tab}`;
+    const subTab = pos.activity_position?.sub_tab;
+    if (subTab && typeof subTab === 'string') {
+      url += `&subtab=${subTab}`;
+    }
+    return url;
   }
 
   // If we have a module, go to module page
@@ -125,12 +130,26 @@ export function buildResumeLabel(pos: LastPosition): string {
 
   if (pos.activity_position) {
     const ap = pos.activity_position;
-    if (ap.type === 'practice' && ap.question && ap.total) {
-      parts.push(`Q${ap.question} of ${ap.total}`);
-    } else if (ap.type === 'video' && ap.timestamp) {
-      const mins = Math.floor((ap.timestamp as number) / 60);
-      const secs = Math.floor((ap.timestamp as number) % 60);
-      parts.push(`${mins}:${secs.toString().padStart(2, '0')}`);
+    if (ap.sub_tab && typeof ap.sub_tab === 'string') {
+      const subTabLabels: Record<string, string> = {
+        lectures: 'Videos',
+        flashcards: 'Flashcards',
+        mind_maps: 'Visual Resources',
+        guided_explanations: 'Socrates',
+        reference_materials: 'Reference Materials',
+        clinical_tools: 'Clinical Tools',
+        cases: 'Cases',
+        pathways: 'Pathways',
+        mcqs: 'MCQs',
+        sba: 'SBA',
+        true_false: 'True/False',
+        essays: 'Short Answer',
+        osce: 'OSCE',
+        practical: 'Practical',
+        matching: 'Matching',
+        images: 'Image Questions',
+      };
+      parts.push(subTabLabels[ap.sub_tab] || ap.sub_tab);
     }
   }
 

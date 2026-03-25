@@ -143,11 +143,18 @@ export default function ChapterPage() {
   // State for section mode and active tabs within sections
   const [searchParams] = useSearchParams();
   const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
+  const initialSubTab = searchParams.get('subtab');
   const [activeSection, setActiveSection] = useState<SectionMode>(initialSection);
   
-  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
-  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
-  const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
+  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>(
+    initialSection === 'resources' && initialSubTab ? initialSubTab as ResourceTabId : 'lectures'
+  );
+  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>(
+    initialSection === 'interactive' && initialSubTab ? initialSubTab as InteractiveTabId : 'cases'
+  );
+  const [practiceTab, setPracticeTab] = useState<PracticeTabId>(
+    initialSection === 'practice' && initialSubTab ? initialSubTab as PracticeTabId : 'mcqs'
+  );
   const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
@@ -237,6 +244,11 @@ export default function ChapterPage() {
   }, [chapterId]);
 
   // Track position for resume functionality
+  const currentSubTab = activeSection === 'resources' ? resourcesTab
+    : activeSection === 'interactive' ? interactiveTab
+    : activeSection === 'practice' ? practiceTab
+    : null;
+
   useTrackPosition({
     year_number: null,
     module_id: contentModuleId ?? null,
@@ -245,6 +257,7 @@ export default function ChapterPage() {
     chapter_id: chapterId ?? null,
     chapter_title: chapter?.title ?? null,
     tab: activeSection,
+    activity_position: currentSubTab ? { sub_tab: currentSubTab } : null,
   });
   
   // Helper function to filter and sort content by section hierarchy
