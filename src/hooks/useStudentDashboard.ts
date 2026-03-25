@@ -362,32 +362,30 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
       }));
 
-      // Build suggestions from real metrics
-      const dashboardActions = buildDashboardSuggestions({
+      // Build adaptive study plan from real metrics
+      const studyPlan = buildAdaptiveStudyPlan({
         metrics: realMetrics,
         chapters: chapterInfos,
       });
 
-      // Convert DashboardAction[] to SuggestedItem[] for backward compat
-      const suggestions: SuggestedItem[] = dashboardActions.map(a => ({
-        type: (a.type === 'resume' || a.type === 'review' ? 'read' : a.type) as SuggestedItem['type'],
-        title: a.title,
-        chapterTitle: a.chapterTitle,
-        estimatedMinutes: a.estimatedMinutes,
-        chapterId: a.chapterId,
-        moduleId: a.moduleId,
-        reason: a.reason,
-        isPrimary: a.isPrimary,
-        subtab: a.subtab,
-        trend: a.trend,
+      // Convert PlannedTask[] to SuggestedItem[] for backward compat
+      const suggestions: SuggestedItem[] = studyPlan.tasks.map(t => ({
+        type: t.type as SuggestedItem['type'],
+        title: t.title,
+        chapterTitle: t.chapterTitle,
+        estimatedMinutes: t.estimatedMinutes,
+        chapterId: t.chapterId,
+        moduleId: t.moduleId,
+        reason: t.reason,
+        isPrimary: t.isPrimary,
+        subtab: t.subtab,
+        trend: t.trend,
+        revisionState: t.revisionState,
       }));
 
       // Get weak chapters from real metrics
       const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
       const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
-
-      // Generate confidence insight (single smart insight from strongest signal)
-      const confidenceInsight = generateConfidenceInsight(realMetrics, chapterTitleMap);
 
       // Use real aggregate readiness if available
       const metricsReadiness = calculateAggregateReadiness(realMetrics);
@@ -416,8 +414,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapters: chapterStatuses,
         insights,
         suggestions,
+        studyPlan,
         weakChapters,
-        confidenceInsight,
+        confidenceInsight: studyPlan.confidenceInsight ?? null,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
       };
