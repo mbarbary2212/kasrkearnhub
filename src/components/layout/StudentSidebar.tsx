@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
+  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles
+} from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +15,13 @@ interface NavItem {
   sectionId: string;
   globalPath: string;
   skipAutoLogin?: boolean;
+  children?: SubNavItem[];
+}
+
+interface SubNavItem {
+  label: string;
+  icon: React.ElementType;
+  sectionId: string;
 }
 
 export function StudentSidebar() {
@@ -33,40 +43,84 @@ export function StudentSidebar() {
     } catch {}
   }, [collapsed]);
 
-  // Detect if we're on a module page
+  // Detect route context
   const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
   const isModulePage = !!moduleMatch;
   const moduleId = moduleMatch?.[1];
 
+  const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
+  const isChapterPage = !!chapterMatch;
+
+  const topicMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)\/topic\/([^/]+)/);
+  const isTopicPage = !!topicMatch;
+
+  const isChapterOrTopicPage = isChapterPage || isTopicPage;
+
+  // Learning sub-tabs only visible when on chapter/topic page
+  const learningSubItems: SubNavItem[] = [
+    { label: 'Resources', icon: FolderOpen, sectionId: 'resources' },
+    { label: 'Interactive', icon: Sparkles, sectionId: 'interactive' },
+    { label: 'Practice', icon: GraduationCap, sectionId: 'practice' },
+    { label: 'Test Yourself', icon: ClipboardCheck, sectionId: 'test' },
+  ];
+
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, sectionId: 'dashboard', globalPath: '/' },
-    { label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '/', skipAutoLogin: true },
+    {
+      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '/', skipAutoLogin: true,
+      children: isChapterOrTopicPage ? learningSubItems : undefined,
+    },
     { label: 'Connect', icon: MessageCircle, sectionId: 'connect', globalPath: '/connect' },
     { label: 'Formative Assessment', icon: ClipboardCheck, sectionId: 'formative', globalPath: '/formative' },
     { label: 'Study Coach', icon: GraduationCap, sectionId: 'coach', globalPath: '/progress' },
   ];
 
+  const currentSection = searchParams.get('section') || '';
+
   const isActive = (item: NavItem) => {
-    if (isModulePage) {
-      const currentSection = searchParams.get('section') || 'dashboard';
+    if (isChapterOrTopicPage) {
+      // On chapter/topic pages, Learning is active if section is a learning sub-tab or 'learning'
+      if (item.sectionId === 'learning') {
+        return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
+      }
       return currentSection === item.sectionId;
     }
-    // Global behavior
+    if (isModulePage) {
+      const sec = currentSection || 'dashboard';
+      return sec === item.sectionId;
+    }
+    // Global
     if (item.label === 'Dashboard') return location.pathname === '/' && !item.skipAutoLogin;
     if (item.label === 'Learning') return location.pathname.startsWith('/year/');
     return location.pathname === item.globalPath;
   };
 
+  const isSubActive = (sub: SubNavItem) => {
+    const sec = currentSection || 'resources';
+    return sec === sub.sectionId;
+  };
+
   const handleNav = (item: NavItem) => {
     if (isModulePage && moduleId) {
+      // If on chapter/topic and clicking Learning, go back to module learning
+      if (isChapterOrTopicPage && item.sectionId === 'learning') {
+        navigate(`/module/${moduleId}?section=learning`);
+        return;
+      }
       navigate(`/module/${moduleId}?section=${item.sectionId}`);
       return;
     }
-    // Global navigation
     if (item.skipAutoLogin) {
       sessionStorage.setItem('skipAutoLogin', 'true');
     }
     navigate(item.globalPath);
+  };
+
+  const handleSubNav = (sub: SubNavItem) => {
+    // Update the section param on the current chapter/topic URL
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('section', sub.sectionId);
+    navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
   };
 
   return (
@@ -88,16 +142,18 @@ export function StudentSidebar() {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2">
+      <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto">
         <TooltipProvider delayDuration={0}>
           {navItems.map((item) => {
             const active = isActive(item);
+            const hasChildren = !!item.children?.length;
+
             const btn = (
               <button
                 key={item.label}
                 onClick={() => handleNav(item)}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors relative',
+                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors relative w-full',
                   'hover:bg-muted hover:text-foreground',
                   active ? 'bg-muted text-foreground' : 'text-muted-foreground',
                   collapsed && 'justify-center px-0'
@@ -108,15 +164,42 @@ export function StudentSidebar() {
               </button>
             );
 
-            if (collapsed) {
+            const wrappedBtn = collapsed ? (
+              <Tooltip key={item.label}>
+                <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            ) : btn;
+
+            // Render sub-items under Learning when on chapter/topic page
+            if (hasChildren && active && !collapsed) {
               return (
-                <Tooltip key={item.label}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
-                </Tooltip>
+                <div key={item.label} className="flex flex-col">
+                  {wrappedBtn}
+                  <div className="ml-5 pl-2 border-l border-border flex flex-col gap-0.5 mt-0.5 mb-1">
+                    {item.children!.map((sub) => {
+                      const subActive = isSubActive(sub);
+                      return (
+                        <button
+                          key={sub.sectionId}
+                          onClick={() => handleSubNav(sub)}
+                          className={cn(
+                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+                            'hover:bg-muted hover:text-foreground',
+                            subActive ? 'bg-muted/80 text-foreground' : 'text-muted-foreground'
+                          )}
+                        >
+                          <sub.icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             }
-            return btn;
+
+            return wrappedBtn;
           })}
         </TooltipProvider>
       </nav>
