@@ -102,9 +102,9 @@ export function buildResumeUrl(pos: LastPosition): string {
     return `/module/${pos.module_id}`;
   }
 
-  // If we have a year, go to year page
+  // If we have a year, go to all years page
   if (pos.year_number) {
-    return `/year/${pos.year_number}`;
+    return `/years`;
   }
 
   return '/';
@@ -150,6 +150,10 @@ export function buildResumeLabel(pos: LastPosition): string {
         images: 'Image Questions',
       };
       parts.push(subTabLabels[ap.sub_tab] || ap.sub_tab);
+    }
+    // Show specific item info if available
+    if (ap.item_label && typeof ap.item_label === 'string') {
+      parts.push(ap.item_label);
     }
   }
 
