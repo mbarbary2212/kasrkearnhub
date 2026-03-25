@@ -98,6 +98,10 @@ export default function ModulePage() {
   const { data: yearModules = [] } = useModules(module?.year_id);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
+  // Fetch last position for Continue card (students only)
+  const { data: lastPos } = useLastPosition();
+  const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
+
   // Dashboard data for Study Coach tabs (Overview & Unlocks)
   const { data: coachDashboard } = useStudentDashboard({
     yearId: module?.year_id,
