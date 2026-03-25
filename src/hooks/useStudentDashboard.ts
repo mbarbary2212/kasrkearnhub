@@ -154,6 +154,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         vpCasesRes,
         lecturesRes,
         yearRes,
+        // Lightweight streak sources: recent sessions + question attempts dates
+        sessionsRes,
+        recentAttemptsRes,
       ] = await Promise.all([
         chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
@@ -163,6 +166,12 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         supabase.from('virtual_patient_cases').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
+        supabase.from('user_sessions').select('session_start').eq('user_id', user.id)
+          .gte('session_start', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
+          .order('session_start', { ascending: false }).limit(200),
+        supabase.from('question_attempts').select('created_at').eq('user_id', user.id)
+          .gte('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false }).limit(200),
       ]);
 
       const chapters = chaptersRes.data || [];
@@ -240,8 +249,13 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const chaptersStarted = chaptersWithContent.filter(c => c.status !== 'not_started').length;
       const chaptersTotal = chaptersWithContent.length;
 
-      // Calculate study streak (days with activity in user_progress)
-      const studyStreak = calculateStudyStreak(userProgress);
+      // Calculate study streak from ALL activity sources
+      const allActivityDates: string[] = [
+        ...userProgress.filter(p => p.completed_at).map(p => p.completed_at!),
+        ...(sessionsRes.data || []).map(s => s.session_start),
+        ...(recentAttemptsRes.data || []).map(a => a.created_at),
+      ];
+      const studyStreak = calculateStudyStreak(allActivityDates);
       
       // Calculate consistency score (0-100) based on recent activity
       const consistencyScore = calculateConsistencyScore(userProgress, contentIds);
@@ -421,14 +435,12 @@ function calculateConsistencyScore(
   return Math.round(fourteenDayScore + sevenDayScore);
 }
 
-function calculateStudyStreak(userProgress: { completed_at: string | null }[]): number {
-  if (userProgress.length === 0) return 0;
+function calculateStudyStreak(activityTimestamps: string[]): number {
+  if (activityTimestamps.length === 0) return 0;
 
   // Get unique dates with activity
   const activityDates = new Set(
-    userProgress
-      .filter(p => p.completed_at)
-      .map(p => new Date(p.completed_at!).toDateString())
+    activityTimestamps.map(ts => new Date(ts).toDateString())
   );
 
   if (activityDates.size === 0) return 0;
