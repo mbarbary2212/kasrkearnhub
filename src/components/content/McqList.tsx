@@ -83,6 +83,7 @@ interface McqListProps {
   showDeleted?: boolean;
   onShowDeletedChange?: (show: boolean) => void;
   questionFormat?: QuestionFormat;
+  onActiveItemChange?: (info: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 const CSV_TEMPLATE = `stem,choiceA,choiceB,choiceC,choiceD,choiceE,correct_key,explanation,difficulty,section_name,section_number
@@ -102,6 +103,7 @@ export function McqList({
   showDeleted = false,
   onShowDeletedChange,
   questionFormat = 'mcq',
+  onActiveItemChange,
 }: McqListProps) {
   const auth = useAuthContext();
 
@@ -667,6 +669,7 @@ export function McqList({
           chapterId={chapterId}
           attemptMap={attemptMap}
           allAttempts={allAttempts}
+          onActiveItemChange={onActiveItemChange}
         />
       </div>
     );

@@ -57,6 +57,7 @@ interface OsceListProps {
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
   onShowDeletedChange?: (show: boolean) => void;
+  onActiveItemChange?: (info: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 export function OsceList({
@@ -72,6 +73,7 @@ export function OsceList({
   showDeletedToggle = false,
   showDeleted = false,
   onShowDeletedChange,
+  onActiveItemChange,
 }: OsceListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
@@ -348,6 +350,7 @@ export function OsceList({
           chapterId={chapterId}
           attemptMap={osceAttemptMapForShell}
           allAttempts={osceAttempts}
+          onActiveItemChange={onActiveItemChange}
         />
       </div>
     );
