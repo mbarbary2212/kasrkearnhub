@@ -297,9 +297,13 @@ Scores can be customised per case in the Case Preview Editor.
 1. Copy the prompt below.
 2. Replace all `[BRACKETED PLACEHOLDERS]` with your case details.
 3. Paste into Claude, ChatGPT, or any AI assistant.
-4. Copy the JSON output.
-5. In KALMHUB, create a case using "Build Manually", then open the Case Preview Editor.
-6. Use the editor's import/paste functionality or edit each section to match the generated output.
+4. Copy the JSON output from the AI response.
+5. In KALMHUB, go to the Interactive Cases admin list and click **"Import JSON"**.
+6. In the Import Modal, choose **"Paste Text"** and paste the JSON directly — no need to save a file.
+   - Alternatively, save the output as a `.json` file and use **"Upload File"**.
+7. Click **"Validate JSON"** then **"Import as Draft"**.
+
+> **Tip:** If the AI output is long, you can copy the text directly from the chat and paste it into the KALM Hub Import Modal. The app automatically handles missing outer curly braces `{}`, markdown code fences, and trailing commas.
 
 ---
 
