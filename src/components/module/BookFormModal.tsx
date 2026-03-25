@@ -38,6 +38,7 @@ export function BookFormModal({
   editingBook,
 }: BookFormModalProps) {
   const [bookLabel, setBookLabel] = useState('');
+  const [description, setDescription] = useState('');
   const [chapterPrefix, setChapterPrefix] = useState('Ch');
   const addBook = useAddBook();
   const updateBook = useUpdateBook();
@@ -48,9 +49,11 @@ export function BookFormModal({
     if (open) {
       if (editingBook) {
         setBookLabel(editingBook.book_label);
+        setDescription(editingBook.description || '');
         setChapterPrefix(editingBook.chapter_prefix || 'Ch');
       } else {
         setBookLabel('');
+        setDescription('');
         setChapterPrefix('Ch');
       }
     }
@@ -121,6 +124,18 @@ export function BookFormModal({
                 placeholder="e.g., Pharmacology, Pathology"
                 autoFocus
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Display Title (shown to students)</Label>
+              <Input
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g., General surgery - Part 2"
+              />
+              <p className="text-xs text-muted-foreground">
+                Used as the pill label students see. Falls back to department name if empty.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="chapterPrefix">Chapter Label Style</Label>
