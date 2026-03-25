@@ -48,6 +48,7 @@ const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 const ConnectPage = lazy(() => import("./pages/ConnectPage"));
 const FormativePage = lazy(() => import("./pages/FormativePage"));
+const LearningEmptyState = lazy(() => import("./pages/LearningEmptyState"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -154,6 +155,7 @@ const App = () => {
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/connect" element={<ProtectedRoute><RouteErrorBoundary><ConnectPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/learning" element={<ProtectedRoute><RouteErrorBoundary><LearningEmptyState /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
