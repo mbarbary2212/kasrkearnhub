@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, GraduationCap, GalleryHorizontal, Trophy, BookOpen, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, ClipboardCheck, GraduationCap, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useDueCards } from '@/hooks/useFSRS';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -11,14 +10,12 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   path: string;
-  badge?: number;
+  skipAutoLogin?: boolean;
 }
 
-export function StudentSidebar({ onBadgesOpen }: { onBadgesOpen: () => void }) {
+export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: dueCards } = useDueCards();
-  const dueCount = dueCards?.length ?? 0;
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -35,25 +32,24 @@ export function StudentSidebar({ onBadgesOpen }: { onBadgesOpen: () => void }) {
   }, [collapsed]);
 
   const navItems: NavItem[] = [
-    { label: 'Home', icon: Home, path: '/' },
-    { label: 'All Years', icon: BookOpen, path: '/' },
+    { label: 'Dashboard', icon: Home, path: '/' },
+    { label: 'Learning', icon: BookOpen, path: '/', skipAutoLogin: true },
+    { label: 'Connect', icon: MessageCircle, path: '/connect' },
+    { label: 'Formative Assessment', icon: ClipboardCheck, path: '/formative' },
     { label: 'Study Coach', icon: GraduationCap, path: '/progress' },
-    { label: 'Flashcards', icon: GalleryHorizontal, path: '/review/flashcards', badge: dueCount > 0 ? dueCount : undefined },
   ];
 
-  const isActive = (path: string, label: string) => {
-    if (label === 'Home') return location.pathname === '/' || location.pathname.startsWith('/year/');
-    if (label === 'All Years') return false; // Never highlight as active
-    return location.pathname === path;
+  const isActive = (item: NavItem) => {
+    if (item.label === 'Dashboard') return location.pathname === '/' && !item.skipAutoLogin;
+    if (item.label === 'Learning') return location.pathname.startsWith('/year/');
+    return location.pathname === item.path;
   };
 
   const handleNav = (item: NavItem) => {
-    if (item.label === 'All Years') {
+    if (item.skipAutoLogin) {
       sessionStorage.setItem('skipAutoLogin', 'true');
-      navigate('/');
-    } else {
-      navigate(item.path);
     }
+    navigate(item.path);
   };
 
   return (
@@ -78,7 +74,7 @@ export function StudentSidebar({ onBadgesOpen }: { onBadgesOpen: () => void }) {
       <nav className="flex-1 flex flex-col gap-1 px-2">
         <TooltipProvider delayDuration={0}>
           {navItems.map((item) => {
-            const active = isActive(item.path, item.label);
+            const active = isActive(item);
             const btn = (
               <button
                 key={item.label}
@@ -92,14 +88,6 @@ export function StudentSidebar({ onBadgesOpen }: { onBadgesOpen: () => void }) {
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
-                {item.badge && (
-                  <span className={cn(
-                    'h-5 min-w-[1.25rem] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center',
-                    collapsed ? 'absolute -top-1 -right-1 border-2 border-background' : 'ml-auto'
-                  )}>
-                    {item.badge > 9 ? '9+' : item.badge}
-                  </span>
-                )}
               </button>
             );
 
@@ -113,31 +101,6 @@ export function StudentSidebar({ onBadgesOpen }: { onBadgesOpen: () => void }) {
             }
             return btn;
           })}
-
-          {/* Achievements button (not a route) */}
-          {(() => {
-            const btn = (
-              <button
-                onClick={onBadgesOpen}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground',
-                  collapsed && 'justify-center px-0'
-                )}
-              >
-                <Trophy className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">Achievements</span>}
-              </button>
-            );
-            if (collapsed) {
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">Achievements</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return btn;
-          })()}
         </TooltipProvider>
       </nav>
 
