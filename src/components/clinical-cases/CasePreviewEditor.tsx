@@ -123,7 +123,11 @@ export function CasePreviewEditor() {
 
   useEffect(() => {
     if (generatedData && !editedData) {
-      setEditedData(structuredClone(generatedData));
+      const clone = structuredClone(generatedData);
+      if ((clone as any).history_time_limit_minutes == null) {
+        (clone as any).history_time_limit_minutes = 2;
+      }
+      setEditedData(clone);
     }
   }, [generatedData]);
 
@@ -464,8 +468,8 @@ export function CasePreviewEditor() {
               </div>
             )}
 
-            {/* Voice Character (only for voice mode) */}
-            {historyInteractionMode === 'voice' && editedData && (
+            {/* Voice Character */}
+            {editedData && (
               globalTtsProvider === 'gemini' ? (
                 <div>
                   <Label className="text-xs">Voice Character</Label>
@@ -630,7 +634,7 @@ export function CasePreviewEditor() {
                      } as any);
                      setHasChanges(true);
                    }}
-                   placeholder={`Default: ${Math.ceil((caseData?.estimated_minutes || 15) * 0.4)} min`}
+                   placeholder="Default: 2 min"
                    className="mt-1"
                  />
                  <p className="text-[10px] text-muted-foreground mt-1">
