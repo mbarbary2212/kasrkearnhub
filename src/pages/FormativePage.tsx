@@ -70,8 +70,8 @@ export default function FormativePage() {
                     <ClipboardCheck className="w-6 h-6 text-primary" />
                   </div>
                   <CardTitle className="text-lg">{mod.name}</CardTitle>
-                  {mod.module_code && (
-                    <CardDescription>{mod.module_code}</CardDescription>
+                  {mod.description && (
+                    <CardDescription className="line-clamp-2">{mod.description}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent>
