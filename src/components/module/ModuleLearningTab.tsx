@@ -876,7 +876,9 @@ export function ModuleLearningTab({
     );
   }
 
-  // ─── STUDENT VIEW: pill filters handled externally via ModulePage ───
+  // Hint banner for students
+  const showStudentHint = hasChapters && !canManageBooks && !canManageChapters;
+
   if (externalActiveBookLabel && !canManageBooks) {
     // Pharmacology special case
     if (externalActiveBookLabel.toLowerCase() === 'pharmacology') {
