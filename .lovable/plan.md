@@ -1,51 +1,31 @@
 
 
-# Fix Back Arrow Navigation Across the App
+# Fix: Auto-Login to Preferred Year Not Working
 
-## Problem
+## Root Cause
 
-The back arrow on multiple pages navigates to the wrong destination:
+The `kalmhub:hasVisitedHome` sessionStorage flag is **never cleared on logout**. Since sessionStorage persists within the same browser tab across page reloads:
 
-| Page | Current Back Target | Correct Parent |
-|------|-------------------|----------------|
-| **YearPage** | `/` (Home) | `/` (Home) — OK but sets `skipAutoLogin` unnecessarily |
-| **ModulePage** | `/year/{number}` | `/year/{number}` — OK |
-| **ChapterPage** | `/module/{id}?section=learning` | OK |
-| **TopicDetailPage** | `/module/{moduleId}` | Should go to `/module/{moduleId}/chapter/{chapterId}` |
-| **DepartmentPage** | `navigate(-1)` (browser back) | Should navigate to parent module |
-| **BlueprintExamPage** | Back via `navigate(-1)` or `onBack` | Should go to `/module/{moduleId}` |
-| **ExamResultsPage** | Needs checking | Should go to `/module/{moduleId}` |
-| **FlashcardReviewPage** | `/` (Home) | Should go back to the chapter or module it came from |
-| **CaseSummaryPage** | `navigate(-1)` | Should go to chapter's Interactive section |
+1. Student logs in → visits Home → `hasVisitedHome` is set → auto-redirect works ✓
+2. Student logs out (MainLayout does `window.location.href = '/'` — same tab)
+3. Student logs back in → visits Home → `hasVisitedHome` is **still set** → auto-redirect is **skipped** ✗
 
-The **YearPage** back arrow is the most visible issue — it calls `handleGoHome` which sets `skipAutoLogin` and goes to `/`, which shows the year selection screen instead of behaving as a normal back. For students with a preferred year, this is confusing.
+The guard on lines 41-45 of `Home.tsx` short-circuits the entire redirect logic after the first visit to Home in any browser session.
 
-## Plan
+## Fix
 
-### Step 1: Fix YearPage back arrow
-**File: `src/pages/YearPage.tsx`**
-- Change the back arrow `onClick` from `handleGoHome` (which sets `skipAutoLogin` + navigates to `/`) to a simple `navigate('/')` without setting the skip flag. This lets the Home page redirect logic work normally.
+### Step 1: Clear `hasVisitedHome` on logout
 
-### Step 2: Fix TopicDetailPage back arrow
-**File: `src/pages/TopicDetailPage.tsx`**
-- Currently navigates to `/module/${moduleId}` — should navigate to `/module/${moduleId}/chapter/${chapterId}` to return to the parent chapter, not skip up two levels.
+**File: `src/components/layout/MainLayout.tsx`** — In `handleLogout`, add `sessionStorage.removeItem('kalmhub:hasVisitedHome')` before the sign-out call.
 
-### Step 3: Fix DepartmentPage back arrow  
-**File: `src/pages/DepartmentPage.tsx`**
-- Replace `navigate(-1)` with explicit parent navigation based on available context (module or year).
+**File: `src/pages/Auth.tsx`** — In the `signOut` function, also clear this flag (covers the blocked-user and password-reset sign-out paths).
 
-### Step 4: Fix FlashcardReviewPage exit/back
-**File: `src/pages/FlashcardReviewPage.tsx`**
-- Replace `navigate('/')` with navigation back to the originating chapter or module. If no referrer context exists, fall back to `/`.
+### Step 2: Clear on sign-out from BlockedUserScreen
 
-### Step 5: Fix CaseSummaryPage back arrow
-**File: `src/components/clinical-cases/CaseSummary.tsx`**
-- Replace `navigate(-1)` with explicit navigation to the chapter's Interactive section when chapter context is available.
+**File: `src/components/auth/BlockedUserScreen.tsx`** — Add the same `sessionStorage.removeItem` before `signOut`.
 
 ### Files Modified
-- `src/pages/YearPage.tsx`
-- `src/pages/TopicDetailPage.tsx`
-- `src/pages/DepartmentPage.tsx`
-- `src/pages/FlashcardReviewPage.tsx`
-- `src/components/clinical-cases/CaseSummary.tsx`
+- `src/components/layout/MainLayout.tsx` — 1 line added
+- `src/pages/Auth.tsx` — 1 line added
+- `src/components/auth/BlockedUserScreen.tsx` — 1 line added
 
