@@ -122,6 +122,7 @@ export function useAddBook() {
             : `${Date.now()}`,
         module_id: result.moduleId,
         book_label: result.bookLabel,
+        description: null,
         display_order: result.displayOrder,
         chapter_prefix: result.chapterPrefix,
         created_at: new Date().toISOString(),
