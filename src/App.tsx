@@ -140,7 +140,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/progress" element={<ProtectedRoute><RouteErrorBoundary><ProgressPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/account" element={<ProtectedRoute><RouteErrorBoundary><AccountPage /></RouteErrorBoundary></ProtectedRoute>} />
-                <Route path="/year/:yearId" element={<ProtectedRoute><RouteErrorBoundary><YearPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/years" element={<ProtectedRoute><RouteErrorBoundary><AllYearsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId" element={<ProtectedRoute><RouteErrorBoundary><ModulePage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId/mock-exam" element={<ProtectedRoute><RouteErrorBoundary><MockExamPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<ProtectedRoute><RouteErrorBoundary><BlueprintExamPage /></RouteErrorBoundary></ProtectedRoute>} />
