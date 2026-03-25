@@ -51,15 +51,14 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
 
   const firstName = getFirstName(profile?.full_name);
   const greeting = getGreeting();
+
+  const readiness = dashboard?.readinessResult?.examReadiness ?? 0;
+  const streak = dashboard?.studyStreak ?? 0;
   const readinessLabel = getReadinessLabel(readiness);
 
   // Resume icon
   const resumeType = lastPosition ? getResumeIconName(lastPosition.tab, lastPosition.activity_position?.sub_tab as string | null) : 'reading';
   const ResumeIcon = resumeIconMap[resumeType] || PlayIcon;
-  const greeting = getGreeting();
-
-  const readiness = dashboard?.readinessResult?.examReadiness ?? 0;
-  const streak = dashboard?.studyStreak ?? 0;
 
   // Build suggestions (max 3)
   const suggestions: SuggestedItem[] = (dashboard?.suggestions ?? []).slice(0, 3);
