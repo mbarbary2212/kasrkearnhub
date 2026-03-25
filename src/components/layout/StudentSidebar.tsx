@@ -187,6 +187,7 @@ export function StudentSidebar() {
                   <div className="ml-5 pl-2 border-l border-border flex flex-col gap-0.5 mt-0.5 mb-1">
                     {item.children!.map((sub) => {
                       const subActive = isSubActive(sub);
+                      const colors = learningSubColors[sub.sectionId];
                       return (
                         <button
                           key={sub.sectionId}
@@ -194,10 +195,10 @@ export function StudentSidebar() {
                           className={cn(
                             'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
                             'hover:bg-muted hover:text-foreground',
-                            subActive ? 'bg-muted/80 text-foreground' : 'text-muted-foreground'
+                            subActive ? cn(colors?.active, 'font-semibold') : 'text-muted-foreground'
                           )}
                         >
-                          <sub.icon className="h-3.5 w-3.5 shrink-0" />
+                          <sub.icon className={cn("h-3.5 w-3.5 shrink-0", subActive ? colors?.icon : '')} />
                           <span className="truncate">{sub.label}</span>
                         </button>
                       );
