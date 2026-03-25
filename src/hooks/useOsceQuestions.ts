@@ -303,14 +303,23 @@ export function useArchiveLegacyOsce() {
   });
 }
 
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
 // Upload OSCE image to storage
 export async function uploadOsceImage(
   file: File,
   moduleId: string,
   chapterId?: string | null
 ): Promise<string> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const ext = ALLOWED_IMAGE_TYPES[file.type];
+  if (!ext) throw new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
   const filePath = `${moduleId}/${chapterId || 'general'}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage

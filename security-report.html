@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KasrLearnHub — Security Fixes Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #1a1a2e;
+      background: #f7f8fc;
+      padding: 48px 32px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 40px 48px;
+      margin-bottom: 40px;
+    }
+    .header .tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      color: #a8d8ea;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .header p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.6;
+    }
+    .header .meta {
+      display: flex;
+      gap: 32px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+    .header .meta-item label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.45);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .header .meta-item span {
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
+    }
+
+    /* Summary bar */
+    .summary {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .summary-card {
+      flex: 1;
+      background: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .summary-card .number {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .summary-card .label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .summary-card.red .number { color: #e53e3e; }
+    .summary-card.orange .number { color: #dd6b20; }
+    .summary-card.green .number { color: #38a169; }
+
+    /* Section title */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #888;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #eee;
+    }
+
+    /* Finding card */
+    .finding {
+      background: white;
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      border-left: 5px solid #ccc;
+      page-break-inside: avoid;
+    }
+    .finding.critical { border-left-color: #e53e3e; }
+    .finding.high     { border-left-color: #dd6b20; }
+    .finding.skipped  { border-left-color: #a0aec0; opacity: 0.75; }
+
+    .finding-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .finding-header h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a1a2e;
+      line-height: 1.4;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge.critical { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; }
+    .badge.high     { background: #fffaf0; color: #dd6b20; border: 1px solid #feebc8; }
+    .badge.fixed    { background: #f0fff4; color: #38a169; border: 1px solid #c6f6d5; }
+    .badge.skipped  { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }
+
+    .finding-section {
+      margin-top: 14px;
+    }
+    .finding-section h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #999;
+      margin-bottom: 6px;
+    }
+    .finding-section p {
+      font-size: 14px;
+      color: #4a4a6a;
+      line-height: 1.7;
+    }
+
+    .scenario-box {
+      background: #fff8f0;
+      border: 1px solid #feebc8;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 14px;
+    }
+    .scenario-box h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #c05621;
+      margin-bottom: 8px;
+    }
+    .scenario-box p {
+      font-size: 14px;
+      color: #652b19;
+      line-height: 1.7;
+    }
+
+    .fix-box {
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 14px;
+    }
+    .fix-box h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #276749;
+      margin-bottom: 8px;
+    }
+    .fix-box p {
+      font-size: 14px;
+      color: #1c4532;
+      line-height: 1.7;
+    }
+
+    .divider {
+      height: 1px;
+      background: #eee;
+      margin: 36px 0;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+      color: #aaa;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .finding { box-shadow: none; border: 1px solid #ddd; border-left: 5px solid; }
+      .finding.critical { border-left-color: #e53e3e; }
+      .finding.high     { border-left-color: #dd6b20; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="tag">Confidential</div>
+    <h1>Security Fixes Report</h1>
+    <p>This report summarises the security vulnerabilities identified and resolved in the KasrLearnHub platform. Each issue is explained in plain language, including what could have happened if left unfixed.</p>
+    <div class="meta">
+      <div class="meta-item">
+        <label>Platform</label>
+        <span>KasrLearnHub</span>
+      </div>
+      <div class="meta-item">
+        <label>Report Date</label>
+        <span>March 25, 2026</span>
+      </div>
+      <div class="meta-item">
+        <label>Prepared By</label>
+        <span>Engineering Team</span>
+      </div>
+      <div class="meta-item">
+        <label>Status</label>
+        <span>✅ Issues Resolved</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="summary-card red">
+      <div class="number">1</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="summary-card orange">
+      <div class="number">3</div>
+      <div class="label">High</div>
+    </div>
+    <div class="summary-card green">
+      <div class="number">3</div>
+      <div class="label">Fixed</div>
+    </div>
+  </div>
+
+  <div class="section-title">Security Findings &amp; Resolutions</div>
+
+  <!-- Finding 1 -->
+  <div class="finding critical">
+    <div class="finding-header">
+      <h2>1. Malicious Code Could Be Injected Into the Print Feature</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="badge critical">Critical</span>
+        <span class="badge fixed">✓ Fixed</span>
+      </div>
+    </div>
+
+    <div class="finding-section">
+      <h3>What Was the Problem</h3>
+      <p>The platform has a "Print" button on study documents that opens a printable version of the content. The way this worked, the document's title and content were copied directly into a new browser window without any safety checks. This meant that if a document contained hidden malicious code, that code would run automatically when anyone clicked Print.</p>
+    </div>
+
+    <div class="scenario-box">
+      <h3>Real-World Impact — What Could Have Happened</h3>
+      <p>An attacker with admin access (or who had somehow inserted content into the platform) could craft a document with a specially designed title or body. The moment any student or staff member clicked the Print button on that document, the hidden code would silently run in their browser — stealing their login session, accessing their personal data, or performing actions on their behalf without their knowledge. This is known as a Cross-Site Scripting (XSS) attack.</p>
+    </div>
+
+    <div class="fix-box">
+      <h3>What Was Fixed</h3>
+      <p>The print feature was rewritten to build the printable page safely using browser-native methods that never interpret text as code. The document title is now always treated as plain text, and the content is cloned from the already-rendered page with any executable elements removed before printing.</p>
+    </div>
+  </div>
+
+  <!-- Finding 2 -->
+  <div class="finding high">
+    <div class="finding-header">
+      <h2>2. Access Requests Could Be Forged as Already Approved</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="badge high">High</span>
+        <span class="badge fixed">✓ Fixed</span>
+      </div>
+    </div>
+
+    <div class="finding-section">
+      <h3>What Was the Problem</h3>
+      <p>The platform has a public form where new users can submit an access request to join KasrLearnHub. The database rule that controls this form had no restrictions on what values could be submitted — it simply allowed anyone to insert any data. This included fields that should only be set by administrators, such as the request status and who reviewed it.</p>
+    </div>
+
+    <div class="scenario-box">
+      <h3>Real-World Impact — What Could Have Happened</h3>
+      <p>Anyone with basic technical knowledge (no login required) could have submitted an access request directly to the database marking it as already "approved" and stamped with a fake admin reviewer. This would bypass the entire admin review process, potentially granting platform access to unauthorised individuals without any administrator ever seeing or approving the request. It could also be used to flood the admin inbox with thousands of fake requests, making it impossible to find genuine ones.</p>
+    </div>
+
+    <div class="fix-box">
+      <h3>What Was Fixed</h3>
+      <p>The database rule was updated to enforce that all new access requests must arrive in a "pending" state, with no reviewer assigned and no review date set. It is now impossible to submit a request that is already marked as approved or that pretends an admin has already reviewed it. Only an authenticated administrator can change the status of a request.</p>
+    </div>
+  </div>
+
+  <!-- Finding 3 -->
+  <div class="finding high">
+    <div class="finding-header">
+      <h2>3. Any User Could See Private Video Watch Statistics</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="badge high">High</span>
+        <span class="badge fixed">✓ Fixed</span>
+      </div>
+    </div>
+
+    <div class="finding-section">
+      <h3>What Was the Problem</h3>
+      <p>The platform tracks which students have watched each video lecture. There is a database view (a saved query) called "video view counts" that shows how many unique students have watched each video. This view was configured to bypass the platform's normal access controls — meaning it ran with administrator-level permissions regardless of who was asking for the data.</p>
+    </div>
+
+    <div class="scenario-box">
+      <h3>Real-World Impact — What Could Have Happened</h3>
+      <p>Any logged-in student could query this view and retrieve aggregated viewing statistics across the entire student population — data that should only be visible to administrators and educators. While this particular view only exposed counts rather than individual names, the underlying misconfiguration (bypassing access controls entirely) is a serious architectural risk. If the view were ever expanded to include more detailed data, it could expose sensitive student activity information to peers.</p>
+    </div>
+
+    <div class="fix-box">
+      <h3>What Was Fixed</h3>
+      <p>The view was recreated with the correct security setting so that it now respects the platform's standard access controls. Administrators still see full viewing statistics as before. Regular students are only shown data relevant to their own activity.</p>
+    </div>
+  </div>
+
+  <!-- Finding 4 -->
+  <div class="finding high">
+    <div class="finding-header">
+      <h2>4. Dangerous Files Could Be Uploaded Disguised as Images</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="badge high">High</span>
+        <span class="badge fixed">✓ Fixed</span>
+      </div>
+    </div>
+
+    <div class="finding-section">
+      <h3>What Was the Problem</h3>
+      <p>Administrators can upload images for OSCE (clinical examination) questions. The platform was only checking the file's name extension (e.g., ".png") to decide whether to allow the upload — it was not checking what the file actually contained. A file's extension can be freely renamed by anyone.</p>
+    </div>
+
+    <div class="scenario-box">
+      <h3>Real-World Impact — What Could Have Happened</h3>
+      <p>A malicious administrator, or an admin account that had been compromised, could rename a harmful file (such as a virus or malware) to end in ".png" and upload it to the platform. That file would then be stored on the platform's servers and potentially served to students. If a student downloaded or opened it, their device could be infected. Additionally, certain valid image formats (like SVG) can contain embedded scripts — these were also accepted, which could enable a different type of attack where simply viewing an "image" triggers malicious code.</p>
+    </div>
+
+    <div class="fix-box">
+      <h3>What Was Fixed</h3>
+      <p>The upload process now validates the actual file type (as reported by the browser's content detection) against a strict allowlist of safe image formats: JPEG, PNG, GIF, and WebP. Renaming a harmful file to ".png" will no longer work — the platform checks what the file really is, not just what it's called. SVG files are explicitly excluded due to their ability to carry executable code.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>This report is confidential and intended for internal use only.</p>
+    <p>KasrLearnHub Engineering Team &nbsp;·&nbsp; March 2026</p>
+  </div>
+
+</body>
+</html>
