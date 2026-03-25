@@ -445,6 +445,7 @@ function getEmptyDashboard(): DashboardData {
     chapters: [],
     insights: [],
     suggestions: [],
+    studyPlan: null,
     weakChapters: [],
     confidenceInsight: null,
   };
