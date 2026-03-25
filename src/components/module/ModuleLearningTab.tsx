@@ -56,7 +56,7 @@ import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleBooks, useDeleteBook, useReorderBooks, ModuleBook } from '@/hooks/useModuleBooks';
 import { useDeleteChapter } from '@/hooks/useChapterManagement';
 import { useTopics } from '@/hooks/useTopics';
-import { CROSS_MODULE_BOOKS } from '@/lib/crossModuleBooks';
+import { CROSS_MODULE_BOOKS, resolveCrossModuleBook } from '@/lib/crossModuleBooks';
 import { BookFormModal } from './BookFormModal';
 import { ChapterFormModal } from './ChapterFormModal';
 import { PharmacologyTopicsView } from './PharmacologyTopicsView';
