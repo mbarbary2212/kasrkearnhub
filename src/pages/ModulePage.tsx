@@ -164,6 +164,7 @@ export default function ModulePage() {
 
   // Section navigation items
   const sectionNav = [
+    ...(isStudent && hasVisitedModule ? [{ id: 'dashboard' as ModuleSection, label: 'Dashboard', mobileLabel: 'Home', icon: Home }] : []),
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
     { id: 'connect' as ModuleSection, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
     { id: 'formative' as ModuleSection, label: 'Formative Assessment', mobileLabel: 'Formative', icon: ClipboardCheck },
