@@ -46,6 +46,8 @@ const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage")
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
+const ConnectPage = lazy(() => import("./pages/ConnectPage"));
+const FormativePage = lazy(() => import("./pages/FormativePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
