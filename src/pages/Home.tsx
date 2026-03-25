@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight, Play, ArrowRight } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -18,6 +18,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { useDueCards } from '@/hooks/useFSRS';
+import { useBadgeStats } from '@/hooks/useBadges';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
