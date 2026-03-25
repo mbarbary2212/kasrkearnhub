@@ -160,6 +160,7 @@ const App = () => {
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/learning" element={<ProtectedRoute><RouteErrorBoundary><LearningEmptyState /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/customize-content" element={<ProtectedRoute><RouteErrorBoundary><CustomizeContentPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
               </Suspense>
