@@ -45,7 +45,7 @@ export async function updateChapterMetrics(update: MetricsUpdate): Promise<void>
         .eq('chapter_id', update.chapterId)
         .maybeSingle();
 
-      const prev = existing as { mcq_attempts: number; mcq_correct: number; mcq_wrong: number } | null;
+      const prev = existing as unknown as { mcq_attempts: number; mcq_correct: number; mcq_wrong: number } | null;
       const newAttempts = (prev?.mcq_attempts ?? 0) + 1;
       const newCorrect = (prev?.mcq_correct ?? 0) + (update.isCorrect ? 1 : 0);
       const newWrong = (prev?.mcq_wrong ?? 0) + (update.isCorrect ? 0 : 1);
