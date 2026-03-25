@@ -4369,6 +4369,66 @@ export type Database = {
           },
         ]
       }
+      student_last_position: {
+        Row: {
+          activity_position: Json | null
+          book_label: string | null
+          chapter_id: string | null
+          chapter_title: string | null
+          id: string
+          module_id: string | null
+          module_name: string | null
+          module_slug: string | null
+          tab: string | null
+          updated_at: string
+          user_id: string
+          year_number: number | null
+        }
+        Insert: {
+          activity_position?: Json | null
+          book_label?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          module_slug?: string | null
+          tab?: string | null
+          updated_at?: string
+          user_id: string
+          year_number?: number | null
+        }
+        Update: {
+          activity_position?: Json | null
+          book_label?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          module_slug?: string | null
+          tab?: string | null
+          updated_at?: string
+          user_id?: string
+          year_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_last_position_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_last_position_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_module_preferences: {
         Row: {
           id: string

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTrackPosition } from '@/hooks/useTrackPosition';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -234,6 +235,17 @@ export default function ChapterPage() {
   useEffect(() => {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
+
+  // Track position for resume functionality
+  useTrackPosition({
+    year_number: null,
+    module_id: contentModuleId ?? null,
+    module_name: module?.name ?? null,
+    module_slug: module?.slug ?? null,
+    chapter_id: chapterId ?? null,
+    chapter_title: chapter?.title ?? null,
+    tab: activeSection,
+  });
   
   // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -12,6 +12,7 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
@@ -24,9 +25,14 @@ import {
   MessageCircle,
   Megaphone,
   Mail,
+  Play,
+  ArrowRight,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTrackPosition } from '@/hooks/useTrackPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 
@@ -57,6 +63,14 @@ export default function ModulePage() {
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
 
+  // Track position for resume functionality
+  useTrackPosition({
+    year_number: year?.number ?? null,
+    module_id: actualModuleId ?? null,
+    module_name: module?.name ?? null,
+    module_slug: module?.slug ?? null,
+  });
+
   useEffect(() => {
     if (module?.name) {
       Sentry.addBreadcrumb({
@@ -83,6 +97,10 @@ export default function ModulePage() {
   // Fetch year modules for Study Coach
   const { data: yearModules = [] } = useModules(module?.year_id);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+
+  // Fetch last position for Continue card (students only)
+  const { data: lastPos } = useLastPosition();
+  const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
 
   // Dashboard data for Study Coach tabs (Overview & Unlocks)
   const { data: coachDashboard } = useStudentDashboard({
@@ -130,7 +148,45 @@ export default function ModulePage() {
               </>
             )}
           </div>
+          {isStudent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                sessionStorage.setItem('skipAutoLogin', 'true');
+                navigate('/');
+              }}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+              Change module
+            </Button>
+          )}
         </div>
+
+        {/* Continue Where You Left Off */}
+        {showContinueCard && lastPos && (
+          <div
+            className="rounded-lg border border-primary/20 bg-primary/5 p-3 cursor-pointer
+                       hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
+            onClick={() => navigate(buildResumeUrl(lastPos))}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Play className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {buildResumeLabel(lastPos)}
+                  {' · '}
+                  {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </div>
+        )}
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight, Play, ArrowRight } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
@@ -46,16 +47,30 @@ export default function Home() {
 
     const checkAutoRedirect = async () => {
       try {
-        // Priority 1: Check for stored lastPath (resume functionality)
+        // Priority 1: Check for stored lastPath (resume functionality via localStorage)
         const lastPath = getLastPath();
         if (lastPath && isValidResumePath(lastPath, isAdmin)) {
-          // Clear the stored path to prevent loops if the route is invalid
           clearLastPath();
           navigate(lastPath, { replace: true });
           return;
         }
 
-        // Priority 2: Fall back to preferred year auto-login
+        // Priority 2: Check DB-backed last position (students only)
+        if (!isAdmin) {
+          const { data: posData } = await supabase
+            .from('student_last_position')
+            .select('module_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (posData?.module_id) {
+            // Navigate to their module — the Continue card will show there
+            navigate(`/module/${posData.module_id}`, { replace: true });
+            return;
+          }
+        }
+
+        // Priority 3: Fall back to preferred year auto-login
         const { data } = await supabase
           .from('profiles')
           .select('preferred_year_id, auto_login_to_year')
@@ -124,11 +139,15 @@ export default function Home() {
 // Logged in user home page - shows year selection for ALL users
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile } = useAuthContext();
+  const { profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const [mindMapOpen, setMindMapOpen] = useState(false);
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+
+  // Fetch the student's last saved position
+  const { data: lastPos } = useLastPosition();
 
   // Glow color mapping per year
   const YEAR_GLOW: Record<number, { base: string; hover: string; iconBg: string }> = {
@@ -284,6 +303,34 @@ function LoggedInHome() {
           Select your academic year to continue
         </p>
       </section>
+
+      {/* Continue Where You Left Off — students only */}
+      {isStudent && lastPos && lastPos.module_id && (
+        <section className="max-w-3xl mx-auto">
+          <div
+            className="relative rounded-xl border border-primary/20 bg-primary/5 p-4 md:p-5 cursor-pointer
+                       hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
+            onClick={() => navigate(buildResumeUrl(lastPos))}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0
+                              group-hover:bg-primary/20 transition-colors">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {buildResumeLabel(lastPos)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
+                </p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Year Selection */}
       <section className="max-w-3xl mx-auto">
