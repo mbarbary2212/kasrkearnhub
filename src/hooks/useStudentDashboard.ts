@@ -435,14 +435,12 @@ function calculateConsistencyScore(
   return Math.round(fourteenDayScore + sevenDayScore);
 }
 
-function calculateStudyStreak(userProgress: { completed_at: string | null }[]): number {
-  if (userProgress.length === 0) return 0;
+function calculateStudyStreak(activityTimestamps: string[]): number {
+  if (activityTimestamps.length === 0) return 0;
 
   // Get unique dates with activity
   const activityDates = new Set(
-    userProgress
-      .filter(p => p.completed_at)
-      .map(p => new Date(p.completed_at!).toDateString())
+    activityTimestamps.map(ts => new Date(ts).toDateString())
   );
 
   if (activityDates.size === 0) return 0;
