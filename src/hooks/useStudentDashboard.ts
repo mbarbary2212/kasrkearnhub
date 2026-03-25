@@ -339,11 +339,48 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // Generate insights
       const insights = generateInsights(chapterStatuses);
 
-      // Generate smart suggestions with reasons and priority scoring
-      const suggestions = generateSuggestions(chapterStatuses, lectures, testProgress);
+      // ============================================================================
+      // Use real chapter metrics for suggestions and weak chapters
+      // ============================================================================
+      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
+        .filter(m => moduleIds.includes(m.module_id));
 
-      // Detect weak chapters (MCQ accuracy < 60% with at least 3 attempts)
-      const weakChapters = detectWeakChapters(chapterStatuses, testProgress);
+      // Build chapter info for suggestion builder
+      const chapterInfos = chapters.map(ch => ({
+        id: ch.id,
+        title: ch.title,
+        moduleId: ch.module_id,
+        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
+        hasLectures: lectures.some(l => l.chapter_id === ch.id),
+        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
+      }));
+
+      // Build suggestions from real metrics
+      const dashboardActions = buildDashboardSuggestions({
+        metrics: realMetrics,
+        chapters: chapterInfos,
+      });
+
+      // Convert DashboardAction[] to SuggestedItem[] for backward compat
+      const suggestions: SuggestedItem[] = dashboardActions.map(a => ({
+        type: (a.type === 'resume' || a.type === 'review' ? 'read' : a.type) as SuggestedItem['type'],
+        title: a.title,
+        chapterTitle: a.chapterTitle,
+        estimatedMinutes: a.estimatedMinutes,
+        chapterId: a.chapterId,
+        moduleId: a.moduleId,
+        reason: a.reason,
+        isPrimary: a.isPrimary,
+        subtab: a.subtab,
+      }));
+
+      // Get weak chapters from real metrics
+      const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
+      const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
+
+      // Use real aggregate readiness if available
+      const metricsReadiness = calculateAggregateReadiness(realMetrics);
+      const finalExamReadiness = realMetrics.length > 0 ? metricsReadiness : examReadiness;
 
       // Get selected module name
       const selectedModuleName = filters?.moduleId 
@@ -351,7 +388,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         : undefined;
 
       return {
-        examReadiness,
+        examReadiness: finalExamReadiness,
         coveragePercent,
         coverageCompleted: completedItems,
         coverageTotal: totalItems,
