@@ -122,9 +122,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const displayName = profile?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
+  const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-transparent">
+    <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
