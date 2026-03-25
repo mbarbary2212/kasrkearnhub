@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles
+  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles, SlidersHorizontal
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -29,6 +30,7 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -185,8 +187,36 @@ export function StudentSidebar() {
               </Tooltip>
             ) : btn;
 
-            // Render sub-items under Learning when on chapter/topic page
-            if (hasChildren && active && !collapsed) {
+            if (hasChildren && active) {
+              if (collapsed) {
+                // Show sub-items as tooltips in collapsed mode
+                return (
+                  <div key={item.label} className="flex flex-col gap-0.5">
+                    {wrappedBtn}
+                    {item.children!.map((sub) => {
+                      const subActive = isSubActive(sub);
+                      const colors = learningSubColors[sub.sectionId];
+                      return (
+                        <Tooltip key={sub.sectionId}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleSubNav(sub)}
+                              className={cn(
+                                'flex items-center justify-center rounded-md p-1.5 transition-colors',
+                                'hover:bg-muted hover:text-foreground',
+                                subActive ? cn(colors?.active, 'font-semibold') : 'text-muted-foreground'
+                              )}
+                            >
+                              <sub.icon className={cn("h-3.5 w-3.5 shrink-0", subActive ? colors?.icon : '')} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{sub.label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                );
+              }
               return (
                 <div key={item.label} className="flex flex-col">
                   {wrappedBtn}
@@ -219,9 +249,36 @@ export function StudentSidebar() {
         </TooltipProvider>
       </nav>
 
-      {/* Settings pinned to bottom */}
-      <div className="px-2 pb-3 mt-auto">
+      {/* Settings + Customize View pinned to bottom */}
+      <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
         <TooltipProvider delayDuration={0}>
+          {/* Customize View - only on chapter/topic pages */}
+          {isChapterOrTopicPage && (() => {
+            const custBtn = (
+              <button
+                onClick={() => setCustomizeOpen(true)}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
+                  'hover:bg-muted hover:text-foreground text-muted-foreground',
+                  collapsed && 'justify-center px-0'
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">Customize View</span>}
+              </button>
+            );
+            if (collapsed) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{custBtn}</TooltipTrigger>
+                  <TooltipContent side="right">Customize View</TooltipContent>
+                </Tooltip>
+              );
+            }
+            return custBtn;
+          })()}
+
+          {/* Settings */}
           {(() => {
             const active = location.pathname === '/student-settings';
             const btn = (
@@ -250,6 +307,9 @@ export function StudentSidebar() {
           })()}
         </TooltipProvider>
       </div>
+
+      {/* Customize View Sheet */}
+      <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
     </aside>
   );
 }
