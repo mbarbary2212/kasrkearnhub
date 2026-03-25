@@ -143,6 +143,16 @@ function LoggedInHome() {
     }
   }, [preferredYearId, years, selectedYearId]);
 
+  // Sync active year to header context
+  useEffect(() => {
+    if (selectedYearId && years) {
+      const year = years.find(y => y.id === selectedYearId);
+      if (year) {
+        setActiveYear({ yearNumber: year.number, yearName: year.name });
+      }
+    }
+  }, [selectedYearId, years, setActiveYear]);
+
   // Modules for selected year
   const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
   const moduleIds = useMemo(() => modules?.map(m => m.id) || [], [modules]);
