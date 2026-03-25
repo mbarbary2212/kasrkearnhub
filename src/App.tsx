@@ -47,6 +47,7 @@ const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage")
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
+const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
 const ConnectPage = lazy(() => import("./pages/ConnectPage"));
 const FormativePage = lazy(() => import("./pages/FormativePage"));
 const LearningEmptyState = lazy(() => import("./pages/LearningEmptyState"));
@@ -159,6 +160,7 @@ const App = () => {
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/learning" element={<ProtectedRoute><RouteErrorBoundary><LearningEmptyState /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/customize-content" element={<ProtectedRoute><RouteErrorBoundary><CustomizeContentPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
               </Suspense>

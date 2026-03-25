@@ -81,7 +81,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
-import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
+
 import { usePresence } from '@/contexts/PresenceContext';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
@@ -332,7 +332,7 @@ export default function TopicDetailPage() {
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
   const { data: studentPrefs } = useStudentModulePreferences();
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  
 
   const resourcesTabs = useMemo(() => {
     if (canManageContent) return allResourcesTabs;
@@ -443,30 +443,19 @@ export default function TopicDetailPage() {
               }}
             />
           )}
-          {/* Customize View button for students */}
+          {/* Customize Content - mobile only (desktop uses sidebar) */}
           {!canManageContent && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCustomizeOpen(true)}
-                className="md:hidden text-muted-foreground hover:text-foreground"
-                title="Customize View"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCustomizeOpen(true)}
-                className="hidden md:inline-flex gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                Customize View
-              </Button>
-            </>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/customize-content')}
+              className="md:hidden text-muted-foreground hover:text-foreground"
+              title="Customize Content"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
           )}
         </div>
-        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Topic Progress Bar - hidden for admins */}
         {!canManageContent && (

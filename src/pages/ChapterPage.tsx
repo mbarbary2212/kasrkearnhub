@@ -95,7 +95,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
-import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
+
 import { cn } from '@/lib/utils';
 
 
@@ -425,7 +425,7 @@ export default function ChapterPage() {
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
   const { data: studentPrefs } = useStudentModulePreferences();
-  const [customizeOpen, setCustomizeOpen] = useState(false);
+  
 
   const resourcesTabs = useMemo(() => {
     if (showAllTabs) return allResourcesTabs;
@@ -561,20 +561,19 @@ export default function ChapterPage() {
               }}
             />
           )}
-          {/* Customize View - mobile only (desktop uses sidebar) */}
+          {/* Customize Content - mobile only (desktop uses sidebar) */}
           {!canManageContent && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCustomizeOpen(true)}
+              onClick={() => navigate('/customize-content')}
               className="md:hidden text-muted-foreground hover:text-foreground"
-              title="Customize View"
+              title="Customize Content"
             >
               <SlidersHorizontal className="w-4 h-4" />
             </Button>
           )}
         </div>
-        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Chapter Progress Bar - hidden for admins */}
         {!canManageContent && (

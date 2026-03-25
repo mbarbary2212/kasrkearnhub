@@ -7,7 +7,6 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -30,7 +29,6 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -252,14 +250,16 @@ export function StudentSidebar() {
       {/* Customize Content + Settings pinned to bottom */}
       <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
         <TooltipProvider delayDuration={0}>
-          {/* Customize Content - always visible */}
+          {/* Customize Content */}
           {(() => {
+            const active = location.pathname === '/customize-content';
             const custBtn = (
               <button
-                onClick={() => setCustomizeOpen(true)}
+                onClick={() => navigate('/customize-content')}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
-                  'hover:bg-muted hover:text-foreground text-muted-foreground',
+                  'hover:bg-muted hover:text-foreground',
+                  active ? 'bg-muted text-foreground' : 'text-muted-foreground',
                   collapsed && 'justify-center px-0'
                 )}
               >
@@ -307,9 +307,6 @@ export function StudentSidebar() {
           })()}
         </TooltipProvider>
       </div>
-
-      {/* Customize Content Sheet */}
-      <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
     </aside>
   );
 }
