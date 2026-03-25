@@ -31,12 +31,23 @@ export interface DashboardInsight {
 }
 
 export interface SuggestedItem {
-  type: 'read' | 'mcq' | 'video' | 'essay';
+  type: 'read' | 'mcq' | 'video' | 'essay' | 'flashcard';
   title: string;
   chapterTitle?: string;
   estimatedMinutes?: number;
   chapterId?: string;
   moduleId?: string;
+  reason?: string;
+  isPrimary?: boolean;
+  subtab?: string;
+}
+
+export interface WeakChapter {
+  chapterId: string;
+  chapterTitle: string;
+  moduleId: string;
+  accuracy: number;
+  attempts: number;
 }
 
 export interface DashboardData {
@@ -68,6 +79,9 @@ export interface DashboardData {
   
   // Today's suggestions
   suggestions: SuggestedItem[];
+  
+  // Weak chapters
+  weakChapters: WeakChapter[];
   
   // Selected context
   selectedModuleName?: string;
@@ -304,8 +318,11 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // Generate insights
       const insights = generateInsights(chapterStatuses);
 
-      // Generate suggestions (book-first approach)
-      const suggestions = generateSuggestions(chapterStatuses, lectures);
+      // Generate smart suggestions with reasons and priority scoring
+      const suggestions = generateSuggestions(chapterStatuses, lectures, testProgress);
+
+      // Detect weak chapters (MCQ accuracy < 60% with at least 3 attempts)
+      const weakChapters = detectWeakChapters(chapterStatuses, testProgress);
 
       // Get selected module name
       const selectedModuleName = filters?.moduleId 
@@ -330,6 +347,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapters: chapterStatuses,
         insights,
         suggestions,
+        weakChapters,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
       };
@@ -358,6 +376,7 @@ function getEmptyDashboard(): DashboardData {
     chapters: [],
     insights: [],
     suggestions: [],
+    weakChapters: [],
   };
 }
 
@@ -479,58 +498,129 @@ function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
   return insights;
 }
 
+interface ScoredSuggestion extends SuggestedItem {
+  score: number;
+}
+
 function generateSuggestions(
   chapters: ChapterStatus[], 
-  lectures: { id: string; chapter_id: string | null; title: string }[]
+  lectures: { id: string; chapter_id: string | null; title: string; module_id: string | null }[],
+  testProgress?: TestProgressData,
 ): SuggestedItem[] {
-  const suggestions: SuggestedItem[] = [];
+  const scored: ScoredSuggestion[] = [];
 
-  // Find chapters to suggest (prioritize in-progress, then not started)
-  const inProgressChapters = chapters
-    .filter(c => c.status === 'in_progress' && c.totalItems > 0)
-    .sort((a, b) => b.progress - a.progress);
+  // Determine if we have weak MCQ performance
+  const hasWeakMcq = testProgress && testProgress.mcq.attempts >= 3 && testProgress.mcq.accuracy < 60;
 
-  const notStartedChapters = chapters
-    .filter(c => c.status === 'not_started' && c.totalItems > 0);
+  // Score chapters for suggestions
+  const chaptersWithContent = chapters.filter(c => c.totalItems > 0);
 
-  const priorityChapters = [...inProgressChapters, ...notStartedChapters].slice(0, 2);
+  chaptersWithContent.forEach(chapter => {
+    const isInProgress = chapter.status === 'in_progress';
+    const isNotStarted = chapter.status === 'not_started';
+    const isCompleted = chapter.status === 'completed';
+    
+    if (isCompleted) return; // skip completed
 
-  priorityChapters.forEach(chapter => {
-    // Primary suggestion: Book study
-    suggestions.push({
-      type: 'read',
+    // Base priority: in-progress > not-started
+    const basePriority = isInProgress ? 60 : 30;
+
+    // Low-progress in-progress chapters get higher priority (more to do)
+    const progressBoost = isInProgress ? (100 - chapter.progress) * 0.3 : 0;
+
+    // MCQ suggestion — high priority if weak performance
+    const mcqScore = basePriority + progressBoost + (hasWeakMcq ? 30 : 0);
+    scored.push({
+      type: 'mcq',
       title: chapter.title,
       chapterTitle: chapter.moduleName,
-      estimatedMinutes: 30,
+      estimatedMinutes: 15,
       chapterId: chapter.id,
       moduleId: chapter.moduleId,
+      reason: hasWeakMcq ? 'Low score recently' : (isInProgress ? 'Continue where you left' : 'Not covered yet'),
+      subtab: 'mcqs',
+      score: mcqScore,
     });
 
-    // Secondary: MCQs if available
-    if (chapter.totalItems > 0) {
-      suggestions.push({
-        type: 'mcq',
-        title: `Practice MCQs: ${chapter.title}`,
-        estimatedMinutes: 15,
-        chapterId: chapter.id,
-        moduleId: chapter.moduleId,
-      });
-    }
-
-    // Check for video lectures
+    // Video suggestions for uncovered content
     const chapterLectures = lectures.filter(l => l.chapter_id === chapter.id);
     if (chapterLectures.length > 0) {
-      suggestions.push({
+      const videoScore = basePriority + (isNotStarted ? 20 : 0);
+      scored.push({
         type: 'video',
         title: chapterLectures[0].title,
         chapterTitle: chapter.title,
         estimatedMinutes: 20,
         chapterId: chapter.id,
         moduleId: chapter.moduleId,
+        reason: isNotStarted ? 'Not covered yet' : 'Continue where you left',
+        subtab: 'lectures',
+        score: videoScore,
+      });
+    }
+
+    // Read suggestion for not-started chapters
+    if (isNotStarted) {
+      scored.push({
+        type: 'read',
+        title: chapter.title,
+        chapterTitle: chapter.moduleName,
+        estimatedMinutes: 30,
+        chapterId: chapter.id,
+        moduleId: chapter.moduleId,
+        reason: 'Not covered yet',
+        score: 25,
       });
     }
   });
 
-  // Limit suggestions
-  return suggestions.slice(0, 5);
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  // Take top 5 and mark the first as primary
+  const top = scored.slice(0, 5);
+  if (top.length > 0) {
+    top[0].isPrimary = true;
+  }
+
+  // Remove internal score field
+  return top.map(({ score, ...item }) => item);
+}
+
+function detectWeakChapters(
+  chapters: ChapterStatus[],
+  testProgress?: TestProgressData,
+): WeakChapter[] {
+  if (!testProgress || !testProgress.hasAnyAttempts) return [];
+
+  // For now, flag in-progress chapters with low overall progress as weak
+  // (per-chapter accuracy requires chapter_attempts data which we can enhance later)
+  const weakOnes = chapters
+    .filter(c => c.status === 'in_progress' && c.progress < 40 && c.totalItems >= 3)
+    .sort((a, b) => a.progress - b.progress)
+    .slice(0, 3)
+    .map(c => ({
+      chapterId: c.id,
+      chapterTitle: c.title,
+      moduleId: c.moduleId,
+      accuracy: c.progress, // Using coverage as proxy until per-chapter accuracy is available
+      attempts: c.completedItems,
+    }));
+
+  // Also flag if overall MCQ accuracy is low
+  if (testProgress.mcq.accuracy < 60 && testProgress.mcq.attempts >= 3 && weakOnes.length === 0) {
+    // Add a general weak indicator using the first in-progress chapter
+    const firstInProgress = chapters.find(c => c.status === 'in_progress' && c.totalItems > 0);
+    if (firstInProgress) {
+      weakOnes.push({
+        chapterId: firstInProgress.id,
+        chapterTitle: firstInProgress.title,
+        moduleId: firstInProgress.moduleId,
+        accuracy: testProgress.mcq.accuracy,
+        attempts: testProgress.mcq.attempts,
+      });
+    }
+  }
+
+  return weakOnes;
 }

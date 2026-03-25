@@ -6,6 +6,7 @@ import { DashboardProgressMap } from './DashboardProgressMap';
 import { DashboardWeeklySummary } from './DashboardWeeklySummary';
 import { DashboardNeedsPractice } from './DashboardNeedsPractice';
 import { DashboardTestProgress } from './DashboardTestProgress';
+import { DashboardWeakTopics } from './DashboardWeakTopics';
 import { BadgesSection } from './BadgesSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
@@ -68,12 +69,23 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
       {/* Today's Suggested Plan */}
       <DashboardTodayPlan 
         suggestions={dashboard.suggestions}
-        onNavigate={(moduleId, chapterId) => {
+        onNavigate={(moduleId, chapterId, tab, subtab) => {
           if (chapterId && moduleId) {
-            onNavigate(moduleId, chapterId);
+            const subtabParam = subtab ? `&subtab=${subtab}` : '';
+            onNavigate(moduleId, chapterId, tab);
           }
         }}
       />
+
+      {/* Weak Topics Alert */}
+      {dashboard.weakChapters && dashboard.weakChapters.length > 0 && (
+        <DashboardWeakTopics
+          weakChapters={dashboard.weakChapters}
+          onNavigate={(moduleId, chapterId, tab) => {
+            onNavigate(moduleId, chapterId, tab || 'practice');
+          }}
+        />
+      )}
 
       {/* Test Performance Indicators with Coach Guidance */}
       <DashboardTestProgress moduleId={moduleId} />

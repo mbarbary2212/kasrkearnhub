@@ -5,8 +5,9 @@ import { usePresence } from '@/contexts/PresenceContext';
 import { useDueCards } from '@/hooks/useFSRS';
 import { LastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { DashboardData, SuggestedItem } from '@/hooks/useStudentDashboard';
-import { ArrowRight, BookOpen, FlaskConical, PenLine, Play as PlayIcon } from 'lucide-react';
+import { ArrowRight, BookOpen, FlaskConical, PenLine, Play as PlayIcon, Video, GalleryHorizontal, BookOpenCheck, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 
 interface ModuleDashboardProps {
   lastPosition: LastPosition | null;
@@ -31,6 +32,14 @@ const taskIcon: Record<string, React.ElementType> = {
   mcq: FlaskConical,
   video: PlayIcon,
   essay: PenLine,
+  flashcard: GalleryHorizontal,
+};
+
+const resumeIconMap: Record<string, React.ElementType> = {
+  video: Video,
+  practice: FlaskConical,
+  flashcard: GalleryHorizontal,
+  reading: BookOpenCheck,
 };
 
 export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDashboardProps) {
@@ -45,6 +54,11 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
 
   const readiness = dashboard?.readinessResult?.examReadiness ?? 0;
   const streak = dashboard?.studyStreak ?? 0;
+  const readinessLabel = getReadinessLabel(readiness);
+
+  // Resume icon
+  const resumeType = lastPosition ? getResumeIconName(lastPosition.tab, lastPosition.activity_position?.sub_tab as string | null) : 'reading';
+  const ResumeIcon = resumeIconMap[resumeType] || PlayIcon;
 
   // Build suggestions (max 3)
   const suggestions: SuggestedItem[] = (dashboard?.suggestions ?? []).slice(0, 3);
@@ -67,7 +81,7 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-accent-foreground/10 flex items-center justify-center shrink-0">
-              <PlayIcon className="w-5 h-5" />
+              <ResumeIcon className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm">Continue</p>
@@ -95,7 +109,7 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
         {/* Readiness */}
         <Card className="p-3 text-center">
           <p className={cn("text-lg font-bold text-accent-foreground")}>📊 {Math.round(readiness)}%</p>
-          <p className="text-xs text-muted-foreground">Readiness</p>
+          <p className="text-xs text-muted-foreground">{readinessLabel}</p>
         </Card>
       </div>
 
@@ -132,8 +146,11 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
                   className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => {
                     if (item.chapterId && item.moduleId) {
-                      const tab = item.type === 'mcq' ? 'practice' : item.type === 'video' ? 'resources' : 'resources';
-                      navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}`);
+                      const tab = item.type === 'mcq' || item.type === 'essay' ? 'practice' : item.type === 'video' ? 'resources' : 'resources';
+                      const subtab = item.subtab ? `&subtab=${item.subtab}` : '';
+                      navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}${subtab}`);
+                    } else if (item.type === 'flashcard') {
+                      navigate('/review/flashcards');
                     }
                   }}
                 >
@@ -142,8 +159,8 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.title}</p>
-                    {item.chapterTitle && (
-                      <p className="text-xs text-muted-foreground truncate">{item.chapterTitle}</p>
+                    {item.reason && (
+                      <p className="text-xs text-muted-foreground truncate">{item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes}m` : ''}</p>
                     )}
                   </div>
                   {item.estimatedMinutes && (
