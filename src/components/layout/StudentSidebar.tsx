@@ -110,6 +110,10 @@ export function StudentSidebar() {
   };
 
   const handleNav = (item: NavItem) => {
+    if (item.sectionId === 'dashboard') {
+      navigate('/');
+      return;
+    }
     if (isModulePage && moduleId) {
       if (isChapterOrTopicPage && item.sectionId === 'learning') {
         navigate(`/module/${moduleId}?section=learning`);
