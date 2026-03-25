@@ -12,19 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, BookOpen } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen } from 'lucide-react';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
-import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
@@ -41,8 +33,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
-  const [badgesOpen, setBadgesOpen] = useState(false);
-  const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
   const { activeYear } = useActiveYear();
   const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
@@ -255,8 +245,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
 
-      {/* Achievements Panel (students only) */}
-      {!isAdmin && <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />}
     </div>
   );
 }
