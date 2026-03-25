@@ -156,9 +156,9 @@ export default function ModulePage() {
     <MainLayout>
       <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
+        {/* Header + Book pills on same row */}
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="mt-0.5 flex-shrink-0" onClick={() => navigate(`/year/${year?.number || 1}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -169,7 +169,28 @@ export default function ModulePage() {
               </>
             ) : (
               <>
-                <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
+                  {/* Book/Department pills inline with title */}
+                  {isStudent && hasMultipleBooks && activeBookLabel && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortedModuleBooks.map((book) => (
+                        <button
+                          key={book.book_label}
+                          onClick={() => handleSelectBookPill(book.book_label)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                            activeBookLabel === book.book_label
+                              ? "bg-accent text-accent-foreground"
+                              : "border border-border text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {book.description || book.book_label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {module?.description && (
                   <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                 )}
@@ -177,26 +198,6 @@ export default function ModulePage() {
             )}
           </div>
         </div>
-
-        {/* Book/Department pills at module level (students with multiple books) */}
-        {isStudent && hasMultipleBooks && activeBookLabel && (
-          <div className="flex flex-wrap gap-2">
-            {sortedModuleBooks.map((book) => (
-              <button
-                key={book.book_label}
-                onClick={() => handleSelectBookPill(book.book_label)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  activeBookLabel === book.book_label
-                    ? "bg-accent text-accent-foreground"
-                    : "border border-border text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {book.description || book.book_label}
-              </button>
-            ))}
-          </div>
-        )}
         {/* Continue Where You Left Off */}
         {showContinueCard && lastPos && (
           <div
