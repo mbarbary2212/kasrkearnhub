@@ -249,11 +249,11 @@ export function StudentSidebar() {
         </TooltipProvider>
       </nav>
 
-      {/* Settings + Customize View pinned to bottom */}
+      {/* Customize Content + Settings pinned to bottom */}
       <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
         <TooltipProvider delayDuration={0}>
-          {/* Customize View - only on chapter/topic pages */}
-          {isChapterOrTopicPage && (() => {
+          {/* Customize Content - always visible */}
+          {(() => {
             const custBtn = (
               <button
                 onClick={() => setCustomizeOpen(true)}
@@ -264,14 +264,14 @@ export function StudentSidebar() {
                 )}
               >
                 <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">Customize View</span>}
+                {!collapsed && <span className="truncate">Customize Content</span>}
               </button>
             );
             if (collapsed) {
               return (
                 <Tooltip>
                   <TooltipTrigger asChild>{custBtn}</TooltipTrigger>
-                  <TooltipContent side="right">Customize View</TooltipContent>
+                  <TooltipContent side="right">Customize Content</TooltipContent>
                 </Tooltip>
               );
             }
@@ -308,7 +308,7 @@ export function StudentSidebar() {
         </TooltipProvider>
       </div>
 
-      {/* Customize View Sheet */}
+      {/* Customize Content Sheet */}
       <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
     </aside>
   );
