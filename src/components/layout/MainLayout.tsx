@@ -57,9 +57,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   const handleYearClick = () => {
-    if (activeYear) {
-      navigate(`/year/${activeYear.yearNumber}`);
-    }
+    navigate('/years');
   };
 
   const getInitials = (name: string | null | undefined) => {
