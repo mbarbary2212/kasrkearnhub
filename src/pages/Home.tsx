@@ -304,6 +304,34 @@ function LoggedInHome() {
         </p>
       </section>
 
+      {/* Continue Where You Left Off — students only */}
+      {isStudent && lastPos && lastPos.module_id && (
+        <section className="max-w-3xl mx-auto">
+          <div
+            className="relative rounded-xl border border-primary/20 bg-primary/5 p-4 md:p-5 cursor-pointer
+                       hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
+            onClick={() => navigate(buildResumeUrl(lastPos))}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0
+                              group-hover:bg-primary/20 transition-colors">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {buildResumeLabel(lastPos)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
+                </p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Year Selection */}
       <section className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-3 md:mb-4">
