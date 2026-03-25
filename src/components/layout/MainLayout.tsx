@@ -28,7 +28,6 @@ import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
-import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 
 interface MainLayoutProps {
