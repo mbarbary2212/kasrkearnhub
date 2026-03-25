@@ -47,16 +47,30 @@ export default function Home() {
 
     const checkAutoRedirect = async () => {
       try {
-        // Priority 1: Check for stored lastPath (resume functionality)
+        // Priority 1: Check for stored lastPath (resume functionality via localStorage)
         const lastPath = getLastPath();
         if (lastPath && isValidResumePath(lastPath, isAdmin)) {
-          // Clear the stored path to prevent loops if the route is invalid
           clearLastPath();
           navigate(lastPath, { replace: true });
           return;
         }
 
-        // Priority 2: Fall back to preferred year auto-login
+        // Priority 2: Check DB-backed last position (students only)
+        if (!isAdmin) {
+          const { data: posData } = await supabase
+            .from('student_last_position')
+            .select('module_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (posData?.module_id) {
+            // Navigate to their module — the Continue card will show there
+            navigate(`/module/${posData.module_id}`, { replace: true });
+            return;
+          }
+        }
+
+        // Priority 3: Fall back to preferred year auto-login
         const { data } = await supabase
           .from('profiles')
           .select('preferred_year_id, auto_login_to_year')
