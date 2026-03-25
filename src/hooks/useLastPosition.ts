@@ -102,9 +102,9 @@ export function buildResumeUrl(pos: LastPosition): string {
     return `/module/${pos.module_id}`;
   }
 
-  // If we have a year, go to year page
+  // If we have a year, go to all years page
   if (pos.year_number) {
-    return `/year/${pos.year_number}`;
+    return `/years`;
   }
 
   return '/';
