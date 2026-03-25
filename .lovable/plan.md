@@ -1,22 +1,26 @@
 
 
-## Remove Per-Module Dashboard — Go Straight to Learning
+## Fix: Dashboard Button Should Navigate Home When Inside a Module
 
 ### Problem
-When a student clicks a module, they land on a per-module "Dashboard" tab (greeting, stats, study plan) which duplicates the Home dashboard. This adds an unnecessary extra step before reaching the actual content.
+When a student is inside a module page and clicks "Dashboard" in the sidebar, it navigates to `/module/:id?section=dashboard` (the now-removed module dashboard) instead of going back to the Home page (`/`).
 
 ### Solution
-1. **Change default section for students** in `ModulePage.tsx` (line 50): change `return isStudentEarly ? 'dashboard' : 'learning'` → always return `'learning'` for everyone.
+In `src/components/layout/StudentSidebar.tsx`, update `handleNav` (~line 112-119): when the clicked item is "Dashboard" (sectionId `'dashboard'`), always navigate to `/` regardless of whether the user is on a module page.
 
-2. **Remove "Dashboard" from module nav tabs** in `ModulePage.tsx` (~line 156): remove the dashboard entry from `sectionNav` so students no longer see the Dashboard tab inside modules.
-
-3. **Remove dashboard rendering** in `ModulePage.tsx` (~line 233): remove or keep the `activeSection === 'dashboard'` block (it won't be reachable, but can be cleaned up).
-
-### Result
-- Student clicks module → lands directly on Learning tab with chapters/content
-- All dashboard-style info (greeting, stats, study plan, flashcards) lives on the Home page only
-- Module page focuses on content: Learning, Connect, Formative, Study Coach tabs
+### Change
+```typescript
+// src/components/layout/StudentSidebar.tsx — handleNav function
+const handleNav = (item: NavItem) => {
+  // Dashboard always goes home
+  if (item.sectionId === 'dashboard') {
+    navigate('/');
+    return;
+  }
+  // Rest of existing logic unchanged...
+};
+```
 
 ### File
-- **`src/pages/ModulePage.tsx`** — 3 small changes (default section, nav items, cleanup)
+- **`src/components/layout/StudentSidebar.tsx`** — one small change in `handleNav`
 
