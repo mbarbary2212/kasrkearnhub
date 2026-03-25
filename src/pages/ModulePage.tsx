@@ -43,8 +43,7 @@ export default function ModulePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
-  const { isAdmin: isAdminRole, isTeacher: isTeacherRole, isPlatformAdmin: isPlatformAdminRole, isSuperAdmin: isSuperAdminRole } = useAuthContext();
-  const isStudentEarly = !isAdminRole && !isTeacherRole && !isPlatformAdminRole && !isSuperAdminRole;
+  const isStudentEarly = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
   const [activeSection, setActiveSection] = useState<ModuleSection>(() => {
     const param = searchParams.get('section');
     if (param === 'dashboard' || param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
