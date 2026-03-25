@@ -53,14 +53,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleGoHome = () => {
     sessionStorage.setItem('skipAutoLogin', 'true');
-    if (profile?.preferred_year_id && years) {
-      const preferredYear = years.find(y => y.id === profile.preferred_year_id);
-      if (preferredYear) {
-        navigate(`/year/${preferredYear.number}`);
-        return;
-      }
-    }
     navigate('/');
+  };
+
+  const handleYearClick = () => {
+    sessionStorage.setItem('skipAutoLogin', 'true');
+    navigate('/');
+    // Navigate to home with no preferred year — shows all years
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -126,16 +125,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
             </button>
-            {/* Active year indicator */}
+            {/* Active year indicator - clicks to All Years */}
             {activeYear && (
-              <div className="flex items-center gap-1.5 pl-1.5 border-l border-border/50">
+              <button
+                onClick={handleYearClick}
+                className="flex items-center gap-1.5 pl-1.5 border-l border-border/50 hover:opacity-80 transition-all duration-200"
+              >
                 {yearIcon && (
                   <img src={yearIcon} alt={activeYear.yearName} className="h-6 w-6 rounded object-contain" />
                 )}
                 <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
                   {activeYear.yearName}
                 </span>
-              </div>
+              </button>
             )}
           </div>
 
