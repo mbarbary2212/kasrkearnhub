@@ -1,147 +1,38 @@
 
-# Student QuestionSession — Split-Screen Redesign (Final Approved)
 
-## Overview
-Replace the vertically-stacked card layout with a tablet-first 60/40 split-screen, one-question-per-screen experience for MCQ, SBA, and OSCE. Admin views unchanged.
+# Fix Interactive Cases: Visibility, Default Timer, Voice Menu, Duplicates
 
-## Layout
+## Issues Found
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  QuestionSessionShell (grid-cols-[3fr_2fr], full height)     │
-│ ┌──────────────────────┐ ┌─────────────────────────────────┐ │
-│ │   LEFT PANEL (60%)   │ │     RIGHT PANEL (40%)           │ │
-│ │                      │ │                                 │ │
-│ │  Q3 / 94             │ │  Pre-submit:                    │ │
-│ │  Stem / Vignette     │ │   Empty placeholder message     │ │
-│ │  Image (OSCE)        │ │                                 │ │
-│ │  Choices A–E / T-F   │ │  Post-submit (5 cards):         │ │
-│ │                      │ │                                 │ │
-│ │  [Skip]   [Submit]   │ │   1. ExplanationCard            │ │
-│ │                      │ │   2. ConfidenceCard             │ │
-│ │  ← Prev    Next →    │ │   3. QuestionStatsCard          │ │
-│ │  (3/94)              │ │   4. PerformanceStatsCard       │ │
-│ └──────────────────────┘ │   5. ActionsCard                │ │
-│                          └─────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
+1. **Case not appearing after save**: The `useUpdateStructuredCaseData` hook only invalidates `['structured-case', caseId]` but NOT `['clinical-cases']` or `['virtual-patient-cases']`. When the admin saves and navigates back, the list query uses stale cached data.
 
-## Answer Display
-- **No randomization** — choices render in their original database order (A, B, C, D, E)
-- Shuffling was removed to avoid conflicts with explanations that reference specific option letters
+2. **Default timer**: The history time limit placeholder says "Default: X min" (calculated as 40% of estimated_minutes), but no explicit default of 2 minutes is set. When `history_time_limit_minutes` is undefined, the runner uses the auto-calculated value.
 
-## Left Panel — Post-Submission Answer Feedback
-After submission, highlight the user's selected answer and clearly mark the correct answer directly in the choice list:
-- Green border/bg on correct answer
-- Red border/bg on user's wrong selection
-- This provides immediate visual feedback without requiring the right panel
+3. **Voice choice hidden**: The voice selector only shows when `historyInteractionMode === 'voice'`. It should always be visible so admins can pick a voice regardless of mode (Text History also uses TTS for patient responses).
 
-## Right Panel Cards (All Hidden Until Submission)
+4. **Duplicate imports**: No duplicate detection exists. Importing the same JSON twice creates two identical cases.
 
-### 1. ExplanationCard (top, visually dominant)
-- Green/red banner showing Correct/Incorrect
-- Correct answer key and label
-- Full explanation text from `mcq.explanation`
-- If explanation contains per-option reasoning, render structured sections
-- For OSCE: per-statement correctness + overall score (not A–E distribution)
+---
 
-### 2. ConfidenceCard
-- Three pill buttons: Low / Medium / High (using shadcn ToggleGroup)
-- Stored in `localStorage` keyed by question ID for v1
-- Shown after submission, persists if pre-selected
+## Step 1: Fix case not appearing after save
 
-### 3. QuestionStatsCard
+**File: `src/hooks/useStructuredCaseData.ts`** (onSuccess in useUpdateStructuredCaseData)
+- Add `queryClient.invalidateQueries({ queryKey: ['clinical-cases'] })` so the admin list refreshes when navigating back.
 
-**Section A — Donut Comparison (side-by-side)**
+## Step 2: Default history timer to 2 minutes
 
-| "You" donut | "Students" donut |
-|---|---|
-| Single state: Correct / Wrong / Skipped | Proportional: Correct vs Wrong |
+**File: `src/components/clinical-cases/CasePreviewEditor.tsx`**
+- In the `useEffect` that initializes `editedData` from `generatedData`, if `history_time_limit_minutes` is not set, default it to `2`.
+- Update the placeholder text to say "Default: 2 min".
 
-Key distinctions:
-- **User "Skipped"** = explicit skip action by current user. Shown in user donut only.
-- **Cohort donut** = shows Correct vs Wrong proportions only. Do NOT derive "skipped" from distractor data — only include if reliable data exists.
-- Each donut has centered text label (e.g. "You: Incorrect") and small legend underneath
-- Colors: green (correct), red (wrong), gray (skipped)
+## Step 3: Show voice selector for both text and voice modes
 
-**Section B — Option Distribution (below donuts, MCQ/SBA only)**
-- Simple horizontal bars for A–E with percentage labels
-- Highlight: correct answer (green), user's answer (outline), most selected (bold)
-- Source: `distractor_analysis` from `mcq_analytics`
-- Fallback: "Response statistics not yet available"
-- **OSCE**: Do NOT use A–E distribution. Use score-based feedback instead (average score, score distribution 0-5).
+**File: `src/components/clinical-cases/CasePreviewEditor.tsx`**
+- Remove the `historyInteractionMode === 'voice'` condition wrapping the Voice Character selector (around line 468). Show it always when `editedData` exists.
 
-### 4. PerformanceStatsCard (text-based, no charts for v1)
-Simple label/value pairs with percentages + counts:
-- **This question**: Correct ✓ / Wrong ✗ / Skipped
-- **Your chapter accuracy**: 68% (34/50)
-- **Your module accuracy**: derived from existing data
-- **Cohort chapter average**: from `useChapterAnalyticsSummary(chapterId)` → `avgFacility`
-- **Cohort module average**: from `useModuleAnalyticsSummary(moduleId)` → `avgFacility`
-- Keep layout minimal
+## Step 4: Prevent duplicate imports
 
-### 5. ActionsCard
-- "Repeat Question" button — resets local UI state (selectedKey, isSubmitted)
-- On repeat + re-submit: saves as a **new attempt** (increment `attempt_number`) rather than overwriting
+**File: `src/components/clinical-cases/ClinicalCaseAdminList.tsx`**
+- In `handleImportJson`, before inserting, check if a case with the same `title` and `chapter_id` already exists in `filteredCases`.
+- If a duplicate is found, show a confirmation toast/dialog asking the admin to confirm before proceeding.
 
-## Skip Behavior
-- Left panel shows both **[Skip]** and **[Submit]** buttons
-- **User skip** = explicit action, advances to next question without answering
-- Track skipped questions in session state: `skippedQuestions: Set<string>`
-- **Cohort unanswered** = derived from total enrolled minus attempted — this is a different concept, NOT treated the same as user skip
-- If user returns to a skipped question, they can still answer normally
-- QuestionStatsCard reflects "You skipped this question" in the user donut (gray)
-
-## Screen Fitting
-- **Tablet/PC**: `h-[calc(100vh-4rem)]`, compact padding (`p-3 md:p-4`), `text-sm` choices, `max-w-7xl mx-auto`
-- **Mobile**: Single column stack, right panel below
-- One question + 5 choices + Submit must fit on screen without scrolling
-
-## AI Confidence Backfill
-- Edge function: `backfill-ai-confidence` — rates MCQs against linked PDF via Gemini
-- Admin button "Rate AI Confidence" in McqList toolbar (chapter-level)
-- Batches of 10 MCQs per AI call
-- Uses PDF from `admin_documents` → `admin-pdfs` storage bucket as source of truth
-
-## Components
-
-| Component | File |
-|-----------|------|
-| `QuestionSessionShell` | `src/components/question-session/QuestionSessionShell.tsx` |
-| `RightInsightPanel` | `src/components/question-session/RightInsightPanel.tsx` |
-| `ExplanationCard` | `src/components/question-session/ExplanationCard.tsx` |
-| `ConfidenceCard` | `src/components/question-session/ConfidenceCard.tsx` |
-| `QuestionStatsCard` | `src/components/question-session/QuestionStatsCard.tsx` |
-| `PerformanceStatsCard` | `src/components/question-session/PerformanceStatsCard.tsx` |
-| `ActionsCard` | `src/components/question-session/ActionsCard.tsx` |
-| `McqAnswerArea` | `src/components/question-session/McqAnswerArea.tsx` |
-| `OsceAnswerArea` | `src/components/question-session/OsceAnswerArea.tsx` |
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/components/content/McqList.tsx` | When `!isAdmin`, render `QuestionSessionShell` instead of card list |
-| `src/components/content/OsceList.tsx` | When `!isAdmin`, render `QuestionSessionShell` instead of card list |
-
-## Data Sources (All Existing — No New Tables)
-
-| Data | Source |
-|------|--------|
-| Questions | `mcqs[]` / `osceQuestions[]` already fetched |
-| Previous attempts | `useAllChapterQuestionAttempts` → `attemptMap` |
-| Per-question analytics | `useMcqAnalyticsById(mcqId)` → `distractor_analysis`, `facility_index`, `total_attempts` |
-| Chapter cohort stats | `useChapterAnalyticsSummary(chapterId)` → `avgFacility` |
-| Module cohort stats | `useModuleAnalyticsSummary(moduleId)` → `avgFacility` |
-| Save attempt | `useSaveQuestionAttempt` (RPC `save_question_attempt`) |
-| Confidence | `localStorage` keyed `confidence_${questionId}` |
-
-## Core Rules
-1. Explanation and statistics hidden before submission — no peer data before answering
-2. Tablet-first split layout (10" landscape primary target)
-3. One-question-per-screen
-4. Shared architecture across MCQ, SBA, OSCE
-5. Left panel shows answer feedback (green/red) after submission
-6. Both panels scroll independently — no whole-page scroll
-7. Responsive: `grid-cols-1 md:grid-cols-[3fr_2fr]`; mobile stacks vertically
-8. No answer randomization — choices in original order
