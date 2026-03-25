@@ -9,6 +9,12 @@ import {
   type ReadinessResult,
   type ReadinessComponents,
 } from '@/lib/readinessCalculator';
+import {
+  buildDashboardSuggestions,
+  getWeakTopics,
+  calculateAggregateReadiness,
+} from '@/lib/studentMetrics';
+import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 
 export interface ChapterStatus {
@@ -144,7 +150,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         .in('module_id', moduleIds)
         .order('order_index');
 
-      // Fetch all data in parallel (no more question_attempts — uses testProgress param)
+      // Fetch all data in parallel
       const [
         chaptersRes,
         userProgressRes,
@@ -154,9 +160,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         vpCasesRes,
         lecturesRes,
         yearRes,
-        // Lightweight streak sources: recent sessions + question attempts dates
         sessionsRes,
         recentAttemptsRes,
+        chapterMetricsRes,
       ] = await Promise.all([
         chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
@@ -172,6 +178,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         supabase.from('question_attempts').select('created_at').eq('user_id', user.id)
           .gte('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
           .order('created_at', { ascending: false }).limit(200),
+        supabase.from('student_chapter_metrics' as any).select('*').eq('student_id', user.id),
       ]);
 
       const chapters = chaptersRes.data || [];
@@ -332,11 +339,48 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // Generate insights
       const insights = generateInsights(chapterStatuses);
 
-      // Generate smart suggestions with reasons and priority scoring
-      const suggestions = generateSuggestions(chapterStatuses, lectures, testProgress);
+      // ============================================================================
+      // Use real chapter metrics for suggestions and weak chapters
+      // ============================================================================
+      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
+        .filter(m => moduleIds.includes(m.module_id));
 
-      // Detect weak chapters (MCQ accuracy < 60% with at least 3 attempts)
-      const weakChapters = detectWeakChapters(chapterStatuses, testProgress);
+      // Build chapter info for suggestion builder
+      const chapterInfos = chapters.map(ch => ({
+        id: ch.id,
+        title: ch.title,
+        moduleId: ch.module_id,
+        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
+        hasLectures: lectures.some(l => l.chapter_id === ch.id),
+        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
+      }));
+
+      // Build suggestions from real metrics
+      const dashboardActions = buildDashboardSuggestions({
+        metrics: realMetrics,
+        chapters: chapterInfos,
+      });
+
+      // Convert DashboardAction[] to SuggestedItem[] for backward compat
+      const suggestions: SuggestedItem[] = dashboardActions.map(a => ({
+        type: (a.type === 'resume' || a.type === 'review' ? 'read' : a.type) as SuggestedItem['type'],
+        title: a.title,
+        chapterTitle: a.chapterTitle,
+        estimatedMinutes: a.estimatedMinutes,
+        chapterId: a.chapterId,
+        moduleId: a.moduleId,
+        reason: a.reason,
+        isPrimary: a.isPrimary,
+        subtab: a.subtab,
+      }));
+
+      // Get weak chapters from real metrics
+      const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
+      const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
+
+      // Use real aggregate readiness if available
+      const metricsReadiness = calculateAggregateReadiness(realMetrics);
+      const finalExamReadiness = realMetrics.length > 0 ? metricsReadiness : examReadiness;
 
       // Get selected module name
       const selectedModuleName = filters?.moduleId 
@@ -344,7 +388,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         : undefined;
 
       return {
-        examReadiness,
+        examReadiness: finalExamReadiness,
         coveragePercent,
         coverageCompleted: completedItems,
         coverageTotal: totalItems,
@@ -510,167 +554,7 @@ function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
   return insights;
 }
 
-type ChapterState = 'not_started' | 'early' | 'weak' | 'unstable' | 'strong' | 'in_progress';
-
-function classifyChapter(
-  chapter: ChapterStatus,
-  testProgress?: TestProgressData,
-): ChapterState {
-  const completedItems = chapter.completedItems || 0;
-  const coverage = chapter.progress || 0;
-  const accuracy = testProgress?.mcq?.accuracy || 0;
-  const hasEnoughAttempts = (testProgress?.mcq?.attempts || 0) >= 5;
-
-  if (coverage === 0 && completedItems < 3) return 'not_started';
-  if (coverage < 40 && completedItems < 5) return 'early';
-  if (hasEnoughAttempts && accuracy < 60) return 'weak';
-  if (hasEnoughAttempts && accuracy < 75) return 'unstable';
-  if (coverage >= 70 && accuracy >= 75) return 'strong';
-  return 'in_progress';
-}
-
-interface ScoredSuggestion extends SuggestedItem {
-  score: number;
-}
-
-function generateSuggestions(
-  chapters: ChapterStatus[], 
-  lectures: { id: string; chapter_id: string | null; title: string; module_id: string | null }[],
-  testProgress?: TestProgressData,
-): SuggestedItem[] {
-  const scored: ScoredSuggestion[] = [];
-
-  const chaptersWithContent = chapters.filter(c => c.totalItems > 0);
-
-  chaptersWithContent.forEach(chapter => {
-    if (chapter.status === 'completed') return;
-
-    const state = classifyChapter(chapter, testProgress);
-    if (state === 'strong') return;
-
-    const chapterLectures = lectures.filter(l => l.chapter_id === chapter.id);
-
-    if (state === 'not_started' || state === 'early') {
-      // Learn first — video then read, NO mcq
-      if (chapterLectures.length > 0) {
-        scored.push({
-          type: 'video',
-          title: chapterLectures[0].title,
-          chapterTitle: chapter.title,
-          estimatedMinutes: 20,
-          chapterId: chapter.id,
-          moduleId: chapter.moduleId,
-          reason: 'Not covered yet',
-          subtab: 'lectures',
-          score: 80,
-        });
-      }
-      scored.push({
-        type: 'read',
-        title: chapter.title,
-        chapterTitle: chapter.moduleName,
-        estimatedMinutes: 30,
-        chapterId: chapter.id,
-        moduleId: chapter.moduleId,
-        reason: 'Build core understanding',
-        score: 70,
-      });
-    } else if (state === 'weak') {
-      // Practice first — mcq high priority, video for review
-      scored.push({
-        type: 'mcq',
-        title: chapter.title,
-        chapterTitle: chapter.moduleName,
-        estimatedMinutes: 15,
-        chapterId: chapter.id,
-        moduleId: chapter.moduleId,
-        reason: 'Low recent accuracy',
-        subtab: 'mcqs',
-        score: 90,
-      });
-      if (chapterLectures.length > 0) {
-        scored.push({
-          type: 'video',
-          title: chapterLectures[0].title,
-          chapterTitle: chapter.title,
-          estimatedMinutes: 20,
-          chapterId: chapter.id,
-          moduleId: chapter.moduleId,
-          reason: 'Review explanation',
-          subtab: 'lectures',
-          score: 60,
-        });
-      }
-    } else if (state === 'unstable') {
-      scored.push({
-        type: 'mcq',
-        title: chapter.title,
-        chapterTitle: chapter.moduleName,
-        estimatedMinutes: 15,
-        chapterId: chapter.id,
-        moduleId: chapter.moduleId,
-        reason: 'Needs reinforcement',
-        subtab: 'mcqs',
-        score: 75,
-      });
-    } else {
-      // in_progress
-      scored.push({
-        type: 'mcq',
-        title: chapter.title,
-        chapterTitle: chapter.moduleName,
-        estimatedMinutes: 15,
-        chapterId: chapter.id,
-        moduleId: chapter.moduleId,
-        reason: 'Continue where you left',
-        subtab: 'mcqs',
-        score: 65,
-      });
-    }
-  });
-
-  // Sort by score descending
-  scored.sort((a, b) => b.score - a.score);
-
-  // Deduplicate: max 1 per type
-  const seen = new Set<string>();
-  const deduped: ScoredSuggestion[] = [];
-  for (const item of scored) {
-    if (!seen.has(item.type)) {
-      seen.add(item.type);
-      deduped.push(item);
-    }
-  }
-
-  // Take top 3
-  const top = deduped.slice(0, 3);
-  if (top.length > 0) {
-    top[0].isPrimary = true;
-  }
-
-  return top.map(({ score, ...item }) => item);
-}
-
-function detectWeakChapters(
-  chapters: ChapterStatus[],
-  testProgress?: TestProgressData,
-): WeakChapter[] {
-  // Only flag weak with real accuracy data: >=5 attempts AND <60% accuracy
-  if (!testProgress || !testProgress.hasAnyAttempts) return [];
-  if (testProgress.mcq.attempts < 5 || testProgress.mcq.accuracy >= 60) return [];
-
-  // Attach the in-progress chapter with the most completedItems (most studied = strongest weak signal)
-  const candidate = chapters
-    .filter(c => c.status === 'in_progress' && c.totalItems > 0)
-    .sort((a, b) => b.completedItems - a.completedItems)[0];
-
-  if (!candidate) return [];
-
-  return [{
-    chapterId: candidate.id,
-    chapterTitle: candidate.title,
-    moduleId: candidate.moduleId,
-    accuracy: testProgress.mcq.accuracy,
-    attempts: testProgress.mcq.attempts,
-  }];
-}
+// Old proxy-based classifyChapter, generateSuggestions, and detectWeakChapters
+// have been removed. All suggestion/weak logic now flows through:
+//   src/lib/studentMetrics/buildDashboardSuggestions.ts
+//   src/lib/studentMetrics/classifyChapterState.ts

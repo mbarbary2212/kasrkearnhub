@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
+// Re-export shared classifier for convenience
+export { classifyChapterState, getModuleStatusFromMetrics } from '@/lib/studentMetrics';
+export type { ChapterState, ChapterMetricsInput } from '@/lib/studentMetrics';
+
 export interface StudentChapterMetric {
   id: string;
   student_id: string;
@@ -29,20 +33,6 @@ export interface StudentChapterMetric {
   readiness_score: number;
   created_at: string;
   updated_at: string;
-}
-
-export type ChapterState = 'not_started' | 'early' | 'weak' | 'unstable' | 'strong' | 'in_progress';
-
-/**
- * Derive chapter learning state from per-chapter metrics.
- */
-export function getChapterState(m: StudentChapterMetric): ChapterState {
-  if (m.coverage_percent === 0 && m.mcq_attempts < 3) return 'not_started';
-  if (m.coverage_percent < 40 && m.mcq_attempts < 5) return 'early';
-  if (m.mcq_attempts >= 5 && m.recent_mcq_accuracy < 60) return 'weak';
-  if (m.mcq_attempts >= 5 && m.recent_mcq_accuracy >= 60 && m.recent_mcq_accuracy < 75) return 'unstable';
-  if (m.readiness_score >= 75) return 'strong';
-  return 'in_progress';
 }
 
 /**
