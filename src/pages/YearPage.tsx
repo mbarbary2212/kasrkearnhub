@@ -200,6 +200,7 @@ export default function YearPage() {
                             {module.description && (
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">{module.description}</p>
                             )}
+                            <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
                           </div>
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                         </div>
@@ -238,6 +239,9 @@ export default function YearPage() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
+                      </div>
+                      <div className="w-24 flex-shrink-0">
+                        <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
                       </div>
                       <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                     </div>
