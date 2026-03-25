@@ -8,12 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Play, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function YearPage() {
   const { yearId } = useParams();

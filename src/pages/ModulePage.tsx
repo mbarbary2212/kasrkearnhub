@@ -177,20 +177,6 @@ export default function ModulePage() {
               </>
             )}
           </div>
-          {isStudent && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => {
-                sessionStorage.setItem('skipAutoLogin', 'true');
-                navigate('/');
-              }}
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1" />
-              Change module
-            </Button>
-          )}
         </div>
 
         {/* Book/Department pills at module level (students with multiple books) */}
