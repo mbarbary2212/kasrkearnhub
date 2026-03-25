@@ -22,7 +22,7 @@ import { PasswordRequirements, isPasswordValid } from '@/components/auth/Passwor
 import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
 
 export default function AccountPage() {
-  const { user, profile, isLoading: authLoading } = useAuthContext();
+  const { user, profile, isLoading: authLoading, patchProfile } = useAuthContext();
   const navigate = useNavigate();
   const { data: years, isLoading: yearsLoading } = useYears();
   const fileInputRef = useRef<HTMLInputElement>(null);
