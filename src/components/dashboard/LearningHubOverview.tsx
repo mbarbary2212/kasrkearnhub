@@ -3,11 +3,14 @@ import { DashboardStatusStrip } from './DashboardStatusStrip';
 import { DashboardTodayPlan } from './DashboardTodayPlan';
 import { DashboardInsights } from './DashboardInsights';
 import { DashboardProgressMap } from './DashboardProgressMap';
-import { DashboardWeeklySummary } from './DashboardWeeklySummary';
 import { DashboardNeedsPractice } from './DashboardNeedsPractice';
 import { DashboardTestProgress } from './DashboardTestProgress';
 import { DashboardWeakTopics } from './DashboardWeakTopics';
 import { BadgesSection } from './BadgesSection';
+import { ChapterHealthHeatmap } from './ChapterHealthHeatmap';
+import { StudyStreakCalendar } from './StudyStreakCalendar';
+import { LearningPatternSummary } from './LearningPatternSummary';
+import { WeeklyProgressReport } from './WeeklyProgressReport';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
@@ -21,7 +24,6 @@ interface LearningHubOverviewProps {
 }
 
 export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNavigate }: LearningHubOverviewProps) {
-  // Fetch needs practice data for the selected module
   const { 
     mcqNeedsPractice, 
     osceNeedsPractice,
@@ -33,7 +35,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
     counts,
   } = useNeedsPractice(moduleId);
 
-  // Check for badge eligibility on dashboard load
   const { mutate: checkBadges } = useCheckBadges();
   
   useEffect(() => {
@@ -54,7 +55,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
 
   return (
     <>
-      {/* Core Status Strip */}
+      {/* Core Status Strip with Sparkline */}
       <DashboardStatusStrip
         examReadiness={dashboard.examReadiness}
         coveragePercent={dashboard.coveragePercent}
@@ -64,6 +65,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         chaptersTotal={dashboard.chaptersTotal}
         studyStreak={dashboard.studyStreak}
         readinessResult={dashboard.readinessResult}
+        readinessTrend={dashboard.readinessTrend}
       />
 
       {/* Today's Adaptive Study Plan */}
@@ -88,7 +90,17 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         />
       )}
 
-      {/* Test Performance Indicators with Coach Guidance */}
+      {/* Chapter Health Heatmap */}
+      <ChapterHealthHeatmap
+        metrics={dashboard.chapterMetrics}
+        chapterTitleMap={dashboard.chapterTitleMap}
+        onChapterClick={(chapterId, moduleId) => onNavigate(moduleId, chapterId)}
+      />
+
+      {/* Learning Pattern Summary */}
+      <LearningPatternSummary metrics={dashboard.chapterMetrics} />
+
+      {/* Test Performance Indicators */}
       <DashboardTestProgress moduleId={moduleId} />
 
       {/* Personal Study Coach: Needs Practice */}
@@ -102,6 +114,12 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         casesToReview={casesToReview}
         counts={counts}
         onNavigate={onNavigate}
+      />
+
+      {/* Study Streak Calendar */}
+      <StudyStreakCalendar
+        activityDates={dashboard.activityDates}
+        studyStreak={dashboard.studyStreak}
       />
 
       {/* Learning Insights */}
@@ -118,11 +136,13 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         }}
       />
 
-      {/* Weekly Summary Preview */}
-      <DashboardWeeklySummary
+      {/* Weekly Progress Report */}
+      <WeeklyProgressReport
         weeklyTimeMinutes={dashboard.weeklyTimeMinutes}
         weeklyChaptersAdvanced={dashboard.weeklyChaptersAdvanced}
         hasRealAccuracyData={dashboard.hasRealAccuracyData}
+        metrics={dashboard.chapterMetrics}
+        chapterTitleMap={dashboard.chapterTitleMap}
       />
 
       {/* Achievements / Badges */}
