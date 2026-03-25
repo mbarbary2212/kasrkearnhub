@@ -63,8 +63,8 @@ export interface DashboardData {
   // Core metrics
   examReadiness: number;
   coveragePercent: number;
-  coverageCompleted: number; // completed items count
-  coverageTotal: number; // total items count
+  coverageCompleted: number;
+  coverageTotal: number;
   chaptersStarted: number;
   chaptersTotal: number;
   studyStreak: number;
@@ -78,7 +78,7 @@ export interface DashboardData {
   // Weekly stats
   weeklyTimeMinutes: number;
   weeklyChaptersAdvanced: number;
-  hasRealAccuracyData: boolean; // flag to control UI display
+  hasRealAccuracyData: boolean;
   
   // Chapters
   chapters: ChapterStatus[];
@@ -93,12 +93,18 @@ export interface DashboardData {
   // Weak chapters
   weakChapters: WeakChapter[];
   
-  // Confidence insight (optional single smart insight)
+  // Confidence insight
   confidenceInsight: string | null;
   
   // Selected context
   selectedModuleName?: string;
   selectedYearName?: string;
+
+  // New: data for enhanced dashboard widgets
+  chapterMetrics: StudentChapterMetric[];
+  chapterTitleMap: Map<string, string>;
+  activityDates: string[];
+  readinessTrend: number[];
 }
 
 interface DashboardFilters {
@@ -396,6 +402,15 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         ? moduleMap.get(filters.moduleId) 
         : undefined;
 
+      // Build activity dates for streak calendar
+      const activityDates = allActivityDates;
+
+      // Build readiness trend (simple: use per-chapter readiness scores as proxy)
+      // In production this would come from a time-series table
+      const readinessTrend = realMetrics.length > 0
+        ? realMetrics.slice(-14).map(m => m.readiness_score)
+        : [];
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -419,10 +434,14 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         confidenceInsight: studyPlan.confidenceInsight ?? null,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
+        chapterMetrics: realMetrics,
+        chapterTitleMap,
+        activityDates,
+        readinessTrend,
       };
     },
     enabled: !!user?.id,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 60000,
   });
 }
 
@@ -448,6 +467,10 @@ function getEmptyDashboard(): DashboardData {
     studyPlan: null,
     weakChapters: [],
     confidenceInsight: null,
+    chapterMetrics: [],
+    chapterTitleMap: new Map(),
+    activityDates: [],
+    readinessTrend: [],
   };
 }
 
