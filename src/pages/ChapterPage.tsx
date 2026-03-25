@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTrackPosition } from '@/hooks/useTrackPosition';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -142,11 +143,18 @@ export default function ChapterPage() {
   // State for section mode and active tabs within sections
   const [searchParams] = useSearchParams();
   const initialSection = (searchParams.get('section') as SectionMode) || 'resources';
+  const initialSubTab = searchParams.get('subtab');
   const [activeSection, setActiveSection] = useState<SectionMode>(initialSection);
   
-  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
-  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
-  const [practiceTab, setPracticeTab] = useState<PracticeTabId>('mcqs');
+  const [resourcesTab, setResourcesTab] = useState<ResourceTabId>(
+    initialSection === 'resources' && initialSubTab ? initialSubTab as ResourceTabId : 'lectures'
+  );
+  const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>(
+    initialSection === 'interactive' && initialSubTab ? initialSubTab as InteractiveTabId : 'cases'
+  );
+  const [practiceTab, setPracticeTab] = useState<PracticeTabId>(
+    initialSection === 'practice' && initialSubTab ? initialSubTab as PracticeTabId : 'mcqs'
+  );
   const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
   const [showDeletedMcqs, setShowDeletedMcqs] = useState(false);
@@ -234,6 +242,23 @@ export default function ChapterPage() {
   useEffect(() => {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
+
+  // Track position for resume functionality
+  const currentSubTab = activeSection === 'resources' ? resourcesTab
+    : activeSection === 'interactive' ? interactiveTab
+    : activeSection === 'practice' ? practiceTab
+    : null;
+
+  useTrackPosition({
+    year_number: null,
+    module_id: contentModuleId ?? null,
+    module_name: module?.name ?? null,
+    module_slug: module?.slug ?? null,
+    chapter_id: chapterId ?? null,
+    chapter_title: chapter?.title ?? null,
+    tab: activeSection,
+    activity_position: currentSubTab ? { sub_tab: currentSubTab } : null,
+  });
   
   // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(<T,>(items: T[]): T[] => {
@@ -477,6 +502,15 @@ export default function ChapterPage() {
                       Chapter {chapter?.chapter_number}: {chapter?.title}
                     </h1>
                   </div>
+                  {/* Section Filter in header */}
+                  {sectionsEnabled && (
+                    <SectionFilter
+                      chapterId={chapterId}
+                      selectedSectionId={selectedSectionId}
+                      onSectionChange={setSelectedSectionId}
+                      className="py-0 ml-2"
+                    />
+                  )}
                 </div>
                 {/* Mobile: Icon + stacked text */}
                 <div className="md:hidden flex items-center gap-3">
@@ -489,6 +523,15 @@ export default function ChapterPage() {
                       Chapter {chapter?.chapter_number}: {chapter?.title}
                     </h1>
                   </div>
+                  {/* Section Filter in header - mobile */}
+                  {sectionsEnabled && (
+                    <SectionFilter
+                      chapterId={chapterId}
+                      selectedSectionId={selectedSectionId}
+                      onSectionChange={setSelectedSectionId}
+                      className="py-0"
+                    />
+                  )}
                 </div>
               </>
             )}
@@ -614,16 +657,6 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
-                {/* Section Filter - shown when sections are enabled */}
-                {sectionsEnabled && (
-                  <SectionFilter
-                    chapterId={chapterId}
-                    selectedSectionId={selectedSectionId}
-                    onSectionChange={setSelectedSectionId}
-                    className="mb-2"
-                  />
-                )}
-                
                 {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
                   <MobileSectionDropdown
@@ -1019,16 +1052,6 @@ export default function ChapterPage() {
 
             {activeSection === 'practice' && (
               <div className="space-y-4">
-                {/* Section Filter - shown when sections are enabled */}
-                {sectionsEnabled && (
-                  <SectionFilter
-                    chapterId={chapterId}
-                    selectedSectionId={selectedSectionId}
-                    onSectionChange={setSelectedSectionId}
-                    className="mb-2"
-                  />
-                )}
-                
                 {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
                 <div className="md:hidden">
                   <MobileSectionDropdown

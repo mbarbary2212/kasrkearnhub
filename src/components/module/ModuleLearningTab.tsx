@@ -61,6 +61,7 @@ import { ChapterFormModal } from './ChapterFormModal';
 import { PharmacologyTopicsView } from './PharmacologyTopicsView';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ChapterReadinessDot } from './ChapterReadinessDot';
 
 // Pharmacology department ID - for Topics view
 const PHARMACOLOGY_DEPT_ID = '71af9f4d-578c-45d9-bec7-9598e54728e6';
@@ -73,6 +74,8 @@ interface ModuleLearningTabProps {
   canManageBooks?: boolean;
   canManageChapters?: boolean;
   selectedDepartmentId?: string | null;
+  /** When provided (from ModulePage), student pill filtering is handled externally */
+  externalActiveBookLabel?: string | null;
 }
 
 // Sortable book card component
@@ -213,8 +216,6 @@ function BookLecturesView({
   
   const [sortMode, setSortMode] = useState<SortMode>('default');
   
-  // Fetch chapters for this book (these are the "lectures")
-  // Uses fetchModuleId to support cross-module books (e.g. SUR-523 Book 1 → SUR-423)
   const { data: chaptersRaw, isLoading: chaptersLoading } = useQuery({
     queryKey: ['module-chapters-for-book', fetchModuleId, bookLabel],
     queryFn: async () => {
@@ -230,7 +231,6 @@ function BookLecturesView({
     },
   });
   
-  // Apply sorting based on user selection
   const chapters = useMemo(() => {
     if (!chaptersRaw) return undefined;
     if (sortMode === 'default') return chaptersRaw;
@@ -349,7 +349,7 @@ function BookLecturesView({
               </div>
               )}
               
-              {canManage && isAssigned ? (
+              {canManage ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
@@ -374,7 +374,10 @@ function BookLecturesView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <>
+                  <ChapterReadinessDot chapterId={chapter.id} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </>
               ) : null}
             </div>
           );
@@ -399,7 +402,6 @@ function BookLecturesView({
         </div>
       )}
 
-      {/* Chapter/Lecture Form Modal */}
       <ChapterFormModal
         open={chapterModalOpen}
         onOpenChange={setChapterModalOpen}
@@ -410,7 +412,6 @@ function BookLecturesView({
         existingChapters={chapters}
       />
 
-      {/* Delete Chapter Confirmation */}
       <AlertDialog open={!!deleteChapterDialog} onOpenChange={() => setDeleteChapterDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -436,6 +437,126 @@ function BookLecturesView({
   );
 }
 
+// ─── Student pill-filtered chapter view (no intermediate screen) ───
+function StudentBookPillView({
+  moduleId,
+  fetchModuleId,
+  activeBookLabel,
+  sortedBooks,
+  onSelectPill,
+}: {
+  moduleId: string;
+  fetchModuleId: string;
+  activeBookLabel: string;
+  sortedBooks: ModuleBook[];
+  onSelectPill: (label: string) => void;
+}) {
+  const navigate = useNavigate();
+  const auth = useAuthContext();
+
+  const { data: chapters, isLoading } = useQuery({
+    queryKey: ['module-chapters-for-book', fetchModuleId, activeBookLabel],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('module_chapters')
+        .select('*')
+        .eq('module_id', fetchModuleId)
+        .eq('book_label', activeBookLabel)
+        .order('order_index', { ascending: true });
+      if (error) throw error;
+      return data as ModuleChapter[];
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      {/* Pill filter row - only render if books provided (not externally controlled) */}
+      {sortedBooks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sortedBooks.map((book) => (
+            <button
+              key={book.book_label}
+              onClick={() => onSelectPill(book.book_label)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                activeBookLabel === book.book_label
+                  ? "bg-accent text-accent-foreground"
+                  : "border border-border text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {book.description || book.book_label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Chapter list */}
+      {isLoading ? (
+        <LectureListSkeleton count={5} />
+      ) : chapters && chapters.length > 0 ? (
+        <div className="border rounded-lg divide-y">
+          {chapters.map((chapter, index) => {
+            const isAssigned = auth.isTopicAdmin && !auth.isTeacher
+              ? auth.canManageChapter(chapter.id)
+              : true;
+
+            return (
+              <div
+                key={chapter.id}
+                className={cn(
+                  "flex items-center gap-3 py-3 px-4 transition-colors",
+                  isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
+                )}
+              >
+                {isAssigned ? (
+                  <button
+                    onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
+                    className="flex-1 flex items-center gap-3 text-left"
+                  >
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                      {index + 1}
+                    </span>
+                    {chapter.icon_url && (
+                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                    <span className="flex-1 text-[15px] font-medium truncate">
+                      {chapter.title}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex-1 flex items-center gap-3">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                      {index + 1}
+                    </span>
+                    {chapter.icon_url && (
+                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                    <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                      {chapter.title}
+                    </span>
+                  </div>
+                )}
+                {isAssigned && (
+                  <>
+                    <ChapterReadinessDot chapterId={chapter.id} />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-12 border rounded-lg">
+          <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">No chapters available yet.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ───
 export function ModuleLearningTab({
   moduleId, 
   chapters, 
@@ -444,10 +565,17 @@ export function ModuleLearningTab({
   canManageBooks = false,
   canManageChapters = false,
   selectedDepartmentId,
+  externalActiveBookLabel,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
   const auth = useAuthContext();
-  const [selectedBook, setSelectedBook] = useState<string | null>(null);
+  const storageKey = `kasrlearn_book_${moduleId}`;
+  const [selectedBook, setSelectedBook] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(storageKey);
+    }
+    return null;
+  });
   
   // Fetch books with metadata
   const { data: books, isLoading: booksLoading } = useModuleBooks(moduleId);
@@ -455,16 +583,15 @@ export function ModuleLearningTab({
   // Fetch topics count for Pharmacology (filtered by moduleId)
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
-  // Cross-module book mapping (same as in BookLecturesView)
+  // Cross-module book mapping
   const CROSS_MODULE_BOOKS: Record<string, Record<string, string>> = {
     '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General surgery Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
   };
   
-  // Fetch chapter (lecture) counts per book
+  // Fetch chapter counts per book
   const { data: lectureCounts } = useQuery({
     queryKey: ['book-chapter-counts', moduleId],
     queryFn: async () => {
-      // Fetch chapters for this module
       const { data, error } = await supabase
         .from('module_chapters')
         .select('book_label')
@@ -472,14 +599,12 @@ export function ModuleLearningTab({
       
       if (error) throw error;
       
-      // Count chapters per book
       const counts: Record<string, number> = {};
       for (const chapter of data || []) {
         const label = chapter.book_label || 'General';
         counts[label] = (counts[label] || 0) + 1;
       }
       
-      // For cross-module books, fetch counts from the source module
       const crossBooks = CROSS_MODULE_BOOKS[moduleId];
       if (crossBooks) {
         for (const [bookLabel, sourceModuleId] of Object.entries(crossBooks)) {
@@ -540,12 +665,10 @@ export function ModuleLearningTab({
     }, {} as Record<string, typeof sortedChapters>);
   }, [hasChapters, sortedChapters]);
 
-  // Get book metadata for a label
   const getBookMetadata = (bookLabel: string): ModuleBook | undefined => {
     return books?.find(b => b.book_label === bookLabel);
   };
 
-  // Get chapter prefix for a book
   const getChapterPrefix = (bookLabel: string): string => {
     return getBookMetadata(bookLabel)?.chapter_prefix || 'Ch';
   };
@@ -556,6 +679,20 @@ export function ModuleLearningTab({
     const list = books ? [...books] : [];
     return list.sort((a, b) => a.display_order - b.display_order);
   }, [books]);
+
+  // For students: determine active pill
+  const activeBookLabel = useMemo(() => {
+    if (!hasMultipleBooks || sortedBooks.length === 0) return null;
+    if (selectedBook && sortedBooks.some(b => b.book_label === selectedBook)) {
+      return selectedBook;
+    }
+    return sortedBooks[0]?.book_label || null;
+  }, [hasMultipleBooks, sortedBooks, selectedBook]);
+
+  const handleSelectBookPill = (bookLabel: string) => {
+    setSelectedBook(bookLabel);
+    localStorage.setItem(storageKey, bookLabel);
+  };
 
   const handleAddBook = () => {
     setEditingBook(null);
@@ -697,7 +834,10 @@ export function ModuleLearningTab({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <>
+                  <ChapterReadinessDot chapterId={chapter.id} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </>
               ) : null}
             </div>
           );
@@ -716,7 +856,7 @@ export function ModuleLearningTab({
     return <LectureListSkeleton count={5} />;
   }
 
-  // If Pharmacology department is selected, show Topics view instead of chapters
+  // If Pharmacology department is selected, show Topics view
   if (selectedDepartmentId === PHARMACOLOGY_DEPT_ID) {
     return (
       <PharmacologyTopicsView
@@ -727,7 +867,7 @@ export function ModuleLearningTab({
     );
   }
 
-  // Empty state when no chapters and no books
+  // Empty state
   if (!hasChapters && !canManageBooks) {
     return (
       <div className="text-center py-12">
@@ -739,25 +879,87 @@ export function ModuleLearningTab({
     );
   }
 
-  // If a book is selected, show lectures directly (or Topics for Pharmacology)
-  if (selectedBook) {
-    // Check if this is Pharmacology - show Topics instead
+  // ─── STUDENT VIEW: pill filters handled externally via ModulePage ───
+  if (externalActiveBookLabel && !canManageBooks) {
+    // Pharmacology special case
+    if (externalActiveBookLabel.toLowerCase() === 'pharmacology') {
+      return (
+        <PharmacologyTopicsView
+          departmentId={PHARMACOLOGY_DEPT_ID}
+          moduleId={moduleId}
+          canManageTopics={false}
+        />
+      );
+    }
+
+    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel] || moduleId;
+    
+    return (
+      <StudentBookPillView
+        moduleId={moduleId}
+        fetchModuleId={fetchModuleId}
+        activeBookLabel={externalActiveBookLabel}
+        sortedBooks={[]} // pills rendered externally, pass empty
+        onSelectPill={() => {}} // no-op, handled by parent
+      />
+    );
+  }
+
+  // Legacy: if multiple books and no external control (shouldn't happen for students now)
+  if (hasMultipleBooks && !canManageBooks && activeBookLabel) {
+    if (activeBookLabel.toLowerCase() === 'pharmacology') {
+      return (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {sortedBooks.map((book) => (
+              <button
+                key={book.book_label}
+                onClick={() => handleSelectBookPill(book.book_label)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                  activeBookLabel === book.book_label
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {book.description || book.book_label}
+              </button>
+            ))}
+          </div>
+          <PharmacologyTopicsView
+            departmentId={PHARMACOLOGY_DEPT_ID}
+            moduleId={moduleId}
+            canManageTopics={false}
+          />
+        </div>
+      );
+    }
+
+    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[activeBookLabel] || moduleId;
+    
+    return (
+      <StudentBookPillView
+        moduleId={moduleId}
+        fetchModuleId={fetchModuleId}
+        activeBookLabel={activeBookLabel}
+        sortedBooks={sortedBooks}
+        onSelectPill={handleSelectBookPill}
+      />
+    );
+  }
+
+  // ─── ADMIN VIEW: if a book is selected, show its chapters ───
+  if (selectedBook && canManageBooks) {
     if (selectedBook.toLowerCase() === 'pharmacology') {
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setSelectedBook(null)}
-              className="gap-1"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setSelectedBook(null)} className="gap-1">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <h2 className="text-lg font-semibold flex-1">{selectedBook}</h2>
           </div>
-          
           <PharmacologyTopicsView
             departmentId={PHARMACOLOGY_DEPT_ID}
             moduleId={moduleId}
@@ -767,7 +969,6 @@ export function ModuleLearningTab({
       );
     }
 
-    // Show lectures directly for the selected book
     return (
       <BookLecturesView
         moduleId={moduleId}
@@ -778,8 +979,8 @@ export function ModuleLearningTab({
     );
   }
 
-  // Show book selector view (or add first book for admins)
-  if (hasMultipleBooks || canManageBooks) {
+  // ─── ADMIN VIEW: book selector cards ───
+  if (hasMultipleBooks && canManageBooks) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -787,24 +988,15 @@ export function ModuleLearningTab({
             <BookOpen className="w-5 h-5 text-muted-foreground" />
             {hasMultipleBooks ? `Select ${selectorLabel}` : `${selectorLabel}s`}
           </h2>
-          {canManageBooks && (
-            <Button size="sm" variant="outline" onClick={handleAddBook}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add {selectorLabel}
-            </Button>
-          )}
+          <Button size="sm" variant="outline" onClick={handleAddBook}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add {selectorLabel}
+          </Button>
         </div>
 
         {sortedBooks.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={sortedBooks.map(b => b.book_label)}
-              strategy={verticalListSortingStrategy}
-            >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sortedBooks.map(b => b.book_label)} strategy={verticalListSortingStrategy}>
               <div className="grid gap-3">
                 {sortedBooks.map((book) => {
                   const bookLectureCount = lectureCounts?.[book.book_label] || 0;
@@ -832,24 +1024,15 @@ export function ModuleLearningTab({
               <BookOpen className="w-6 h-6 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-4">No {selectorLabel.toLowerCase()}s yet.</p>
-            {canManageBooks && (
-              <Button onClick={handleAddBook}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add First {selectorLabel}
-              </Button>
-            )}
+            <Button onClick={handleAddBook}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add First {selectorLabel}
+            </Button>
           </div>
         )}
 
-        {/* Modals */}
-        <BookFormModal
-          open={bookModalOpen}
-          onOpenChange={setBookModalOpen}
-          moduleId={moduleId}
-          editingBook={editingBook}
-        />
+        <BookFormModal open={bookModalOpen} onOpenChange={setBookModalOpen} moduleId={moduleId} editingBook={editingBook} />
 
-        {/* Delete Book Confirmation */}
         <AlertDialog open={!!deleteBookDialog} onOpenChange={() => setDeleteBookDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -890,7 +1073,6 @@ export function ModuleLearningTab({
       </div>
       {renderChapterList(sortedChapters, singleBookLabel)}
 
-      {/* Modals */}
       <ChapterFormModal
         open={chapterModalOpen}
         onOpenChange={setChapterModalOpen}
@@ -901,7 +1083,6 @@ export function ModuleLearningTab({
         existingChapters={chapters}
       />
 
-      {/* Delete Chapter Confirmation */}
       <AlertDialog open={!!deleteChapterDialog} onOpenChange={() => setDeleteChapterDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

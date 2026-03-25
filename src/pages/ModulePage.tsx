@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -12,10 +12,12 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
+import { useModuleBooks } from '@/hooks/useModuleBooks';
 import {
   ArrowLeft, 
   BookOpen,
@@ -24,9 +26,13 @@ import {
   MessageCircle,
   Megaphone,
   Mail,
+  Play,
+  ArrowRight,
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTrackPosition } from '@/hooks/useTrackPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 
@@ -57,6 +63,14 @@ export default function ModulePage() {
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
 
+  // Track position for resume functionality
+  useTrackPosition({
+    year_number: year?.number ?? null,
+    module_id: actualModuleId ?? null,
+    module_name: module?.name ?? null,
+    module_slug: module?.slug ?? null,
+  });
+
   useEffect(() => {
     if (module?.name) {
       Sentry.addBreadcrumb({
@@ -84,6 +98,38 @@ export default function ModulePage() {
   const { data: yearModules = [] } = useModules(module?.year_id);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
+  // Fetch books for module-level pills (students only)
+  const { data: moduleBooks } = useModuleBooks(actualModuleId);
+  const sortedModuleBooks = useMemo(() => {
+    if (!moduleBooks) return [];
+    return [...moduleBooks].sort((a, b) => a.display_order - b.display_order);
+  }, [moduleBooks]);
+  const hasMultipleBooks = sortedModuleBooks.length > 1;
+
+  // Student book pill state
+  const bookStorageKey = `kasrlearn_book_${actualModuleId}`;
+  const [activeBookLabel, setActiveBookLabel] = useState<string | null>(null);
+
+  // Initialize active book from localStorage once books are loaded
+  useEffect(() => {
+    if (!isStudent || !hasMultipleBooks || sortedModuleBooks.length === 0) return;
+    const saved = localStorage.getItem(bookStorageKey);
+    if (saved && sortedModuleBooks.some(b => b.book_label === saved)) {
+      setActiveBookLabel(saved);
+    } else {
+      setActiveBookLabel(sortedModuleBooks[0]?.book_label || null);
+    }
+  }, [isStudent, hasMultipleBooks, sortedModuleBooks, bookStorageKey]);
+
+  const handleSelectBookPill = (bookLabel: string) => {
+    setActiveBookLabel(bookLabel);
+    localStorage.setItem(bookStorageKey, bookLabel);
+  };
+
+  // Fetch last position for Continue card (students only)
+  const { data: lastPos } = useLastPosition();
+  const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
+
   // Dashboard data for Study Coach tabs (Overview & Unlocks)
   const { data: coachDashboard } = useStudentDashboard({
     yearId: module?.year_id,
@@ -110,9 +156,9 @@ export default function ModulePage() {
     <MainLayout>
       <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/year/${year?.number || 1}`)}>
+        {/* Header + Book pills on same row */}
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="mt-0.5 flex-shrink-0" onClick={() => navigate(`/year/${year?.number || 1}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -123,7 +169,28 @@ export default function ModulePage() {
               </>
             ) : (
               <>
-                <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <h1 className="text-xl md:text-2xl font-heading font-semibold truncate">{module?.name}</h1>
+                  {/* Book/Department pills inline with title */}
+                  {isStudent && hasMultipleBooks && activeBookLabel && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortedModuleBooks.map((book) => (
+                        <button
+                          key={book.book_label}
+                          onClick={() => handleSelectBookPill(book.book_label)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                            activeBookLabel === book.book_label
+                              ? "bg-accent text-accent-foreground"
+                              : "border border-border text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {book.description || book.book_label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {module?.description && (
                   <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                 )}
@@ -131,6 +198,29 @@ export default function ModulePage() {
             )}
           </div>
         </div>
+        {/* Continue Where You Left Off */}
+        {showContinueCard && lastPos && (
+          <div
+            className="rounded-lg border border-primary/20 bg-primary/5 p-3 cursor-pointer
+                       hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
+            onClick={() => navigate(buildResumeUrl(lastPos))}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Play className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {buildResumeLabel(lastPos)}
+                  {' · '}
+                  {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </div>
+        )}
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">
@@ -273,6 +363,7 @@ export default function ModulePage() {
                 selectorLabel="Department"
                 canManageBooks={canManageBooks}
                 canManageChapters={canManageChapters}
+                externalActiveBookLabel={isStudent && hasMultipleBooks ? activeBookLabel : undefined}
               />
             )}
 

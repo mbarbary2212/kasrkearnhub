@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen } from 'lucide-react';
+import { Plus, Download, CheckCircle2, AlertCircle, AlertTriangle, Copy, Star, Trash2, RotateCcw, Upload, ShieldAlert, FolderOpen, Sparkles } from 'lucide-react';
 import { SectionWarningBanner } from '@/components/sections/SectionWarningBanner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,7 +44,7 @@ import {
   filterByStatus,
   countByStatus,
 } from './PracticeFilters';
-import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
+import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, useBulkUpdateMcqs, type Mcq, type McqFormData, type QuestionFormat } from '@/hooks/useMcqs';
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,6 +70,7 @@ import {
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { McqAdminTable } from './McqAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
+import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -231,6 +232,7 @@ export function McqList({
   const deleteMutation = useDeleteMcq();
   const restoreMutation = useRestoreMcq();
   const bulkCreateMutation = useBulkCreateMcqs();
+  const bulkUpdateMutation = useBulkUpdateMcqs();
   
   // AI Analyzer for bulk upload
   const { isAnalyzing, analysis, analyzeError, analyzeFile, clearAnalysis } = useBulkUploadAnalyzer();
@@ -627,13 +629,7 @@ export function McqList({
   };
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mcq_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    window.open('/admin?tab=help-templates', '_blank');
   };
 
   const exactDuplicates = previewData?.filter(p => p.isExactDuplicate).length || 0;
@@ -644,6 +640,34 @@ export function McqList({
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>No {questionFormat === 'sba' ? 'SBA questions' : 'MCQs'} available yet.</p>
+      </div>
+    );
+  }
+
+  // Student session view — split-screen layout
+  if (!isAdmin && filteredMcqs.length > 0 && chapterId) {
+    return (
+      <div className="space-y-4">
+        {/* Practice Filters for students */}
+        {totalQuestions > 0 && (
+          <PracticeFilters
+            filters={practiceFilters}
+            onFiltersChange={setPracticeFilters}
+            onResetProgress={handleResetAttempt}
+            counts={statusCounts}
+            totalCount={totalQuestions}
+            filteredCount={filteredMcqs.length}
+            questionType="MCQ"
+          />
+        )}
+        <QuestionSessionShell
+          questions={filteredMcqs}
+          questionType={questionFormat === 'sba' ? 'sba' : 'mcq'}
+          moduleId={moduleId}
+          chapterId={chapterId}
+          attemptMap={attemptMap}
+          allAttempts={allAttempts}
+        />
       </div>
     );
   }
@@ -720,6 +744,31 @@ export function McqList({
               <Upload className="h-4 w-4" />
               Bulk Import
             </Button>
+            {isAdmin && chapterId && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  toast.info('Rating AI confidence... This may take a moment.');
+                  try {
+                    const { data, error } = await supabase.functions.invoke('backfill-ai-confidence', {
+                      body: { chapter_id: chapterId },
+                    });
+                    if (error) throw error;
+                    if (data?.processed > 0) {
+                      toast.success(`Rated ${data.processed} of ${data.total} MCQs${data.hadPdf ? ' (using linked PDF)' : ' (no PDF found, used general knowledge)'}`);
+                    } else {
+                      toast.info(data?.message || 'All MCQs already have confidence ratings');
+                    }
+                  } catch (err: any) {
+                    toast.error(`Failed to rate confidence: ${err.message}`);
+                  }
+                }}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Rate AI Confidence
+              </Button>
+            )}
             <Button onClick={() => guard(() => setShowAddModal(true))} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Question
@@ -911,7 +960,7 @@ export function McqList({
             <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-1 text-xs">
                 <Download className="h-3 w-3" />
-                Download Template
+                Get Template
               </Button>
             </div>
 
@@ -1183,16 +1232,40 @@ The AI will parse and extract the questions automatically.`}
                   </div>
                 </ScrollArea>
 
-                <Button 
-                  onClick={handleBulkImport} 
-                  className="w-full"
-                  disabled={bulkCreateMutation.isPending || itemsToImportCount === 0}
-                >
-                  {bulkCreateMutation.isPending 
-                    ? 'Importing...' 
-                    : `Import ${itemsToImportCount} Question${itemsToImportCount !== 1 ? 's' : ''}`
-                  }
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleBulkImport} 
+                    className="flex-1"
+                    disabled={bulkCreateMutation.isPending || bulkUpdateMutation.isPending || itemsToImportCount === 0}
+                  >
+                    {bulkCreateMutation.isPending 
+                      ? 'Importing...' 
+                      : `Import ${itemsToImportCount} New Question${itemsToImportCount !== 1 ? 's' : ''}`
+                    }
+                  </Button>
+                  {(exactDuplicates > 0 || possibleDuplicates > 0) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!previewData) return;
+                        const allItems = previewData.map(item => item.item);
+                        bulkUpdateMutation.mutate(
+                          { mcqs: allItems, moduleId, chapterId, topicId },
+                          {
+                            onSuccess: () => {
+                              setShowBulkModal(false);
+                              resetBulkModal();
+                            },
+                          }
+                        );
+                      }}
+                      disabled={bulkUpdateMutation.isPending || bulkCreateMutation.isPending}
+                      className="whitespace-nowrap"
+                    >
+                      {bulkUpdateMutation.isPending ? 'Updating...' : `Update ${exactDuplicates + possibleDuplicates} Existing`}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 

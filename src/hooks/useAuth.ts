@@ -14,6 +14,7 @@ interface AuthState {
   topicAssignments: TopicAdmin[];
   moduleAssignments: ModuleAdmin[];
   isLoading: boolean;
+  initialLoading: boolean;
 }
 
 // Role hierarchy levels
@@ -37,6 +38,7 @@ export function useAuth() {
     topicAssignments: [],
     moduleAssignments: [],
     isLoading: true,
+    initialLoading: true,
   });
 
   const queryClient = useQueryClient();
@@ -90,6 +92,7 @@ export function useAuth() {
         topicAssignments,
         moduleAssignments,
         isLoading: false,
+        initialLoading: false,
       }));
 
       Sentry.setUser({ id: userId, role: roleResult.data?.role ?? undefined });
@@ -109,7 +112,8 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
-          isLoading: !!session?.user,
+          // Only set isLoading true if we don't already have a user (prevents unmount on token refresh)
+          isLoading: !!session?.user && !prev.user,
         }));
 
         // Defer Supabase calls with setTimeout
@@ -144,7 +148,7 @@ export function useAuth() {
       if (session?.user) {
         fetchUserData(session.user.id);
       } else {
-        setState(prev => ({ ...prev, isLoading: false }));
+        setState(prev => ({ ...prev, isLoading: false, initialLoading: false }));
       }
     });
 

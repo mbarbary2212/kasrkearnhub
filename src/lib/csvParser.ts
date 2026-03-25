@@ -175,6 +175,16 @@ const COLUMN_MAPPINGS: Record<string, string> = {
   'section_num': 'section_number',
   'sectionnum': 'section_number',
 
+  // AI Confidence variations
+  'ai_confidence': 'ai_confidence',
+  'aiconfidence': 'ai_confidence',
+  'ai confidence': 'ai_confidence',
+  'ai_score': 'ai_confidence',
+  'aiscore': 'ai_confidence',
+  'confidence': 'ai_confidence',
+  'ai confidence score': 'ai_confidence',
+  'confidencescore': 'ai_confidence',
+
   // Flashcard cloze columns
   'card_type': 'card_type',
   'cardtype': 'card_type',
@@ -526,12 +536,20 @@ export function parseSmartMcqCsv(csvText: string): ParseResult {
     const sectionNumberRaw = getValue('section_number');
     const sectionNumber = sectionNumberRaw ? parseInt(sectionNumberRaw, 10) : undefined;
     
+    // Extract AI confidence (0-10)
+    const aiConfidenceRaw = getValue('ai_confidence');
+    const aiConfidenceParsed = aiConfidenceRaw ? parseInt(aiConfidenceRaw, 10) : null;
+    const aiConfidence = (aiConfidenceParsed !== null && !isNaN(aiConfidenceParsed))
+      ? Math.min(10, Math.max(0, aiConfidenceParsed))
+      : null;
+    
     const mcq: McqFormData = {
       stem,
       choices,
       correct_key: correctKey,
       explanation,
       difficulty,
+      ai_confidence: aiConfidence,
     };
     
     mcqs.push(mcq);

@@ -50,15 +50,7 @@ export function TrueFalseBulkUploadModal({
   const bulkCreateMutation = useBulkCreateTrueFalseQuestions();
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'true_false_template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    window.open('/admin?tab=help-templates', '_blank');
   };
 
   const handlePreview = () => {
@@ -172,7 +164,7 @@ export function TrueFalseBulkUploadModal({
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2">
               <Download className="h-4 w-4" />
-              Download Template
+              Get Template
             </Button>
           </div>
 

@@ -32,6 +32,7 @@ export interface OsceQuestion {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  ai_confidence: number | null;
 }
 
 export interface OsceQuestionInsert {

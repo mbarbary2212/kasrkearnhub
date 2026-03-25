@@ -1562,6 +1562,7 @@ export type Database = {
       }
       essays: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           concept_ai_confidence: number | null
           concept_auto_assigned: boolean | null
@@ -1592,6 +1593,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
@@ -1622,6 +1624,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           concept_ai_confidence?: number | null
           concept_auto_assigned?: boolean | null
@@ -2671,6 +2674,7 @@ export type Database = {
       }
       matching_questions: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           column_a_items: Json
           column_b_items: Json
@@ -2696,6 +2700,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
@@ -2721,6 +2726,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           column_a_items?: Json
           column_b_items?: Json
@@ -3111,6 +3117,7 @@ export type Database = {
       }
       mcqs: {
         Row: {
+          ai_confidence: number | null
           chapter_id: string | null
           choices: Json
           concept_ai_confidence: number | null
@@ -3134,6 +3141,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           choices?: Json
           concept_ai_confidence?: number | null
@@ -3157,6 +3165,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           chapter_id?: string | null
           choices?: Json
           concept_ai_confidence?: number | null
@@ -3502,6 +3511,7 @@ export type Database = {
           book_label: string
           chapter_prefix: string
           created_at: string | null
+          description: string | null
           display_order: number
           id: string
           module_id: string
@@ -3510,6 +3520,7 @@ export type Database = {
           book_label: string
           chapter_prefix?: string
           created_at?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_id: string
@@ -3518,6 +3529,7 @@ export type Database = {
           book_label?: string
           chapter_prefix?: string
           created_at?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_id?: string
@@ -3718,6 +3730,7 @@ export type Database = {
       }
       osce_questions: {
         Row: {
+          ai_confidence: number | null
           answer_1: boolean
           answer_2: boolean
           answer_3: boolean
@@ -3754,6 +3767,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_confidence?: number | null
           answer_1: boolean
           answer_2: boolean
           answer_3: boolean
@@ -3790,6 +3804,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_confidence?: number | null
           answer_1?: boolean
           answer_2?: boolean
           answer_3?: boolean
@@ -4353,6 +4368,66 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_last_position: {
+        Row: {
+          activity_position: Json | null
+          book_label: string | null
+          chapter_id: string | null
+          chapter_title: string | null
+          id: string
+          module_id: string | null
+          module_name: string | null
+          module_slug: string | null
+          tab: string | null
+          updated_at: string
+          user_id: string
+          year_number: number | null
+        }
+        Insert: {
+          activity_position?: Json | null
+          book_label?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          module_slug?: string | null
+          tab?: string | null
+          updated_at?: string
+          user_id: string
+          year_number?: number | null
+        }
+        Update: {
+          activity_position?: Json | null
+          book_label?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          id?: string
+          module_id?: string | null
+          module_name?: string | null
+          module_slug?: string | null
+          tab?: string | null
+          updated_at?: string
+          user_id?: string
+          year_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_last_position_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_last_position_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
         ]
@@ -5692,6 +5767,7 @@ export type Database = {
         Row: {
           active_sections: string[] | null
           additional_instructions: string | null
+          ai_confidence: number | null
           avatar_id: number | null
           case_mode: string | null
           case_type: string
@@ -5736,6 +5812,7 @@ export type Database = {
         Insert: {
           active_sections?: string[] | null
           additional_instructions?: string | null
+          ai_confidence?: number | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string
@@ -5780,6 +5857,7 @@ export type Database = {
         Update: {
           active_sections?: string[] | null
           additional_instructions?: string | null
+          ai_confidence?: number | null
           avatar_id?: number | null
           case_mode?: string | null
           case_type?: string

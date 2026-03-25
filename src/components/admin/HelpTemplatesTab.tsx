@@ -45,9 +45,9 @@ interface TemplateSchema {
 
 export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
   mcq: {
-    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['stem', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'choiceE', 'correct_key', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['stem', 'choiceA', 'choiceB', 'correct_key'],
-    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['choiceC', 'choiceD', 'choiceE', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'A 45-year-old patient presents with chest pain radiating to the left arm. Which of the following is the most likely diagnosis?',
@@ -60,14 +60,15 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'The classic presentation of chest pain radiating to the left arm is highly suggestive of acute myocardial infarction.',
         'medium',
         'Cardiac Emergencies',
-        '1'
+        '1',
+        '8'
       ],
     ],
   },
   osce: {
-    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    columns: ['image_filename', 'history_text', 'statement_1', 'answer_1', 'explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number', 'ai_confidence'],
     required: ['image_filename', 'history_text', 'statement_1', 'answer_1'],
-    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number'],
+    optional: ['explanation_1', 'statement_2', 'answer_2', 'explanation_2', 'statement_3', 'answer_3', 'explanation_3', 'statement_4', 'answer_4', 'explanation_4', 'statement_5', 'answer_5', 'explanation_5', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'chest_xray_001.jpg',
@@ -88,7 +89,8 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
         'FALSE',
         'The findings are more consistent with COPD/emphysema.',
         'Radiology',
-        '2'
+        '2',
+        '7'
       ],
     ],
   },
@@ -153,9 +155,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   matching: {
-    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    columns: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2', 'itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     required: ['title', 'itemA_1', 'itemB_1', 'itemA_2', 'itemB_2'],
-    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number'],
+    optional: ['itemA_3', 'itemB_3', 'itemA_4', 'itemB_4', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'Heart Sounds',
@@ -173,9 +175,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   essay: {
-    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    columns: ['title', 'question', 'model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     required: ['title', 'question'],
-    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points'],
+    optional: ['model_answer', 'keywords', 'rating', 'section_name', 'section_number', 'question_type', 'rubric_json', 'max_points', 'ai_confidence'],
     examples: [
       [
         'Stages of Wound Healing',
@@ -204,9 +206,9 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   true_false: {
-    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number'],
+    columns: ['statement', 'correct_answer', 'explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     required: ['statement', 'correct_answer'],
-    optional: ['explanation', 'difficulty', 'section_name', 'section_number'],
+    optional: ['explanation', 'difficulty', 'section_name', 'section_number', 'ai_confidence'],
     examples: [
       [
         'The left recurrent laryngeal nerve loops around the aortic arch before ascending to the larynx.',
@@ -556,10 +558,17 @@ After a case exists, admins can edit every detail:
   - Move / Copy: move or copy the case to another chapter or module
 
 ### JSON Import
-Admins can also upload a JSON file (matching the StructuredCaseData schema)
-to create a new draft case directly. Use the "Import JSON" button in the
-Interactive Cases admin list. The JSON can be generated using the AI Prompt
-Template available in Help & Templates.
+Admins can import a case by clicking the "Import JSON" button in the Interactive
+Cases admin list. This opens an Import Modal with two options:
+  - **Paste Text**: Copy the JSON directly from ChatGPT/Claude and paste it in.
+    This is the fastest method — no need to save a file first.
+  - **Upload File**: Drag & drop or browse for a .json file.
+
+The app automatically handles common issues like missing outer curly braces {},
+markdown code fences, and trailing commas. However, for best results, try to
+copy the complete JSON block from the AI output.
+
+The JSON can be generated using the AI Prompt Template available in Help & Templates.
 
 ---
 
@@ -593,8 +602,12 @@ function downloadInteractiveCasePrompt() {
   const content = `# Interactive Cases — AI Generation Prompt
 # ================================================
 # Copy everything below, fill in the [PLACEHOLDERS], paste into Claude or
-# ChatGPT, copy the JSON output, and upload it using the "Import JSON"
-# button in KALM Hub's Interactive Cases admin list.
+# ChatGPT, then either:
+#   1. Copy the JSON output and PASTE it directly into the KALM Hub Import Modal
+#   2. Or save it as a .json file and upload it
+#
+# TIP: If the output is long, you can copy the text directly from the chat
+# and paste it into the KALM Hub Import Modal. No need to save a file!
 # ================================================
 
 You are a medical education content creator. Generate a complete structured
@@ -872,6 +885,9 @@ Return a single JSON object with this exact structure. Do NOT wrap in markdown c
 9. All IDs must be unique strings (use prefixes like hx_, mm_, sm_, conc_)
 10. For full_conversation mode, include both arabic_reference and english_reference
 11. Physical examination findings MUST use ONLY these 8 region keys: general, head_neck, vital_signs, chest, upper_limbs, abdomen, lower_limbs, extra. Do NOT use descriptive keys like wound_assessment, abdomen_palpation, or chest_auscultation — map them to the closest fixed key. Use "extra" with a custom "label" for special exams (e.g., DRE, Wound, Fundoscopy). CRITICAL: Combine ALL examination components (inspection, palpation, percussion, auscultation, special tests) into a SINGLE "text" field per region. Use **bold** markdown sub-headings within the text to separate components, e.g.: "**Inspection:** Distended abdomen.\\n**Palpation:** Tender in RIF with guarding.\\n**Auscultation:** Reduced bowel sounds." Never create separate keys like abdomen_inspection and abdomen_palpation.
+
+## TIP
+If the output is long, you can copy the text directly from the chat and paste it into the KALM Hub Import Modal (click "Import JSON" → "Paste Text"). The app automatically fixes missing outer braces and code fences.
 `;
 
   downloadTxt('interactive_cases_ai_prompt.md', content);

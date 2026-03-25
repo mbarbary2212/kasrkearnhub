@@ -6,6 +6,7 @@ export interface ModuleBook {
   id: string;
   module_id: string;
   book_label: string;
+  description: string | null;
   display_order: number;
   chapter_prefix: string;
   created_at: string | null;
@@ -121,6 +122,7 @@ export function useAddBook() {
             : `${Date.now()}`,
         module_id: result.moduleId,
         book_label: result.bookLabel,
+        description: null,
         display_order: result.displayOrder,
         chapter_prefix: result.chapterPrefix,
         created_at: new Date().toISOString(),
@@ -162,15 +164,18 @@ export function useUpdateBook() {
       oldLabel, 
       newLabel,
       chapterPrefix,
+      description,
     }: { 
       moduleId: string; 
       oldLabel: string; 
       newLabel?: string;
       chapterPrefix?: string;
+      description?: string | null;
     }) => {
-      const updates: Record<string, string> = {};
+      const updates: Record<string, string | null> = {};
       if (newLabel !== undefined) updates.book_label = newLabel;
       if (chapterPrefix !== undefined) updates.chapter_prefix = chapterPrefix;
+      if (description !== undefined) updates.description = description;
 
       // Update book metadata
       const { error: bookError } = await supabase

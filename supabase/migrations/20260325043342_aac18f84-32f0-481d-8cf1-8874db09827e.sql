@@ -1,0 +1,1 @@
+ALTER TABLE public.module_books ADD COLUMN IF NOT EXISTS description text;

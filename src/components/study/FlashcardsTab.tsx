@@ -245,7 +245,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
           className="gap-2"
         >
           <Layers className="w-4 h-4" />
-          Flashcard
+          Classic
           <span className="text-xs opacity-70">({cardCounts.normal})</span>
         </Button>
         <Button

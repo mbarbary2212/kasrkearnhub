@@ -28,6 +28,7 @@ export interface Mcq {
   updated_by: string | null;
   created_at: string;
   question_format: QuestionFormat;
+  ai_confidence: number | null;
 }
 
 export interface McqFormData {
@@ -40,6 +41,7 @@ export interface McqFormData {
   question_format?: QuestionFormat;
   original_section_name?: string | null;
   original_section_number?: string | null;
+  ai_confidence?: number | null;
 }
 
 // Helper to convert DB row to Mcq type
@@ -60,6 +62,7 @@ function mapDbRowToMcq(row: Record<string, unknown>): Mcq {
     updated_by: row.updated_by as string | null,
     created_at: row.created_at as string,
     question_format: (row.question_format as QuestionFormat) ?? 'mcq',
+    ai_confidence: (row.ai_confidence as number | null) ?? null,
   };
 }
 
@@ -84,6 +87,8 @@ export function useModuleMcqs(moduleId?: string, includeDeleted = false, format:
       return (data || []).map(mapDbRowToMcq);
     },
     enabled: !!moduleId,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -165,6 +170,8 @@ export function useTopicMcqs(topicId?: string, includeDeleted = false, format: Q
       return (data || []).map(mapDbRowToMcq);
     },
     enabled: !!topicId,
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -444,6 +451,68 @@ export function useBulkCreateMcqs() {
   });
 }
 
+// Bulk update existing MCQs (match by stem, update ai_confidence/difficulty/explanation)
+export function useBulkUpdateMcqs() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      mcqs, 
+      moduleId, 
+      chapterId,
+      topicId,
+    }: { 
+      mcqs: McqFormData[]; 
+      moduleId: string; 
+      chapterId?: string | null;
+      topicId?: string | null;
+    }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to update MCQs');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ mcqs, moduleId, chapterId, topicId, mode: 'update' }),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update MCQs');
+      }
+
+      return { moduleId, chapterId, topicId, count: result.count };
+    },
+    onSuccess: (result) => {
+      toast({ title: `${result.count} question(s) updated successfully` });
+      queryClient.invalidateQueries({ queryKey: ['mcqs', 'module', result.moduleId] });
+      if (result.chapterId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'chapter', result.chapterId] });
+      }
+      if (result.topicId) {
+        queryClient.invalidateQueries({ queryKey: ['mcqs', 'topic', result.topicId] });
+      }
+      logActivity({
+        action: 'bulk_update_mcq',
+        entity_type: 'mcq',
+        scope: { module_id: result.moduleId, chapter_id: result.chapterId, topic_id: result.topicId },
+        metadata: { count: result.count, source: 'csv_reimport' },
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error updating questions', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 // Parse CSV text into MCQ data
 export function parseMcqCsv(csvText: string): McqFormData[] {
   const lines = csvText.trim().split('\n').filter(line => line.trim());
@@ -494,7 +563,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
     }
     parts.push(current.trim());
 
-    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty] = parts;
+    const [stem, choiceA, choiceB, choiceC, choiceD, choiceE, correctKey, explanation, difficulty, _sectionName, _sectionNumber, aiConfidence] = parts;
 
     // Build choices array and filter out empty choice E
     const allChoices = [
@@ -518,6 +587,7 @@ export function parseMcqCsv(csvText: string): McqFormData[] {
       difficulty: (['easy', 'medium', 'hard'].includes(difficulty?.toLowerCase()) 
         ? difficulty.toLowerCase() as 'easy' | 'medium' | 'hard' 
         : null),
+      ai_confidence: aiConfidence ? Math.min(10, Math.max(0, parseInt(aiConfidence, 10))) || null : null,
     };
   });
 }

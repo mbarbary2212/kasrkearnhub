@@ -114,3 +114,6 @@ verify_jwt = false
 
 [functions.sync-pdf-text]
 verify_jwt = false
+
+[functions.backfill-ai-confidence]
+verify_jwt = false

@@ -28,6 +28,7 @@ export interface MatchingQuestion {
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
+  ai_confidence: number | null;
 }
 
 export interface MatchingQuestionFormData {
@@ -62,6 +63,7 @@ function mapDbRowToMatchingQuestion(row: Record<string, unknown>): MatchingQuest
     created_by: row.created_by as string | null,
     updated_by: row.updated_by as string | null,
     created_at: row.created_at as string,
+    ai_confidence: (row.ai_confidence as number | null) ?? null,
   };
 }
 
