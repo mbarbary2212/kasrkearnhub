@@ -13,6 +13,7 @@ import {
   buildDashboardSuggestions,
   getWeakTopics,
   calculateAggregateReadiness,
+  generateConfidenceInsight,
 } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
@@ -89,6 +90,9 @@ export interface DashboardData {
   
   // Weak chapters
   weakChapters: WeakChapter[];
+  
+  // Confidence insight (optional single smart insight)
+  confidenceInsight: string | null;
   
   // Selected context
   selectedModuleName?: string;
@@ -380,6 +384,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
       const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
 
+      // Generate confidence insight (single smart insight from strongest signal)
+      const confidenceInsight = generateConfidenceInsight(realMetrics, chapterTitleMap);
+
       // Use real aggregate readiness if available
       const metricsReadiness = calculateAggregateReadiness(realMetrics);
       const finalExamReadiness = realMetrics.length > 0 ? metricsReadiness : examReadiness;
@@ -408,6 +415,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         insights,
         suggestions,
         weakChapters,
+        confidenceInsight,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
       };
@@ -437,6 +445,7 @@ function getEmptyDashboard(): DashboardData {
     insights: [],
     suggestions: [],
     weakChapters: [],
+    confidenceInsight: null,
   };
 }
 
