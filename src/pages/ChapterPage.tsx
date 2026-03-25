@@ -157,14 +157,15 @@ export default function ChapterPage() {
     }
   }, [searchParams]);
   
+  const initSection = getSection();
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>(
-    initialSection === 'resources' && initialSubTab ? initialSubTab as ResourceTabId : 'lectures'
+    initSection === 'resources' && initialSubTab ? initialSubTab as ResourceTabId : 'lectures'
   );
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>(
-    initialSection === 'interactive' && initialSubTab ? initialSubTab as InteractiveTabId : 'cases'
+    initSection === 'interactive' && initialSubTab ? initialSubTab as InteractiveTabId : 'cases'
   );
   const [practiceTab, setPracticeTab] = useState<PracticeTabId>(
-    initialSection === 'practice' && initialSubTab ? initialSubTab as PracticeTabId : 'mcqs'
+    initSection === 'practice' && initialSubTab ? initialSubTab as PracticeTabId : 'mcqs'
   );
   const [socratesSubTab, setSocratesSubTab] = useState<'documents' | 'questions'>('documents');
   const [lecturesResetKey, setLecturesResetKey] = useState(0);
