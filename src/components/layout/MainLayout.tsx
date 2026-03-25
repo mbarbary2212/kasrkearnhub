@@ -51,6 +51,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const handleLogout = async () => {
     // Clear stored last path on logout
     clearLastPath();
+    sessionStorage.removeItem('kalmhub:hasVisitedHome');
     await signOut();
     // Full reload to show splash screen
     window.location.href = '/';

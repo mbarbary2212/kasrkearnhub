@@ -9,6 +9,7 @@ interface BlockedUserScreenProps {
 
 export function BlockedUserScreen({ message }: BlockedUserScreenProps) {
   const handleSignOut = async () => {
+    sessionStorage.removeItem('kalmhub:hasVisitedHome');
     await supabase.auth.signOut();
     window.location.href = '/auth';
   };
