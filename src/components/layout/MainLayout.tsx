@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,13 +29,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useDueCards } from '@/hooks/useFSRS';
 import { useYears } from '@/hooks/useYears';
+import { StudentSidebar } from '@/components/layout/StudentSidebar';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin } = useAuthContext();
+  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
@@ -121,9 +123,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const displayName = profile?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
+  const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-transparent">
+    <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -277,11 +280,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-24">
-        {children}
-      </main>
+      <div className="flex flex-1">
+        {/* Student Sidebar - desktop only */}
+        {isStudent && <StudentSidebar onBadgesOpen={() => setBadgesOpen(true)} />}
 
+        {/* Main Content */}
+        <main className={cn("flex-1 px-4 py-8 pb-24", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
+          <div className={isStudent ? 'container mx-auto' : ''}>
+            {children}
+          </div>
+        </main>
+      </div>
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
