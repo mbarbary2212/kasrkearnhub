@@ -86,8 +86,9 @@ export interface DashboardData {
   // Insights
   insights: DashboardInsight[];
   
-  // Today's suggestions
+  // Adaptive study plan
   suggestions: SuggestedItem[];
+  studyPlan: AdaptiveStudyPlan | null;
   
   // Weak chapters
   weakChapters: WeakChapter[];
