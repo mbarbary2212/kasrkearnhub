@@ -563,6 +563,7 @@ export function ModuleLearningTab({
   canManageBooks = false,
   canManageChapters = false,
   selectedDepartmentId,
+  externalActiveBookLabel,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
   const auth = useAuthContext();
@@ -876,9 +877,34 @@ export function ModuleLearningTab({
     );
   }
 
-  // ─── STUDENT VIEW: pill filters instead of intermediate book screen ───
+  // ─── STUDENT VIEW: pill filters handled externally via ModulePage ───
+  if (externalActiveBookLabel && !canManageBooks) {
+    // Pharmacology special case
+    if (externalActiveBookLabel.toLowerCase() === 'pharmacology') {
+      return (
+        <PharmacologyTopicsView
+          departmentId={PHARMACOLOGY_DEPT_ID}
+          moduleId={moduleId}
+          canManageTopics={false}
+        />
+      );
+    }
+
+    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel] || moduleId;
+    
+    return (
+      <StudentBookPillView
+        moduleId={moduleId}
+        fetchModuleId={fetchModuleId}
+        activeBookLabel={externalActiveBookLabel}
+        sortedBooks={[]} // pills rendered externally, pass empty
+        onSelectPill={() => {}} // no-op, handled by parent
+      />
+    );
+  }
+
+  // Legacy: if multiple books and no external control (shouldn't happen for students now)
   if (hasMultipleBooks && !canManageBooks && activeBookLabel) {
-    // Check if active pill is Pharmacology → show Topics view with pills
     if (activeBookLabel.toLowerCase() === 'pharmacology') {
       return (
         <div className="space-y-3">
@@ -894,7 +920,7 @@ export function ModuleLearningTab({
                     : "border border-border text-muted-foreground hover:bg-muted"
                 )}
               >
-                {book.book_label}
+                {book.description || book.book_label}
               </button>
             ))}
           </div>
