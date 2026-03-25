@@ -75,7 +75,7 @@ export function StudentSidebar() {
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, sectionId: 'dashboard', globalPath: '/' },
     {
-      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '/', skipAutoLogin: true,
+      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '__learning__',
       children: isChapterOrTopicPage ? learningSubItems : undefined,
     },
     { label: 'Connect', icon: MessageCircle, sectionId: 'connect', globalPath: '/connect' },
