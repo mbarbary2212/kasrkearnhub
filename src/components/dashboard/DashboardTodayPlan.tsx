@@ -15,6 +15,7 @@ const iconMap: Record<string, React.ElementType> = {
   video: Play,
   essay: FileText,
   flashcard: GalleryHorizontal,
+  review: ArrowRight,
 };
 
 const trendIndicator: Record<string, { icon: string; className: string }> = {

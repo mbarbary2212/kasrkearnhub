@@ -17,13 +17,15 @@ export interface ChapterMetricsInput {
   flashcards_due?: number;
   flashcards_overdue?: number;
   last_activity_at?: string | null;
+  // Confidence fields
+  confidence_mismatch_rate?: number;
 }
 
 /**
  * Calculate performance trend: recent vs overall accuracy.
  */
 export function getPerformanceTrend(m: ChapterMetricsInput): PerformanceTrend {
-  if (m.mcq_attempts < 5) return 'stable'; // not enough data
+  if (m.mcq_attempts < 5) return 'stable';
   const trend = m.recent_mcq_accuracy - m.mcq_accuracy;
   if (trend < -10) return 'declining';
   if (trend > 10) return 'improving';
@@ -43,10 +45,6 @@ export function getConsistencyScore(lastActivityAt: string | null | undefined): 
 
 /**
  * Classify a chapter's learning state from real per-chapter metrics.
- * Single source of truth — used by dashboard, Study Coach, and module cards.
- *
- * Weak detection includes trend: declining chapters (trend < -10) are
- * flagged as weak even if average accuracy looks OK.
  */
 export function classifyChapterState(m: ChapterMetricsInput): ChapterState {
   if (m.coverage_percent === 0 && m.mcq_attempts < 3) return 'not_started';
@@ -54,7 +52,6 @@ export function classifyChapterState(m: ChapterMetricsInput): ChapterState {
 
   if (m.mcq_attempts >= 5) {
     const trend = getPerformanceTrend(m);
-    // Weak: low recent accuracy OR declining trend
     if (m.recent_mcq_accuracy < 60 || trend === 'declining') return 'weak';
     if (m.recent_mcq_accuracy < 75) return 'unstable';
   }
@@ -65,24 +62,22 @@ export function classifyChapterState(m: ChapterMetricsInput): ChapterState {
 
 /**
  * Calculate chapter readiness using weighted formula.
- * 0.30 coverage + 0.40 recent accuracy + 0.20 revision + 0.10 consistency
+ * 0.28 coverage + 0.37 accuracy + 0.20 revision + 0.10 consistency + 0.05 confidence alignment
  */
 export function calculateChapterReadiness(m: ChapterMetricsInput): number {
-  // Revision score
   let revisionScore = 100;
-  if (m.flashcards_overdue && m.flashcards_overdue > 0) {
-    revisionScore = 20;
-  } else if (m.flashcards_due && m.flashcards_due > 0) {
-    revisionScore = 60;
-  }
+  if (m.flashcards_overdue && m.flashcards_overdue > 0) revisionScore = 20;
+  else if (m.flashcards_due && m.flashcards_due > 0) revisionScore = 60;
 
   const consistency = getConsistencyScore(m.last_activity_at);
+  const confidenceAlignment = Math.max(0, Math.min(100, 100 - (m.confidence_mismatch_rate ?? 0)));
 
   const readiness =
-    0.30 * m.coverage_percent +
-    0.40 * m.recent_mcq_accuracy +
+    0.28 * m.coverage_percent +
+    0.37 * m.recent_mcq_accuracy +
     0.20 * revisionScore +
-    0.10 * consistency;
+    0.10 * consistency +
+    0.05 * confidenceAlignment;
 
   return Math.round(Math.min(100, Math.max(0, readiness)));
 }

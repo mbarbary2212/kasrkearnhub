@@ -36,6 +36,10 @@ export interface StudentChapterMetric {
   confidence_mismatch_rate: number;
   overconfident_error_rate: number;
   underconfident_correct_rate: number;
+  // Review scheduling fields
+  next_review_at: string | null;
+  last_review_interval: number;
+  review_strength: number;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +74,6 @@ export function useStudentChapterMetrics(moduleId?: string) {
       return (data || []) as unknown as StudentChapterMetric[];
     },
     enabled: !!user?.id,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 }

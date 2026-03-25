@@ -4,6 +4,8 @@ import {
   type ChapterState,
   type PerformanceTrend,
 } from './classifyChapterState';
+import { classifyLearningPattern, getPatternPriorityBoost } from './classifyLearningPattern';
+import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 
 export interface DashboardAction {
@@ -19,6 +21,8 @@ export interface DashboardAction {
   isPrimary?: boolean;
   state?: string;
   trend?: PerformanceTrend;
+  learningPattern?: string;
+  revisionState?: RevisionState;
 }
 
 export interface WeakTopic {
@@ -44,9 +48,6 @@ interface BuildSuggestionsInput {
   chapters: ChapterInfo[];
 }
 
-/**
- * Get trend-aware reason string for a suggestion.
- */
 function getTrendReason(baseReason: string, trend: PerformanceTrend, state: string): string {
   if (trend === 'declining' && state !== 'not_started' && state !== 'early') {
     return 'Performance dropping';
@@ -57,9 +58,6 @@ function getTrendReason(baseReason: string, trend: PerformanceTrend, state: stri
   return baseReason;
 }
 
-/**
- * Get trend-based priority boost.
- */
 function getTrendBoost(trend: PerformanceTrend): number {
   if (trend === 'declining') return 15;
   if (trend === 'improving') return 5;
@@ -68,46 +66,94 @@ function getTrendBoost(trend: PerformanceTrend): number {
 
 /**
  * Build prioritized dashboard suggestions from real per-chapter metrics.
- * Single source of truth for Home dashboard and module Study Coach.
- * Includes trend-aware reasons and priority adjustments.
+ * Includes trend-aware, confidence-pattern-aware, and revision-schedule-aware logic.
  */
 export function buildDashboardSuggestions(input: BuildSuggestionsInput): DashboardAction[] {
   const { metrics, chapters } = input;
   const scored: DashboardAction[] = [];
 
-  // Build metrics lookup
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
   for (const chapter of chapters) {
     const m = metricsMap.get(chapter.id);
 
-    const state: ChapterState = m
-      ? classifyChapterState(m)
-      : 'not_started';
-
-    if (state === 'strong') continue;
+    const state: ChapterState = m ? classifyChapterState(m) : 'not_started';
+    if (state === 'strong' && (!m || getRevisionState(m) === 'scheduled' || getRevisionState(m) === 'none')) continue;
 
     const trend: PerformanceTrend = m ? getPerformanceTrend(m) : 'stable';
     const trendBoost = getTrendBoost(trend);
 
-    // Rule E — Revision due (flashcards)
-    if (m && (m.flashcards_overdue > 0 || m.flashcards_due > 0)) {
-      const isOverdue = m.flashcards_overdue > 0;
-      scored.push({
-        type: 'flashcard',
-        title: chapter.title,
-        chapterTitle: chapter.moduleName,
-        reason: isOverdue ? 'Overdue revision' : 'Due today',
-        estimatedMinutes: 10,
-        moduleId: chapter.moduleId,
-        chapterId: chapter.id,
-        priority: (isOverdue ? 95 : 85) + trendBoost,
-        state,
-        trend,
-      });
+    const patternResult = m ? classifyLearningPattern(m) : null;
+    const patternBoost = patternResult ? getPatternPriorityBoost(patternResult.pattern) : 0;
+    const patternLabel = patternResult?.pattern;
+
+    // === Revision scheduling (overdue / due) ===
+    if (m) {
+      const revState = getRevisionState(m);
+      if (revState === 'overdue' || revState === 'due') {
+        const reviewType = getReviewType(state, patternLabel);
+        const isOverdue = revState === 'overdue';
+        const weakBoost = state === 'weak' ? 10 : 0;
+
+        let reason = isOverdue ? 'Overdue revision' : 'Due today';
+        if (patternResult?.pattern === 'misconception') {
+          reason = isOverdue ? 'Overdue — confident mistakes' : 'Review this concept carefully';
+        }
+
+        // Determine estimated minutes and subtab based on review type
+        let subtab: string | undefined;
+        let minutes = 15;
+        if (reviewType === 'flashcard') { subtab = 'flashcards'; minutes = 10; }
+        else if (reviewType === 'mcq') { subtab = 'mcqs'; minutes = 15; }
+        else if (reviewType === 'video') { subtab = 'lectures'; minutes = 20; }
+
+        // Strong topics get "Quick refresh" instead
+        if (state === 'strong') {
+          reason = 'Quick refresh';
+          minutes = 5;
+        }
+
+        scored.push({
+          type: reviewType === 'flashcard' ? 'flashcard' : reviewType === 'video' ? 'video' : 'review',
+          title: chapter.title,
+          chapterTitle: chapter.moduleName,
+          reason,
+          estimatedMinutes: minutes,
+          moduleId: chapter.moduleId,
+          chapterId: chapter.id,
+          subtab,
+          priority: (isOverdue ? 95 : 85) + trendBoost + weakBoost,
+          state,
+          trend,
+          learningPattern: patternLabel,
+          revisionState: revState,
+        });
+      }
     }
 
-    // Rule B — Not started / early
+    // === Flashcards due (FSRS-level, separate from chapter-level revision) ===
+    if (m && (m.flashcards_overdue > 0 || m.flashcards_due > 0)) {
+      const revState = m ? getRevisionState(m) : 'none';
+      // Don't duplicate if we already added a flashcard-type revision above
+      if (revState !== 'overdue' && revState !== 'due') {
+        const isOverdue = m.flashcards_overdue > 0;
+        scored.push({
+          type: 'flashcard',
+          title: chapter.title,
+          chapterTitle: chapter.moduleName,
+          reason: isOverdue ? 'Overdue revision' : 'Due today',
+          estimatedMinutes: 10,
+          moduleId: chapter.moduleId,
+          chapterId: chapter.id,
+          priority: (isOverdue ? 95 : 85) + trendBoost,
+          state,
+          trend,
+          learningPattern: patternLabel,
+        });
+      }
+    }
+
+    // === Not started / early ===
     if (state === 'not_started' || state === 'early') {
       if (chapter.hasLectures) {
         scored.push({
@@ -154,9 +200,11 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
       continue;
     }
 
-    // Rule C — Weak
+    // === Weak ===
     if (state === 'weak') {
-      const reason = getTrendReason('Low recent accuracy', trend, state);
+      let reason = getTrendReason('Low recent accuracy', trend, state);
+      if (patternResult?.pattern === 'misconception') reason = patternResult.label;
+
       scored.push({
         type: 'mcq',
         title: chapter.title,
@@ -166,31 +214,38 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
         subtab: 'mcqs',
-        priority: 90 + trendBoost,
+        priority: 90 + trendBoost + patternBoost,
         state,
         trend,
+        learningPattern: patternLabel,
       });
       if (chapter.hasLectures) {
+        const reviewReason = patternResult?.pattern === 'misconception'
+          ? 'Review this concept carefully'
+          : 'Review explanation';
         scored.push({
           type: 'video',
           title: chapter.firstLectureTitle || chapter.title,
           chapterTitle: chapter.title,
-          reason: 'Review explanation',
+          reason: reviewReason,
           estimatedMinutes: 20,
           moduleId: chapter.moduleId,
           chapterId: chapter.id,
           subtab: 'lectures',
-          priority: 65 + trendBoost,
+          priority: 65 + trendBoost + patternBoost,
           state,
           trend,
+          learningPattern: patternLabel,
         });
       }
       continue;
     }
 
-    // Rule D — Unstable
+    // === Unstable ===
     if (state === 'unstable') {
-      const reason = getTrendReason('Needs reinforcement', trend, state);
+      let reason = getTrendReason('Needs reinforcement', trend, state);
+      if (patternResult?.pattern === 'hesitant') reason = patternResult.label;
+
       scored.push({
         type: 'mcq',
         title: chapter.title,
@@ -200,16 +255,19 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
         subtab: 'mcqs',
-        priority: 75 + trendBoost,
+        priority: 75 + trendBoost + patternBoost,
         state,
         trend,
+        learningPattern: patternLabel,
       });
       continue;
     }
 
-    // in_progress
+    // === In progress ===
     {
-      const reason = getTrendReason('Continue where you left', trend, state);
+      let reason = getTrendReason('Continue where you left', trend, state);
+      if (patternResult?.pattern === 'hesitant') reason = 'Build confidence with quick practice';
+
       scored.push({
         type: 'mcq',
         title: chapter.title,
@@ -219,9 +277,10 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
         subtab: 'mcqs',
-        priority: 65 + trendBoost,
+        priority: 65 + trendBoost + patternBoost,
         state,
         trend,
+        learningPattern: patternLabel,
       });
     }
   }
@@ -250,7 +309,6 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
 
 /**
  * Get truly weak topics from real per-chapter metrics.
- * Includes chapters with >=5 attempts AND (recent accuracy <60 OR declining trend).
  */
 export function getWeakTopics(
   metrics: StudentChapterMetric[],
@@ -278,11 +336,8 @@ export function getWeakTopics(
  * Calculate aggregate readiness from chapter metrics.
  */
 export function calculateAggregateReadiness(metrics: StudentChapterMetric[]): number {
-  const started = metrics.filter(m =>
-    m.coverage_percent > 0 || m.mcq_attempts > 0
-  );
+  const started = metrics.filter(m => m.coverage_percent > 0 || m.mcq_attempts > 0);
   if (started.length === 0) return 0;
-
   const sum = started.reduce((acc, m) => acc + m.readiness_score, 0);
   return Math.round(sum / started.length);
 }

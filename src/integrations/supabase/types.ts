@@ -4311,6 +4311,7 @@ export type Database = {
           last_activity_at: string | null
           last_flashcard_review_at: string | null
           last_mcq_attempt_at: string | null
+          last_review_interval: number
           last_video_at: string | null
           mcq_accuracy: number
           mcq_attempts: number
@@ -4321,10 +4322,12 @@ export type Database = {
           minutes_total: number
           minutes_watching: number
           module_id: string
+          next_review_at: string | null
           overconfident_error_rate: number
           readiness_score: number
           recent_mcq_accuracy: number
           resources_viewed: number
+          review_strength: number
           student_id: string
           underconfident_correct_rate: number
           updated_at: string
@@ -4343,6 +4346,7 @@ export type Database = {
           last_activity_at?: string | null
           last_flashcard_review_at?: string | null
           last_mcq_attempt_at?: string | null
+          last_review_interval?: number
           last_video_at?: string | null
           mcq_accuracy?: number
           mcq_attempts?: number
@@ -4353,10 +4357,12 @@ export type Database = {
           minutes_total?: number
           minutes_watching?: number
           module_id: string
+          next_review_at?: string | null
           overconfident_error_rate?: number
           readiness_score?: number
           recent_mcq_accuracy?: number
           resources_viewed?: number
+          review_strength?: number
           student_id: string
           underconfident_correct_rate?: number
           updated_at?: string
@@ -4375,6 +4381,7 @@ export type Database = {
           last_activity_at?: string | null
           last_flashcard_review_at?: string | null
           last_mcq_attempt_at?: string | null
+          last_review_interval?: number
           last_video_at?: string | null
           mcq_accuracy?: number
           mcq_attempts?: number
@@ -4385,10 +4392,12 @@ export type Database = {
           minutes_total?: number
           minutes_watching?: number
           module_id?: string
+          next_review_at?: string | null
           overconfident_error_rate?: number
           readiness_score?: number
           recent_mcq_accuracy?: number
           resources_viewed?: number
+          review_strength?: number
           student_id?: string
           underconfident_correct_rate?: number
           updated_at?: string
