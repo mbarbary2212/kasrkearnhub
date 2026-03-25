@@ -8,12 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useYear } from '@/hooks/useYears';
 import { useModulesByYearNumber } from '@/hooks/useModules';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Play, Stethoscope } from 'lucide-react';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function YearPage() {
   const { yearId } = useParams();
@@ -25,6 +27,8 @@ export default function YearPage() {
     sessionStorage.setItem('skipAutoLogin', 'true');
     navigate('/');
   };
+  const isStudent = !!auth.user && !auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin;
+  const { data: lastPosition } = useLastPosition();
 
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
@@ -89,6 +93,32 @@ export default function YearPage() {
             )}
           </div>
         </div>
+
+        {/* Continue where you left off */}
+        {isStudent && lastPosition?.module_id && (
+          <button
+            onClick={() => navigate(buildResumeUrl(lastPosition))}
+            className="w-full group"
+          >
+            <Card className="p-4 flex items-center gap-4 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-medium">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {buildResumeLabel(lastPosition)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  {formatDistanceToNow(new Date(lastPosition.updated_at), { addSuffix: true })}
+                </span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </Card>
+          </button>
+        )}
 
         {/* Modules Grid */}
         <section>
