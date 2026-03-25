@@ -6,15 +6,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { getYearIcon } from '@/lib/yearIcons';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function AllYearsPage() {
   const navigate = useNavigate();
   const { data: years, isLoading } = useYears();
-  const { profile } = useAuthContext();
+  const { profile, user } = useAuthContext();
+  const queryClient = useQueryClient();
 
-  const handleSelectYear = (yearNumber: number) => {
+  const handleSelectYear = async (yearId: string) => {
+    // Update preferred year in profile so Home page picks it up
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ preferred_year_id: yearId })
+        .eq('id', user.id);
+      // Invalidate profile cache so Home reads the new year
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    }
     navigate('/');
-    // The Home page will pick up the year from the dropdown
   };
 
   return (
@@ -38,12 +49,13 @@ export default function AllYearsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {years?.map((year) => {
-              const icon = getYearIcon(year.number);
+              // Prefer admin-uploaded image, fall back to static icon
+              const icon = year.image_url || getYearIcon(year.number);
               const isPreferred = profile?.preferred_year_id === year.id;
               return (
                 <Card
                   key={year.id}
-                  onClick={() => handleSelectYear(year.number)}
+                  onClick={() => handleSelectYear(year.id)}
                   className={cn(
                     'p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group',
                     'hover:border-primary/30',
