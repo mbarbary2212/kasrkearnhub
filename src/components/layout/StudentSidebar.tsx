@@ -120,7 +120,7 @@ export function StudentSidebar() {
     }
     // Global context: Learning should not navigate anywhere — show a hint
     if (item.globalPath === '__learning__') {
-      toast.info('Select a module from the Dashboard to start learning.');
+      toast.info('Select a module from the Dashboard to start learning.', { duration: 3000 });
       return;
     }
     navigate(item.globalPath);
