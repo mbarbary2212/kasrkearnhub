@@ -9,6 +9,12 @@ import {
   type ReadinessResult,
   type ReadinessComponents,
 } from '@/lib/readinessCalculator';
+import {
+  buildDashboardSuggestions,
+  getWeakTopics,
+  calculateAggregateReadiness,
+} from '@/lib/studentMetrics';
+import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 
 export interface ChapterStatus {
