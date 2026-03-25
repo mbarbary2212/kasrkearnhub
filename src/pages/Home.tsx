@@ -186,9 +186,9 @@ function LoggedInHome() {
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
-        <div className="lg:col-span-3 space-y-5">
+        <div className="md:col-span-3 space-y-5">
           {/* Greeting + Notifications */}
           <section className="flex items-center justify-between flex-wrap gap-2">
             <h1 className="text-xl md:text-2xl font-heading font-bold">
@@ -437,7 +437,7 @@ function LoggedInHome() {
         </div>
 
         {/* ==================== RIGHT COLUMN (40%) ==================== */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="md:col-span-2 space-y-4">
           {/* Stat Cards */}
           {isStudent && (
             <div className="grid grid-cols-3 gap-3">
