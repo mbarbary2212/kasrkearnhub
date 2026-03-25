@@ -27,6 +27,8 @@ export default function YearPage() {
     sessionStorage.setItem('skipAutoLogin', 'true');
     navigate('/');
   };
+  const isStudent = !!auth.user && !auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin;
+  const { data: lastPosition } = useLastPosition();
 
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
