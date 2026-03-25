@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
+import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
 
 interface DashboardTodayPlanProps {
   suggestions: SuggestedItem[];
+  studyPlan?: AdaptiveStudyPlan | null;
   onNavigate: (moduleId?: string, chapterId?: string, tab?: string, subtab?: string) => void;
   confidenceInsight?: string | null;
 }
@@ -24,12 +25,12 @@ const trendIndicator: Record<string, { icon: string; className: string }> = {
   stable: { icon: '', className: '' },
 };
 
-export function DashboardTodayPlan({ suggestions, onNavigate, confidenceInsight }: DashboardTodayPlanProps) {
+export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-heading">Suggested for Today</CardTitle>
+          <CardTitle className="text-lg font-heading">Today's Study Plan</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">
@@ -42,19 +43,34 @@ export function DashboardTodayPlan({ suggestions, onNavigate, confidenceInsight 
 
   const primarySuggestion = suggestions.find(s => s.isPrimary);
   const otherSuggestions = suggestions.filter(s => !s.isPrimary);
-  const totalMinutes = suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
+  const planLabel = studyPlan?.planLabel;
+  const rationale = studyPlan?.rationale;
+  const totalMinutes = studyPlan?.totalEstimatedMinutes ?? suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
+  const insight = studyPlan?.confidenceInsight ?? confidenceInsight;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-heading">Suggested for Today</CardTitle>
-            {totalMinutes > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">~{totalMinutes} min total</p>
-            )}
+            <CardTitle className="text-lg font-heading">Today's Study Plan</CardTitle>
+            <div className="flex items-center gap-2 mt-1">
+              {planLabel && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {planLabel}
+                </span>
+              )}
+              {totalMinutes > 0 && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />~{totalMinutes} min
+                </span>
+              )}
+            </div>
           </div>
         </div>
+        {rationale && (
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rationale}</p>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Start Here — Primary Action */}
@@ -123,10 +139,10 @@ export function DashboardTodayPlan({ suggestions, onNavigate, confidenceInsight 
         )}
 
         {/* Confidence Insight — one optional smart insight */}
-        {confidenceInsight && (
-          <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
-            <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">{confidenceInsight}</p>
+        {insight && (
+          <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-accent/50 border border-accent">
+            <Lightbulb className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-foreground/80 leading-relaxed">{insight}</p>
           </div>
         )}
       </CardContent>
