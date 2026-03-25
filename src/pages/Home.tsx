@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine, Video, BookOpenCheck } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import { usePresence } from '@/contexts/PresenceContext';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
+import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
+import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
@@ -115,6 +117,14 @@ const taskIcon: Record<string, React.ElementType> = {
   mcq: FlaskConical,
   video: Play,
   essay: PenLine,
+  flashcard: GalleryHorizontal,
+};
+
+const resumeIcon: Record<string, React.ElementType> = {
+  video: Video,
+  practice: FlaskConical,
+  flashcard: GalleryHorizontal,
+  reading: BookOpenCheck,
 };
 
 function LoggedInHome() {
@@ -183,6 +193,23 @@ function LoggedInHome() {
   const suggestions: SuggestedItem[] = (dashboard?.suggestions ?? []).slice(0, 3);
 
   const isLoading = yearsLoading || modulesLoading;
+
+  // Resume icon
+  const resumeType = lastPos ? getResumeIconName(lastPos.tab, lastPos.activity_position?.sub_tab as string | null) : 'reading';
+  const ResumeIcon = resumeIcon[resumeType] || Play;
+  
+  // Readiness label
+  const readinessText = getReadinessLabel(readiness);
+
+  // Weak chapters
+  const weakChapters = dashboard?.weakChapters ?? [];
+
+  // Primary suggestion (first one with isPrimary)
+  const primarySuggestion = suggestions.find(s => s.isPrimary);
+  const otherSuggestions = suggestions.filter(s => !s.isPrimary);
+
+  // Total estimated time
+  const totalEstimatedMinutes = suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
@@ -266,10 +293,10 @@ function LoggedInHome() {
                 onClick={() => navigate(buildResumeUrl(lastPos))}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0
+                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0
                                   group-hover:bg-primary/20 transition-colors">
-                    <Play className="w-5 h-5 text-primary" />
-                  </div>
+                     <ResumeIcon className="w-5 h-5 text-primary" />
+                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">Continue where you left off</p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{buildResumeLabel(lastPos)}</p>
@@ -451,64 +478,122 @@ function LoggedInHome() {
               </Card>
               <Card className="p-3 text-center">
                 <p className="text-lg font-bold">📊 {Math.round(readiness)}%</p>
-                <p className="text-xs text-muted-foreground">Readiness</p>
+                <p className="text-xs text-muted-foreground">{readinessText}</p>
               </Card>
             </div>
           )}
 
           {/* Flashcards Widget */}
-          {isStudent && (
+          {isStudent && dueCount > 0 && (
             <Card
               className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
               onClick={() => navigate('/review/flashcards')}
             >
-              <CardHeader className="pb-2">
+              <CardContent className="py-3 px-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <GalleryHorizontal className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle className="text-base">Flashcards</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {dueCount > 0 ? `${dueCount} card${dueCount === 1 ? '' : 's'} due today` : 'All caught up!'}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {dueCount} card{dueCount === 1 ? '' : 's'} due today
                     </p>
+                    <p className="text-xs text-muted-foreground">Tap to review</p>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center text-sm text-primary font-medium">
-                  {dueCount > 0 ? 'Review Now' : 'Browse Cards'} <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
           )}
 
+          {isStudent && dueCount === 0 && dueCards && (
+            <Card className="border-green-200 dark:border-green-800">
+              <CardContent className="py-2 px-4">
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
+                  ✓ Flashcards all caught up
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Weak Topics Alert */}
+          {isStudent && weakChapters.length > 0 && (
+            <DashboardWeakTopics
+              weakChapters={weakChapters}
+              onNavigate={(moduleId, chapterId, tab) => {
+                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'practice'}&subtab=mcqs`);
+              }}
+            />
+          )}
+
           {/* Today's Study Plan */}
           {isStudent && suggestions.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
-              <div className="space-y-2">
-                {suggestions.map((item, i) => {
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
+                {totalEstimatedMinutes > 0 && (
+                  <span className="text-xs text-muted-foreground">~{totalEstimatedMinutes} min total</span>
+                )}
+              </div>
+
+              {/* Start Here — Primary Action */}
+              {primarySuggestion && (
+                <Card
+                  className="p-3 cursor-pointer border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group"
+                  onClick={() => {
+                    if (primarySuggestion.chapterId && primarySuggestion.moduleId) {
+                      const tab = primarySuggestion.type === 'mcq' || primarySuggestion.type === 'essay' ? 'practice' : 'resources';
+                      const subtab = primarySuggestion.subtab ? `&subtab=${primarySuggestion.subtab}` : '';
+                      navigate(`/module/${primarySuggestion.moduleId}/chapter/${primarySuggestion.chapterId}?section=${tab}${subtab}`);
+                    } else if (primarySuggestion.type === 'flashcard') {
+                      navigate('/review/flashcards');
+                    }
+                  }}
+                >
+                  <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">▶ Start Here</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      {(() => { const Icon = taskIcon[primarySuggestion.type] || BookOpen; return <Icon className="w-4 h-4 text-primary" />; })()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{primarySuggestion.title}</p>
+                      {primarySuggestion.reason && (
+                        <p className="text-xs text-muted-foreground">{primarySuggestion.reason} · ~{primarySuggestion.estimatedMinutes}m</p>
+                      )}
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+                  </div>
+                </Card>
+              )}
+
+              {/* Other Suggestions */}
+              <div className="space-y-1.5">
+                {otherSuggestions.map((item, i) => {
                   const Icon = taskIcon[item.type] || BookOpen;
                   return (
                     <Card
                       key={i}
-                      className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="p-2.5 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => {
-                        if (item.chapterId && item.moduleId) {
-                          const tab = item.type === 'mcq' ? 'practice' : 'resources';
-                          navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}`);
+                        if (item.type === 'flashcard') {
+                          navigate('/review/flashcards');
+                        } else if (item.chapterId && item.moduleId) {
+                          const tab = item.type === 'mcq' || item.type === 'essay' ? 'practice' : 'resources';
+                          const subtab = item.subtab ? `&subtab=${item.subtab}` : '';
+                          navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}${subtab}`);
                         }
                       }}
                     >
-                      <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
+                      <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.title}</p>
-                        {item.chapterTitle && <p className="text-xs text-muted-foreground truncate">{item.chapterTitle}</p>}
+                        {item.reason && (
+                          <p className="text-xs text-muted-foreground truncate">{item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes}m` : ''}</p>
+                        )}
                       </div>
-                      {item.estimatedMinutes && <span className="text-xs text-muted-foreground shrink-0">~{item.estimatedMinutes}m</span>}
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                     </Card>
                   );
                 })}
