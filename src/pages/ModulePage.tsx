@@ -373,6 +373,15 @@ export default function ModulePage() {
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
+            {/* Dashboard Section */}
+            {activeSection === 'dashboard' && actualModuleId && (
+              <ModuleDashboard
+                lastPosition={lastPos ?? null}
+                dashboard={coachDashboard ?? null}
+                moduleId={actualModuleId}
+              />
+            )}
+
             {/* Learning Section */}
             {activeSection === 'learning' && actualModuleId && (
               <ModuleLearningTab
