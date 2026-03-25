@@ -151,6 +151,10 @@ export function buildResumeLabel(pos: LastPosition): string {
       };
       parts.push(subTabLabels[ap.sub_tab] || ap.sub_tab);
     }
+    // Show specific item info if available
+    if (ap.item_label && typeof ap.item_label === 'string') {
+      parts.push(ap.item_label);
+    }
   }
 
   return parts.join(' → ');
