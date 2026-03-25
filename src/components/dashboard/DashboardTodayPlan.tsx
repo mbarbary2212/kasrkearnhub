@@ -71,7 +71,13 @@ export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPl
               <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">▶ Start Here</p>
               <p className="font-medium truncate text-foreground">{primarySuggestion.title}</p>
               {primarySuggestion.reason && (
-                <p className="text-xs text-muted-foreground">{primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
+                <p className="text-xs text-muted-foreground">
+                  {primarySuggestion.trend && primarySuggestion.trend !== 'stable' && (
+                    <span className={`font-medium ${trendIndicator[primarySuggestion.trend]?.className || ''} mr-1`}>
+                      {trendIndicator[primarySuggestion.trend]?.icon}
+                    </span>
+                  )}
+                  {primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
               )}
             </div>
             <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
