@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface TrackPositionProps {
   year_number?: number | null;
@@ -15,91 +14,82 @@ interface TrackPositionProps {
   activity_position?: Record<string, unknown> | null;
 }
 
+// Global ref so multiple instances share one latest position
+let globalPosition: (TrackPositionProps & { userId: string }) | null = null;
+let listenerAttached = false;
+
+function flushGlobalPosition() {
+  const pos = globalPosition;
+  if (!pos || (!pos.module_id && !pos.year_number)) return;
+
+  const payload = {
+    user_id: pos.userId,
+    year_number: pos.year_number ?? null,
+    module_id: pos.module_id ?? null,
+    module_name: pos.module_name ?? null,
+    module_slug: pos.module_slug ?? null,
+    book_label: pos.book_label ?? null,
+    chapter_id: pos.chapter_id ?? null,
+    chapter_title: pos.chapter_title ?? null,
+    tab: pos.tab ?? null,
+    activity_position: pos.activity_position ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const token = globalAccessToken || anonKey;
+
+  fetch(url, {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+      'Prefer': 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {/* best-effort */});
+}
+
+let globalAccessToken: string | null = null;
+
 /**
  * Tracks student navigation position in memory and only persists to DB
- * on tab close (beforeunload) or logout — not on every navigation.
+ * on tab/browser close (beforeunload) or logout — NOT on every navigation.
  */
 export function useTrackPosition(props: TrackPositionProps) {
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, user } = useAuthContext();
   const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
-  const queryClient = useQueryClient();
 
-  // Keep the latest position in a ref so we can flush it synchronously
-  const posRef = useRef<TrackPositionProps>(props);
-  const userIdRef = useRef<string | null>(user?.id ?? null);
-
+  // Update global position whenever props change (in-memory only, no DB call)
   useEffect(() => {
-    posRef.current = props;
-  }, [props]);
+    if (!isStudent || !user?.id) return;
+    if (!props.module_id && !props.year_number) return;
+    globalPosition = { ...props, userId: user.id };
+  }, [isStudent, user?.id, JSON.stringify(props)]);
 
+  // Attach global listeners once
   useEffect(() => {
-    userIdRef.current = user?.id ?? null;
-  }, [user?.id]);
+    if (!isStudent || listenerAttached) return;
+    listenerAttached = true;
 
-  // Persist using fetch + keepalive (works during unload)
-  const flushPosition = useCallback(() => {
-    const userId = userIdRef.current;
-    const pos = posRef.current;
-    if (!userId || (!pos.module_id && !pos.year_number)) return;
-
-    const payload = {
-      user_id: userId,
-      year_number: pos.year_number ?? null,
-      module_id: pos.module_id ?? null,
-      module_name: pos.module_name ?? null,
-      module_slug: pos.module_slug ?? null,
-      book_label: pos.book_label ?? null,
-      chapter_id: pos.chapter_id ?? null,
-      chapter_title: pos.chapter_title ?? null,
-      tab: pos.tab ?? null,
-      activity_position: pos.activity_position ?? null,
-      updated_at: new Date().toISOString(),
-    };
-
-    // Use fetch with keepalive so it survives page unload
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    // Get current session token synchronously from ref or fall back to anon
-    const token = sessionTokenRef.current || anonKey;
-
-    fetch(url, {
-      method: 'POST',
-      keepalive: true,
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': anonKey,
-        'Authorization': `Bearer ${token}`,
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify(payload),
-    }).catch(() => {/* best-effort */});
-  }, []);
-
-  // Keep a synchronous copy of the access token for beforeunload
-  const sessionTokenRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!isStudent) return;
-
-    // Keep token ref in sync
+    // Keep access token in sync for beforeunload
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      sessionTokenRef.current = session?.access_token ?? null;
-
-      // Flush on sign-out
+      globalAccessToken = session?.access_token ?? null;
       if (_event === 'SIGNED_OUT') {
-        flushPosition();
+        flushGlobalPosition();
+        globalPosition = null;
       }
     });
 
-    // Initialize token
     supabase.auth.getSession().then(({ data: { session } }) => {
-      sessionTokenRef.current = session?.access_token ?? null;
+      globalAccessToken = session?.access_token ?? null;
     });
 
-    // Flush on tab close / navigate away
     const handleBeforeUnload = () => {
-      flushPosition();
+      flushGlobalPosition();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -107,17 +97,7 @@ export function useTrackPosition(props: TrackPositionProps) {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       subscription.unsubscribe();
-      // Also flush when the component unmounts (navigating away from this page within the SPA)
-      // This ensures the last viewed page is saved when moving between pages
+      listenerAttached = false;
     };
-  }, [isStudent, flushPosition]);
-
-  // Also flush when the hook's host component unmounts
-  // (e.g. navigating from ChapterPage to another page)
-  useEffect(() => {
-    if (!isStudent) return;
-    return () => {
-      flushPosition();
-    };
-  }, [isStudent, flushPosition]);
+  }, [isStudent]);
 }
