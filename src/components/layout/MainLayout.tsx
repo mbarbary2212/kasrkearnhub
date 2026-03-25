@@ -29,6 +29,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
+import { getYearIcon } from '@/lib/yearIcons';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -42,6 +44,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
+  const { activeYear } = useActiveYear();
+  const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
 
   const { data: years } = useYears();
 
@@ -132,6 +136,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
             </button>
+            {/* Active year indicator */}
+            {activeYear && (
+              <div className="flex items-center gap-1.5 pl-1.5 border-l border-border/50">
+                {yearIcon && (
+                  <img src={yearIcon} alt={activeYear.yearName} className="h-6 w-6 rounded object-contain" />
+                )}
+                <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
+                  {activeYear.yearName}
+                </span>
+              </div>
+            )}
             {/* Achievements Trophy Icon - Right of logo (students only) */}
             {user && !isAdmin && (
               <TooltipProvider>

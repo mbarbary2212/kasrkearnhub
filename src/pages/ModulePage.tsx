@@ -8,6 +8,7 @@ import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useYearById } from '@/hooks/useYears';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useModules } from '@/hooks/useModules';
@@ -59,6 +60,7 @@ export default function ModulePage() {
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const actualModuleId = module?.id;
   const { data: year } = useYearById(module?.year_id || '');
+  const { setActiveYear } = useActiveYear();
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
   
   // Get unread message counts for Connect tab badges
@@ -79,6 +81,13 @@ export default function ModulePage() {
     module_name: module?.name ?? null,
     module_slug: module?.slug ?? null,
   });
+
+  // Sync active year to header
+  useEffect(() => {
+    if (year) {
+      setActiveYear({ yearNumber: year.number, yearName: year.name });
+    }
+  }, [year, setActiveYear]);
 
   useEffect(() => {
     if (module?.name) {

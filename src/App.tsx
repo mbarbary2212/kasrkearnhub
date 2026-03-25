@@ -12,6 +12,7 @@ import { PresencePageTracker } from "@/components/PresencePageTracker";
 import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
+import { ActiveYearProvider } from "@/contexts/ActiveYearContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { AskCoachPanel } from "@/components/coach";
@@ -116,6 +117,7 @@ const App = () => {
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <DisclaimerGate>
+      <ActiveYearProvider>
       <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
@@ -166,6 +168,7 @@ const App = () => {
         </CoachProvider>
       </BadgeCelebrationProvider>
       </PresenceProvider>
+      </ActiveYearProvider>
       </DisclaimerGate>
     </AuthProvider>
       </QueryClientProvider>

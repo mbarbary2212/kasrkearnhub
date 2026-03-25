@@ -25,6 +25,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 import { usePresence } from '@/contexts/PresenceContext';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 
 export default function Home() {
@@ -128,6 +129,7 @@ function LoggedInHome() {
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
   const { onlineCount } = usePresence();
+  const { setActiveYear } = useActiveYear();
 
   // Year selection
   const preferredYearId = profile?.preferred_year_id;
@@ -140,6 +142,16 @@ function LoggedInHome() {
       setSelectedYearId(years[0].id);
     }
   }, [preferredYearId, years, selectedYearId]);
+
+  // Sync active year to header context
+  useEffect(() => {
+    if (selectedYearId && years) {
+      const year = years.find(y => y.id === selectedYearId);
+      if (year) {
+        setActiveYear({ yearNumber: year.number, yearName: year.name });
+      }
+    }
+  }, [selectedYearId, years, setActiveYear]);
 
   // Modules for selected year
   const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
