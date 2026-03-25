@@ -18,8 +18,6 @@ import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
 import { useModuleBooks } from '@/hooks/useModuleBooks';
-import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
-import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
 import {
   ArrowLeft, 
   BookOpen,
