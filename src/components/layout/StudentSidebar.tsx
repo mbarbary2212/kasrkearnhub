@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, MessageCircle, ClipboardCheck, GraduationCap, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -9,13 +9,15 @@ const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 interface NavItem {
   label: string;
   icon: React.ElementType;
-  path: string;
+  sectionId: string;
+  globalPath: string;
   skipAutoLogin?: boolean;
 }
 
 export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -31,25 +33,40 @@ export function StudentSidebar() {
     } catch {}
   }, [collapsed]);
 
+  // Detect if we're on a module page
+  const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
+  const isModulePage = !!moduleMatch;
+  const moduleId = moduleMatch?.[1];
+
   const navItems: NavItem[] = [
-    { label: 'Dashboard', icon: Home, path: '/' },
-    { label: 'Learning', icon: BookOpen, path: '/', skipAutoLogin: true },
-    { label: 'Connect', icon: MessageCircle, path: '/connect' },
-    { label: 'Formative Assessment', icon: ClipboardCheck, path: '/formative' },
-    { label: 'Study Coach', icon: GraduationCap, path: '/progress' },
+    { label: 'Dashboard', icon: LayoutDashboard, sectionId: 'dashboard', globalPath: '/' },
+    { label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '/', skipAutoLogin: true },
+    { label: 'Connect', icon: MessageCircle, sectionId: 'connect', globalPath: '/connect' },
+    { label: 'Formative Assessment', icon: ClipboardCheck, sectionId: 'formative', globalPath: '/formative' },
+    { label: 'Study Coach', icon: GraduationCap, sectionId: 'coach', globalPath: '/progress' },
   ];
 
   const isActive = (item: NavItem) => {
+    if (isModulePage) {
+      const currentSection = searchParams.get('section') || 'dashboard';
+      return currentSection === item.sectionId;
+    }
+    // Global behavior
     if (item.label === 'Dashboard') return location.pathname === '/' && !item.skipAutoLogin;
     if (item.label === 'Learning') return location.pathname.startsWith('/year/');
-    return location.pathname === item.path;
+    return location.pathname === item.globalPath;
   };
 
   const handleNav = (item: NavItem) => {
+    if (isModulePage && moduleId) {
+      navigate(`/module/${moduleId}?section=${item.sectionId}`);
+      return;
+    }
+    // Global navigation
     if (item.skipAutoLogin) {
       sessionStorage.setItem('skipAutoLogin', 'true');
     }
-    navigate(item.path);
+    navigate(item.globalPath);
   };
 
   return (
