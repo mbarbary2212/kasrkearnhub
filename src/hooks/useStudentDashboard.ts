@@ -46,6 +46,7 @@ export interface SuggestedItem {
   reason?: string;
   isPrimary?: boolean;
   subtab?: string;
+  trend?: 'declining' | 'stable' | 'improving';
 }
 
 export interface WeakChapter {
