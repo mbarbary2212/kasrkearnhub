@@ -255,12 +255,15 @@ export default function ChapterPage() {
     return () => setSelectedSectionId(null);
   }, [chapterId]);
 
-  // Track position for resume functionality
-  const currentSubTab = activeSection === 'resources' ? resourcesTab
-    : activeSection === 'interactive' ? interactiveTab
-    : activeSection === 'practice' ? practiceTab
-    : null;
+  // Active item tracking for deep resume
+  const [activeItem, setActiveItem] = useState<{ item_id: string; item_label: string; item_index: number } | null>(null);
 
+  // Clear activeItem when sub-tab changes
+  useEffect(() => {
+    setActiveItem(null);
+  }, [currentSubTab]);
+
+  // Track position for resume functionality
   useTrackPosition({
     year_number: null,
     module_id: contentModuleId ?? null,
@@ -269,7 +272,14 @@ export default function ChapterPage() {
     chapter_id: chapterId ?? null,
     chapter_title: chapter?.title ?? null,
     tab: activeSection,
-    activity_position: currentSubTab ? { sub_tab: currentSubTab } : null,
+    activity_position: currentSubTab ? {
+      sub_tab: currentSubTab,
+      ...(activeItem && {
+        item_id: activeItem.item_id,
+        item_label: activeItem.item_label,
+        item_index: activeItem.item_index,
+      }),
+    } : null,
   });
   
   // Helper function to filter and sort content by section hierarchy
@@ -682,6 +692,7 @@ export default function ChapterPage() {
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1069,6 +1080,7 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMcqs}
                         onShowDeletedChange={setShowDeletedMcqs}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1090,6 +1102,7 @@ export default function ChapterPage() {
                         showDeleted={showDeletedSbas}
                         onShowDeletedChange={setShowDeletedSbas}
                         questionFormat="sba"
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1162,6 +1175,7 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedOsce}
                         onShowDeletedChange={setShowDeletedOsce}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>

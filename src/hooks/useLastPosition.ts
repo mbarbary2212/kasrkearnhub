@@ -94,6 +94,10 @@ export function buildResumeUrl(pos: LastPosition): string {
     if (subTab && typeof subTab === 'string') {
       url += `&subtab=${subTab}`;
     }
+    const itemIndex = pos.activity_position?.item_index;
+    if (itemIndex !== undefined && itemIndex !== null && typeof itemIndex === 'number') {
+      url += `&item_index=${itemIndex}`;
+    }
     return url;
   }
 
