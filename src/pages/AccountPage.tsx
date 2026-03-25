@@ -174,16 +174,22 @@ export default function AccountPage() {
     setIsSaving(true);
 
     try {
+      const updates = {
+        full_name: fullName.trim() || null,
+        preferred_year_id: preferredYearId || null,
+        auto_login_to_year: autoLoginToYear,
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: fullName.trim() || null,
-          preferred_year_id: preferredYearId || null,
-          auto_login_to_year: autoLoginToYear,
-        })
+        .update(updates)
         .eq('id', user.id);
 
       if (error) throw error;
+
+      // Optimistically update local auth state
+      patchProfile(updates as any);
+
       toast.success('Profile saved successfully');
     } catch (error: any) {
       console.error('Error saving profile:', error);

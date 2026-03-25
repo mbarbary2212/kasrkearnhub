@@ -7,23 +7,27 @@ import { Card } from '@/components/ui/card';
 import { getYearIcon } from '@/lib/yearIcons';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function AllYearsPage() {
   const navigate = useNavigate();
   const { data: years, isLoading } = useYears();
-  const { profile, user } = useAuthContext();
-  const queryClient = useQueryClient();
+  const { profile, user, patchProfile } = useAuthContext();
 
   const handleSelectYear = async (yearId: string) => {
-    // Update preferred year in profile so Home page picks it up
     if (user) {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ preferred_year_id: yearId })
         .eq('id', user.id);
-      // Invalidate profile cache so Home reads the new year
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+
+      if (error) {
+        toast.error('Failed to switch year');
+        return;
+      }
+
+      // Optimistically update local auth state so Home picks it up immediately
+      patchProfile({ preferred_year_id: yearId });
     }
     navigate('/');
   };
@@ -49,7 +53,6 @@ export default function AllYearsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {years?.map((year) => {
-              // Prefer admin-uploaded image, fall back to static icon
               const icon = year.image_url || getYearIcon(year.number);
               const isPreferred = profile?.preferred_year_id === year.id;
               return (
