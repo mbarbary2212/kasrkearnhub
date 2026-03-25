@@ -194,6 +194,8 @@ export function QuestionSessionShell({
     return { correct, total: mcqAttempts.length, percentage: Math.round((correct / mcqAttempts.length) * 100) };
   }, [allAttempts, questionType]);
 
+  if (!currentQuestion) return null;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] h-[calc(100vh-4rem)] gap-0 max-w-7xl mx-auto">
       {/* LEFT PANEL */}
