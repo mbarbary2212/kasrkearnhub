@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CROSS_MODULE_BOOKS } from '@/lib/crossModuleBooks';
-
 export interface ModuleBook {
   id: string;
   module_id: string;
@@ -11,10 +9,6 @@ export interface ModuleBook {
   display_order: number;
   chapter_prefix: string;
   created_at: string | null;
-  /** True if this book is virtually mapped from another module */
-  isVirtual?: boolean;
-  /** The source module ID for virtual books */
-  sourceModuleId?: string;
 }
 
 // Get books for a module with their metadata (order, prefix)
