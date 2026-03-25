@@ -139,11 +139,15 @@ export default function Home() {
 // Logged in user home page - shows year selection for ALL users
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile } = useAuthContext();
+  const { profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const { data: years, isLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const [mindMapOpen, setMindMapOpen] = useState(false);
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+
+  // Fetch the student's last saved position
+  const { data: lastPos } = useLastPosition();
 
   // Glow color mapping per year
   const YEAR_GLOW: Record<number, { base: string; hover: string; iconBg: string }> = {
