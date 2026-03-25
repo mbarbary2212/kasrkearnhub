@@ -1,38 +1,51 @@
 
 
-# Fix Interactive Cases: Visibility, Default Timer, Voice Menu, Duplicates
+# Fix Back Arrow Navigation Across the App
 
-## Issues Found
+## Problem
 
-1. **Case not appearing after save**: The `useUpdateStructuredCaseData` hook only invalidates `['structured-case', caseId]` but NOT `['clinical-cases']` or `['virtual-patient-cases']`. When the admin saves and navigates back, the list query uses stale cached data.
+The back arrow on multiple pages navigates to the wrong destination:
 
-2. **Default timer**: The history time limit placeholder says "Default: X min" (calculated as 40% of estimated_minutes), but no explicit default of 2 minutes is set. When `history_time_limit_minutes` is undefined, the runner uses the auto-calculated value.
+| Page | Current Back Target | Correct Parent |
+|------|-------------------|----------------|
+| **YearPage** | `/` (Home) | `/` (Home) — OK but sets `skipAutoLogin` unnecessarily |
+| **ModulePage** | `/year/{number}` | `/year/{number}` — OK |
+| **ChapterPage** | `/module/{id}?section=learning` | OK |
+| **TopicDetailPage** | `/module/{moduleId}` | Should go to `/module/{moduleId}/chapter/{chapterId}` |
+| **DepartmentPage** | `navigate(-1)` (browser back) | Should navigate to parent module |
+| **BlueprintExamPage** | Back via `navigate(-1)` or `onBack` | Should go to `/module/{moduleId}` |
+| **ExamResultsPage** | Needs checking | Should go to `/module/{moduleId}` |
+| **FlashcardReviewPage** | `/` (Home) | Should go back to the chapter or module it came from |
+| **CaseSummaryPage** | `navigate(-1)` | Should go to chapter's Interactive section |
 
-3. **Voice choice hidden**: The voice selector only shows when `historyInteractionMode === 'voice'`. It should always be visible so admins can pick a voice regardless of mode (Text History also uses TTS for patient responses).
+The **YearPage** back arrow is the most visible issue — it calls `handleGoHome` which sets `skipAutoLogin` and goes to `/`, which shows the year selection screen instead of behaving as a normal back. For students with a preferred year, this is confusing.
 
-4. **Duplicate imports**: No duplicate detection exists. Importing the same JSON twice creates two identical cases.
+## Plan
 
----
+### Step 1: Fix YearPage back arrow
+**File: `src/pages/YearPage.tsx`**
+- Change the back arrow `onClick` from `handleGoHome` (which sets `skipAutoLogin` + navigates to `/`) to a simple `navigate('/')` without setting the skip flag. This lets the Home page redirect logic work normally.
 
-## Step 1: Fix case not appearing after save
+### Step 2: Fix TopicDetailPage back arrow
+**File: `src/pages/TopicDetailPage.tsx`**
+- Currently navigates to `/module/${moduleId}` — should navigate to `/module/${moduleId}/chapter/${chapterId}` to return to the parent chapter, not skip up two levels.
 
-**File: `src/hooks/useStructuredCaseData.ts`** (onSuccess in useUpdateStructuredCaseData)
-- Add `queryClient.invalidateQueries({ queryKey: ['clinical-cases'] })` so the admin list refreshes when navigating back.
+### Step 3: Fix DepartmentPage back arrow  
+**File: `src/pages/DepartmentPage.tsx`**
+- Replace `navigate(-1)` with explicit parent navigation based on available context (module or year).
 
-## Step 2: Default history timer to 2 minutes
+### Step 4: Fix FlashcardReviewPage exit/back
+**File: `src/pages/FlashcardReviewPage.tsx`**
+- Replace `navigate('/')` with navigation back to the originating chapter or module. If no referrer context exists, fall back to `/`.
 
-**File: `src/components/clinical-cases/CasePreviewEditor.tsx`**
-- In the `useEffect` that initializes `editedData` from `generatedData`, if `history_time_limit_minutes` is not set, default it to `2`.
-- Update the placeholder text to say "Default: 2 min".
+### Step 5: Fix CaseSummaryPage back arrow
+**File: `src/components/clinical-cases/CaseSummary.tsx`**
+- Replace `navigate(-1)` with explicit navigation to the chapter's Interactive section when chapter context is available.
 
-## Step 3: Show voice selector for both text and voice modes
-
-**File: `src/components/clinical-cases/CasePreviewEditor.tsx`**
-- Remove the `historyInteractionMode === 'voice'` condition wrapping the Voice Character selector (around line 468). Show it always when `editedData` exists.
-
-## Step 4: Prevent duplicate imports
-
-**File: `src/components/clinical-cases/ClinicalCaseAdminList.tsx`**
-- In `handleImportJson`, before inserting, check if a case with the same `title` and `chapter_id` already exists in `filteredCases`.
-- If a duplicate is found, show a confirmation toast/dialog asking the admin to confirm before proceeding.
+### Files Modified
+- `src/pages/YearPage.tsx`
+- `src/pages/TopicDetailPage.tsx`
+- `src/pages/DepartmentPage.tsx`
+- `src/pages/FlashcardReviewPage.tsx`
+- `src/components/clinical-cases/CaseSummary.tsx`
 
