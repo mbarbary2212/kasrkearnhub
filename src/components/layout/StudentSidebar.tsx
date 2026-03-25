@@ -249,9 +249,36 @@ export function StudentSidebar() {
         </TooltipProvider>
       </nav>
 
-      {/* Settings pinned to bottom */}
-      <div className="px-2 pb-3 mt-auto">
+      {/* Settings + Customize View pinned to bottom */}
+      <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
         <TooltipProvider delayDuration={0}>
+          {/* Customize View - only on chapter/topic pages */}
+          {isChapterOrTopicPage && (() => {
+            const custBtn = (
+              <button
+                onClick={() => setCustomizeOpen(true)}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
+                  'hover:bg-muted hover:text-foreground text-muted-foreground',
+                  collapsed && 'justify-center px-0'
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">Customize View</span>}
+              </button>
+            );
+            if (collapsed) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{custBtn}</TooltipTrigger>
+                  <TooltipContent side="right">Customize View</TooltipContent>
+                </Tooltip>
+              );
+            }
+            return custBtn;
+          })()}
+
+          {/* Settings */}
           {(() => {
             const active = location.pathname === '/student-settings';
             const btn = (
@@ -280,6 +307,9 @@ export function StudentSidebar() {
           })()}
         </TooltipProvider>
       </div>
+
+      {/* Customize View Sheet */}
+      <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
     </aside>
   );
 }
