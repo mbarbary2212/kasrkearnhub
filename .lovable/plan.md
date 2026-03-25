@@ -1,31 +1,44 @@
 
 
-# Fix: Auto-Login to Preferred Year Not Working
+## Problem
 
-## Root Cause
+The module Dashboard tab only appears for the ONE module matching the student's `student_last_position` row. Since this table stores only the latest position, the Dashboard is invisible for all other modules, even if the student has visited them before.
 
-The `kalmhub:hasVisitedHome` sessionStorage flag is **never cleared on logout**. Since sessionStorage persists within the same browser tab across page reloads:
+## Solution
 
-1. Student logs in → visits Home → `hasVisitedHome` is set → auto-redirect works ✓
-2. Student logs out (MainLayout does `window.location.href = '/'` — same tab)
-3. Student logs back in → visits Home → `hasVisitedHome` is **still set** → auto-redirect is **skipped** ✗
+Remove the dependency on `lastPosition` matching the current module. Instead, always show the Dashboard tab for students, making it the default landing section for any module.
 
-The guard on lines 41-45 of `Home.tsx` short-circuits the entire redirect logic after the first visit to Home in any browser session.
+### Changes
 
-## Fix
+**File: `src/pages/ModulePage.tsx`**
 
-### Step 1: Clear `hasVisitedHome` on logout
+1. **Always show Dashboard tab for students** -- Remove the `hasVisitedModule` guard from the `sectionNav` array. Every student sees Dashboard / Learning / Connect / Formative / Coach.
 
-**File: `src/components/layout/MainLayout.tsx`** — In `handleLogout`, add `sessionStorage.removeItem('kalmhub:hasVisitedHome')` before the sign-out call.
+2. **Default to Dashboard for students** -- Change the initial `activeSection` from `'learning'` to `'dashboard'` when the user is a student (and no explicit `?section=` param is in the URL). Remove the `hasAutoSwitched` useEffect entirely since it's no longer needed.
 
-**File: `src/pages/Auth.tsx`** — In the `signOut` function, also clear this flag (covers the blocked-user and password-reset sign-out paths).
+3. **Keep the "Continue where you left off" card** -- The existing `showContinueCard` check (`lastPos.module_id === actualModuleId`) stays so the Continue card only shows when the student's last position is in THIS module.
 
-### Step 2: Clear on sign-out from BlockedUserScreen
+**File: `src/components/module/ModuleDashboard.tsx`**
 
-**File: `src/components/auth/BlockedUserScreen.tsx`** — Add the same `sessionStorage.removeItem` before `signOut`.
+4. **No changes needed** -- The component already handles `lastPosition` being null gracefully (the Continue button simply hides). The greeting, stat cards, flashcard widget, and study plan all work independently.
 
-### Files Modified
-- `src/components/layout/MainLayout.tsx` — 1 line added
-- `src/pages/Auth.tsx` — 1 line added
-- `src/components/auth/BlockedUserScreen.tsx` — 1 line added
+### Key Logic Change
+
+```text
+Before:
+  sectionNav includes Dashboard only if lastPos.module_id === currentModuleId
+  Default section = 'learning', auto-switch via useEffect if lastPos matches
+
+After:
+  sectionNav always includes Dashboard for students
+  Default section = 'dashboard' for students (no explicit param)
+  No auto-switch effect needed
+```
+
+### What Does NOT Change
+- No colours or fonts change
+- No new database tables or migrations
+- Mobile sidebar behaviour unchanged
+- The "Continue" card still only shows when lastPos matches this module
+- Admin/teacher view unchanged (they still default to Learning)
 
