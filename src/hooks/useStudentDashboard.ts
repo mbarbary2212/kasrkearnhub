@@ -150,7 +150,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         .in('module_id', moduleIds)
         .order('order_index');
 
-      // Fetch all data in parallel (no more question_attempts — uses testProgress param)
+      // Fetch all data in parallel
       const [
         chaptersRes,
         userProgressRes,
@@ -160,9 +160,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         vpCasesRes,
         lecturesRes,
         yearRes,
-        // Lightweight streak sources: recent sessions + question attempts dates
         sessionsRes,
         recentAttemptsRes,
+        chapterMetricsRes,
       ] = await Promise.all([
         chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
@@ -178,6 +178,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         supabase.from('question_attempts').select('created_at').eq('user_id', user.id)
           .gte('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
           .order('created_at', { ascending: false }).limit(200),
+        supabase.from('student_chapter_metrics' as any).select('*').eq('student_id', user.id),
       ]);
 
       const chapters = chaptersRes.data || [];
