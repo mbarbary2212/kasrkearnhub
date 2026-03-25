@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizontal, BookOpen } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, BookOpen } from 'lucide-react';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -27,7 +27,6 @@ import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
-import { useDueCards } from '@/hooks/useFSRS';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 
@@ -43,8 +42,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
-  const { data: dueCards } = useDueCards();
-  const dueCount = dueCards?.length ?? 0;
+
   const { data: years } = useYears();
 
   // Track route changes for resume functionality
@@ -154,33 +152,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {/* Review Due Icon - Right of trophy (students only, always visible) */}
-            {user && !isAdmin && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => navigate('/review/flashcards')}
-                      variant="ghost"
-                      size="icon"
-                      className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
-                    >
-                      <GalleryHorizontal className="h-4 w-4 text-primary" />
-                      {(dueCount ?? 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
-                          {(dueCount ?? 0) > 9 ? '9+' : dueCount}
-                        </span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-black">
-                    {(dueCount ?? 0) > 0
-                      ? `${dueCount} flashcard${dueCount === 1 ? '' : 's'} due today`
-                      : 'Flashcards'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
 
           {/* Admin Panel button - prominent header placement */}
@@ -282,7 +253,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       <div className="flex flex-1">
         {/* Student Sidebar - desktop only */}
-        {isStudent && <StudentSidebar onBadgesOpen={() => setBadgesOpen(true)} />}
+        {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
         <main className={cn("flex-1 px-4 py-8 pb-24", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>

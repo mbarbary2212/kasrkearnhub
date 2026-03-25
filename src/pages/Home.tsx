@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight, Play, ArrowRight } from 'lucide-react';
+import { BookOpen, Megaphone, Mail, Compass, Clock, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy } from 'lucide-react';
 import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -18,6 +18,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { getYearIcon } from '@/lib/yearIcons';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { useDueCards } from '@/hooks/useFSRS';
+import { useBadgeStats } from '@/hooks/useBadges';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
@@ -130,6 +133,9 @@ function LoggedInHome() {
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+  const { data: dueCards } = useDueCards();
+  const dueCount = dueCards?.length ?? 0;
+  const { earned, total } = useBadgeStats();
 
   // Fetch the student's last saved position
   const { data: lastPos } = useLastPosition();
@@ -285,7 +291,7 @@ function LoggedInHome() {
           )}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Select your academic year to continue
+          Your learning hub — pick up where you left off
         </p>
       </section>
 
@@ -379,6 +385,63 @@ function LoggedInHome() {
           </div>
         )}
       </section>
+
+      {/* Flashcards & Achievements widgets — students only */}
+      {isStudent && (
+        <section className="max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Flashcards Widget */}
+            <Card
+              className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
+              onClick={() => navigate('/review/flashcards')}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <GalleryHorizontal className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Flashcards</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {dueCount > 0 ? `${dueCount} card${dueCount === 1 ? '' : 's'} due today` : 'All caught up!'}
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center text-sm text-primary font-medium">
+                  {dueCount > 0 ? 'Review Now' : 'Browse Cards'} <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Achievements Widget */}
+            <Card className="hover:shadow-md transition-all">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Achievements</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {earned} of {total} badges earned
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-yellow-500 h-2 rounded-full transition-all"
+                    style={{ width: `${total > 0 ? (earned / total) * 100 : 0}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       <AppMindMap open={mindMapOpen} onOpenChange={setMindMapOpen} />
     </div>
