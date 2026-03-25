@@ -29,7 +29,6 @@ import {
   Play,
   ArrowRight,
   Sparkles,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
