@@ -148,7 +148,45 @@ export default function ModulePage() {
               </>
             )}
           </div>
+          {isStudent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                sessionStorage.setItem('skipAutoLogin', 'true');
+                navigate('/');
+              }}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+              Change module
+            </Button>
+          )}
         </div>
+
+        {/* Continue Where You Left Off */}
+        {showContinueCard && lastPos && (
+          <div
+            className="rounded-lg border border-primary/20 bg-primary/5 p-3 cursor-pointer
+                       hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
+            onClick={() => navigate(buildResumeUrl(lastPos))}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Play className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Continue where you left off</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {buildResumeLabel(lastPos)}
+                  {' · '}
+                  {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </div>
+        )}
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">
