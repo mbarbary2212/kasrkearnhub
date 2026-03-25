@@ -193,6 +193,25 @@ export default function ModulePage() {
           )}
         </div>
 
+        {/* Book/Department pills at module level (students with multiple books) */}
+        {isStudent && hasMultipleBooks && activeBookLabel && (
+          <div className="flex flex-wrap gap-2">
+            {sortedModuleBooks.map((book) => (
+              <button
+                key={book.book_label}
+                onClick={() => handleSelectBookPill(book.book_label)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                  activeBookLabel === book.book_label
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {book.description || book.book_label}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Continue Where You Left Off */}
         {showContinueCard && lastPos && (
           <div
@@ -358,6 +377,7 @@ export default function ModulePage() {
                 selectorLabel="Department"
                 canManageBooks={canManageBooks}
                 canManageChapters={canManageChapters}
+                externalActiveBookLabel={isStudent && hasMultipleBooks ? activeBookLabel : undefined}
               />
             )}
 
