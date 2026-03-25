@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles
+  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles, SlidersHorizontal
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -29,6 +30,7 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
