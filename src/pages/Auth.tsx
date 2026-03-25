@@ -72,6 +72,7 @@ export default function Auth() {
   // Sign out function
   const signOut = async () => {
     // Clear stored last path on logout
+    sessionStorage.removeItem('kalmhub:hasVisitedHome');
     try {
       localStorage.removeItem('kalmhub:lastPath');
     } catch {
