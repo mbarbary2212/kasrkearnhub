@@ -187,12 +187,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Badge count indicator (students only) */}
-                  {!isAdmin && earned > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-500 text-white text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
-                      {earned > 9 ? '9+' : earned}
-                    </span>
-                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
