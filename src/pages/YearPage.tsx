@@ -24,7 +24,6 @@ export default function YearPage() {
   const yearNumber = parseInt(yearId || '1', 10);
 
   const handleGoHome = () => {
-    sessionStorage.setItem('skipAutoLogin', 'true');
     navigate('/');
   };
   const isStudent = !!auth.user && !auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin;
