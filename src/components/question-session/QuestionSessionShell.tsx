@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, SkipForward, BookOpen } from 'lucide-react';
@@ -14,6 +15,12 @@ import type { Json } from '@/integrations/supabase/types';
 
 type QuestionType = 'mcq' | 'sba' | 'osce';
 
+export interface ActiveItemInfo {
+  item_id: string;
+  item_label: string;
+  item_index: number;
+}
+
 interface QuestionSessionShellProps {
   questions: (Mcq | OsceQuestion)[];
   questionType: QuestionType;
@@ -21,6 +28,7 @@ interface QuestionSessionShellProps {
   chapterId?: string;
   attemptMap: Map<string, { is_correct: boolean | null; selected_answer?: Json }>;
   allAttempts: { question_id: string; question_type: string; is_correct: boolean | null }[];
+  onActiveItemChange?: (info: ActiveItemInfo) => void;
 }
 
 function isMcq(q: Mcq | OsceQuestion): q is Mcq {
@@ -34,8 +42,25 @@ export function QuestionSessionShell({
   chapterId,
   attemptMap,
   allAttempts,
+  onActiveItemChange,
 }: QuestionSessionShellProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [searchParams] = useSearchParams();
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const itemIndex = searchParams.get('item_index');
+    if (itemIndex) {
+      const idx = parseInt(itemIndex, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < questions.length) return idx;
+    }
+    return 0;
+  });
+
+  // Report active item whenever currentIndex changes
+  useEffect(() => {
+    const q = questions[currentIndex];
+    if (!q || !onActiveItemChange) return;
+    const label = isMcq(q) ? `Question ${currentIndex + 1} of ${questions.length}` : `Question ${currentIndex + 1} of ${questions.length}`;
+    onActiveItemChange({ item_id: q.id, item_label: label, item_index: currentIndex });
+  }, [currentIndex, questions, onActiveItemChange]);
   const [sessionState, setSessionState] = useState<Map<string, {
     selectedAnswer: any;
     isSubmitted: boolean;
@@ -48,7 +73,6 @@ export function QuestionSessionShell({
   const saveAttempt = useSaveQuestionAttempt();
 
   const currentQuestion = questions[currentIndex];
-  if (!currentQuestion) return null;
 
   const qState = sessionState.get(currentQuestion.id);
   const previousAttempt = attemptMap.get(currentQuestion.id);
@@ -169,6 +193,8 @@ export function QuestionSessionShell({
     const correct = mcqAttempts.filter(a => a.is_correct).length;
     return { correct, total: mcqAttempts.length, percentage: Math.round((correct / mcqAttempts.length) * 100) };
   }, [allAttempts, questionType]);
+
+  if (!currentQuestion) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] h-[calc(100vh-4rem)] gap-0 max-w-7xl mx-auto">

@@ -71,6 +71,7 @@ interface LectureListProps {
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
+  onActiveItemChange?: (info: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 function getVideoIdForLecture(lecture: Lecture): string {
@@ -100,6 +101,7 @@ export function LectureList({
   canEdit = false,
   canDelete = false,
   showFeedback = true,
+  onActiveItemChange,
 }: LectureListProps) {
   const { user } = useAuth();
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
@@ -215,7 +217,12 @@ export function LectureList({
     setCurrentVideoTime(0);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
-  }, []);
+    // Report active item
+    if (onActiveItemChange) {
+      const idx = lectures.findIndex(l => l.id === lecture.id);
+      onActiveItemChange({ item_id: lecture.id, item_label: lecture.title, item_index: idx >= 0 ? idx : 0 });
+    }
+  }, [onActiveItemChange, lectures]);
 
   const handlePlayerTimeUpdate = useCallback((seconds: number) => {
     setCurrentVideoTime(seconds);
