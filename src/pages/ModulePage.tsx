@@ -17,6 +17,7 @@ import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
 import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
+import { useModuleBooks } from '@/hooks/useModuleBooks';
 import {
   ArrowLeft, 
   BookOpen,
@@ -98,6 +99,34 @@ export default function ModulePage() {
   const { data: yearModules = [] } = useModules(module?.year_id);
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
+  // Fetch books for module-level pills (students only)
+  const { data: moduleBooks } = useModuleBooks(actualModuleId);
+  const sortedModuleBooks = useMemo(() => {
+    if (!moduleBooks) return [];
+    return [...moduleBooks].sort((a, b) => a.display_order - b.display_order);
+  }, [moduleBooks]);
+  const hasMultipleBooks = sortedModuleBooks.length > 1;
+
+  // Student book pill state
+  const bookStorageKey = `kasrlearn_book_${actualModuleId}`;
+  const [activeBookLabel, setActiveBookLabel] = useState<string | null>(null);
+
+  // Initialize active book from localStorage once books are loaded
+  useEffect(() => {
+    if (!isStudent || !hasMultipleBooks || sortedModuleBooks.length === 0) return;
+    const saved = localStorage.getItem(bookStorageKey);
+    if (saved && sortedModuleBooks.some(b => b.book_label === saved)) {
+      setActiveBookLabel(saved);
+    } else {
+      setActiveBookLabel(sortedModuleBooks[0]?.book_label || null);
+    }
+  }, [isStudent, hasMultipleBooks, sortedModuleBooks, bookStorageKey]);
+
+  const handleSelectBookPill = (bookLabel: string) => {
+    setActiveBookLabel(bookLabel);
+    localStorage.setItem(bookStorageKey, bookLabel);
+  };
+
   // Fetch last position for Continue card (students only)
   const { data: lastPos } = useLastPosition();
   const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
@@ -164,6 +193,25 @@ export default function ModulePage() {
           )}
         </div>
 
+        {/* Book/Department pills at module level (students with multiple books) */}
+        {isStudent && hasMultipleBooks && activeBookLabel && (
+          <div className="flex flex-wrap gap-2">
+            {sortedModuleBooks.map((book) => (
+              <button
+                key={book.book_label}
+                onClick={() => handleSelectBookPill(book.book_label)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+                  activeBookLabel === book.book_label
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {book.description || book.book_label}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Continue Where You Left Off */}
         {showContinueCard && lastPos && (
           <div
@@ -329,6 +377,7 @@ export default function ModulePage() {
                 selectorLabel="Department"
                 canManageBooks={canManageBooks}
                 canManageChapters={canManageChapters}
+                externalActiveBookLabel={isStudent && hasMultipleBooks ? activeBookLabel : undefined}
               />
             )}
 

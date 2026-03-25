@@ -3511,6 +3511,7 @@ export type Database = {
           book_label: string
           chapter_prefix: string
           created_at: string | null
+          description: string | null
           display_order: number
           id: string
           module_id: string
@@ -3519,6 +3520,7 @@ export type Database = {
           book_label: string
           chapter_prefix?: string
           created_at?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_id: string
@@ -3527,6 +3529,7 @@ export type Database = {
           book_label?: string
           chapter_prefix?: string
           created_at?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_id?: string
