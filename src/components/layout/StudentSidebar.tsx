@@ -56,6 +56,14 @@ export function StudentSidebar() {
 
   const isChapterOrTopicPage = isChapterPage || isTopicPage;
 
+  // Learning sub-tabs — color-coded like in the chapter page
+  const learningSubColors: Record<string, { active: string; icon: string }> = {
+    resources:   { active: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300', icon: 'text-blue-500 dark:text-blue-400' },
+    interactive: { active: 'bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300', icon: 'text-teal-600 dark:text-teal-400' },
+    practice:    { active: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400' },
+    test:        { active: 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300', icon: 'text-violet-500 dark:text-violet-400' },
+  };
+
   // Learning sub-tabs only visible when on chapter/topic page
   const learningSubItems: SubNavItem[] = [
     { label: 'Resources', icon: FolderOpen, sectionId: 'resources' },
