@@ -45,6 +45,7 @@ const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
 const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
+const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,6 +150,7 @@ const App = () => {
                 <Route path="/structured-case/:caseId/edit" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/case-summary/:attemptId" element={<ProtectedRoute><RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
               </Suspense>
