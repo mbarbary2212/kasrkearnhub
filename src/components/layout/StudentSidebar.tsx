@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
