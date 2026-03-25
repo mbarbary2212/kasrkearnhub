@@ -279,11 +279,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-24">
-        {children}
-      </main>
+      <div className="flex flex-1">
+        {/* Student Sidebar - desktop only */}
+        {isStudent && <StudentSidebar onBadgesOpen={() => setBadgesOpen(true)} />}
 
+        {/* Main Content */}
+        <main className={cn("flex-1 px-4 py-8 pb-24", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
+          <div className={isStudent ? 'container mx-auto' : ''}>
+            {children}
+          </div>
+        </main>
+      </div>
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
