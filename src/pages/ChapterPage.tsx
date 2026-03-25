@@ -561,20 +561,19 @@ export default function ChapterPage() {
               }}
             />
           )}
-          {/* Customize View - mobile only (desktop uses sidebar) */}
+          {/* Customize Content - mobile only (desktop uses sidebar) */}
           {!canManageContent && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCustomizeOpen(true)}
+              onClick={() => navigate('/customize-content')}
               className="md:hidden text-muted-foreground hover:text-foreground"
-              title="Customize View"
+              title="Customize Content"
             >
               <SlidersHorizontal className="w-4 h-4" />
             </Button>
           )}
         </div>
-        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Chapter Progress Bar - hidden for admins */}
         {!canManageContent && (
