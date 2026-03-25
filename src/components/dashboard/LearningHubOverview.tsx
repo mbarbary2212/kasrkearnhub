@@ -7,6 +7,7 @@ import { DashboardNeedsPractice } from './DashboardNeedsPractice';
 import { DashboardTestProgress } from './DashboardTestProgress';
 import { DashboardWeakTopics } from './DashboardWeakTopics';
 import { BadgesSection } from './BadgesSection';
+import { TrendingQuestionsCard } from './TrendingQuestionsCard';
 import { ChapterHealthHeatmap } from './ChapterHealthHeatmap';
 import { StudyStreakCalendar } from './StudyStreakCalendar';
 import { LearningPatternSummary } from './LearningPatternSummary';
@@ -143,6 +144,12 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         hasRealAccuracyData={dashboard.hasRealAccuracyData}
         metrics={dashboard.chapterMetrics}
         chapterTitleMap={dashboard.chapterTitleMap}
+      />
+
+      {/* Trending Questions */}
+      <TrendingQuestionsCard
+        moduleId={moduleId}
+        onNavigate={(moduleId, chapterId) => onNavigate(moduleId, chapterId)}
       />
 
       {/* Achievements / Badges */}
