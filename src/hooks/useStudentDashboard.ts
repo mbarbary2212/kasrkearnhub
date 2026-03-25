@@ -10,11 +10,11 @@ import {
   type ReadinessComponents,
 } from '@/lib/readinessCalculator';
 import {
-  buildDashboardSuggestions,
+  buildAdaptiveStudyPlan,
   getWeakTopics,
   calculateAggregateReadiness,
-  generateConfidenceInsight,
 } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 
