@@ -73,7 +73,6 @@ export function QuestionSessionShell({
   const saveAttempt = useSaveQuestionAttempt();
 
   const currentQuestion = questions[currentIndex];
-  if (!currentQuestion) return null;
 
   const qState = sessionState.get(currentQuestion.id);
   const previousAttempt = attemptMap.get(currentQuestion.id);
