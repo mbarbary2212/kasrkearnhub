@@ -158,7 +158,16 @@ export function CaseSummary() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
+      <Button variant="ghost" size="sm" onClick={() => {
+        const caseData = attempt?.case;
+        if (caseData?.chapter_id && caseData?.module_id) {
+          navigate(`/module/${caseData.module_id}/chapter/${caseData.chapter_id}?section=interactive`);
+        } else if (caseData?.module_id) {
+          navigate(`/module/${caseData.module_id}`);
+        } else {
+          navigate(-1);
+        }
+      }} className="-ml-2">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </Button>
 
@@ -352,7 +361,16 @@ export function CaseSummary() {
       {/* Actions */}
       {allScored && (
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>
+          <Button variant="outline" className="flex-1" onClick={() => {
+            const caseData = attempt?.case;
+            if (caseData?.chapter_id && caseData?.module_id) {
+              navigate(`/module/${caseData.module_id}/chapter/${caseData.chapter_id}?section=interactive`);
+            } else if (caseData?.module_id) {
+              navigate(`/module/${caseData.module_id}`);
+            } else {
+              navigate(-1);
+            }
+          }}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Cases
           </Button>
           {attempt.case?.id && (
