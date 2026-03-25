@@ -66,13 +66,13 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         readinessResult={dashboard.readinessResult}
       />
 
-      {/* Today's Suggested Plan */}
+      {/* Today's Adaptive Study Plan */}
       <DashboardTodayPlan 
         suggestions={dashboard.suggestions}
+        studyPlan={dashboard.studyPlan}
         confidenceInsight={dashboard.confidenceInsight}
         onNavigate={(moduleId, chapterId, tab, subtab) => {
           if (chapterId && moduleId) {
-            const subtabParam = subtab ? `&subtab=${subtab}` : '';
             onNavigate(moduleId, chapterId, tab);
           }
         }}

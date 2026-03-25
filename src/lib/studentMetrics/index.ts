@@ -6,3 +6,5 @@ export { classifyLearningPattern, getPatternPriorityBoost, generateConfidenceIns
 export type { LearningPattern, LearningPatternResult } from './classifyLearningPattern';
 export { getRevisionState, calculateReviewStrength, getReviewType, getDueReviewChapters } from './reviewScheduling';
 export type { RevisionState } from './reviewScheduling';
+export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
+export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo } from './buildAdaptiveStudyPlan';
