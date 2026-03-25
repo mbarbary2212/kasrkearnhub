@@ -6,6 +6,7 @@ export interface ModuleBook {
   id: string;
   module_id: string;
   book_label: string;
+  description: string | null;
   display_order: number;
   chapter_prefix: string;
   created_at: string | null;

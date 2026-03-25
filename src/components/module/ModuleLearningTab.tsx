@@ -74,6 +74,8 @@ interface ModuleLearningTabProps {
   canManageBooks?: boolean;
   canManageChapters?: boolean;
   selectedDepartmentId?: string | null;
+  /** When provided (from ModulePage), student pill filtering is handled externally */
+  externalActiveBookLabel?: string | null;
 }
 
 // Sortable book card component
