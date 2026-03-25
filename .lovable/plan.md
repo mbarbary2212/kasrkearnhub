@@ -1,83 +1,57 @@
 
 
-# Track Exact Material in "Continue Where You Left Off"
+# Session 1: Fix Suggestion Logic & Weak Labeling
 
 ## Problem
-Currently, position tracking only saves: module → chapter → tab → sub-tab (e.g., MCQs). It does NOT record the specific item being viewed (e.g., "Question 5 of 20" or "Video: Cardiac Anatomy Lecture").
+- `generateSuggestions()` uses flat scoring — not-started chapters get MCQ suggestions (wrong: should learn first)
+- `detectWeakChapters()` uses `progress < 40` as proxy for weakness — falsely labels chapters as "weak" when they're simply not studied yet
+- Returns 5 suggestions (too many, unfocused)
+- No deduplication (can show multiple MCQs, multiple videos)
 
-## Approach
-Use a **callback pattern**: child components report their active item up to ChapterPage, which merges it into `activity_position` for `useTrackPosition`.
+## Changes — Single File: `src/hooks/useStudentDashboard.ts`
 
-## What Gets Tracked
+### A. Add `classifyChapter` helper (new function)
 
-| Content Type | Item Info Recorded |
-|---|---|
-| **MCQs / SBA** | Question index (e.g., "Question 5 of 20"), question ID |
-| **OSCE** | Question index, question ID |
-| **Videos (Lectures)** | Selected lecture title, lecture ID |
-| **Flashcards** | Current card index if in study mode |
-| **Essays** | Active essay title, essay ID |
+Classifies each chapter into one of: `not_started`, `early`, `weak`, `unstable`, `strong`, `in_progress`.
 
-## Implementation Steps
+- `not_started`: coverage === 0 and completedItems < 3
+- `early`: coverage < 40 and completedItems < 5
+- `weak`: completedItems >= 5 AND overall MCQ accuracy < 60% (from testProgress)
+- `unstable`: completedItems >= 5 AND accuracy < 75%
+- `strong`: coverage >= 70 AND accuracy >= 75%
+- else: `in_progress`
 
-### 1. Add `onActiveItemChange` callback to content components
+Note: Per-chapter accuracy isn't available without schema changes, so we use module-level `testProgress.mcq.accuracy` combined with per-chapter coverage/completion counts to approximate.
 
-**`QuestionSessionShell.tsx`** — Already tracks `currentIndex`. Add an optional `onActiveItemChange` prop. Call it whenever `currentIndex` changes:
-```typescript
-onActiveItemChange?: (info: { item_id: string; item_label: string; item_index: number }) => void;
-```
-Fire on mount and whenever `currentIndex` changes via `useEffect`.
+### B. Rewrite `generateSuggestions()`
 
-**`LectureList.tsx`** — Already tracks `selectedLecture`. Add similar callback, fired when a lecture is selected/opened.
+Replace flat scoring with rule-based priority:
 
-**`OsceList.tsx`** — Uses `QuestionSessionShell` internally, so covered by the same change.
+1. For each non-completed chapter, call `classifyChapter`
+2. Based on state, add suggestions with appropriate types and reasons:
+   - `not_started` / `early` → video (priority 80, "Not covered yet") + read (70, "Build core understanding"). MCQ is NOT suggested.
+   - `weak` → mcq (priority 90, "Low recent accuracy") + video (60, "Review explanation")
+   - `unstable` → mcq (priority 75, "Needs reinforcement")
+   - `in_progress` → mcq (priority 65, "Continue where you left")
+3. Collect all scored items, sort by priority descending
+4. **Deduplication before slicing**: max 1 per type (1 mcq, 1 video, 1 read, 1 flashcard)
+5. **Slice to 3** (not 5)
+6. Mark top item as `isPrimary: true`
 
-### 2. Wire callbacks through McqList and OsceList
+### C. Rewrite `detectWeakChapters()`
 
-`McqList` and `OsceList` render `QuestionSessionShell`. They'll accept and forward the `onActiveItemChange` prop.
+Remove the false-positive logic:
+- Remove `c.progress < 40` condition (confuses "not studied" with "weak")
+- Only flag weak if: `testProgress.mcq.attempts >= 5 AND testProgress.mcq.accuracy < 60`
+- When flagging, attach the first in-progress chapter with the most completedItems (most studied = most meaningful weak signal)
+- Stop using `c.progress` as `accuracy` proxy — use `testProgress.mcq.accuracy` directly
 
-### 3. ChapterPage: Collect item info and merge into `useTrackPosition`
+### D. No interface changes needed
+`SuggestedItem` already has `reason`, `isPrimary`, `subtab` from Phase 1. `WeakChapter` interface unchanged.
 
-Add state: `const [activeItem, setActiveItem] = useState<{item_id, item_label, item_index} | null>(null)`.
-
-Pass `onActiveItemChange={setActiveItem}` to `LectureList`, `McqList`, `OsceList`, etc.
-
-Clear `activeItem` when sub-tab changes.
-
-Update the `useTrackPosition` call:
-```typescript
-activity_position: currentSubTab ? {
-  sub_tab: currentSubTab,
-  ...(activeItem && {
-    item_id: activeItem.item_id,
-    item_label: activeItem.item_label,
-    item_index: activeItem.item_index,
-  }),
-} : null,
-```
-
-### 4. Update `buildResumeUrl` in `useLastPosition.ts`
-
-Already handles `sub_tab` in the URL. Add `item_index` as an additional query parameter so the session can scroll/jump to that question on resume.
-
-### 5. Update `buildResumeLabel` in `useLastPosition.ts`
-
-Already has logic for `item_label` — just needs the data to flow through. The existing code at the bottom already does:
-```typescript
-if (ap.item_label && typeof ap.item_label === 'string') {
-  parts.push(ap.item_label);
-}
-```
-
-### 6. Restore item position on page load
-
-In `QuestionSessionShell`, read `item_index` from URL search params and use it as the initial `currentIndex`. In `LectureList`, auto-select the lecture matching `item_id` from the URL.
-
-## Files Changed
-- `src/components/question-session/QuestionSessionShell.tsx` — add callback + restore from URL
-- `src/components/content/McqList.tsx` — forward callback
-- `src/components/content/OsceList.tsx` — forward callback  
-- `src/components/content/LectureList.tsx` — add callback + restore from URL
-- `src/pages/ChapterPage.tsx` — collect active item, pass to useTrackPosition
-- `src/hooks/useLastPosition.ts` — add item_index to resume URL
+## Result
+- Not-started chapters get learning suggestions (video/read), not practice
+- "Weak" label only appears with real accuracy data (>=5 attempts, <60%)
+- Dashboard shows 3 focused actions instead of 5
+- No duplicate suggestion types
 
