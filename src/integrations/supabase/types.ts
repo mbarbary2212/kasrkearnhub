@@ -4295,6 +4295,93 @@ export type Database = {
           },
         ]
       }
+      student_chapter_metrics: {
+        Row: {
+          chapter_id: string
+          coverage_percent: number
+          created_at: string
+          flashcards_due: number
+          flashcards_overdue: number
+          id: string
+          last_activity_at: string | null
+          last_flashcard_review_at: string | null
+          last_mcq_attempt_at: string | null
+          last_video_at: string | null
+          mcq_accuracy: number
+          mcq_attempts: number
+          mcq_correct: number
+          mcq_wrong: number
+          minutes_practicing: number
+          minutes_reading: number
+          minutes_total: number
+          minutes_watching: number
+          module_id: string
+          readiness_score: number
+          recent_mcq_accuracy: number
+          resources_viewed: number
+          student_id: string
+          updated_at: string
+          videos_completed: number
+          videos_total: number
+        }
+        Insert: {
+          chapter_id: string
+          coverage_percent?: number
+          created_at?: string
+          flashcards_due?: number
+          flashcards_overdue?: number
+          id?: string
+          last_activity_at?: string | null
+          last_flashcard_review_at?: string | null
+          last_mcq_attempt_at?: string | null
+          last_video_at?: string | null
+          mcq_accuracy?: number
+          mcq_attempts?: number
+          mcq_correct?: number
+          mcq_wrong?: number
+          minutes_practicing?: number
+          minutes_reading?: number
+          minutes_total?: number
+          minutes_watching?: number
+          module_id: string
+          readiness_score?: number
+          recent_mcq_accuracy?: number
+          resources_viewed?: number
+          student_id: string
+          updated_at?: string
+          videos_completed?: number
+          videos_total?: number
+        }
+        Update: {
+          chapter_id?: string
+          coverage_percent?: number
+          created_at?: string
+          flashcards_due?: number
+          flashcards_overdue?: number
+          id?: string
+          last_activity_at?: string | null
+          last_flashcard_review_at?: string | null
+          last_mcq_attempt_at?: string | null
+          last_video_at?: string | null
+          mcq_accuracy?: number
+          mcq_attempts?: number
+          mcq_correct?: number
+          mcq_wrong?: number
+          minutes_practicing?: number
+          minutes_reading?: number
+          minutes_total?: number
+          minutes_watching?: number
+          module_id?: string
+          readiness_score?: number
+          recent_mcq_accuracy?: number
+          resources_viewed?: number
+          student_id?: string
+          updated_at?: string
+          videos_completed?: number
+          videos_total?: number
+        }
+        Relationships: []
+      }
       student_feedback: {
         Row: {
           academic_year: number | null
@@ -6365,6 +6452,34 @@ export type Database = {
           p_topic_id?: string
         }
         Returns: Json
+      }
+      upsert_student_chapter_metrics: {
+        Args: {
+          p_chapter_id: string
+          p_coverage_percent?: number
+          p_flashcards_due?: number
+          p_flashcards_overdue?: number
+          p_last_activity_at?: string
+          p_last_flashcard_review_at?: string
+          p_last_mcq_attempt_at?: string
+          p_last_video_at?: string
+          p_mcq_accuracy?: number
+          p_mcq_attempts?: number
+          p_mcq_correct?: number
+          p_mcq_wrong?: number
+          p_minutes_practicing?: number
+          p_minutes_reading?: number
+          p_minutes_total?: number
+          p_minutes_watching?: number
+          p_module_id: string
+          p_readiness_score?: number
+          p_recent_mcq_accuracy?: number
+          p_resources_viewed?: number
+          p_student_id: string
+          p_videos_completed?: number
+          p_videos_total?: number
+        }
+        Returns: undefined
       }
     }
     Enums: {
