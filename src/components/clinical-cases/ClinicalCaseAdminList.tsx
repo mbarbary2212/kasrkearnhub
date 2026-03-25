@@ -98,6 +98,20 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
   const handleImportJson = async (json: Record<string, unknown>) => {
     const data = json as any;
 
+    // Duplicate detection
+    const importTitle = data.case_meta?.title;
+    if (importTitle) {
+      const duplicate = filteredCases.find(
+        c => c.title.trim().toLowerCase() === importTitle.trim().toLowerCase() && c.chapter_id === (chapterId || null)
+      );
+      if (duplicate) {
+        const confirmed = window.confirm(
+          `A case titled "${importTitle}" already exists in this chapter. Import anyway?`
+        );
+        if (!confirmed) return;
+      }
+    }
+
     // Normalize physical exam findings keys before saving
     if (data.physical_examination?.findings && typeof data.physical_examination.findings === 'object') {
       const { normalized, remappedKeys } = normalizePhysicalExamFindings(

@@ -77,6 +77,8 @@ export function useUpdateStructuredCaseData() {
     },
     onSuccess: (_, { caseId }) => {
       queryClient.invalidateQueries({ queryKey: ['structured-case', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['clinical-cases'] });
+      queryClient.invalidateQueries({ queryKey: ['virtual-patient-cases'] });
     },
   });
 }
