@@ -131,6 +131,20 @@ export default function ModulePage() {
   // Fetch last position for Continue card (students only)
   const { data: lastPos } = useLastPosition();
   const showContinueCard = isStudent && lastPos && lastPos.chapter_id && lastPos.module_id === actualModuleId;
+  const hasVisitedModule = isStudent && lastPos && lastPos.module_id === actualModuleId && lastPos.chapter_id;
+
+  // Auto-switch to dashboard when student has visited this module (only on initial load)
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false);
+  useEffect(() => {
+    if (hasAutoSwitched) return;
+    if (!hasVisitedModule) return;
+    // Only auto-switch if no explicit section was requested
+    const param = searchParams.get('section');
+    if (!param) {
+      setActiveSection('dashboard');
+    }
+    setHasAutoSwitched(true);
+  }, [hasVisitedModule, hasAutoSwitched, searchParams]);
 
   // Dashboard data for Study Coach tabs (Overview & Unlocks)
   const { data: coachDashboard } = useStudentDashboard({
