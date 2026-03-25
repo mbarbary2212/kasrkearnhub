@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { ArrowLeft, BookOpen, ChevronRight, LayoutGrid, List, Lock, Stethoscope 
 import { getYearIcon } from '@/lib/yearIcons';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
+import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
+import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 
 export default function YearPage() {
   const { yearId } = useParams();
@@ -26,6 +28,9 @@ export default function YearPage() {
 
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
   const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
+
+  const moduleIds = useMemo(() => (modules || []).map(m => m.id), [modules]);
+  const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
 
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
     return (localStorage.getItem('yearPageViewMode') as 'cards' | 'list') || 'cards';
