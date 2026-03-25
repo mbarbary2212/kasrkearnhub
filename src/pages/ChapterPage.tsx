@@ -561,6 +561,18 @@ export default function ChapterPage() {
               }}
             />
           )}
+          {/* Customize View - mobile only (desktop uses sidebar) */}
+          {!canManageContent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCustomizeOpen(true)}
+              className="md:hidden text-muted-foreground hover:text-foreground"
+              title="Customize View"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
