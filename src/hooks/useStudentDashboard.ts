@@ -38,7 +38,7 @@ export interface DashboardInsight {
 }
 
 export interface SuggestedItem {
-  type: 'read' | 'mcq' | 'video' | 'essay' | 'flashcard';
+  type: 'read' | 'mcq' | 'video' | 'essay' | 'flashcard' | 'review';
   title: string;
   chapterTitle?: string;
   estimatedMinutes?: number;
@@ -48,6 +48,7 @@ export interface SuggestedItem {
   isPrimary?: boolean;
   subtab?: string;
   trend?: 'declining' | 'stable' | 'improving';
+  revisionState?: string;
 }
 
 export interface WeakChapter {
