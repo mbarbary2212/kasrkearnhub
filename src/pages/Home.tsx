@@ -284,7 +284,7 @@ function LoggedInHome() {
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-primary shrink-0" />
                           <h3 className="text-sm font-semibold text-foreground truncate">
-                            {mod.code ? `${mod.code}: ` : ''}{mod.name}
+                            {(mod as any).code ? `${(mod as any).code}: ` : ''}{mod.name}
                           </h3>
                         </div>
                         <ModuleReadinessBar readiness={readiness} />
