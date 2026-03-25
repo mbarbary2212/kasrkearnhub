@@ -12,6 +12,7 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
@@ -24,10 +25,14 @@ import {
   MessageCircle,
   Megaphone,
   Mail,
+  Play,
+  ArrowRight,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
 
