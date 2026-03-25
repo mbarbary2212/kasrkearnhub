@@ -16,6 +16,12 @@ const iconMap: Record<string, React.ElementType> = {
   flashcard: GalleryHorizontal,
 };
 
+const trendIndicator: Record<string, { icon: string; className: string }> = {
+  declining: { icon: '↓', className: 'text-destructive' },
+  improving: { icon: '↑', className: 'text-emerald-600 dark:text-emerald-400' },
+  stable: { icon: '', className: '' },
+};
+
 export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
