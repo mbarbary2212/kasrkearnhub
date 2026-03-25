@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
 import { formatDistanceToNow } from 'date-fns';
 
-type ModuleSection = 'learning' | 'formative' | 'connect' | 'coach';
+type ModuleSection = 'dashboard' | 'learning' | 'formative' | 'connect' | 'coach';
 
 export default function ModulePage() {
   const { moduleId } = useParams();
@@ -43,7 +43,7 @@ export default function ModulePage() {
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
   const [activeSection, setActiveSection] = useState<ModuleSection>(() => {
     const param = searchParams.get('section');
-    if (param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
+    if (param === 'dashboard' || param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
     return 'learning';
   });
 
