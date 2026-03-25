@@ -74,6 +74,7 @@ export function BookFormModal({
           oldLabel: editingBook.book_label,
           newLabel: bookLabel.trim() !== editingBook.book_label ? bookLabel.trim() : undefined,
           chapterPrefix: chapterPrefix !== editingBook.chapter_prefix ? chapterPrefix : undefined,
+          description: description.trim() || null,
         });
         toast.success('Department updated successfully');
       } else {

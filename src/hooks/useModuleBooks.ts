@@ -164,15 +164,18 @@ export function useUpdateBook() {
       oldLabel, 
       newLabel,
       chapterPrefix,
+      description,
     }: { 
       moduleId: string; 
       oldLabel: string; 
       newLabel?: string;
       chapterPrefix?: string;
+      description?: string | null;
     }) => {
-      const updates: Record<string, string> = {};
+      const updates: Record<string, string | null> = {};
       if (newLabel !== undefined) updates.book_label = newLabel;
       if (chapterPrefix !== undefined) updates.chapter_prefix = chapterPrefix;
+      if (description !== undefined) updates.description = description;
 
       // Update book metadata
       const { error: bookError } = await supabase
