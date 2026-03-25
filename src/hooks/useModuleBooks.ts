@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CROSS_MODULE_BOOKS } from '@/lib/crossModuleBooks';
-
 export interface ModuleBook {
   id: string;
   module_id: string;
@@ -11,10 +9,6 @@ export interface ModuleBook {
   display_order: number;
   chapter_prefix: string;
   created_at: string | null;
-  /** True if this book is virtually mapped from another module */
-  isVirtual?: boolean;
-  /** The source module ID for virtual books */
-  sourceModuleId?: string;
 }
 
 // Get books for a module with their metadata (order, prefix)
@@ -30,39 +24,7 @@ export function useModuleBooks(moduleId?: string) {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      const books = (data || []) as ModuleBook[];
-
-      // Check for cross-module virtual books
-      const crossBooks = CROSS_MODULE_BOOKS[moduleId!];
-      if (crossBooks) {
-        for (const [bookLabel, sourceModuleId] of Object.entries(crossBooks)) {
-          // Skip if the book already exists natively
-          if (books.some(b => b.book_label === bookLabel)) continue;
-
-          // Fetch the source book metadata
-          const { data: sourceBook } = await supabase
-            .from('module_books')
-            .select('*')
-            .eq('module_id', sourceModuleId)
-            .eq('book_label', bookLabel)
-            .maybeSingle();
-
-          if (sourceBook) {
-            // Insert virtual book at the beginning (display_order -1 to sort first)
-            books.unshift({
-              ...sourceBook,
-              module_id: moduleId!,
-              display_order: -1,
-              isVirtual: true,
-              sourceModuleId,
-            } as ModuleBook);
-          }
-        }
-        // Re-sort by display_order
-        books.sort((a, b) => a.display_order - b.display_order);
-      }
-
-      return books;
+      return (data || []) as ModuleBook[];
     },
     enabled: !!moduleId,
   });

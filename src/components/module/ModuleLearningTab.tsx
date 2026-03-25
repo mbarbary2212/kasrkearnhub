@@ -56,7 +56,7 @@ import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleBooks, useDeleteBook, useReorderBooks, ModuleBook } from '@/hooks/useModuleBooks';
 import { useDeleteChapter } from '@/hooks/useChapterManagement';
 import { useTopics } from '@/hooks/useTopics';
-import { CROSS_MODULE_BOOKS } from '@/lib/crossModuleBooks';
+import { CROSS_MODULE_BOOKS, resolveCrossModuleBook } from '@/lib/crossModuleBooks';
 import { BookFormModal } from './BookFormModal';
 import { ChapterFormModal } from './ChapterFormModal';
 import { PharmacologyTopicsView } from './PharmacologyTopicsView';
@@ -202,7 +202,7 @@ function BookLecturesView({
   const deleteChapter = useDeleteChapter();
   
   // Cross-module book mapping
-  const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[bookLabel] || moduleId;
+  const { fetchModuleId, fetchBookLabel } = resolveCrossModuleBook(moduleId, bookLabel);
   
   // Module IDs for SUR-423 and SUR-523 that show sort filter for Book 2 and Book 3
   const SURGERY_MODULE_IDS = [
@@ -215,13 +215,13 @@ function BookLecturesView({
   const [sortMode, setSortMode] = useState<SortMode>('default');
   
   const { data: chaptersRaw, isLoading: chaptersLoading } = useQuery({
-    queryKey: ['module-chapters-for-book', fetchModuleId, bookLabel],
+    queryKey: ['module-chapters-for-book', fetchModuleId, fetchBookLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
         .select('*')
         .eq('module_id', fetchModuleId)
-        .eq('book_label', bookLabel)
+        .eq('book_label', fetchBookLabel)
         .order('order_index', { ascending: true });
       
       if (error) throw error;
@@ -439,12 +439,14 @@ function BookLecturesView({
 function StudentBookPillView({
   moduleId,
   fetchModuleId,
+  fetchBookLabel,
   activeBookLabel,
   sortedBooks,
   onSelectPill,
 }: {
   moduleId: string;
   fetchModuleId: string;
+  fetchBookLabel: string;
   activeBookLabel: string;
   sortedBooks: ModuleBook[];
   onSelectPill: (label: string) => void;
@@ -453,13 +455,13 @@ function StudentBookPillView({
   const auth = useAuthContext();
 
   const { data: chapters, isLoading } = useQuery({
-    queryKey: ['module-chapters-for-book', fetchModuleId, activeBookLabel],
+    queryKey: ['module-chapters-for-book', fetchModuleId, fetchBookLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
         .select('*')
         .eq('module_id', fetchModuleId)
-        .eq('book_label', activeBookLabel)
+        .eq('book_label', fetchBookLabel)
         .order('order_index', { ascending: true });
       if (error) throw error;
       return data as ModuleChapter[];
@@ -602,15 +604,15 @@ export function ModuleLearningTab({
       
       const crossBooks = CROSS_MODULE_BOOKS[moduleId];
       if (crossBooks) {
-        for (const [bookLabel, sourceModuleId] of Object.entries(crossBooks)) {
+        for (const [targetLabel, mapping] of Object.entries(crossBooks)) {
           const { data: crossData, error: crossError } = await supabase
             .from('module_chapters')
             .select('book_label')
-            .eq('module_id', sourceModuleId)
-            .eq('book_label', bookLabel);
+            .eq('module_id', mapping.sourceModuleId)
+            .eq('book_label', mapping.sourceBookLabel);
           
           if (!crossError && crossData) {
-            counts[bookLabel] = crossData.length;
+            counts[targetLabel] = (counts[targetLabel] || 0) + crossData.length;
           }
         }
       }
@@ -887,12 +889,13 @@ export function ModuleLearningTab({
       );
     }
 
-    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel] || moduleId;
+    const resolved = resolveCrossModuleBook(moduleId, externalActiveBookLabel);
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
-        fetchModuleId={fetchModuleId}
+        fetchModuleId={resolved.fetchModuleId}
+        fetchBookLabel={resolved.fetchBookLabel}
         activeBookLabel={externalActiveBookLabel}
         sortedBooks={[]} // pills rendered externally, pass empty
         onSelectPill={() => {}} // no-op, handled by parent
@@ -930,12 +933,13 @@ export function ModuleLearningTab({
       );
     }
 
-    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[activeBookLabel] || moduleId;
+    const resolved = resolveCrossModuleBook(moduleId, activeBookLabel);
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
-        fetchModuleId={fetchModuleId}
+        fetchModuleId={resolved.fetchModuleId}
+        fetchBookLabel={resolved.fetchBookLabel}
         activeBookLabel={activeBookLabel}
         sortedBooks={sortedBooks}
         onSelectPill={handleSelectBookPill}
