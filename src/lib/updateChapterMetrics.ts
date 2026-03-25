@@ -31,6 +31,7 @@ type MetricsUpdate = McqMetricsUpdate | VideoMetricsUpdate | FlashcardMetricsUpd
 /**
  * Fire-and-forget update to student_chapter_metrics after activity.
  * Uses the server-side upsert_student_chapter_metrics function.
+ * Also recalculates confidence metrics from recent question_attempts.
  */
 export async function updateChapterMetrics(update: MetricsUpdate): Promise<void> {
   try {
@@ -51,20 +52,41 @@ export async function updateChapterMetrics(update: MetricsUpdate): Promise<void>
       const newWrong = (prev?.mcq_wrong ?? 0) + (update.isCorrect ? 0 : 1);
       const newAccuracy = newAttempts > 0 ? Math.round((newCorrect / newAttempts) * 100) : 0;
 
-      // Recent accuracy: use last 10 attempts from question_attempts
+      // Recent accuracy + confidence: use last 20 attempts from question_attempts
       const { data: recentAttempts } = await supabase
         .from('question_attempts')
-        .select('is_correct')
+        .select('is_correct, confidence_level')
         .eq('user_id', update.studentId)
         .eq('chapter_id', update.chapterId)
         .eq('question_type', 'mcq')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       let recentAccuracy = newAccuracy;
+      let confidenceAvg = 0;
+      let confidenceMismatchRate = 0;
+      let overconfidentErrorRate = 0;
+      let underconfidentCorrectRate = 0;
+
       if (recentAttempts && recentAttempts.length > 0) {
         const recentCorrect = recentAttempts.filter(a => a.is_correct).length;
         recentAccuracy = Math.round((recentCorrect / recentAttempts.length) * 100);
+
+        // Confidence metrics — only from attempts that have confidence_level
+        const withConfidence = recentAttempts.filter(a => a.confidence_level != null);
+        if (withConfidence.length >= 3) {
+          const total = withConfidence.length;
+          confidenceAvg = withConfidence.reduce((sum, a) => sum + (a.confidence_level ?? 0), 0) / total;
+
+          // High confidence = 3, Low confidence = 1
+          const highConfWrong = withConfidence.filter(a => (a.confidence_level ?? 0) >= 3 && !a.is_correct).length;
+          const lowConfCorrect = withConfidence.filter(a => (a.confidence_level ?? 0) <= 1 && a.is_correct).length;
+          const mismatch = highConfWrong + lowConfCorrect;
+
+          confidenceMismatchRate = Math.round((mismatch / total) * 100);
+          overconfidentErrorRate = Math.round((highConfWrong / total) * 100);
+          underconfidentCorrectRate = Math.round((lowConfCorrect / total) * 100);
+        }
       }
 
       await supabase.rpc('upsert_student_chapter_metrics' as any, {
@@ -79,6 +101,20 @@ export async function updateChapterMetrics(update: MetricsUpdate): Promise<void>
         p_last_mcq_attempt_at: now,
         p_last_activity_at: now,
       });
+
+      // Update confidence columns separately (direct update since upsert doesn't handle these)
+      if (recentAttempts && recentAttempts.filter(a => a.confidence_level != null).length >= 3) {
+        await supabase
+          .from('student_chapter_metrics' as any)
+          .update({
+            confidence_avg: Math.round(confidenceAvg * 100) / 100,
+            confidence_mismatch_rate: confidenceMismatchRate,
+            overconfident_error_rate: overconfidentErrorRate,
+            underconfident_correct_rate: underconfidentCorrectRate,
+          })
+          .eq('student_id', update.studentId)
+          .eq('chapter_id', update.chapterId);
+      }
     } else if (update.type === 'video') {
       const coveragePercent = update.videosTotal > 0
         ? Math.round((update.videosCompleted / update.videosTotal) * 100)

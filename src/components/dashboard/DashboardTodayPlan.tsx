@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 
 interface DashboardTodayPlanProps {
   suggestions: SuggestedItem[];
   onNavigate: (moduleId?: string, chapterId?: string, tab?: string, subtab?: string) => void;
+  confidenceInsight?: string | null;
 }
 
 const iconMap: Record<string, React.ElementType> = {
@@ -22,7 +23,7 @@ const trendIndicator: Record<string, { icon: string; className: string }> = {
   stable: { icon: '', className: '' },
 };
 
-export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPlanProps) {
+export function DashboardTodayPlan({ suggestions, onNavigate, confidenceInsight }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -117,6 +118,14 @@ export function DashboardTodayPlan({ suggestions, onNavigate }: DashboardTodayPl
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Confidence Insight — one optional smart insight */}
+        {confidenceInsight && (
+          <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
+            <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">{confidenceInsight}</p>
           </div>
         )}
       </CardContent>

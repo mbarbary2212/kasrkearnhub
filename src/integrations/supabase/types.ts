@@ -4064,6 +4064,7 @@ export type Database = {
         Row: {
           attempt_number: number
           chapter_id: string | null
+          confidence_level: number | null
           created_at: string
           id: string
           is_correct: boolean | null
@@ -4081,6 +4082,7 @@ export type Database = {
         Insert: {
           attempt_number?: number
           chapter_id?: string | null
+          confidence_level?: number | null
           created_at?: string
           id?: string
           is_correct?: boolean | null
@@ -4098,6 +4100,7 @@ export type Database = {
         Update: {
           attempt_number?: number
           chapter_id?: string | null
+          confidence_level?: number | null
           created_at?: string
           id?: string
           is_correct?: boolean | null
@@ -4298,6 +4301,8 @@ export type Database = {
       student_chapter_metrics: {
         Row: {
           chapter_id: string
+          confidence_avg: number
+          confidence_mismatch_rate: number
           coverage_percent: number
           created_at: string
           flashcards_due: number
@@ -4316,16 +4321,20 @@ export type Database = {
           minutes_total: number
           minutes_watching: number
           module_id: string
+          overconfident_error_rate: number
           readiness_score: number
           recent_mcq_accuracy: number
           resources_viewed: number
           student_id: string
+          underconfident_correct_rate: number
           updated_at: string
           videos_completed: number
           videos_total: number
         }
         Insert: {
           chapter_id: string
+          confidence_avg?: number
+          confidence_mismatch_rate?: number
           coverage_percent?: number
           created_at?: string
           flashcards_due?: number
@@ -4344,16 +4353,20 @@ export type Database = {
           minutes_total?: number
           minutes_watching?: number
           module_id: string
+          overconfident_error_rate?: number
           readiness_score?: number
           recent_mcq_accuracy?: number
           resources_viewed?: number
           student_id: string
+          underconfident_correct_rate?: number
           updated_at?: string
           videos_completed?: number
           videos_total?: number
         }
         Update: {
           chapter_id?: string
+          confidence_avg?: number
+          confidence_mismatch_rate?: number
           coverage_percent?: number
           created_at?: string
           flashcards_due?: number
@@ -4372,10 +4385,12 @@ export type Database = {
           minutes_total?: number
           minutes_watching?: number
           module_id?: string
+          overconfident_error_rate?: number
           readiness_score?: number
           recent_mcq_accuracy?: number
           resources_viewed?: number
           student_id?: string
+          underconfident_correct_rate?: number
           updated_at?: string
           videos_completed?: number
           videos_total?: number
@@ -6440,19 +6455,34 @@ export type Database = {
         Args: { _feedback_id: string; _reason: string }
         Returns: string
       }
-      save_question_attempt: {
-        Args: {
-          p_chapter_id?: string
-          p_is_correct?: boolean
-          p_module_id?: string
-          p_question_id: string
-          p_question_type: Database["public"]["Enums"]["practice_question_type"]
-          p_score?: number
-          p_selected_answer?: Json
-          p_topic_id?: string
-        }
-        Returns: Json
-      }
+      save_question_attempt:
+        | {
+            Args: {
+              p_chapter_id?: string
+              p_is_correct?: boolean
+              p_module_id?: string
+              p_question_id: string
+              p_question_type: Database["public"]["Enums"]["practice_question_type"]
+              p_score?: number
+              p_selected_answer?: Json
+              p_topic_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_chapter_id?: string
+              p_confidence_level?: number
+              p_is_correct?: boolean
+              p_module_id?: string
+              p_question_id: string
+              p_question_type: Database["public"]["Enums"]["practice_question_type"]
+              p_score?: number
+              p_selected_answer?: Json
+              p_topic_id?: string
+            }
+            Returns: Json
+          }
       upsert_student_chapter_metrics: {
         Args: {
           p_chapter_id: string

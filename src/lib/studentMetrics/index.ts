@@ -2,3 +2,5 @@ export { classifyChapterState, getModuleStatusFromMetrics, getPerformanceTrend, 
 export type { ChapterState, ChapterMetricsInput, PerformanceTrend } from './classifyChapterState';
 export { buildDashboardSuggestions, getWeakTopics, calculateAggregateReadiness } from './buildDashboardSuggestions';
 export type { DashboardAction, WeakTopic } from './buildDashboardSuggestions';
+export { classifyLearningPattern, getPatternPriorityBoost, generateConfidenceInsight } from './classifyLearningPattern';
+export type { LearningPattern, LearningPatternResult } from './classifyLearningPattern';
