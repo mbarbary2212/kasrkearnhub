@@ -25,6 +25,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 import { usePresence } from '@/contexts/PresenceContext';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 
 export default function Home() {
@@ -128,6 +129,7 @@ function LoggedInHome() {
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
   const { onlineCount } = usePresence();
+  const { setActiveYear } = useActiveYear();
 
   // Year selection
   const preferredYearId = profile?.preferred_year_id;
