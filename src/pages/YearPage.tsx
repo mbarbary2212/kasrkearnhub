@@ -121,6 +121,8 @@ export default function YearPage() {
         )}
 
         {/* Modules Grid */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-heading font-semibold">Modules</h2>
             <div className="flex items-center gap-1 border rounded-md p-0.5">
               <Button
