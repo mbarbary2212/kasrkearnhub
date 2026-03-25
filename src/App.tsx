@@ -27,7 +27,7 @@ import { useDisclaimerEnabled } from "@/hooks/useDisclaimerSetting";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
-const YearPage = lazy(() => import("./pages/YearPage"));
+const AllYearsPage = lazy(() => import("./pages/AllYearsPage"));
 const ModulePage = lazy(() => import("./pages/ModulePage"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
 const TopicDetailPage = lazy(() => import("./pages/TopicDetailPage"));
