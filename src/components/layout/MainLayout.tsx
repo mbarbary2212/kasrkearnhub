@@ -25,6 +25,7 @@ import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
+import { useModule } from '@/hooks/useModules';
 
 interface MainLayoutProps {
   children: ReactNode;
