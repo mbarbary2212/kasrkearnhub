@@ -186,7 +186,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
                 <div className="flex items-center gap-1">
                   {currentChapter.icon_url && (
-                    <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover bg-muted/80 dark:bg-white/30 p-1" />
+                    <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover bg-muted/60 dark:bg-white/15 p-0.5" />
                   )}
                   <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
                     {currentChapter.title}
