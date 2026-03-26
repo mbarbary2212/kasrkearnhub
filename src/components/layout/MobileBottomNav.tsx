@@ -123,7 +123,7 @@ export function MobileBottomNav() {
       {showSectionOverlay && isChapterPage && (
         <div
           ref={overlayRef}
-          className="md:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
+          className="sm:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
         >
           <div className="flex justify-around">
             {chapterSections.map((section) => {
