@@ -588,6 +588,22 @@ export default function ChapterPage() {
                   {currentTabs.map((tab) => {
                     const TabIcon = tab.icon;
                     const isActive = currentSubTab === tab.id;
+                    // Per-tab progress calculation
+                    const getTabProgress = (tabId: string): number => {
+                      if (!chapterProgress) return 0;
+                      switch (tabId) {
+                        case 'lectures': return chapterProgress.videoProgress;
+                        case 'mcqs':
+                        case 'sba':
+                          return chapterProgress.mcqTotal > 0 ? Math.round((chapterProgress.mcqCompleted / chapterProgress.mcqTotal) * 100) : 0;
+                        case 'essays': return chapterProgress.essayTotal > 0 ? Math.round((chapterProgress.essayCompleted / chapterProgress.essayTotal) * 100) : 0;
+                        case 'osce': return chapterProgress.osceTotal > 0 ? Math.round((chapterProgress.osceCompleted / chapterProgress.osceTotal) * 100) : 0;
+                        case 'cases': return chapterProgress.caseTotal > 0 ? Math.round((chapterProgress.caseCompleted / chapterProgress.caseTotal) * 100) : 0;
+                        case 'matching': return chapterProgress.matchingTotal > 0 ? Math.round((chapterProgress.matchingCompleted / chapterProgress.matchingTotal) * 100) : 0;
+                        default: return 0;
+                      }
+                    };
+                    const progress = getTabProgress(tab.id);
                     return (
                       <DropdownMenuItem
                         key={tab.id}
@@ -607,7 +623,19 @@ export default function ChapterPage() {
                           <TabIcon className={cn("w-4 h-4", isActive ? colors.icon : "")} />
                         )}
                         <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        {tab.count > 0 ? (
+                          <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
+                            <div 
+                              className={cn("absolute inset-y-0 left-0 rounded-full transition-all duration-500", progress > 0 ? "bg-primary/25" : "")}
+                              style={{ width: `${progress}%` }}
+                            />
+                            <span className="relative z-10 flex items-center justify-center h-full font-semibold text-muted-foreground">
+                              {progress}%
+                            </span>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">0</Badge>
+                        )}
                       </DropdownMenuItem>
                     );
                   })}
