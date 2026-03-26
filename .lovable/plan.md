@@ -1,78 +1,65 @@
 
 
-## Fix "Continue Where You Left Off" — Learning Tab Only, Deep Tracking
+## Fix Missing Progress Tracking for True/False Questions
 
 ### Problem
+The completion counter on material pills (e.g., `0/5`) does not work for **True/False** questions. The root cause is that the database RPC `get_content_progress` does not include `true_false_questions` in its aggregation, and the client-side code has no mapping for this tab.
 
-Two issues are breaking the resume feature:
+Other tabs like SBA, Practical, and Images are hardcoded to 0 items in ChapterPage — they have no content tables or counts yet, so they're not broken, just empty.
 
-1. **Position gets overwritten**: When a student navigates from a chapter back to the module page, `ModulePage` calls `useTrackPosition()` with only module-level info (no chapter, no tab, no sub-tab). This **overwrites** the deep chapter position, so "Continue" loses the exact material.
+### What's Actually Missing
 
-2. **Missing `onActiveItemChange` on most content components**: Only LectureList, McqList, and OsceList report the active item. These components are missing it: EssayList, TrueFalseList, MatchingQuestionList, FlashcardsTab, GuidedExplanationList, ClinicalCaseList/AlgorithmList.
-
-### Solution
-
-**Principle**: Position tracking is for the Learning tab content ONLY. Navigating to other pages (module page, home, settings) should NOT overwrite the last learning position.
+| Tab | Has DB Table? | In RPC? | In `getTabCounts`? | Status |
+|---|---|---|---|---|
+| `true_false` | Yes (`true_false_questions`) | **No** | **No** | Broken — needs fix |
+| `sba` | No (shares MCQ table) | Via mcq | Yes (maps to mcq) | OK for now |
+| `practical` | Yes (`practicals`) | No | No | Count hardcoded to 0 — no content exists |
+| `images` | No table | No | No | Count hardcoded to 0 — no content exists |
 
 ### Changes
 
-**1. `src/pages/ModulePage.tsx` — Remove position tracking**
-- Remove the `useTrackPosition()` call entirely. The module page is not a "learning" destination — it's a navigation hub. Visiting it should never overwrite a deep chapter position.
+**1. Database migration — Update `get_content_progress` RPC**
 
-**2. `src/pages/ChapterPage.tsx` — Track only on Resources tab (learning content)**
-- Guard the `useTrackPosition` call so it only fires when `activeSection === 'resources'` (the learning tab). When on Interactive, Practice, or Test Yourself, pass `null` values so position isn't overwritten with incomplete data — OR better, also track those sections since they contain learning materials too.
-- Actually, re-reading the user's request: "this is stored only for the learning tab material" — so only track when `activeSection === 'resources'`. For other sections, skip tracking.
+Add `true_false_questions` to the `content_ids` CTE and add `tf_total` / `tf_completed` fields to the returned JSON:
 
-Wait — the user says "i want to remember exactly which tab the student last worked on. like which video or MCQ or socratic doc or flashcard he was working on" — MCQs are on the Practice tab, not Resources. Let me re-read: "the continue is linked to the learning tab activity only" — but MCQs are under Practice. I think "learning tab" means the entire chapter page learning experience (all four sections: Resources, Interactive, Practice, Test Yourself), not just the Resources sub-section. The key constraint is: don't overwrite when leaving the chapter page entirely.
+```sql
+-- Add to content_ids CTE:
+UNION ALL
+SELECT 'true_false', id FROM true_false_questions
+  WHERE ((p_chapter_id IS NOT NULL AND chapter_id = p_chapter_id)
+      OR (p_topic_id IS NOT NULL AND topic_id = p_topic_id))
+    AND NOT is_deleted
 
-**Revised approach**: Track position on ALL chapter page sections, but do NOT track on ModulePage/Home/YearPage.
+-- Add to result JSON:
+'tf_total', COALESCE((SELECT cnt FROM totals WHERE qtype = 'true_false'), 0),
+'tf_completed', COALESCE((SELECT cnt FROM completed WHERE qtype = 'true_false'), 0),
+```
 
-**3. Add `onActiveItemChange` to missing content components**
+**2. `src/hooks/useChapterProgress.ts`**
 
-Components that need the prop added:
+- Add `tf_total` and `tf_completed` to `RpcProgressResult` interface
+- Include them in `practiceTotal` / `practiceCompleted` sums
+- Add `tfCompleted` / `tfTotal` to `ChapterProgressData` return type
 
-| Component | How to track |
-|---|---|
-| `EssayList` | These render as scrollable lists (no pagination). Track when a student expands/interacts with an essay — or simply track the sub-tab name without specific item. |
-| `TrueFalseList` | Same as EssayList — uses QuestionSessionShell? No, it doesn't. Renders as list. Track sub-tab. |
-| `MatchingQuestionList` | Renders as list. Track sub-tab. |
-| `FlashcardsTab` | Has card-by-card navigation. Add `onActiveItemChange` to report current card index. |
-| `GuidedExplanationList` | Renders as list. Track sub-tab. |
+**3. `src/hooks/useContentProgress.ts`**
 
-For list-based components (EssayList, TrueFalseList, MatchingQuestionList, GuidedExplanationList), there's no single "active item" since they're all visible. We'll track at the **sub-tab level** — which is already happening via `currentSubTab` in the `useTrackPosition` call. The issue is only that the position gets overwritten when leaving.
+- Add `tf_total` and `tf_completed` to `RpcProgressResult` interface
+- Include them in `practiceTotal` / `practiceCompleted` sums
 
-For **FlashcardsTab**, which has card-by-card navigation, we should add `onActiveItemChange` to track which card the student is viewing.
+**4. `src/pages/ChapterPage.tsx`**
 
-### Final Plan
+- Add `true_false` case to `getTabCounts` switch:
+  ```typescript
+  case 'true_false': 
+    return { completed: chapterProgress.tfCompleted, total: chapterProgress.tfTotal || tabCount };
+  ```
 
-**File 1: `src/pages/ModulePage.tsx`**
-- Remove the `useTrackPosition()` call and its import. This is the primary fix — stops module page from overwriting deep positions.
-
-**File 2: `src/pages/ChapterPage.tsx`**
-- No changes needed for the tracking call itself — it already tracks `activeSection`, `currentSubTab`, and `activeItem` correctly.
-- Pass `onActiveItemChange={setActiveItem}` to EssayList, TrueFalseList, and MatchingQuestionList (for consistency, even though they're list-based — when they have QuestionSessionShell in future, it'll work).
-
-**File 3: `src/components/study/FlashcardsTab.tsx`**
-- Add `onActiveItemChange` prop to report the currently visible flashcard index/id when the student navigates between cards.
-
-**File 4: `src/components/content/EssayList.tsx`**
-- Add optional `onActiveItemChange` prop to interface (for future use with session shell).
-
-**File 5: `src/components/content/TrueFalseList.tsx`**
-- Add optional `onActiveItemChange` prop.
-
-**File 6: `src/components/content/MatchingQuestionList.tsx`**
-- Add optional `onActiveItemChange` prop.
-
-### Summary
-
-The **primary fix** is removing `useTrackPosition` from `ModulePage.tsx` — this single change stops the position from being overwritten. The secondary changes wire up `onActiveItemChange` to more components for deeper item-level tracking where possible (especially FlashcardsTab).
+### Result
+True/False pill will show accurate `n/total` count (e.g., `3/8`), and True/False completion will contribute to the 60% practice weight in overall progress.
 
 ### Files Changed
-- `src/pages/ModulePage.tsx` — remove `useTrackPosition` call
-- `src/pages/ChapterPage.tsx` — pass `onActiveItemChange` to EssayList, TrueFalseList, MatchingQuestionList
-- `src/components/study/FlashcardsTab.tsx` — add `onActiveItemChange` prop + report active card
-- `src/components/content/EssayList.tsx` — add optional `onActiveItemChange` prop
-- `src/components/content/TrueFalseList.tsx` — add optional `onActiveItemChange` prop
-- `src/components/content/MatchingQuestionList.tsx` — add optional `onActiveItemChange` prop
+- 1 new SQL migration (update `get_content_progress` RPC)
+- `src/hooks/useChapterProgress.ts`
+- `src/hooks/useContentProgress.ts`
+- `src/pages/ChapterPage.tsx`
 
