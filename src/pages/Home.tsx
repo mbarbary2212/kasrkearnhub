@@ -213,7 +213,7 @@ function LoggedInHome() {
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
         <div className="md:col-span-3 space-y-5">
           {/* Greeting + Notifications */}
@@ -467,14 +467,14 @@ function LoggedInHome() {
         <div className="md:col-span-2 space-y-4">
           {/* Stat Cards */}
           {isStudent && (
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="p-3 text-center">
-                <p className="text-lg font-bold">🔥 {streak}</p>
-                <p className="text-xs text-muted-foreground">Day Streak</p>
+            <div className="grid grid-cols-2 gap-2 md:gap-3">
+              <Card className="p-2.5 md:p-3 text-center">
+                <p className="text-base md:text-lg font-bold">🔥 {streak}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">Day Streak</p>
               </Card>
-              <Card className="p-3 text-center">
-                <p className="text-lg font-bold">📊 {Math.round(readiness)}%</p>
-                <p className="text-xs text-muted-foreground">{readinessText}</p>
+              <Card className="p-2.5 md:p-3 text-center">
+                <p className="text-base md:text-lg font-bold">📊 {Math.round(readiness)}%</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">{readinessText}</p>
               </Card>
             </div>
           )}
