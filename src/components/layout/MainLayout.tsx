@@ -26,6 +26,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
+import { useChapter } from '@/hooks/useChapters';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -54,10 +55,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { activeYear } = useActiveYear();
   const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
 
-  // Extract moduleId from URL for breadcrumb display
+  // Extract moduleId and chapterId from URL for breadcrumb display
   const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
+  const chapterIdMatch = location.pathname.match(/\/chapter\/([^/]+)/);
   const currentModuleId = moduleIdMatch?.[1] || '';
+  const currentChapterId = chapterIdMatch?.[1] || '';
   const { data: currentModule } = useModule(currentModuleId);
+  const { data: currentChapter } = useChapter(currentChapterId || undefined);
 
   const { data: years } = useYears();
 
@@ -169,6 +173,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   {currentModule.slug}
                 </span>
               </button>
+            )}
+            {/* Chapter breadcrumb */}
+            {currentChapter && (
+              <div className="flex items-center gap-1 pl-1.5 border-l border-border/50">
+                {currentChapter.icon_url && (
+                  <img src={currentChapter.icon_url} alt="" className="h-5 w-5 rounded object-cover" />
+                )}
+                <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
+                  {currentChapter.title}
+                </span>
+              </div>
             )}
           </div>
 
