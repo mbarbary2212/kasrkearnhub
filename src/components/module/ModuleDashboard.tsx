@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { usePresence } from '@/contexts/PresenceContext';
+
 import { useDueCards } from '@/hooks/useFSRS';
 import { LastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { DashboardData, SuggestedItem } from '@/hooks/useStudentDashboard';
@@ -45,7 +45,7 @@ const resumeIconMap: Record<string, React.ElementType> = {
 export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDashboardProps) {
   const navigate = useNavigate();
   const { profile } = useAuthContext();
-  const { onlineCount } = usePresence();
+  
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
 
@@ -95,16 +95,11 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
       )}
 
       {/* 3. Stat cards row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {/* Streak */}
         <Card className="p-3 text-center">
           <p className="text-lg font-bold">🔥 {streak}</p>
           <p className="text-xs text-muted-foreground">Day Streak</p>
-        </Card>
-        {/* Online Now */}
-        <Card className="p-3 text-center">
-          <p className="text-lg font-bold">👥 {onlineCount}</p>
-          <p className="text-xs text-muted-foreground">Online Now</p>
         </Card>
         {/* Readiness */}
         <Card className="p-3 text-center">

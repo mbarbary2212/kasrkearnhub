@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
-import { usePresence } from '@/contexts/PresenceContext';
+
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
@@ -138,7 +138,7 @@ function LoggedInHome() {
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
-  const { onlineCount } = usePresence();
+  
   const { setActiveYear } = useActiveYear();
 
   // Year selection
@@ -467,14 +467,10 @@ function LoggedInHome() {
         <div className="md:col-span-2 space-y-4">
           {/* Stat Cards */}
           {isStudent && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Card className="p-3 text-center">
                 <p className="text-lg font-bold">🔥 {streak}</p>
                 <p className="text-xs text-muted-foreground">Day Streak</p>
-              </Card>
-              <Card className="p-3 text-center">
-                <p className="text-lg font-bold">👥 {onlineCount}</p>
-                <p className="text-xs text-muted-foreground">Online Now</p>
               </Card>
               <Card className="p-3 text-center">
                 <p className="text-lg font-bold">📊 {Math.round(readiness)}%</p>
