@@ -117,6 +117,13 @@ export function FlashcardsStudentView({
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: fsrsState } = useCardState(currentCard?.resource?.id);
 
+  // Report active card to parent for position tracking
+  useEffect(() => {
+    if (currentCard && onActiveItemChange) {
+      onActiveItemChange(currentCard.resource.id);
+    }
+  }, [currentCard?.resource?.id, onActiveItemChange]);
+
   // Reset when filtered cards change
   useEffect(() => {
     setCardIndex(0);
