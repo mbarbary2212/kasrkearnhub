@@ -1,33 +1,60 @@
 
 
-## Change Content Dropdown to Show Sub-Tabs
+## Add Per-Tab Progress Indicators to the Content Dropdown
 
-### What Changes
+### Concept
 
-The header dropdown currently shows the four main sections (Resources, Interactive, Practice, Test Yourself). Instead, it should show the **sub-tabs within the active section** — and the inline sub-tab pills/mobile dropdowns should be removed from the content area.
+Each dropdown menu item already shows a count badge (e.g., "12"). Instead, we'll **replace the count badge with a progress-filled pill** — the pill background fills with color proportional to completion %, and shows a small "75%" text. This gives instant visual feedback per sub-tab without extra UI clutter.
 
-**Examples:**
-- Resources selected → dropdown shows: Videos, Flashcards, Visual Resources, Socrates, Reference Materials, Clinical Tools
-- Interactive selected → dropdown shows: Cases, Pathways
-- Practice selected → dropdown shows: MCQs, SBA, True/False, Short Answer, OSCE, Practical, Matching, Image Questions
-- Test Yourself → no sub-tabs (stays as-is)
+```text
+Dropdown item layout:
+┌─────────────────────────────────────┐
+│ 📹 Videos              [▓▓▓░ 60%]  │
+│ 🃏 Flashcards           [░░░░  0%]  │
+│ ❓ MCQs                [▓▓▓▓ 80%]  │
+│ 📝 Short Answer        [▓░░░ 25%]  │
+└─────────────────────────────────────┘
+```
 
-### File: `src/pages/ChapterPage.tsx`
+The pill has a background gradient fill (left-to-right) showing progress, with the percentage text overlaid. Color: section theme color at low opacity for the fill, stronger for text.
 
-**1. Update the Content Type Dropdown (lines 546-592)**
-- Change the dropdown trigger to show the current **sub-tab** label and icon (e.g., "Videos" instead of "Resources")
-- Change the dropdown items to list the sub-tabs of the active section using:
-  - `resourcesTabs` when `activeSection === 'resources'` → sets `resourcesTab`
-  - `interactiveTabs` when `activeSection === 'interactive'` → sets `interactiveTab`
-  - `practiceTabs` when `activeSection === 'practice'` → sets `practiceTab`
-  - For `test` section, either hide the dropdown or show a single item
-- Include item counts (badges) in the dropdown items
-- Use the section's theme color for the active styling
+### Data: Expose Per-Type Progress
 
-**2. Remove inline sub-tab rows from each section's content area**
-- **Resources section** (lines 639-672): Remove both the mobile `MobileSectionDropdown` and desktop pill buttons
-- **Interactive section** (lines 932-961): Remove both the mobile dropdown and desktop pills
-- **Practice section** (lines 1035-1064): Remove both the mobile dropdown and desktop pills
+**File: `src/hooks/useChapterProgress.ts`**
 
-This consolidates all sub-navigation into the single header dropdown, saving vertical space and simplifying the layout.
+1. Expand `ChapterProgressData` to include per-type breakdowns already available from the RPC:
+   - `mcqCompleted`, `mcqTotal`, `essayCompleted`, `essayTotal`, `osceCompleted`, `osceTotal`, `caseCompleted`, `caseTotal`, `matchingCompleted`, `matchingTotal`
+2. Return these from the hook (they're already in the RPC response, just not surfaced)
+
+### UI: Progress Pills in Dropdown Items
+
+**File: `src/pages/ChapterPage.tsx`**
+
+1. Build a mapping from tab ID → progress percentage:
+   - `lectures` → `videoProgress` (already available)
+   - `mcqs` / `sba` → `mcqCompleted/mcqTotal` (MCQs and SBA share the same DB type)
+   - `essays` → `essayCompleted/essayTotal`
+   - `osce` → `osceCompleted/osceTotal`
+   - `cases` → `caseCompleted/caseTotal`
+   - `matching` → `matchingCompleted/matchingTotal`
+   - `flashcards`, `mind_maps`, `reference_materials`, `clinical_tools`, `guided_explanations`, `pathways`, `true_false`, `practical`, `images` → 0% (no tracking yet)
+
+2. Replace the `<Badge>` count in each `DropdownMenuItem` with a **progress pill**:
+   ```tsx
+   <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
+     <div 
+       className="absolute inset-y-0 left-0 rounded-full bg-primary/25"
+       style={{ width: `${progress}%` }}
+     />
+     <span className="relative z-10 flex items-center justify-center h-full font-semibold">
+       {progress}%
+     </span>
+   </div>
+   ```
+
+3. Also show the progress fill on the **trigger button itself** for the currently active sub-tab — a subtle background gradient indicating its progress.
+
+### Files Changed
+- `src/hooks/useChapterProgress.ts` — surface per-type counts
+- `src/pages/ChapterPage.tsx` — progress pills in dropdown items
 
