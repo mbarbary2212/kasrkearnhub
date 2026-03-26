@@ -559,25 +559,26 @@ export default function ChapterPage() {
             const ActiveIcon = activeTabConfig?.icon;
 
             // Helper to get completed/total counts for a tab
-            const getTabCounts = (tabId: string): { completed: number; total: number } => {
-              if (!chapterProgress) return { completed: 0, total: 0 };
+            const getTabCounts = (tabId: string, tabCount: number): { completed: number; total: number } => {
+              if (!chapterProgress) return { completed: 0, total: tabCount };
               switch (tabId) {
-                case 'lectures': return { completed: chapterProgress.videosCompleted, total: chapterProgress.videosTotal };
+                case 'lectures': return { completed: chapterProgress.videosCompleted, total: chapterProgress.videosTotal || tabCount };
                 case 'mcqs':
+                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal || tabCount };
                 case 'sba':
-                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal };
-                case 'essays': return { completed: chapterProgress.essayCompleted, total: chapterProgress.essayTotal };
-                case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal };
-                case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal };
-                case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal };
-                default: return { completed: 0, total: 0 };
+                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal || tabCount };
+                case 'essays': return { completed: chapterProgress.essayCompleted, total: chapterProgress.essayTotal || tabCount };
+                case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal || tabCount };
+                case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal || tabCount };
+                case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal || tabCount };
+                default: return { completed: 0, total: tabCount };
               }
             };
 
             // Hide dropdown for test section (no sub-tabs)
             if (activeSection === 'test' || currentTabs.length === 0) return null;
 
-            const triggerCounts = getTabCounts(currentSubTab);
+            const triggerCounts = getTabCounts(currentSubTab, activeTabConfig?.count || 0);
 
             return (
               <DropdownMenu>
@@ -611,22 +612,8 @@ export default function ChapterPage() {
                   {currentTabs.map((tab) => {
                     const TabIcon = tab.icon;
                     const isActive = currentSubTab === tab.id;
-                    // Per-tab progress calculation
-                    const getTabProgress = (tabId: string): number => {
-                      if (!chapterProgress) return 0;
-                      switch (tabId) {
-                        case 'lectures': return chapterProgress.videoProgress;
-                        case 'mcqs':
-                        case 'sba':
-                          return chapterProgress.mcqTotal > 0 ? Math.round((chapterProgress.mcqCompleted / chapterProgress.mcqTotal) * 100) : 0;
-                        case 'essays': return chapterProgress.essayTotal > 0 ? Math.round((chapterProgress.essayCompleted / chapterProgress.essayTotal) * 100) : 0;
-                        case 'osce': return chapterProgress.osceTotal > 0 ? Math.round((chapterProgress.osceCompleted / chapterProgress.osceTotal) * 100) : 0;
-                        case 'cases': return chapterProgress.caseTotal > 0 ? Math.round((chapterProgress.caseCompleted / chapterProgress.caseTotal) * 100) : 0;
-                        case 'matching': return chapterProgress.matchingTotal > 0 ? Math.round((chapterProgress.matchingCompleted / chapterProgress.matchingTotal) * 100) : 0;
-                        default: return 0;
-                      }
-                    };
-                    const progress = getTabProgress(tab.id);
+                    const counts = getTabCounts(tab.id, tab.count);
+                    const progress = counts.total > 0 ? Math.round((counts.completed / counts.total) * 100) : 0;
                     return (
                       <DropdownMenuItem
                         key={tab.id}
