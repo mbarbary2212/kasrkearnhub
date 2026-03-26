@@ -1,45 +1,37 @@
 
 
-## Problem
+## Chapter Header Reorganization
 
-Between 640px and 767px (small tablets), both the collapsed sidebar strip AND the bottom navigation bar appear simultaneously, creating a cluttered UI.
-
-## Solution
-
-Three-tier responsive behavior:
-
-```text
-< 640px (mobile)     : Bottom nav only, no sidebar
-640-767px (sm tablet): Floating chevron only → opens sidebar as slide-over overlay
->= 768px (desktop)   : Normal sidebar (collapsible)
-```
+### Current State
+The chapter header has:
+1. Back arrow + chapter title + section filter on one row
+2. Ask Coach on a separate row below
+3. Section tabs (Resources/Interactive/Practice/Test) as a left nav rail further down
 
 ### Changes
 
-**1. `src/components/layout/StudentSidebar.tsx`**
+**File: `src/pages/ChapterPage.tsx`**
 
-Restructure into two rendering modes:
+**1. Remove chapter title from the page header** (lines 536-555)
+- Delete the `<h1>` elements showing `chapter?.title` from both desktop and mobile headers
+- The title is already visible in the top breadcrumb, so it's redundant
 
-- **Desktop mode (md+ / >= 768px)**: Current sticky sidebar, unchanged. Use `hidden md:flex` instead of `hidden sm:flex`.
-- **Small tablet mode (sm to md / 640-767px)**: Render a floating chevron button (fixed position, left edge, vertically centered). When clicked, the full sidebar slides in as a fixed overlay (with a semi-transparent backdrop). Clicking the chevron again or the backdrop closes it.
+**2. Put SectionFilter and Ask Coach on the same row as the back arrow** (lines 524-597)
+- Restructure the header into a single row: `[← Back] [SectionFilter] [ContentDropdown] [Ask Coach]`
+- Remove the separate mobile and desktop Ask Coach blocks
+- Place everything in one `flex items-center` row with appropriate gaps
 
-Implementation:
-- Add `useIsMobile`-style hook check or inline media query state for the `sm-but-not-md` range (640-767px)
-- When in that range: render a fixed `ChevronRight` button (e.g. `fixed left-0 top-1/2 -translate-y-1/2 z-40`) + conditionally render the sidebar as a fixed overlay (`fixed inset-y-0 left-0 z-50 w-52`) with backdrop
-- The sidebar overlay reuses the existing nav content (no duplication)
+**3. Add a content-type dropdown between SectionFilter and Ask Coach**
+- Create a new dropdown (using shadcn `DropdownMenu` or a select-style button) showing the four section modes: Resources, Interactive, Practice, Test Yourself
+- Display the currently active section label with its icon on the trigger button
+- When a section is selected, update `activeSection` state
+- Style it as a pill/button similar to the SectionFilter dropdown
+- Use the existing `sectionNav` array and `sectionColors` for labels/icons/colors
 
-**2. `src/components/layout/MobileBottomNav.tsx`**
+### Result Layout
+```text
+[← Back]  [All Sections ▾]  [Resources ▾]  [Ask Coach]
+```
 
-Change bottom nav visibility from `md:hidden` to `sm:hidden` so it only appears below 640px (phones only), removing it from the small tablet range.
-
-- Line 126: overlay `md:hidden` → `sm:hidden`
-- Line 154: nav `md:hidden` → `sm:hidden`
-
-### Behavior Summary
-
-| Viewport | Sidebar | Bottom Nav | Chevron Trigger |
-|----------|---------|------------|-----------------|
-| < 640px  | Hidden  | Visible    | No              |
-| 640-767  | Hidden (slides in on demand) | Hidden | Floating left-edge button |
-| >= 768   | Sticky (collapsible) | Hidden | Built into sidebar |
+The content-type dropdown replaces the left nav rail as the primary way to switch between Resources/Interactive/Practice/Test on this header row.
 
