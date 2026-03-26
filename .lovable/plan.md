@@ -1,33 +1,63 @@
+## Move Chapter Progress Into the Header Row
 
+### Concept
 
-## Change Content Dropdown to Show Sub-Tabs
+Instead of a separate `ChapterProgressBar` block below the header, embed a compact progress indicator directly in the header breadcrumb — next to the online icon. The progress shown changes based on the active section:
 
-### What Changes
+- **Resources** tab → e.g. Video progress (e.g., a mini progress ring)
+- Interactive tab → e.g. pathways progress (e.g., a mini progress ring)
+- **Practice** tab →e.g Mcq progress (e.g., `8/12 completed`)
+- **Interactive** / **Test** → Overall progress percentage
 
-The header dropdown currently shows the four main sections (Resources, Interactive, Practice, Test Yourself). Instead, it should show the **sub-tabs within the active section** — and the inline sub-tab pills/mobile dropdowns should be removed from the content area.
+This keeps the header as a single source of navigation .
 
-**Examples:**
-- Resources selected → dropdown shows: Videos, Flashcards, Visual Resources, Socrates, Reference Materials, Clinical Tools
-- Interactive selected → dropdown shows: Cases, Pathways
-- Practice selected → dropdown shows: MCQs, SBA, True/False, Short Answer, OSCE, Practical, Matching, Image Questions
-- Test Yourself → no sub-tabs (stays as-is)
+### Layout
 
-### File: `src/pages/ChapterPage.tsx`
+```text
+[← Back]  [All Sections ▾]  [Videos ▾]  ●48%  ·····  [Ask Coach]
+```
 
-**1. Update the Content Type Dropdown (lines 546-592)**
-- Change the dropdown trigger to show the current **sub-tab** label and icon (e.g., "Videos" instead of "Resources")
-- Change the dropdown items to list the sub-tabs of the active section using:
-  - `resourcesTabs` when `activeSection === 'resources'` → sets `resourcesTab`
-  - `interactiveTabs` when `activeSection === 'interactive'` → sets `interactiveTab`
-  - `practiceTabs` when `activeSection === 'practice'` → sets `practiceTab`
-  - For `test` section, either hide the dropdown or show a single item
-- Include item counts (badges) in the dropdown items
-- Use the section's theme color for the active styling
+The progress indicator would be a small circular ring or a compact pill showing the relevant percentage and count.
 
-**2. Remove inline sub-tab rows from each section's content area**
-- **Resources section** (lines 639-672): Remove both the mobile `MobileSectionDropdown` and desktop pill buttons
-- **Interactive section** (lines 932-961): Remove both the mobile dropdown and desktop pills
-- **Practice section** (lines 1035-1064): Remove both the mobile dropdown and desktop pills
+### Changes
 
-This consolidates all sub-navigation into the single header dropdown, saving vertical space and simplifying the layout.
+**File: `src/pages/ChapterPage.tsx**`
 
+1. **Remove the standalone `ChapterProgressBar**` block (lines 635-647) from below the header
+2. **Add a compact progress pill** after the content dropdown in the header row, showing:
+  - When `activeSection === 'resources'`: video progress % + `videosCompleted/videosTotal`
+  - When `activeSection === 'practice'`: practice progress % + `practiceCompleted/practiceTotal`  
+  - Otherwise: overall `totalProgress%`
+3. Style it as a small pill with a tiny circular progress indicator (CSS `conic-gradient` ring) + text label
+
+**File: `src/components/content/ChapterProgressPill.tsx**` (new)
+
+A lightweight component that renders:
+
+- A 20px circular progress ring (using `conic-gradient`)
+- A label like "48%" or "3/5"
+- Themed color matching the active section (green for high progress, amber for mid, etc.)
+- Tooltip on hover showing the full breakdown (Practice 60% weight, Video 40% weight)
+
+### Props
+
+```typescript
+interface ChapterProgressPillProps {
+  activeSection: string;
+  totalProgress: number;
+  practiceProgress: number;
+  videoProgress: number;
+  practiceCompleted: number;
+  practiceTotal: number;
+  videosCompleted: number;
+  videosTotal: number;
+  isLoading?: boolean;
+}
+```
+
+### Visual Design
+
+- Circular ring: 20-24px, color transitions from gray → amber → green based on %
+- Compact enough to sit inline in the header without bloating it
+- On mobile, shows just the ring; on desktop, adds the text label
+- Click/hover reveals the full breakdown tooltip (replaces the old collapsible)
