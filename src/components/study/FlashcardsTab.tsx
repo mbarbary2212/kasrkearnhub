@@ -325,6 +325,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
+              onActiveItemChange={onActiveItemChange}
             />
           ) : studentMode === 'cloze' ? (
             <FlashcardClozeMode
