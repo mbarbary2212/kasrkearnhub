@@ -578,7 +578,7 @@ export default function ChapterPage() {
             // Hide dropdown for test section (no sub-tabs)
             if (activeSection === 'test' || currentTabs.length === 0) return null;
 
-            const triggerCounts = getTabCounts(currentSubTab);
+            const triggerCounts = getTabCounts(currentSubTab, activeTabConfig?.count || 0);
 
             return (
               <DropdownMenu>
