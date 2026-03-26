@@ -559,18 +559,19 @@ export default function ChapterPage() {
             const ActiveIcon = activeTabConfig?.icon;
 
             // Helper to get completed/total counts for a tab
-            const getTabCounts = (tabId: string): { completed: number; total: number } => {
-              if (!chapterProgress) return { completed: 0, total: 0 };
+            const getTabCounts = (tabId: string, tabCount: number): { completed: number; total: number } => {
+              if (!chapterProgress) return { completed: 0, total: tabCount };
               switch (tabId) {
-                case 'lectures': return { completed: chapterProgress.videosCompleted, total: chapterProgress.videosTotal };
+                case 'lectures': return { completed: chapterProgress.videosCompleted, total: chapterProgress.videosTotal || tabCount };
                 case 'mcqs':
+                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal || tabCount };
                 case 'sba':
-                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal };
-                case 'essays': return { completed: chapterProgress.essayCompleted, total: chapterProgress.essayTotal };
-                case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal };
-                case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal };
-                case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal };
-                default: return { completed: 0, total: 0 };
+                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal || tabCount };
+                case 'essays': return { completed: chapterProgress.essayCompleted, total: chapterProgress.essayTotal || tabCount };
+                case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal || tabCount };
+                case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal || tabCount };
+                case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal || tabCount };
+                default: return { completed: 0, total: tabCount };
               }
             };
 
