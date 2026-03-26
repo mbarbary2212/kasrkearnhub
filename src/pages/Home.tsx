@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
-import { usePresence } from '@/contexts/PresenceContext';
+
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
