@@ -25,6 +25,7 @@ import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
+import { useModule } from '@/hooks/useModules';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -52,6 +53,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const { activeYear } = useActiveYear();
   const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
+
+  // Extract moduleId from URL for breadcrumb display
+  const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
+  const currentModuleId = moduleIdMatch?.[1] || '';
+  const { data: currentModule } = useModule(currentModuleId);
 
   const { data: years } = useYears();
 
@@ -150,6 +156,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 )}
                 <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
                   {activeYear.yearName}
+                </span>
+              </button>
+            )}
+            {/* Module slug breadcrumb */}
+            {currentModule?.slug && (
+              <button
+                onClick={() => navigate(`/module/${currentModuleId}`)}
+                className="flex items-center gap-1 pl-1.5 border-l border-border/50 hover:opacity-80 transition-all duration-200"
+              >
+                <span className="text-xs md:text-sm font-medium text-muted-foreground uppercase">
+                  {currentModule.slug}
                 </span>
               </button>
             )}

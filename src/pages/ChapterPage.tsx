@@ -541,7 +541,7 @@ export default function ChapterPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">{module?.name}</p>
                     <h1 className="text-lg font-heading font-semibold">
-                      Chapter {chapter?.chapter_number}: {chapter?.title}
+                      {chapter?.title}
                     </h1>
                   </div>
                   {/* Section Filter in header */}
@@ -562,7 +562,7 @@ export default function ChapterPage() {
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground leading-tight truncate">{module?.name}</p>
                     <h1 className="text-[13px] font-heading font-semibold leading-tight line-clamp-1">
-                      Ch. {chapter?.chapter_number}: {chapter?.title}
+                      {chapter?.title}
                     </h1>
                   </div>
                 </div>
