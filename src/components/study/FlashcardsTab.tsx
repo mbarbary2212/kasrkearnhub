@@ -47,7 +47,7 @@ interface FlashcardsTabProps {
   onActiveItemChange?: (itemId: string) => void;
 }
 
-export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId }: FlashcardsTabProps) {
+export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId, onActiveItemChange }: FlashcardsTabProps) {
   // Determine container ID - use exactly one of chapterId or topicId
   const containerId = chapterId || topicId;
   const { isAdmin, isTeacher } = useAuthContext();
