@@ -571,6 +571,7 @@ export default function ChapterPage() {
                 case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal || tabCount };
                 case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal || tabCount };
                 case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal || tabCount };
+                case 'true_false': return { completed: chapterProgress.tfCompleted, total: chapterProgress.tfTotal || tabCount };
                 default: return { completed: 0, total: tabCount };
               }
             };

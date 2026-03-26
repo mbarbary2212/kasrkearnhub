@@ -53,6 +53,8 @@ interface ChapterProgressData {
   caseTotal: number;
   matchingCompleted: number;
   matchingTotal: number;
+  tfCompleted: number;
+  tfTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -67,11 +69,13 @@ interface RpcProgressResult {
   osce_total: number;
   case_total: number;
   matching_total: number;
+  tf_total: number;
   mcq_completed: number;
   essay_completed: number;
   osce_completed: number;
   case_completed: number;
   matching_completed: number;
+  tf_completed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -100,6 +104,7 @@ export function useChapterProgress(chapterId?: string) {
         osceCompleted: 0, osceTotal: 0,
         caseCompleted: 0, caseTotal: 0,
         matchingCompleted: 0, matchingTotal: 0,
+        tfCompleted: 0, tfTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
@@ -116,8 +121,8 @@ export function useChapterProgress(chapterId?: string) {
       const rpc = data as unknown as RpcProgressResult;
 
       // Practice totals
-      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total;
-      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed;
+      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total + rpc.tf_total;
+      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed + rpc.tf_completed;
 
       // Video progress (client-side matching since video_id is extracted via regex)
       const videoProgressMap = new Map(
@@ -186,6 +191,8 @@ export function useChapterProgress(chapterId?: string) {
         caseTotal: rpc.case_total,
         matchingCompleted: rpc.matching_completed,
         matchingTotal: rpc.matching_total,
+        tfCompleted: rpc.tf_completed,
+        tfTotal: rpc.tf_total,
       };
     },
     enabled: !!user?.id && !!chapterId,
