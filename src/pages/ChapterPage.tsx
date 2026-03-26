@@ -583,41 +583,30 @@ export default function ChapterPage() {
               }}
             />
           )}
-          {/* Customize Content - desktop keeps in header */}
+          {/* Customize Content */}
           {!canManageContent && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/customize-content')}
-              className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground h-8 w-8 md:h-10 md:w-10 flex-shrink-0"
               title="Customize Content"
             >
-              <SlidersHorizontal className="w-4 h-4" />
+              <SlidersHorizontal className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </Button>
           )}
         </div>
-        {/* Mobile: Section filter + Customize row below header */}
-        <div className="md:hidden flex items-center gap-2">
-          {sectionsEnabled && (
+        {/* Mobile: Section filter below header */}
+        {sectionsEnabled && (
+          <div className="md:hidden">
             <SectionFilter
               chapterId={chapterId}
               selectedSectionId={selectedSectionId}
               onSectionChange={setSelectedSectionId}
-              className="py-0 flex-1"
+              className="py-0"
             />
-          )}
-          {!canManageContent && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/customize-content')}
-              className="text-muted-foreground hover:text-foreground h-7 px-2 flex-shrink-0"
-              title="Customize Content"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Chapter Progress Bar - hidden for admins */}
         {!canManageContent && (
