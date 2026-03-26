@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -99,7 +99,6 @@ import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs 
 
 import { cn } from '@/lib/utils';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useRef, useCallback as useCallbackSwipe } from 'react';
 
 
 type SectionMode = 'resources' | 'interactive' | 'practice' | 'test';
