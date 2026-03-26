@@ -38,6 +38,17 @@ export function StudentSidebar() {
     }
   });
 
+  // Auto-collapse on smaller screens (below md / 768px)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) setCollapsed(true);
+    };
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, String(collapsed));
@@ -140,7 +151,7 @@ export function StudentSidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col h-[calc(100vh-4rem)] sticky top-16 border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out shrink-0 z-30',
+        'hidden sm:flex flex-col h-[calc(100vh-4rem)] sticky top-16 border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out shrink-0 z-30',
         collapsed ? 'w-14' : 'w-52'
       )}
     >
