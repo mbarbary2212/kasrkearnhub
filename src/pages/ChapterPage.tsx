@@ -616,6 +616,21 @@ export default function ChapterPage() {
             );
           })()}
 
+          {/* Compact Progress Pill - hidden for admins */}
+          {!canManageContent && (
+            <ChapterProgressPill
+              activeSection={activeSection}
+              totalProgress={chapterProgress?.totalProgress || 0}
+              practiceProgress={chapterProgress?.practiceProgress || 0}
+              videoProgress={chapterProgress?.videoProgress || 0}
+              practiceCompleted={chapterProgress?.practiceCompleted || 0}
+              practiceTotal={chapterProgress?.practiceTotal || 0}
+              videosCompleted={chapterProgress?.videosCompleted || 0}
+              videosTotal={chapterProgress?.videosTotal || 0}
+              isLoading={progressLoading}
+            />
+          )}
+
           {/* Ask Coach */}
           {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
@@ -631,20 +646,6 @@ export default function ChapterPage() {
             />
           )}
         </div>
-
-        {/* Chapter Progress Bar - hidden for admins */}
-        {!canManageContent && (
-          <ChapterProgressBar
-            totalProgress={chapterProgress?.totalProgress || 0}
-            practiceProgress={chapterProgress?.practiceProgress || 0}
-            videoProgress={chapterProgress?.videoProgress || 0}
-            practiceCompleted={chapterProgress?.practiceCompleted || 0}
-            practiceTotal={chapterProgress?.practiceTotal || 0}
-            videosCompleted={chapterProgress?.videosCompleted || 0}
-            videosTotal={chapterProgress?.videosTotal || 0}
-            isLoading={progressLoading}
-          />
-        )}
 
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && (
