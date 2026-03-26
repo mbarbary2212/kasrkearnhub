@@ -533,18 +533,11 @@ export default function ChapterPage() {
               </>
             ) : (
               <>
-                {/* Desktop: Full two-line header */}
+                {/* Desktop header - title only (module/icon now in top breadcrumb) */}
                 <div className="hidden md:flex items-center gap-4">
-                  {chapter?.icon_url && (
-                    <img src={chapter.icon_url} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">{module?.name}</p>
-                    <h1 className="text-lg font-heading font-semibold">
-                      {chapter?.title}
-                    </h1>
-                  </div>
-                  {/* Section Filter in header */}
+                  <h1 className="text-lg font-heading font-semibold">
+                    {chapter?.title}
+                  </h1>
                   {sectionsEnabled && (
                     <SectionFilter
                       chapterId={chapterId}
@@ -554,17 +547,11 @@ export default function ChapterPage() {
                     />
                   )}
                 </div>
-                {/* Mobile: Compact icon + stacked text */}
-                <div className="md:hidden flex items-center gap-2">
-                  {chapter?.icon_url && (
-                    <img src={chapter.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{module?.name}</p>
-                    <h1 className="text-[13px] font-heading font-semibold leading-tight line-clamp-1">
-                      {chapter?.title}
-                    </h1>
-                  </div>
+                {/* Mobile header - title only */}
+                <div className="md:hidden">
+                  <h1 className="text-[13px] font-heading font-semibold leading-tight line-clamp-1">
+                    {chapter?.title}
+                  </h1>
                 </div>
               </>
             )}
