@@ -152,9 +152,13 @@ export function FlashcardClozeMode({
   // Report active card to parent for position tracking
   useEffect(() => {
     if (currentCard && onActiveItemChange) {
-      onActiveItemChange(currentCard.resource.id);
+      onActiveItemChange({
+        item_id: currentCard.resource.id,
+        item_label: currentCard.front || 'Flashcard',
+        item_index: cardIndex,
+      });
     }
-  }, [currentCard?.resource?.id, onActiveItemChange]);
+  }, [currentCard?.resource?.id, cardIndex, onActiveItemChange]);
 
   useEffect(() => {
     setCardIndex(0);
