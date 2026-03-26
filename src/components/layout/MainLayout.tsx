@@ -27,6 +27,13 @@ import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
 import { useChapter } from '@/hooks/useChapters';
+import { useChapterProgress } from '@/hooks/useChapterProgress';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface MainLayoutProps {
   children: ReactNode;
