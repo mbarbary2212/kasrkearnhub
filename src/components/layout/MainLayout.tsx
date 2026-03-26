@@ -174,6 +174,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </span>
               </button>
             )}
+            {/* Chapter breadcrumb */}
+            {currentChapter && (
+              <div className="flex items-center gap-1 pl-1.5 border-l border-border/50">
+                {currentChapter.icon_url && (
+                  <img src={currentChapter.icon_url} alt="" className="h-5 w-5 rounded object-cover" />
+                )}
+                <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
+                  {currentChapter.title}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Admin Panel button - prominent header placement */}
