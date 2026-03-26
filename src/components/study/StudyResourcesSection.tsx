@@ -153,7 +153,7 @@ export function StudyResourcesSection({
           <AccordionItem
             key={type}
             value={type}
-            className="border rounded-lg px-4 bg-card"
+            className="border rounded-lg px-2 md:px-4 bg-card min-w-0"
           >
             <AccordionTrigger className="hover:no-underline py-3">
               <div className="flex items-center gap-3">

@@ -179,6 +179,14 @@
   }
 }
 
+/* Mobile: prevent horizontal scroll */
+@media (max-width: 767px) {
+  html, body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
