@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { ModuleDashboard } from '@/components/module/ModuleDashboard';
 import { cn } from '@/lib/utils';
-import { useTrackPosition } from '@/hooks/useTrackPosition';
+
 import { formatDistanceToNow } from 'date-fns';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
