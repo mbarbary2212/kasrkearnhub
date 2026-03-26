@@ -1,35 +1,47 @@
 
 
-## Mobile Chapter Page: Overlay Section Switcher
+## Fix: Eliminate Horizontal Scrolling on Mobile
 
-### Problem
-On mobile (390px), the chapter page has a horizontal tab bar (Resources / Interactive / Practice / Test) that takes up vertical space and can overflow horizontally. The content is too wide and there's too much chrome eating into the limited viewport.
+### Root Cause Analysis
 
-### Solution
-Replace the inline section tabs on mobile with a **semi-transparent overlay** that pops up from the bottom nav's "Learning" tab. The four section options (Resources, Interactive, Practice, Test) appear as a compact floating overlay — similar to a quick-action menu — then dismiss after selection.
+The horizontal scrolling on mobile comes from multiple sources:
 
-### Design
+1. **ChapterPage wrapper** uses `-mx-4` (negative margin) to break out of container, but the inner `px-3` doesn't fully compensate, causing content to exceed viewport width
+2. **No global `overflow-x: hidden`** on the page body or root — any child element that's even 1px too wide causes a horizontal scrollbar
+3. **Content cards** (accordions, flashcards, study resources) use `px-4` padding inside bordered containers that don't respect `min-w-0` constraints
+4. **Tables and wide content** inside study resources and lecture lists can overflow their containers
 
-1. **Remove the inline mobile section nav** (lines 631-654 in ChapterPage.tsx) on mobile when on a chapter page.
+### Solution — Two-Layer Fix
 
-2. **Modify MobileBottomNav.tsx** so that tapping "Learning" while already on a chapter page opens a semi-transparent overlay with the 4 section options (Resources, Interactive, Practice, Test) as small icon+label buttons — styled like the bottom nav items themselves (icon above short label, same compact sizing).
+**Layer 1: Global mobile overflow clamp** — Add `overflow-x: hidden` to the root layout on mobile only. This is the nuclear fix that guarantees no horizontal scroll regardless of any child misbehaving.
 
-3. **Visual hint** — When on a chapter page, the Learning icon in the bottom nav gets a subtle pulsing ring animation (CSS `animate-pulse` or a custom gentle pulse) to signal there are sub-options. Additionally, show a small chevron-up indicator above the Learning icon.
+**Layer 2: Fix the actual overflow sources** — So content isn't clipped unexpectedly.
 
-4. **Overlay styling** — The overlay pops up above the bottom nav bar as a `bg-card/90 backdrop-blur-xl` panel with rounded top corners. It contains the 4 section icons in a horizontal row (same style as bottom nav). Tapping one sets the section and dismisses the overlay. Tapping outside dismisses it.
+### Changes
 
-5. **Compact all remaining pills/icons on mobile** — Reduce filter pill sizes (`text-[11px] px-2 py-1`), sub-tab dropdown trigger padding, and badge sizes across ChapterPage mobile view to maximize content area.
+**1. `src/index.css`** — Add global mobile overflow guard:
+```css
+@media (max-width: 767px) {
+  html, body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+```
 
-### Files to edit
+**2. `src/pages/ChapterPage.tsx`** — Fix the negative margin pattern:
+- Change `-mx-4` to `-mx-2 md:-mx-4` on the wrapper div (line 523)
+- This matches the `px-2 md:px-4` on `<main>` in MainLayout, so the breakout is exact and doesn't cause overflow
 
-- **`src/components/layout/MobileBottomNav.tsx`** — Add section overlay state, render overlay panel on chapter pages, add pulse animation to Learning icon
-- **`src/pages/ChapterPage.tsx`** — Remove the mobile inline section nav (lines 631-654), keep desktop nav rail unchanged
-- **`src/index.css`** — Add a gentle pulse keyframe animation if needed
+**3. `src/components/layout/MainLayout.tsx`** — Add `overflow-x-hidden` to the main content area on mobile:
+- Add `overflow-x-hidden` to the `<main>` element
 
-### Technical notes
-- Overlay uses a simple `useState<boolean>` in MobileBottomNav
-- Section change communicated via URL search params (`?section=resources`) — already the pattern used
-- The overlay reads current `?section` param to highlight the active section
-- Clicking outside or selecting a section dismisses the overlay
-- Desktop layout is completely untouched
+**4. `src/components/study/StudyResourcesSection.tsx`** — Add `min-w-0` to accordion items and reduce mobile padding:
+- Change `px-4` to `px-2 md:px-4` on `AccordionItem`
+- This prevents bordered card content from pushing beyond viewport
+
+**5. `src/components/content/ChapterProgressBar.tsx`** — Ensure progress bar respects container width:
+- Add `min-w-0 overflow-hidden` to the progress bar wrapper
+
+These 5 changes together guarantee zero horizontal scroll on mobile while preserving the desktop layout entirely.
 
