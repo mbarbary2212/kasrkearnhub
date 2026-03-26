@@ -543,11 +543,24 @@ export default function ChapterPage() {
             />
           )}
 
-          {/* Content Type Dropdown */}
+          {/* Content Type Dropdown - shows sub-tabs of active section */}
           {(() => {
-            const currentNav = sectionNav.find(s => s.id === activeSection) || sectionNav[0];
             const colors = sectionColors[activeSection];
-            const CurrentIcon = currentNav.icon;
+            // Determine current sub-tabs and active sub-tab based on active section
+            const currentTabs = activeSection === 'resources' ? resourcesTabs
+              : activeSection === 'interactive' ? interactiveTabs
+              : activeSection === 'practice' ? practiceTabs
+              : [];
+            const currentSubTab = activeSection === 'resources' ? resourcesTab
+              : activeSection === 'interactive' ? interactiveTab
+              : activeSection === 'practice' ? practiceTab
+              : '';
+            const activeTabConfig = currentTabs.find(t => t.id === currentSubTab);
+            const ActiveIcon = activeTabConfig?.icon;
+
+            // Hide dropdown for test section (no sub-tabs)
+            if (activeSection === 'test' || currentTabs.length === 0) return null;
+
             return (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -561,28 +574,40 @@ export default function ChapterPage() {
                       "border-current/30"
                     )}
                   >
-                    <CurrentIcon className={cn("w-4 h-4", colors.icon)} />
-                    <span className="hidden sm:inline">{currentNav.label}</span>
-                    <span className="sm:hidden">{currentNav.mobileLabel}</span>
+                    {activeTabConfig?.useImageIcon ? (
+                      <img src={SOCRATES_ICON_PATH} alt="Socrates" className="w-5 h-5 rounded-full object-cover" />
+                    ) : ActiveIcon ? (
+                      <ActiveIcon className={cn("w-4 h-4", colors.icon)} />
+                    ) : null}
+                    <span className="hidden sm:inline">{activeTabConfig?.label || 'Select'}</span>
+                    <span className="sm:hidden">{activeTabConfig?.label || 'Select'}</span>
                     <ChevronDown className="w-4 h-4 opacity-60" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" sideOffset={8} className="w-52">
-                  {sectionNav.map((section) => {
-                    const SectionIcon = section.icon;
-                    const sc = sectionColors[section.id];
-                    const isActive = activeSection === section.id;
+                <DropdownMenuContent align="center" sideOffset={8} className="w-56">
+                  {currentTabs.map((tab) => {
+                    const TabIcon = tab.icon;
+                    const isActive = currentSubTab === tab.id;
                     return (
                       <DropdownMenuItem
-                        key={section.id}
-                        onClick={() => setActiveSection(section.id)}
+                        key={tab.id}
+                        onClick={() => {
+                          if (activeSection === 'resources') handleResourcesTabChange(tab.id as ResourceTabId);
+                          else if (activeSection === 'interactive') setInteractiveTab(tab.id as InteractiveTabId);
+                          else if (activeSection === 'practice') setPracticeTab(tab.id as PracticeTabId);
+                        }}
                         className={cn(
                           "flex items-center gap-2 py-3 cursor-pointer",
-                          isActive && cn(sc.activeBg, sc.activeBgDark)
+                          isActive && cn(colors.activeBg, colors.activeBgDark)
                         )}
                       >
-                        <SectionIcon className={cn("w-4 h-4", sc.icon)} />
-                        <span className={cn(isActive && cn("font-medium", sc.text))}>{section.label}</span>
+                        {tab.useImageIcon ? (
+                          <img src={SOCRATES_ICON_PATH} alt="Socrates" className="w-5 h-5 rounded-full object-cover" />
+                        ) : (
+                          <TabIcon className={cn("w-4 h-4", isActive ? colors.icon : "")} />
+                        )}
+                        <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>{tab.label}</span>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
                       </DropdownMenuItem>
                     );
                   })}
@@ -636,40 +661,6 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">
-                {/* Sub-tabs for Resources - Dropdown on mobile, pills on desktop */}
-                <div className="md:hidden">
-                  <MobileSectionDropdown
-                    tabs={resourcesTabs}
-                    activeTab={resourcesTab}
-                    onTabChange={(tab) => handleResourcesTabChange(tab as ResourceTabId)}
-                  />
-                </div>
-                <div className="hidden md:flex gap-2 flex-wrap">
-                  {resourcesTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = resourcesTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleResourcesTabChange(tab.id as ResourceTabId)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
-                          isActive 
-                            ? "bg-blue-600 text-white font-medium shadow-sm border-blue-600" 
-                            : "border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                        )}
-                      >
-                        {tab.useImageIcon ? (
-                          <img src={SOCRATES_ICON_PATH} alt="Socrates" className="w-5 h-5 rounded-full object-cover" />
-                        ) : (
-                          <Icon className="w-4 h-4" />
-                        )}
-                        <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
-                      </button>
-                    );
-                  })}
-                </div>
 
                 {/* Lectures Content */}
                 {resourcesTab === 'lectures' && (
@@ -929,36 +920,6 @@ export default function ChapterPage() {
             {/* Interactive Section (Cases + Pathways) */}
             {activeSection === 'interactive' && (
               <div className="space-y-4">
-                {/* Sub-tabs for Interactive */}
-                <div className="md:hidden">
-                  <MobileSectionDropdown
-                    tabs={interactiveTabs}
-                    activeTab={interactiveTab}
-                    onTabChange={(tab) => setInteractiveTab(tab as InteractiveTabId)}
-                  />
-                </div>
-                <div className="hidden md:flex gap-2 flex-wrap">
-                  {interactiveTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = interactiveTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setInteractiveTab(tab.id as InteractiveTabId)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors border",
-                          isActive 
-                            ? "bg-teal-600 text-white font-medium shadow-sm border-teal-600" 
-                            : "border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100"
-                        )}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
-                      </button>
-                    );
-                  })}
-                </div>
 
                 {/* Cases Content */}
                 {interactiveTab === 'cases' && contentModuleId && chapterId && (
@@ -1032,36 +993,6 @@ export default function ChapterPage() {
 
             {activeSection === 'practice' && (
               <div className="space-y-4">
-                {/* Sub-tabs for Practice - Dropdown on mobile, pills on desktop */}
-                <div className="md:hidden">
-                  <MobileSectionDropdown
-                    tabs={practiceTabs}
-                    activeTab={practiceTab}
-                    onTabChange={(tab) => setPracticeTab(tab as PracticeTabId)}
-                  />
-                </div>
-                <div className="hidden md:flex gap-2 flex-wrap">
-                  {practiceTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = practiceTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setPracticeTab(tab.id as PracticeTabId)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all border",
-                          isActive 
-                            ? "bg-emerald-600 text-white font-medium shadow-sm border-emerald-600" 
-                            : "border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                        )}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
-                      </button>
-                    );
-                  })}
-                </div>
 
                 {/* MCQs Content */}
                 {practiceTab === 'mcqs' && (
