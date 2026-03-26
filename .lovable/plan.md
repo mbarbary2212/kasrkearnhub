@@ -1,59 +1,65 @@
 
 
-## Mobile Optimization Plan
+## Mobile Content Optimization Plan
 
-The app currently has no persistent mobile navigation — the sidebar is desktop-only (`hidden md:flex`), and there's no bottom tab bar. On mobile, students rely on the avatar dropdown menu and per-page inline tab bars. This creates a fragmented, non-intuitive mobile experience.
+After reviewing `ChapterPage.tsx` (1354 lines), `ModulePage.tsx`, `LectureList.tsx`, `ModuleConnectTab.tsx`, `ModuleFormativeTab.tsx`, and related components, here are the key mobile issues and fixes.
 
-### Key Problems
+### Problems Identified
 
-1. **No global mobile navigation** — Students can't quickly switch between Dashboard, Learning, Connect, Formative, or Study Coach on mobile without going through the avatar menu
-2. **Header is cluttered on small screens** — Online pill, theme toggle, avatar all compete for 390px width
-3. **Dashboard right column stacks below** — Stats, flashcards, study plan all push below the fold on mobile, making the page very long
-4. **Module page inline tabs** — Already decent but could be improved with better touch targets
-5. **No swipe gestures** — `useSwipeGesture` hook exists but isn't used on key pages
-6. **Excessive vertical padding** — `py-8 pb-24` on main content wastes mobile space
+1. **Chapter header is cramped** — Back button + icon + title + coach button + customize button all compete on 390px. Section filter also inlines in the header on mobile, pushing content down.
+2. **Lecture card action buttons overflow** — Each lecture row shows 5 icon buttons (watched, bookmark, thumbs up, thumbs down, notes) inline, which is too many for small screens. They crowd the title.
+3. **Video player modal not mobile-optimized** — `DialogContent` uses `max-w-4xl` with no mobile-specific sizing; the "Note @ timestamp" button gets cut off on small screens.
+4. **Filter pills wrap poorly** — Both student engagement filters (All/Watch Later/Watched/Recently Added) and doctor filters stack without horizontal scroll on narrow screens.
+5. **Module page chapter list touch targets** — Chapter rows use `py-3 px-4` which is fine, but the readiness dot + chevron area is small.
+6. **Connect tab cards lack mobile spacing** — Full-width cards with desktop padding.
+7. **Bottom nav padding conflict** — Content can be hidden behind the new bottom nav bar on chapter pages.
+8. **MobileSectionDropdown** used for sub-tabs works well but could show the active count more prominently.
 
 ### Plan
 
-#### 1. Add a sticky bottom navigation bar for mobile students
-- Create `src/components/layout/MobileBottomNav.tsx`
-- 5 tabs: Dashboard, Learning, Connect, Formative, Coach (same as sidebar)
-- Fixed to bottom, visible only on mobile (`md:hidden`), only for logged-in students
-- Render it in `MainLayout.tsx` alongside the sidebar
-- Include badge counts (unread messages on Connect, due flashcards indicator)
-- Safe area padding for notched phones (`pb-safe`)
+#### 1. Optimize Chapter Page header for mobile
+**File:** `src/pages/ChapterPage.tsx`
+- Reduce mobile header gap from `gap-4` to `gap-2`
+- Move section filter below the title row on mobile instead of inline
+- Stack the AskCoach and Customize buttons vertically or hide labels, keeping icons only (already icon-only, but tighten spacing)
+- Reduce chapter title font on mobile: `text-base` instead of `text-lg`
 
-#### 2. Optimize header for mobile
-- Hide the Online pill on very small screens (`hidden sm:flex`) — it's nice-to-have, not critical
-- Reduce header height on mobile (h-14 vs h-16)
-- Tighten gaps between header items
+#### 2. Make lecture action buttons scrollable/compact on mobile
+**File:** `src/components/content/LectureList.tsx`
+- On mobile, collapse the 5 student action buttons into a compact row: show only watched + bookmark inline, put thumbs up/down + notes behind a "more" menu (three-dot button)
+- Use `md:flex hidden` / `flex md:hidden` pattern to show different layouts per breakpoint
+- Increase lecture row touch target: ensure min-h of 48px
 
-#### 3. Optimize Home dashboard for mobile
-- On mobile, show stat cards (streak, readiness) as a compact horizontal strip instead of a separate column
-- Reorder: greeting → stats strip → resume card → modules → study plan (prioritize action items)
-- Make module cards single-column on very small screens (< 375px)
+#### 3. Make video player modal full-screen on mobile
+**File:** `src/components/content/LectureList.tsx`
+- Add mobile-specific classes to `DialogContent`: on small screens use `w-full h-full max-w-full max-h-full rounded-none` for a full-screen video experience
+- Move "Note @ timestamp" button below the video on mobile instead of in the header
 
-#### 4. Tighten mobile spacing in MainLayout
-- Reduce `py-8` to `py-4` on mobile: `py-4 md:py-8`
-- Reduce `pb-24` to account for bottom nav height: `pb-20 md:pb-8`
+#### 4. Horizontal-scroll filter pills on mobile
+**File:** `src/components/content/LectureList.tsx`
+- Wrap filter pill rows in `overflow-x-auto flex-nowrap scrollbar-hide` on mobile so they scroll horizontally instead of wrapping to multiple lines
+- Apply same pattern to doctor filter pills
 
-#### 5. Add swipe navigation on Module/Chapter pages
-- Wire `useSwipeGesture` on ModulePage to swipe between section tabs (Learning ↔ Connect ↔ Formative ↔ Coach)
-- Provides a native-feeling navigation pattern
+#### 5. Tighten chapter content bottom padding
+**File:** `src/pages/ChapterPage.tsx`
+- Add `pb-20 md:pb-4` to the main content wrapper to account for the bottom nav bar on mobile
 
-#### 6. Improve touch targets
-- Ensure all interactive elements on mobile have minimum 44px touch targets
-- Module cards, nav tabs, buttons — audit and fix any undersized targets
+#### 6. Optimize Connect tab cards for mobile
+**File:** `src/components/module/ModuleConnectTab.tsx`
+- Reduce card padding on mobile: `p-3 md:p-6`
+- Stack cards in single column on mobile (likely already single-col, but verify grid gaps)
 
-### Files to create/edit
-- **New**: `src/components/layout/MobileBottomNav.tsx`
-- **Edit**: `src/components/layout/MainLayout.tsx` (render bottom nav, tighten mobile header/spacing)
-- **Edit**: `src/pages/Home.tsx` (mobile-first layout reorder)
-- **Edit**: `src/pages/ModulePage.tsx` (swipe gestures, touch targets)
+#### 7. Swipe navigation on Chapter page
+**File:** `src/pages/ChapterPage.tsx`
+- Wire `useSwipeGesture` to the content area to allow swiping between Resources/Interactive/Practice/Test sections (same pattern already added to ModulePage)
+
+### Files to edit
+- `src/pages/ChapterPage.tsx` (header tightening, bottom padding, swipe gestures)
+- `src/components/content/LectureList.tsx` (action buttons, filter pills, video modal)
+- `src/components/module/ModuleConnectTab.tsx` (card spacing)
 
 ### Technical notes
-- Bottom nav uses same route logic as `StudentSidebar` for consistency
-- `useIsMobile()` hook already exists for conditional rendering
-- `useSwipeGesture` hook is ready to use
-- Bottom nav z-index should be 40+ to stay above content
+- `useSwipeGesture` hook and `useIsMobile` are already available
+- No new files needed — all changes are responsive CSS adjustments and conditional rendering
+- Changes are additive (desktop layout untouched)
 
