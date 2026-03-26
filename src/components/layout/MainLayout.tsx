@@ -192,13 +192,44 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {currentChapter && (
               <>
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {currentChapter.icon_url && (
                     <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover" />
                   )}
                   <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
                     {currentChapter.title}
                   </span>
+                  {/* Compact progress ring */}
+                  {!isAdmin && currentChapterId && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="relative h-5 w-5 md:h-6 md:w-6 flex-shrink-0 cursor-default"
+                            style={{
+                              background: `conic-gradient(hsl(var(--primary)) ${(chapterProgress.totalProgress / 100) * 360}deg, hsl(var(--muted)) 0deg)`,
+                              borderRadius: '50%',
+                            }}
+                          >
+                            <div className="absolute inset-[3px] rounded-full bg-background" />
+                            <span className="absolute inset-0 flex items-center justify-center text-[7px] md:text-[8px] font-bold text-foreground">
+                              {chapterProgress.totalProgress}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
+                          <p className="font-semibold">Chapter Progress: {chapterProgress.totalProgress}%</p>
+                          {chapterProgress.practiceTotal > 0 && (
+                            <p>Practice: {chapterProgress.practiceCompleted}/{chapterProgress.practiceTotal} ({chapterProgress.practiceProgress}%)</p>
+                          )}
+                          {chapterProgress.videosTotal > 0 && (
+                            <p>Videos: {chapterProgress.videoProgress}% watched</p>
+                          )}
+                          <p className="text-muted-foreground">Practice 60% · Videos 40%</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </>
             )}
