@@ -558,8 +558,26 @@ export default function ChapterPage() {
             const activeTabConfig = currentTabs.find(t => t.id === currentSubTab);
             const ActiveIcon = activeTabConfig?.icon;
 
+            // Helper to get completed/total counts for a tab
+            const getTabCounts = (tabId: string): { completed: number; total: number } => {
+              if (!chapterProgress) return { completed: 0, total: 0 };
+              switch (tabId) {
+                case 'lectures': return { completed: chapterProgress.videosCompleted, total: chapterProgress.videosTotal };
+                case 'mcqs':
+                case 'sba':
+                  return { completed: chapterProgress.mcqCompleted, total: chapterProgress.mcqTotal };
+                case 'essays': return { completed: chapterProgress.essayCompleted, total: chapterProgress.essayTotal };
+                case 'osce': return { completed: chapterProgress.osceCompleted, total: chapterProgress.osceTotal };
+                case 'cases': return { completed: chapterProgress.caseCompleted, total: chapterProgress.caseTotal };
+                case 'matching': return { completed: chapterProgress.matchingCompleted, total: chapterProgress.matchingTotal };
+                default: return { completed: 0, total: 0 };
+              }
+            };
+
             // Hide dropdown for test section (no sub-tabs)
             if (activeSection === 'test' || currentTabs.length === 0) return null;
+
+            const triggerCounts = getTabCounts(currentSubTab);
 
             return (
               <DropdownMenu>
@@ -581,6 +599,11 @@ export default function ChapterPage() {
                     ) : null}
                     <span className="hidden sm:inline">{activeTabConfig?.label || 'Select'}</span>
                     <span className="sm:hidden">{activeTabConfig?.label || 'Select'}</span>
+                    {triggerCounts.total > 0 && (
+                      <span className="text-[10px] font-semibold opacity-70 tabular-nums">
+                        {triggerCounts.completed}/{triggerCounts.total}
+                      </span>
+                    )}
                     <ChevronDown className="w-4 h-4 opacity-60" />
                   </button>
                 </DropdownMenuTrigger>
