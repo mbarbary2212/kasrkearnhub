@@ -60,7 +60,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const isMobile = useIsMobile();
   const { activeYear } = useActiveYear();
-  const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
 
   // Extract moduleId and chapterId from URL for breadcrumb display
   const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
@@ -72,6 +71,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(currentChapterId || undefined);
 
   const { data: years } = useYears();
+  const matchedYear = years?.find(y => y.number === activeYear?.yearNumber);
+  const yearIcon = matchedYear?.image_url || (activeYear ? getYearIcon(activeYear.yearNumber) : undefined);
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
