@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
@@ -36,6 +36,7 @@ import { ModuleDashboard } from '@/components/module/ModuleDashboard';
 import { cn } from '@/lib/utils';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
 import { formatDistanceToNow } from 'date-fns';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
 type ModuleSection = 'dashboard' | 'learning' | 'formative' | 'connect' | 'coach';
 
@@ -172,6 +173,19 @@ export default function ModulePage() {
     ...(isStudent ? [{ id: 'coach' as ModuleSection, label: 'Study Coach', mobileLabel: 'Coach', icon: CalendarDays }] : []),
   ];
 
+  // Swipe gesture for mobile section navigation
+  const contentRef = useRef<HTMLDivElement>(null);
+  const sectionIds = sectionNav.map(s => s.id);
+  const handleSwipeLeft = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx < sectionIds.length - 1) setActiveSection(sectionIds[idx + 1]);
+  }, [activeSection, sectionIds]);
+  const handleSwipeRight = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx > 0) setActiveSection(sectionIds[idx - 1]);
+  }, [activeSection, sectionIds]);
+  useSwipeGesture(contentRef, { onSwipeLeft: handleSwipeLeft, onSwipeRight: handleSwipeRight });
+
   return (
     <MainLayout>
       <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
@@ -260,7 +274,7 @@ export default function ModulePage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150",
+                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-md text-xs transition-all duration-150 min-h-[44px]",
                       isActive 
                         ? cn("font-semibold shadow-sm", colors.mobileBg)
                         : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
@@ -304,7 +318,7 @@ export default function ModulePage() {
 
 
           {/* Main Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" ref={contentRef}>
             {/* Learning Section */}
             {activeSection === 'learning' && actualModuleId && (
               <ModuleLearningTab
