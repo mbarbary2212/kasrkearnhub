@@ -26,6 +26,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
+import { useChapter } from '@/hooks/useChapters';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -54,10 +55,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { activeYear } = useActiveYear();
   const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
 
-  // Extract moduleId from URL for breadcrumb display
+  // Extract moduleId and chapterId from URL for breadcrumb display
   const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
+  const chapterIdMatch = location.pathname.match(/\/chapter\/([^/]+)/);
   const currentModuleId = moduleIdMatch?.[1] || '';
+  const currentChapterId = chapterIdMatch?.[1] || '';
   const { data: currentModule } = useModule(currentModuleId);
+  const { data: currentChapter } = useChapter(currentChapterId || undefined);
 
   const { data: years } = useYears();
 
