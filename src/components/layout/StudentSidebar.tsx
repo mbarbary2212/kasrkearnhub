@@ -42,6 +42,8 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isSmallTablet = useIsSmallTablet();
+  const [overlayOpen, setOverlayOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -61,6 +63,11 @@ export function StudentSidebar() {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
+
+  // Close overlay on route change
+  useEffect(() => {
+    setOverlayOpen(false);
+  }, [location.pathname, searchParams.toString()]);
 
   useEffect(() => {
     try {
