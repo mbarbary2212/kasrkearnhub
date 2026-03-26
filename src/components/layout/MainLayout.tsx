@@ -69,6 +69,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const currentChapterId = chapterIdMatch?.[1] || '';
   const { data: currentModule } = useModule(currentModuleId);
   const { data: currentChapter } = useChapter(currentChapterId || undefined);
+  const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(currentChapterId || undefined);
 
   const { data: years } = useYears();
 
