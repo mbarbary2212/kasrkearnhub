@@ -134,7 +134,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
-        <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+        <div className="container mx-auto px-3 md:px-4 h-14 md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
@@ -249,7 +249,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-4 py-4 md:py-8 pb-20 md:pb-8", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
+        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 pb-20 md:pb-8", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
           <div className={isStudent ? 'container mx-auto' : ''}>
             {children}
           </div>
