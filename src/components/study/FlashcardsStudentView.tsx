@@ -24,6 +24,7 @@ interface FlashcardsStudentViewProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
+  onActiveItemChange?: (itemId: string) => void;
 }
 
 interface TopicGroup {
@@ -54,6 +55,7 @@ export function FlashcardsStudentView({
   availableTopics = [],
   chapterId,
   topicId,
+  onActiveItemChange,
 }: FlashcardsStudentViewProps) {
   // Persisted settings - supports both chapter and topic
   const { 

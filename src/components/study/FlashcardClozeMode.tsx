@@ -24,6 +24,7 @@ interface FlashcardClozeModeProps {
   topicId?: string;
   /** When true, only show cloze cards and display empty state if none exist */
   clozeOnly?: boolean;
+  onActiveItemChange?: (itemId: string) => void;
 }
 
 interface TopicGroup {
@@ -88,6 +89,7 @@ export function FlashcardClozeMode({
   chapterId,
   topicId,
   clozeOnly = false,
+  onActiveItemChange,
 }: FlashcardClozeModeProps) {
   const { settings, setSelectedTopics, setShuffle } = useFlashcardSettings({ chapterId, topicId });
 
