@@ -22,6 +22,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 
@@ -32,7 +33,7 @@ interface MainLayoutProps {
 function OnlinePill() {
   const { onlineCount } = usePresence();
   return (
-    <div className="flex items-center gap-1.5 rounded-full bg-emerald-600/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-green-500/10 dark:text-green-400">
+    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-600/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-green-500/10 dark:text-green-400">
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
@@ -133,7 +134,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
@@ -171,7 +172,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2">
             {user && <OnlinePill />}
             <ThemeToggle />
             {/* Admin notifications for admins */}
@@ -248,12 +249,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-4 py-8 pb-24", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
+        <main className={cn("flex-1 px-4 py-4 md:py-8 pb-20 md:pb-8", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
           <div className={isStudent ? 'container mx-auto' : ''}>
             {children}
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      {isStudent && <MobileBottomNav />}
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
