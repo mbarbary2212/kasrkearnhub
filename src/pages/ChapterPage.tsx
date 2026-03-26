@@ -22,7 +22,7 @@ import { RichDocumentViewer } from '@/components/study/RichDocumentViewer';
 import { McqList } from '@/components/content/McqList';
 import { OsceList } from '@/components/content/OsceList';
 import EssayList from '@/components/content/EssayList';
-import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
+import { ChapterProgressPill } from '@/components/content/ChapterProgressPill';
 import { MatchingQuestionList } from '@/components/content/MatchingQuestionList';
 import { ResourcesDeleteManager, ResourceKind, requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
