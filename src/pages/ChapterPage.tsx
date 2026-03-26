@@ -520,13 +520,13 @@ export default function ChapterPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
+      <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-3 md:px-4 pt-3 md:pt-4 rounded-xl">
         {/* Header */}
-        <div className="flex items-center gap-2 md:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)}>
-            <ArrowLeft className="w-5 h-5" />
+        <div className="flex items-center gap-1.5 md:gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)} className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0">
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {(moduleLoading || chapterLoading) ? (
               <>
                 <Skeleton className="hidden md:block h-5 w-48 mb-2" />
@@ -555,26 +555,17 @@ export default function ChapterPage() {
                     />
                   )}
                 </div>
-                {/* Mobile: Icon + stacked text */}
-                <div className="md:hidden flex items-center gap-3">
+                {/* Mobile: Compact icon + stacked text */}
+                <div className="md:hidden flex items-center gap-2">
                   {chapter?.icon_url && (
-                    <img src={chapter.icon_url} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                    <img src={chapter.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                   )}
-                  <div>
-                    <p className="text-xs text-muted-foreground">{module?.name}</p>
-                    <h1 className="text-base font-heading font-semibold line-clamp-1">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{module?.name}</p>
+                    <h1 className="text-[13px] font-heading font-semibold leading-tight line-clamp-1">
                       Ch. {chapter?.chapter_number}: {chapter?.title}
                     </h1>
                   </div>
-                  {/* Section Filter in header - mobile */}
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      chapterId={chapterId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                      className="py-0"
-                    />
-                  )}
                 </div>
               </>
             )}
@@ -592,16 +583,38 @@ export default function ChapterPage() {
               }}
             />
           )}
-          {/* Customize Content - mobile only (desktop uses sidebar) */}
+          {/* Customize Content - desktop keeps in header */}
           {!canManageContent && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/customize-content')}
-              className="md:hidden text-muted-foreground hover:text-foreground"
+              className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
               title="Customize Content"
             >
               <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        {/* Mobile: Section filter + Customize row below header */}
+        <div className="md:hidden flex items-center gap-2">
+          {sectionsEnabled && (
+            <SectionFilter
+              chapterId={chapterId}
+              selectedSectionId={selectedSectionId}
+              onSectionChange={setSelectedSectionId}
+              className="py-0 flex-1"
+            />
+          )}
+          {!canManageContent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/customize-content')}
+              className="text-muted-foreground hover:text-foreground h-7 px-2 flex-shrink-0"
+              title="Customize Content"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
             </Button>
           )}
         </div>
