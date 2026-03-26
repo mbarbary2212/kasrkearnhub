@@ -123,7 +123,7 @@ export function MobileBottomNav() {
       {showSectionOverlay && isChapterPage && (
         <div
           ref={overlayRef}
-          className="md:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
+          className="sm:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
         >
           <div className="flex justify-around">
             {chapterSections.map((section) => {
@@ -151,7 +151,7 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-stretch">
           {tabs.map((tab) => {
             const active = isActive(tab);
