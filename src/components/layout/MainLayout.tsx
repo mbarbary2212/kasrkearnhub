@@ -12,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users } from 'lucide-react';
+import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
@@ -26,6 +27,20 @@ import { getYearIcon } from '@/lib/yearIcons';
 
 interface MainLayoutProps {
   children: ReactNode;
+}
+
+function OnlinePill() {
+  const { onlineCount } = usePresence();
+  return (
+    <div className="flex items-center gap-1.5 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-600 dark:text-green-400">
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+      </span>
+      <Users className="h-3.5 w-3.5" />
+      <span>{onlineCount}</span>
+    </div>
+  );
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
@@ -157,6 +172,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           <div className="flex items-center gap-2">
+            {user && <OnlinePill />}
             <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
