@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTrackPosition } from '@/hooks/useTrackPosition';
 import * as Sentry from '@sentry/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -98,6 +98,7 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
 
 import { cn } from '@/lib/utils';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
 
 type SectionMode = 'resources' | 'interactive' | 'practice' | 'test';
@@ -149,6 +150,19 @@ export default function ChapterPage() {
   };
   const initialSubTab = searchParams.get('subtab');
   const [activeSection, setActiveSection] = useState<SectionMode>(getSection);
+
+  // Swipe navigation between sections
+  const chapterContentRef = useRef<HTMLDivElement>(null);
+  const sectionIds: SectionMode[] = ['resources', 'interactive', 'practice', 'test'];
+  const handleSwipeLeft = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx < sectionIds.length - 1) setActiveSection(sectionIds[idx + 1]);
+  }, [activeSection]);
+  const handleSwipeRight = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx > 0) setActiveSection(sectionIds[idx - 1]);
+  }, [activeSection]);
+  useSwipeGesture(chapterContentRef, { onSwipeLeft: handleSwipeLeft, onSwipeRight: handleSwipeRight });
 
   // Sync activeSection when URL search params change (sidebar clicks)
   useEffect(() => {
@@ -508,7 +522,7 @@ export default function ChapterPage() {
     <MainLayout>
       <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -548,8 +562,8 @@ export default function ChapterPage() {
                   )}
                   <div>
                     <p className="text-xs text-muted-foreground">{module?.name}</p>
-                    <h1 className="text-lg font-heading font-semibold line-clamp-1">
-                      Chapter {chapter?.chapter_number}: {chapter?.title}
+                    <h1 className="text-base font-heading font-semibold line-clamp-1">
+                      Ch. {chapter?.chapter_number}: {chapter?.title}
                     </h1>
                   </div>
                   {/* Section Filter in header - mobile */}
@@ -625,7 +639,7 @@ export default function ChapterPage() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150",
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150 min-h-[44px]",
                       isActive 
                         ? cn("font-semibold shadow-sm", colors.mobileBg)
                         : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
@@ -641,7 +655,7 @@ export default function ChapterPage() {
 
 
           {/* Main Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pb-20 md:pb-4" ref={chapterContentRef}>
             {/* Resources Section */}
             {activeSection === 'resources' && (
               <div className="space-y-4">

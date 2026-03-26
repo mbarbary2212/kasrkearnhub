@@ -415,12 +415,12 @@ export function LectureList({
     <TooltipProvider>
       {/* Filter Pills (student view only) */}
       {isStudent && user && (
-        <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide flex-nowrap pb-1">
           {filterPills.map((pill) => (
             <button
               key={pill.key}
               onClick={() => setActiveFilter(pill.key)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] ${
                 activeFilter === pill.key
                   ? pill.activeClass
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -435,11 +435,11 @@ export function LectureList({
 
       {/* Doctor filter pills — shown to everyone when chapter has multiple doctors */}
       {chapterDoctors.length > 1 && (
-        <div className="flex gap-2 mb-4 flex-wrap items-center">
-          <span className="text-xs text-muted-foreground font-medium">Doctor:</span>
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide flex-nowrap pb-1 items-center">
+          <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Doctor:</span>
           <button
             onClick={() => setSelectedDoctor('all')}
-            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               selectedDoctor === 'all'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -451,7 +451,7 @@ export function LectureList({
             <button
               key={doc}
               onClick={() => setSelectedDoctor(doc)}
-              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                 selectedDoctor === doc
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -511,7 +511,7 @@ export function LectureList({
           return (
             <div
               key={lecture.id}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left min-h-[48px]"
             >
               {/* Checkbox for multi-select (admin only) */}
               {canManage && (
@@ -594,90 +594,85 @@ export function LectureList({
 
               {/* Student action buttons */}
               {isStudent && user && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isWatched) unmarkWatched.mutate(vid);
-                          else markWatched.mutate(vid);
-                        }}
-                      >
-                        <CheckCircle className={`h-4 w-4 ${isWatched ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{isWatched ? 'Unmark' : 'Mark as watched'}</TooltipContent>
-                  </Tooltip>
+                <>
+                  {/* Desktop: all 5 buttons */}
+                  <div className="hidden md:flex items-center gap-1 shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-1.5 rounded-md hover:bg-muted transition-colors" onClick={(e) => { e.stopPropagation(); if (isWatched) unmarkWatched.mutate(vid); else markWatched.mutate(vid); }}>
+                          <CheckCircle className={`h-4 w-4 ${isWatched ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isWatched ? 'Unmark' : 'Mark as watched'}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-1.5 rounded-md hover:bg-muted transition-colors" onClick={(e) => { e.stopPropagation(); if (isBookmarked) removeBookmark.mutate(vid); else addBookmark.mutate(vid); }}>
+                          <Bookmark className={`h-4 w-4 ${isBookmarked ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isBookmarked ? 'Remove from Watch Later' : 'Watch later'}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-1.5 rounded-md hover:bg-muted transition-colors flex items-center gap-0.5" onClick={(e) => { e.stopPropagation(); rateVideo.mutate({ videoId: vid, rating: 1 }); }}>
+                          <ThumbsUp className={`h-4 w-4 ${rating === 1 ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} />
+                          {agg.thumbsUp > 0 && <span className="text-[10px] text-muted-foreground">{agg.thumbsUp}</span>}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Helpful</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-1.5 rounded-md hover:bg-muted transition-colors flex items-center gap-0.5" onClick={(e) => { e.stopPropagation(); rateVideo.mutate({ videoId: vid, rating: -1 }); }}>
+                          <ThumbsDown className={`h-4 w-4 ${rating === -1 ? 'text-destructive fill-destructive' : 'text-muted-foreground'}`} />
+                          {agg.thumbsDown > 0 && <span className="text-[10px] text-muted-foreground">{agg.thumbsDown}</span>}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Not helpful</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-1.5 rounded-md hover:bg-muted transition-colors relative" onClick={(e) => { e.stopPropagation(); setNotesLecture(lecture); setNotesDrawerOpen(true); }}>
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          {hasNotes && <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>My notes</TooltipContent>
+                    </Tooltip>
+                  </div>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isBookmarked) removeBookmark.mutate(vid);
-                          else addBookmark.mutate(vid);
-                        }}
-                      >
-                        <Bookmark className={`h-4 w-4 ${isBookmarked ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{isBookmarked ? 'Remove from Watch Later' : 'Watch later'}</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors flex items-center gap-0.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          rateVideo.mutate({ videoId: vid, rating: 1 });
-                        }}
-                      >
-                        <ThumbsUp className={`h-4 w-4 ${rating === 1 ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} />
-                        {agg.thumbsUp > 0 && <span className="text-[10px] text-muted-foreground">{agg.thumbsUp}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Helpful</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors flex items-center gap-0.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          rateVideo.mutate({ videoId: vid, rating: -1 });
-                        }}
-                      >
-                        <ThumbsDown className={`h-4 w-4 ${rating === -1 ? 'text-destructive fill-destructive' : 'text-muted-foreground'}`} />
-                        {agg.thumbsDown > 0 && <span className="text-[10px] text-muted-foreground">{agg.thumbsDown}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Not helpful</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors relative"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotesLecture(lecture);
-                          setNotesDrawerOpen(true);
-                        }}
-                      >
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        {hasNotes && (
-                          <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>My notes</TooltipContent>
-                  </Tooltip>
-                </div>
+                  {/* Mobile: watched + bookmark inline, rest in dropdown */}
+                  <div className="flex md:hidden items-center gap-0.5 shrink-0">
+                    <button className="p-2 rounded-md hover:bg-muted transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={(e) => { e.stopPropagation(); if (isWatched) unmarkWatched.mutate(vid); else markWatched.mutate(vid); }}>
+                      <CheckCircle className={`h-4 w-4 ${isWatched ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} />
+                    </button>
+                    <button className="p-2 rounded-md hover:bg-muted transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={(e) => { e.stopPropagation(); if (isBookmarked) removeBookmark.mutate(vid); else addBookmark.mutate(vid); }}>
+                      <Bookmark className={`h-4 w-4 ${isBookmarked ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground'}`} />
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-2 rounded-md hover:bg-muted transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                          <Settings2 className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); rateVideo.mutate({ videoId: vid, rating: 1 }); }} className="gap-2">
+                          <ThumbsUp className={`h-4 w-4 ${rating === 1 ? 'text-green-500 fill-green-500' : ''}`} />
+                          Helpful {agg.thumbsUp > 0 && `(${agg.thumbsUp})`}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); rateVideo.mutate({ videoId: vid, rating: -1 }); }} className="gap-2">
+                          <ThumbsDown className={`h-4 w-4 ${rating === -1 ? 'text-destructive fill-destructive' : ''}`} />
+                          Not helpful {agg.thumbsDown > 0 && `(${agg.thumbsDown})`}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setNotesLecture(lecture); setNotesDrawerOpen(true); }} className="gap-2">
+                          <FileText className="h-4 w-4" />
+                          My notes {hasNotes && '•'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
               )}
 
               {/* Admin actions */}
@@ -730,15 +725,15 @@ export function LectureList({
           }
         }}
       >
-        <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
-          <DialogHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between gap-2 pr-8">
-              <DialogTitle className="truncate">{selectedLecture?.title}</DialogTitle>
+        <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden max-md:w-full max-md:h-full max-md:max-w-full max-md:max-h-full max-md:rounded-none">
+          <DialogHeader className="p-3 md:p-4 pb-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pr-8">
+              <DialogTitle className="truncate text-sm md:text-base">{selectedLecture?.title}</DialogTitle>
               {isStudent && user && selectedLecture && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0 gap-1.5"
+                  className="shrink-0 gap-1.5 self-start md:self-auto"
                   onClick={() => {
                     setNotesLecture(selectedLecture);
                     setNotesDrawerOpen(true);
