@@ -520,7 +520,7 @@ export default function ChapterPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-3 md:px-4 pt-3 md:pt-4 rounded-xl">
+      <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-2 md:-mx-4 -mt-4 px-2 md:px-4 pt-3 md:pt-4 rounded-xl">
         {/* Header */}
         <div className="flex items-center gap-1.5 md:gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)} className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0">
