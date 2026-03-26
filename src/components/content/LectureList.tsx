@@ -726,14 +726,14 @@ export function LectureList({
         }}
       >
         <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden max-md:w-full max-md:h-full max-md:max-w-full max-md:max-h-full max-md:rounded-none">
-          <DialogHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between gap-2 pr-8">
-              <DialogTitle className="truncate">{selectedLecture?.title}</DialogTitle>
+          <DialogHeader className="p-3 md:p-4 pb-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pr-8">
+              <DialogTitle className="truncate text-sm md:text-base">{selectedLecture?.title}</DialogTitle>
               {isStudent && user && selectedLecture && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0 gap-1.5"
+                  className="shrink-0 gap-1.5 self-start md:self-auto"
                   onClick={() => {
                     setNotesLecture(selectedLecture);
                     setNotesDrawerOpen(true);
