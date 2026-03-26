@@ -58,7 +58,7 @@ interface EssayListProps {
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
   onShowDeletedChange?: (show: boolean) => void;
-  onActiveItemChange?: (itemId: string) => void;
+  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 export default function EssayList({

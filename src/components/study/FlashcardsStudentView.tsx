@@ -24,7 +24,7 @@ interface FlashcardsStudentViewProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
-  onActiveItemChange?: (itemId: string) => void;
+  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 interface TopicGroup {

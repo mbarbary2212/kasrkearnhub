@@ -44,7 +44,7 @@ interface FlashcardsTabProps {
   /** Topic ID - use for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
   moduleId?: string;
-  onActiveItemChange?: (itemId: string) => void;
+  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId, onActiveItemChange }: FlashcardsTabProps) {

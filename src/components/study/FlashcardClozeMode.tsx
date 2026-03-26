@@ -24,7 +24,7 @@ interface FlashcardClozeModeProps {
   topicId?: string;
   /** When true, only show cloze cards and display empty state if none exist */
   clozeOnly?: boolean;
-  onActiveItemChange?: (itemId: string) => void;
+  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 interface TopicGroup {
