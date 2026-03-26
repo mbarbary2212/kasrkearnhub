@@ -258,63 +258,7 @@ export default function ModulePage() {
 
         {/* Main Content Layout */}
         <div className="flex flex-col md:flex-row">
-          {/* Mobile: Horizontal Navigation Tabs */}
-          <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
-              {sectionNav.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                const isConnect = section.id === 'connect';
-                const isCoach = section.id === 'coach';
-                const colors = sectionColors[section.id];
-                const coachBadgeCount = coachDashboard?.suggestions?.length || 0;
-                
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={cn(
-                      "relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-md text-xs transition-all duration-150 min-h-[44px]",
-                      isActive 
-                        ? cn("font-semibold shadow-sm", colors.mobileBg)
-                        : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
-                    )}
-                  >
-                    <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
-                    <span>{section.mobileLabel}</span>
-                    
-                    {/* Connect badges */}
-                    {isConnect && (unreadCounts?.announcements || 0) + (unreadCounts?.replies || 0) > 0 && (
-                      <div className="absolute -top-1 -right-1 flex gap-0.5">
-                        {(unreadCounts?.announcements || 0) > 0 && (
-                          <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
-                            <Megaphone className="w-2.5 h-2.5 mr-0.5" />
-                            {unreadCounts.announcements}
-                          </span>
-                        )}
-                        {(unreadCounts?.replies || 0) > 0 && (
-                          <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full">
-                            <Mail className="w-2.5 h-2.5 mr-0.5" />
-                            {unreadCounts.replies}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Study Coach badge */}
-                    {isCoach && coachBadgeCount > 0 && (
-                      <div className="absolute -top-1 -right-1">
-                        <span className="flex items-center justify-center min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full">
-                          <Sparkles className="w-2.5 h-2.5 mr-0.5" />
-                          {coachBadgeCount}
-                        </span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+          {/* Mobile: Section nav handled by MobileBottomNav — hidden here */}
 
 
           {/* Main Content Area */}
