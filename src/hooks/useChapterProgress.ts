@@ -42,6 +42,17 @@ interface ChapterProgressData {
   resourcesTotal: number;
   completedItems: number;
   totalItems: number;
+  // Per-type breakdowns
+  mcqCompleted: number;
+  mcqTotal: number;
+  essayCompleted: number;
+  essayTotal: number;
+  osceCompleted: number;
+  osceTotal: number;
+  caseCompleted: number;
+  caseTotal: number;
+  matchingCompleted: number;
+  matchingTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -84,6 +95,11 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: 0,
         completedItems: 0,
         totalItems: 0,
+        mcqCompleted: 0, mcqTotal: 0,
+        essayCompleted: 0, essayTotal: 0,
+        osceCompleted: 0, osceTotal: 0,
+        caseCompleted: 0, caseTotal: 0,
+        matchingCompleted: 0, matchingTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
@@ -160,6 +176,16 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: videosTotal,
         completedItems: practiceCompleted + videosCompleted,
         totalItems: practiceTotal + videosTotal,
+        mcqCompleted: rpc.mcq_completed,
+        mcqTotal: rpc.mcq_total,
+        essayCompleted: rpc.essay_completed,
+        essayTotal: rpc.essay_total,
+        osceCompleted: rpc.osce_completed,
+        osceTotal: rpc.osce_total,
+        caseCompleted: rpc.case_completed,
+        caseTotal: rpc.case_total,
+        matchingCompleted: rpc.matching_completed,
+        matchingTotal: rpc.matching_total,
       };
     },
     enabled: !!user?.id && !!chapterId,
