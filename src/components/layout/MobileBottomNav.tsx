@@ -151,7 +151,7 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-stretch">
           {tabs.map((tab) => {
             const active = isActive(tab);

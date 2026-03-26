@@ -10,6 +10,19 @@ import { toast } from 'sonner';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
+/** Returns true when viewport is in the small-tablet range (640-767px) */
+function useIsSmallTablet() {
+  const [match, setMatch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px) and (max-width: 767px)');
+    const handler = () => setMatch(mq.matches);
+    handler();
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return match;
+}
+
 interface NavItem {
   label: string;
   icon: React.ElementType;
