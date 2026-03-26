@@ -168,48 +168,61 @@ export function StudentSidebar() {
     navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
   };
 
-  return (
-    <aside
-      className={cn(
-        'hidden sm:flex flex-col h-[calc(100vh-4rem)] sticky top-16 border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out shrink-0 z-30',
-        collapsed ? 'w-14' : 'w-52'
+  // Shared sidebar content renderer
+  const renderSidebarContent = (isOverlay = false) => (
+    <>
+      {/* Toggle button — only on desktop sidebar */}
+      {!isOverlay && (
+        <div className="flex items-center justify-end p-2">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
       )}
-    >
-      {/* Toggle button */}
-      <div className="flex items-center justify-end p-2">
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      </div>
+
+      {/* Close button for overlay */}
+      {isOverlay && (
+        <div className="flex items-center justify-between p-3 border-b border-border">
+          <span className="text-sm font-semibold text-foreground">Menu</span>
+          <button
+            onClick={() => setOverlayOpen(false)}
+            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Close menu"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Nav items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto">
+      <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto pt-1">
         <TooltipProvider delayDuration={0}>
           {navItems.map((item) => {
             const active = isActive(item);
             const hasChildren = !!item.children?.length;
+            const showCollapsed = !isOverlay && collapsed;
 
             const btn = (
               <button
                 key={item.label}
-                onClick={() => handleNav(item)}
+                onClick={() => { handleNav(item); if (isOverlay) setOverlayOpen(false); }}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors relative w-full',
                   'hover:bg-muted hover:text-foreground',
                   active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  collapsed && 'justify-center px-0'
+                  showCollapsed && 'justify-center px-0'
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                {!showCollapsed && <span className="truncate">{item.label}</span>}
               </button>
             );
 
-            const wrappedBtn = collapsed ? (
+            const wrappedBtn = showCollapsed ? (
               <Tooltip key={item.label}>
                 <TooltipTrigger asChild>{btn}</TooltipTrigger>
                 <TooltipContent side="right">{item.label}</TooltipContent>
@@ -217,8 +230,7 @@ export function StudentSidebar() {
             ) : btn;
 
             if (hasChildren && active) {
-              if (collapsed) {
-                // Show sub-items as tooltips in collapsed mode
+              if (showCollapsed) {
                 return (
                   <div key={item.label} className="flex flex-col gap-0.5">
                     {wrappedBtn}
@@ -229,7 +241,7 @@ export function StudentSidebar() {
                         <Tooltip key={sub.sectionId}>
                           <TooltipTrigger asChild>
                             <button
-                              onClick={() => handleSubNav(sub)}
+                              onClick={() => { handleSubNav(sub); if (isOverlay) setOverlayOpen(false); }}
                               className={cn(
                                 'flex items-center justify-center rounded-md p-1.5 transition-colors',
                                 'hover:bg-muted hover:text-foreground',
@@ -256,7 +268,7 @@ export function StudentSidebar() {
                       return (
                         <button
                           key={sub.sectionId}
-                          onClick={() => handleSubNav(sub)}
+                          onClick={() => { handleSubNav(sub); if (isOverlay) setOverlayOpen(false); }}
                           className={cn(
                             'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
                             'hover:bg-muted hover:text-foreground',
@@ -281,24 +293,24 @@ export function StudentSidebar() {
       {/* Customize Content + Settings pinned to bottom */}
       <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
         <TooltipProvider delayDuration={0}>
-          {/* Customize Content */}
           {(() => {
             const active = location.pathname === '/customize-content';
+            const showCollapsed = !isOverlay && collapsed;
             const custBtn = (
               <button
-                onClick={() => navigate('/customize-content')}
+                onClick={() => { navigate('/customize-content'); if (isOverlay) setOverlayOpen(false); }}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
                   'hover:bg-muted hover:text-foreground',
                   active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  collapsed && 'justify-center px-0'
+                  showCollapsed && 'justify-center px-0'
                 )}
               >
                 <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">Customize Content</span>}
+                {!showCollapsed && <span className="truncate">Customize Content</span>}
               </button>
             );
-            if (collapsed) {
+            if (showCollapsed) {
               return (
                 <Tooltip>
                   <TooltipTrigger asChild>{custBtn}</TooltipTrigger>
@@ -309,24 +321,24 @@ export function StudentSidebar() {
             return custBtn;
           })()}
 
-          {/* Settings */}
           {(() => {
             const active = location.pathname === '/student-settings';
+            const showCollapsed = !isOverlay && collapsed;
             const btn = (
               <button
-                onClick={() => navigate('/student-settings')}
+                onClick={() => { navigate('/student-settings'); if (isOverlay) setOverlayOpen(false); }}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
                   'hover:bg-muted hover:text-foreground',
                   active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  collapsed && 'justify-center px-0'
+                  showCollapsed && 'justify-center px-0'
                 )}
               >
                 <Settings className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">Settings</span>}
+                {!showCollapsed && <span className="truncate">Settings</span>}
               </button>
             );
-            if (collapsed) {
+            if (showCollapsed) {
               return (
                 <Tooltip>
                   <TooltipTrigger asChild>{btn}</TooltipTrigger>
@@ -338,6 +350,54 @@ export function StudentSidebar() {
           })()}
         </TooltipProvider>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Small tablet mode (640-767px): floating chevron + slide-over overlay */}
+      {isSmallTablet && (
+        <>
+          {/* Floating chevron trigger */}
+          {!overlayOpen && (
+            <button
+              onClick={() => setOverlayOpen(true)}
+              className="fixed left-0 top-1/2 -translate-y-1/2 z-40 h-10 w-6 flex items-center justify-center rounded-r-lg bg-card/90 backdrop-blur-sm border border-l-0 border-border shadow-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+              aria-label="Open navigation menu"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Backdrop */}
+          {overlayOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setOverlayOpen(false)}
+            />
+          )}
+
+          {/* Slide-over sidebar */}
+          {overlayOpen && (
+            <aside
+              className="fixed inset-y-0 left-0 z-50 w-56 flex flex-col bg-card border-r border-border shadow-xl animate-in slide-in-from-left duration-200"
+              style={{ top: '4rem' }}
+            >
+              {renderSidebarContent(true)}
+            </aside>
+          )}
+        </>
+      )}
+
+      {/* Desktop mode (>= 768px): normal sticky sidebar */}
+      <aside
+        className={cn(
+          'hidden md:flex flex-col h-[calc(100vh-4rem)] sticky top-16 border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out shrink-0 z-30',
+          collapsed ? 'w-14' : 'w-52'
+        )}
+      >
+        {renderSidebarContent(false)}
+      </aside>
+    </>
   );
 }
