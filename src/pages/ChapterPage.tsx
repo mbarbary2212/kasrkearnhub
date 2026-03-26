@@ -749,6 +749,7 @@ export default function ChapterPage() {
                         canManage={canManageContent}
                         onEdit={handleEditFlashcard}
                         chapterId={chapterId}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1078,6 +1079,7 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedTrueFalse}
                         onShowDeletedChange={setShowDeletedTrueFalse}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1105,6 +1107,7 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedEssays}
                         onShowDeletedChange={setShowDeletedEssays}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
@@ -1160,6 +1163,7 @@ export default function ChapterPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMatching}
                         onShowDeletedChange={setShowDeletedMatching}
+                        onActiveItemChange={setActiveItem}
                       />
                     )}
                   </div>
