@@ -55,6 +55,7 @@ interface MatchingQuestionListProps {
   showDeletedToggle?: boolean;
   showDeleted?: boolean;
   onShowDeletedChange?: (show: boolean) => void;
+  onActiveItemChange?: (itemId: string) => void;
 }
 
 export function MatchingQuestionList({

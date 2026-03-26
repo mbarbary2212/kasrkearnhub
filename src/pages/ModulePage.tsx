@@ -75,13 +75,6 @@ export default function ModulePage() {
   // Module admin, platform admin, or teachers can manage chapters
   const canManageChapters = canManageContent;
 
-  // Track position for resume functionality
-  useTrackPosition({
-    year_number: year?.number ?? null,
-    module_id: actualModuleId ?? null,
-    module_name: module?.name ?? null,
-    module_slug: module?.slug ?? null,
-  });
 
   // Sync active year to header
   useEffect(() => {
