@@ -627,31 +627,7 @@ export default function ChapterPage() {
 
         {/* Main Content Layout: Left Nav Rail + Content Area */}
         <div className="flex flex-col md:flex-row">
-          {/* Mobile: Horizontal Navigation Tabs (only on small screens) */}
-          <div className="md:hidden mb-4">
-            <nav className="flex gap-1.5 bg-white/70 dark:bg-card/70 backdrop-blur-lg rounded-xl border border-white/40 dark:border-white/10 shadow-lg p-1.5">
-              {sectionNav.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                const colors = sectionColors[section.id];
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-xs transition-all duration-150 min-h-[44px]",
-                      isActive 
-                        ? cn("font-semibold shadow-sm", colors.mobileBg)
-                        : "text-muted-foreground hover:bg-gray-50/80 dark:hover:bg-white/5"
-                    )}
-                  >
-                    <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", isActive ? colors.icon : "opacity-70")} />
-                    <span>{section.mobileLabel}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+          {/* Mobile: Section nav is handled by MobileBottomNav overlay — hidden here */}
 
 
           {/* Main Content Area */}
