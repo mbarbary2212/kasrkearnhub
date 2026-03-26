@@ -570,19 +570,6 @@ export default function ChapterPage() {
               </>
             )}
           </div>
-          {/* Ask Coach Button - visible in Resources and Practice sections */}
-          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
-            <AskCoachButton 
-              variant="header"
-              context={{
-                pageType: activeSection === 'resources' ? 'resource' : 'practice',
-                moduleId: module?.id,
-                moduleName: module?.name,
-                chapterId: chapter?.id,
-                chapterName: chapter?.title,
-              }}
-            />
-          )}
           {/* Customize Content */}
           {!canManageContent && (
             <Button
@@ -596,14 +583,41 @@ export default function ChapterPage() {
             </Button>
           )}
         </div>
-        {/* Mobile: Section filter below header */}
-        {sectionsEnabled && (
-          <div className="md:hidden">
+        {/* Mobile: Section filter + Ask Coach row */}
+        <div className="md:hidden flex items-center justify-between gap-2">
+          {sectionsEnabled && (
             <SectionFilter
               chapterId={chapterId}
               selectedSectionId={selectedSectionId}
               onSectionChange={setSelectedSectionId}
               className="py-0"
+            />
+          )}
+          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+            <AskCoachButton 
+              variant="header"
+              context={{
+                pageType: activeSection === 'resources' ? 'resource' : 'practice',
+                moduleId: module?.id,
+                moduleName: module?.name,
+                chapterId: chapter?.id,
+                chapterName: chapter?.title,
+              }}
+            />
+          )}
+        </div>
+        {/* Desktop: Ask Coach in header area */}
+        {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+          <div className="hidden md:block">
+            <AskCoachButton 
+              variant="header"
+              context={{
+                pageType: activeSection === 'resources' ? 'resource' : 'practice',
+                moduleId: module?.id,
+                moduleName: module?.name,
+                chapterId: chapter?.id,
+                chapterName: chapter?.title,
+              }}
             />
           </div>
         )}
