@@ -199,41 +199,41 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
                     {currentChapter.title}
                   </span>
-                  {/* Compact progress ring */}
-                  {!isAdmin && currentChapterId && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            className="relative h-5 w-5 md:h-6 md:w-6 flex-shrink-0 cursor-default"
-                            style={{
-                              background: `conic-gradient(hsl(var(--primary)) ${(chapterProgress.totalProgress / 100) * 360}deg, hsl(var(--muted)) 0deg)`,
-                              borderRadius: '50%',
-                            }}
-                          >
-                            <div className="absolute inset-[3px] rounded-full bg-background" />
-                            <span className="absolute inset-0 flex items-center justify-center text-[7px] md:text-[8px] font-bold text-foreground">
-                              {chapterProgress.totalProgress}
-                            </span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
-                          <p className="font-semibold">Chapter Progress: {chapterProgress.totalProgress}%</p>
-                          {chapterProgress.practiceTotal > 0 && (
-                            <p>Practice: {chapterProgress.practiceCompleted}/{chapterProgress.practiceTotal} ({chapterProgress.practiceProgress}%)</p>
-                          )}
-                          {chapterProgress.videosTotal > 0 && (
-                            <p>Videos: {chapterProgress.videoProgress}% watched</p>
-                          )}
-                          <p className="text-muted-foreground">Practice 60% · Videos 40%</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
                 </div>
               </>
             )}
           </div>
+
+          {/* Chapter progress bar - between breadcrumb and right icons */}
+          {!isAdmin && currentChapterId && currentChapter && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="w-16 md:w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500"
+                        style={{ width: `${chapterProgress.totalProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">
+                      {chapterProgress.totalProgress}%
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
+                  <p className="font-semibold">Chapter Progress: {chapterProgress.totalProgress}%</p>
+                  {chapterProgress.practiceTotal > 0 && (
+                    <p>Practice: {chapterProgress.practiceCompleted}/{chapterProgress.practiceTotal} ({chapterProgress.practiceProgress}%)</p>
+                  )}
+                  {chapterProgress.videosTotal > 0 && (
+                    <p>Videos: {chapterProgress.videoProgress}% watched</p>
+                  )}
+                  <p className="text-muted-foreground">Practice 60% · Videos 40%</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {/* Admin Panel button - prominent header placement */}
           {user && isAdmin && (
