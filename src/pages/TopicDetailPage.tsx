@@ -78,7 +78,6 @@ import {
   Image,
   Sparkles,
   HelpCircle,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
 
@@ -442,18 +441,6 @@ export default function TopicDetailPage() {
                 topicId: topic?.id,
               }}
             />
-          )}
-          {/* Customize Content - mobile only (desktop uses sidebar) */}
-          {!canManageContent && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/customize-content')}
-              className="md:hidden text-muted-foreground hover:text-foreground"
-              title="Customize Content"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </Button>
           )}
         </div>
 

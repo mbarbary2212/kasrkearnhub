@@ -93,7 +93,6 @@ import {
   Sparkles,
   Download,
   HelpCircle,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
 
@@ -570,18 +569,6 @@ export default function ChapterPage() {
               </>
             )}
           </div>
-          {/* Customize Content */}
-          {!canManageContent && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/customize-content')}
-              className="text-muted-foreground hover:text-foreground h-8 w-8 md:h-10 md:w-10 flex-shrink-0"
-              title="Customize Content"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            </Button>
-          )}
         </div>
         {/* Mobile: Section filter + Ask Coach row */}
         <div className="md:hidden flex items-center justify-between gap-2">
