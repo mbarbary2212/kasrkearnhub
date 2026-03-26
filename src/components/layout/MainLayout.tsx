@@ -159,6 +159,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </span>
               </button>
             )}
+            {/* Module slug breadcrumb */}
+            {currentModule?.slug && (
+              <button
+                onClick={() => navigate(`/module/${currentModuleId}`)}
+                className="flex items-center gap-1 pl-1.5 border-l border-border/50 hover:opacity-80 transition-all duration-200"
+              >
+                <span className="text-xs md:text-sm font-medium text-muted-foreground uppercase">
+                  {currentModule.slug}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Admin Panel button - prominent header placement */}
