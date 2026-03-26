@@ -443,18 +443,6 @@ export default function TopicDetailPage() {
               }}
             />
           )}
-          {/* Customize Content - mobile only (desktop uses sidebar) */}
-          {!canManageContent && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/customize-content')}
-              className="md:hidden text-muted-foreground hover:text-foreground"
-              title="Customize Content"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </Button>
-          )}
         </div>
 
         {/* Topic Progress Bar - hidden for admins */}
