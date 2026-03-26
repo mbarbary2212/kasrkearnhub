@@ -93,7 +93,14 @@ import {
   Sparkles,
   Download,
   HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
 
 import { cn } from '@/lib/utils';
@@ -521,44 +528,12 @@ export default function ChapterPage() {
     <MainLayout>
       <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-2 md:-mx-4 -mt-4 px-2 md:px-4 pt-3 md:pt-4 rounded-xl">
         {/* Header */}
-        <div className="flex items-center gap-1.5 md:gap-4">
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)} className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0">
             <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
-          <div className="flex-1 min-w-0">
-            {(moduleLoading || chapterLoading) ? (
-              <>
-                <Skeleton className="hidden md:block h-5 w-48 mb-2" />
-                <Skeleton className="h-8 w-96 max-w-full" />
-              </>
-            ) : (
-              <>
-                {/* Desktop header - title only (module/icon now in top breadcrumb) */}
-                <div className="hidden md:flex items-center gap-4">
-                  <h1 className="text-lg font-heading font-semibold">
-                    {chapter?.title}
-                  </h1>
-                  {sectionsEnabled && (
-                    <SectionFilter
-                      chapterId={chapterId}
-                      selectedSectionId={selectedSectionId}
-                      onSectionChange={setSelectedSectionId}
-                      className="py-0 ml-2"
-                    />
-                  )}
-                </div>
-                {/* Mobile header - title only */}
-                <div className="md:hidden">
-                  <h1 className="text-[13px] font-heading font-semibold leading-tight line-clamp-1">
-                    {chapter?.title}
-                  </h1>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Mobile: Section filter + Ask Coach row */}
-        <div className="md:hidden flex items-center justify-between gap-2">
+
+          {/* Section Filter */}
           {sectionsEnabled && (
             <SectionFilter
               chapterId={chapterId}
@@ -567,6 +542,56 @@ export default function ChapterPage() {
               className="py-0"
             />
           )}
+
+          {/* Content Type Dropdown */}
+          {(() => {
+            const currentNav = sectionNav.find(s => s.id === activeSection) || sectionNav[0];
+            const colors = sectionColors[activeSection];
+            const CurrentIcon = currentNav.icon;
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-full",
+                      "border-2 shadow-sm text-sm font-medium transition-all duration-200",
+                      "hover:shadow-md hover:scale-[1.02]",
+                      "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                      colors.activeBg, colors.activeBgDark, colors.text,
+                      "border-current/30"
+                    )}
+                  >
+                    <CurrentIcon className={cn("w-4 h-4", colors.icon)} />
+                    <span className="hidden sm:inline">{currentNav.label}</span>
+                    <span className="sm:hidden">{currentNav.mobileLabel}</span>
+                    <ChevronDown className="w-4 h-4 opacity-60" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" sideOffset={8} className="w-52">
+                  {sectionNav.map((section) => {
+                    const SectionIcon = section.icon;
+                    const sc = sectionColors[section.id];
+                    const isActive = activeSection === section.id;
+                    return (
+                      <DropdownMenuItem
+                        key={section.id}
+                        onClick={() => setActiveSection(section.id)}
+                        className={cn(
+                          "flex items-center gap-2 py-3 cursor-pointer",
+                          isActive && cn(sc.activeBg, sc.activeBgDark)
+                        )}
+                      >
+                        <SectionIcon className={cn("w-4 h-4", sc.icon)} />
+                        <span className={cn(isActive && cn("font-medium", sc.text))}>{section.label}</span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })()}
+
+          {/* Ask Coach */}
           {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
             <AskCoachButton 
               variant="header"
@@ -577,24 +602,10 @@ export default function ChapterPage() {
                 chapterId: chapter?.id,
                 chapterName: chapter?.title,
               }}
+              className="ml-auto"
             />
           )}
         </div>
-        {/* Desktop: Ask Coach in header area */}
-        {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
-          <div className="hidden md:block">
-            <AskCoachButton 
-              variant="header"
-              context={{
-                pageType: activeSection === 'resources' ? 'resource' : 'practice',
-                moduleId: module?.id,
-                moduleName: module?.name,
-                chapterId: chapter?.id,
-                chapterName: chapter?.title,
-              }}
-            />
-          </div>
-        )}
 
         {/* Chapter Progress Bar - hidden for admins */}
         {!canManageContent && (
