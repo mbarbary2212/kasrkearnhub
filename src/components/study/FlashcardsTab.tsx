@@ -44,9 +44,10 @@ interface FlashcardsTabProps {
   /** Topic ID - use for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
   moduleId?: string;
+  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
-export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId }: FlashcardsTabProps) {
+export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId, moduleId, onActiveItemChange }: FlashcardsTabProps) {
   // Determine container ID - use exactly one of chapterId or topicId
   const containerId = chapterId || topicId;
   const { isAdmin, isTeacher } = useAuthContext();
@@ -324,6 +325,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
+              onActiveItemChange={onActiveItemChange}
             />
           ) : studentMode === 'cloze' ? (
             <FlashcardClozeMode
@@ -334,6 +336,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               chapterId={chapterId}
               topicId={topicId}
               clozeOnly
+              onActiveItemChange={onActiveItemChange}
             />
           ) : (
             <FlashcardClozeMode
@@ -343,6 +346,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
               availableTopics={availableTopics}
               chapterId={chapterId}
               topicId={topicId}
+              onActiveItemChange={onActiveItemChange}
             />
           )}
         </>
