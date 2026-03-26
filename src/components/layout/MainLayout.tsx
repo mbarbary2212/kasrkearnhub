@@ -195,7 +195,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </>
             )}
           </div>
-          </div>
 
           {/* Admin Panel button - prominent header placement */}
           {user && isAdmin && (
