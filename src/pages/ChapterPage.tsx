@@ -612,22 +612,8 @@ export default function ChapterPage() {
                   {currentTabs.map((tab) => {
                     const TabIcon = tab.icon;
                     const isActive = currentSubTab === tab.id;
-                    // Per-tab progress calculation
-                    const getTabProgress = (tabId: string): number => {
-                      if (!chapterProgress) return 0;
-                      switch (tabId) {
-                        case 'lectures': return chapterProgress.videoProgress;
-                        case 'mcqs':
-                        case 'sba':
-                          return chapterProgress.mcqTotal > 0 ? Math.round((chapterProgress.mcqCompleted / chapterProgress.mcqTotal) * 100) : 0;
-                        case 'essays': return chapterProgress.essayTotal > 0 ? Math.round((chapterProgress.essayCompleted / chapterProgress.essayTotal) * 100) : 0;
-                        case 'osce': return chapterProgress.osceTotal > 0 ? Math.round((chapterProgress.osceCompleted / chapterProgress.osceTotal) * 100) : 0;
-                        case 'cases': return chapterProgress.caseTotal > 0 ? Math.round((chapterProgress.caseCompleted / chapterProgress.caseTotal) * 100) : 0;
-                        case 'matching': return chapterProgress.matchingTotal > 0 ? Math.round((chapterProgress.matchingCompleted / chapterProgress.matchingTotal) * 100) : 0;
-                        default: return 0;
-                      }
-                    };
-                    const progress = getTabProgress(tab.id);
+                    const counts = getTabCounts(tab.id, tab.count);
+                    const progress = counts.total > 0 ? Math.round((counts.completed / counts.total) * 100) : 0;
                     return (
                       <DropdownMenuItem
                         key={tab.id}
