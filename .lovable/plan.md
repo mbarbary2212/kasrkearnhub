@@ -1,34 +1,35 @@
 
 
-## Fix: Excessive horizontal padding on mobile
+## Mobile Chapter Page: Overlay Section Switcher
 
-**Root cause:** Two layers of padding stack on mobile:
-1. Tailwind's `container` class applies `padding: 2rem` (32px per side) globally
-2. The `<main>` element adds `px-4` (16px per side)
+### Problem
+On mobile (390px), the chapter page has a horizontal tab bar (Resources / Interactive / Practice / Test) that takes up vertical space and can overflow horizontally. The content is too wide and there's too much chrome eating into the limited viewport.
 
-On a 390px screen this wastes ~96px, leaving only ~294px for content.
+### Solution
+Replace the inline section tabs on mobile with a **semi-transparent overlay** that pops up from the bottom nav's "Learning" tab. The four section options (Resources, Interactive, Practice, Test) appear as a compact floating overlay — similar to a quick-action menu — then dismiss after selection.
 
-**Solution:** Reduce the container padding on small screens and remove the redundant `px-4` on the main element for students (who already get container padding via the inner div).
+### Design
 
-### Changes
+1. **Remove the inline mobile section nav** (lines 631-654 in ChapterPage.tsx) on mobile when on a chapter page.
 
-**1. `tailwind.config.ts`** — Make container padding responsive:
-```ts
-container: {
-  center: true,
-  padding: {
-    DEFAULT: "1rem",    // 16px on mobile (was 2rem/32px)
-    md: "2rem",         // 32px on desktop (unchanged)
-  },
-  screens: {
-    "2xl": "1400px",
-  },
-},
-```
+2. **Modify MobileBottomNav.tsx** so that tapping "Learning" while already on a chapter page opens a semi-transparent overlay with the 4 section options (Resources, Interactive, Practice, Test) as small icon+label buttons — styled like the bottom nav items themselves (icon above short label, same compact sizing).
 
-**2. `src/components/layout/MainLayout.tsx`** — Reduce main content horizontal padding on mobile:
-- Change `px-4` to `px-2 md:px-4` on the `<main>` element
-- Change header `px-4` to `px-3 md:px-4`
+3. **Visual hint** — When on a chapter page, the Learning icon in the bottom nav gets a subtle pulsing ring animation (CSS `animate-pulse` or a custom gentle pulse) to signal there are sub-options. Additionally, show a small chevron-up indicator above the Learning icon.
 
-This gives mobile ~24px total horizontal padding instead of ~96px — a huge improvement in usable content width.
+4. **Overlay styling** — The overlay pops up above the bottom nav bar as a `bg-card/90 backdrop-blur-xl` panel with rounded top corners. It contains the 4 section icons in a horizontal row (same style as bottom nav). Tapping one sets the section and dismisses the overlay. Tapping outside dismisses it.
+
+5. **Compact all remaining pills/icons on mobile** — Reduce filter pill sizes (`text-[11px] px-2 py-1`), sub-tab dropdown trigger padding, and badge sizes across ChapterPage mobile view to maximize content area.
+
+### Files to edit
+
+- **`src/components/layout/MobileBottomNav.tsx`** — Add section overlay state, render overlay panel on chapter pages, add pulse animation to Learning icon
+- **`src/pages/ChapterPage.tsx`** — Remove the mobile inline section nav (lines 631-654), keep desktop nav rail unchanged
+- **`src/index.css`** — Add a gentle pulse keyframe animation if needed
+
+### Technical notes
+- Overlay uses a simple `useState<boolean>` in MobileBottomNav
+- Section change communicated via URL search params (`?section=resources`) — already the pattern used
+- The overlay reads current `?section` param to highlight the active section
+- Clicking outside or selecting a section dismisses the overlay
+- Desktop layout is completely untouched
 
