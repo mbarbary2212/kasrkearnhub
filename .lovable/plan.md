@@ -1,60 +1,54 @@
 
 
-## Add Per-Tab Progress Indicators to the Content Dropdown
+## Show Progress Directly on the Content Pill
 
-### Concept
+### The Problem
+Progress stats only appear when opening the dropdown. The trigger pill just shows the tab name — no indication of how far along you are.
 
-Each dropdown menu item already shows a count badge (e.g., "12"). Instead, we'll **replace the count badge with a progress-filled pill** — the pill background fills with color proportional to completion %, and shows a small "75%" text. This gives instant visual feedback per sub-tab without extra UI clutter.
+### Alternatives Considered
 
+1. **"3/12" text after the label** — e.g., `MCQs · 3/12` — Simple, clear, but can get crowded on mobile with long labels.
+
+2. **Background fill on the pill itself** — The pill's background fills left-to-right proportional to progress (like the dropdown items). Visually striking but might clash with the active-section color theming already on the pill.
+
+3. **Small percentage badge appended** — e.g., `MCQs [75%]` as a tiny chip inside the pill. Clean but duplicates the dropdown info without adding much.
+
+4. **"n/total" compact counter replacing the chevron area** — e.g., `📹 Videos  3/5 ▾` — The count sits right before the chevron. Minimal, scannable, and doesn't require extra visual elements.
+
+### Recommendation: Option 4 — `n/total` counter on the pill
+
+Best balance of information density and simplicity. Shows completion fraction (e.g., `3/12`) directly on the trigger, so you always know where you stand. For videos, show `videosCompleted/videosTotal`; for MCQs, `mcqCompleted/mcqTotal`, etc. Tabs without tracking show just the label (no counter).
+
+### Changes
+
+**File: `src/pages/ChapterPage.tsx` (lines 566-585)**
+
+1. Move the `getTabProgress` helper **above** the trigger so it's accessible there
+2. Add a helper `getTabCounts(tabId)` returning `{ completed, total }` from `chapterProgress`
+3. In the `DropdownMenuTrigger` button, after the label and before the chevron, add:
+   ```tsx
+   {tabCounts.total > 0 && (
+     <span className="text-[10px] font-semibold opacity-70 tabular-nums">
+       {tabCounts.completed}/{tabCounts.total}
+     </span>
+   )}
+   ```
+4. Keep the existing progress-filled pills inside the dropdown items unchanged
+
+**Mapping:**
+- `lectures` → `videosCompleted / videosTotal`
+- `mcqs` / `sba` → `mcqCompleted / mcqTotal`
+- `essays` → `essayCompleted / essayTotal`
+- `osce` → `osceCompleted / osceTotal`
+- `cases` → `caseCompleted / caseTotal`
+- `matching` → `matchingCompleted / matchingTotal`
+- Others → no counter shown
+
+### Result
 ```text
-Dropdown item layout:
-┌─────────────────────────────────────┐
-│ 📹 Videos              [▓▓▓░ 60%]  │
-│ 🃏 Flashcards           [░░░░  0%]  │
-│ ❓ MCQs                [▓▓▓▓ 80%]  │
-│ 📝 Short Answer        [▓░░░ 25%]  │
-└─────────────────────────────────────┘
+Before:  [📹 Videos ▾]
+After:   [📹 Videos  2/5 ▾]
 ```
 
-The pill has a background gradient fill (left-to-right) showing progress, with the percentage text overlaid. Color: section theme color at low opacity for the fill, stronger for text.
-
-### Data: Expose Per-Type Progress
-
-**File: `src/hooks/useChapterProgress.ts`**
-
-1. Expand `ChapterProgressData` to include per-type breakdowns already available from the RPC:
-   - `mcqCompleted`, `mcqTotal`, `essayCompleted`, `essayTotal`, `osceCompleted`, `osceTotal`, `caseCompleted`, `caseTotal`, `matchingCompleted`, `matchingTotal`
-2. Return these from the hook (they're already in the RPC response, just not surfaced)
-
-### UI: Progress Pills in Dropdown Items
-
-**File: `src/pages/ChapterPage.tsx`**
-
-1. Build a mapping from tab ID → progress percentage:
-   - `lectures` → `videoProgress` (already available)
-   - `mcqs` / `sba` → `mcqCompleted/mcqTotal` (MCQs and SBA share the same DB type)
-   - `essays` → `essayCompleted/essayTotal`
-   - `osce` → `osceCompleted/osceTotal`
-   - `cases` → `caseCompleted/caseTotal`
-   - `matching` → `matchingCompleted/matchingTotal`
-   - `flashcards`, `mind_maps`, `reference_materials`, `clinical_tools`, `guided_explanations`, `pathways`, `true_false`, `practical`, `images` → 0% (no tracking yet)
-
-2. Replace the `<Badge>` count in each `DropdownMenuItem` with a **progress pill**:
-   ```tsx
-   <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
-     <div 
-       className="absolute inset-y-0 left-0 rounded-full bg-primary/25"
-       style={{ width: `${progress}%` }}
-     />
-     <span className="relative z-10 flex items-center justify-center h-full font-semibold">
-       {progress}%
-     </span>
-   </div>
-   ```
-
-3. Also show the progress fill on the **trigger button itself** for the currently active sub-tab — a subtle background gradient indicating its progress.
-
-### Files Changed
-- `src/hooks/useChapterProgress.ts` — surface per-type counts
-- `src/pages/ChapterPage.tsx` — progress pills in dropdown items
+One file changed, ~15 lines added.
 
