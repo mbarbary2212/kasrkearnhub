@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight } from 'lucide-react';
 import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
@@ -149,41 +149,50 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
             </button>
-            {/* Active year indicator - clicks to All Years */}
+            {/* Active year indicator */}
             {activeYear && (
-              <button
-                onClick={handleYearClick}
-                className="flex items-center gap-1.5 pl-1.5 border-l border-border/50 hover:opacity-80 transition-all duration-200"
-              >
-                {yearIcon && (
-                  <img src={yearIcon} alt={activeYear.yearName} className="h-6 w-6 rounded object-contain" />
-                )}
-                <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
-                  {activeYear.yearName}
-                </span>
-              </button>
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <button
+                  onClick={handleYearClick}
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-all duration-200"
+                >
+                  {yearIcon && (
+                    <img src={yearIcon} alt={activeYear.yearName} className="h-6 w-6 rounded object-contain" />
+                  )}
+                  <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
+                    {activeYear.yearName}
+                  </span>
+                </button>
+              </>
             )}
             {/* Module slug breadcrumb */}
             {currentModule?.slug && (
-              <button
-                onClick={() => navigate(`/module/${currentModuleId}`)}
-                className="flex items-center gap-1 pl-1.5 border-l border-border/50 hover:opacity-80 transition-all duration-200"
-              >
-                <span className="text-xs md:text-sm font-medium text-muted-foreground uppercase">
-                  {currentModule.slug}
-                </span>
-              </button>
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <button
+                  onClick={() => navigate(`/module/${currentModuleId}`)}
+                  className="flex items-center gap-1 hover:opacity-80 transition-all duration-200"
+                >
+                  <span className="text-xs md:text-sm font-medium text-muted-foreground uppercase">
+                    {currentModule.slug}
+                  </span>
+                </button>
+              </>
             )}
             {/* Chapter breadcrumb */}
             {currentChapter && (
-              <div className="flex items-center gap-1 pl-1.5 border-l border-border/50">
-                {currentChapter.icon_url && (
-                  <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover" />
-                )}
-                <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
-                  {currentChapter.title}
-                </span>
-              </div>
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <div className="flex items-center gap-1">
+                  {currentChapter.icon_url && (
+                    <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover" />
+                  )}
+                  <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
+                    {currentChapter.title}
+                  </span>
+                </div>
+              </>
             )}
           </div>
 
