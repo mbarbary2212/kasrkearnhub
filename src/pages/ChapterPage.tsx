@@ -151,6 +151,19 @@ export default function ChapterPage() {
   const initialSubTab = searchParams.get('subtab');
   const [activeSection, setActiveSection] = useState<SectionMode>(getSection);
 
+  // Swipe navigation between sections
+  const chapterContentRef = useRef<HTMLDivElement>(null);
+  const sectionIds: SectionMode[] = ['resources', 'interactive', 'practice', 'test'];
+  const handleSwipeLeft = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx < sectionIds.length - 1) setActiveSection(sectionIds[idx + 1]);
+  }, [activeSection]);
+  const handleSwipeRight = useCallback(() => {
+    const idx = sectionIds.indexOf(activeSection);
+    if (idx > 0) setActiveSection(sectionIds[idx - 1]);
+  }, [activeSection]);
+  useSwipeGesture(chapterContentRef, { onSwipeLeft: handleSwipeLeft, onSwipeRight: handleSwipeRight });
+
   // Sync activeSection when URL search params change (sidebar clicks)
   useEffect(() => {
     const s = searchParams.get('section') as SectionMode;
