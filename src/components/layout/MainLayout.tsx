@@ -54,6 +54,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { activeYear } = useActiveYear();
   const yearIcon = activeYear ? getYearIcon(activeYear.yearNumber) : undefined;
 
+  // Extract moduleId from URL for breadcrumb display
+  const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
+  const currentModuleId = moduleIdMatch?.[1] || '';
+  const { data: currentModule } = useModule(currentModuleId);
+
   const { data: years } = useYears();
 
   // Track route changes for resume functionality
