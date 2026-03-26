@@ -1,43 +1,32 @@
 
-Goal: fix the stale year-selection bug so choosing a year on `/years` immediately updates Home (without manual refresh).
 
-1) Root-cause fix (single source of truth for profile state)
-- Problem: `AllYearsPage` updates `profiles.preferred_year_id`, but Home reads `profile` from `useAuth` local state, which is not refreshed by `queryClient.invalidateQueries(['profile'])` (that query key does not exist).
-- Action: extend `useAuth` with profile sync helpers:
-  - `patchProfile(updates)` (optimistic local merge into `state.profile`)
-  - `refreshProfile()` (re-fetch profile via existing `fetchUserData(user.id)`)
+## Move "Online Now" indicator to the header
 
-2) Update year-pick flow in `AllYearsPage.tsx`
-- Replace current “invalidate profile query” logic with:
-  - perform `profiles` update
-  - handle Supabase error explicitly (do not navigate on failure)
-  - on success call `patchProfile({ preferred_year_id: yearId })`
-  - optionally trigger `refreshProfile()` in background
-  - navigate to `/`
-- Remove unused `queryClient.invalidateQueries({ queryKey: ['profile'] })`.
+**What changes:**
+A small live-updating pill in the header showing the number of users currently online, visible to all logged-in users. Remove the "Online Now" card from the Home dashboard and Module dashboard stat rows.
 
-3) Harden Home year initialization in `Home.tsx`
-- Keep profile-driven behavior, but make it deterministic:
-  - if `preferred_year_id` exists and matches active years -> set `selectedYearId`
-  - else fallback to first active year
-- Prevent invalid stale ID edge cases (e.g., deactivated year).
+**Icon suggestion:** Use the `Users` icon from lucide-react — it's clean and universally understood for "people online."
 
-4) Apply same pattern to other profile updates (consistency)
-- In `AccountPage.tsx`, after profile/avatar updates, call `patchProfile(...)` so header/user info updates instantly across routes (prevents same “needs refresh” class of bugs).
+**Design:** A compact pill/badge next to the ThemeToggle:
+```text
+[ 👤 3 ]   ☀️   🔔   (Avatar)
+```
+- Small rounded-full pill: `Users` icon (14px) + count number
+- Subtle styling: `bg-green-500/10 text-green-600` with a tiny green dot to indicate "live"
+- Updates in real-time via the existing `usePresence()` hook
 
-5) Verification checklist (end-to-end)
-- From Home, open `/years`, pick Year 1/2/3/4/5 repeatedly:
-  - Home must immediately show selected year context and correct modules.
-  - No page refresh required.
-- Return to `/years`:
-  - “current year” highlight matches last selection.
-- Refresh browser once:
-  - selected year remains correct (server persisted + local state in sync).
+**Files to edit:**
 
-Technical details
-- Files to update:
-  - `src/hooks/useAuth.ts` (add `patchProfile`, `refreshProfile` to returned auth API)
-  - `src/pages/AllYearsPage.tsx` (use auth sync methods, remove invalid React Query invalidation)
-  - `src/pages/Home.tsx` (robust selected-year sync/fallback)
-  - `src/pages/AccountPage.tsx` (reuse `patchProfile` after save/upload)
-- This fixes the current bug at its source instead of patching around navigation timing.
+1. **`src/components/layout/MainLayout.tsx`**
+   - Import `Users` from lucide-react and `usePresence` from PresenceContext
+   - Add a small pill element in the header's right section (before ThemeToggle), showing `onlineCount` with the `Users` icon
+   - Only render when user is logged in
+
+2. **`src/pages/Home.tsx`**
+   - Remove the "Online Now" `<Card>` from the stats row
+   - Remove unused `onlineCount` / `usePresence` import if no longer needed
+
+3. **`src/components/module/ModuleDashboard.tsx`**
+   - Remove the "Online Now" `<Card>` from the stats row
+   - Remove unused `onlineCount` / `usePresence` import if no longer needed
+
