@@ -306,7 +306,7 @@ function BookLecturesView({
             <div
               key={chapter.id}
               className={cn(
-                "flex items-center gap-3 py-3 px-4 transition-colors group",
+                "flex items-center gap-3 py-3 px-2 md:px-4 transition-colors group",
                 isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
               )}
             >
@@ -315,33 +315,33 @@ function BookLecturesView({
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left"
               >
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                 <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[2.5rem] text-center">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
                   <img 
                     src={chapter.icon_url} 
                     alt="" 
-                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
+                    className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-[15px] font-medium truncate">
+                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate">
                   {chapter.title}
                 </span>
               </button>
               ) : (
               <div className="flex-1 flex items-center gap-3">
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[2.5rem] text-center">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
                   <img 
                     src={chapter.icon_url} 
                     alt="" 
-                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
+                    className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate text-muted-foreground">
                   {chapter.title}
                 </span>
               </div>
