@@ -1,82 +1,56 @@
 
 
-## Refined Learning Tab: Inline Guidance (Combined Plan)
+## Plan: Sidebar Spacing Fix + Discussions & Study Groups as Pages
 
-### What This Does
-Replace modal/popup patterns with inline visual guidance when the student clicks the Learning tab, ensuring a smooth, uninterrupted flow across mobile, tablet, and desktop.
+### Part 1 — Tighten sidebar bottom items spacing
 
----
+The Customize and Settings items sit below a separator with `my-0.5` margin and `pb-2` padding. The nav items themselves have `py-3` vertical padding, making them tall.
 
-### Current State
-- **Sidebar & Mobile Nav**: Learning click already navigates to `lastPosition` or falls back to Dashboard (`/`). No inline guidance shown on arrival.
-- **Dashboard**: Shows `LearningHubEmptyState` — a dashed card with "Select a module to begin" and a button. Functional but visually weak.
-- **Module Page**: Shows chapter list but no prominent "choose a chapter" action card.
-- **`/learning` route**: A standalone empty-state page that is now redundant (sidebar/mobile already bypass it).
+**Fix in `StudentSidebar.tsx`:**
+- Remove the separator `div` entirely (the `mx-4 my-0.5 border-t` element)
+- Reduce the bottom section's padding to `pb-1`
+- This will pull Customize/Settings snug against Coach
 
----
+### Part 2 — Convert Discussions & Study Groups to dedicated pages
 
-### Changes (4 files modified, 1 deleted)
+**A. Create two new page components:**
 
-#### 1. Navigation State Flag (Sidebar + Mobile Nav)
-**Files**: `StudentSidebar.tsx`, `MobileBottomNav.tsx`
+| File | Content |
+|------|---------|
+| `src/pages/DiscussionsPage.tsx` | Wraps `DiscussionSection` in `MainLayout` with a "← Back" link to previous page |
+| `src/pages/StudyGroupsPage.tsx` | Wraps `StudyGroupList` + `GroupDetailView` in `MainLayout` with internal navigation state for group detail |
 
-When Learning click falls back to Dashboard (no `lastPosition`):
-- Change `navigate('/')` to `navigate('/', { state: { fromLearning: true } })`
-- This tells the Dashboard the user explicitly wanted to learn, triggering the highlight behavior.
+Both pages use the existing components — no new UI to build.
 
-#### 2. Dashboard Inline Banner + Auto-Highlight
-**File**: `StudentDashboard.tsx`
+**B. Add routes in `App.tsx`:**
+- `/connect/discussions` → `DiscussionsPage` (lazy loaded, protected)
+- `/connect/groups` → `StudyGroupsPage` (lazy loaded, protected)
 
-- Replace `LearningHubEmptyState` (dashed card) with a prominent **inline banner** at the top of the content area:
-  - Primary-tinted background with gradient
-  - BookOpen icon, title **"Start Learning"**, message **"Select a module to begin"**
-  - "Select Module" button that opens the dropdown
-- When `location.state?.fromLearning` is true:
-  - Auto-scroll to the module selector
-  - Add a brief pulse/ring animation to draw attention
-  - Clear the state after animation
+**C. Update sidebar submenu click handler (`StudentSidebar.tsx`):**
 
-#### 3. Module Page — "Choose a Chapter" Action Card
-**File**: `ModulePage.tsx` (or `ModuleLearningTab.tsx`)
+In `handleSubClick`, when `parentId === 'connect'`:
+- If `sub.id === 'discussions'` → `navigate('/connect/discussions')`
+- If `sub.id === 'study-groups'` → `navigate('/connect/groups')`
+- Otherwise (messages, inquiry, feedback) → `openConnect(sub.id)` as before
 
-When on a module page with no chapter selected (the learning tab content):
-- Add an inline action card above the chapter list:
-  - BookOpen icon, title **"Start Learning"**, message **"Choose a chapter to begin"**
-  - Primary "Choose a Chapter" button that scrolls to the chapter list
-- Add subtle visual emphasis to the chapter list: `ring-2 ring-primary/20` glow effect
-- Auto-scroll the chapter list into view
+**D. Update sidebar active state (`isItemActive`):**
 
-#### 4. Remove `/learning` Route
-**Files**: `App.tsx`, `LearningEmptyState.tsx`
+For `connect` item, return `true` when pathname starts with `/connect/`.
 
-- Delete `src/pages/LearningEmptyState.tsx`
-- Remove the `/learning` route from `App.tsx`
-- The sidebar/mobile nav already handle this flow — no orphan page needed
+**E. Update `ConnectModal.tsx`:**
 
-#### 5. Rework `LearningHubEmptyState` Component
-**File**: `LearningHubEmptyState.tsx`
+Remove the `discussions` and `study-groups` branches from the overlay — they will no longer be opened via `openConnect()`. Remove unused imports (`DiscussionSection`, `StudyGroupList`, `GroupDetailView`) and the `selectedGroupId` state. Remove entries from `viewTitles`. The body-scroll-lock logic simplifies since only `messages` uses the overlay panel.
 
-- Transform from a dashed card into the new prominent inline banner component
-- Accept optional `highlight` prop to trigger pulse animation when arriving from Learning tab click
+**F. Update `ConnectContext.tsx`:**
 
----
+Remove `'discussions'` and `'study-groups'` from the `ConnectView` type since they're no longer overlay views.
 
-### Behavior Summary (All Devices)
+### Files to edit
 
-| Scenario | Action |
-|----------|--------|
-| No module selected | Navigate to Dashboard → show inline "Start Learning" banner, highlight module selector |
-| Module selected, no chapter | Stay on module page → show "Choose a Chapter" action card, glow chapter list |
-| Chapter selected | Normal behavior — open submenu (desktop) or navigate to resources (mobile) |
-
-### Files
-| File | Action |
-|------|--------|
-| `src/components/layout/StudentSidebar.tsx` | Add `{ state: { fromLearning: true } }` to fallback navigate |
-| `src/components/layout/MobileBottomNav.tsx` | Same state flag on fallback navigate |
-| `src/components/dashboard/StudentDashboard.tsx` | Read `fromLearning` state, auto-highlight module selector |
-| `src/components/dashboard/LearningHubEmptyState.tsx` | Rework into prominent inline banner with optional highlight prop |
-| `src/pages/ModulePage.tsx` | Add "Choose a Chapter" action card + chapter list glow |
-| `src/pages/LearningEmptyState.tsx` | Delete |
-| `src/App.tsx` | Remove `/learning` route |
+1. `src/components/layout/StudentSidebar.tsx` — spacing fix + submenu click routing + active state
+2. `src/pages/DiscussionsPage.tsx` — new file
+3. `src/pages/StudyGroupsPage.tsx` — new file
+4. `src/App.tsx` — add two routes
+5. `src/components/connect/ConnectModal.tsx` — remove discussions/groups branches
+6. `src/contexts/ConnectContext.tsx` — narrow ConnectView type
 
