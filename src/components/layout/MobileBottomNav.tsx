@@ -34,10 +34,17 @@ interface MoreItem {
 }
 
 const moreItems: MoreItem[] = [
-  { id: 'connect', label: 'Connect', icon: MessageCircle, path: '/connect' },
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+const connectItems = [
+  { id: 'messages', label: 'Messages', icon: MessageCircle },
+  { id: 'inquiry', label: 'Ask a Question', icon: HelpCircle },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+  { id: 'discussions', label: 'Discussions', icon: MessagesSquare },
+  { id: 'study-groups', label: 'Study Groups', icon: Users },
 ];
 
 export function MobileBottomNav() {

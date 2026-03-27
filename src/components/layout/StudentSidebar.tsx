@@ -145,12 +145,7 @@ export function StudentSidebar() {
       }
       return;
     }
-    // Connect: open modal directly instead of submenu
-    if (item.id === 'connect') {
-      openConnect('menu');
-      setActiveSubmenu(null);
-      return;
-    }
+    // Connect: show submenu (sub-items open overlays via handleSubClick)
     if (item.children) {
       if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
