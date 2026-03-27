@@ -306,11 +306,9 @@ export function StudentSidebar() {
         'bg-card/50 dark:bg-white/[0.02] backdrop-blur-sm border-r border-border dark:border-white/10'
       )}
     >
-      <nav className="flex-1 flex flex-col gap-0.5 px-2 pt-3 overflow-y-auto">
+      <nav className="flex flex-col gap-0.5 px-2 pt-3 overflow-y-auto">
         {navItems.map((item) => renderNavButton(item))}
-      </nav>
-
-      <div className="flex flex-col gap-0.5 px-2 pb-1">
+        <div className="mt-1 flex flex-col gap-0.5">
         {bottomItems.map((item) => renderNavButton(item))}
       </div>
 
