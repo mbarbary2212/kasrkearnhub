@@ -152,6 +152,7 @@ export function StudentSidebar() {
       return;
     }
     if (item.children) {
+      if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
       } else {
         setActiveSubmenu(item.id);
