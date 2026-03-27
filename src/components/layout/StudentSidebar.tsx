@@ -65,7 +65,7 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
   { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
-  { id: 'formative', label: 'Formative', icon: ClipboardCheck, children: formativeSubItems },
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
 ];
 
