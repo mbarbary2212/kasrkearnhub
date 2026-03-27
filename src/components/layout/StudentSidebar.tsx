@@ -88,6 +88,7 @@ export function StudentSidebar() {
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const { data: lastPosition } = useLastPosition();
+  const { openConnect } = useConnect();
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
