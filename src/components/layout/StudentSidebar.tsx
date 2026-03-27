@@ -4,8 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
   Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
-  HelpCircle, MessageSquare, MessagesSquare, Users, FileText, Stethoscope,
-  Eye, CalendarCheck, Unlock,
+  HelpCircle, MessageSquare, MessagesSquare, Users,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -43,10 +42,6 @@ const connectSubItems: SubItem[] = [
   { label: 'Open Discussions', icon: MessagesSquare, id: 'discussions', description: 'Public forum' },
   { label: 'Study Groups', icon: Users, id: 'study-groups', description: 'Group learning' },
 ];
-
-const formativeSubItems: SubItem[] = [];
-
-const coachSubItems: SubItem[] = [];
 
 // ── Color coding for Learning sub-items ────────────────
 const learningSubColors: Record<string, { active: string; icon: string }> = {
@@ -113,7 +108,7 @@ export function StudentSidebar() {
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
-    if (item.id === 'connect') return false; // Connect is now a modal, never "active" in nav
+    if (item.id === 'connect') return false;
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
     if (item.id === 'customize') return location.pathname === '/customize-content';
@@ -123,6 +118,7 @@ export function StudentSidebar() {
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
+    // Direct path items (Dashboard, Formative, Coach, Settings, Customize)
     if (item.path) {
       navigate(item.path);
       setActiveSubmenu(null);
@@ -138,7 +134,7 @@ export function StudentSidebar() {
       }
       return;
     }
-    // Connect: show submenu (sub-items open overlays via handleSubClick)
+    // Items with submenus (Learning on chapter page, Connect)
     if (item.children) {
       if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
@@ -151,7 +147,7 @@ export function StudentSidebar() {
         }
       }
     }
-  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition, openConnect]);
+  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition]);
 
   // ── Handle submenu item click ────────────────────────
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
@@ -169,17 +165,10 @@ export function StudentSidebar() {
       newParams.set('section', sub.id);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     } else if (parentId === 'connect') {
-      const viewMap: Record<string, any> = { messages: 'messages', inquiry: 'inquiry', feedback: 'feedback', discussions: 'discussions', 'study-groups': 'study-groups' };
-      openConnect(viewMap[sub.id] || 'menu');
-      setActiveSubmenu(null);
-      return;
-    } else if (parentId === 'formative') {
-      navigate(`/formative?type=${sub.id}`);
-    } else if (parentId === 'coach') {
-      navigate(`/progress?tab=${sub.id}`);
+      openConnect(sub.id as any);
     }
     setActiveSubmenu(null);
-  }, [navigate, isChapterOrTopicPage, lastPosition, searchParams, location.pathname]);
+  }, [navigate, isChapterOrTopicPage, lastPosition, searchParams, location.pathname, openConnect]);
 
   // ── Check if Learning sub-items are disabled ─────────
   const isLearningDisabled = !isChapterOrTopicPage;
@@ -203,7 +192,6 @@ export function StudentSidebar() {
           !active && !isSubmenuOpen && 'text-muted-foreground',
         )}
       >
-        {/* Left accent bar */}
         {active && (
           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary transition-all duration-200" />
         )}
@@ -219,7 +207,7 @@ export function StudentSidebar() {
   const renderSubmenu = () => {
     if (!activeSubmenu) return null;
     const parentItem = [...navItems, ...bottomItems].find(i => i.id === activeSubmenu);
-    if (!parentItem?.children) return null;
+    if (!parentItem?.children?.length) return null;
 
     const isLearning = activeSubmenu === 'learning';
     const disabled = isLearning && isLearningDisabled;
@@ -229,7 +217,7 @@ export function StudentSidebar() {
         className="absolute left-full ml-2 z-50 w-56 animate-in fade-in slide-in-from-left-2 duration-200"
         style={{ top: `${submenuTop}px` }}
       >
-        <div className="bg-card/90 dark:bg-white/[0.06] backdrop-blur-xl border border-border dark:border-white/10 rounded-xl shadow-2xl py-2 px-1.5">
+        <div className="bg-card dark:bg-[hsl(var(--card)/0.95)] backdrop-blur-xl border border-border rounded-xl shadow-2xl py-2 px-1.5">
           {/* Panel header */}
           <div className="px-3 py-2 mb-0.5">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -278,7 +266,7 @@ export function StudentSidebar() {
                   onClick={() => handleSubClick(activeSubmenu, sub)}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left',
-                    'hover:bg-white/[0.06]',
+                    'hover:bg-muted/50',
                     isSubActive
                       ? cn(colors?.active || 'bg-primary/10 text-primary', 'font-semibold')
                       : 'text-muted-foreground hover:text-foreground'
@@ -312,20 +300,16 @@ export function StudentSidebar() {
         'bg-card/50 dark:bg-white/[0.02] backdrop-blur-sm border-r border-border dark:border-white/10'
       )}
     >
-      {/* Main nav items */}
       <nav className="flex-1 flex flex-col gap-0.5 px-2 pt-3 overflow-y-auto">
         {navItems.map((item) => renderNavButton(item))}
       </nav>
 
-      {/* Separator */}
       <div className="mx-4 my-1 border-t border-border dark:border-white/10" />
 
-      {/* Bottom items */}
       <div className="flex flex-col gap-0.5 px-2 pb-3">
         {bottomItems.map((item) => renderNavButton(item))}
       </div>
 
-      {/* Floating submenu panel */}
       {renderSubmenu()}
     </aside>
   );
