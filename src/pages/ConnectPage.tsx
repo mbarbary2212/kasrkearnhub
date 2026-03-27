@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpCircle, MessageSquare, MessagesSquare, Users, ChevronRight } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
@@ -9,11 +10,25 @@ import { DiscussionSection } from '@/components/discussion';
 import { StudyGroupList, GroupDetailView } from '@/components/study-groups';
 
 export default function ConnectPage() {
+  const [searchParams] = useSearchParams();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
+  // Handle ?view= query param from sidebar navigation
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (!view) return;
+    switch (view) {
+      case 'inquiry': setInquiryOpen(true); break;
+      case 'feedback': setFeedbackOpen(true); break;
+      case 'discussions': setShowDiscussion(true); break;
+      case 'study-groups': setShowStudyGroups(true); break;
+      // 'messages' is the default view, no action needed
+    }
+  }, [searchParams]);
 
   if (selectedGroupId) {
     return (

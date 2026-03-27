@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClipboardCheck, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,9 @@ import type { Module } from '@/types/curriculum';
 
 export default function FormativePage() {
   const { profile } = useAuthContext();
+  const [searchParams] = useSearchParams();
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const formativeType = searchParams.get('type'); // 'written' or 'practical' — reserved for future use
 
   // Fetch all modules (filtered by preferred year if set)
   const { data: modules, isLoading } = useModules(profile?.preferred_year_id || undefined);
