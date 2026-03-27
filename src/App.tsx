@@ -51,6 +51,7 @@ const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
 const ConnectPage = lazy(() => import("./pages/ConnectPage"));
+const FormativePage = lazy(() => import("./pages/FormativePage"));
 
 
 const queryClient = new QueryClient({
