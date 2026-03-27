@@ -512,7 +512,7 @@ function StudentBookPillView({
               <div
                 key={chapter.id}
                 className={cn(
-                  "flex items-center gap-3 py-3 px-2 md:px-4 transition-colors group",
+                  "flex items-center gap-3 py-3.5 md:py-3 px-2 md:px-4 transition-colors group min-h-[44px]",
                   isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
                 )}
               >
