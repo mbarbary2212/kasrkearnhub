@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
+import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 
 interface NavTab {
@@ -42,6 +43,7 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: dueCards } = useDueCards();
+  const { data: lastPosition } = useLastPosition();
   const [showMore, setShowMore] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +104,12 @@ export function MobileBottomNav() {
         navigate(moduleMatch[1]);
         return;
       }
+      if (lastPosition) {
+        navigate(buildResumeUrl(lastPosition));
+      } else {
+        navigate('/');
+      }
+      return;
     }
     navigate(tab.path);
   }, [navigate, location.pathname]);
