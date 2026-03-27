@@ -430,18 +430,6 @@ export default function TopicDetailPage() {
               </>
             )}
           </div>
-          {/* Ask Coach Button - visible in Resources and Practice sections */}
-          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
-            <AskCoachButton 
-              variant="header"
-              context={{
-                pageType: activeSection === 'resources' ? 'resource' : 'practice',
-                moduleId: module?.id,
-                moduleName: module?.name,
-                topicId: topic?.id,
-              }}
-            />
-          )}
         </div>
 
         {/* Topic Progress Bar - hidden for admins */}
