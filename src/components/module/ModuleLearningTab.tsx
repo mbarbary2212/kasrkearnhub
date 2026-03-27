@@ -316,7 +316,7 @@ function BookLecturesView({
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left min-w-0"
               >
-                 <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[2.5rem] text-center flex-shrink-0">
+                 <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
@@ -333,7 +333,7 @@ function BookLecturesView({
               </button>
               ) : (
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[2.5rem] text-center flex-shrink-0">
+                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
@@ -512,43 +512,45 @@ function StudentBookPillView({
               <div
                 key={chapter.id}
                 className={cn(
-                  "flex items-center gap-3 py-3 px-4 transition-colors",
+                  "flex items-center gap-3 py-3 px-2 md:px-4 transition-colors group",
                   isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
                 )}
               >
                 {isAssigned ? (
                   <button
                     onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                    className="flex-1 flex items-center gap-3 text-left"
+                    className="flex-1 flex items-center gap-3 text-left min-w-0"
                   >
-                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                    <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
                       {index + 1}
                     </span>
                     {chapter.icon_url && (
-                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                      <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-[15px] font-medium truncate">
-                      {chapter.title}
+                    <span className="flex-1 text-xs md:text-sm font-medium truncate min-w-0">
+                      <span className="md:hidden">{shortenTitle(chapter.title)}</span>
+                      <span className="hidden md:inline">{chapter.title}</span>
                     </span>
                   </button>
                 ) : (
-                  <div className="flex-1 flex items-center gap-3">
-                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
+                  <div className="flex-1 flex items-center gap-3 min-w-0">
+                    <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
                       {index + 1}
                     </span>
                     {chapter.icon_url && (
-                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                      <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
-                      {chapter.title}
+                    <span className="flex-1 text-xs md:text-sm font-medium truncate text-muted-foreground min-w-0">
+                      <span className="md:hidden">{shortenTitle(chapter.title)}</span>
+                      <span className="hidden md:inline">{chapter.title}</span>
                     </span>
                   </div>
                 )}
                 {isAssigned && (
-                  <>
+                  <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
                     <ChapterReadinessDot chapterId={chapter.id} />
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
+                  </div>
                 )}
               </div>
             );
