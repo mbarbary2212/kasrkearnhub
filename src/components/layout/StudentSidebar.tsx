@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 
 const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
 
@@ -74,6 +74,9 @@ export function StudentSidebar() {
       localStorage.setItem(STORAGE_KEY, String(collapsed));
     } catch {}
   }, [collapsed]);
+
+  // Last position for smart Learning navigation
+  const { data: lastPosition } = useLastPosition();
 
   // Detect route context
   const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
@@ -153,9 +156,13 @@ export function StudentSidebar() {
       navigate(`/module/${moduleId}?section=${item.sectionId}`);
       return;
     }
-    // Global context: Learning should not navigate anywhere — show a hint
+    // Global context: resume last position or go to dashboard
     if (item.globalPath === '__learning__') {
-      toast.info('Select a module from the Dashboard to start learning.', { duration: 3000 });
+      if (lastPosition) {
+        navigate(buildResumeUrl(lastPosition));
+      } else {
+        navigate('/');
+      }
       return;
     }
     navigate(item.globalPath);
