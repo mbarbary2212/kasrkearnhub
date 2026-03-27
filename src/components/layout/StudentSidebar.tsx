@@ -304,9 +304,9 @@ export function StudentSidebar() {
         {navItems.map((item) => renderNavButton(item))}
       </nav>
 
-      <div className="mx-4 my-1 border-t border-border dark:border-white/10" />
+      <div className="mx-4 my-0.5 border-t border-border dark:border-white/10" />
 
-      <div className="flex flex-col gap-0.5 px-2 pb-3">
+      <div className="flex flex-col gap-0.5 px-2 pb-2">
         {bottomItems.map((item) => renderNavButton(item))}
       </div>
 
