@@ -145,8 +145,13 @@ export function StudentSidebar() {
       }
       return;
     }
+    // Connect: open modal directly instead of submenu
+    if (item.id === 'connect') {
+      openConnect('menu');
+      setActiveSubmenu(null);
+      return;
+    }
     if (item.children) {
-      if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
       } else {
         setActiveSubmenu(item.id);
