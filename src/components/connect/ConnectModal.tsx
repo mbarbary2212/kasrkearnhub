@@ -111,7 +111,7 @@ export function ConnectModal() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-5">
+              <div className="flex-1 overflow-y-auto p-5" style={{ overscrollBehaviorY: 'auto' }}>
                 {activeView === 'messages' && (
                   <MessagesPanel moduleId={moduleId} yearId={yearId} />
                 )}

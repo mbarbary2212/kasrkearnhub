@@ -176,6 +176,20 @@
     @apply overflow-y-auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Universal scroll chaining — prevent scroll trapping in nested containers */
+  .overscroll-contain {
+    overscroll-behavior: contain !important;
+  }
+}
+
+/* Scroll chaining defaults for scrollable containers */
+[data-radix-scroll-area-viewport],
+.overflow-y-auto,
+.overflow-auto,
+.modal-scroll-content,
+.scroll-container {
+  overscroll-behavior: auto;
 }
 
 /* Mobile: prevent horizontal scroll */
