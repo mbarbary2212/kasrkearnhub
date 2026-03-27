@@ -1,32 +1,55 @@
 
 
-## Fix Mobile Chapter List Display
+## Universal Scroll Chaining
 
-The mobile chapter list fix was only partially applied. There are **3 separate chapter list render blocks** in `ModuleLearningTab.tsx`, and **block 2 (lines 500–555)** was never updated. This is the block matching your screenshot — it still shows chapter index numbers, full untruncated titles, and no mobile-specific optimizations.
+### Current State
 
-### What's wrong
+The codebase is already mostly clean:
+- **`overscroll-contain`** only exists on flashcard components (4 files) — these are intentionally exempt to prevent swipe gesture conflicts
+- **No custom scroll `preventDefault`** handlers that trap scroll
+- **Radix Dialog/Sheet** containers use `overflow-hidden` on the outer shell, with inner content scrolling via `overflow-y-auto` or `ScrollArea`
 
-| Render block | Location | Mobile fixes applied? |
-|---|---|---|
-| Block 1 (book-based chapters) | Lines 300–380 | Partially — still shows index numbers on mobile |
-| Block 2 (department chapters) | Lines 500–555 | **None** — this is what your screenshot shows |
-| Block 3 (general/prefix chapters) | Lines 780–850 | Yes — index hidden, titles truncated |
+The main scroll-trapping sources are:
+1. **Radix's `ScrollArea` component** — the Viewport doesn't set `overscroll-behavior: auto`, so browsers may default to trapping
+2. **Radix Dialog's body scroll lock** — applies `data-scroll-locked` and `overflow: hidden` on `<body>`, which is expected for modals but means scroll can't chain to the page behind (this is correct modal behavior)
+3. **ConnectModal's manual body scroll lock** — `position: fixed` on body (lines 25-34)
 
-### Changes (single file: `ModuleLearningTab.tsx`)
+### Plan
 
-**Block 1 (lines 300–380)** — hide index number on mobile:
-- Change the chapter number `<span>` to `hidden md:inline` (matching block 3)
-- Already has `shortenTitle` and `line-clamp-2` — keep those
+**File 1: `src/components/ui/scroll-area.tsx`**
+- Add `overscroll-behavior: auto` to the `ScrollAreaPrimitive.Viewport` element via a style prop or className
+- This ensures all `ScrollArea` instances (coach panel, tutor chat, command menus, selects) chain scroll to parent when boundaries are reached
 
-**Block 2 (lines 500–555)** — apply all mobile fixes:
-- Hide chapter index number on mobile (`hidden md:inline`)
-- Add `min-w-0` to button/container for proper truncation
-- Use `shortenTitle()` on mobile, full title on desktop (matching block 1 pattern)
-- Change title to `text-xs md:text-sm` with `truncate min-w-0`
-- Reduce icon size on mobile: `w-7 h-7 md:w-9 md:h-9`
-- Reduce padding on mobile: `px-2 md:px-4`
-- Wrap readiness dot + chevron in fixed-width container with chevron hidden on mobile (matching block 3)
+**File 2: `src/index.css` (or global CSS)**
+- Add a global rule targeting common scrollable containers to default to `overscroll-behavior: auto`:
+  ```css
+  [data-radix-scroll-area-viewport],
+  [role="dialog"] [style*="overflow"],
+  .overflow-y-auto,
+  .overflow-auto {
+    overscroll-behavior: auto;
+  }
+  ```
+- Add an override to preserve `overscroll-contain` on flashcard elements:
+  ```css
+  .overscroll-contain {
+    overscroll-behavior: contain !important;
+  }
+  ```
+
+**File 3: `src/components/connect/ConnectModal.tsx`**
+- On the scrollable content div (line 114), add `overscroll-behavior-y: auto` to ensure scroll chains to backdrop/page when inner content is exhausted
+
+**File 4: `src/components/tutor/TutorChatPanel.tsx`**
+- The `ScrollArea` fix from File 1 covers this automatically — no additional changes needed
+
+**No changes to:**
+- Flashcard components (keep `overscroll-contain` for swipe gesture isolation)
+- Dialog/Sheet body scroll locks (standard modal behavior — scroll chaining within the modal's own nested containers is what matters)
 
 ### Result
-All 3 chapter list blocks will have consistent mobile behavior: no index numbers, truncated titles, compact spacing.
+- 2-3 files changed (scroll-area.tsx, index.css, ConnectModal.tsx)
+- All scrollable containers chain naturally to their parent when boundaries are hit
+- Flashcards remain isolated for gesture support
+- No custom scroll physics or event handlers needed
 
