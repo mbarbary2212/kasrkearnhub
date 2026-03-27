@@ -22,6 +22,7 @@ import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnounceme
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function StudentDashboard() {
   const { profile } = useAuthContext();
