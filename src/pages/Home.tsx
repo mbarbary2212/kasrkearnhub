@@ -484,6 +484,23 @@ function LoggedInHome() {
             </div>
           )}
 
+          {/* Classification Dashboard — Year-level intelligence */}
+          {isStudent && yearClassification && (
+            <Card>
+              <CardContent className="py-4 px-4">
+                <ClassificationDashboard
+                  classification={yearClassification.classification}
+                  chapterTitleMap={yearClassification.chapterTitleMap}
+                  moduleNameMap={yearClassification.moduleNameMap}
+                  onNavigate={(moduleId, chapterId, tab) => {
+                    const tabParam = tab ? `?tab=${tab}` : '';
+                    navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Flashcards Widget */}
           {isStudent && dueCount > 0 && (
             <Card
