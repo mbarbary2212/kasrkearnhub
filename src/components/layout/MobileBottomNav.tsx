@@ -4,6 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings, PenLine,
+  HelpCircle, MessageSquare, MessagesSquare, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
