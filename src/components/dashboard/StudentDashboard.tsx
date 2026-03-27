@@ -113,24 +113,15 @@ export function StudentDashboard() {
 
             {/* Dropdowns row */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              {/* Year and Module Dropdowns */}
+              {/* Year label + Module Dropdown */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Year Dropdown */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Year:</span>
-                  <Select value={selectedYearId} onValueChange={handleYearChange}>
-                    <SelectTrigger className="h-8 w-[160px] bg-background text-sm">
-                      <SelectValue placeholder="Select Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years?.map((year) => (
-                        <SelectItem key={year.id} value={year.id}>
-                          {year.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Year label (read-only from context) */}
+                {selectedYear && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Year:</span>
+                    <span className="text-sm font-medium">{selectedYear.name}</span>
+                  </div>
+                )}
 
                 <span className="hidden sm:inline text-muted-foreground/40">|</span>
 
@@ -143,7 +134,7 @@ export function StudentDashboard() {
                     disabled={!selectedYearId}
                   >
                     <SelectTrigger ref={moduleSelectRef} className="h-8 w-[220px] bg-background text-sm">
-                      <SelectValue placeholder={selectedYearId ? "Select module" : "Select year first"} />
+                      <SelectValue placeholder="Select module" />
                     </SelectTrigger>
                     <SelectContent>
                       {modules?.map((module) => (
