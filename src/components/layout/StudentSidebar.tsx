@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
   Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
