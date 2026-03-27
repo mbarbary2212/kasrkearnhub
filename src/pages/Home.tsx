@@ -315,21 +315,6 @@ function LoggedInHome() {
             </section>
           )}
 
-          {/* Classification Dashboard — Year-level insights */}
-          {isStudent && yearClassification && (
-            <section>
-              <ClassificationDashboard
-                classification={yearClassification.classification}
-                chapterTitleMap={yearClassification.chapterTitleMap}
-                moduleNameMap={yearClassification.moduleNameMap}
-                onNavigate={(moduleId, chapterId, tab) => {
-                  const tabParam = tab ? `?tab=${tab}` : '';
-                  navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
-                }}
-              />
-            </section>
-          )}
-
           {/* Module Section with Year Selector + Cards/List Toggle */}
           <section>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -497,6 +482,23 @@ function LoggedInHome() {
                 <p className="text-[10px] md:text-xs text-muted-foreground">{readinessText}</p>
               </Card>
             </div>
+          )}
+
+          {/* Classification Dashboard — Year-level intelligence */}
+          {isStudent && yearClassification && (
+            <Card>
+              <CardContent className="py-4 px-4">
+                <ClassificationDashboard
+                  classification={yearClassification.classification}
+                  chapterTitleMap={yearClassification.chapterTitleMap}
+                  moduleNameMap={yearClassification.moduleNameMap}
+                  onNavigate={(moduleId, chapterId, tab) => {
+                    const tabParam = tab ? `?tab=${tab}` : '';
+                    navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
+                  }}
+                />
+              </CardContent>
+            </Card>
           )}
 
           {/* Flashcards Widget */}
