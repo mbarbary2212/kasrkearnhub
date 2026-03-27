@@ -343,7 +343,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Persistent Ask Coach Footer — desktop only, mobile has Coach in bottom nav */}
       {user && !isAdmin && (
-        <div className="fixed bottom-20 sm:bottom-4 right-3 sm:right-4 z-40 bg-card/80 backdrop-blur-xl border border-white/10 rounded-full p-1 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="hidden sm:block fixed bottom-4 right-4 z-40 bg-card/80 backdrop-blur-xl border border-white/10 rounded-full p-1 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
           <AskCoachButton variant="header" />
         </div>
       )}
