@@ -799,22 +799,20 @@ export function ModuleLearningTab({
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
                 className="flex-1 flex items-center gap-3 text-left min-w-0"
               >
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[3rem] text-center flex-shrink-0">
+                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center flex-shrink-0">
                   {prefix} {chapter.chapter_number}
                 </span>
-                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate min-w-0">
-                  <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                  <span className="hidden md:inline">{chapter.title}</span>
+                <span className="flex-1 text-xs md:text-sm font-medium truncate min-w-0">
+                  {chapter.title}
                 </span>
               </button>
               ) : (
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 md:px-2 py-1 rounded min-w-[2rem] md:min-w-[3rem] text-center flex-shrink-0">
+                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center flex-shrink-0">
                   {prefix} {chapter.chapter_number}
                 </span>
-                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate text-muted-foreground min-w-0">
-                  <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                  <span className="hidden md:inline">{chapter.title}</span>
+                <span className="flex-1 text-xs md:text-sm font-medium truncate text-muted-foreground min-w-0">
+                  {chapter.title}
                 </span>
               </div>
               )}
