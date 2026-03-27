@@ -341,10 +341,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Mobile Bottom Navigation */}
       {isStudent && <MobileBottomNav />}
 
-      {/* Persistent Ask Coach Footer — desktop only, mobile has Coach in bottom nav */}
+      {/* Persistent Ask Footer — all devices */}
       {user && !isAdmin && (
-        <div className="hidden sm:block fixed bottom-4 right-4 z-40 bg-card/80 backdrop-blur-xl border border-white/10 rounded-full p-1 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <AskCoachButton variant="header" />
+        <div className={cn(
+          "fixed z-40 right-3 sm:right-4",
+          isStudent ? "bottom-[calc(56px+env(safe-area-inset-bottom)+8px)] sm:bottom-4" : "bottom-4"
+        )}>
+          <AskCoachButton variant="icon" className="h-10 w-10 shadow-lg border border-border bg-card/90 backdrop-blur-sm hover:bg-accent" />
         </div>
       )}
 

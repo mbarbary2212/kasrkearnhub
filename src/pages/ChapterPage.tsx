@@ -655,20 +655,6 @@ export default function ChapterPage() {
             );
           })()}
 
-          {/* Ask Coach */}
-          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
-            <AskCoachButton 
-              variant="header"
-              context={{
-                pageType: activeSection === 'resources' ? 'resource' : 'practice',
-                moduleId: module?.id,
-                moduleName: module?.name,
-                chapterId: chapter?.id,
-                chapterName: chapter?.title,
-              }}
-              className="ml-auto"
-            />
-          )}
         </div>
 
         {/* Chapter Progress moved to header breadcrumb */}
