@@ -1,58 +1,57 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  FolderOpen, Sparkles, ChevronUp,
+  LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
+  MessageCircle, ClipboardCheck, Palette, Settings, PenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useDueCards } from '@/hooks/useFSRS';
-import { toast } from 'sonner';
+import studyCoachIcon from '@/assets/study-coach-icon.png';
 
 interface NavTab {
   id: string;
   label: string;
-  icon: React.ElementType;
-  globalPath: string;
+  icon: React.ElementType | 'coach-img';
+  path: string;
+  action?: 'more';
 }
 
 const tabs: NavTab[] = [
-  { id: 'dashboard', label: 'Home', icon: LayoutDashboard, globalPath: '/' },
-  { id: 'learning', label: 'Learning', icon: BookOpen, globalPath: '__learning__' },
-  { id: 'connect', label: 'Connect', icon: MessageCircle, globalPath: '/connect' },
-  { id: 'formative', label: 'Formative', icon: ClipboardCheck, globalPath: '/formative' },
-  { id: 'coach', label: 'Coach', icon: GraduationCap, globalPath: '/progress' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+  { id: 'learning', label: 'Learning', icon: BookOpen, path: '/learning' },
+  { id: 'practice', label: 'Practice', icon: PenLine, path: '/practice' },
+  { id: 'coach', label: 'Coach', icon: 'coach-img', path: '/progress' },
+  { id: 'more', label: 'More', icon: MoreHorizontal, path: '', action: 'more' },
 ];
 
-const chapterSections = [
-  { id: 'resources', label: 'Resources', icon: FolderOpen },
-  { id: 'interactive', label: 'Interactive', icon: Sparkles },
-  { id: 'practice', label: 'Practice', icon: GraduationCap },
-  { id: 'test', label: 'Test', icon: ClipboardCheck },
+interface MoreItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path: string;
+}
+
+const moreItems: MoreItem[] = [
+  { id: 'connect', label: 'Connect', icon: MessageCircle, path: '/connect' },
+  { id: 'formative', label: 'Formative Assessment', icon: ClipboardCheck, path: '/formative' },
+  { id: 'customize', label: 'Customize Content', icon: Palette, path: '/customize-content' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/account' },
 ];
 
 export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const { data: unreadCounts } = useUnreadMessages();
   const { data: dueCards } = useDueCards();
-  const [showSectionOverlay, setShowSectionOverlay] = useState(false);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const [showMore, setShowMore] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
-  const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
-  const isModulePage = !!moduleMatch;
-  const moduleId = moduleMatch?.[1];
-  const currentSection = searchParams.get('section') || '';
-
-  const isChapterPage = /^\/module\/[^/]+\/chapter\//.test(location.pathname);
-
-  // Close overlay on outside click
+  // Close sheet on outside click
   useEffect(() => {
-    if (!showSectionOverlay) return;
+    if (!showMore) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
-        setShowSectionOverlay(false);
+      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+        setShowMore(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -61,89 +60,90 @@ export function MobileBottomNav() {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
     };
-  }, [showSectionOverlay]);
+  }, [showMore]);
 
-  // Close overlay on route change
+  // Close on route change
   useEffect(() => {
-    setShowSectionOverlay(false);
-  }, [location.pathname, currentSection]);
+    setShowMore(false);
+  }, [location.pathname]);
 
-  const isActive = (tab: NavTab) => {
-    if (isModulePage || isChapterPage) {
-      if (tab.id === 'learning') {
-        return ['learning', 'resources', 'interactive', 'practice', 'test', ''].includes(currentSection);
-      }
-      return currentSection === tab.id;
-    }
+  const isActive = useCallback((tab: NavTab) => {
     if (tab.id === 'dashboard') return location.pathname === '/';
-    if (tab.id === 'learning') return location.pathname.startsWith('/year/');
-    return location.pathname === tab.globalPath;
-  };
+    if (tab.id === 'learning') {
+      return location.pathname.startsWith('/year/') ||
+        location.pathname.startsWith('/module/') ||
+        location.pathname === '/learning';
+    }
+    if (tab.id === 'practice') {
+      return location.pathname === '/practice';
+    }
+    if (tab.id === 'coach') return location.pathname === '/progress';
+    if (tab.id === 'more') {
+      return moreItems.some(m => location.pathname === m.path);
+    }
+    return false;
+  }, [location.pathname]);
 
   const handleTap = useCallback((tab: NavTab) => {
-    if (tab.id === 'dashboard') {
-      navigate('/');
+    if (tab.action === 'more') {
+      setShowMore(prev => !prev);
       return;
     }
-    // On chapter page, Learning tab toggles the section overlay
-    if (tab.id === 'learning' && isChapterPage) {
-      setShowSectionOverlay(prev => !prev);
-      return;
-    }
-    if (isModulePage && moduleId) {
-      if (isChapterPage && tab.id === 'learning') {
-        navigate(`/module/${moduleId}?section=learning`);
+    // For learning on a chapter page, go to the chapter's resources
+    if (tab.id === 'learning') {
+      const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
+      if (chapterMatch) {
+        navigate(`${chapterMatch[1]}?section=resources`);
         return;
       }
-      navigate(`/module/${moduleId}?section=${tab.id}`);
-      return;
+      const moduleMatch = location.pathname.match(/^(\/module\/[^/]+)/);
+      if (moduleMatch) {
+        navigate(moduleMatch[1]);
+        return;
+      }
     }
-    if (tab.globalPath === '__learning__') {
-      toast.info('Select a module from the Dashboard to start learning.', { duration: 3000 });
-      return;
-    }
-    navigate(tab.globalPath);
-  }, [navigate, isChapterPage, isModulePage, moduleId]);
-
-  const handleSectionSelect = useCallback((sectionId: string) => {
-    const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
-    if (chapterMatch) {
-      navigate(`${chapterMatch[1]}?section=${sectionId}`);
-    }
-    setShowSectionOverlay(false);
+    navigate(tab.path);
   }, [navigate, location.pathname]);
 
-  const totalUnread = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const dueCount = dueCards?.length ?? 0;
-  const activeChapterSection = currentSection || 'resources';
 
   return (
     <>
-      {/* Section overlay — only on chapter pages */}
-      {showSectionOverlay && isChapterPage && (
+      {/* More sheet backdrop */}
+      {showMore && (
         <div
-          ref={overlayRef}
-          className="sm:hidden fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-4 duration-200"
+          ref={backdropRef}
+          className="sm:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setShowMore(false)}
+        />
+      )}
+
+      {/* More sheet */}
+      {showMore && (
+        <div
+          ref={sheetRef}
+          className="sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-4 duration-200"
         >
-          <div className="flex justify-around">
-            {chapterSections.map((section) => {
-              const Icon = section.icon;
-              const isSectionActive = activeChapterSection === section.id;
+          <div className="flex flex-col">
+            {moreItems.map((item) => {
+              const Icon = item.icon;
+              const isItemActive = location.pathname === item.path;
               return (
                 <button
-                  key={section.id}
-                  onClick={() => handleSectionSelect(section.id)}
+                  key={item.id}
+                  onClick={() => {
+                    navigate(item.path);
+                    setShowMore(false);
+                  }}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-0.5 py-1.5 px-2 rounded-xl transition-colors min-w-[56px]',
-                    isSectionActive
+                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left',
+                    isItemActive
                       ? 'text-primary bg-primary/10'
-                      : 'text-muted-foreground active:text-foreground'
+                      : 'text-foreground active:bg-muted'
                   )}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className={cn('text-[10px] font-medium', isSectionActive && 'font-semibold')}>
-                    {section.label}
-                  </span>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">{item.label}</span>
                 </button>
               );
             })}
@@ -151,42 +151,40 @@ export function MobileBottomNav() {
         </div>
       )}
 
+      {/* Bottom nav bar */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-stretch">
           {tabs.map((tab) => {
             const active = isActive(tab);
-            const Icon = tab.icon;
-            const showConnectBadge = tab.id === 'connect' && totalUnread > 0;
-            const showCoachBadge = tab.id === 'coach' && dueCount > 0;
-            const isLearningOnChapter = tab.id === 'learning' && isChapterPage;
+            const isCoachImg = tab.icon === 'coach-img';
+            const Icon = isCoachImg ? null : (tab.icon as React.ElementType);
+            const showDueBadge = tab.id === 'coach' && dueCount > 0;
 
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTap(tab)}
                 className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] transition-colors relative',
+                  'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors relative',
                   active
                     ? 'text-primary'
                     : 'text-muted-foreground active:text-foreground'
                 )}
               >
                 <div className="relative">
-                  {/* Pulse ring hint when on chapter page */}
-                  {isLearningOnChapter && (
-                    <span className="absolute -inset-1.5 rounded-full bg-primary/20 animate-subtle-pulse" />
+                  {isCoachImg ? (
+                    <img
+                      src={studyCoachIcon}
+                      alt="Coach"
+                      className={cn(
+                        'h-5 w-5 rounded-full object-contain',
+                        !active && 'opacity-60'
+                      )}
+                    />
+                  ) : (
+                    Icon && <Icon className="h-5 w-5" />
                   )}
-                  <Icon className="h-5 w-5 relative z-10" />
-                  {/* Chevron hint */}
-                  {isLearningOnChapter && (
-                    <ChevronUp className="absolute -top-2.5 left-1/2 -translate-x-1/2 h-3 w-3 text-primary z-10" />
-                  )}
-                  {showConnectBadge && (
-                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
-                      {totalUnread}
-                    </span>
-                  )}
-                  {showCoachBadge && (
+                  {showDueBadge && (
                     <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-primary text-primary-foreground text-[10px] font-bold rounded-full">
                       {dueCount}
                     </span>
