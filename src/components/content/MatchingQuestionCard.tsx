@@ -310,7 +310,7 @@ export function MatchingQuestionCard({
 
         {/* Explanation */}
         {showAnswer && question.show_explanation && question.explanation && (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+          <div className="mt-4 p-3 bg-muted/50 rounded-lg overflow-y-auto [-webkit-overflow-scrolling:touch]">
             <p className="text-sm font-medium mb-1">Explanation:</p>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{question.explanation}</p>
           </div>
