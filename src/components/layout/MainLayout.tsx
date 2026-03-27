@@ -16,6 +16,7 @@ import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, Chevron
 import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
+import { AskCoachButton } from '@/components/coach/AskCoachButton';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -330,7 +331,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 pb-20 md:pb-8 overflow-x-hidden", isStudent ? '' : 'container mx-auto')}>
+        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", isStudent ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', isStudent ? '' : 'container mx-auto')}>
           <div className={isStudent ? 'container mx-auto' : ''}>
             {children}
           </div>
@@ -339,6 +340,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       {isStudent && <MobileBottomNav />}
+
+      {/* Persistent Ask Coach Footer */}
+      {user && !isAdmin && (
+        <div className="fixed bottom-20 md:bottom-4 right-4 z-40 bg-card/80 backdrop-blur-xl border border-white/10 rounded-full p-1 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <AskCoachButton variant="header" />
+        </div>
+      )}
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
