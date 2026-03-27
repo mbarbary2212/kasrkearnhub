@@ -188,9 +188,6 @@ export function MobileBottomNav() {
                 </button>
               );
             })}
-                </button>
-              );
-            })}
           </div>
         </div>
       )}
