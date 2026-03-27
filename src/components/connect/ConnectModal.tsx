@@ -125,7 +125,7 @@ export function ConnectModal() {
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-5">
                 {activeView === 'messages' && (
-                  <MessagesCard moduleId={moduleId || ''} yearId={yearId} />
+                  <MessagesPanel moduleId={moduleId} yearId={yearId} />
                 )}
 
                 {activeView === 'discussions' && (
