@@ -131,7 +131,7 @@ const resumeIcon: Record<string, React.ElementType> = {
 
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
+  const { user, profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
   const { data: years, isLoading: yearsLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
@@ -171,7 +171,6 @@ function LoggedInHome() {
   const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
 
   // Year-level classification dashboard
-  const { user } = useAuthContext();
   const { data: yearClassification } = useYearClassification(user?.id, moduleIds);
 
   // Dashboard data (suggestions, streak, readiness)
