@@ -1,30 +1,45 @@
-## Add Persistent "Ask Coach" Footer Bar
-
-### What
-
-Add a fixed footer bar at the bottom of the main content area (for logged-in non-admin users) containing the "Ask Coach" button. It stays visible at all times as students navigate.  
-move the "ask coach" from the main display to thee new location.   
 
 
-### Changes
+## Fix Mobile "Learning" Tab to Match Desktop Behavior
 
-**File: `src/components/layout/MainLayout.tsx**`
+### Problem
+The mobile bottom nav's "Learning" tab only checks the current URL to decide where to navigate. It doesn't use `useLastPosition` like the desktop sidebar does. So:
+- If a student is on Dashboard and taps "Learning" — it goes to `/learning` instead of resuming their last chapter
+- If no chapter was ever visited — it should go to `/` (dashboard), not `/learning`
 
-1. Import `AskCoachButton` from `@/components/coach/AskCoachButton`
-2. After the main content area and before the Mobile Bottom Nav, add a fixed-position footer bar:
-  - `fixed bottom-0` (or `bottom-16` on mobile to sit above the mobile nav)
-  - Right-aligned or centered, with glass styling matching the sidebar theme
-  - Contains the `<AskCoachButton variant="header" />` 
-  - Only rendered when `user && !isAdmin` (students and teachers)
-3. Add bottom padding to `<main>` to prevent content from being hidden behind the footer (~`pb-16`on desktop,`pb-28` on mobile since mobile already has bottom nav)
+### Fix
 
-### Footer Design
+**File: `src/components/layout/MobileBottomNav.tsx`**
 
-- Floating pill/bar: `fixed bottom-4 right-4` (desktop), `fixed bottom-20 right-4` (mobile, above bottom nav)
-- Glass style: `bg-card/80 backdrop-blur-xl border border-white/10 rounded-full shadow-lg`
-- Contains the Ask Coach button with the study-coach icon
-- Subtle entrance animation
+1. Import `useLastPosition` and `buildResumeUrl` from `@/hooks/useLastPosition`
+2. Call `const { data: lastPosition } = useLastPosition()` in the component
+3. Update the `handleTap` logic for `tab.id === 'learning'`:
+
+```
+if (tab.id === 'learning') {
+  // If already on a chapter/module page, stay contextual (existing logic)
+  const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
+  if (chapterMatch) {
+    navigate(`${chapterMatch[1]}?section=resources`);
+    return;
+  }
+  const moduleMatch = location.pathname.match(/^(\/module\/[^/]+)/);
+  if (moduleMatch) {
+    navigate(moduleMatch[1]);
+    return;
+  }
+  // Not on a module/chapter page — use last position or fall back to dashboard
+  if (lastPosition) {
+    navigate(buildResumeUrl(lastPosition));
+  } else {
+    navigate('/');
+  }
+  return;
+}
+```
+
+This mirrors the exact desktop sidebar logic: contextual navigation when inside a module, resume last position otherwise, dashboard as final fallback.
 
 ### Files
+- `src/components/layout/MobileBottomNav.tsx` — add `useLastPosition` hook and update Learning tap handler
 
-- `src/components/layout/MainLayout.tsx` — add footer with AskCoachButton
