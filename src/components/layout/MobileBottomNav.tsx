@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
-  MessageCircle, ClipboardCheck, Palette, Settings, PenLine,
+  MessageCircle, ClipboardCheck, SlidersHorizontal, Settings, PenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
@@ -33,9 +33,9 @@ interface MoreItem {
 
 const moreItems: MoreItem[] = [
   { id: 'connect', label: 'Connect', icon: MessageCircle, path: '/connect' },
-  { id: 'formative', label: 'Formative Assessment', icon: ClipboardCheck, path: '/formative' },
-  { id: 'customize', label: 'Customize Content', icon: Palette, path: '/customize-content' },
-  { id: 'settings', label: 'Settings', icon: Settings, path: '/account' },
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
+  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
 ];
 
 export function MobileBottomNav() {
@@ -44,7 +44,6 @@ export function MobileBottomNav() {
   const { data: dueCards } = useDueCards();
   const [showMore, setShowMore] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const backdropRef = useRef<HTMLDivElement>(null);
 
   // Close sheet on outside click
   useEffect(() => {
@@ -74,14 +73,16 @@ export function MobileBottomNav() {
         location.pathname.startsWith('/module/') ||
         location.pathname === '/learning';
     }
-    if (tab.id === 'practice') {
-      return location.pathname === '/practice';
-    }
+    if (tab.id === 'practice') return location.pathname === '/practice';
     if (tab.id === 'coach') return location.pathname === '/progress';
     if (tab.id === 'more') {
-      return moreItems.some(m => location.pathname === m.path);
+      return showMore || moreItems.some(m => location.pathname === m.path);
     }
     return false;
+  }, [location.pathname, showMore]);
+
+  const isMoreItemActive = useCallback((item: MoreItem) => {
+    return location.pathname === item.path;
   }, [location.pathname]);
 
   const handleTap = useCallback((tab: NavTab) => {
@@ -89,7 +90,7 @@ export function MobileBottomNav() {
       setShowMore(prev => !prev);
       return;
     }
-    // For learning on a chapter page, go to the chapter's resources
+    setShowMore(false);
     if (tab.id === 'learning') {
       const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
       if (chapterMatch) {
@@ -112,8 +113,7 @@ export function MobileBottomNav() {
       {/* More sheet backdrop */}
       {showMore && (
         <div
-          ref={backdropRef}
-          className="sm:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+          className="sm:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setShowMore(false)}
         />
       )}
@@ -122,12 +122,12 @@ export function MobileBottomNav() {
       {showMore && (
         <div
           ref={sheetRef}
-          className="sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-4 duration-200"
+          className="sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-0.5">
             {moreItems.map((item) => {
               const Icon = item.icon;
-              const isItemActive = location.pathname === item.path;
+              const active = isMoreItemActive(item);
               return (
                 <button
                   key={item.id}
@@ -136,13 +136,13 @@ export function MobileBottomNav() {
                     setShowMore(false);
                   }}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left',
-                    isItemActive
-                      ? 'text-primary bg-primary/10'
-                      : 'text-foreground active:bg-muted'
+                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left',
+                    active
+                      ? 'text-primary bg-primary/10 font-semibold'
+                      : 'text-foreground active:bg-white/[0.06]'
                   )}
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <Icon className={cn('h-5 w-5 flex-shrink-0', active && 'text-primary')} />
                   <span className="text-sm font-medium">{item.label}</span>
                 </button>
               );
@@ -152,7 +152,7 @@ export function MobileBottomNav() {
       )}
 
       {/* Bottom nav bar */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border dark:border-white/10 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-stretch">
           {tabs.map((tab) => {
             const active = isActive(tab);
@@ -165,20 +165,24 @@ export function MobileBottomNav() {
                 key={tab.id}
                 onClick={() => handleTap(tab)}
                 className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors relative',
+                  'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-all duration-200 relative',
                   active
                     ? 'text-primary'
                     : 'text-muted-foreground active:text-foreground'
                 )}
               >
+                {/* Top active indicator */}
+                {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full bg-primary transition-all duration-200" />
+                )}
                 <div className="relative">
                   {isCoachImg ? (
                     <img
                       src={studyCoachIcon}
                       alt="Coach"
                       className={cn(
-                        'h-5 w-5 rounded-full object-contain',
-                        !active && 'opacity-60'
+                        'h-5 w-5 rounded-full object-contain transition-opacity duration-200',
+                        !active && 'opacity-50'
                       )}
                     />
                   ) : (
@@ -190,12 +194,12 @@ export function MobileBottomNav() {
                     </span>
                   )}
                 </div>
-                <span className={cn('text-[10px] font-medium', active && 'font-semibold')}>
+                <span className={cn(
+                  'text-[10px] leading-tight text-center font-medium transition-all duration-200',
+                  active && 'font-semibold'
+                )}>
                   {tab.label}
                 </span>
-                {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
-                )}
               </button>
             );
           })}
