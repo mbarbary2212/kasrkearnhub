@@ -27,36 +27,18 @@ export function StudentDashboard() {
   const { profile } = useAuthContext();
   const navigate = useNavigate();
   const moduleSelectRef = useRef<HTMLButtonElement>(null);
+  const { activeYear } = useActiveYear();
   
   // Filter state
-  const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   
-  // Fetch years and modules for dropdowns
+  // Fetch years to resolve activeYear to an ID
   const { data: years, isLoading: yearsLoading } = useYears();
-  const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
   
-  // Auto-select year on load
-  useEffect(() => {
-    if (years && years.length > 0 && !selectedYearId) {
-      // Try to get last selected year from localStorage
-      const lastSelectedYear = localStorage.getItem(LAST_SELECTED_YEAR_KEY);
-      
-      if (lastSelectedYear && years.find(y => y.id === lastSelectedYear)) {
-        setSelectedYearId(lastSelectedYear);
-      } else {
-        // Default to first year
-        setSelectedYearId(years[0].id);
-      }
-    }
-  }, [years, selectedYearId]);
-
-  // Save selected year to localStorage when it changes
-  useEffect(() => {
-    if (selectedYearId && selectedYearId !== 'all') {
-      localStorage.setItem(LAST_SELECTED_YEAR_KEY, selectedYearId);
-    }
-  }, [selectedYearId]);
+  // Derive selectedYearId from activeYear context
+  const selectedYearId = years?.find(y => y.number === activeYear?.yearNumber)?.id || '';
+  
+  const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
   
   const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
@@ -72,12 +54,6 @@ export function StudentDashboard() {
   }, testProgress);
 
   const isLoading = yearsLoading;
-
-  // Reset module when year changes
-  const handleYearChange = (yearId: string) => {
-    setSelectedYearId(yearId);
-    setSelectedModuleId(''); // Reset module selection
-  };
 
   const handleSelectModuleClick = () => {
     // Focus the module select dropdown
