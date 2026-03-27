@@ -50,9 +50,9 @@ const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
-
 const FormativePage = lazy(() => import("./pages/FormativePage"));
-
+const DiscussionsPage = lazy(() => import("./pages/DiscussionsPage"));
+const StudyGroupsPage = lazy(() => import("./pages/StudyGroupsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -162,6 +162,8 @@ const App = () => {
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
                 
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/connect/discussions" element={<ProtectedRoute><RouteErrorBoundary><DiscussionsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/connect/groups" element={<ProtectedRoute><RouteErrorBoundary><StudyGroupsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 
                 <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/customize-content" element={<ProtectedRoute><RouteErrorBoundary><CustomizeContentPage /></RouteErrorBoundary></ProtectedRoute>} />

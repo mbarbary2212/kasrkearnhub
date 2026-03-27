@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-export type ConnectView = 'messages' | 'inquiry' | 'feedback' | 'discussions' | 'study-groups';
+export type ConnectView = 'messages' | 'inquiry' | 'feedback';
 
 interface ConnectContextType {
   isOpen: boolean;
