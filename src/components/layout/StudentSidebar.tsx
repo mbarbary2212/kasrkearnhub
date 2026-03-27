@@ -75,6 +75,9 @@ export function StudentSidebar() {
     } catch {}
   }, [collapsed]);
 
+  // Last position for smart Learning navigation
+  const { data: lastPosition } = useLastPosition();
+
   // Detect route context
   const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
   const isModulePage = !!moduleMatch;
