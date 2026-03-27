@@ -44,10 +44,7 @@ const connectSubItems: SubItem[] = [
   { label: 'Study Groups', icon: Users, id: 'study-groups', description: 'Group learning' },
 ];
 
-const formativeSubItems: SubItem[] = [
-  { label: 'Written', icon: FileText, id: 'written', description: 'Mock written exams' },
-  { label: 'Practical', icon: Stethoscope, id: 'practical', description: 'OSCE & practicals' },
-];
+const formativeSubItems: SubItem[] = [];
 
 const coachSubItems: SubItem[] = [
   { label: 'Overview', icon: Eye, id: 'overview', description: 'Dashboard summary' },
