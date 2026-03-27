@@ -18,13 +18,13 @@ const ConnectContext = createContext<ConnectContextType | null>(null);
 
 export function ConnectProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeView, setActiveView] = useState<ConnectView>('menu');
+  const [activeView, setActiveView] = useState<ConnectView>('messages');
   const [moduleId, setModuleId] = useState<string | undefined>();
   const [moduleName, setModuleName] = useState<string | undefined>();
   const [moduleCode, setModuleCode] = useState<string | undefined>();
   const [yearId, setYearId] = useState<string | undefined>();
 
-  const openConnect = useCallback((view: ConnectView = 'menu', moduleContext?: { moduleId?: string; moduleName?: string; moduleCode?: string; yearId?: string }) => {
+  const openConnect = useCallback((view: ConnectView = 'messages', moduleContext?: { moduleId?: string; moduleName?: string; moduleCode?: string; yearId?: string }) => {
     setActiveView(view);
     if (moduleContext) {
       setModuleId(moduleContext.moduleId);
@@ -38,7 +38,7 @@ export function ConnectProvider({ children }: { children: ReactNode }) {
   const closeConnect = useCallback(() => {
     setIsOpen(false);
     // Reset view after close animation
-    setTimeout(() => setActiveView('menu'), 300);
+    setTimeout(() => setActiveView('messages'), 300);
   }, []);
 
   const setView = useCallback((view: ConnectView) => {
