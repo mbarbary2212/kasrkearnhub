@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { useTestProgress } from '@/hooks/useTestProgress';
 import { useYears } from '@/hooks/useYears';
@@ -21,8 +22,6 @@ import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnounceme
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
-
-const LAST_SELECTED_YEAR_KEY = 'kasrlearn_last_selected_year';
 
 export function StudentDashboard() {
   const { profile } = useAuthContext();
