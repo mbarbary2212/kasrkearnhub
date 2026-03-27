@@ -4,6 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings, PenLine,
+  HelpCircle, MessageSquare, MessagesSquare, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
@@ -34,10 +35,17 @@ interface MoreItem {
 }
 
 const moreItems: MoreItem[] = [
-  { id: 'connect', label: 'Connect', icon: MessageCircle, path: '/connect' },
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+const connectItems = [
+  { id: 'messages', label: 'Messages', icon: MessageCircle },
+  { id: 'inquiry', label: 'Ask a Question', icon: HelpCircle },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+  { id: 'discussions', label: 'Discussions', icon: MessagesSquare },
+  { id: 'study-groups', label: 'Study Groups', icon: Users },
 ];
 
 export function MobileBottomNav() {
@@ -86,7 +94,6 @@ export function MobileBottomNav() {
   }, [location.pathname, showMore]);
 
   const isMoreItemActive = useCallback((item: MoreItem) => {
-    if (item.id === 'connect') return false; // Connect is now a modal
     return location.pathname === item.path;
   }, [location.pathname]);
 
@@ -136,6 +143,29 @@ export function MobileBottomNav() {
           className="sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
           <div className="flex flex-col gap-0.5">
+            {/* Connect section */}
+            <div className="px-3 pt-1 pb-1">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Connect</span>
+            </div>
+            {connectItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    openConnect(item.id as any);
+                    setShowMore(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left text-foreground active:bg-white/[0.06]"
+                >
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+            {/* Divider */}
+            <div className="mx-3 my-1 border-t border-border dark:border-white/10" />
+            {/* Other items */}
             {moreItems.map((item) => {
               const Icon = item.icon;
               const active = isMoreItemActive(item);
@@ -143,16 +173,11 @@ export function MobileBottomNav() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (item.id === 'connect') {
-                      openConnect('menu');
-                      setShowMore(false);
-                      return;
-                    }
                     navigate(item.path);
                     setShowMore(false);
                   }}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left',
+                    'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left',
                     active
                       ? 'text-primary bg-primary/10 font-semibold'
                       : 'text-foreground active:bg-white/[0.06]'
