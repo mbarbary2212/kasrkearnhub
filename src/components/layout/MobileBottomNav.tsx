@@ -1,43 +1,50 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
 import {
-  LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
-  MessageCircle, ClipboardCheck, SlidersHorizontal, Settings, PenLine,
+  LayoutDashboard, BookOpen, MoreHorizontal,
+  MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
+  FileText, Gamepad2, PenLine, ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 
+/* ------------------------------------------------------------------ */
+/*  Tab / item definitions                                            */
+/* ------------------------------------------------------------------ */
+
 interface NavTab {
   id: string;
   label: string;
   icon: React.ElementType | 'coach-img';
   path: string;
-  action?: 'more';
+  action?: 'learning' | 'connect' | 'more';
 }
 
 const tabs: NavTab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { id: 'learning', label: 'Learning', icon: BookOpen, path: '/learning' },
-  { id: 'practice', label: 'Practice', icon: PenLine, path: '/practice' },
+  { id: 'learning', label: 'Learning', icon: BookOpen, path: '', action: 'learning' },
+  { id: 'connect', label: 'Connect', icon: MessageCircle, path: '', action: 'connect' },
   { id: 'coach', label: 'Coach', icon: 'coach-img', path: '/progress' },
   { id: 'more', label: 'More', icon: MoreHorizontal, path: '', action: 'more' },
 ];
 
-interface MoreItem {
+interface SubItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  path: string;
+  section?: string;   // for learning sub-items (?section=)
+  path?: string;       // for more items (direct navigation)
 }
 
-const moreItems: MoreItem[] = [
-  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
-  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
-  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+const learningItems: SubItem[] = [
+  { id: 'resources', label: 'Resources', icon: FileText, section: 'resources' },
+  { id: 'interactive', label: 'Interactive', icon: Gamepad2, section: 'interactive' },
+  { id: 'practice', label: 'Practice', icon: PenLine, section: 'practice' },
+  { id: 'test', label: 'Test Yourself', icon: ListChecks, section: 'test' },
 ];
 
 const connectItems = [
@@ -48,21 +55,43 @@ const connectItems = [
   { id: 'study-groups', label: 'Study Groups', icon: Users },
 ];
 
+const moreItems: SubItem[] = [
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
+  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
+
 export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { data: dueCards } = useDueCards();
   const { data: lastPosition } = useLastPosition();
-  const [showMore, setShowMore] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
   const { openConnect } = useConnect();
+
+  // Sheet states — only one open at a time
+  const [activeSheet, setActiveSheet] = useState<'learning' | 'connect' | 'more' | null>(null);
+
+  const learningSheetRef = useRef<HTMLDivElement>(null);
+  const connectSheetRef = useRef<HTMLDivElement>(null);
+  const moreSheetRef = useRef<HTMLDivElement>(null);
+
+  const toggleSheet = useCallback((sheet: 'learning' | 'connect' | 'more') => {
+    setActiveSheet(prev => (prev === sheet ? null : sheet));
+  }, []);
 
   // Close sheet on outside click
   useEffect(() => {
-    if (!showMore) return;
+    if (!activeSheet) return;
+    const refMap = { learning: learningSheetRef, connect: connectSheetRef, more: moreSheetRef };
+    const ref = refMap[activeSheet];
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        setShowMore(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setActiveSheet(null);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -71,91 +100,130 @@ export function MobileBottomNav() {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
     };
-  }, [showMore]);
+  }, [activeSheet]);
 
   // Close on route change
   useEffect(() => {
-    setShowMore(false);
+    setActiveSheet(null);
   }, [location.pathname]);
 
-  const isActive = useCallback((tab: NavTab) => {
+  /* ---- Active-state helpers ---- */
+
+  const isTabActive = useCallback((tab: NavTab) => {
     if (tab.id === 'dashboard') return location.pathname === '/';
     if (tab.id === 'learning') {
-      return location.pathname.startsWith('/year/') ||
+      return activeSheet === 'learning' ||
+        location.pathname.startsWith('/year/') ||
         location.pathname.startsWith('/module/') ||
         location.pathname === '/learning';
     }
-    if (tab.id === 'practice') return location.pathname === '/practice';
+    if (tab.id === 'connect') return activeSheet === 'connect';
     if (tab.id === 'coach') return location.pathname === '/progress';
     if (tab.id === 'more') {
-      return showMore || moreItems.some(m => location.pathname === m.path);
+      return activeSheet === 'more' || moreItems.some(m => location.pathname === m.path);
     }
     return false;
-  }, [location.pathname, showMore]);
+  }, [location.pathname, activeSheet]);
 
-  const isMoreItemActive = useCallback((item: MoreItem) => {
-    return location.pathname === item.path;
-  }, [location.pathname]);
+  const currentSection = searchParams.get('section');
+
+  /* ---- Navigation handlers ---- */
 
   const handleTap = useCallback((tab: NavTab) => {
-    if (tab.action === 'more') {
-      setShowMore(prev => !prev);
+    if (tab.action) {
+      toggleSheet(tab.action);
       return;
     }
-    setShowMore(false);
-    if (tab.id === 'learning') {
-      const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
-      if (chapterMatch) {
-        navigate(`${chapterMatch[1]}?section=resources`);
-        return;
-      }
-      const moduleMatch = location.pathname.match(/^(\/module\/[^/]+)/);
-      if (moduleMatch) {
-        navigate(moduleMatch[1]);
-        return;
-      }
-      if (lastPosition) {
-        navigate(buildResumeUrl(lastPosition));
-      } else {
-        navigate('/', { state: { fromLearning: true } });
-      }
-      return;
-    }
+    setActiveSheet(null);
     navigate(tab.path);
-  }, [navigate, location.pathname]);
+  }, [navigate, toggleSheet]);
+
+  const handleLearningItem = useCallback((item: SubItem) => {
+    setActiveSheet(null);
+    // If on a chapter page, navigate to that chapter with ?section=
+    const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
+    if (chapterMatch && item.section) {
+      navigate(`${chapterMatch[1]}?section=${item.section}`);
+      return;
+    }
+    // If on a module page
+    const moduleMatch = location.pathname.match(/^(\/module\/[^/]+)/);
+    if (moduleMatch) {
+      navigate(moduleMatch[1]);
+      return;
+    }
+    // Otherwise resume last position or fall back
+    if (lastPosition) {
+      const url = buildResumeUrl(lastPosition);
+      navigate(item.section ? `${url}${url.includes('?') ? '&' : '?'}section=${item.section}` : url);
+    } else {
+      navigate('/', { state: { fromLearning: true } });
+    }
+  }, [navigate, location.pathname, lastPosition]);
+
+  const handleConnectItem = useCallback((id: string) => {
+    setActiveSheet(null);
+    openConnect(id as any);
+  }, [openConnect]);
+
+  const handleMoreItem = useCallback((item: SubItem) => {
+    setActiveSheet(null);
+    if (item.path) navigate(item.path);
+  }, [navigate]);
 
   const dueCount = dueCards?.length ?? 0;
 
+  /* ---- Shared sheet styles ---- */
+  const sheetClass = "sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-2 duration-200";
+
+  /* ---- Render ---- */
   return (
     <>
-      {/* More sheet backdrop */}
-      {showMore && (
+      {/* Backdrop */}
+      {activeSheet && (
         <div
           className="sm:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setShowMore(false)}
+          onClick={() => setActiveSheet(null)}
         />
       )}
 
-      {/* More sheet */}
-      {showMore && (
-        <div
-          ref={sheetRef}
-          className="sm:hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-3 right-3 z-50 bg-card/95 backdrop-blur-xl border border-border dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
-        >
+      {/* Learning sheet */}
+      {activeSheet === 'learning' && (
+        <div ref={learningSheetRef} className={sheetClass}>
           <div className="flex flex-col gap-0.5">
-            {/* Connect section */}
-            <div className="px-3 pt-1 pb-1">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Connect</span>
-            </div>
+            {learningItems.map((item) => {
+              const Icon = item.icon;
+              const active = currentSection === item.section;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleLearningItem(item)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left',
+                    active
+                      ? 'text-primary bg-primary/10 font-semibold'
+                      : 'text-foreground active:bg-white/[0.06]'
+                  )}
+                >
+                  <Icon className={cn('h-5 w-5 flex-shrink-0', active && 'text-primary')} />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Connect sheet */}
+      {activeSheet === 'connect' && (
+        <div ref={connectSheetRef} className={sheetClass}>
+          <div className="flex flex-col gap-0.5">
             {connectItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    openConnect(item.id as any);
-                    setShowMore(false);
-                  }}
+                  onClick={() => handleConnectItem(item.id)}
                   className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left text-foreground active:bg-white/[0.06]"
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
@@ -163,19 +231,21 @@ export function MobileBottomNav() {
                 </button>
               );
             })}
-            {/* Divider */}
-            <div className="mx-3 my-1 border-t border-border dark:border-white/10" />
-            {/* Other items */}
+          </div>
+        </div>
+      )}
+
+      {/* More sheet */}
+      {activeSheet === 'more' && (
+        <div ref={moreSheetRef} className={sheetClass}>
+          <div className="flex flex-col gap-0.5">
             {moreItems.map((item) => {
               const Icon = item.icon;
-              const active = isMoreItemActive(item);
+              const active = location.pathname === item.path;
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    navigate(item.path);
-                    setShowMore(false);
-                  }}
+                  onClick={() => handleMoreItem(item)}
                   className={cn(
                     'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-left',
                     active
@@ -196,7 +266,7 @@ export function MobileBottomNav() {
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border dark:border-white/10 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-stretch">
           {tabs.map((tab) => {
-            const active = isActive(tab);
+            const active = isTabActive(tab);
             const isCoachImg = tab.icon === 'coach-img';
             const Icon = isCoachImg ? null : (tab.icon as React.ElementType);
             const showDueBadge = tab.id === 'coach' && dueCount > 0;
@@ -212,7 +282,6 @@ export function MobileBottomNav() {
                     : 'text-muted-foreground active:text-foreground'
                 )}
               >
-                {/* Top active indicator */}
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full bg-primary transition-all duration-200" />
                 )}
