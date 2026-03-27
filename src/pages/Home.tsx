@@ -170,6 +170,10 @@ function LoggedInHome() {
   const moduleIds = useMemo(() => modules?.map(m => m.id) || [], [modules]);
   const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
 
+  // Year-level classification dashboard
+  const { user } = useAuthContext();
+  const { data: yearClassification } = useYearClassification(user?.id, moduleIds);
+
   // Dashboard data (suggestions, streak, readiness)
   const { data: dashboard } = useStudentDashboard(
     selectedYearId ? { yearId: selectedYearId } : undefined
