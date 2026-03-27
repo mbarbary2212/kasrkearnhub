@@ -165,16 +165,15 @@
     animation: subtle-pulse 2s ease-in-out infinite;
   }
 
-  /* Global Modal & Scroll Utilities */
+  /* Global Modal & Scroll Utilities — allow natural scroll handoff to parent */
   .modal-scroll-content {
-    @apply overflow-y-auto overscroll-contain;
+    @apply overflow-y-auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
   }
 
-  /* Single scroll container pattern - use on the innermost scrollable element */
+  /* Single scroll container pattern */
   .scroll-container {
-    @apply overflow-y-auto overscroll-contain;
+    @apply overflow-y-auto;
     -webkit-overflow-scrolling: touch;
   }
 }
