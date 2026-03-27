@@ -11,7 +11,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useYearById } from '@/hooks/useYears';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
-import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
@@ -65,8 +65,6 @@ export default function ModulePage() {
   const { setActiveYear } = useActiveYear();
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(actualModuleId);
   
-  // Get unread message counts for Connect tab badges
-  const { data: unreadCounts } = useUnreadMessages(actualModuleId, module?.year_id);
   
   // Check module admin permissions
   const { canManageContent, isModuleAdmin } = useIsModuleAdmin(actualModuleId);
@@ -153,7 +151,7 @@ export default function ModulePage() {
   const sectionColorEntries: Record<string, { activeBg: string; activeBgDark: string; border: string; text: string; icon: string; mobileBg: string }> = {
     dashboard: { activeBg: 'bg-primary/5',  activeBgDark: 'dark:bg-primary/10',    border: 'border-l-primary',    text: 'text-primary',                       icon: 'text-primary',                       mobileBg: 'bg-primary/10 text-primary' },
     learning:  { activeBg: 'bg-blue-50',   activeBgDark: 'dark:bg-blue-950/30',   border: 'border-l-blue-600',   text: 'text-blue-700 dark:text-blue-300',   icon: 'text-blue-600 dark:text-blue-400',   mobileBg: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
-    connect:   { activeBg: 'bg-teal-50',   activeBgDark: 'dark:bg-teal-950/30',   border: 'border-l-teal-500',   text: 'text-teal-700 dark:text-teal-300',   icon: 'text-teal-500 dark:text-teal-400',   mobileBg: 'bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300' },
+    
     formative: { activeBg: 'bg-violet-50', activeBgDark: 'dark:bg-violet-950/30', border: 'border-l-violet-500', text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500 dark:text-violet-400', mobileBg: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300' },
     coach:     { activeBg: 'bg-amber-50',  activeBgDark: 'dark:bg-amber-950/30',  border: 'border-l-amber-500',  text: 'text-amber-700 dark:text-amber-300',  icon: 'text-amber-500 dark:text-amber-400',  mobileBg: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
   };
